@@ -1,10 +1,10 @@
 {
   "skills": {
     "update-docs": {
-      "description": "Update docs/ based on changes to src/arthur_observability_sdk/"
+      "description": "Update docs/ based on changes to python/src/arthur_observability_sdk/"
     },
     "generate-client": {
-      "description": "Regenerate src/arthur_genai_client/ from the GenAI Engine OpenAPI spec"
+      "description": "Regenerate python/src/arthur_genai_client/ from the GenAI Engine OpenAPI spec"
     },
     "test-unit": {
       "description": "Run the SDK unit tests (pytest -m unit_tests)"

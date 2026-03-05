@@ -3,7 +3,7 @@ name = "arthur-observability-sdk"
 version = "1.0.0"
 description = "Arthur Observability SDK — telemetry, prompt management, and framework instrumentation"
 authors = ["Arthur AI <engineering@arthur.ai>"]
-readme = "README.md"
+readme = "../README.md"
 packages = [
     { include = "arthur_observability_sdk", from = "src" },
     { include = "arthur_genai_client", from = "src" },

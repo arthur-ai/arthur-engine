@@ -5,28 +5,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-# Generate the API client first (requires Node.js + Java; src/arthur_genai_client/ is gitignored)
+# Generate the API client first (requires Node.js + Java; python/src/arthur_genai_client/ is gitignored)
 ./scripts/generate_openapi_client.sh generate python
 
 # Install (runs poetry install, which picks up the generated client)
 ./scripts/generate_openapi_client.sh install python
 
-# Test
+# Test (run from arthur-observability-sdk/python/)
+cd python
 poetry run pytest tests -v          # all tests (includes install/wheel smoke tests)
 poetry run pytest tests/test_client.py::test_arthur_requires_task_or_service_name  # single test
 poetry run pytest -k "telemetry"    # match expression
 
-# Lint (all at once)
+# Lint (all at once, run from arthur-observability-sdk/)
 ./scripts/lint.sh
 
-# Individually
+# Individually (run from arthur-observability-sdk/python/)
+cd python
 poetry run black src tests
 poetry run isort src tests --profile black
 poetry run autoflake --remove-all-unused-imports --in-place --recursive src tests
 poetry run mypy src/arthur_observability_sdk
 
-# Build wheel
-poetry build --format wheel
+# Build wheel (run from arthur-observability-sdk/)
+./scripts/build_sdk_wheel.sh
 
 # Regenerate arthur_genai_client from GenAI Engine OpenAPI spec
 ./scripts/generate_openapi_client.sh generate python
@@ -87,7 +89,7 @@ Use `*_with_http_info()` + `raw_data` whenever the response includes prompts, me
 
 **Adding a new instrumentor** — four files must be updated together:
 
-1. **`src/arthur_observability_sdk/arthur.py`** — add a method after the last `instrument_*` method:
+1. **`python/src/arthur_observability_sdk/arthur.py`** — add a method after the last `instrument_*` method:
    ```python
    def instrument_my_framework(self) -> Any:
        return self._instrument(
@@ -97,7 +99,7 @@ Use `*_with_http_info()` + `raw_data` whenever the response includes prompts, me
            "MyFrameworkInstrumentor",                      # class name
        )
    ```
-2. **`pyproject.toml`** — three additions:
+2. **`python/pyproject.toml`** — three additions:
    - In `[tool.poetry.dependencies]`: `openinference-instrumentation-my-framework = { version = "*", optional = true }`
    - In `[tool.poetry.extras]`: `my-framework = ["openinference-instrumentation-my-framework"]`
    - In the `all` extra list: `"openinference-instrumentation-my-framework"`

@@ -39,7 +39,7 @@ fi
 
 MERGE_BASE=$(git merge-base HEAD "$BASE_BRANCH")
 
-if git diff --quiet "$MERGE_BASE..HEAD" -- src/arthur_observability_sdk/; then
+if git diff --quiet "$MERGE_BASE..HEAD" -- python/src/arthur_observability_sdk/; then
   echo "No SDK source changes detected — skipping doc update."
   exit 0
 fi
@@ -47,7 +47,7 @@ fi
 DIFF_FILE=$(mktemp /tmp/arthur-sdk-diff.XXXXXX)
 trap 'rm -f "$DIFF_FILE"' EXIT      # always clean up, success or failure
 
-git diff "$MERGE_BASE..HEAD" -- src/arthur_observability_sdk/ > "$DIFF_FILE"
+git diff "$MERGE_BASE..HEAD" -- python/src/arthur_observability_sdk/ > "$DIFF_FILE"
 
 echo "SDK source changes detected. Invoking Claude to update docs..."
 claude -p "/update-docs $DIFF_FILE" --allowedTools "Read,Edit,Write" \

@@ -3,4 +3,4 @@ __pycache__/
 *.pyo
 
 # Auto-generated from GenAI Engine OpenAPI spec — run ./scripts/generate_openapi_client.sh generate python
-src/arthur_genai_client/
+python/src/arthur_genai_client/

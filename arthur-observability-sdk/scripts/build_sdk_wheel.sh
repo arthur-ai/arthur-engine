@@ -8,7 +8,7 @@
 #
 # Why the temp-copy approach:
 #   Poetry uses `git ls-files` when building inside a git repository, which
-#   silently excludes gitignored files — including src/arthur_genai_client/.
+#   silently excludes gitignored files — including python/src/arthur_genai_client/.
 #   By copying the SDK to a directory with no .git ancestor, poetry falls back
 #   to pure filesystem discovery and includes all files listed under [packages].
 
@@ -19,9 +19,9 @@ SDK_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 OUTPUT_DIR="${1:-$SDK_ROOT/dist}"
 
 # Verify the generated client exists before attempting a build.
-CLIENT_DIR="$SDK_ROOT/src/arthur_genai_client"
+CLIENT_DIR="$SDK_ROOT/python/src/arthur_genai_client"
 if [ ! -d "$CLIENT_DIR" ] || [ -z "$(find "$CLIENT_DIR" -name "*.py" 2>/dev/null | head -1)" ]; then
-    echo "ERROR: src/arthur_genai_client not found or empty." >&2
+    echo "ERROR: python/src/arthur_genai_client not found or empty." >&2
     echo "Run: ./scripts/generate_openapi_client.sh generate python" >&2
     exit 1
 fi
@@ -43,10 +43,10 @@ shutil.copytree(
 PYEOF
 
 # Build the wheel inside the git-free copy.
-poetry -C "$BUILD_DIR" build -q --format wheel
+poetry -C "$BUILD_DIR/python" build -q --format wheel
 
 # Locate the newest wheel in the build output.
-WHEEL=$(ls -t "$BUILD_DIR/dist/"*.whl 2>/dev/null | head -1)
+WHEEL=$(ls -t "$BUILD_DIR/python/dist/"*.whl 2>/dev/null | head -1)
 if [ -z "$WHEEL" ]; then
     echo "ERROR: No wheel found in dist/ after build." >&2
     exit 1

@@ -10,7 +10,7 @@ Unit tests cover `Arthur` initialization, env-var resolution, prompt management,
 
 ## Prerequisites
 
-`src/arthur_genai_client/` must exist (it is gitignored). If missing:
+`python/src/arthur_genai_client/` must exist (it is gitignored). If missing:
 
 ```bash
 ./scripts/generate_openapi_client.sh generate python
@@ -19,7 +19,7 @@ Unit tests cover `Arthur` initialization, env-var resolution, prompt management,
 
 ## Run all unit tests
 
-From the `arthur-observability-sdk/` directory:
+From the `arthur-observability-sdk/python/` directory:
 
 ```bash
 poetry run pytest tests -m unit_tests -v
@@ -42,4 +42,4 @@ poetry run pytest tests -m unit_tests -k "env" -v
 
 - Unit tests are marked with `@pytest.mark.unit_tests` (via `pytestmark` at the module level).
 - They mock at the `OTLPSpanExporter` boundary or use `InMemorySpanExporter` — no real OTLP endpoint needed.
-- If tests import `arthur_genai_client` and fail with `ModuleNotFoundError`, the generated client is missing. Run the generate-client skill first.
+- If tests import `arthur_genai_client` and fail with `ModuleNotFoundError`, the generated client is missing (`python/src/arthur_genai_client/`). Run the generate-client skill first.

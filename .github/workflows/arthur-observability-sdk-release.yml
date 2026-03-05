@@ -52,7 +52,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: arthur-genai-client
-          path: arthur-observability-sdk/src/arthur_genai_client
+          path: arthur-observability-sdk/python/src/arthur_genai_client
 
   # ── Path A: dev pre-release ────────────────────────────────────────────────
   build-dev-wheel:
@@ -74,19 +74,19 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: arthur-genai-client
-          path: arthur-observability-sdk/src/arthur_genai_client
+          path: arthur-observability-sdk/python/src/arthur_genai_client
 
       - uses: ./.github/workflows/composite-actions/setup-poetry
         with:
-          working-directory: arthur-observability-sdk
+          working-directory: arthur-observability-sdk/python
 
       - name: Compute dev version and build wheel
         run: |
-          BASE_VERSION=$(poetry -C arthur-observability-sdk version --short)
+          BASE_VERSION=$(poetry -C arthur-observability-sdk/python version --short)
           DEV_VERSION="${BASE_VERSION}.dev0"
           echo "Building dev version: ${DEV_VERSION}"
           # Override version in workspace only — not committed.
-          poetry -C arthur-observability-sdk version "${DEV_VERSION}"
+          poetry -C arthur-observability-sdk/python version "${DEV_VERSION}"
           ./arthur-observability-sdk/scripts/build_sdk_wheel.sh
 
       - uses: actions/upload-artifact@v4
@@ -132,11 +132,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: arthur-genai-client
-          path: arthur-observability-sdk/src/arthur_genai_client
+          path: arthur-observability-sdk/python/src/arthur_genai_client
 
       - uses: ./.github/workflows/composite-actions/setup-poetry
         with:
-          working-directory: arthur-observability-sdk
+          working-directory: arthur-observability-sdk/python
 
       - name: Build stable wheel
         run: ./arthur-observability-sdk/scripts/build_sdk_wheel.sh
@@ -185,7 +185,7 @@ jobs:
 
       - name: Create and push git tag
         run: |
-          VERSION=$(poetry -C arthur-observability-sdk version --short)
+          VERSION=$(poetry -C arthur-observability-sdk/python version --short)
           TAG="sdk-v${VERSION}"
           echo "Creating tag: ${TAG}"
           git tag "${TAG}"

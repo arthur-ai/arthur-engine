@@ -1,12 +1,12 @@
 ---
 name: generate-client
-description: Regenerate the arthur_genai_client package from the GenAI Engine OpenAPI spec. Use when the GenAI Engine API has changed, or when src/arthur_genai_client/ is missing after a fresh clone.
+description: Regenerate the arthur_genai_client package from the GenAI Engine OpenAPI spec. Use when the GenAI Engine API has changed, or when python/src/arthur_genai_client/ is missing after a fresh clone.
 allowed-tools: Bash, Read
 ---
 
 # Regenerate the Arthur GenAI API Client
 
-The `arthur_genai_client` package under `src/` is auto-generated and gitignored.
+The `arthur_genai_client` package under `python/src/` is auto-generated and gitignored.
 It must be present before running tests, linting (mypy), or using prompt management features.
 
 ## Steps
@@ -32,7 +32,7 @@ From the `arthur-observability-sdk/` directory:
 `generate python` will:
 - Install / update `openapi-generator-cli` via npm if needed
 - Read `genai-engine/staging.openapi.json`
-- Write the generated package to `src/arthur_genai_client/`
+- Write the generated package to `python/src/arthur_genai_client/`
 
 `install python` runs `poetry install` to register the generated package in the venv.
 
@@ -46,5 +46,5 @@ If that prints `OK`, the client is ready. If it errors, re-run step 2.
 
 ## Notes
 
-- Do **not** hand-edit any file inside `src/arthur_genai_client/` — changes will be lost on the next regeneration.
+- Do **not** hand-edit any file inside `python/src/arthur_genai_client/` — changes will be lost on the next regeneration.
 - The generator requires the GenAI Engine spec at `genai-engine/staging.openapi.json`. If that file is missing, update it from the running GenAI Engine: `curl http://localhost:3030/openapi.json > ../genai-engine/staging.openapi.json`

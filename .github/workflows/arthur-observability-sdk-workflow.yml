@@ -28,7 +28,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: arthur-genai-client
-          path: arthur-observability-sdk/src/arthur_genai_client
+          path: arthur-observability-sdk/python/src/arthur_genai_client
 
   run-linter:
     needs: generate-client
@@ -46,31 +46,31 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: arthur-genai-client
-          path: arthur-observability-sdk/src/arthur_genai_client
+          path: arthur-observability-sdk/python/src/arthur_genai_client
       - uses: ./.github/workflows/composite-actions/setup-poetry
         with:
-          working-directory: arthur-observability-sdk
+          working-directory: arthur-observability-sdk/python
           with-groups: dev
       - name: Run isort
         id: isort
         continue-on-error: true
         run: |
-          poetry -C arthur-observability-sdk run isort src/arthur_observability_sdk tests --profile black --check
+          poetry -C arthur-observability-sdk/python run isort src/arthur_observability_sdk tests --profile black --check
       - name: Run autoflake
         id: autoflake
         continue-on-error: true
         run: |
-          poetry -C arthur-observability-sdk run autoflake --remove-all-unused-imports --in-place --check --recursive --quiet src/arthur_observability_sdk tests
+          poetry -C arthur-observability-sdk/python run autoflake --remove-all-unused-imports --in-place --check --recursive --quiet src/arthur_observability_sdk tests
       - name: Run black
         id: black
         continue-on-error: true
         run: |
-          poetry -C arthur-observability-sdk run black --check src/arthur_observability_sdk tests
+          poetry -C arthur-observability-sdk/python run black --check src/arthur_observability_sdk tests
       - name: Run mypy
         id: mypy
         continue-on-error: true
         run: |
-          poetry -C arthur-observability-sdk run mypy src/arthur_observability_sdk
+          poetry -C arthur-observability-sdk/python run mypy src/arthur_observability_sdk
       - name: Check linter results
         if: steps.isort.outcome == 'failure' || steps.autoflake.outcome == 'failure' || steps.black.outcome == 'failure' || steps.mypy.outcome == 'failure'
         run: |
@@ -97,14 +97,14 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: arthur-genai-client
-          path: arthur-observability-sdk/src/arthur_genai_client
+          path: arthur-observability-sdk/python/src/arthur_genai_client
       - uses: ./.github/workflows/composite-actions/setup-poetry
         with:
-          working-directory: arthur-observability-sdk
+          working-directory: arthur-observability-sdk/python
           with-groups: dev
       - name: Run unit tests
         run: |
-          poetry -C arthur-observability-sdk run pytest tests -m "unit_tests" -v
+          poetry -C arthur-observability-sdk/python run pytest tests -m "unit_tests" -v
 
   run-integration-tests:
     needs: generate-client
@@ -122,14 +122,14 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: arthur-genai-client
-          path: arthur-observability-sdk/src/arthur_genai_client
+          path: arthur-observability-sdk/python/src/arthur_genai_client
       - uses: ./.github/workflows/composite-actions/setup-poetry
         with:
-          working-directory: arthur-observability-sdk
+          working-directory: arthur-observability-sdk/python
           with-groups: dev
       - name: Run integration tests
         run: |
-          poetry -C arthur-observability-sdk run pytest tests -m "integration_tests" -v
+          poetry -C arthur-observability-sdk/python run pytest tests -m "integration_tests" -v
 
   check-new-instrumentors:
     runs-on: ubuntu-latest
@@ -156,7 +156,7 @@ jobs:
         run: |
           BASE=${{ github.event.pull_request.base.sha }}
           SRC=$(git diff --name-only "$BASE"...HEAD -- \
-                'arthur-observability-sdk/src/arthur_observability_sdk/' | wc -l)
+                'arthur-observability-sdk/python/src/arthur_observability_sdk/' | wc -l)
           DOCS=$(git diff --name-only "$BASE"...HEAD -- \
                  'arthur-observability-sdk/docs/' | wc -l)
           if [ "$SRC" -gt 0 ] && [ "$DOCS" -eq 0 ]; then
@@ -172,7 +172,7 @@ jobs:
         run: |
           gh pr comment ${{ github.event.pull_request.number }} \
             --repo ${{ github.repository }} \
-            --body "**Docs reminder:** \`src/arthur_observability_sdk/\` was modified in this PR but \`docs/\` was not updated. Consider running \`scripts/update-docs.sh\` locally (requires the \`claude\` CLI) and committing any resulting changes. This is a reminder only — the PR is not blocked."
+            --body "**Docs reminder:** \`python/src/arthur_observability_sdk/\` was modified in this PR but \`docs/\` was not updated. Consider running \`scripts/update-docs.sh\` locally (requires the \`claude\` CLI) and committing any resulting changes. This is a reminder only — the PR is not blocked."
 
   claude-code-review:
     if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate[bot]'

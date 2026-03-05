@@ -121,13 +121,16 @@ cd arthur-observability-sdk
 ./scripts/generate_openapi_client.sh install python
 ```
 
-> **Note:** `src/arthur_genai_client/` is auto-generated and gitignored. You must run
+> **Note:** `python/src/arthur_genai_client/` is auto-generated and gitignored. You must run
 > `./scripts/generate_openapi_client.sh generate python` after cloning, and again whenever the
 > GenAI Engine API changes. See [Regenerating the API client](#regenerating-the-api-client).
 
 ### Running tests
 
 ```bash
+# Run from arthur-observability-sdk/python/
+cd python
+
 # Unit tests only (fast, no network)
 poetry run pytest tests -m "unit_tests" -v
 
@@ -141,12 +144,14 @@ poetry run pytest tests -v
 ### Linting
 
 ```bash
+# Run from arthur-observability-sdk/
 ./scripts/lint.sh
 ```
 
-Or individually:
+Or individually (from `arthur-observability-sdk/python/`):
 
 ```bash
+cd python
 poetry run black src tests
 poetry run isort src tests --profile black
 poetry run autoflake --remove-all-unused-imports --in-place --recursive src tests
@@ -155,7 +160,7 @@ poetry run mypy src/arthur_observability_sdk
 
 ### Regenerating the API client
 
-`src/arthur_genai_client/` is auto-generated from the GenAI Engine OpenAPI spec
+`python/src/arthur_genai_client/` is auto-generated from the GenAI Engine OpenAPI spec
 and is **not committed to the repository**. Regenerate it after cloning or whenever
 the API changes:
 
