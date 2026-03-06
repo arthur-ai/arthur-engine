@@ -7,7 +7,7 @@ import traceback
 import urllib
 from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime
-from typing import Any, Callable
+from typing import Any, Callable, Literal, overload
 
 from arthur_common.models.common_schemas import (
     LLMTokenConsumption,
@@ -185,6 +185,18 @@ def seed_database(db_session: Session) -> None:
     db_session.commit()
 
 
+@overload
+def get_env_var(
+    env_var: str, none_on_missing: Literal[True], default: str | None = ...
+) -> str | None: ...
+
+
+@overload
+def get_env_var(
+    env_var: str, none_on_missing: Literal[False] = ..., default: str | None = ...
+) -> str: ...
+
+
 def get_env_var(
     env_var: str,
     none_on_missing: bool = False,
@@ -192,21 +204,15 @@ def get_env_var(
 ) -> str | None:
     env_value = os.environ.get(env_var)
     if env_value is not None:
-        value: str | None = env_value
         logger.debug(f"Environment variable {env_var} is set")
-    elif default is not None:
-        value = default
-        logger.debug(
-            f"Environment variable {env_var} not set, using default value"
-        )
-    else:
-        value = None
-        logger.debug(f"Environment variable {env_var} is not set")
-    if none_on_missing and not value:
+        return env_value
+    if default is not None:
+        logger.debug(f"Environment variable {env_var} not set, using default value")
+        return default
+    logger.debug(f"Environment variable {env_var} is not set")
+    if none_on_missing:
         return None
-    elif not value:
-        raise ValueError("Environment variable %s not defined" % env_var)
-    return value
+    raise ValueError("Environment variable %s not defined" % env_var)
 
 
 def get_genai_engine_version() -> str:
