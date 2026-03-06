@@ -7,8 +7,8 @@ import { useNavigate } from "react-router-dom";
 import { EvalsStep } from "./components/evals-step";
 import { InfoStep } from "./components/info-step";
 import { PromptStep } from "./components/prompt-step";
-import { createExperimentModalFormOpts } from "./form";
-import { formDataToRequest, templateToFormData } from "./utils";
+import { createExperimentModalFormOpts, CreateExperimentModalFormValues } from "./form";
+import { DeepPartial, deepMerge, formDataToRequest, templateToFormData } from "./utils";
 
 import { ConfirmationModal } from "@/components/common/ConfirmationModal";
 import { useAppForm } from "@/components/traces/components/filtering/hooks/form";
@@ -18,22 +18,31 @@ import { PromptExperimentDetail } from "@/lib/api-client/api-client";
 
 type Props = {
   templateId?: string;
+  initialData?: DeepPartial<CreateExperimentModalFormValues>;
   open: boolean;
   onClose: () => void;
 };
 
-export const CreateExperimentModal = ({ templateId, open, onClose }: Props) => {
+export const CreateExperimentModal = ({ templateId, initialData, open, onClose }: Props) => {
   const { experiment } = usePromptExperiment(templateId);
 
   return (
     <Dialog open={open} maxWidth="md" fullWidth aria-labelledby="create-experiment-dialog-title">
       <DialogTitle id="create-experiment-dialog-title">Create Experiment</DialogTitle>
-      <CreateExperimentModalInner template={experiment} onClose={onClose} />
+      <CreateExperimentModalInner template={experiment} initialData={initialData} onClose={onClose} />
     </Dialog>
   );
 };
 
-const CreateExperimentModalInner = ({ template, onClose }: { template?: PromptExperimentDetail; onClose: () => void }) => {
+const CreateExperimentModalInner = ({
+  template,
+  initialData,
+  onClose,
+}: {
+  template?: PromptExperimentDetail;
+  initialData?: DeepPartial<CreateExperimentModalFormValues>;
+  onClose: () => void;
+}) => {
   const { task } = useTask()!;
   const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
@@ -48,9 +57,14 @@ const CreateExperimentModalInner = ({ template, onClose }: { template?: PromptEx
     },
   });
 
+  const defaultValues = (() => {
+    const base = template ? templateToFormData(template) : createExperimentModalFormOpts.defaultValues;
+    return initialData ? deepMerge(base, initialData) : base;
+  })();
+
   const form = useAppForm({
     ...createExperimentModalFormOpts,
-    ...(template ? { defaultValues: templateToFormData(template) } : {}),
+    defaultValues,
     onSubmit: async ({ value, formApi }) => {
       if (value.section === "info") {
         return formApi.setFieldValue("section", "prompts");

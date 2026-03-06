@@ -20,7 +20,7 @@ import { alpha } from "@mui/material/styles";
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { CreateExperimentModal, ExperimentFormData } from "./CreateExperimentModal";
+import { CreateExperimentModal } from "./create-experiment-modal";
 import { PromptExperimentsEmptyState } from "./PromptExperimentsEmptyState";
 import { PromptExperimentsTable, PromptExperiment, PromptConfig } from "./PromptExperimentsTable";
 import { PromptExperimentsViewHeader } from "./PromptExperimentsViewHeader";
@@ -28,7 +28,7 @@ import { PromptExperimentsViewHeader } from "./PromptExperimentsViewHeader";
 import { getContentHeight } from "@/constants/layout";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import { usePromptExperiments, useCreateExperiment, usePromptExperiment } from "@/hooks/usePromptExperiments";
+import { usePromptExperiments } from "@/hooks/usePromptExperiments";
 import { formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
@@ -57,11 +57,6 @@ export const PromptExperimentsView: React.FC<PromptExperimentsViewProps> = ({ on
     error,
     refetch,
   } = usePromptExperiments(taskId, page, rowsPerPage, debouncedSearchText || undefined);
-  const createExperiment = useCreateExperiment(taskId);
-
-  // Fetch full experiment details when cloning
-  const { experiment: experimentToClone, isLoading: isLoadingExperiment } = usePromptExperiment(selectedExperimentId || undefined);
-
   // Refetch data when window gains focus
   useEffect(() => {
     const handleFocus = () => {
@@ -125,85 +120,6 @@ export const PromptExperimentsView: React.FC<PromptExperimentsViewProps> = ({ on
   const handleCloseSelectExistingModal = () => {
     setIsSelectExistingModalOpen(false);
     setModalSearchText("");
-  };
-
-  const handleSubmitExperiment = async (data: ExperimentFormData): Promise<{ id: string }> => {
-    // Validate that datasetVersion is a number
-    if (typeof data.datasetVersion !== "number") {
-      throw new Error("Dataset version must be selected");
-    }
-
-    try {
-      // Transform prompt variable mappings to API format
-      const promptVariableMapping = Object.entries(data.promptVariableMappings || {}).map(([varName, columnName]) => ({
-        variable_name: varName,
-        source: {
-          type: "dataset_column" as const,
-          dataset_column: {
-            name: columnName,
-          },
-        },
-      }));
-
-      // Transform eval variable mappings to API format
-      const evalList = data.evaluators.map((evaluator) => {
-        const evalMapping = data.evalVariableMappings?.find((m) => m.evalName === evaluator.name && m.evalVersion === evaluator.version);
-
-        const variableMapping = evalMapping
-          ? Object.entries(evalMapping.mappings).map(([varName, mapping]) => {
-              if (mapping.sourceType === "dataset_column") {
-                return {
-                  variable_name: varName,
-                  source: {
-                    type: "dataset_column" as const,
-                    dataset_column: {
-                      name: mapping.datasetColumn || "",
-                    },
-                  },
-                };
-              } else {
-                return {
-                  variable_name: varName,
-                  source: {
-                    type: "experiment_output" as const,
-                    experiment_output: {
-                      json_path: mapping.jsonPath || null,
-                    },
-                  },
-                };
-              }
-            })
-          : [];
-
-        return {
-          name: evaluator.name,
-          version: evaluator.version,
-          variable_mapping: variableMapping,
-        };
-      });
-
-      const result = await createExperiment.mutateAsync({
-        name: data.name,
-        description: data.description,
-        dataset_ref: {
-          id: data.datasetId,
-          version: data.datasetVersion,
-        },
-        prompt_configs: data.promptVersions.map((pv) => ({
-          type: "saved" as const,
-          name: pv.promptName,
-          version: pv.version,
-        })),
-        prompt_variable_mapping: promptVariableMapping,
-        eval_list: evalList,
-        dataset_row_filter: data.datasetRowFilter && data.datasetRowFilter.length > 0 ? data.datasetRowFilter : undefined,
-      });
-      handleCloseModal();
-      return { id: result.id };
-    } catch (err) {
-      console.error("Failed to create experiment:", err);
-      throw err;
-    }
   };
 
   const handleRowClick = (experiment: PromptExperiment) => {
@@ -441,13 +357,7 @@ export const PromptExperimentsView: React.FC<PromptExperimentsViewProps> = ({ on
         </DialogActions>
       </Dialog>
 
-      <CreateExperimentModal
-        open={isModalOpen}
-        onClose={handleCloseModal}
-        onSubmit={handleSubmitExperiment}
-        initialData={experimentToClone || undefined}
-        isLoadingInitialData={isLoadingExperiment}
-      />
+      <CreateExperimentModal templateId={selectedExperimentId ?? undefined} open={isModalOpen} onClose={handleCloseModal} />
     </>
   );
 };

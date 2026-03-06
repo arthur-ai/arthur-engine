@@ -13,6 +13,7 @@ import { usePrompts } from "@/components/prompts-management/hooks/usePrompts";
 import { usePromptVersions } from "@/components/prompts-management/hooks/usePromptVersions";
 import { withForm } from "@/components/traces/components/filtering/hooks/form";
 import { useDatasets } from "@/hooks/useDatasets";
+import { useDatasetVersionData } from "@/hooks/useDatasetVersionData";
 import { useDatasetVersionHistory } from "@/hooks/useDatasetVersionHistory";
 import { useTask } from "@/hooks/useTask";
 
@@ -25,6 +26,9 @@ export const InfoStep = withForm({
     const promptsVariables = useGetPromptsVariables();
     const evalsVariables = useGetEvalVariables();
 
+    const dataset = useStore(form.store, (state) => state.values.info.dataset);
+    const versionQuery = useDatasetVersionData(dataset.id ?? undefined, dataset.version ?? undefined);
+
     const handleSubmit = async () => {
       const state = form.state.values;
 
@@ -35,12 +39,14 @@ export const InfoStep = withForm({
         evalsVariables.getVariables(evaluators.filter((e) => e.version !== null).map((e) => ({ name: e.name, version: e.version! }))),
       ]);
 
+      const columnNames = versionQuery.version?.column_names ?? [];
+
       if (state.promptVariableMappings.length === 0) {
         form.setFieldValue(
           "promptVariableMappings",
           promptVariables.map((variable) => ({
             target: variable,
-            source: "",
+            source: columnNames.find((col) => col === variable) ?? "",
           }))
         );
       }
@@ -53,7 +59,7 @@ export const InfoStep = withForm({
           variables: variables.map((variable) => ({
             name: variable!,
             sourceType: "dataset_column",
-            source: "",
+            source: columnNames.find((col) => col === variable) ?? "",
           })),
         }))
       );

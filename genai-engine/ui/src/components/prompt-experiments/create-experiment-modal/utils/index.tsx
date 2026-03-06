@@ -2,6 +2,33 @@ import { CreateExperimentModalFormValues } from "../form";
 
 import { CreatePromptExperimentRequest, EvalVariableMappingInput, PromptExperimentDetail } from "@/lib/api-client/api-client";
 
+export type DeepPartial<T> = {
+  [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K];
+};
+
+/**
+ * Deep merges source into target. Arrays are replaced, not merged.
+ */
+export function deepMerge<T extends Record<string, unknown>>(target: T, source: DeepPartial<T>): T {
+  const result = { ...target };
+  for (const key in source) {
+    const sourceVal = source[key];
+    const targetVal = target[key];
+    if (sourceVal !== undefined && targetVal !== undefined && isPlainObject(sourceVal) && isPlainObject(targetVal)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      result[key] = deepMerge(targetVal as any, sourceVal as any);
+    } else if (sourceVal !== undefined) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      result[key] = sourceVal as any;
+    }
+  }
+  return result;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 export function templateToFormData(template: PromptExperimentDetail): CreateExperimentModalFormValues {
   // Take the first saved prompt
   const { name } = template.prompt_configs.filter((p) => p.type === "saved").at(0) ?? {};
