@@ -7,7 +7,7 @@ import traceback
 import urllib
 from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime
-from typing import Any, Callable
+from typing import Any, Callable, Literal, overload
 
 from arthur_common.models.common_schemas import (
     LLMTokenConsumption,
@@ -185,11 +185,19 @@ def seed_database(db_session: Session) -> None:
     db_session.commit()
 
 
+@overload
+def get_env_var(env_var: str, none_on_missing: Literal[True], default: str | None = ...) -> str | None: ...
+
+
+@overload
+def get_env_var(env_var: str, none_on_missing: Literal[False] = ..., default: str | None = ...) -> str: ...
+
+
 def get_env_var(
     env_var: str,
     none_on_missing: bool = False,
     default: str | None = None,
-) -> str:
+) -> str | None:
     env_value = os.environ.get(env_var)
     if env_value:
         logger.debug(f"Environment variable {env_var} is set")
@@ -199,7 +207,7 @@ def get_env_var(
         return default
     logger.debug(f"Environment variable {env_var} is not set")
     if none_on_missing:
-        return None  # type: ignore[return-value]
+        return None
     raise ValueError("Environment variable %s not defined" % env_var)
 
 
