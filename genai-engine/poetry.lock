@@ -5593,16 +5593,17 @@ murmurhash = ">=0.28.0,<1.1.0"
 
 [[package]]
 name = "presidio-analyzer"
-version = "2.2.360"
+version = "2.2.361"
 description = "Presidio Analyzer package"
 optional = false
-python-versions = "<3.14,>=3.9"
+python-versions = "<3.14,>=3.10"
 files = [
-    {file = "presidio_analyzer-2.2.360-py3-none-any.whl", hash = "sha256:aa6e83779b8f23587000ccfa3ef47aa34356a60b51284742e0d2a96b33205c4e"},
+    {file = "presidio_analyzer-2.2.361-py3-none-any.whl", hash = "sha256:7054b36303f5f47dd4bb3b00600bc936fb46aa3cc5e6befde3de839f0205f7f2"},
 ]
 
 [package.dependencies]
 phonenumbers = ">=8.12,<10.0.0"
+pydantic = ">=2.0.0,<3.0.0"
 pyyaml = "*"
 regex = "*"
 spacy = ">=3.4.4,<3.7.0 || >3.7.0"
@@ -5611,8 +5612,9 @@ tldextract = "*"
 [package.extras]
 ahds = ["azure-health-deidentification (>=1.1.0b1,<2.0.0)", "azure-identity (>=1.23.0,<2.0.0)"]
 azure-ai-language = ["azure-ai-textanalytics", "azure-core"]
-gliner = ["gliner (>=0.2.13,<1.0.0)", "huggingface_hub", "onnxruntime (>=1.19)", "transformers"]
-server = ["flask (>=1.1)", "gunicorn"]
+gliner = ["gliner (>=0.2.13,<1.0.0)", "huggingface_hub", "onnxruntime (>=1.19)", "onnxruntime (>=1.19,<1.24.1)", "transformers"]
+langextract = ["azure-identity (>=1.18.0)", "jinja2 (>=3.0.0)", "langextract (>=1.0.0)", "more-itertools (>=10.0.0)", "openai (>=1.50.0)"]
+server = ["flask (>=1.1)", "gunicorn", "waitress"]
 stanza = ["stanza (>=1.10.1,<2.0.0)"]
 transformers = ["accelerate", "huggingface_hub", "spacy_huggingface_pipelines", "transformers"]
 
@@ -9363,4 +9365,4 @@ cffi = ["cffi (>=1.17,<2.0)", "cffi (>=2.0.0b)"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.12,<3.13.dev0"
-content-hash = "53245883eceb8b53d79a279c72f7a65aa7d824ac07ec09a2502fa35dd1e7c4f3"
+content-hash = "b54188a736b4e12ded70df024541682caeda23bbb04e3927ab87a21963d7d286"
