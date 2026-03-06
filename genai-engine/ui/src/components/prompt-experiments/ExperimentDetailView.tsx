@@ -24,7 +24,8 @@ import { alpha } from "@mui/material/styles";
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
 
-import { CreateExperimentModal, ExperimentFormData } from "./CreateExperimentModal";
+import { CreateExperimentModal } from "./create-experiment-modal";
+import { ExperimentFormData } from "./CreateExperimentModal";
 import { ExperimentResultsTable } from "./ExperimentResultsTable";
 import { PromptVersionDrawer } from "./PromptVersionDrawer";
 
@@ -622,7 +623,8 @@ export const ExperimentDetailView: React.FC = () => {
       </Box>
 
       {/* Create from Existing Modal */}
-      <CreateExperimentModal open={isModalOpen} onClose={handleCloseModal} onSubmit={handleSubmitExperiment} initialData={experiment} />
+      {/* <CreateExperimentModal open={isModalOpen} onClose={handleCloseModal} onSubmit={handleSubmitExperiment} initialData={experiment} /> */}
+      <CreateExperimentModal templateId={experimentId} open={isModalOpen} onClose={handleCloseModal} />
 
       {/* Prompt Version Drawer */}
       {taskId && experimentId && (
