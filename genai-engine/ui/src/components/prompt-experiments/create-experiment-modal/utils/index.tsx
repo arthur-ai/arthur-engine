@@ -3,14 +3,25 @@ import { CreateExperimentModalFormValues } from "../form";
 import { CreatePromptExperimentRequest, EvalVariableMappingInput, PromptExperimentDetail } from "@/lib/api-client/api-client";
 
 export function templateToFormData(template: PromptExperimentDetail): CreateExperimentModalFormValues {
+  // Take the first saved prompt
+  const { name } = template.prompt_configs.filter((p) => p.type === "saved").at(0) ?? {};
+
+  // If there is a saved prompt, get the versions of that prompt
+  const promptVersions = name
+    ? template.prompt_configs
+        .filter((p) => p.type === "saved")
+        .filter((p) => p.name === name)
+        .map((p) => p.version)
+    : [];
+
   return {
     section: "info",
     info: {
       name: `${template.name} (Copy)`,
       description: template.description || "",
       prompt: {
-        name: "",
-        versions: [],
+        name: name ?? "",
+        versions: promptVersions,
       },
       dataset: {
         id: template.dataset_ref.id,
@@ -21,8 +32,17 @@ export function templateToFormData(template: PromptExperimentDetail): CreateExpe
         version: e.version,
       })),
     },
-    promptVariableMappings: [],
-    evalVariableMappings: [],
+    promptVariableMappings: name
+      ? template.prompt_variable_mapping.map((p) => ({
+          target: p.variable_name,
+          source: p.source.dataset_column.name,
+        }))
+      : [],
+    evalVariableMappings: template.eval_list.map((e) => ({
+      name: e.name,
+      version: e.version,
+      variables: e.variable_mapping.map(mapApiVariableMapping),
+    })),
   };
 }
 
@@ -41,10 +61,10 @@ export function formDataToRequest(formData: CreateExperimentModalFormValues): Cr
       version,
     })),
     prompt_variable_mapping: formData.promptVariableMappings.map((mapping) => ({
-      variable_name: mapping.source,
+      variable_name: mapping.target,
       source: {
         type: "dataset_column",
-        dataset_column: { name: mapping.target },
+        dataset_column: { name: mapping.source },
       },
     })),
     eval_list: formData.evalVariableMappings.map((mapping) => ({
@@ -74,5 +94,21 @@ function mapVariableMapping(mapping: VariableMapping): EvalVariableMappingInput 
       type: "experiment_output",
       experiment_output: { json_path: null },
     },
+  };
+}
+
+function mapApiVariableMapping(mapping: EvalVariableMappingInput): VariableMapping {
+  if (mapping.source.type === "dataset_column") {
+    return {
+      name: mapping.variable_name,
+      sourceType: "dataset_column",
+      source: mapping.source.dataset_column.name,
+    };
+  }
+
+  return {
+    name: mapping.variable_name,
+    sourceType: "experiment_output",
+    source: "",
   };
 }

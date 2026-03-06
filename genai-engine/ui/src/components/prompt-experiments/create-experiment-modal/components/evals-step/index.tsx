@@ -150,9 +150,13 @@ export const EvalsStep = withForm({
           <Button onClick={onCancel}>Cancel</Button>
           <Box sx={{ flex: 1 }} />
           <Button onClick={() => form.setFieldValue("section", "prompts")}>Back</Button>
-          <Button type="submit" variant="contained">
-            Create Experiment
-          </Button>
+          <form.Subscribe selector={(state) => [state.isSubmitting]}>
+            {([isSubmitting]) => (
+              <Button type="submit" variant="contained" loading={isSubmitting}>
+                Create Experiment
+              </Button>
+            )}
+          </form.Subscribe>
         </DialogActions>
 
         {evaluator && <EvalInstructions name={evaluator.name} version={evaluator.version} open={!!evaluator} onClose={() => setEvaluator(null)} />}

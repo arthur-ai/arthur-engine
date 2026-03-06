@@ -40,6 +40,22 @@ const InfoStepSchema = z.object({
   }),
 });
 
+const PromptStepSchema = z.object({
+  promptVariableMappings: z.array(
+    z.object({
+      source: z.string().min(1, { error: "Dataset column is required" }),
+      target: z.string().min(1, { error: "Prompt variable name is required" }),
+    })
+  ),
+});
+
+const FormSchema = z.object({
+  section: z.enum(["info", "prompts", "evals"]),
+  ...InfoStepSchema.shape,
+  ...PromptStepSchema.shape,
+  ...EvalsStepSchema.shape,
+});
+
 export const createExperimentModalFormOpts = formOptions({
   defaultValues: {
     section: "info" as "info" | "prompts" | "evals",
@@ -85,10 +101,13 @@ export const createExperimentModalFormOpts = formOptions({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return formApi.parseValuesWithSchema(InfoStepSchema as any);
       }
-      if (value.section === "evals") {
+      if (value.section === "prompts") {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return formApi.parseValuesWithSchema(EvalsStepSchema as any);
+        return formApi.parseValuesWithSchema(PromptStepSchema as any);
       }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return formApi.parseValuesWithSchema(FormSchema as any);
     },
   },
 });

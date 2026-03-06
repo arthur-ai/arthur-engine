@@ -1,6 +1,5 @@
 import { Box, Button, DialogActions, DialogContent, FormControl, FormHelperText, InputLabel, MenuItem, Select } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
-import z from "zod";
 
 import { createExperimentModalFormOpts } from "../../form";
 
@@ -21,22 +20,7 @@ export const PromptStep = withForm({
       <>
         <DialogContent>
           <div className="py-2">
-            <form.AppField
-              name="promptVariableMappings"
-              mode="array"
-              validators={{
-                onSubmit: ({ fieldApi }) => {
-                  return fieldApi.parseValueWithSchema(
-                    z.array(
-                      z.object({
-                        source: z.string().min(1, { error: "Column mapping is required" }),
-                        target: z.string().min(1),
-                      })
-                    )
-                  );
-                },
-              }}
-            >
+            <form.AppField name="promptVariableMappings" mode="array">
               {(field) =>
                 field.state.value.map((mapping, index) => (
                   <div key={mapping.target}>

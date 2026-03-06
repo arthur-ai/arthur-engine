@@ -35,13 +35,15 @@ export const InfoStep = withForm({
         evalsVariables.getVariables(evaluators.filter((e) => e.version !== null).map((e) => ({ name: e.name, version: e.version! }))),
       ]);
 
-      form.setFieldValue(
-        "promptVariableMappings",
-        promptVariables.map((variable) => ({
-          target: variable,
-          source: "",
-        }))
-      );
+      if (state.promptVariableMappings.length === 0) {
+        form.setFieldValue(
+          "promptVariableMappings",
+          promptVariables.map((variable) => ({
+            target: variable,
+            source: "",
+          }))
+        );
+      }
 
       form.setFieldValue(
         "evalVariableMappings",
@@ -55,8 +57,6 @@ export const InfoStep = withForm({
           })),
         }))
       );
-
-      console.log({ evalVariables });
 
       form.handleSubmit();
     };
@@ -134,6 +134,7 @@ const PromptSelector = withForm({
     const versionsQuery = usePromptVersions(task!.id, promptName ?? undefined, {
       sort: "desc",
       exclude_deleted: true,
+      pageSize: 100,
     });
 
     return (
@@ -147,6 +148,7 @@ const PromptSelector = withForm({
             listeners={{
               onChange: () => {
                 form.setFieldValue("info.prompt.versions", []);
+                form.setFieldValue("promptVariableMappings", []);
               },
             }}
           >
@@ -173,7 +175,15 @@ const PromptSelector = withForm({
               );
             }}
           </form.AppField>
-          <form.AppField name="info.prompt.versions" mode="array">
+          <form.AppField
+            name="info.prompt.versions"
+            mode="array"
+            listeners={{
+              onChange: () => {
+                form.setFieldValue("promptVariableMappings", []);
+              },
+            }}
+          >
             {(field) => {
               const selected = versionsQuery.versions.filter((v) => field.state.value.includes(v.version));
 
