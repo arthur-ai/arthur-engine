@@ -189,24 +189,18 @@ def get_env_var(
     env_var: str,
     none_on_missing: bool = False,
     default: str | None = None,
-) -> str | None:
+) -> str:
     env_value = os.environ.get(env_var)
-    if env_value is not None:
-        value: str | None = env_value
+    if env_value:
         logger.debug(f"Environment variable {env_var} is set")
-    elif default is not None:
-        value = default
-        logger.debug(
-            f"Environment variable {env_var} not set, using default value"
-        )
-    else:
-        value = None
-        logger.debug(f"Environment variable {env_var} is not set")
-    if none_on_missing and not value:
-        return None
-    elif not value:
-        raise ValueError("Environment variable %s not defined" % env_var)
-    return value
+        return env_value
+    if default is not None:
+        logger.debug(f"Environment variable {env_var} not set, using default value")
+        return default
+    logger.debug(f"Environment variable {env_var} is not set")
+    if none_on_missing:
+        return None  # type: ignore[return-value]
+    raise ValueError("Environment variable %s not defined" % env_var)
 
 
 def get_genai_engine_version() -> str:
