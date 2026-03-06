@@ -1,3 +1,4 @@
+import { Operators, TracesEmptyState } from "@arthur/shared-components";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import {
@@ -35,8 +36,6 @@ import { continuousEvalsResultsQueryOptions } from "../hooks/useContinuousEvalsR
 import { createColumns } from "./columns";
 
 import { CopyableChip } from "@/components/common";
-import { Operators } from "@/components/traces/components/filtering/types";
-import { TracesEmptyState } from "@/components/traces/components/TracesEmptyState";
 import { getContentHeight } from "@/constants/layout";
 import { useTransform } from "@/hooks/transforms/useTransform";
 import { useApi } from "@/hooks/useApi";
