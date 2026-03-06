@@ -59,6 +59,10 @@ export function templateToFormData(template: PromptExperimentDetail): CreateExpe
         version: e.version,
       })),
     },
+    datasetRowFilter: template.dataset_row_filter?.map((f) => ({
+      column_name: f.column_name,
+      column_value: f.column_value,
+    })) ?? [],
     promptVariableMappings: name
       ? template.prompt_variable_mapping.map((p) => ({
           target: p.variable_name,
@@ -81,7 +85,7 @@ export function formDataToRequest(formData: CreateExperimentModalFormValues): Cr
     },
     name: formData.info.name,
     description: formData.info.description,
-    dataset_row_filter: [],
+    dataset_row_filter: formData.datasetRowFilter.length > 0 ? formData.datasetRowFilter : undefined,
     prompt_configs: formData.info.prompt.versions.map((version) => ({
       type: "saved",
       name: formData.info.prompt.name,

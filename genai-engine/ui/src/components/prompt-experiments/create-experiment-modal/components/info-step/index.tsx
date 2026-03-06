@@ -1,5 +1,19 @@
 import AddIcon from "@mui/icons-material/Add";
-import { Autocomplete, Box, Button, Chip, DialogActions, DialogContent, Stack, TextField, Typography } from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import {
+  Autocomplete,
+  Box,
+  Button,
+  Chip,
+  DialogActions,
+  DialogContent,
+  IconButton,
+  Stack,
+  TextField,
+  Tooltip,
+  Typography,
+} from "@mui/material";
 import { useStore } from "@tanstack/react-form";
 import { useState } from "react";
 
@@ -99,6 +113,7 @@ export const InfoStep = withForm({
             </form.AppField>
             <PromptSelector form={form} />
             <DatasetSelector form={form} />
+            <DatasetRowFilterSection form={form} />
             <form.Field name="info.evaluators" mode="array">
               {(field) => {
                 return (
@@ -296,6 +311,95 @@ const DatasetSelector = withForm({
             }}
           </form.AppField>
         </div>
+      </Stack>
+    );
+  },
+});
+
+const DatasetRowFilterSection = withForm({
+  ...createExperimentModalFormOpts,
+  render: function Render({ form }) {
+    const dataset = useStore(form.store, (state) => state.values.info.dataset);
+    const versionQuery = useDatasetVersionData(dataset.id ?? undefined, dataset.version ?? undefined);
+    const columnNames = versionQuery.version?.column_names ?? [];
+
+    if (!dataset.id || !dataset.version || columnNames.length === 0) {
+      return null;
+    }
+
+    return (
+      <Stack sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 2 }} gap={2}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between">
+          <Stack direction="row" alignItems="center" gap={1}>
+            <Typography variant="subtitle2" className="font-semibold">
+              Dataset Row Filter
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              (Optional)
+            </Typography>
+            <Tooltip
+              title="Filter which dataset rows to include. Only rows matching ALL conditions will be used."
+              arrow
+              placement="right"
+            >
+              <InfoOutlinedIcon sx={{ fontSize: 16, color: "text.secondary", cursor: "help" }} />
+            </Tooltip>
+          </Stack>
+        </Stack>
+        <form.Field name="datasetRowFilter" mode="array">
+          {(field) => (
+            <Stack gap={2}>
+              {field.state.value.map((_filter, index) => (
+                <Stack key={index} direction="row" gap={2} alignItems="center">
+                  <form.AppField name={`datasetRowFilter[${index}].column_name`}>
+                    {(subField) => (
+                      <Autocomplete
+                        size="small"
+                        options={columnNames}
+                        value={subField.state.value || null}
+                        onChange={(_, value) => subField.handleChange(value ?? "")}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label="Column"
+                            error={subField.state.meta.errors.length > 0}
+                            helperText={subField.state.meta.errors[0]?.message}
+                          />
+                        )}
+                        sx={{ flex: 1 }}
+                      />
+                    )}
+                  </form.AppField>
+                  <form.AppField name={`datasetRowFilter[${index}].column_value`}>
+                    {(subField) => (
+                      <TextField
+                        size="small"
+                        label="Value"
+                        value={subField.state.value}
+                        onChange={(e) => subField.handleChange(e.target.value)}
+                        error={subField.state.meta.errors.length > 0}
+                        helperText={subField.state.meta.errors[0]?.message}
+                        sx={{ flex: 1 }}
+                      />
+                    )}
+                  </form.AppField>
+                  <IconButton size="small" color="error" onClick={() => field.removeValue(index)}>
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Stack>
+              ))}
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<AddIcon />}
+                onClick={() => field.pushValue({ column_name: "", column_value: "" })}
+                sx={{ alignSelf: "flex-start" }}
+              >
+                Add Filter Condition
+              </Button>
+            </Stack>
+          )}
+        </form.Field>
       </Stack>
     );
   },

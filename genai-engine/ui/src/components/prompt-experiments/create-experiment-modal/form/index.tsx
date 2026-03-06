@@ -85,6 +85,10 @@ export const createExperimentModalFormOpts = formOptions({
        */
       target: string;
     }[],
+    datasetRowFilter: [] as {
+      column_name: string;
+      column_value: string;
+    }[],
     evalVariableMappings: [] as {
       name: string;
       version: number;
