@@ -4,6 +4,7 @@ set -e
 
 cd "$(dirname "$0")/.."
 
+poetry -C python install --with dev -q --no-interaction
 poetry -C python run black src/arthur_observability_sdk tests
 poetry -C python run autoflake --remove-all-unused-imports --in-place --recursive --quiet src/arthur_observability_sdk tests
 poetry -C python run isort src/arthur_observability_sdk tests --profile black
