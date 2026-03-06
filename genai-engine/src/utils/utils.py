@@ -193,11 +193,11 @@ def get_env_var(
     env_value = os.environ.get(env_var)
     if env_value is not None:
         value: str | None = env_value
-        logger.debug(f"Environment variable {env_var} has value {value}")
+        logger.debug(f"Environment variable {env_var} is set")
     elif default is not None:
         value = default
         logger.debug(
-            f"Environment variable {env_var} not set, using default: {value}"
+            f"Environment variable {env_var} not set, using default value"
         )
     else:
         value = None

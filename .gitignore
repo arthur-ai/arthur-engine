@@ -45,8 +45,3 @@ ml-engine/src/genai_client/**
 models/
 arthur-engine.code-workspace
 
-# Gas Town (added by gt)
-.runtime/
-.claude/commands/
-.logs/
-.beads/
