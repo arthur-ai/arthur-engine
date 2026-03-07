@@ -108,7 +108,7 @@ const PromptVersionDrawer = ({
       }}
     >
       <Box sx={{ p: 2, display: "flex", flexDirection: "column", height: "100%" }}>
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+        <Typography variant="h6" noWrap sx={{ mb: 2, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}>
           Versions: {promptName}
         </Typography>
 
