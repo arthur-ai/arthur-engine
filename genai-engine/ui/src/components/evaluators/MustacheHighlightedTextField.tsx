@@ -137,6 +137,9 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
   const isUpdatingRef = useRef(false);
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isEditingRef = useRef(false);
+  const currentTextRef = useRef<string>(value);
+  const undoStackRef = useRef<string[]>([]);
+  const redoStackRef = useRef<string[]>([]);
 
   // Function to find and highlight a specific token in the editor
   const highlightToken = useCallback((tokenToFind: string) => {
@@ -401,6 +404,17 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
     if (editableRef.current && !isUpdatingRef.current && !readOnly && onChange) {
       const newValue = editableRef.current.innerText || "";
 
+      // Push current value to undo stack before updating (cap at 100 entries)
+      const prev = currentTextRef.current;
+      if (prev !== newValue) {
+        if (undoStackRef.current.length >= 100) {
+          undoStackRef.current.shift();
+        }
+        undoStackRef.current.push(prev);
+        redoStackRef.current = [];
+        currentTextRef.current = newValue;
+      }
+
       // Create a synthetic event
       const syntheticEvent = {
         target: { value: newValue },
@@ -443,6 +457,60 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
   }, []);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Handle undo (Ctrl+Z or Cmd+Z)
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === "z") {
+      e.preventDefault();
+      if (undoStackRef.current.length > 0) {
+        const previousValue = undoStackRef.current.pop()!;
+        redoStackRef.current.push(currentTextRef.current);
+        currentTextRef.current = previousValue;
+
+        isUpdatingRef.current = true;
+        if (editableRef.current) {
+          const cursorPos = saveCursorPosition();
+          editableRef.current.innerHTML = generateHighlightedHtml(previousValue);
+          restoreCursorPosition(cursorPos, false);
+        }
+        isUpdatingRef.current = false;
+
+        if (onChange) {
+          const syntheticEvent = {
+            target: { value: previousValue },
+            currentTarget: { value: previousValue },
+          } as React.ChangeEvent<HTMLTextAreaElement>;
+          onChange(syntheticEvent);
+        }
+      }
+      return;
+    }
+
+    // Handle redo (Ctrl+Y or Ctrl+Shift+Z or Cmd+Shift+Z)
+    if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.shiftKey && e.key === "z"))) {
+      e.preventDefault();
+      if (redoStackRef.current.length > 0) {
+        const nextValue = redoStackRef.current.pop()!;
+        undoStackRef.current.push(currentTextRef.current);
+        currentTextRef.current = nextValue;
+
+        isUpdatingRef.current = true;
+        if (editableRef.current) {
+          const cursorPos = saveCursorPosition();
+          editableRef.current.innerHTML = generateHighlightedHtml(nextValue);
+          restoreCursorPosition(cursorPos, false);
+        }
+        isUpdatingRef.current = false;
+
+        if (onChange) {
+          const syntheticEvent = {
+            target: { value: nextValue },
+            currentTarget: { value: nextValue },
+          } as React.ChangeEvent<HTMLTextAreaElement>;
+          onChange(syntheticEvent);
+        }
+      }
+      return;
+    }
+
     // Detect deletion keys to prevent highlighting updates during active deletion
     if (e.key === "Backspace" || e.key === "Delete") {
       isEditingRef.current = true;
@@ -476,7 +544,7 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
         }
       });
     }
-  }, []);
+  }, [generateHighlightedHtml, onChange, saveCursorPosition, restoreCursorPosition]);
 
   // Initialize content when value changes externally
   useEffect(() => {
@@ -486,6 +554,7 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
         const cursorPos = saveCursorPosition();
         editableRef.current.innerHTML = generateHighlightedHtml(value);
         restoreCursorPosition(cursorPos, false);
+        currentTextRef.current = value;
       }
     }
   }, [value, generateHighlightedHtml, saveCursorPosition, restoreCursorPosition]);
