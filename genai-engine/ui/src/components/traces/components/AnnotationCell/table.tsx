@@ -23,6 +23,7 @@ import { useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 
 import { Annotation, isContinuousEvalAnnotation } from "./schema";
+import { TraceContentCell } from "../TraceContentCell";
 
 import { useTask } from "@/hooks/useTask";
 import { formatCurrency } from "@/utils/formatters";
@@ -119,8 +120,14 @@ const createColumns = ({ taskId, container }: { taskId: string; container: React
   }),
   columnHelper.accessor("annotation_description", {
     header: "Annotation Explanation",
-    cell: ({ getValue }) => {
-      return <div className="max-h-32 overflow-auto">{getValue()}</div>;
+    cell: ({ getValue, row }) => {
+      return (
+        <TraceContentCell
+          value={getValue()}
+          title="Annotation Explanation"
+          traceId={row.original.trace_id ?? undefined}
+        />
+      );
     },
   }),
   columnHelper.accessor("run_status", {
