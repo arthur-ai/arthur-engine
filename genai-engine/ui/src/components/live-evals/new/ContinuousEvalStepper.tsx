@@ -2,6 +2,7 @@ import { MustacheHighlightedTextField, useAppForm, withFieldGroup } from "@arthu
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import GpsFixedIcon from "@mui/icons-material/GpsFixed";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import {
   Alert,
   Autocomplete,
@@ -351,9 +352,14 @@ export const ContinuousEvalStepper = ({
         <Stepper activeStep={activeStep} orientation="vertical">
           <Step>
             <StepLabel>
-              <Typography variant="subtitle1" fontWeight={600}>
-                Select Evaluator
-              </Typography>
+              <Stack direction="row" alignItems="center" gap={0.5}>
+                <Typography variant="subtitle1" fontWeight={600}>
+                  Select Evaluator
+                </Typography>
+                <Tooltip title="Choose the evaluator that will run on each incoming trace. The evaluator defines the scoring criteria (e.g., hallucination, toxicity) and the variables it needs as input.">
+                  <HelpOutlineIcon sx={{ fontSize: 18, color: "text.secondary", cursor: "help" }} />
+                </Tooltip>
+              </Stack>
             </StepLabel>
             <StepContent>
               <Stack gap={2}>
@@ -379,9 +385,14 @@ export const ContinuousEvalStepper = ({
 
           <Step>
             <StepLabel>
-              <Typography variant="subtitle1" fontWeight={600}>
-                Configure Transform
-              </Typography>
+              <Stack direction="row" alignItems="center" gap={0.5}>
+                <Typography variant="subtitle1" fontWeight={600}>
+                  Configure Transform
+                </Typography>
+                <Tooltip title="Define how to extract data from each trace for the evaluator. Map each evaluator variable to a specific span and attribute path so the eval knows where to find its inputs.">
+                  <HelpOutlineIcon sx={{ fontSize: 18, color: "text.secondary", cursor: "help" }} />
+                </Tooltip>
+              </Stack>
             </StepLabel>
             <StepContent>
               <Stack gap={2}>
