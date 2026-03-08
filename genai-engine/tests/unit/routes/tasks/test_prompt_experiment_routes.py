@@ -675,7 +675,12 @@ def test_prompt_experiment_routes_happy_path(
 @patch("services.prompt_experiment_executor.logger")
 @patch("services.experiment_executor.logger")
 @patch("repositories.prompt_experiment_repository.logger")
+@patch(
+    "services.experiment_executor.BaseExperimentExecutor.execute_experiment_async",
+    autospec=True,
+)
 def test_prompt_experiment_none_value_conversion(
+    mock_execute_async,
     mock_repo_logger,
     mock_experiment_logger,
     mock_prompt_logger,
@@ -695,6 +700,11 @@ def test_prompt_experiment_none_value_conversion(
     """
     # Mock db_session_context for background thread execution to use test database
     setup_db_session_context_mock(mock_db_session_context)
+    # Run experiment synchronously so there's no background thread race condition
+    # with SQLite StaticPool shared connection
+    mock_execute_async.side_effect = (
+        lambda self, experiment_id, **kwargs: self._execute_experiment(experiment_id)
+    )
 
     # Setup: Create task
     task_name = f"prompt_experiment_none_test_{random.random()}"
@@ -902,8 +912,10 @@ def test_prompt_experiment_none_value_conversion(
     ), f"Failed to create prompt experiment: {experiment_summary}"
     experiment_id = experiment_summary["id"]
 
-    # Wait for experiment to complete
-    experiment_detail = wait_for_experiment_completion(client, experiment_id)
+    # Get experiment details (experiment already complete since it ran synchronously)
+    status_code, experiment_data = client.get_prompt_experiment(experiment_id)
+    assert status_code == 200, f"Failed to get experiment: {experiment_data}"
+    experiment_detail = PromptExperimentDetail.model_validate(experiment_data)
 
     # Verify that the experiment completed successfully
     assert experiment_detail.status == ExperimentStatus.COMPLETED
