@@ -14,6 +14,7 @@ import { flattenSpans } from "../utils/spans";
 
 import { AddToDatasetDrawer } from "./add-to-dataset/Drawer";
 import { AnnotationCell } from "./AnnotationCell";
+import { ContinuousEvalDrawer } from "./continuous-eval/ContinuousEvalDrawer";
 import { FeedbackPanel } from "./feedback/FeedbackPanel";
 
 import { useApi } from "@/hooks/useApi";
@@ -115,10 +116,11 @@ export const TraceDrawerContent = ({ id }: Props) => {
       trace_id: traceId,
       source: "trace_actions",
     });
-    navigate(`/tasks/${taskId}/continuous-evals/new?traceId=${traceId}`);
+    setContinuousEvalOpen(true);
   };
 
   const [addToDatasetOpen, setAddToDatasetOpen] = useState(false);
+  const [continuousEvalOpen, setContinuousEvalOpen] = useState(false);
 
   if (!trace) return null;
 
@@ -151,6 +153,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
       renderAfterDrawer={() => (
         <>
           <AddToDatasetDrawer traceId={id} open={addToDatasetOpen} onClose={() => setAddToDatasetOpen(false)} />
+          <ContinuousEvalDrawer traceId={id} open={continuousEvalOpen} onClose={() => setContinuousEvalOpen(false)} />
         </>
       )}
       getSpanDetailsStrategy={getSpanDetailsStrategy as GetSpanDetailsStrategy}

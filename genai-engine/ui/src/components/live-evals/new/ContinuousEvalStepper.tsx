@@ -72,6 +72,7 @@ type ContinuousEvalStepperProps = {
   onCancelPicking: () => void;
   inlineVariables: VariableRow[];
   onSetInlineVariables: (variables: VariableRow[]) => void;
+  onSuccess?: (evalId: string) => void;
 };
 
 export const ContinuousEvalStepper = ({
@@ -81,6 +82,7 @@ export const ContinuousEvalStepper = ({
   onCancelPicking,
   inlineVariables,
   onSetInlineVariables,
+  onSuccess,
 }: ContinuousEvalStepperProps) => {
   const { task } = useTask();
   const navigate = useNavigate();
@@ -186,7 +188,11 @@ export const ContinuousEvalStepper = ({
           })),
         });
 
-        navigate(`/tasks/${task?.id}/continuous-evals/${id}`);
+        if (onSuccess) {
+          onSuccess(id);
+        } else {
+          navigate(`/tasks/${task?.id}/continuous-evals/${id}`);
+        }
       } else {
         // Select existing transform
         const { id } = await createContinuousEval.mutateAsync({
@@ -199,7 +205,11 @@ export const ContinuousEvalStepper = ({
           transform_variable_mapping: value.variableMappings,
         });
 
-        navigate(`/tasks/${task?.id}/continuous-evals/${id}`);
+        if (onSuccess) {
+          onSuccess(id);
+        } else {
+          navigate(`/tasks/${task?.id}/continuous-evals/${id}`);
+        }
       }
     },
   });
