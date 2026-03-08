@@ -32,7 +32,15 @@ interface VariableMapping {
   fallback: string;
 }
 
-export const TransformFormModal: React.FC<TransformFormModalProps> = ({ open, onClose, onSubmit, isLoading, taskId, initialTransform, initialVariableNames }) => {
+export const TransformFormModal: React.FC<TransformFormModalProps> = ({
+  open,
+  onClose,
+  onSubmit,
+  isLoading,
+  taskId,
+  initialTransform,
+  initialVariableNames,
+}) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [variables, setVariables] = useState<VariableMapping[]>([{ variable_name: "", span_name: "", attribute_path: "", fallback: "" }]);

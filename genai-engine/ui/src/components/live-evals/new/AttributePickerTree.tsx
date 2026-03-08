@@ -50,17 +50,13 @@ const TreeNode = ({ data, path, selectedPath, onSelectPath, level, label }: Tree
   const [open, setOpen] = useState(level < 2);
 
   if (data === null || data === undefined) {
-    return (
-      <LeafNode label={label ?? path} value="null" path={path} selectedPath={selectedPath} onSelectPath={onSelectPath} level={level} />
-    );
+    return <LeafNode label={label ?? path} value="null" path={path} selectedPath={selectedPath} onSelectPath={onSelectPath} level={level} />;
   }
 
   if (typeof data === "object" && !Array.isArray(data)) {
     const entries = Object.entries(data as Record<string, unknown>);
     if (entries.length === 0) {
-      return (
-        <LeafNode label={label ?? path} value="{}" path={path} selectedPath={selectedPath} onSelectPath={onSelectPath} level={level} />
-      );
+      return <LeafNode label={label ?? path} value="{}" path={path} selectedPath={selectedPath} onSelectPath={onSelectPath} level={level} />;
     }
 
     return (
@@ -82,7 +78,17 @@ const TreeNode = ({ data, path, selectedPath, onSelectPath, level, label }: Tree
           <List dense disablePadding>
             {entries.map(([key, value]) => {
               const childPath = path ? `${path}.${key}` : key;
-              return <TreeNode key={key} data={value} path={childPath} selectedPath={selectedPath} onSelectPath={onSelectPath} level={label !== undefined ? level + 1 : level} label={key} />;
+              return (
+                <TreeNode
+                  key={key}
+                  data={value}
+                  path={childPath}
+                  selectedPath={selectedPath}
+                  onSelectPath={onSelectPath}
+                  level={label !== undefined ? level + 1 : level}
+                  label={key}
+                />
+              );
             })}
           </List>
         </Collapse>
@@ -92,9 +98,7 @@ const TreeNode = ({ data, path, selectedPath, onSelectPath, level, label }: Tree
 
   if (Array.isArray(data)) {
     if (data.length === 0) {
-      return (
-        <LeafNode label={label ?? path} value="[]" path={path} selectedPath={selectedPath} onSelectPath={onSelectPath} level={level} />
-      );
+      return <LeafNode label={label ?? path} value="[]" path={path} selectedPath={selectedPath} onSelectPath={onSelectPath} level={level} />;
     }
 
     return (
@@ -116,7 +120,17 @@ const TreeNode = ({ data, path, selectedPath, onSelectPath, level, label }: Tree
           <List dense disablePadding>
             {data.map((item, index) => {
               const childPath = `${path}[${index}]`;
-              return <TreeNode key={index} data={item} path={childPath} selectedPath={selectedPath} onSelectPath={onSelectPath} level={label !== undefined ? level + 1 : level} label={`[${index}]`} />;
+              return (
+                <TreeNode
+                  key={index}
+                  data={item}
+                  path={childPath}
+                  selectedPath={selectedPath}
+                  onSelectPath={onSelectPath}
+                  level={label !== undefined ? level + 1 : level}
+                  label={`[${index}]`}
+                />
+              );
             })}
           </List>
         </Collapse>
@@ -125,9 +139,7 @@ const TreeNode = ({ data, path, selectedPath, onSelectPath, level, label }: Tree
   }
 
   // Leaf node (string, number, boolean)
-  return (
-    <LeafNode label={label ?? path} value={String(data)} path={path} selectedPath={selectedPath} onSelectPath={onSelectPath} level={level} />
-  );
+  return <LeafNode label={label ?? path} value={String(data)} path={path} selectedPath={selectedPath} onSelectPath={onSelectPath} level={level} />;
 };
 
 type LeafNodeProps = {

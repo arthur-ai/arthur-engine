@@ -55,24 +55,21 @@ export const ContinuousEvalWithTracePage = ({ traceId }: Props) => {
     setPickerState(null);
   }, []);
 
-  const handlePickAttribute = useCallback(
-    (variableIndex: number, spanName: string, attributePath: string, previewValue: string) => {
-      setInlineVariables((prev) => {
-        const updated = [...prev];
-        if (updated[variableIndex]) {
-          updated[variableIndex] = {
-            ...updated[variableIndex],
-            span_name: spanName,
-            attribute_path: attributePath,
-            previewValue,
-          };
-        }
-        return updated;
-      });
-      setPickerState(null);
-    },
-    []
-  );
+  const handlePickAttribute = useCallback((variableIndex: number, spanName: string, attributePath: string, previewValue: string) => {
+    setInlineVariables((prev) => {
+      const updated = [...prev];
+      if (updated[variableIndex]) {
+        updated[variableIndex] = {
+          ...updated[variableIndex],
+          span_name: spanName,
+          attribute_path: attributePath,
+          previewValue,
+        };
+      }
+      return updated;
+    });
+    setPickerState(null);
+  }, []);
 
   const handleSelectPathInPicker = useCallback(
     (path: string) => {
@@ -89,7 +86,12 @@ export const ContinuousEvalWithTracePage = ({ traceId }: Props) => {
 
   return (
     <Stack direction="column" sx={{ height: getContentHeight() }}>
-      <Stack direction="row" alignItems="center" gap={1} sx={{ px: 2, py: 1, borderBottom: 1, borderColor: "divider", backgroundColor: "background.paper" }}>
+      <Stack
+        direction="row"
+        alignItems="center"
+        gap={1}
+        sx={{ px: 2, py: 1, borderBottom: 1, borderColor: "divider", backgroundColor: "background.paper" }}
+      >
         <Tooltip title="Go back">
           <IconButton onClick={() => navigate(-1)} size="small">
             <ArrowBackIcon />
@@ -115,11 +117,7 @@ export const ContinuousEvalWithTracePage = ({ traceId }: Props) => {
             py: 1,
           }}
         >
-          <SpanTree
-            spans={trace?.root_spans ?? []}
-            selectedSpanId={selectedSpanId}
-            onSelectSpan={(spanId) => setSelectedSpanId(spanId)}
-          />
+          <SpanTree spans={trace?.root_spans ?? []} selectedSpanId={selectedSpanId} onSelectSpan={(spanId) => setSelectedSpanId(spanId)} />
         </Box>
 
         {/* Center column: Span Content or Picker */}

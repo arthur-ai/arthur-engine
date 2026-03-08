@@ -429,7 +429,8 @@ export const ContinuousEvalStepper = ({
         <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
           {([, isSubmitting]) => {
             const formName = form.getFieldValue("name");
-            const canSubmitForm = formName && isEvaluatorSelected && activeStep === 1 && (transformMode === "create" ? canSubmitCreate : canSubmitSelect);
+            const canSubmitForm =
+              formName && isEvaluatorSelected && activeStep === 1 && (transformMode === "create" ? canSubmitCreate : canSubmitSelect);
 
             return (
               <Button
@@ -451,9 +452,7 @@ export const ContinuousEvalStepper = ({
       <TransformFormModal
         open={openCreateTransformModal}
         onClose={() => setOpenCreateTransformModal(false)}
-        onSubmit={async (name, description, definition) =>
-          void createTransformFromModal.mutateAsync({ name, description, definition })
-        }
+        onSubmit={async (name, description, definition) => void createTransformFromModal.mutateAsync({ name, description, definition })}
         isLoading={createTransformFromModal.isPending}
         taskId={task?.id}
         initialTransform={undefined}
@@ -555,9 +554,7 @@ const InlineTransformCreator = ({
         </Button>
       </Stack>
 
-      {variables.length === 0 && (
-        <Alert severity="info">Select an evaluator with variables to auto-populate variable mappings.</Alert>
-      )}
+      {variables.length === 0 && <Alert severity="info">Select an evaluator with variables to auto-populate variable mappings.</Alert>}
 
       <Stack spacing={2}>
         {variables.map((variable, idx) => {

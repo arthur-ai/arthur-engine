@@ -37,7 +37,13 @@ export const LiveEvalsNew = () => {
 
   if (traceId) {
     return (
-      <Suspense fallback={<Box sx={{ p: 3 }}><Typography>Loading trace...</Typography></Box>}>
+      <Suspense
+        fallback={
+          <Box sx={{ p: 3 }}>
+            <Typography>Loading trace...</Typography>
+          </Box>
+        }
+      >
         <ContinuousEvalWithTracePage traceId={traceId} />
       </Suspense>
     );
