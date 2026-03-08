@@ -1,4 +1,4 @@
-import { MustacheHighlightedTextField, useAppForm, withFieldGroup } from "@arthur/shared-components";
+import { MustacheHighlightedTextField, useAppForm } from "@arthur/shared-components";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import GpsFixedIcon from "@mui/icons-material/GpsFixed";
@@ -9,7 +9,6 @@ import {
   Box,
   Button,
   Divider,
-  FormControlLabel,
   IconButton,
   Paper,
   Stack,
@@ -17,7 +16,6 @@ import {
   StepContent,
   StepLabel,
   Stepper,
-  Switch,
   Tab,
   Tabs,
   TextField,
@@ -108,7 +106,7 @@ export const ContinuousEvalStepper = ({
     },
     validators: {
       onMount: z.object({
-        name: z.string().min(1, "Name is required"),
+        name: z.string(),
         description: z.string(),
         enabled: z.boolean(),
         evaluator: z.object({
@@ -126,7 +124,7 @@ export const ContinuousEvalStepper = ({
         ),
       }),
       onChange: z.object({
-        name: z.string().min(1, "Name is required"),
+        name: z.string(),
         description: z.string(),
         enabled: z.boolean(),
         evaluator: z.object({
@@ -145,6 +143,8 @@ export const ContinuousEvalStepper = ({
       }),
     },
     onSubmit: async ({ value }) => {
+      const evalName = value.name || value.evaluator.name!;
+
       if (transformMode === "create") {
         // First create the transform, then create the continuous eval
         const validationErrors = validateInlineTransform();
@@ -170,15 +170,14 @@ export const ContinuousEvalStepper = ({
         };
 
         const transformData = await createTransform.mutateAsync({
-          name: `${value.name}_transform`,
-          description: `Auto-created transform for continuous eval "${value.name}"`,
+          name: `${evalName}_transform`,
+          description: `Auto-created transform for continuous eval "${evalName}"`,
           definition,
         });
 
         const { id } = await createContinuousEval.mutateAsync({
-          name: value.name,
-          description: value.description?.trim() || undefined,
-          enabled: value.enabled,
+          name: evalName,
+          enabled: true,
           llm_eval_name: value.evaluator.name!,
           llm_eval_version: value.evaluator.version!,
           transform_id: transformData.id,
@@ -196,9 +195,8 @@ export const ContinuousEvalStepper = ({
       } else {
         // Select existing transform
         const { id } = await createContinuousEval.mutateAsync({
-          name: value.name,
-          description: value.description?.trim() || undefined,
-          enabled: value.enabled,
+          name: evalName,
+          enabled: true,
           llm_eval_name: value.evaluator.name!,
           llm_eval_version: value.evaluator.version!,
           transform_id: value.transform.transformId!,
@@ -339,26 +337,6 @@ export const ContinuousEvalStepper = ({
           New Continuous Eval
         </Typography>
 
-        <DetailsFieldGroup
-          form={form}
-          fields={{
-            name: "name",
-            description: "description",
-          }}
-        />
-
-        <form.Field name="enabled">
-          {(field) => (
-            <FormControlLabel
-              control={<Switch checked={field.state.value} onChange={(e) => field.handleChange(e.target.checked)} />}
-              label="Enable continuous eval"
-              slotProps={{ typography: { color: "text.primary", variant: "body2" } }}
-            />
-          )}
-        </form.Field>
-
-        <Divider />
-
         <Stepper activeStep={activeStep} orientation="vertical">
           <Step>
             <StepLabel>
@@ -449,9 +427,7 @@ export const ContinuousEvalStepper = ({
       <Box sx={{ p: 2, borderTop: 1, borderColor: "divider", mt: "auto" }}>
         <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
           {([, isSubmitting]) => {
-            const formName = form.getFieldValue("name");
-            const canSubmitForm =
-              formName && isEvaluatorSelected && activeStep === 1 && (transformMode === "create" ? canSubmitCreate : canSubmitSelect);
+            const canSubmitForm = isEvaluatorSelected && activeStep === 1 && (transformMode === "create" ? canSubmitCreate : canSubmitSelect);
 
             return (
               <Button
@@ -482,55 +458,6 @@ export const ContinuousEvalStepper = ({
     </Stack>
   );
 };
-
-const DetailsFieldGroup = withFieldGroup({
-  defaultValues: {
-    name: "",
-    description: "",
-  },
-  render: function Render({ group }) {
-    return (
-      <Stack gap={2}>
-        <group.AppField
-          name="name"
-          children={(field) => (
-            <TextField
-              autoFocus
-              label="Eval Name"
-              type="text"
-              fullWidth
-              variant="outlined"
-              size="small"
-              required
-              value={field.state.value}
-              onChange={(e) => field.handleChange(e.target.value)}
-              onBlur={field.handleBlur}
-              error={field.state.meta.errors.length > 0}
-            />
-          )}
-        />
-        <group.AppField
-          name="description"
-          children={(field) => (
-            <TextField
-              multiline
-              rows={2}
-              label="Description"
-              type="text"
-              fullWidth
-              variant="outlined"
-              size="small"
-              value={field.state.value}
-              onChange={(e) => field.handleChange(e.target.value)}
-              onBlur={field.handleBlur}
-              error={field.state.meta.errors.length > 0}
-            />
-          )}
-        />
-      </Stack>
-    );
-  },
-});
 
 type InlineTransformCreatorProps = {
   variables: VariableRow[];

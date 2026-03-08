@@ -197,11 +197,13 @@ const SpanContentView = ({ span }: { span: NestedSpanWithMetricsResponse }) => {
 };
 
 function getValueAtPath(data: Record<string, unknown>, path: string): unknown {
-  const parts = path.split(/\.|\[(\d+)\]/).filter(Boolean);
+  const parts = path.split(".");
   let current: unknown = data;
   for (const part of parts) {
     if (current === null || current === undefined) return undefined;
-    if (typeof current === "object") {
+    if (Array.isArray(current) && /^\d+$/.test(part)) {
+      current = current[parseInt(part, 10)];
+    } else if (typeof current === "object") {
       current = (current as Record<string, unknown>)[part];
     } else {
       return undefined;

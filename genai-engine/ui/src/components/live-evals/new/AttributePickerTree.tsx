@@ -221,7 +221,7 @@ const JsonNode = ({ data, path, selectedPath, onSelectPath, level, label, isLast
         </Stack>
         <Collapse in={open} timeout="auto" unmountOnExit>
           {data.map((item, index) => {
-            const childPath = `${path}[${index}]`;
+            const childPath = `${path}.${index}`;
             return (
               <JsonNode
                 key={index}
