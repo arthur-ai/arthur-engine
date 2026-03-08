@@ -375,7 +375,7 @@ export const ContinuousEvalStepper = ({
             <StepLabel>
               <Stack direction="row" alignItems="center" gap={0.5}>
                 <Typography variant="subtitle1" fontWeight={600}>
-                  Configure Transform
+                  Map to traces
                 </Typography>
                 <Tooltip title="Define how to extract data from each trace for the evaluator. Map each evaluator variable to a specific span and attribute path so the eval knows where to find its inputs.">
                   <HelpOutlineIcon sx={{ fontSize: 18, color: "text.secondary", cursor: "help" }} />
