@@ -600,14 +600,6 @@ const InlineTransformCreator = ({
 
               <Stack spacing={1.5}>
                 <TextField
-                  label="Variable Name"
-                  value={variable.variable_name}
-                  onChange={(e) => onVariableChange(idx, "variable_name", e.target.value)}
-                  size="small"
-                  required
-                  fullWidth
-                />
-                <TextField
                   label="Span Name"
                   value={variable.span_name}
                   onChange={(e) => onVariableChange(idx, "span_name", e.target.value)}
