@@ -456,95 +456,98 @@ const NunjucksHighlightedTextField: React.FC<NunjucksHighlightedTextFieldProps> 
     });
   }, []);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    // Handle undo (Ctrl+Z or Cmd+Z)
-    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === "z") {
-      e.preventDefault();
-      if (undoStackRef.current.length > 0) {
-        const previousValue = undoStackRef.current.pop()!;
-        redoStackRef.current.push(currentTextRef.current);
-        currentTextRef.current = previousValue;
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      // Handle undo (Ctrl+Z or Cmd+Z)
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === "z") {
+        e.preventDefault();
+        if (undoStackRef.current.length > 0) {
+          const previousValue = undoStackRef.current.pop()!;
+          redoStackRef.current.push(currentTextRef.current);
+          currentTextRef.current = previousValue;
 
-        isUpdatingRef.current = true;
-        if (editableRef.current) {
-          const cursorPos = saveCursorPosition();
-          editableRef.current.innerHTML = generateHighlightedHtml(previousValue);
-          restoreCursorPosition(cursorPos, false);
-        }
-        isUpdatingRef.current = false;
+          isUpdatingRef.current = true;
+          if (editableRef.current) {
+            const cursorPos = saveCursorPosition();
+            editableRef.current.innerHTML = generateHighlightedHtml(previousValue);
+            restoreCursorPosition(cursorPos, false);
+          }
+          isUpdatingRef.current = false;
 
-        if (onChange) {
-          const syntheticEvent = {
-            target: { value: previousValue },
-            currentTarget: { value: previousValue },
-          } as React.ChangeEvent<HTMLTextAreaElement>;
-          onChange(syntheticEvent);
-        }
-      }
-      return;
-    }
-
-    // Handle redo (Ctrl+Y or Ctrl+Shift+Z or Cmd+Shift+Z)
-    if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.shiftKey && e.key === "z"))) {
-      e.preventDefault();
-      if (redoStackRef.current.length > 0) {
-        const nextValue = redoStackRef.current.pop()!;
-        undoStackRef.current.push(currentTextRef.current);
-        currentTextRef.current = nextValue;
-
-        isUpdatingRef.current = true;
-        if (editableRef.current) {
-          const cursorPos = saveCursorPosition();
-          editableRef.current.innerHTML = generateHighlightedHtml(nextValue);
-          restoreCursorPosition(cursorPos, false);
-        }
-        isUpdatingRef.current = false;
-
-        if (onChange) {
-          const syntheticEvent = {
-            target: { value: nextValue },
-            currentTarget: { value: nextValue },
-          } as React.ChangeEvent<HTMLTextAreaElement>;
-          onChange(syntheticEvent);
-        }
-      }
-      return;
-    }
-
-    // Detect deletion keys to prevent highlighting updates during active deletion
-    if (e.key === "Backspace" || e.key === "Delete") {
-      isEditingRef.current = true;
-    }
-
-    // Handle Enter key to ensure proper new line insertion
-    if (e.key === "Enter") {
-      e.preventDefault();
-      document.execCommand("insertLineBreak");
-
-      // Scroll cursor into view after inserting line break
-      requestAnimationFrame(() => {
-        const selection = window.getSelection();
-        if (selection && selection.rangeCount > 0) {
-          const range = selection.getRangeAt(0);
-
-          // Insert a temporary span at cursor position to measure and scroll
-          const tempSpan = document.createElement("span");
-          tempSpan.innerHTML = "&nbsp;"; // Use non-breaking space so it has height
-          range.insertNode(tempSpan);
-
-          // Scroll the temp span into view
-          tempSpan.scrollIntoView({ behavior: "auto", block: "nearest" });
-
-          // Remove the temp span and restore cursor position
-          const parent = tempSpan.parentNode;
-          if (parent) {
-            parent.removeChild(tempSpan);
-            // Cursor should already be in the right place after removing the span
+          if (onChange) {
+            const syntheticEvent = {
+              target: { value: previousValue },
+              currentTarget: { value: previousValue },
+            } as React.ChangeEvent<HTMLTextAreaElement>;
+            onChange(syntheticEvent);
           }
         }
-      });
-    }
-  }, [generateHighlightedHtml, onChange, saveCursorPosition, restoreCursorPosition]);
+        return;
+      }
+
+      // Handle redo (Ctrl+Y or Ctrl+Shift+Z or Cmd+Shift+Z)
+      if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.shiftKey && e.key === "z"))) {
+        e.preventDefault();
+        if (redoStackRef.current.length > 0) {
+          const nextValue = redoStackRef.current.pop()!;
+          undoStackRef.current.push(currentTextRef.current);
+          currentTextRef.current = nextValue;
+
+          isUpdatingRef.current = true;
+          if (editableRef.current) {
+            const cursorPos = saveCursorPosition();
+            editableRef.current.innerHTML = generateHighlightedHtml(nextValue);
+            restoreCursorPosition(cursorPos, false);
+          }
+          isUpdatingRef.current = false;
+
+          if (onChange) {
+            const syntheticEvent = {
+              target: { value: nextValue },
+              currentTarget: { value: nextValue },
+            } as React.ChangeEvent<HTMLTextAreaElement>;
+            onChange(syntheticEvent);
+          }
+        }
+        return;
+      }
+
+      // Detect deletion keys to prevent highlighting updates during active deletion
+      if (e.key === "Backspace" || e.key === "Delete") {
+        isEditingRef.current = true;
+      }
+
+      // Handle Enter key to ensure proper new line insertion
+      if (e.key === "Enter") {
+        e.preventDefault();
+        document.execCommand("insertLineBreak");
+
+        // Scroll cursor into view after inserting line break
+        requestAnimationFrame(() => {
+          const selection = window.getSelection();
+          if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+
+            // Insert a temporary span at cursor position to measure and scroll
+            const tempSpan = document.createElement("span");
+            tempSpan.innerHTML = "&nbsp;"; // Use non-breaking space so it has height
+            range.insertNode(tempSpan);
+
+            // Scroll the temp span into view
+            tempSpan.scrollIntoView({ behavior: "auto", block: "nearest" });
+
+            // Remove the temp span and restore cursor position
+            const parent = tempSpan.parentNode;
+            if (parent) {
+              parent.removeChild(tempSpan);
+              // Cursor should already be in the right place after removing the span
+            }
+          }
+        });
+      }
+    },
+    [generateHighlightedHtml, onChange, saveCursorPosition, restoreCursorPosition]
+  );
 
   // Initialize content when value changes externally
   useEffect(() => {
