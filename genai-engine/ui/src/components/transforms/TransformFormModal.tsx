@@ -32,7 +32,7 @@ interface VariableMapping {
   fallback: string;
 }
 
-export const TransformFormModal: React.FC<TransformFormModalProps> = ({ open, onClose, onSubmit, isLoading, taskId, initialTransform }) => {
+export const TransformFormModal: React.FC<TransformFormModalProps> = ({ open, onClose, onSubmit, isLoading, taskId, initialTransform, initialVariableNames }) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [variables, setVariables] = useState<VariableMapping[]>([{ variable_name: "", span_name: "", attribute_path: "", fallback: "" }]);
@@ -56,6 +56,18 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({ open, on
           fallback: variable.fallback !== undefined && variable.fallback !== null ? JSON.stringify(variable.fallback) : "",
         }))
       );
+    } else if (initialVariableNames && initialVariableNames.length > 0) {
+      setName("");
+      setDescription("");
+      setVariables(
+        initialVariableNames.map((name) => ({
+          variable_name: name,
+          span_name: "",
+          attribute_path: "",
+          fallback: "",
+        }))
+      );
+      setSelectedTransformId(null);
     } else {
       setName("");
       setDescription("");
@@ -63,7 +75,7 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({ open, on
       setSelectedTransformId(null);
     }
     setErrors([]);
-  }, [initialTransform, open]);
+  }, [initialTransform, initialVariableNames, open]);
 
   const handleAddVariable = () => {
     setVariables([...variables, { variable_name: "", span_name: "", attribute_path: "", fallback: "" }]);

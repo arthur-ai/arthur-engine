@@ -3,8 +3,8 @@ import { useAppForm, withFieldGroup } from "@arthur/shared-components";
 import AddIcon from "@mui/icons-material/Add";
 import { Autocomplete, Box, Button, Divider, FormControlLabel, Paper, Stack, Switch, TextField, Typography } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Suspense, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import z from "zod";
 
 import { VariableMappingSection } from "../components/variable-mapping";
@@ -12,6 +12,7 @@ import { useContinuousEvalVariableMapping } from "../hooks/useContinuousEvalVari
 import { useCreateContinuousEval } from "../hooks/useCreateContinuousEval";
 
 import { EvaluatorSelector } from "./components/EvaluatorSelector";
+import { ContinuousEvalWithTracePage } from "./ContinuousEvalWithTracePage";
 
 import { useEval } from "@/components/evaluators/hooks/useEval";
 import { useCreateTransformMutation } from "@/components/transforms/hooks/useCreateTransformMutation";
@@ -31,6 +32,21 @@ type TransformFormState = {
 };
 
 export const LiveEvalsNew = () => {
+  const [searchParams] = useSearchParams();
+  const traceId = searchParams.get("traceId");
+
+  if (traceId) {
+    return (
+      <Suspense fallback={<Box sx={{ p: 3 }}><Typography>Loading trace...</Typography></Box>}>
+        <ContinuousEvalWithTracePage traceId={traceId} />
+      </Suspense>
+    );
+  }
+
+  return <LiveEvalsNewForm />;
+};
+
+const LiveEvalsNewForm = () => {
   const { task } = useTask();
 
   const navigate = useNavigate();
