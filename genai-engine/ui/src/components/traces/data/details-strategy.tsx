@@ -1,4 +1,5 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
+import { MessageRenderer } from "@arthur/shared-components";
 import { Box } from "@mui/material";
 import Typography from "@mui/material/Typography";
 
@@ -10,7 +11,7 @@ import { getSpanDuration, getSpanInput, getSpanInputMimeType, getSpanModel, getS
 import { TokenCostTooltip, TokenCountTooltip } from "./common";
 
 import { Highlight } from "@/components/common/Highlight";
-import { MessageRenderer } from "@/components/common/llm/MessageRenderer";
+// import { MessageRenderer } from "@/components/common/llm/MessageRenderer";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
 import { getCost, getMessages, getOutputMessages, getTokens, tryFormatJson } from "@/utils/llm";
 
