@@ -11,7 +11,6 @@ import { getSpanDuration, getSpanInput, getSpanInputMimeType, getSpanModel, getS
 import { TokenCostTooltip, TokenCountTooltip } from "./common";
 
 import { Highlight } from "@/components/common/Highlight";
-// import { MessageRenderer } from "@/components/common/llm/MessageRenderer";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
 import { getCost, getMessages, getOutputMessages, getTokens, tryFormatJson } from "@/utils/llm";
 
