@@ -1,3 +1,4 @@
+import { useAppForm } from "@arthur/shared-components";
 import {
   Button,
   CircularProgress,
@@ -21,7 +22,6 @@ import { DetailsFieldGroup, EvaluatorSelector, TransformSelector } from "../../n
 import { VariableMappingSection } from "../variable-mapping";
 
 import { CopyableChip } from "@/components/common";
-import { useAppForm } from "@/components/traces/components/filtering/hooks/form";
 import type { ContinuousEvalResponse, ContinuousEvalTransformVariableMappingRequest } from "@/lib/api-client/api-client";
 
 type Props = {
@@ -75,7 +75,7 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
     onSubmit: async ({ value }) => {
       await updateContinuousEval.mutateAsync({
         name: value.name,
-        description: value.description,
+        description: value.description?.trim() || undefined,
         enabled: value.enabled,
         transform_id: value.transform.transformId,
         llm_eval_name: value.evaluator.name,

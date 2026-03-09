@@ -17,7 +17,7 @@ import {
   InputAdornment,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { CreateExperimentModal, ExperimentFormData } from "./CreateExperimentModal";
@@ -32,7 +32,12 @@ import { usePromptExperiments, useCreateExperiment, usePromptExperiment } from "
 import { formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
-export const PromptExperimentsView: React.FC = () => {
+interface PromptExperimentsViewProps {
+  onRegisterCreate?: (fn: () => void) => void;
+  onRegisterCreateFromExisting?: (fn: () => void) => void;
+}
+
+export const PromptExperimentsView: React.FC<PromptExperimentsViewProps> = ({ onRegisterCreate, onRegisterCreateFromExisting }) => {
   const { id: taskId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { defaultCurrency } = useDisplaySettings();
@@ -97,6 +102,13 @@ export const PromptExperimentsView: React.FC = () => {
   const handleCreateFromExisting = () => {
     setIsSelectExistingModalOpen(true);
   };
+
+  const onRegisterCreateRef = useRef(onRegisterCreate);
+  const onRegisterCreateFromExistingRef = useRef(onRegisterCreateFromExisting);
+  useEffect(() => {
+    onRegisterCreateRef.current?.(handleCreateExperiment);
+    onRegisterCreateFromExistingRef.current?.(handleCreateFromExisting);
+  }, []);
 
   const handleSelectExistingExperiment = (experiment: PromptExperiment) => {
     setSelectedExperimentId(experiment.id);
@@ -215,14 +227,43 @@ export const PromptExperimentsView: React.FC = () => {
   return (
     <>
       <Box className="w-full grid overflow-hidden" style={{ height: getContentHeight(), gridTemplateRows: "auto 1fr" }}>
-        <Box className="px-6 pt-6 pb-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-          <PromptExperimentsViewHeader
-            onCreateExperiment={handleCreateExperiment}
-            onCreateFromExisting={handleCreateFromExisting}
-            searchValue={searchText}
-            onSearchChange={handleSearchChange}
-          />
-        </Box>
+        {onRegisterCreate ? (
+          <Box
+            sx={{
+              px: 3,
+              py: 2,
+              borderBottom: 1,
+              borderColor: "divider",
+              backgroundColor: "background.paper",
+            }}
+          >
+            <TextField
+              placeholder="Search experiments by name, description, prompt, or dataset..."
+              value={searchText}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              fullWidth
+              size="small"
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+          </Box>
+        ) : (
+          <Box className="px-6 pt-6 pb-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+            <PromptExperimentsViewHeader
+              onCreateExperiment={handleCreateExperiment}
+              onCreateFromExisting={handleCreateFromExisting}
+              searchValue={searchText}
+              onSearchChange={handleSearchChange}
+            />
+          </Box>
+        )}
 
         <Box className="overflow-auto min-h-0">
           {isLoading ? (
@@ -273,6 +314,7 @@ export const PromptExperimentsView: React.FC = () => {
               value={modalSearchText}
               onChange={(e) => setModalSearchText(e.target.value)}
               fullWidth
+              variant="filled"
               size="small"
               slotProps={{
                 input: {

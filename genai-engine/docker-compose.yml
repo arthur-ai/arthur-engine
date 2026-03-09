@@ -19,6 +19,8 @@ services:
     build:
       context: .
       dockerfile: ./dockerfile
+      args:
+        GITLAB_UNIFY_FRONTEND_TOKEN: ${GITLAB_UNIFY_FRONTEND_TOKEN}
     ports:
       - "3030:3030"
     environment:

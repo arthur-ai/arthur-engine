@@ -1,3 +1,4 @@
+import { withFieldGroup } from "@arthur/shared-components";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { Autocomplete, Button, Divider, IconButton, Paper, Stack, TextField, Typography } from "@mui/material";
@@ -6,7 +7,6 @@ import z from "zod";
 
 import { NewAgentExperimentFormData } from "../form";
 
-import { withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
 import { useDatasets } from "@/hooks/useDatasets";
 import { useDatasetVersionData } from "@/hooks/useDatasetVersionData";
 import { useDatasetVersionHistory } from "@/hooks/useDatasetVersionHistory";

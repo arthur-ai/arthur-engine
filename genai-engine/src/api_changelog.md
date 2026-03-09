@@ -2,6 +2,18 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 # 02/27/2026
+
+# 02/27/2026
+- **CHANGE** for Component/Schema:  removed the schema 'CreationSource'
+- **CHANGE** for Component/Schema:  removed the schema 'DiscoverAgentsRequest'
+- **CHANGE** for Component/Schema:  removed the schema 'DiscoverAgentsResponse'
+- **CHANGE** for Component/Schema:  removed the schema 'DiscoveredAgent'
+- **CHANGE** for **URL**: /api/v1/discover-agents  api path removed with deprecation
+
+# 02/26/2026
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the new optional request property 'only_archived'
+
+# 02/26/2026
 - **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/is_archived' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v2/tasks  added the optional property 'is_archived' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v2/tasks/search  added the new optional request property 'include_archived'

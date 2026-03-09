@@ -1,30 +1,33 @@
+import {
+  BucketProvider,
+  CopyableChip as SharedCopyableChip,
+  createSpanLevelColumns,
+  DurationCellWithBucket,
+  type ColumnDependencies as SharedColumnDependencies,
+  TextOperators,
+  TracesTable,
+  TypeChip as SharedTypeChip,
+} from "@arthur/shared-components";
 import { Search } from "@mui/icons-material";
 import { Alert, Box, Button, Paper, Stack, TextField } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
+import type { MRT_ColumnDef } from "material-react-table";
 import { memo, useCallback, useMemo, useState } from "react";
 
-import { BucketProvider } from "../../context/bucket-context";
 import { TokenCostTooltip, TokenCountTooltip } from "../../data/common";
-import { createSpanLevelColumns } from "../../data/create-span-level-columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useSyncFiltersToUrl } from "../../hooks/useSyncFiltersToUrl";
 import { useFilterStore } from "../../stores/filter.store";
 import { usePaginationContext } from "../../stores/pagination-context";
 import { buildThresholdsFromSample } from "../../utils/duration";
 import { DataContentGate } from "../DataContentGate";
-import { DurationCellWithBucket } from "../DurationCell";
-import { TextOperators } from "../filtering/types";
 import { SpanStatusBadge } from "../span-status-badge";
 import { isValidStatusCode } from "../StatusCode";
 import { TraceContentCell } from "../TraceContentCell";
 
 import { TracingFilterModal } from "./components/TracingFilterModal";
-import { TracesTable } from "./TracesTable";
 
-import { CopyableChip } from "@/components/common";
-import { TypeChip } from "@/components/common/span/TypeChip";
-import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
@@ -44,7 +47,6 @@ interface SpanLevelProps {
 export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
   const api = useApi()!;
   const { task } = useTask();
-  const { defaultCurrency } = useDisplaySettings();
   const [, setDrawerTarget] = useDrawerTarget();
   const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
   const [searchInput, setSearchInput] = useState("");
@@ -99,26 +101,23 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
     [data?.spans, setContext, setDrawerTarget, task?.id]
   );
 
-  const displayCurrency = data?.display_currency ?? defaultCurrency;
-
-  const columns = useMemo(
-    () =>
-      createSpanLevelColumns({
-        formatDate,
-        formatCurrency: (amount: number) => formatCurrency(amount, displayCurrency),
-        onTrack: track,
-        Chip: CopyableChip,
-        DurationCell: DurationCellWithBucket,
-        TraceContentCell,
-        AnnotationCell: () => null, // Not used in span columns
-        SpanStatusBadge,
-        TypeChip,
-        TokenCountTooltip,
-        TokenCostTooltip,
-        isValidStatusCode,
-      }),
-    [displayCurrency]
-  );
+  const columns = useMemo(() => {
+    const deps: SharedColumnDependencies = {
+      formatDate,
+      formatCurrency: () => "",
+      onTrack: track,
+      Chip: SharedCopyableChip,
+      DurationCell: DurationCellWithBucket,
+      TraceContentCell,
+      AnnotationCell: () => null,
+      SpanStatusBadge: SpanStatusBadge as SharedColumnDependencies["SpanStatusBadge"],
+      TypeChip: SharedTypeChip,
+      TokenCountTooltip,
+      TokenCostTooltip,
+      isValidStatusCode,
+    };
+    return createSpanLevelColumns(deps) as MRT_ColumnDef<SpanMetadataResponse, unknown>[];
+  }, []);
 
   const setFilters = useFilterStore((state) => state.setFilters);
 

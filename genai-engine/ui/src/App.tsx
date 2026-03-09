@@ -7,18 +7,16 @@ import { NuqsAdapter } from "nuqs/adapters/react-router/v7";
 import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-dom";
 
 import "./App.css";
-import { AgentExperiments } from "./components/agent-experiments";
 import { AgentExperimentDetail } from "./components/agent-experiments/[experimentId]";
 import { NewAgentExperiment } from "./components/agent-experiments/new";
-import { AgentNotebook } from "./components/agent-notebook";
 import { AgentNotebookDetail } from "./components/agent-notebook/[notebookId]";
 import { AllTasks } from "./components/AllTasks";
 import { ApiKeysManagement } from "./components/ApiKeysManagement";
 import { DatasetDetailView } from "./components/datasets/DatasetDetailView";
 import { DatasetExperimentsView } from "./components/datasets/DatasetExperimentsView";
 import { DatasetsView } from "./components/datasets/DatasetsView";
+import { EvaluateView } from "./components/evaluate/EvaluateView";
 import Evaluators from "./components/evaluators/Evaluators";
-import { LiveEvals } from "./components/live-evals";
 import { LiveEvalDetail } from "./components/live-evals/[evalId]";
 import { LiveEvalsNew } from "./components/live-evals/new";
 import { LoginPage } from "./components/LoginPage";
@@ -26,9 +24,11 @@ import { ModelProviders } from "./components/model-providers";
 import Notebooks from "./components/notebooks/Notebooks";
 import { ExperimentDetailView } from "./components/prompt-experiments/ExperimentDetailView";
 import { PromptExperimentsView } from "./components/prompt-experiments/PromptExperimentsView";
+import { PromptsView } from "./components/prompts/PromptsView";
 import PromptsManagement from "./components/prompts-management/PromptsManagement";
 import PromptsPlayground from "./components/prompts-playground/PromptsPlaygroundWrapper";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { RagView } from "./components/rag/RagView";
 import { RagExperimentsListView, RagExperimentDetailView } from "./components/rag-experiments";
 import { RagNotebooks } from "./components/retrievals/notebooks";
 import { RagConfigurationsPage } from "./components/retrievals/RagConfigurationsPage";
@@ -36,6 +36,7 @@ import { RagExperimentsPage } from "./components/retrievals/RagExperimentsPage";
 import { SettingsPage } from "./components/settings/SettingsPage";
 import { TaskLayout } from "./components/TaskLayout";
 import { TaskOverview } from "./components/TaskOverview";
+import { TestView } from "./components/test/TestView";
 import { TracesView } from "./components/TracesView";
 import TransformsManagement from "./components/transforms/TransformsManagement";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -114,42 +115,48 @@ function App() {
                             <Route path="rag-configurations/:configId" element={<RagConfigurationsPage />} />
                             <Route path="rag-configurations/:configId/versions/:version" element={<RagConfigurationsPage />} />
 
-                            <Route path="agent-experiments">
-                              <Route index element={<AgentExperiments />} />
-                              <Route path="new" element={<NewAgentExperiment />} />
-                              <Route path=":experimentId" element={<AgentExperimentDetail />} />
-                            </Route>
+                            <Route path="test" element={<TestView />} />
 
-                            <Route path="agentic-notebooks">
-                              <Route index element={<AgentNotebook />} />
-                              <Route path=":notebookId" element={<AgentNotebookDetail />} />
-                            </Route>
+                            {/* Legacy redirects: old agent routes → /test */}
+                            <Route path="agent-experiments" element={<Navigate to="../test?section=agent-experiments" replace />} />
+                            <Route path="agent-experiments/new" element={<NewAgentExperiment />} />
+                            <Route path="agent-experiments/:experimentId" element={<AgentExperimentDetail />} />
+
+                            <Route path="agentic-notebooks" element={<Navigate to="../test?section=agentic-notebooks" replace />} />
+                            <Route path="agentic-notebooks/:notebookId" element={<AgentNotebookDetail />} />
 
                             <Route path="datasets" element={<DatasetsView />} />
                             <Route path="datasets/:datasetId" element={<DatasetDetailView />} />
                             <Route path="transforms" element={<TransformsManagement />} />
                             <Route path="datasets/:datasetId/experiments" element={<DatasetExperimentsView />} />
 
-                            <Route path="evaluators" element={<Evaluators />} />
+                            <Route path="evaluate" element={<EvaluateView />} />
+
+                            {/* Legacy redirect: /evaluators → /evaluate */}
+                            <Route path="evaluators" element={<Navigate to="../evaluate" replace />} />
+                            <Route path="evaluators/:evaluatorName" element={<Evaluators />} />
+                            <Route path="evaluators/:evaluatorName/versions/:version" element={<Evaluators />} />
 
                             <Route path="continuous-evals">
-                              <Route index element={<LiveEvals />} />
+                              {/* Legacy redirect: /continuous-evals → /evaluate?section=continuous-evals */}
+                              <Route index element={<Navigate to="../evaluate?section=ce-management" replace />} />
                               <Route path="new" element={<LiveEvalsNew />} />
                               <Route path=":evalId" element={<LiveEvalDetail />} />
                             </Route>
 
-                            <Route path="evaluators/:evaluatorName" element={<Evaluators />} />
-                            <Route path="evaluators/:evaluatorName/versions/:version" element={<Evaluators />} />
-
                             <Route path="prompts-management" element={<PromptsManagement />} />
                             <Route path="prompts/:promptName" element={<PromptsManagement />} />
                             <Route path="prompts/:promptName/versions/:version" element={<PromptsManagement />} />
+
+                            <Route path="prompts" element={<PromptsView />} />
 
                             <Route path="notebooks" element={<Notebooks />} />
                             <Route path="playgrounds/prompts" element={<PromptsPlayground />} />
 
                             <Route path="prompt-experiments" element={<PromptExperimentsView />} />
                             <Route path="prompt-experiments/:experimentId" element={<ExperimentDetailView />} />
+
+                            <Route path="rag" element={<RagView />} />
 
                             <Route path="rag-experiments" element={<RagExperimentsListView />} />
                             <Route path="rag-experiments/:experimentId" element={<RagExperimentDetailView />} />

@@ -1,3 +1,4 @@
+import { TextOperators, TracesEmptyState } from "@arthur/shared-components";
 import { Search } from "@mui/icons-material";
 import {
   Box,
@@ -25,8 +26,6 @@ import { continuousEvalsResultsQueryOptions } from "../../hooks/useContinuousEva
 import { Details } from "./components/details";
 import { FilterModal } from "./components/FilterModal";
 
-import { TextOperators } from "@/components/traces/components/filtering/types";
-import { TracesEmptyState } from "@/components/traces/components/TracesEmptyState";
 import { useFilterStore } from "@/components/traces/stores/filter.store";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";

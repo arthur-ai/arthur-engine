@@ -1854,43 +1854,6 @@ export type CreateUserUsersPostData = any;
 export type CreateUserUsersPostError = HTTPValidationError;
 
 /**
- * CreationSource
- * Source information for how an unregistered agent was created.
- *
- * .. deprecated::
- *     This flat CreationSource model is deprecated.
- *     Use the discriminated union CreationSource from
- *     arthur_common.models.agent_governance_schemas instead.
- */
-export interface CreationSource {
-  /**
-   * Gcp Project Id
-   * Optional GCP project ID where the agent is running.
-   */
-  gcp_project_id?: string | null;
-  /**
-   * Gcp Reasoning Engine Id
-   * Optional GCP Vertex AI Reasoning Engine ID.
-   */
-  gcp_reasoning_engine_id?: string | null;
-  /**
-   * Gcp Region
-   * Optional GCP region where the agent is running.
-   */
-  gcp_region?: string | null;
-  /**
-   * Task Id
-   * Optional UUID of the task that created this agent.
-   */
-  task_id?: string | null;
-  /**
-   * Top Level Span Name
-   * Optional top-level span name (legacy field, prefer GCP fields for GCP agents).
-   */
-  top_level_span_name?: string | null;
-}
-
-/**
  * DailyAgenticAnnotationStats
  * Statistics for a single day of agentic annotations.
  */
@@ -2280,52 +2243,6 @@ export type DeleteUserUsersUserIdDeleteData = any;
 
 export type DeleteUserUsersUserIdDeleteError = HTTPValidationError;
 
-export type DiscoverAgentsApiV1DiscoverAgentsPostData = DiscoverAgentsResponse;
-
-export type DiscoverAgentsApiV1DiscoverAgentsPostError = HTTPValidationError;
-
-/**
- * DiscoverAgentsRequest
- * Request to discover agents from infrastructure.
- *
- * .. deprecated::
- *     Use GET /api/v2/agent-tasks instead.
- */
-export interface DiscoverAgentsRequest {
-  /**
-   * Data Plane Id
-   * UUID of the data plane to discover agents from
-   * @format uuid
-   */
-  data_plane_id: string;
-  /**
-   * Lookback Hours
-   * Number of hours to look back for traces (default 30 days)
-   * @default 720
-   */
-  lookback_hours?: number;
-}
-
-/**
- * DiscoverAgentsResponse
- * Response containing discovered agents.
- *
- * .. deprecated::
- *     Use GET /api/v2/agent-tasks instead.
- */
-export interface DiscoverAgentsResponse {
-  /**
-   * Agents
-   * List of discovered agents
-   */
-  agents: DiscoveredAgent[];
-  /**
-   * Metadata
-   * Discovery metadata (e.g., traces processed, errors)
-   */
-  metadata?: Record<string, any>;
-}
-
 /**
  * DiscoverAndPollResponse
  * Response model for the execute-all agent polling endpoint.
@@ -2346,66 +2263,6 @@ export interface DiscoverAndPollResponse {
    * Total number of traces fetched across all tasks (0 in async mode)
    */
   traces_fetched: number;
-}
-
-/**
- * DiscoveredAgent
- * A discovered agent from infrastructure.
- *
- * .. deprecated::
- *     Use GET /api/v2/agent-tasks with EnrichedTaskResponse instead.
- */
-export interface DiscoveredAgent {
-  /** Information about how this agent was created. */
-  creation_source: CreationSource;
-  /**
-   * Data Plane Id
-   * UUID of the data plane where this agent was detected.
-   * @format uuid
-   */
-  data_plane_id: string;
-  /**
-   * First Detected
-   * ISO 8601 timestamp when agent was first detected.
-   */
-  first_detected: string;
-  /**
-   * Infrastructure
-   * Infrastructure where this agent is running (e.g., 'GCP').
-   */
-  infrastructure: string;
-  /**
-   * Name
-   * Name of the agent.
-   */
-  name: string;
-  /**
-   * Num Spans
-   * Number of spans associated with this agent.
-   */
-  num_spans?: number | null;
-  /**
-   * Sub Agents
-   * List of sub-agents used by this agent.
-   */
-  sub_agents?: SubAgent[];
-  /**
-   * Tools
-   * List of tools used by this agent.
-   */
-  tools?: Tool[];
-}
-
-/**
- * DisplaySettingsResponse
- * Public display settings (e.g. default currency for cost formatting).
- */
-export interface DisplaySettingsResponse {
-  /**
-   * Default Currency
-   * @default "USD"
-   */
-  default_currency?: string;
 }
 
 /**
@@ -12305,7 +12162,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.421
+ * @version 2.1.437
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -13380,27 +13237,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v1/traces/transforms/${transformId}`,
         method: "DELETE",
         secure: true,
-        ...params,
-      }),
-
-    /**
-     * @description DEPRECATED: Use GET /api/v2/agent-tasks instead. Discovery is now handled automatically by the global polling service.
-     *
-     * @tags Agent Discovery
-     * @name DiscoverAgentsApiV1DiscoverAgentsPost
-     * @summary Discover Agents
-     * @request POST:/api/v1/discover-agents
-     * @deprecated
-     * @secure
-     */
-    discoverAgentsApiV1DiscoverAgentsPost: (data: DiscoverAgentsRequest, params: RequestParams = {}) =>
-      this.request<DiscoverAgentsApiV1DiscoverAgentsPostData, DiscoverAgentsApiV1DiscoverAgentsPostError>({
-        path: `/api/v1/discover-agents`,
-        method: "POST",
-        body: data,
-        secure: true,
-        type: ContentType.Json,
-        format: "json",
         ...params,
       }),
 

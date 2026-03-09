@@ -1,3 +1,4 @@
+import { MustacheHighlightedTextField } from "@arthur/shared-components";
 import CloseIcon from "@mui/icons-material/Close";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -29,7 +30,6 @@ import { Link as RouterLink } from "react-router-dom";
 
 import { PromptResultDetailModal, EvalInputsDialog } from "./PromptResultDetailModal";
 
-import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
 import { usePrompt } from "@/components/prompts-management/hooks/usePrompt";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { usePromptVersionResults } from "@/hooks/usePromptExperiments";
@@ -614,7 +614,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   Messages
                 </Typography>
                 <Box>
-                  <NunjucksHighlightedTextField
+                  <MustacheHighlightedTextField
                     value={messagesJson}
                     onChange={() => {}} // Read-only, no-op
                     disabled
