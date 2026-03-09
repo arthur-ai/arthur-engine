@@ -1,19 +1,7 @@
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import {
-  Autocomplete,
-  Box,
-  Button,
-  Chip,
-  DialogActions,
-  DialogContent,
-  IconButton,
-  Stack,
-  TextField,
-  Tooltip,
-  Typography,
-} from "@mui/material";
+import { Autocomplete, Box, Button, Chip, DialogActions, DialogContent, IconButton, Stack, TextField, Tooltip, Typography } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
 import { useState } from "react";
 
@@ -337,11 +325,7 @@ const DatasetRowFilterSection = withForm({
             <Typography variant="caption" color="text.secondary">
               (Optional)
             </Typography>
-            <Tooltip
-              title="Filter which dataset rows to include. Only rows matching ALL conditions will be used."
-              arrow
-              placement="right"
-            >
+            <Tooltip title="Filter which dataset rows to include. Only rows matching ALL conditions will be used." arrow placement="right">
               <InfoOutlinedIcon sx={{ fontSize: 16, color: "text.secondary", cursor: "help" }} />
             </Tooltip>
           </Stack>

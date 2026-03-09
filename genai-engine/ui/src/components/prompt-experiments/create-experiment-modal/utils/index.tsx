@@ -59,10 +59,11 @@ export function templateToFormData(template: PromptExperimentDetail): CreateExpe
         version: e.version,
       })),
     },
-    datasetRowFilter: template.dataset_row_filter?.map((f) => ({
-      column_name: f.column_name,
-      column_value: f.column_value,
-    })) ?? [],
+    datasetRowFilter:
+      template.dataset_row_filter?.map((f) => ({
+        column_name: f.column_name,
+        column_value: f.column_value,
+      })) ?? [],
     promptVariableMappings: name
       ? template.prompt_variable_mapping.map((p) => ({
           target: p.variable_name,

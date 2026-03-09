@@ -1,4 +1,4 @@
-import { Dialog, DialogTitle, Step, StepLabel, Stepper } from "@mui/material";
+import { CircularProgress, Dialog, DialogTitle, Step, StepLabel, Stepper } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
 import { useSnackbar } from "notistack";
 import { useCallback, useState } from "react";
@@ -24,12 +24,12 @@ type Props = {
 };
 
 export const CreateExperimentModal = ({ templateId, initialData, open, onClose }: Props) => {
-  const { experiment } = usePromptExperiment(templateId);
+  const { experiment, isLoading } = usePromptExperiment(templateId);
 
   return (
     <Dialog open={open} maxWidth="md" fullWidth aria-labelledby="create-experiment-dialog-title">
       <DialogTitle id="create-experiment-dialog-title">Create Experiment</DialogTitle>
-      <CreateExperimentModalInner template={experiment} initialData={initialData} onClose={onClose} />
+      {isLoading ? <CircularProgress /> : <CreateExperimentModalInner template={experiment} initialData={initialData} onClose={onClose} />}
     </Dialog>
   );
 };
