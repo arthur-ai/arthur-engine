@@ -122,7 +122,9 @@ const JsonNode = ({ data, path, selectedPath, onSelectPath, level, label, isLast
                   gap: 0.5,
                 }}
               >
-                <Box component="span" sx={{ color: "info.main" }}>&quot;{label}&quot;</Box>
+                <Box component="span" sx={{ color: "info.main" }}>
+                  &quot;{label}&quot;
+                </Box>
                 <span>: {"{"}</span>
                 {isSelected && <CheckCircleIcon sx={{ fontSize: 14 }} color="primary" />}
               </Box>
@@ -205,7 +207,9 @@ const JsonNode = ({ data, path, selectedPath, onSelectPath, level, label, isLast
                   gap: 0.5,
                 }}
               >
-                <Box component="span" sx={{ color: "info.main" }}>&quot;{label}&quot;</Box>
+                <Box component="span" sx={{ color: "info.main" }}>
+                  &quot;{label}&quot;
+                </Box>
                 <span>
                   : [{" "}
                   <Typography component="span" variant="caption" color="text.secondary">
@@ -298,7 +302,9 @@ const ClickableKey = ({ label, path, isSelected, onSelect, indent, valuePreview,
               gap: 0.5,
             }}
           >
-            <Box component="span" sx={{ color: "info.main" }}>&quot;{label}&quot;</Box>
+            <Box component="span" sx={{ color: "info.main" }}>
+              &quot;{label}&quot;
+            </Box>
             <span>: </span>
             {valuePreview}
             {isSelected && <CheckCircleIcon sx={{ fontSize: 14 }} color="primary" />}
