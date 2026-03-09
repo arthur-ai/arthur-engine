@@ -116,4 +116,7 @@ export const queryKeys = {
   taskMetrics: {
     all: (taskId: string) => ["taskMetrics", "all", taskId] as const,
   },
+  allTasksActivity: {
+    all: (taskIds: string[]) => ["allTasksActivity", taskIds] as const,
+  },
 } as const;
