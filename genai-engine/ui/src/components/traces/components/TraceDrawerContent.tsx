@@ -14,9 +14,9 @@ import { flattenSpans } from "../utils/spans";
 
 import { AddToDatasetDrawer } from "./add-to-dataset/Drawer";
 import { AnnotationCell } from "./AnnotationCell";
+import { ContinuousEvalDrawer } from "./continuous-eval/ContinuousEvalDrawer";
 import { FeedbackPanel } from "./feedback/FeedbackPanel";
 
-import { CreateContinuousEvalDialog } from "@/components/live-evals/components/create-form";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import type { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
@@ -116,11 +116,11 @@ export const TraceDrawerContent = ({ id }: Props) => {
       trace_id: traceId,
       source: "trace_actions",
     });
-    setCreateEvalOpen(true);
+    setContinuousEvalOpen(true);
   };
 
   const [addToDatasetOpen, setAddToDatasetOpen] = useState(false);
-  const [createEvalOpen, setCreateEvalOpen] = useState(false);
+  const [continuousEvalOpen, setContinuousEvalOpen] = useState(false);
 
   if (!trace) return null;
 
@@ -153,7 +153,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
       renderAfterDrawer={() => (
         <>
           <AddToDatasetDrawer traceId={id} open={addToDatasetOpen} onClose={() => setAddToDatasetOpen(false)} />
-          {task?.id && <CreateContinuousEvalDialog open={createEvalOpen} onClose={() => setCreateEvalOpen(false)} taskId={task.id} />}
+          <ContinuousEvalDrawer traceId={id} open={continuousEvalOpen} onClose={() => setContinuousEvalOpen(false)} />
         </>
       )}
       getSpanDetailsStrategy={getSpanDetailsStrategy as GetSpanDetailsStrategy}
