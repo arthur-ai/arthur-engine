@@ -20,7 +20,7 @@ import {
 } from "@mui/material";
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { useMemo, useRef } from "react";
-import { Link } from "react-router-dom";
+import { NavigateFunction, useNavigate } from "react-router-dom";
 
 import { Annotation, isContinuousEvalAnnotation } from "./schema";
 
@@ -34,6 +34,7 @@ type Props = {
 
 export const AnnotationsTable = ({ annotations }: Props) => {
   const { task } = useTask();
+  const navigate = useNavigate();
   const container = useRef<HTMLDivElement>(null);
 
   const columns = useMemo(
@@ -41,8 +42,9 @@ export const AnnotationsTable = ({ annotations }: Props) => {
       createColumns({
         taskId: task!.id,
         container,
+        onNavigate: navigate,
       }),
-    [task]
+    [task, navigate]
   );
 
   const table = useReactTable({
@@ -81,7 +83,15 @@ export const AnnotationsTable = ({ annotations }: Props) => {
 
 const columnHelper = createColumnHelper<Annotation>();
 
-const createColumns = ({ taskId, container }: { taskId: string; container: React.RefObject<HTMLDivElement | null> }) => [
+const createColumns = ({
+  taskId,
+  container,
+  onNavigate,
+}: {
+  taskId: string;
+  container: React.RefObject<HTMLDivElement | null>;
+  onNavigate: NavigateFunction;
+}) => [
   columnHelper.accessor("annotation_type", {
     header: "Annotation Type",
     cell: ({ getValue }) => {
@@ -157,7 +167,10 @@ const createColumns = ({ taskId, container }: { taskId: string; container: React
               >
                 <Menu.Item
                   render={
-                    <ListItemButton component={Link} to={`/tasks/${taskId}/continuous-evals?id=${annotation.id}&tab=results`} className="gap-4" />
+                    <ListItemButton
+                      onClick={() => onNavigate(`/tasks/${taskId}/evaluate?id=${annotation.id}&section=ce-results`)}
+                      className="gap-4"
+                    />
                   }
                 >
                   <ListItemText primary="View Results" />
@@ -169,8 +182,7 @@ const createColumns = ({ taskId, container }: { taskId: string; container: React
                   render={
                     <ListItemButton
                       disabled={annotation.run_status !== "error"}
-                      component={Link}
-                      to={`/tasks/${taskId}/continuous-evals?id=${annotation.id}&tab=results&action=rerun`}
+                      onClick={() => onNavigate(`/tasks/${taskId}/evaluate?id=${annotation.id}&section=ce-results&action=rerun`)}
                       className="gap-4"
                     />
                   }
