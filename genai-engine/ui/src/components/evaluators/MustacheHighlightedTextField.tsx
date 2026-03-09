@@ -1,9 +1,8 @@
+import { VariableChip } from "@arthur/shared-components";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import { styled } from "@mui/material/styles";
 import React, { useMemo, useRef, useCallback, useEffect } from "react";
-
-import { VariableChip } from "@arthur/shared-components";
 
 // Jinja2/Nunjucks keywords and control structures that should NOT be treated as variables
 const JINJA_2_KEYWORDS = new Set([
