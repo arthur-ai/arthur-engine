@@ -24,4 +24,5 @@ export interface TransformFormModalProps {
   isLoading: boolean;
   taskId: string | undefined;
   initialTransform?: TraceTransform;
+  initialVariableNames?: string[];
 }
