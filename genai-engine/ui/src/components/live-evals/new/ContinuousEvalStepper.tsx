@@ -10,6 +10,8 @@ import {
   Button,
   Divider,
   IconButton,
+  List,
+  ListItem,
   Paper,
   Stack,
   Step,
@@ -306,8 +308,12 @@ export const ContinuousEvalStepper = ({
 
   const handleRemoveInlineVariable = (index: number) => {
     onSetInlineVariables(inlineVariables.filter((_, i) => i !== index));
-    if (pickerState && pickerState.variableIndex === index) {
-      onCancelPicking();
+    if (pickerState) {
+      if (pickerState.variableIndex === index) {
+        onCancelPicking();
+      } else if (pickerState.variableIndex > index) {
+        onStartPicking(pickerState.variableIndex - 1, pickerState.variableName);
+      }
     }
   };
 
@@ -485,11 +491,13 @@ const InlineTransformCreator = ({
     <Stack gap={2}>
       {errors.length > 0 && (
         <Alert severity="error">
-          <ul style={{ margin: 0, paddingLeft: 20 }}>
+          <List dense disablePadding sx={{ pl: 2, listStyleType: "disc" }}>
             {errors.map((error, idx) => (
-              <li key={idx}>{error}</li>
+              <ListItem key={idx} disablePadding sx={{ display: "list-item" }}>
+                <Typography variant="body2">{error}</Typography>
+              </ListItem>
             ))}
-          </ul>
+          </List>
         </Alert>
       )}
 

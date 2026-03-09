@@ -1,9 +1,10 @@
 import type { GetSpanDetailsStrategy } from "@arthur/shared-components";
 import CloseIcon from "@mui/icons-material/Close";
 import { Box, Button, Drawer, IconButton, Stack, Tooltip, Typography } from "@mui/material";
+import { CircularProgress } from "@mui/material";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useSnackbar } from "notistack";
-import { useCallback, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { AttributePickerTree } from "@/components/live-evals/new/AttributePickerTree";
@@ -35,7 +36,17 @@ type Props = {
 export const ContinuousEvalDrawer = ({ open, onClose, traceId }: Props) => {
   return (
     <Drawer open={open} onClose={onClose} slotProps={{ paper: { sx: { width: "90%" } } }} anchor="right">
-      {open && <ContinuousEvalDrawerContent traceId={traceId} onClose={onClose} />}
+      {open && (
+        <Suspense
+          fallback={
+            <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
+              <CircularProgress />
+            </Box>
+          }
+        >
+          <ContinuousEvalDrawerContent traceId={traceId} onClose={onClose} />
+        </Suspense>
+      )}
     </Drawer>
   );
 };
