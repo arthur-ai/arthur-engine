@@ -18,10 +18,9 @@ from schemas.internal_schemas import TraceTransform
 from schemas.request_schemas import (
     NewTraceTransformRequest,
     TraceTransformUpdateRequest,
-    TransformDependentRef,
-    TransformDependents,
     TransformListFilterRequest,
 )
+from schemas.response_schemas import TransformDependentRef, TransformDependents
 
 
 class TraceTransformRepository:

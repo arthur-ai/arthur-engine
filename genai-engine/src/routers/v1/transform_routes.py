@@ -27,10 +27,10 @@ from schemas.internal_schemas import Task, User
 from schemas.request_schemas import (
     NewTraceTransformRequest,
     TraceTransformUpdateRequest,
-    TransformDependents,
     TransformListFilterRequest,
 )
 from schemas.response_schemas import (
+    TransformDependents,
     TransformExtractionResponseList,
 )
 from utils.transform_executor import execute_transform

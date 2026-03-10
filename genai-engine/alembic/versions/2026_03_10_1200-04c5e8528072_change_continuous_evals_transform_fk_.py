@@ -1,6 +1,6 @@
 """change continuous_evals transform FK from CASCADE to RESTRICT
 
-Revision ID: a1b2c3d4e5f6
+Revision ID: 04c5e8528072
 Revises: 53f5544bc0b8
 Create Date: 2026-03-10 12:00:00.000000
 
@@ -9,7 +9,7 @@ Create Date: 2026-03-10 12:00:00.000000
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "a1b2c3d4e5f6"
+revision = "04c5e8528072"
 down_revision = "53f5544bc0b8"
 branch_labels = None
 depends_on = None
