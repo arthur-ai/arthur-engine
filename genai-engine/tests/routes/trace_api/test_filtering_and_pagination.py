@@ -581,8 +581,6 @@ def test_annotation_filter_count_matches_traces_with_multiple_annotations(
         assert data.count == len(data.traces)
         assert data.count == 1
     finally:
-        status_code, _ = client.trace_api_delete_annotation_from_trace("api_trace1")
-        assert status_code == 204
         delete_mock_continuous_eval_run_result(result_1["id"])
         delete_mock_continuous_eval_run_result(result_2["id"])
         delete_mock_continuous_eval_run_result(result_3["id"])
