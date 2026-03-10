@@ -157,9 +157,14 @@ def update_transform(
 
 @transform_routes.delete(
     "/traces/transforms/{transform_id}",
-    description="Delete a transform.",
+    description="Delete a transform. Returns 409 if the transform is referenced by continuous evals, agentic experiments, or agentic notebooks.",
     tags=["Transforms"],
     status_code=HTTP_204_NO_CONTENT,
+    responses={
+        409: {
+            "description": "Transform has dependent resources that must be removed first."
+        }
+    },
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def delete_transform(
