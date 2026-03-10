@@ -37,8 +37,7 @@ export function formatTimestampDuration(startTime: string | Date, endTime: strin
     const parseDate = (dateInput: string | Date): Date => {
       if (dateInput instanceof Date) return dateInput;
       const dateString = dateInput;
-      const isoString =
-        dateString.includes("Z") || dateString.match(/[+-]\d{2}:\d{2}$/) ? dateString : dateString.replace(" ", "T") + "Z";
+      const isoString = dateString.includes("Z") || dateString.match(/[+-]\d{2}:\d{2}$/) ? dateString : dateString.replace(" ", "T") + "Z";
       return new Date(isoString);
     };
 
@@ -68,10 +67,4 @@ export function formatTimestampDuration(startTime: string | Date, endTime: strin
   }
 }
 
-export {
-  formatDate,
-  formatUTCTimestamp,
-  formatDuration,
-  capitalize,
-  truncateText,
-} from "@arthur/shared-components";
+export { formatDate, formatUTCTimestamp, formatDuration, capitalize, truncateText } from "@arthur/shared-components";
