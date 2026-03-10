@@ -2266,6 +2266,18 @@ export interface DiscoverAndPollResponse {
 }
 
 /**
+ * DisplaySettingsResponse
+ * Public display settings (e.g. default currency for cost formatting).
+ */
+export interface DisplaySettingsResponse {
+  /**
+   * Default Currency
+   * @default "USD"
+   */
+  default_currency?: string;
+}
+
+/**
  * EnrichedTaskResponse
  * Response model for agent-tasks endpoint with enriched metadata.
  */
@@ -12162,7 +12174,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.437
+ * @version 2.1.445
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
