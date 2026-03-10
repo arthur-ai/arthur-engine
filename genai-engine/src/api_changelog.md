@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 03/10/2026
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the non-success response with the status '409'
+
 # 02/27/2026
 - **CHANGE** for Component/Schema:  removed the schema 'CreationSource'
 - **CHANGE** for Component/Schema:  removed the schema 'DiscoverAgentsRequest'

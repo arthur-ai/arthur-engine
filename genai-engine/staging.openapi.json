@@ -13533,7 +13533,7 @@
                     "Transforms"
                 ],
                 "summary": "Delete Transform",
-                "description": "Delete a transform.",
+                "description": "Delete a transform. Returns 409 if the transform is referenced by continuous evals, agentic experiments, or agentic notebooks.",
                 "operationId": "delete_transform_api_v1_traces_transforms__transform_id__delete",
                 "security": [
                     {
@@ -13557,6 +13557,9 @@
                 "responses": {
                     "204": {
                         "description": "Successful Response"
+                    },
+                    "409": {
+                        "description": "Transform has dependent resources that must be removed first."
                     },
                     "422": {
                         "description": "Validation Error",
