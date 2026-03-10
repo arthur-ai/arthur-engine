@@ -183,8 +183,17 @@ jobs:
             ui:
               - 'genai-engine/ui/**'
             backend:
-              - 'genai-engine/**'
-              - '!genai-engine/ui/**'
+              - 'genai-engine/src/**'
+              - 'genai-engine/tests/**'
+              - 'genai-engine/alembic/**'
+              - 'genai-engine/alembic.ini'
+              - 'genai-engine/pyproject.toml'
+              - 'genai-engine/poetry.lock'
+              - 'genai-engine/examples/**'
+              - 'genai-engine/locust/**'
+              - 'genai-engine/scripts/**'
+              - 'genai-engine/*.py'
+              - 'genai-engine/dockerfile'
 
   run-genai-engine-ui-lint:
     needs: check-genai-engine-changes
