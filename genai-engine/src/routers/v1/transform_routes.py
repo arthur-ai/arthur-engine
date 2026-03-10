@@ -27,6 +27,7 @@ from schemas.internal_schemas import Task, User
 from schemas.request_schemas import (
     NewTraceTransformRequest,
     TraceTransformUpdateRequest,
+    TransformDependents,
     TransformListFilterRequest,
 )
 from schemas.response_schemas import (
@@ -100,6 +101,32 @@ def get_transform(
             )
 
         return trace_transform.to_response_model()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@transform_routes.get(
+    "/traces/transforms/{transform_id}/dependents",
+    description="Get resources that depend on this transform.",
+    response_model=TransformDependents,
+    tags=["Transforms"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def get_transform_dependents(
+    transform_id: UUID = Path(description="ID of the transform."),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> TransformDependents:
+    try:
+        repo = TraceTransformRepository(db_session)
+        if not repo.get_transform_by_id(transform_id):
+            raise HTTPException(
+                status_code=404,
+                detail=f"Transform {transform_id} not found",
+            )
+        return repo.get_transform_dependents(transform_id)
     except HTTPException:
         raise
     except Exception as e:

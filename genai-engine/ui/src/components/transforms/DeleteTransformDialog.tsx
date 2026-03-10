@@ -18,6 +18,7 @@ import { Link } from "react-router-dom";
 import { useTransformDependents } from "./hooks/useTransformDependents";
 
 import { useTask } from "@/hooks/useTask";
+import { TransformDependentRef } from "@/lib/api-client/api-client";
 
 interface DeleteTransformDialogProps {
   transformId: string | null;
@@ -26,10 +27,48 @@ interface DeleteTransformDialogProps {
   isDeleting: boolean;
 }
 
+interface DependentSectionProps {
+  label: string;
+  items: TransformDependentRef[];
+  buildLink: (id: string) => string;
+  onClose: () => void;
+}
+
+const DependentSection: React.FC<DependentSectionProps> = ({ label, items, buildLink, onClose }) => {
+  if (items.length === 0) return null;
+
+  return (
+    <Alert severity="error" sx={{ mb: 2 }}>
+      <Typography variant="body2" sx={{ fontWeight: 500, mb: 1 }}>
+        {label} ({items.length}):
+      </Typography>
+      <List dense disablePadding>
+        {items.map((item) => (
+          <ListItem key={item.id} disableGutters sx={{ py: 0 }}>
+            <ListItemText
+              primary={
+                <MuiLink component={Link} to={buildLink(item.id)} onClick={onClose} variant="body2">
+                  {item.name}
+                </MuiLink>
+              }
+            />
+          </ListItem>
+        ))}
+      </List>
+    </Alert>
+  );
+};
+
 const DeleteTransformDialog: React.FC<DeleteTransformDialogProps> = ({ transformId, onClose, onConfirm, isDeleting }) => {
   const { task } = useTask();
-  const { continuousEvals, isLoading } = useTransformDependents(transformId);
-  const hasDependents = continuousEvals.length > 0;
+  const { dependents, isLoading } = useTransformDependents(transformId);
+
+  const hasDependents =
+    (dependents.continuous_evals?.length ?? 0) > 0 ||
+    (dependents.agentic_experiments?.length ?? 0) > 0 ||
+    (dependents.agentic_notebooks?.length ?? 0) > 0;
+
+  const taskId = task?.id;
 
   return (
     <Dialog open={!!transformId} onClose={onClose} maxWidth="sm" fullWidth>
@@ -59,30 +98,24 @@ const DeleteTransformDialog: React.FC<DeleteTransformDialogProps> = ({ transform
           </Box>
         ) : hasDependents ? (
           <>
-            <Alert severity="error" sx={{ mb: 2 }}>
-              <Typography variant="body2" sx={{ fontWeight: 500, mb: 1 }}>
-                This transform is referenced by the following continuous evals:
-              </Typography>
-              <List dense disablePadding>
-                {continuousEvals.map((eval_) => (
-                  <ListItem key={eval_.id} disableGutters sx={{ py: 0 }}>
-                    <ListItemText
-                      primary={
-                        <MuiLink component={Link} to={`/tasks/${task?.id}/continuous-evals/${eval_.id}`} onClick={onClose} variant="body2">
-                          {eval_.name}
-                        </MuiLink>
-                      }
-                      secondary={`${eval_.llm_eval_name} v${eval_.llm_eval_version}`}
-                      secondaryTypographyProps={{ variant: "caption" }}
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </Alert>
-
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              <Typography variant="body2">Agent experiments and notebooks referencing this transform may also be affected.</Typography>
-            </Alert>
+            <DependentSection
+              label="Continuous Evals"
+              items={dependents.continuous_evals ?? []}
+              buildLink={(id) => `/tasks/${taskId}/continuous-evals/${id}`}
+              onClose={onClose}
+            />
+            <DependentSection
+              label="Agent Experiments"
+              items={dependents.agentic_experiments ?? []}
+              buildLink={(id) => `/tasks/${taskId}/agent-experiments/${id}`}
+              onClose={onClose}
+            />
+            <DependentSection
+              label="Agentic Notebooks"
+              items={dependents.agentic_notebooks ?? []}
+              buildLink={(id) => `/tasks/${taskId}/agentic-notebooks/${id}`}
+              onClose={onClose}
+            />
 
             <Typography variant="body2" color="text.secondary">
               Remove these references before deleting this transform.

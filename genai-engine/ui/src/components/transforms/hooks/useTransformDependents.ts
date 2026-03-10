@@ -1,36 +1,30 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { useApi } from "@/hooks/useApi";
-import { useTask } from "@/hooks/useTask";
-import { ContinuousEvalResponse } from "@/lib/api-client/api-client";
+import { TransformDependents } from "@/lib/api-client/api-client";
 
-const MAX_PAGE_SIZE = 5000;
+const EMPTY_DEPENDENTS: TransformDependents = {
+  continuous_evals: [],
+  agentic_experiments: [],
+  agentic_notebooks: [],
+};
 
 export function useTransformDependents(transformId: string | null) {
   const api = useApi();
-  const { task } = useTask();
-  const taskId = task?.id;
 
   const query = useQuery({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
-    queryKey: ["transformDependents", taskId, transformId],
+    queryKey: ["transformDependents", transformId, api],
     queryFn: async () => {
-      if (!api || !taskId) throw new Error("API or task not available");
+      if (!api) throw new Error("API not available");
 
-      const response = await api.api.listContinuousEvalsApiV1TasksTaskIdContinuousEvalsGet({
-        taskId,
-        page: 0,
-        page_size: MAX_PAGE_SIZE,
-      });
-
-      const allEvals = response.data.evals ?? [];
-      return allEvals.filter((e: ContinuousEvalResponse) => e.transform_id === transformId);
+      const response = await api.api.getTransformDependentsApiV1TracesTransformsTransformIdDependentsGet(transformId!);
+      return response.data;
     },
-    enabled: !!transformId && !!api && !!taskId,
+    enabled: !!transformId && !!api,
   });
 
   return {
-    continuousEvals: query.data ?? [],
+    dependents: query.data ?? EMPTY_DEPENDENTS,
     isLoading: query.isLoading && !!transformId,
     error: query.error,
   };
