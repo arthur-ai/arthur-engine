@@ -2343,6 +2343,8 @@ class TraceQuerySchema(BaseModel):
     query_relevance_filters: Optional[list[FloatRangeFilter]] = None
     response_relevance_filters: Optional[list[FloatRangeFilter]] = None
     trace_duration_filters: Optional[list[FloatRangeFilter]] = None
+    span_count_filters: Optional[list[FloatRangeFilter]] = None
+    total_token_count_filters: Optional[list[FloatRangeFilter]] = None
     user_ids: Optional[list[str]] = Field(
         None,
         description="User IDs to filter on. Optional.",
@@ -2402,6 +2404,8 @@ class TraceQuerySchema(BaseModel):
         query_relevance = resolve_filters("query_relevance")
         response_relevance = resolve_filters("response_relevance")
         trace_duration = resolve_filters("trace_duration")
+        span_count = resolve_filters("span_count")
+        total_token_count = resolve_filters("total_token_count")
 
         return TraceQuerySchema(
             task_ids=request.task_ids,
@@ -2419,6 +2423,8 @@ class TraceQuerySchema(BaseModel):
             query_relevance_filters=query_relevance,
             response_relevance_filters=response_relevance,
             trace_duration_filters=trace_duration,
+            span_count_filters=span_count,
+            total_token_count_filters=total_token_count,
             user_ids=request.user_ids,
             session_ids=request.session_ids,
             span_ids=request.span_ids,

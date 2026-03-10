@@ -247,6 +247,58 @@ def trace_query_parameters(
         ge=0,
         description="Duration less than or equal to this value (seconds).",
     ),
+    # Span count filters (number of spans in a trace)
+    span_count_eq: int = Query(
+        None,
+        ge=1,
+        description="Number of spans exactly equal to this value.",
+    ),
+    span_count_gt: int = Query(
+        None,
+        ge=1,
+        description="Number of spans greater than this value.",
+    ),
+    span_count_gte: int = Query(
+        None,
+        ge=1,
+        description="Number of spans greater than or equal to this value.",
+    ),
+    span_count_lt: int = Query(
+        None,
+        ge=1,
+        description="Number of spans less than this value.",
+    ),
+    span_count_lte: int = Query(
+        None,
+        ge=1,
+        description="Number of spans less than or equal to this value.",
+    ),
+    # Token count filters
+    total_token_count_eq: int = Query(
+        None,
+        ge=1,
+        description="Token count exactly equal to this value.",
+    ),
+    total_token_count_gt: int = Query(
+        None,
+        ge=1,
+        description="Token count greater than this value.",
+    ),
+    total_token_count_gte: int = Query(
+        None,
+        ge=1,
+        description="Token count greater than or equal to this value.",
+    ),
+    total_token_count_lt: int = Query(
+        None,
+        ge=1,
+        description="Token count less than this value.",
+    ),
+    total_token_count_lte: int = Query(
+        None,
+        ge=1,
+        description="Token count less than or equal to this value.",
+    ),
     include_experiment_traces: bool = Query(
         default=True,
         description="Include traces originating from Arthur experiments. Defaults to true.",
@@ -287,6 +339,16 @@ def trace_query_parameters(
         trace_duration_gte=trace_duration_gte,
         trace_duration_lt=trace_duration_lt,
         trace_duration_lte=trace_duration_lte,
+        span_count_eq=span_count_eq,
+        span_count_gt=span_count_gt,
+        span_count_gte=span_count_gte,
+        span_count_lt=span_count_lt,
+        span_count_lte=span_count_lte,
+        total_token_count_eq=total_token_count_eq,
+        total_token_count_gt=total_token_count_gt,
+        total_token_count_gte=total_token_count_gte,
+        total_token_count_lt=total_token_count_lt,
+        total_token_count_lte=total_token_count_lte,
         include_experiment_traces=include_experiment_traces,
     )
 
