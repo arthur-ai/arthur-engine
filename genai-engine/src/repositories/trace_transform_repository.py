@@ -5,11 +5,14 @@ from uuid import UUID
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
 from fastapi import HTTPException
-from sqlalchemy import asc, desc
+from sqlalchemy import String, asc, cast, desc
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from custom_types import QueryT
+from db_models.agentic_experiment_models import DatabaseAgenticExperiment
+from db_models.agentic_notebook_models import DatabaseAgenticNotebook
+from db_models.llm_eval_models import DatabaseContinuousEval
 from db_models.transform_models import DatabaseTraceTransform
 from schemas.internal_schemas import TraceTransform
 from schemas.request_schemas import (
@@ -17,6 +20,7 @@ from schemas.request_schemas import (
     TraceTransformUpdateRequest,
     TransformListFilterRequest,
 )
+from schemas.response_schemas import TransformDependentRef, TransformDependents
 
 
 class TraceTransformRepository:
@@ -165,6 +169,57 @@ class TraceTransformRepository:
 
         return TraceTransform.from_db_model(db_transform)
 
+    def get_transform_dependents(self, transform_id: UUID) -> TransformDependents:
+        continuous_evals = (
+            self.db_session.query(
+                DatabaseContinuousEval.id, DatabaseContinuousEval.name
+            )
+            .filter(DatabaseContinuousEval.transform_id == transform_id)
+            .all()
+        )
+
+        transform_id_str = str(transform_id)
+
+        agentic_experiments = (
+            self.db_session.query(
+                DatabaseAgenticExperiment.id, DatabaseAgenticExperiment.name
+            )
+            .filter(
+                cast(DatabaseAgenticExperiment.eval_configs, String).contains(
+                    transform_id_str
+                )
+            )
+            .all()
+        )
+
+        agentic_notebooks = (
+            self.db_session.query(
+                DatabaseAgenticNotebook.id, DatabaseAgenticNotebook.name
+            )
+            .filter(
+                DatabaseAgenticNotebook.eval_configs.isnot(None),
+                cast(DatabaseAgenticNotebook.eval_configs, String).contains(
+                    transform_id_str
+                ),
+            )
+            .all()
+        )
+
+        return TransformDependents(
+            continuous_evals=[
+                TransformDependentRef(id=str(e.id), name=e.name)
+                for e in continuous_evals
+            ],
+            agentic_experiments=[
+                TransformDependentRef(id=str(e.id), name=e.name)
+                for e in agentic_experiments
+            ],
+            agentic_notebooks=[
+                TransformDependentRef(id=str(e.id), name=e.name)
+                for e in agentic_notebooks
+            ],
+        )
+
     def delete_transform(self, transform_id: UUID) -> None:
         db_transform = self._get_db_transform_by_id(transform_id)
 
@@ -172,6 +227,17 @@ class TraceTransformRepository:
             raise HTTPException(
                 status_code=404,
                 detail=f"Transform {transform_id} not found",
+            )
+
+        dependents = self.get_transform_dependents(transform_id)
+        if dependents.has_dependents:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "Cannot delete transform because it is referenced by other resources. "
+                    "Remove these references first.",
+                    "dependents": dependents.model_dump(),
+                },
             )
 
         self.db_session.delete(db_transform)

@@ -24,6 +24,7 @@ import { NavigateFunction, useNavigate } from "react-router-dom";
 
 import { Annotation, isContinuousEvalAnnotation } from "./schema";
 
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useTask } from "@/hooks/useTask";
 import { formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
@@ -34,6 +35,7 @@ type Props = {
 
 export const AnnotationsTable = ({ annotations }: Props) => {
   const { task } = useTask();
+  const { defaultCurrency } = useDisplaySettings();
   const navigate = useNavigate();
   const container = useRef<HTMLDivElement>(null);
 
@@ -42,9 +44,10 @@ export const AnnotationsTable = ({ annotations }: Props) => {
       createColumns({
         taskId: task!.id,
         container,
+        defaultCurrency,
         onNavigate: navigate,
       }),
-    [task, navigate]
+    [task, defaultCurrency, navigate]
   );
 
   const table = useReactTable({
@@ -86,10 +89,12 @@ const columnHelper = createColumnHelper<Annotation>();
 const createColumns = ({
   taskId,
   container,
+  defaultCurrency,
   onNavigate,
 }: {
   taskId: string;
   container: React.RefObject<HTMLDivElement | null>;
+  defaultCurrency: string;
   onNavigate: NavigateFunction;
 }) => [
   columnHelper.accessor("annotation_type", {
@@ -149,7 +154,7 @@ const createColumns = ({
     cell: ({ row }) => {
       if (!isContinuousEvalAnnotation(row.original)) return;
 
-      return <span className="text-nowrap">{formatCurrency(row.original.cost ?? 0)}</span>;
+      return <span className="text-nowrap">{formatCurrency(row.original.cost ?? 0, defaultCurrency)}</span>;
     },
   }),
   columnHelper.display({

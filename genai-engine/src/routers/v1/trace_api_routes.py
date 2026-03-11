@@ -17,7 +17,7 @@ from google.protobuf.message import DecodeError
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
-from dependencies import get_db_session
+from dependencies import get_application_config, get_db_session
 from repositories.continuous_evals_repository import ContinuousEvalsRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
@@ -26,7 +26,7 @@ from routers.route_handler import GenaiEngineRoute
 from routers.v1.legacy_span_routes import _create_response, trace_query_parameters
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
-from schemas.internal_schemas import User
+from schemas.internal_schemas import ApplicationConfiguration, User
 from schemas.request_schemas import (
     AgenticAnnotationListFilterRequest,
     AgenticAnnotationRequest,
@@ -40,6 +40,10 @@ from schemas.response_schemas import (
     TraceUserMetadataResponse,
     UnregisteredRootSpanGroup,
     UnregisteredRootSpansResponse,
+)
+from utils.currency_display import (
+    apply_currency_to_token_cost_item,
+    get_display_currency,
 )
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
@@ -119,6 +123,7 @@ def list_traces_metadata(
         description="Include flat list of spans for each trace. Defaults to false for performance.",
     ),
     db_session: Session = Depends(get_db_session),
+    application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> TraceListResponse:
     """Get lightweight trace metadata for browsing/filtering operations."""
@@ -131,11 +136,20 @@ def list_traces_metadata(
             include_spans=include_spans,
         )
 
-        traces = [
-            trace_metadata._to_metadata_response_model()
+        requested_currency = get_display_currency(application_config)
+        results = [
+            apply_currency_to_token_cost_item(
+                trace_metadata._to_metadata_response_model(), requested_currency
+            )
             for trace_metadata in trace_metadata_list
         ]
-        return TraceListResponse(count=count, traces=traces)
+        effective_currency = (
+            "USD" if any(eff == "USD" for eff, _ in results) else requested_currency
+        )
+        traces = [item for _, item in results]
+        return TraceListResponse(
+            count=count, display_currency=effective_currency, traces=traces
+        )
     except ValidationError as e:
         logger.error(f"Validation error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -171,6 +185,7 @@ def list_spans_metadata(
         Depends(trace_query_parameters),
     ],
     db_session: Session = Depends(get_db_session),
+    application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> SpanListResponse:
     """Get lightweight span metadata for browsing/filtering operations."""
@@ -187,9 +202,22 @@ def list_spans_metadata(
             filters=trace_query,  # Enables comprehensive filtering
         )
 
-        # Transform to metadata response format
-        metadata_spans = [span._to_metadata_response_model() for span in spans]
-        return SpanListResponse(count=total_count, spans=metadata_spans)
+        requested_currency = get_display_currency(application_config)
+        results = [
+            apply_currency_to_token_cost_item(
+                span._to_metadata_response_model(), requested_currency
+            )
+            for span in spans
+        ]
+        effective_currency = (
+            "USD" if any(eff == "USD" for eff, _ in results) else requested_currency
+        )
+        metadata_spans = [item for _, item in results]
+        return SpanListResponse(
+            count=total_count,
+            display_currency=effective_currency,
+            spans=metadata_spans,
+        )
     except ValidationError as e:
         logger.error(f"Validation error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -372,6 +400,7 @@ def list_sessions_metadata(
         description="Include sessions originating from Arthur experiments. Defaults to false for most uses.",
     ),
     db_session: Session = Depends(get_db_session),
+    application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> SessionListResponse:
     """Get session metadata with pagination and filtering."""
@@ -386,11 +415,20 @@ def list_sessions_metadata(
             include_experiment_sessions=include_experiment_sessions,
         )
 
-        sessions = [
-            session_metadata._to_metadata_response_model()
+        requested_currency = get_display_currency(application_config)
+        results = [
+            apply_currency_to_token_cost_item(
+                session_metadata._to_metadata_response_model(), requested_currency
+            )
             for session_metadata in session_metadata_list
         ]
-        return SessionListResponse(count=count, sessions=sessions)
+        effective_currency = (
+            "USD" if any(eff == "USD" for eff, _ in results) else requested_currency
+        )
+        sessions = [item for _, item in results]
+        return SessionListResponse(
+            count=count, display_currency=effective_currency, sessions=sessions
+        )
     except ValidationError as e:
         logger.error(f"Validation error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -420,6 +458,7 @@ def get_session_traces(
         Depends(common_pagination_parameters),
     ],
     db_session: Session = Depends(get_db_session),
+    application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> SessionTracesResponse:
     """Get all traces in a session with existing metrics (no computation)."""
@@ -436,9 +475,18 @@ def get_session_traces(
                 detail=f"Session {session_id} not found or has no traces",
             )
 
+        requested_currency = get_display_currency(application_config)
+        results = [
+            apply_currency_to_token_cost_item(t, requested_currency) for t in traces
+        ]
+        effective_currency = (
+            "USD" if any(eff == "USD" for eff, _ in results) else requested_currency
+        )
+        traces = [item for _, item in results]
         return SessionTracesResponse(
             session_id=session_id,
             count=count,
+            display_currency=effective_currency,
             traces=traces,
         )
     except HTTPException:
@@ -466,6 +514,7 @@ def compute_session_metrics(
         Depends(common_pagination_parameters),
     ],
     db_session: Session = Depends(get_db_session),
+    application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> SessionTracesResponse:
     """Get all traces in a session and compute missing metrics."""
@@ -482,9 +531,18 @@ def compute_session_metrics(
                 detail=f"Session {session_id} not found or has no traces",
             )
 
+        requested_currency = get_display_currency(application_config)
+        results = [
+            apply_currency_to_token_cost_item(t, requested_currency) for t in traces
+        ]
+        effective_currency = (
+            "USD" if any(eff == "USD" for eff, _ in results) else requested_currency
+        )
+        traces = [item for _, item in results]
         return SessionTracesResponse(
             session_id=session_id,
             count=count,
+            display_currency=effective_currency,
             traces=traces,
         )
     except HTTPException:
@@ -527,6 +585,7 @@ def list_users_metadata(
         description="Exclusive end date in ISO8601 string format. Use local time (not UTC).",
     ),
     db_session: Session = Depends(get_db_session),
+    application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> TraceUserListResponse:
     """Get user metadata with pagination and filtering."""
@@ -539,11 +598,20 @@ def list_users_metadata(
             pagination_parameters=pagination_parameters,
         )
 
-        users = [
-            user_metadata._to_metadata_response_model()
+        requested_currency = get_display_currency(application_config)
+        results = [
+            apply_currency_to_token_cost_item(
+                user_metadata._to_metadata_response_model(), requested_currency
+            )
             for user_metadata in user_metadata_list
         ]
-        return TraceUserListResponse(count=count, users=users)
+        effective_currency = (
+            "USD" if any(eff == "USD" for eff, _ in results) else requested_currency
+        )
+        users = [item for _, item in results]
+        return TraceUserListResponse(
+            count=count, display_currency=effective_currency, users=users
+        )
     except ValidationError as e:
         logger.error(f"Validation error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -574,6 +642,7 @@ def get_user_details(
         min_length=1,
     ),
     db_session: Session = Depends(get_db_session),
+    application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> TraceUserMetadataResponse:
     """Get detailed information for a single user."""
@@ -590,7 +659,11 @@ def get_user_details(
                 detail=f"User {user_id} not found or has no data",
             )
 
-        return user_details._to_metadata_response_model()
+        requested_currency = get_display_currency(application_config)
+        _effective_currency, user_item = apply_currency_to_token_cost_item(
+            user_details._to_metadata_response_model(), requested_currency
+        )
+        return user_item
     except HTTPException:
         raise
     except Exception as e:
