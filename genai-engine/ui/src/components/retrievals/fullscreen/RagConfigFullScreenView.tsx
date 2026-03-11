@@ -21,13 +21,11 @@ const RagConfigFullScreenView = ({ configId, initialVersion, onClose }: RagConfi
 
   const deleteMutation = useDeleteRagVersion();
 
-  // Load the latest version to know the latest version number
   const { data: latestData, refetch: refetchLatest } = useLoadRagConfig(configId);
   const latestVersion = latestData?.config?.latest_version_number ?? null;
 
   const effectiveVersion = selectedVersion ?? latestVersion;
 
-  // Load the effective version's data
   const { data: versionData, isLoading, error, refetch } = useLoadRagConfig(configId, effectiveVersion ?? undefined);
 
   const handleSelectVersion = useCallback(

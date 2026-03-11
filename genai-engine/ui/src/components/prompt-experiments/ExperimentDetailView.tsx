@@ -29,6 +29,7 @@ import { ExperimentResultsTable } from "./ExperimentResultsTable";
 import { PromptVersionDrawer } from "./PromptVersionDrawer";
 
 import { getContentHeight } from "@/constants/layout";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useCreateNotebookMutation, useAttachExperimentToNotebookMutation, useSetNotebookStateMutation } from "@/hooks/useNotebooks";
 import { usePromptExperiment, useCreateExperiment, useDeleteExperiment } from "@/hooks/usePromptExperiments";
 import { formatUTCTimestamp, formatTimestampDuration, formatCurrency } from "@/utils/formatters";
@@ -50,6 +51,7 @@ interface PromptVersionDetails {
 export const ExperimentDetailView: React.FC = () => {
   const { id: taskId, experimentId } = useParams<{ id: string; experimentId: string }>();
   const navigate = useNavigate();
+  const { defaultCurrency } = useDisplaySettings();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -361,7 +363,7 @@ export const ExperimentDetailView: React.FC = () => {
             </Box>
             {experiment.total_cost && (
               <Box>
-                <span className="font-medium">Total Cost:</span> {formatCurrency(parseFloat(experiment.total_cost))}
+                <span className="font-medium">Total Cost:</span> {formatCurrency(parseFloat(experiment.total_cost), defaultCurrency)}
               </Box>
             )}
           </Box>

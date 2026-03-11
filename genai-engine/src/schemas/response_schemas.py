@@ -40,10 +40,17 @@ class DocumentStorageConfigurationResponse(BaseModel):
 
 class ApplicationConfigurationResponse(BaseModel):
     chat_task_id: Optional[str] = None
+    default_currency: Optional[str] = None
     document_storage_configuration: Optional[DocumentStorageConfigurationResponse] = (
         None
     )
     max_llm_rules_per_task_count: int
+
+
+class DisplaySettingsResponse(BaseModel):
+    """Public display settings (e.g. default currency for cost formatting)."""
+
+    default_currency: str = "USD"
 
 
 class ConversationBaseResponse(BaseModel):
@@ -224,6 +231,9 @@ class TraceListResponse(BaseModel):
     """Response for trace list endpoint"""
 
     count: int = Field(description="Total number of traces matching filters")
+    display_currency: Optional[str] = Field(
+        None, description="Currency code for cost fields"
+    )
     traces: list[TraceMetadataResponse] = Field(description="List of trace metadata")
 
 
@@ -249,6 +259,9 @@ class SpanListResponse(BaseModel):
     """Response for span list endpoint"""
 
     count: int = Field(description="Total number of spans matching filters")
+    display_currency: Optional[str] = Field(
+        None, description="Currency code for cost fields"
+    )
     spans: list[SpanMetadataResponse] = Field(description="List of span metadata")
 
 
@@ -256,6 +269,9 @@ class SessionListResponse(BaseModel):
     """Response for session list endpoint"""
 
     count: int = Field(description="Total number of sessions matching filters")
+    display_currency: Optional[str] = Field(
+        None, description="Currency code for cost fields"
+    )
     sessions: list[SessionMetadataResponse] = Field(
         description="List of session metadata",
     )
@@ -266,6 +282,9 @@ class SessionTracesResponse(BaseModel):
 
     session_id: str = Field(description="Session identifier")
     count: int = Field(description="Number of traces in this session")
+    display_currency: Optional[str] = Field(
+        None, description="Currency code for cost fields"
+    )
     traces: list[TraceResponse] = Field(description="List of full trace trees")
 
 
@@ -287,6 +306,9 @@ class TraceUserListResponse(BaseModel):
     """Response for trace user list endpoint"""
 
     count: int = Field(description="Total number of users matching filters")
+    display_currency: Optional[str] = Field(
+        None, description="Currency code for cost fields"
+    )
     users: list[TraceUserMetadataResponse] = Field(description="List of user metadata")
 
 
