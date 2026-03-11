@@ -18,7 +18,7 @@ from arthur_common.models.llm_model_providers import (
 from arthur_common.models.task_eval_schemas import TraceTransformDefinition
 from fastapi import HTTPException, Query
 from litellm.types.llms.anthropic import AnthropicThinkingParam
-from pydantic import BaseModel, Field, PrivateAttr, SecretStr, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, SecretStr, model_validator
 from pydantic_core import Url
 from weaviate.classes.query import BM25Operator
 from weaviate.collections.classes.grpc import (
@@ -804,6 +804,8 @@ class CreateEvalRequest(BaseModel):
 
 
 class CreateAgenticPromptRequest(BaseModel):
+    model_config = ConfigDict(use_enum_values=True)
+
     messages: List[OpenAIMessage] = Field(
         description="List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])",
     )
@@ -821,9 +823,6 @@ class CreateAgenticPromptRequest(BaseModel):
         None,
         description="LLM configurations for this prompt (e.g. temperature, max_tokens, etc.)",
     )
-
-    class Config:
-        use_enum_values = True
 
 
 class BaseCompletionRequest(BaseModel):
