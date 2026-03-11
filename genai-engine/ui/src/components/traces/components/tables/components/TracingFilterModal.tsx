@@ -13,6 +13,12 @@ interface FilterState {
   traceDurationMin: string;
   traceDurationMax: string;
   traceDurationInclusive: boolean;
+  spanCountMin: string;
+  spanCountMax: string;
+  spanCountInclusive: boolean;
+  totalTokenCountMin: string;
+  totalTokenCountMax: string;
+  totalTokenCountInclusive: boolean;
   traceIds: string[];
   sessionIds: string[];
   spanIds: string[];
@@ -28,6 +34,14 @@ interface FilterState {
 interface ValidationErrors {
   traceDurationMin?: string;
   traceDurationMax?: string;
+  spanCountMin?: string;
+  spanCountMax?: string;
+  totalTokenCountMin?: string;
+  totalTokenCountMax?: string;
+}
+
+interface TracingFilterModalProps {
+  mode?: "trace" | "span";
 }
 
 const SPAN_TYPE_OPTIONS = Object.values(OpenInferenceSpanKind);
@@ -38,7 +52,7 @@ const CONTINUOUS_EVAL_RUN_STATUS_OPTIONS = ["pending", "passed", "running", "fai
 const INCLUDE_EXPERIMENT_TRACES_OPTIONS = ["true", "false"];
 
 // Helper function to build filters from form values
-const buildFiltersFromFormValues = (value: FilterState): IncomingFilter[] => {
+const buildFiltersFromFormValues = (value: FilterState, includeSpanCount: boolean): IncomingFilter[] => {
   const filters: IncomingFilter[] = [];
 
   // Span Types
@@ -52,7 +66,6 @@ const buildFiltersFromFormValues = (value: FilterState): IncomingFilter[] => {
 
   // Trace Duration
   if (value.traceDurationMin && value.traceDurationMax && value.traceDurationMin === value.traceDurationMax) {
-    // If min and max are the same, use EQUALS
     filters.push({
       name: "trace_duration",
       operator: Operators.EQUALS,
@@ -71,6 +84,56 @@ const buildFiltersFromFormValues = (value: FilterState): IncomingFilter[] => {
         name: "trace_duration",
         operator: value.traceDurationInclusive ? Operators.LESS_THAN_OR_EQUAL : Operators.LESS_THAN,
         value: value.traceDurationMax,
+      });
+    }
+  }
+
+  // Span Count (trace mode only)
+  if (includeSpanCount) {
+    if (value.spanCountMin && value.spanCountMax && value.spanCountMin === value.spanCountMax) {
+      filters.push({
+        name: "span_count",
+        operator: Operators.EQUALS,
+        value: value.spanCountMin,
+      });
+    } else {
+      if (value.spanCountMin) {
+        filters.push({
+          name: "span_count",
+          operator: value.spanCountInclusive ? Operators.GREATER_THAN_OR_EQUAL : Operators.GREATER_THAN,
+          value: value.spanCountMin,
+        });
+      }
+      if (value.spanCountMax) {
+        filters.push({
+          name: "span_count",
+          operator: value.spanCountInclusive ? Operators.LESS_THAN_OR_EQUAL : Operators.LESS_THAN,
+          value: value.spanCountMax,
+        });
+      }
+    }
+  }
+
+  // Total Token Count
+  if (value.totalTokenCountMin && value.totalTokenCountMax && value.totalTokenCountMin === value.totalTokenCountMax) {
+    filters.push({
+      name: "total_token_count",
+      operator: Operators.EQUALS,
+      value: value.totalTokenCountMin,
+    });
+  } else {
+    if (value.totalTokenCountMin) {
+      filters.push({
+        name: "total_token_count",
+        operator: value.totalTokenCountInclusive ? Operators.GREATER_THAN_OR_EQUAL : Operators.GREATER_THAN,
+        value: value.totalTokenCountMin,
+      });
+    }
+    if (value.totalTokenCountMax) {
+      filters.push({
+        name: "total_token_count",
+        operator: value.totalTokenCountInclusive ? Operators.LESS_THAN_OR_EQUAL : Operators.LESS_THAN,
+        value: value.totalTokenCountMax,
       });
     }
   }
@@ -162,7 +225,7 @@ const buildFiltersFromFormValues = (value: FilterState): IncomingFilter[] => {
   return filters;
 };
 
-export const TracingFilterModal = () => {
+export const TracingFilterModal = ({ mode = "trace" }: TracingFilterModalProps) => {
   const anchorElRef = useRef<HTMLButtonElement | null>(null);
   const [open, setOpen] = useState(false);
   const setFilters = useFilterStore((state) => state.setFilters);
@@ -182,6 +245,12 @@ export const TracingFilterModal = () => {
       traceDurationMin: "",
       traceDurationMax: "",
       traceDurationInclusive: false,
+      spanCountMin: "",
+      spanCountMax: "",
+      spanCountInclusive: false,
+      totalTokenCountMin: "",
+      totalTokenCountMax: "",
+      totalTokenCountInclusive: false,
       traceIds: [] as string[],
       sessionIds: [] as string[],
       spanIds: [] as string[],
@@ -194,7 +263,7 @@ export const TracingFilterModal = () => {
       includeExperimentTraces: null as string | null,
     },
     onSubmit: async ({ value }) => {
-      const filters = buildFiltersFromFormValues(value as FilterState);
+      const filters = buildFiltersFromFormValues(value as FilterState, mode === "trace");
       setPendingFilters(filters);
       handleClose();
     },
@@ -209,6 +278,12 @@ export const TracingFilterModal = () => {
       traceDurationMin: "",
       traceDurationMax: "",
       traceDurationInclusive: false,
+      spanCountMin: "",
+      spanCountMax: "",
+      spanCountInclusive: false,
+      totalTokenCountMin: "",
+      totalTokenCountMax: "",
+      totalTokenCountInclusive: false,
       traceIds: [],
       sessionIds: [],
       spanIds: [],
@@ -236,6 +311,30 @@ export const TracingFilterModal = () => {
           } else if (filter.operator === Operators.EQUALS) {
             newFilterState.traceDurationMin = String(filter.value);
             newFilterState.traceDurationMax = String(filter.value);
+          }
+          break;
+        case "span_count":
+          if (filter.operator === Operators.GREATER_THAN || filter.operator === Operators.GREATER_THAN_OR_EQUAL) {
+            newFilterState.spanCountMin = String(filter.value);
+            newFilterState.spanCountInclusive = filter.operator === Operators.GREATER_THAN_OR_EQUAL;
+          } else if (filter.operator === Operators.LESS_THAN || filter.operator === Operators.LESS_THAN_OR_EQUAL) {
+            newFilterState.spanCountMax = String(filter.value);
+            newFilterState.spanCountInclusive = filter.operator === Operators.LESS_THAN_OR_EQUAL;
+          } else if (filter.operator === Operators.EQUALS) {
+            newFilterState.spanCountMin = String(filter.value);
+            newFilterState.spanCountMax = String(filter.value);
+          }
+          break;
+        case "total_token_count":
+          if (filter.operator === Operators.GREATER_THAN || filter.operator === Operators.GREATER_THAN_OR_EQUAL) {
+            newFilterState.totalTokenCountMin = String(filter.value);
+            newFilterState.totalTokenCountInclusive = filter.operator === Operators.GREATER_THAN_OR_EQUAL;
+          } else if (filter.operator === Operators.LESS_THAN || filter.operator === Operators.LESS_THAN_OR_EQUAL) {
+            newFilterState.totalTokenCountMax = String(filter.value);
+            newFilterState.totalTokenCountInclusive = filter.operator === Operators.LESS_THAN_OR_EQUAL;
+          } else if (filter.operator === Operators.EQUALS) {
+            newFilterState.totalTokenCountMin = String(filter.value);
+            newFilterState.totalTokenCountMax = String(filter.value);
           }
           break;
         case "trace_ids":
@@ -323,6 +422,9 @@ export const TracingFilterModal = () => {
     formState.spanTypes.length > 0 ||
     formState.traceDurationMin !== "" ||
     formState.traceDurationMax !== "" ||
+    (mode === "trace" && (formState.spanCountMin !== "" || formState.spanCountMax !== "")) ||
+    formState.totalTokenCountMin !== "" ||
+    formState.totalTokenCountMax !== "" ||
     formState.traceIds.length > 0 ||
     formState.sessionIds.length > 0 ||
     formState.spanIds.length > 0 ||
@@ -402,13 +504,8 @@ export const TracingFilterModal = () => {
                           value={field.state.value}
                           onChange={(e) => {
                             const val = e.target.value;
-                            // Clear errors when user makes any change
                             setValidationErrors((prev) => ({ ...prev, traceDurationMin: undefined, traceDurationMax: undefined }));
-
-                            if (val === "") {
-                              field.handleChange(val);
-                              return;
-                            }
+                            if (val === "") { field.handleChange(val); return; }
                             const numVal = parseFloat(val);
                             if (numVal < 0) {
                               field.handleChange("0");
@@ -417,20 +514,8 @@ export const TracingFilterModal = () => {
                               field.handleChange(val);
                             }
                           }}
-                          slotProps={{
-                            htmlInput: {
-                              min: 0,
-                              step: 1,
-                              style: { MozAppearance: "textfield" },
-                            },
-                          }}
-                          sx={{
-                            width: 100,
-                            "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": {
-                              WebkitAppearance: "none",
-                              margin: 0,
-                            },
-                          }}
+                          slotProps={{ htmlInput: { min: 0, step: 1, style: { MozAppearance: "textfield" } } }}
+                          sx={{ width: 100, "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": { WebkitAppearance: "none", margin: 0 } }}
                         />
                       )}
                     </form.Field>
@@ -444,13 +529,8 @@ export const TracingFilterModal = () => {
                           onChange={(e) => {
                             const val = e.target.value;
                             const minVal = form.getFieldValue("traceDurationMin");
-                            // Clear errors when user makes any change
                             setValidationErrors((prev) => ({ ...prev, traceDurationMin: undefined, traceDurationMax: undefined }));
-
-                            if (val === "") {
-                              field.handleChange(val);
-                              return;
-                            }
+                            if (val === "") { field.handleChange(val); return; }
                             const numVal = parseFloat(val);
                             if (numVal < 0) {
                               field.handleChange("0");
@@ -462,20 +542,8 @@ export const TracingFilterModal = () => {
                               field.handleChange(val);
                             }
                           }}
-                          slotProps={{
-                            htmlInput: {
-                              min: 0,
-                              step: 1,
-                              style: { MozAppearance: "textfield" },
-                            },
-                          }}
-                          sx={{
-                            width: 100,
-                            "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": {
-                              WebkitAppearance: "none",
-                              margin: 0,
-                            },
-                          }}
+                          slotProps={{ htmlInput: { min: 0, step: 1, style: { MozAppearance: "textfield" } } }}
+                          sx={{ width: 100, "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": { WebkitAppearance: "none", margin: 0 } }}
                         />
                       )}
                     </form.Field>
@@ -492,6 +560,162 @@ export const TracingFilterModal = () => {
                   {(validationErrors.traceDurationMin || validationErrors.traceDurationMax) && (
                     <Typography variant="caption" color="error">
                       {validationErrors.traceDurationMin || validationErrors.traceDurationMax}
+                    </Typography>
+                  )}
+                </Stack>
+              </Box>
+
+              {/* Span Count - trace mode only */}
+              {mode === "trace" && (
+                <Box>
+                  <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                    Span Count
+                  </Typography>
+                  <Stack spacing={1}>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <form.Field name="spanCountMin">
+                        {(field) => (
+                          <TextField
+                            size="small"
+                            type="number"
+                            placeholder="Min"
+                            value={field.state.value}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setValidationErrors((prev) => ({ ...prev, spanCountMin: undefined, spanCountMax: undefined }));
+                              if (val === "") { field.handleChange(val); return; }
+                              const numVal = parseFloat(val);
+                              if (numVal < 1) {
+                                field.handleChange("1");
+                                setValidationErrors((prev) => ({ ...prev, spanCountMin: "Value cannot be less than 1. Reset to 1." }));
+                              } else {
+                                field.handleChange(val);
+                              }
+                            }}
+                            slotProps={{ htmlInput: { min: 1, step: 1, style: { MozAppearance: "textfield" } } }}
+                            sx={{ width: 100, "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": { WebkitAppearance: "none", margin: 0 } }}
+                          />
+                        )}
+                      </form.Field>
+                      <form.Field name="spanCountMax">
+                        {(field) => (
+                          <TextField
+                            size="small"
+                            type="number"
+                            placeholder="Max"
+                            value={field.state.value}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const minVal = form.getFieldValue("spanCountMin");
+                              setValidationErrors((prev) => ({ ...prev, spanCountMin: undefined, spanCountMax: undefined }));
+                              if (val === "") { field.handleChange(val); return; }
+                              const numVal = parseFloat(val);
+                              if (numVal < 1) {
+                                field.handleChange("1");
+                                setValidationErrors((prev) => ({ ...prev, spanCountMax: "Value cannot be less than 1. Reset to 1." }));
+                              } else if (minVal && numVal < parseFloat(minVal)) {
+                                setValidationErrors((prev) => ({ ...prev, spanCountMax: "Max cannot be less than min." }));
+                                field.handleChange(val);
+                              } else {
+                                field.handleChange(val);
+                              }
+                            }}
+                            slotProps={{ htmlInput: { min: 1, step: 1, style: { MozAppearance: "textfield" } } }}
+                            sx={{ width: 100, "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": { WebkitAppearance: "none", margin: 0 } }}
+                          />
+                        )}
+                      </form.Field>
+                      <form.Field name="spanCountInclusive">
+                        {(field) => (
+                          <FormControlLabel
+                            control={<Checkbox checked={field.state.value} onChange={(e) => field.handleChange(e.target.checked)} size="small" />}
+                            label="Inclusive"
+                            sx={{ whiteSpace: "nowrap" }}
+                          />
+                        )}
+                      </form.Field>
+                    </Stack>
+                    {(validationErrors.spanCountMin || validationErrors.spanCountMax) && (
+                      <Typography variant="caption" color="error">
+                        {validationErrors.spanCountMin || validationErrors.spanCountMax}
+                      </Typography>
+                    )}
+                  </Stack>
+                </Box>
+              )}
+
+              {/* Token Count */}
+              <Box>
+                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                  Token Count
+                </Typography>
+                <Stack spacing={1}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <form.Field name="totalTokenCountMin">
+                      {(field) => (
+                        <TextField
+                          size="small"
+                          type="number"
+                          placeholder="Min"
+                          value={field.state.value}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setValidationErrors((prev) => ({ ...prev, totalTokenCountMin: undefined, totalTokenCountMax: undefined }));
+                            if (val === "") { field.handleChange(val); return; }
+                            const numVal = parseFloat(val);
+                            if (numVal < 1) {
+                              field.handleChange("1");
+                              setValidationErrors((prev) => ({ ...prev, totalTokenCountMin: "Value cannot be less than 1. Reset to 1." }));
+                            } else {
+                              field.handleChange(val);
+                            }
+                          }}
+                          slotProps={{ htmlInput: { min: 1, step: 1, style: { MozAppearance: "textfield" } } }}
+                          sx={{ width: 100, "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": { WebkitAppearance: "none", margin: 0 } }}
+                        />
+                      )}
+                    </form.Field>
+                    <form.Field name="totalTokenCountMax">
+                      {(field) => (
+                        <TextField
+                          size="small"
+                          type="number"
+                          placeholder="Max"
+                          value={field.state.value}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const minVal = form.getFieldValue("totalTokenCountMin");
+                            setValidationErrors((prev) => ({ ...prev, totalTokenCountMin: undefined, totalTokenCountMax: undefined }));
+                            if (val === "") { field.handleChange(val); return; }
+                            const numVal = parseFloat(val);
+                            if (numVal < 1) {
+                              field.handleChange("1");
+                              setValidationErrors((prev) => ({ ...prev, totalTokenCountMax: "Value cannot be less than 1. Reset to 1." }));
+                            } else if (minVal && numVal < parseFloat(minVal)) {
+                              setValidationErrors((prev) => ({ ...prev, totalTokenCountMax: "Max cannot be less than min." }));
+                              field.handleChange(val);
+                            } else {
+                              field.handleChange(val);
+                            }
+                          }}
+                          slotProps={{ htmlInput: { min: 1, step: 1, style: { MozAppearance: "textfield" } } }}
+                          sx={{ width: 100, "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": { WebkitAppearance: "none", margin: 0 } }}
+                        />
+                      )}
+                    </form.Field>
+                    <form.Field name="totalTokenCountInclusive">
+                      {(field) => (
+                        <FormControlLabel
+                          control={<Checkbox checked={field.state.value} onChange={(e) => field.handleChange(e.target.checked)} size="small" />}
+                          label="Inclusive"
+                          sx={{ whiteSpace: "nowrap" }}
+                        />
+                      )}
+                    </form.Field>
+                  </Stack>
+                  {(validationErrors.totalTokenCountMin || validationErrors.totalTokenCountMax) && (
+                    <Typography variant="caption" color="error">
+                      {validationErrors.totalTokenCountMin || validationErrors.totalTokenCountMax}
                     </Typography>
                   )}
                 </Stack>
