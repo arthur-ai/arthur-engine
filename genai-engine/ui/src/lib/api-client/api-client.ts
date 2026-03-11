@@ -3894,6 +3894,10 @@ export type GetTransformApiV1TracesTransformsTransformIdGetData = TraceTransform
 
 export type GetTransformApiV1TracesTransformsTransformIdGetError = HTTPValidationError;
 
+export type GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGetData = TransformDependents;
+
+export type GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGetError = HTTPValidationError;
+
 export type GetUnregisteredRootSpansApiV1TracesSpansUnregisteredGetData = UnregisteredRootSpansResponse;
 
 export type GetUnregisteredRootSpansApiV1TracesSpansUnregisteredGetError = HTTPValidationError;
@@ -10776,6 +10780,39 @@ export interface TraceUserMetadataResponse {
   user_id: string;
 }
 
+/** TransformDependentRef */
+export interface TransformDependentRef {
+  /**
+   * Id
+   * ID of the dependent resource.
+   */
+  id: string;
+  /**
+   * Name
+   * Name of the dependent resource.
+   */
+  name: string;
+}
+
+/** TransformDependents */
+export interface TransformDependents {
+  /**
+   * Agentic Experiments
+   * Agentic experiments that reference this transform.
+   */
+  agentic_experiments?: TransformDependentRef[];
+  /**
+   * Agentic Notebooks
+   * Agentic notebooks that reference this transform.
+   */
+  agentic_notebooks?: TransformDependentRef[];
+  /**
+   * Continuous Evals
+   * Continuous evals that reference this transform.
+   */
+  continuous_evals?: TransformDependentRef[];
+}
+
 /** TransformExtractionResponseList */
 export interface TransformExtractionResponseList {
   /**
@@ -13246,7 +13283,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Delete a transform.
+     * @description Delete a transform. Returns 409 if the transform is referenced by continuous evals, agentic experiments, or agentic notebooks.
      *
      * @tags Transforms
      * @name DeleteTransformApiV1TracesTransformsTransformIdDelete
@@ -14612,6 +14649,27 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getTransformApiV1TracesTransformsTransformIdGet: (transformId: string, params: RequestParams = {}) =>
       this.request<GetTransformApiV1TracesTransformsTransformIdGetData, GetTransformApiV1TracesTransformsTransformIdGetError>({
         path: `/api/v1/traces/transforms/${transformId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get resources that depend on this transform.
+     *
+     * @tags Transforms
+     * @name GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGet
+     * @summary Get Transform Dependents
+     * @request GET:/api/v1/traces/transforms/{transform_id}/dependents
+     * @secure
+     */
+    getTransformDependentsApiV1TracesTransformsTransformIdDependentsGet: (transformId: string, params: RequestParams = {}) =>
+      this.request<
+        GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGetData,
+        GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGetError
+      >({
+        path: `/api/v1/traces/transforms/${transformId}/dependents`,
         method: "GET",
         secure: true,
         format: "json",

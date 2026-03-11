@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.450"
+        "version": "2.1.451"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -13555,7 +13555,7 @@
                     "Transforms"
                 ],
                 "summary": "Delete Transform",
-                "description": "Delete a transform.",
+                "description": "Delete a transform. Returns 409 if the transform is referenced by continuous evals, agentic experiments, or agentic notebooks.",
                 "operationId": "delete_transform_api_v1_traces_transforms__transform_id__delete",
                 "security": [
                     {
@@ -13579,6 +13579,60 @@
                 "responses": {
                     "204": {
                         "description": "Successful Response"
+                    },
+                    "409": {
+                        "description": "Transform has dependent resources that must be removed first."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/traces/transforms/{transform_id}/dependents": {
+            "get": {
+                "tags": [
+                    "Transforms"
+                ],
+                "summary": "Get Transform Dependents",
+                "description": "Get resources that depend on this transform.",
+                "operationId": "get_transform_dependents_api_v1_traces_transforms__transform_id__dependents_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "transform_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the transform.",
+                            "title": "Transform Id"
+                        },
+                        "description": "ID of the transform."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TransformDependents"
+                                }
+                            }
+                        }
                     },
                     "422": {
                         "description": "Validation Error",
@@ -29530,6 +29584,56 @@
                 ],
                 "title": "TraceUserMetadataResponse",
                 "description": "User summary metadata in trace context"
+            },
+            "TransformDependentRef": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "ID of the dependent resource."
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the dependent resource."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name"
+                ],
+                "title": "TransformDependentRef"
+            },
+            "TransformDependents": {
+                "properties": {
+                    "continuous_evals": {
+                        "items": {
+                            "$ref": "#/components/schemas/TransformDependentRef"
+                        },
+                        "type": "array",
+                        "title": "Continuous Evals",
+                        "description": "Continuous evals that reference this transform."
+                    },
+                    "agentic_experiments": {
+                        "items": {
+                            "$ref": "#/components/schemas/TransformDependentRef"
+                        },
+                        "type": "array",
+                        "title": "Agentic Experiments",
+                        "description": "Agentic experiments that reference this transform."
+                    },
+                    "agentic_notebooks": {
+                        "items": {
+                            "$ref": "#/components/schemas/TransformDependentRef"
+                        },
+                        "type": "array",
+                        "title": "Agentic Notebooks",
+                        "description": "Agentic notebooks that reference this transform."
+                    }
+                },
+                "type": "object",
+                "title": "TransformDependents"
             },
             "TransformExtractionResponseList": {
                 "properties": {
