@@ -18,7 +18,14 @@ from arthur_common.models.llm_model_providers import (
 from arthur_common.models.task_eval_schemas import TraceTransformDefinition
 from fastapi import HTTPException, Query
 from litellm.types.llms.anthropic import AnthropicThinkingParam
-from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, SecretStr, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    PrivateAttr,
+    SecretStr,
+    model_validator,
+)
 from pydantic_core import Url
 from weaviate.classes.query import BM25Operator
 from weaviate.collections.classes.grpc import (
