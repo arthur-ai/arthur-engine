@@ -505,7 +505,10 @@ export const TracingFilterModal = ({ mode = "trace" }: TracingFilterModalProps) 
                           onChange={(e) => {
                             const val = e.target.value;
                             setValidationErrors((prev) => ({ ...prev, traceDurationMin: undefined, traceDurationMax: undefined }));
-                            if (val === "") { field.handleChange(val); return; }
+                            if (val === "") {
+                              field.handleChange(val);
+                              return;
+                            }
                             const numVal = parseFloat(val);
                             if (numVal < 0) {
                               field.handleChange("0");
@@ -514,8 +517,20 @@ export const TracingFilterModal = ({ mode = "trace" }: TracingFilterModalProps) 
                               field.handleChange(val);
                             }
                           }}
-                          slotProps={{ htmlInput: { min: 0, step: 1, style: { MozAppearance: "textfield" } } }}
-                          sx={{ width: 100, "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": { WebkitAppearance: "none", margin: 0 } }}
+                          slotProps={{
+                            htmlInput: {
+                              min: 0,
+                              step: 1,
+                              style: { MozAppearance: "textfield" },
+                            },
+                          }}
+                          sx={{
+                            width: 100,
+                            "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": {
+                              WebkitAppearance: "none",
+                              margin: 0,
+                            },
+                          }}
                         />
                       )}
                     </form.Field>
@@ -530,7 +545,10 @@ export const TracingFilterModal = ({ mode = "trace" }: TracingFilterModalProps) 
                             const val = e.target.value;
                             const minVal = form.getFieldValue("traceDurationMin");
                             setValidationErrors((prev) => ({ ...prev, traceDurationMin: undefined, traceDurationMax: undefined }));
-                            if (val === "") { field.handleChange(val); return; }
+                            if (val === "") {
+                              field.handleChange(val);
+                              return;
+                            }
                             const numVal = parseFloat(val);
                             if (numVal < 0) {
                               field.handleChange("0");
@@ -542,8 +560,20 @@ export const TracingFilterModal = ({ mode = "trace" }: TracingFilterModalProps) 
                               field.handleChange(val);
                             }
                           }}
-                          slotProps={{ htmlInput: { min: 0, step: 1, style: { MozAppearance: "textfield" } } }}
-                          sx={{ width: 100, "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": { WebkitAppearance: "none", margin: 0 } }}
+                          slotProps={{
+                            htmlInput: {
+                              min: 0,
+                              step: 1,
+                              style: { MozAppearance: "textfield" },
+                            },
+                          }}
+                          sx={{
+                            width: 100,
+                            "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": {
+                              WebkitAppearance: "none",
+                              margin: 0,
+                            },
+                          }}
                         />
                       )}
                     </form.Field>
@@ -583,7 +613,10 @@ export const TracingFilterModal = ({ mode = "trace" }: TracingFilterModalProps) 
                             onChange={(e) => {
                               const val = e.target.value;
                               setValidationErrors((prev) => ({ ...prev, spanCountMin: undefined, spanCountMax: undefined }));
-                              if (val === "") { field.handleChange(val); return; }
+                              if (val === "") {
+                                field.handleChange(val);
+                                return;
+                              }
                               const numVal = parseFloat(val);
                               if (numVal < 1) {
                                 field.handleChange("1");
@@ -592,8 +625,20 @@ export const TracingFilterModal = ({ mode = "trace" }: TracingFilterModalProps) 
                                 field.handleChange(val);
                               }
                             }}
-                            slotProps={{ htmlInput: { min: 1, step: 1, style: { MozAppearance: "textfield" } } }}
-                            sx={{ width: 100, "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": { WebkitAppearance: "none", margin: 0 } }}
+                            slotProps={{
+                              htmlInput: {
+                                min: 1,
+                                step: 1,
+                                style: { MozAppearance: "textfield" },
+                              },
+                            }}
+                            sx={{
+                              width: 100,
+                              "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": {
+                                WebkitAppearance: "none",
+                                margin: 0,
+                              },
+                            }}
                           />
                         )}
                       </form.Field>
@@ -608,7 +653,10 @@ export const TracingFilterModal = ({ mode = "trace" }: TracingFilterModalProps) 
                               const val = e.target.value;
                               const minVal = form.getFieldValue("spanCountMin");
                               setValidationErrors((prev) => ({ ...prev, spanCountMin: undefined, spanCountMax: undefined }));
-                              if (val === "") { field.handleChange(val); return; }
+                              if (val === "") {
+                                field.handleChange(val);
+                                return;
+                              }
                               const numVal = parseFloat(val);
                               if (numVal < 1) {
                                 field.handleChange("1");
@@ -620,8 +668,20 @@ export const TracingFilterModal = ({ mode = "trace" }: TracingFilterModalProps) 
                                 field.handleChange(val);
                               }
                             }}
-                            slotProps={{ htmlInput: { min: 1, step: 1, style: { MozAppearance: "textfield" } } }}
-                            sx={{ width: 100, "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": { WebkitAppearance: "none", margin: 0 } }}
+                            slotProps={{
+                              htmlInput: {
+                                min: 1,
+                                step: 1,
+                                style: { MozAppearance: "textfield" },
+                              },
+                            }}
+                            sx={{
+                              width: 100,
+                              "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": {
+                                WebkitAppearance: "none",
+                                margin: 0,
+                              },
+                            }}
                           />
                         )}
                       </form.Field>
@@ -661,7 +721,10 @@ export const TracingFilterModal = ({ mode = "trace" }: TracingFilterModalProps) 
                           onChange={(e) => {
                             const val = e.target.value;
                             setValidationErrors((prev) => ({ ...prev, totalTokenCountMin: undefined, totalTokenCountMax: undefined }));
-                            if (val === "") { field.handleChange(val); return; }
+                            if (val === "") {
+                              field.handleChange(val);
+                              return;
+                            }
                             const numVal = parseFloat(val);
                             if (numVal < 1) {
                               field.handleChange("1");
@@ -670,8 +733,20 @@ export const TracingFilterModal = ({ mode = "trace" }: TracingFilterModalProps) 
                               field.handleChange(val);
                             }
                           }}
-                          slotProps={{ htmlInput: { min: 1, step: 1, style: { MozAppearance: "textfield" } } }}
-                          sx={{ width: 100, "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": { WebkitAppearance: "none", margin: 0 } }}
+                          slotProps={{
+                            htmlInput: {
+                              min: 1,
+                              step: 1,
+                              style: { MozAppearance: "textfield" },
+                            },
+                          }}
+                          sx={{
+                            width: 100,
+                            "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": {
+                              WebkitAppearance: "none",
+                              margin: 0,
+                            },
+                          }}
                         />
                       )}
                     </form.Field>
@@ -686,7 +761,10 @@ export const TracingFilterModal = ({ mode = "trace" }: TracingFilterModalProps) 
                             const val = e.target.value;
                             const minVal = form.getFieldValue("totalTokenCountMin");
                             setValidationErrors((prev) => ({ ...prev, totalTokenCountMin: undefined, totalTokenCountMax: undefined }));
-                            if (val === "") { field.handleChange(val); return; }
+                            if (val === "") {
+                              field.handleChange(val);
+                              return;
+                            }
                             const numVal = parseFloat(val);
                             if (numVal < 1) {
                               field.handleChange("1");
@@ -698,8 +776,20 @@ export const TracingFilterModal = ({ mode = "trace" }: TracingFilterModalProps) 
                               field.handleChange(val);
                             }
                           }}
-                          slotProps={{ htmlInput: { min: 1, step: 1, style: { MozAppearance: "textfield" } } }}
-                          sx={{ width: 100, "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": { WebkitAppearance: "none", margin: 0 } }}
+                          slotProps={{
+                            htmlInput: {
+                              min: 1,
+                              step: 1,
+                              style: { MozAppearance: "textfield" },
+                            },
+                          }}
+                          sx={{
+                            width: 100,
+                            "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button": {
+                              WebkitAppearance: "none",
+                              margin: 0,
+                            },
+                          }}
                         />
                       )}
                     </form.Field>

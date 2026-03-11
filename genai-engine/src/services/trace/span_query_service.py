@@ -723,7 +723,6 @@ class SpanQueryService:
             or filters.end_time
             or filters.trace_duration_filters
             or filters.span_count_filters
-            or filters.total_token_count_filters
             or filters.annotation_score is not None
             or filters.annotation_type is not None
             or filters.continuous_eval_run_status is not None
@@ -767,16 +766,6 @@ class SpanQueryService:
                 conditions.append(
                     self.filter_service.build_comparison_condition(
                         DatabaseTraceMetadata.span_count,
-                        filter_item,
-                    ),
-                )
-
-        # Token count filters (trace-level total)
-        if filters.total_token_count_filters:
-            for filter_item in filters.total_token_count_filters:
-                conditions.append(
-                    self.filter_service.build_comparison_condition(
-                        DatabaseTraceMetadata.total_token_count,
                         filter_item,
                     ),
                 )
