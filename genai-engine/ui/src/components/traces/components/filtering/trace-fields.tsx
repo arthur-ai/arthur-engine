@@ -36,20 +36,6 @@ export const TRACE_FIELDS = [
     max: Infinity,
   }),
   createPrimitiveField({
-    name: "span_count",
-    type: "numeric",
-    operators: [...Object.values(ComparisonOperators)],
-    min: 1,
-    max: Infinity,
-  }),
-  createPrimitiveField({
-    name: "total_token_count",
-    type: "numeric",
-    operators: [...Object.values(ComparisonOperators)],
-    min: 1,
-    max: Infinity,
-  }),
-  createPrimitiveField({
     name: "tool_selection",
     type: "enum",
     operators: [EnumOperators.EQUALS],
