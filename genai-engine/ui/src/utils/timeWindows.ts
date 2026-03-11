@@ -77,7 +77,7 @@ function getStartOfYear(now: Date): Date {
  * // { start: 2026-02-06T00:00:00, end: 2026-02-06T17:30:00, bucketSize: "hour", ... }
  * ```
  */
-export function getTimeWindowAndBucketing(interval: TimeInterval, now: Date = new Date(), _config: TimeWindowConfig = {}): TimeWindow {
+export function getTimeWindowAndBucketing(interval: TimeInterval, now: Date = new Date(), config: TimeWindowConfig = {}): TimeWindow {
   switch (interval) {
     case "day": {
       // From midnight to now

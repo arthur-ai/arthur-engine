@@ -16,16 +16,17 @@ import {
   Typography,
 } from "@mui/material";
 import { MaterialReactTable, useMaterialReactTable } from "material-react-table";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import z from "zod";
 
-import { columns } from "./data/columns";
+import { createColumns } from "./data/columns";
 import { useAgentNotebooks } from "./hooks/useAgentNotebooks";
 import { useCreateAgenticNotebook } from "./hooks/useCreateAgenticNotebook";
 import { useDeleteAgenticNotebook } from "./hooks/useDeleteAgenticNotebook";
 
 import { getContentHeight } from "@/constants/layout";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { AgenticNotebookSummary } from "@/lib/api-client/api-client";
 import { EVENT_NAMES, track } from "@/services/amplitude";
@@ -43,6 +44,8 @@ export const AgentNotebook = ({ embedded = false, isCreateModalOpen, onCreateMod
   const { id: taskId } = useParams<{ id: string }>();
   const { pagination, props } = useMRTPagination();
   const navigate = useNavigate();
+  const { timezone } = useDisplaySettings();
+  const columns = useMemo(() => createColumns(timezone), [timezone]);
 
   const form = useAppForm({
     defaultValues: {

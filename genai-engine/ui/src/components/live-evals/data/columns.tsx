@@ -6,11 +6,11 @@ import { LiveEvalActions } from "../components/actions";
 
 import { CopyableChip } from "@/components/common";
 import type { ContinuousEvalResponse } from "@/lib/api-client/api-client";
-import { formatDate } from "@/utils/formatters";
+import { formatDateInTimezone } from "@/utils/formatters";
 
 const columnHelper = createColumnHelper<ContinuousEvalResponse>();
 
-export const createColumns = ({ onEdit }: { onEdit: (id: string) => void }) => {
+export const createColumns = ({ onEdit, timezone }: { onEdit: (id: string) => void; timezone: string }) => {
   const columns = [
     columnHelper.accessor("name", {
       header: "Name",
@@ -67,12 +67,12 @@ export const createColumns = ({ onEdit }: { onEdit: (id: string) => void }) => {
     columnHelper.accessor("created_at", {
       header: "Created At",
       sortingFn: "datetime",
-      cell: ({ getValue }) => formatDate(getValue()),
+      cell: ({ getValue }) => formatDateInTimezone(getValue(), timezone),
     }),
     columnHelper.accessor("updated_at", {
       header: "Updated At",
       sortingFn: "datetime",
-      cell: ({ getValue }) => formatDate(getValue()),
+      cell: ({ getValue }) => formatDateInTimezone(getValue(), timezone),
     }),
     columnHelper.accessor("id", {
       header: "ID",

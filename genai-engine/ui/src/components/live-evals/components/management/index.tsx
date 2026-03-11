@@ -29,6 +29,7 @@ import { EditFormDialog } from "../edit-form";
 import { FilterModal } from "./components/FilterModal";
 
 import { useFilterStore } from "@/components/traces/stores/filter.store";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { usePagination } from "@/hooks/usePagination";
 import { useTask } from "@/hooks/useTask";
@@ -36,6 +37,7 @@ import { useTask } from "@/hooks/useTask";
 export const Management = () => {
   const { task } = useTask();
   const api = useApi()!;
+  const { timezone } = useDisplaySettings();
 
   const [searchInput, setSearchInput] = useState("");
   const filters = useFilterStore((state) => state.filters);
@@ -78,8 +80,9 @@ export const Management = () => {
       () =>
         createColumns({
           onEdit: (id) => setContinuousEvalId(id),
+          timezone,
         }),
-      [setContinuousEvalId]
+      [setContinuousEvalId, timezone]
     ),
     getCoreRowModel: getCoreRowModel(),
     state: {

@@ -11,7 +11,8 @@ import { useMetaStore } from "../../store/meta.store";
 import { SubmitButton } from "../submit-button";
 
 import { AgenticNotebookDetail } from "@/lib/api-client/api-client";
-import { formatDate } from "@/utils/formatters";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { formatDateInTimezone } from "@/utils/formatters";
 
 type Props = {
   notebook: AgenticNotebookDetail;
@@ -25,6 +26,7 @@ export const Header = withForm({
   props: {} as Props,
   render: function Render({ form, notebook, onLoadConfig, onSave, isSaving }) {
     const edited = useMetaStore((state) => state.edited);
+    const { timezone } = useDisplaySettings();
 
     return (
       <Box
@@ -74,10 +76,10 @@ export const Header = withForm({
               </Typography>
               <Stack direction="row" gap={2}>
                 <Typography variant="body2" color="text.secondary">
-                  <span className="font-bold">Created:</span> {formatDate(notebook?.created_at)}
+                  <span className="font-bold">Created:</span> {formatDateInTimezone(notebook?.created_at, timezone)}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  <span className="font-bold">Updated:</span> {formatDate(notebook.updated_at)}
+                  <span className="font-bold">Updated:</span> {formatDateInTimezone(notebook.updated_at, timezone)}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   <span className="font-bold">Runs:</span>{" "}

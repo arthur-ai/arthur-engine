@@ -23,7 +23,8 @@ import { RagConfigEditModal } from "./RagConfigEditModal";
 
 import { useUpdateVersionTags } from "@/hooks/rag-search-settings/useUpdateVersionTags";
 import type { RagProviderCollectionResponse, RagSearchSettingConfigurationResponse } from "@/lib/api-client/api-client";
-import { formatDate } from "@/utils/formatters";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { formatDateInTimezone } from "@/utils/formatters";
 
 interface RagConfigDetailViewProps {
   config: RagSearchSettingConfigurationResponse | null;
@@ -61,6 +62,7 @@ const RagConfigDetailView = ({
   const [tagError, setTagError] = useState("");
   const [editModalKey, setEditModalKey] = useState(0);
   const isEditModalOpen = editModalKey > 0;
+  const { timezone } = useDisplaySettings();
 
   const updateTagsMutation = useUpdateVersionTags();
 
@@ -219,7 +221,7 @@ const RagConfigDetailView = ({
                 Created:
               </Typography>
               <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {formatDate(new Date(config.created_at).toISOString())}
+                {formatDateInTimezone(config.created_at, timezone)}
               </Typography>
             </Box>
           </Box>

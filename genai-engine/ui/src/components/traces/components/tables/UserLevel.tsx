@@ -15,6 +15,7 @@ import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useFilterStore } from "../../stores/filter.store";
 import { DataContentGate } from "../DataContentGate";
 
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
@@ -23,7 +24,7 @@ import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { EVENT_NAMES, track } from "@/services/amplitude";
 import { getUsers } from "@/services/tracing";
-import { formatDate } from "@/utils/formatters";
+import { formatDateInTimezone } from "@/utils/formatters";
 
 interface UserLevelProps {
   welcomeDismissed: boolean;
@@ -35,6 +36,7 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
   const api = useApi()!;
   const { task } = useTask();
   const [, setDrawerTarget] = useDrawerTarget();
+  const { timezone } = useDisplaySettings();
 
   const timeRange = useFilterStore((state) => state.timeRange);
 
@@ -78,7 +80,7 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
 
   const columns = useMemo(() => {
     const deps: SharedColumnDependencies = {
-      formatDate,
+      formatDate: (v) => formatDateInTimezone(v, timezone),
       formatCurrency: () => "",
       onTrack: track,
       Chip: SharedCopyableChip,
@@ -91,7 +93,7 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
       TokenCostTooltip,
     };
     return createUserLevelColumns(deps) as MRT_ColumnDef<TraceUserMetadataResponse, unknown>[];
-  }, []);
+  }, [timezone]);
 
   if (error) {
     return (

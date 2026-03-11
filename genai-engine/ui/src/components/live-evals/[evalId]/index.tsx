@@ -42,7 +42,7 @@ import { useTransform } from "@/hooks/transforms/useTransform";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { AgenticAnnotationResponse, ContinuousEvalRunStatus } from "@/lib/api-client/api-client";
-import { formatDate } from "@/utils/formatters";
+import { formatDateInTimezone } from "@/utils/formatters";
 
 const DEFAULT_DATA: AgenticAnnotationResponse[] = [];
 
@@ -60,7 +60,7 @@ export const LiveEvalDetail = () => {
   const { evalId } = useParams<{ evalId: string }>();
 
   const { task } = useTask();
-  const { defaultCurrency } = useDisplaySettings();
+  const { defaultCurrency, timezone } = useDisplaySettings();
   const api = useApi()!;
 
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
@@ -95,7 +95,10 @@ export const LiveEvalDetail = () => {
   const transform = useTransform(liveEval?.transform_id);
   const hasVariableMappings = liveEval?.transform_variable_mapping && liveEval.transform_variable_mapping.length > 0;
 
-  const columns = useMemo(() => createColumns({ taskId: task?.id ?? "", defaultCurrency }), [task?.id, defaultCurrency]);
+  const columns = useMemo(
+    () => createColumns({ taskId: task?.id ?? "", defaultCurrency, timezone }),
+    [task?.id, defaultCurrency, timezone]
+  );
 
   const table = useMaterialReactTable({
     columns,
@@ -162,7 +165,7 @@ export const LiveEvalDetail = () => {
             <Stack direction="row" gap={2} alignItems="center">
               <CopyableChip label={evalId ?? liveEval.id} sx={{ fontFamily: "monospace", fontSize: "0.75rem" }} />
               <Typography variant="body2" color="text.secondary">
-                Created {formatDate(liveEval.created_at)}
+                Created {formatDateInTimezone(liveEval.created_at, timezone)}
               </Typography>
             </Stack>
           </Stack>

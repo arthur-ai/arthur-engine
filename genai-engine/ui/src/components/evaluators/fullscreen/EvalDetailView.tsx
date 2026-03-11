@@ -30,7 +30,8 @@ import type { EvalDetailViewProps } from "../types";
 import ImpactedCEsDialog from "./ImpactedCEsDialog";
 
 import type { ContinuousEvalResponse, CreateEvalRequest } from "@/lib/api-client/api-client";
-import { formatDate } from "@/utils/formatters";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { formatDateInTimezone } from "@/utils/formatters";
 
 const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestVersion, taskId, onClose, onRefetch }: EvalDetailViewProps) => {
   const [tagAnchorEl, setTagAnchorEl] = useState<HTMLButtonElement | null>(null);
@@ -46,6 +47,7 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
   const deleteTagMutation = useDeleteTagFromEvalVersionMutation();
   const createEvalMutation = useCreateEvalMutation(taskId);
   const { fetchImpactedCEs } = useImpactedContinuousEvals(taskId);
+  const { timezone } = useDisplaySettings();
 
   const handleAddTagClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
     setTagAnchorEl(event.currentTarget);
@@ -235,7 +237,7 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
                 Created:
               </Typography>
               <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {evalData.created_at ? formatDate(evalData.created_at) : "N/A"}
+                {evalData.created_at ? formatDateInTimezone(evalData.created_at, timezone) : "N/A"}
               </Typography>
             </Box>
             {evalData.deleted_at && (
@@ -244,7 +246,7 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
                   Deleted:
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 500, color: "error.main" }}>
-                  {formatDate(evalData.deleted_at)}
+                  {formatDateInTimezone(evalData.deleted_at, timezone)}
                 </Typography>
               </Box>
             )}

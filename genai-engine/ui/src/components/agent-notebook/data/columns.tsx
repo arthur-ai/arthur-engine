@@ -4,11 +4,11 @@ import { createMRTColumnHelper } from "material-react-table";
 import { StatusBadge } from "@/components/agent-experiments/components/status-badge";
 import { CopyableChip } from "@/components/common";
 import { AgenticNotebookSummary } from "@/lib/api-client/api-client";
-import { formatDate } from "@/utils/formatters";
+import { formatDateInTimezone } from "@/utils/formatters";
 
 const columnHelper = createMRTColumnHelper<AgenticNotebookSummary>();
 
-export const columns = [
+export const createColumns = (timezone: string) => [
   columnHelper.accessor("name", {
     header: "Name",
   }),
@@ -30,14 +30,14 @@ export const columns = [
     header: "Created At",
     Cell: ({ cell }) => {
       const value = cell.getValue() as string;
-      return <Typography variant="body2">{formatDate(value)}</Typography>;
+      return <Typography variant="body2">{formatDateInTimezone(value, timezone)}</Typography>;
     },
   }),
   columnHelper.accessor("updated_at", {
     header: "Updated At",
     Cell: ({ cell }) => {
       const value = cell.getValue() as string;
-      return <Typography variant="body2">{formatDate(value)}</Typography>;
+      return <Typography variant="body2">{formatDateInTimezone(value, timezone)}</Typography>;
     },
   }),
 

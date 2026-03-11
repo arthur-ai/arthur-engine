@@ -67,4 +67,40 @@ export function formatTimestampDuration(startTime: string | Date, endTime: strin
   }
 }
 
+/**
+ * Normalize various date inputs to a Date instance.
+ */
+function toDate(value: string | number | Date | null | undefined): Date | null {
+  if (value == null) return null;
+  if (value instanceof Date) return value;
+  if (typeof value === "number") return new Date(value);
+  const str = String(value);
+  const isoString = str.includes("Z") || str.match(/[+-]\d{2}:\d{2}$/) ? str : str.replace(" ", "T") + "Z";
+  const date = new Date(isoString);
+  return isNaN(date.getTime()) ? null : date;
+}
+
+/**
+ * Format a date/time for display in a specific IANA timezone.
+ * Use this for all user-visible timestamps so they respect the selected timezone.
+ */
+export function formatDateInTimezone(value: string | number | Date | null | undefined, timezone: string): string {
+  const date = toDate(value);
+  if (!date) return "";
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+      timeZone: timezone,
+    }).format(date);
+  } catch {
+    return "";
+  }
+}
+
 export { formatDate, formatUTCTimestamp, formatDuration, capitalize, truncateText } from "@arthur/shared-components";

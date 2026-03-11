@@ -19,7 +19,8 @@ import Typography from "@mui/material/Typography";
 import { useMemo, useState, useCallback } from "react";
 
 import { useRagConfigVersions } from "@/hooks/rag-search-settings/useRagConfigVersions";
-import { formatDate } from "@/utils/formatters";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { formatDateInTimezone } from "@/utils/formatters";
 
 interface RagConfigVersionDrawerProps {
   open: boolean;
@@ -47,6 +48,7 @@ const RagConfigVersionDrawer = ({
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [versionToDelete, setVersionToDelete] = useState<number | null>(null);
+  const { timezone } = useDisplaySettings();
 
   const { data, isLoading, error } = useRagConfigVersions(configId, {
     sort: sortOrder,
@@ -230,7 +232,7 @@ const RagConfigVersionDrawer = ({
                               color: isDeleted ? "text.disabled" : "text.secondary",
                             }}
                           >
-                            {formatDate(new Date(version.created_at).toISOString())}
+                            {formatDateInTimezone(version.created_at, timezone)}
                           </Typography>
                           {isDeleted && version.deleted_at && (
                             <Typography
@@ -242,7 +244,7 @@ const RagConfigVersionDrawer = ({
                                 color: "text.disabled",
                               }}
                             >
-                              Deleted at: {formatDate(new Date(version.deleted_at).toISOString())}
+                              Deleted at: {formatDateInTimezone(version.deleted_at, timezone)}
                             </Typography>
                           )}
                         </Box>

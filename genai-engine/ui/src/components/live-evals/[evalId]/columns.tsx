@@ -6,12 +6,20 @@ import { Link } from "react-router-dom";
 import { CopyableChip } from "@/components/common";
 import { serializeDrawerTarget } from "@/components/traces/hooks/useDrawerTarget";
 import { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
-import { formatCurrency, formatDate } from "@/utils/formatters";
+import { formatCurrency, formatDateInTimezone } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 const columnHelper = createMRTColumnHelper<AgenticAnnotationResponse>();
 
-export const createColumns = ({ taskId, defaultCurrency }: { taskId: string; defaultCurrency: string }) => [
+export const createColumns = ({
+  taskId,
+  defaultCurrency,
+  timezone,
+}: {
+  taskId: string;
+  defaultCurrency: string;
+  timezone: string;
+}) => [
   columnHelper.accessor("trace_id", {
     header: "Trace ID",
     Cell: ({ cell }) => <CopyableChip label={cell.getValue()} sx={{ fontFamily: "monospace", fontSize: "0.75rem" }} />,
@@ -45,7 +53,7 @@ export const createColumns = ({ taskId, defaultCurrency }: { taskId: string; def
     header: "Created",
     Cell: ({ cell }) => (
       <Typography variant="body2" color="text.secondary">
-        {formatDate(cell.getValue())}
+        {formatDateInTimezone(cell.getValue(), timezone)}
       </Typography>
     ),
   }),

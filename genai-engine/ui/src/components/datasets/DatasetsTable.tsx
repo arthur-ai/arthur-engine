@@ -22,9 +22,11 @@ import {
 } from "@mui/material";
 import React, { useCallback, useState } from "react";
 
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import type { DatasetResponse } from "@/lib/api-client/api-client";
 import { EVENT_NAMES, track } from "@/services/amplitude";
 import type { SortOrder } from "@/types/dataset";
+import { formatDateInTimezone } from "@/utils/formatters";
 
 interface DatasetsTableProps {
   datasets: DatasetResponse[];
@@ -39,22 +41,7 @@ export const DatasetsTable: React.FC<DatasetsTableProps> = ({ datasets, sortOrde
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [datasetToDelete, setDatasetToDelete] = useState<DatasetResponse | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  const formatDate = useCallback((timestamp: number): string => {
-    try {
-      const date = new Date(timestamp);
-      return date.toLocaleString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      });
-    } catch {
-      return String(timestamp);
-    }
-  }, []);
+  const { timezone } = useDisplaySettings();
 
   const handleDeleteClick = useCallback((e: React.MouseEvent, dataset: DatasetResponse) => {
     e.stopPropagation();
@@ -154,8 +141,8 @@ export const DatasetsTable: React.FC<DatasetsTableProps> = ({ datasets, sortOrde
                     </Box>
                   )}
                 </TableCell>
-                <TableCell>{formatDate(dataset.updated_at)}</TableCell>
-                <TableCell>{formatDate(dataset.created_at)}</TableCell>
+                <TableCell>{formatDateInTimezone(dataset.updated_at, timezone)}</TableCell>
+                <TableCell>{formatDateInTimezone(dataset.created_at, timezone)}</TableCell>
                 <TableCell align="center">
                   <Box sx={{ display: "flex", gap: 0.5, justifyContent: "center" }}>
                     {onEdit && (

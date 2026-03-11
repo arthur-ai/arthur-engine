@@ -21,7 +21,8 @@ import { useMemo, useState, useCallback, useEffect } from "react";
 import { useEvalVersions } from "../hooks/useEvalVersions";
 import type { EvalVersionDrawerProps } from "../types";
 
-import { formatDate } from "@/utils/formatters";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { formatDateInTimezone } from "@/utils/formatters";
 
 const EvalVersionDrawer = ({
   open,
@@ -39,6 +40,7 @@ const EvalVersionDrawer = ({
   const [versionToDelete, setVersionToDelete] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const { timezone } = useDisplaySettings();
   const { versions, isLoading, error, refetch } = useEvalVersions(taskId, evalName, {
     sort: sortOrder,
     exclude_deleted: false,
@@ -244,7 +246,7 @@ const EvalVersionDrawer = ({
                               color: isDeleted ? "text.disabled" : "text.secondary",
                             }}
                           >
-                            {formatDate(version.created_at)}
+                            {formatDateInTimezone(version.created_at, timezone)}
                           </Typography>
                           {isDeleted && version.deleted_at && (
                             <Typography
@@ -256,7 +258,7 @@ const EvalVersionDrawer = ({
                                 color: "text.disabled",
                               }}
                             >
-                              Deleted at: {formatDate(version.deleted_at)}
+                              Deleted at: {formatDateInTimezone(version.deleted_at, timezone)}
                             </Typography>
                           )}
                         </Box>
