@@ -32,12 +32,10 @@ export const ToolsTab = ({ span }: Props) => {
     return (
       <TracesEmptyState title="No tools found">
         <Typography variant="body2" color="text.secondary" textAlign="center">
-          The LLM didn&apos;t have any tools available, or the tracing instrumentation is not
-          capturing the tools the LLM has access to.
+          The LLM didn&apos;t have any tools available, or the tracing instrumentation is not capturing the tools the LLM has access to.
         </Typography>
         <Typography variant="body2" color="text.secondary" textAlign="center">
-          To fix this, review your tracing setup and ensure it includes the tool definitions in the
-          span attributes when instrumenting LLM calls.
+          To fix this, review your tracing setup and ensure it includes the tool definitions in the span attributes when instrumenting LLM calls.
         </Typography>
       </TracesEmptyState>
     );
