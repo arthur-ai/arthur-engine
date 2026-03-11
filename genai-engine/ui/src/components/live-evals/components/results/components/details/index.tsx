@@ -23,8 +23,9 @@ import { CopyableChip } from "@/components/common";
 import { useEval } from "@/components/evaluators/hooks/useEval";
 import { useAnnotation } from "@/components/live-evals/hooks/useAnnotation";
 import { useRerunContinuousEval } from "@/components/live-evals/hooks/useRerunContinuousEval";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useTask } from "@/hooks/useTask";
-import { formatDate } from "@/utils/formatters";
+import { formatCurrency, formatDate } from "@/utils/formatters";
 
 type Props = {
   annotationId?: string;
@@ -35,6 +36,7 @@ type Props = {
 
 export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunComplete }: Props) => {
   const { task } = useTask();
+  const { defaultCurrency } = useDisplaySettings();
 
   const { data, isLoading } = useAnnotation(annotationId!);
 
@@ -260,7 +262,7 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
                       Cost
                     </Typography>
                     <Typography variant="body1" fontWeight={600}>
-                      ${data.cost?.toFixed(6) ?? "N/A"}
+                      {data.cost != null ? formatCurrency(data.cost, defaultCurrency) : "N/A"}
                     </Typography>
                   </Box>
                 </Paper>

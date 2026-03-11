@@ -2,6 +2,7 @@ import GeneratingTokensOutlinedIcon from "@mui/icons-material/GeneratingTokensOu
 import TollOutlinedIcon from "@mui/icons-material/TollOutlined";
 import { Stack, Tooltip, Typography } from "@mui/material";
 
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { formatCurrency } from "@/utils/formatters";
 
 type TokenCountProps = {
@@ -43,6 +44,8 @@ export const TokenCountTooltip = ({ prompt, completion, total }: TokenCountProps
 type TokenCostProps = TokenCountProps;
 
 export const TokenCostTooltip = ({ prompt, completion, total }: TokenCostProps) => {
+  const { defaultCurrency } = useDisplaySettings();
+
   if (!total)
     return (
       <Stack direction="row" alignItems="center" gap={0.5}>
@@ -58,16 +61,16 @@ export const TokenCostTooltip = ({ prompt, completion, total }: TokenCostProps) 
       title={
         <Stack direction="column" gap={0} sx={{ fontFamily: "monospace" }}>
           <Typography variant="body2" fontSize={12}>
-            Prompt: {prompt ? formatCurrency(prompt) : "N/A"}
+            Prompt: {prompt ? formatCurrency(prompt, defaultCurrency) : "N/A"}
           </Typography>
           <Typography variant="body2" fontSize={12}>
-            Completion: {completion ? formatCurrency(completion) : "N/A"}
+            Completion: {completion ? formatCurrency(completion, defaultCurrency) : "N/A"}
           </Typography>
         </Stack>
       }
     >
       <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12} className="select-none">
-        <TollOutlinedIcon sx={{ fontSize: 16, mr: 0.5 }} /> {formatCurrency(total)}
+        <TollOutlinedIcon sx={{ fontSize: 16, mr: 0.5 }} /> {formatCurrency(total, defaultCurrency)}
       </Typography>
     </Tooltip>
   );

@@ -4,7 +4,9 @@ import { alpha, type Theme, useTheme } from "@mui/material/styles";
 import { motion, AnimatePresence } from "framer-motion";
 import React, { useState, useEffect } from "react";
 
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { TraceResponse, NestedSpanWithMetricsResponse } from "@/lib/api";
+import { formatCurrency } from "@/utils/formatters";
 
 interface TraceDetailsPanelProps {
   trace: TraceResponse | null;
@@ -363,6 +365,7 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span }) => {
 };
 
 export const TraceDetailsPanel: React.FC<TraceDetailsPanelProps> = ({ trace, isOpen, onClose }) => {
+  const { defaultCurrency } = useDisplaySettings();
   const [selectedSpan, setSelectedSpan] = useState<NestedSpanWithMetricsResponse | null>(null);
   const [shouldRender, setShouldRender] = useState(false);
 
@@ -486,7 +489,7 @@ export const TraceDetailsPanel: React.FC<TraceDetailsPanelProps> = ({ trace, isO
                 </div>
                 <div>
                   <span className="text-gray-600 dark:text-gray-400">Total Cost:</span>
-                  <span className="ml-1 text-gray-900 dark:text-gray-100">${getTotalCost(trace).toFixed(5)}</span>
+                  <span className="ml-1 text-gray-900 dark:text-gray-100">{formatCurrency(getTotalCost(trace), defaultCurrency)}</span>
                 </div>
                 <div>
                   <span className="text-gray-600 dark:text-gray-400">Token Counts:</span>

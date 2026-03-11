@@ -40,6 +40,7 @@ services:
       - GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=model_name::https://my_service.openai.azure.com/::my_api_key
       - ALLOW_ADMIN_KEY_GENERAL_ACCESS=enabled
       - GENAI_ENGINE_USE_PII_MODEL_V2=true
+      - CURRENCY_DEFAULT_CURRENCY=USD
       # Uncomment MODEL_STORAGE_PATH and HF_HUB_OFFLINE to use local models
       # MODEL_STORAGE_PATH must be set to /home/nonroot/{TARGET_DIR specified to model-upload container}
       #- MODEL_STORAGE_PATH=/home/nonroot/model-storage

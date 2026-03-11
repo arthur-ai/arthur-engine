@@ -26,8 +26,10 @@ import { PromptExperimentsTable, PromptExperiment, PromptConfig } from "./Prompt
 import { PromptExperimentsViewHeader } from "./PromptExperimentsViewHeader";
 
 import { getContentHeight } from "@/constants/layout";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { usePromptExperiments, useCreateExperiment, usePromptExperiment } from "@/hooks/usePromptExperiments";
+import { formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 interface PromptExperimentsViewProps {
@@ -38,6 +40,7 @@ interface PromptExperimentsViewProps {
 export const PromptExperimentsView: React.FC<PromptExperimentsViewProps> = ({ onRegisterCreate, onRegisterCreateFromExisting }) => {
   const { id: taskId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { defaultCurrency } = useDisplaySettings();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSelectExistingModalOpen, setIsSelectExistingModalOpen] = useState(false);
   const [selectedExperimentId, setSelectedExperimentId] = useState<string | null>(null);
@@ -415,7 +418,7 @@ export const PromptExperimentsView: React.FC<PromptExperimentsViewProps> = ({ on
                                   </Typography>
                                   {experiment.total_cost && (
                                     <Typography variant="caption" color="text.secondary">
-                                      <strong>Cost:</strong> ${parseFloat(experiment.total_cost).toFixed(4)}
+                                      <strong>Cost:</strong> {formatCurrency(parseFloat(experiment.total_cost), defaultCurrency)}
                                     </Typography>
                                   )}
                                 </Box>

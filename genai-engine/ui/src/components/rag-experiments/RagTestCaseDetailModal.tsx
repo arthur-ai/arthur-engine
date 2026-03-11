@@ -24,6 +24,7 @@ import React, { useEffect, useState } from "react";
 import { getRagConfigDisplayName, type RagConfig } from "./utils";
 
 import { ResultsDisplay } from "@/components/retrievals/ResultsDisplay";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import type { RagTestCase, EvalExecution } from "@/lib/api-client/api-client";
 import { formatCurrency } from "@/utils/formatters";
@@ -206,6 +207,7 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
   datasetId,
   datasetVersion,
 }) => {
+  const { defaultCurrency } = useDisplaySettings();
   const [evalInputsDialogOpen, setEvalInputsDialogOpen] = useState(false);
   const [selectedEvalExecution, setSelectedEvalExecution] = useState<EvalExecution | null>(null);
 
@@ -266,7 +268,9 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
                 size="small"
                 color={testCase.status === "completed" ? "success" : testCase.status === "failed" ? "error" : "default"}
               />
-              {testCase.total_cost && <Chip label={`Cost: ${formatCurrency(parseFloat(testCase.total_cost))}`} size="small" variant="outlined" />}
+              {testCase.total_cost && (
+                <Chip label={`Cost: ${formatCurrency(parseFloat(testCase.total_cost), defaultCurrency)}`} size="small" variant="outlined" />
+              )}
             </Box>
             <IconButton onClick={onClose} size="small">
               <CloseIcon />
@@ -401,7 +405,7 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
                                             sx={getEvalChipSx(evalItem.eval_results.score === 1)}
                                           />
                                           <Chip
-                                            label={`Cost: ${formatCurrency(parseFloat(evalItem.eval_results.cost))}`}
+                                            label={`Cost: ${formatCurrency(parseFloat(evalItem.eval_results.cost), defaultCurrency)}`}
                                             size="small"
                                             variant="outlined"
                                           />

@@ -11,7 +11,7 @@ import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 const columnHelper = createMRTColumnHelper<AgenticAnnotationResponse>();
 
-export const createColumns = ({ taskId }: { taskId: string }) => [
+export const createColumns = ({ taskId, defaultCurrency }: { taskId: string; defaultCurrency: string }) => [
   columnHelper.accessor("trace_id", {
     header: "Trace ID",
     Cell: ({ cell }) => <CopyableChip label={cell.getValue()} sx={{ fontFamily: "monospace", fontSize: "0.75rem" }} />,
@@ -38,7 +38,7 @@ export const createColumns = ({ taskId }: { taskId: string }) => [
     header: "Cost",
     Cell: ({ cell }) => {
       const cost = cell.getValue();
-      return <Typography variant="body2">{cost != null ? formatCurrency(cost) : "N/A"}</Typography>;
+      return <Typography variant="body2">{cost != null ? formatCurrency(cost, defaultCurrency) : "N/A"}</Typography>;
     },
   }),
   columnHelper.accessor("created_at", {
