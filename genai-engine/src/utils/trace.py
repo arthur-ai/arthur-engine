@@ -331,6 +331,84 @@ def get_nested_value(
     return current
 
 
+def get_nested_value_wildcard(
+    obj: dict[str, Any],
+    path: str,
+    default: Optional[Any] = None,
+) -> Any:
+    """
+    Navigate nested dictionary structure using dot-separated path with wildcard support.
+
+    When a '*' segment is encountered on a list, iterates all items and collects
+    results from the remaining path. When '*' is encountered on a dict, iterates
+    all values. Multiple wildcards can be chained (e.g., 'a.*.b.*.c').
+
+    Args:
+        obj: Dictionary to navigate
+        path: Dot-separated path with optional '*' wildcards
+              (e.g., 'results.*.name', 'tools.*.parameters.*.value')
+        default: Default value to return if path not found (defaults to None)
+
+    Returns:
+        A flat list of all matched values when wildcards are present,
+        or a single value if no wildcards, or default if nothing found.
+
+    Examples:
+        get_nested_value_wildcard({"a": [{"b": 1}, {"b": 2}]}, "a.*.b") -> [1, 2]
+        get_nested_value_wildcard({"a": {"x": 1, "y": 2}}, "a.*") -> [1, 2]
+        get_nested_value_wildcard({"a": [{"b": [{"c": 1}, {"c": 2}]}]}, "a.*.b.*.c") -> [1, 2]
+        get_nested_value_wildcard({"a": []}, "a.*.b") -> None
+    """
+    if "*" not in path:
+        return get_nested_value(obj, path, default)
+
+    if not isinstance(obj, dict):
+        return default
+
+    keys = path.split(".")
+    results = _collect_wildcard(obj, keys, 0)
+    return results if results else default
+
+
+def _collect_wildcard(
+    current: Any,
+    keys: list[str],
+    index: int,
+) -> list[Any]:
+    """Recursively collect values following a key path with wildcard segments."""
+    if index == len(keys):
+        return [current] if current is not None else []
+
+    key = keys[index]
+
+    if key == "*":
+        items: list[Any] = []
+        if isinstance(current, list):
+            items = current
+        elif isinstance(current, dict):
+            items = list(current.values())
+        else:
+            return []
+
+        results: list[Any] = []
+        for item in items:
+            results.extend(_collect_wildcard(item, keys, index + 1))
+        return results
+
+    if isinstance(current, dict) and key in current:
+        return _collect_wildcard(current[key], keys, index + 1)
+
+    if isinstance(current, list):
+        if not key.isdigit():
+            return []
+        idx = int(key)
+        if 0 <= idx < len(current):
+            return _collect_wildcard(current[idx], keys, index + 1)
+        return []
+
+    return []
+
+
 def validate_span_version(raw_data: Dict[str, Any]) -> bool:
     """
     Validate that a span's raw data contains the expected version.
