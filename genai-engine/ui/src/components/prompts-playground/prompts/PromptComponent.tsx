@@ -32,7 +32,6 @@ import useSnackbar from "@/hooks/useSnackbar";
  * A prompt is a list of messages and templates, along with an associated output field/format.
  */
 const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp, highlightCost = false }: PromptComponentProps) => {
-  // Sync local name state with external prompt.name changes
   const [currentPromptName, setCurrentPromptName] = useState<string>(prompt.name || "");
   const prevPromptNameRef = useRef(prompt.name);
   if (prompt.name !== prevPromptNameRef.current) {

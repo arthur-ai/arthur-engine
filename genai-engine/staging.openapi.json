@@ -89,6 +89,28 @@
                 }
             }
         },
+        "/api/v2/display-settings": {
+            "get": {
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Get Display Settings",
+                "description": "Get display settings (e.g. default currency for cost formatting).",
+                "operationId": "get_display_settings_api_v2_display_settings_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DisplaySettingsResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v2/feedback/{inference_id}": {
             "post": {
                 "tags": [
@@ -18881,6 +18903,18 @@
                 "title": "EnrichedTaskResponse",
                 "description": "Response model for agent-tasks endpoint with enriched metadata."
             },
+            "DisplaySettingsResponse": {
+                "properties": {
+                    "default_currency": {
+                        "type": "string",
+                        "title": "Default Currency",
+                        "default": "USD"
+                    }
+                },
+                "type": "object",
+                "title": "DisplaySettingsResponse",
+                "description": "Public display settings (e.g. default currency for cost formatting)."
+            },
             "EvalExecution": {
                 "properties": {
                     "eval_name": {
@@ -27016,6 +27050,18 @@
                         "title": "Count",
                         "description": "Total number of sessions matching filters"
                     },
+                    "display_currency": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Display Currency",
+                        "description": "Currency code for cost fields"
+                    },
                     "sessions": {
                         "items": {
                             "$ref": "#/components/schemas/SessionMetadataResponse"
@@ -27191,6 +27237,18 @@
                         "title": "Count",
                         "description": "Number of traces in this session"
                     },
+                    "display_currency": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Display Currency",
+                        "description": "Currency code for cost fields"
+                    },
                     "traces": {
                         "items": {
                             "$ref": "#/components/schemas/TraceResponse"
@@ -27257,6 +27315,18 @@
                         "type": "integer",
                         "title": "Count",
                         "description": "Total number of spans matching filters"
+                    },
+                    "display_currency": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Display Currency",
+                        "description": "Currency code for cost fields"
                     },
                     "spans": {
                         "items": {
@@ -28703,6 +28773,18 @@
                         "title": "Count",
                         "description": "Total number of traces matching filters"
                     },
+                    "display_currency": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Display Currency",
+                        "description": "Currency code for cost fields"
+                    },
                     "traces": {
                         "items": {
                             "$ref": "#/components/schemas/TraceMetadataResponse"
@@ -29240,6 +29322,18 @@
                         "type": "integer",
                         "title": "Count",
                         "description": "Total number of users matching filters"
+                    },
+                    "display_currency": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Display Currency",
+                        "description": "Currency code for cost fields"
                     },
                     "users": {
                         "items": {
