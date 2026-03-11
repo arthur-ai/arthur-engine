@@ -261,6 +261,18 @@ class ContinuousEvalsRepository:
                     ),
                 )
 
+            if filter_request.llm_eval_name_exact:
+                base_query = base_query.filter(
+                    DatabaseContinuousEval.llm_eval_name
+                    == filter_request.llm_eval_name_exact,
+                )
+
+            if filter_request.llm_eval_version is not None:
+                base_query = base_query.filter(
+                    DatabaseContinuousEval.llm_eval_version
+                    == filter_request.llm_eval_version,
+                )
+
             if filter_request.created_after:
                 base_query = base_query.filter(
                     DatabaseContinuousEval.created_at >= filter_request.created_after,

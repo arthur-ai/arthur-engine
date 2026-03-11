@@ -9,8 +9,10 @@ import React, { useState } from "react";
 import { MessageDisplay, VariableTile } from "./PromptResultComponents";
 
 import { UpdateDatasetRowModal } from "@/components/common/UpdateDatasetRowModal";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import useSnackbar from "@/hooks/useSnackbar";
 import type { InputVariable, EvalExecution, PromptOutput } from "@/lib/api-client/api-client";
+import { formatCurrency } from "@/utils/formatters";
 
 interface Message {
   role: "system" | "user" | "assistant";
@@ -55,6 +57,7 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
   datasetVersion,
   datasetRowId,
 }) => {
+  const { defaultCurrency } = useDisplaySettings();
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
@@ -255,7 +258,11 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
                               size="small"
                               sx={getEvalChipSx(evalItem.eval_results.score === 1)}
                             />
-                            <Chip label={`Cost: $${evalItem.eval_results.cost}`} size="small" variant="outlined" />
+                            <Chip
+                              label={`Cost: ${formatCurrency(parseFloat(String(evalItem.eval_results.cost)), defaultCurrency)}`}
+                              size="small"
+                              variant="outlined"
+                            />
                           </>
                         ) : (
                           <Chip label="Pending" size="small" sx={getPendingChipSx()} />

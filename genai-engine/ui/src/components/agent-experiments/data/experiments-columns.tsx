@@ -9,7 +9,7 @@ import { formatCurrency } from "@/utils/formatters";
 
 const columnHelper = createMRTColumnHelper<AgenticExperimentSummary>();
 
-export const createColumns = () => [
+export const createColumns = (defaultCurrency: string) => [
   columnHelper.accessor("name", {
     header: "Name",
   }),
@@ -31,7 +31,7 @@ export const createColumns = () => [
     Cell: ({ cell }) => {
       const value = cell.getValue() as string;
       if (!value) return "N/A";
-      return <Typography variant="body2">{formatCurrency(parseFloat(value))}</Typography>;
+      return <Typography variant="body2">{formatCurrency(parseFloat(value), defaultCurrency)}</Typography>;
     },
   }),
   columnHelper.accessor("id", {
