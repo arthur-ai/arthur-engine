@@ -63,7 +63,7 @@ export const TraceContentCell: React.FC<TraceContentCellProps> = ({ value, title
         {isTruncated ? (
           <>
             <Tooltip title={fullValue} arrow placement="top">
-              <span className="w-full truncate p-2 bg-gray-100 rounded-md">{displayValue}</span>
+              <span className="w-full truncate p-2 bg-gray-100 dark:bg-gray-800 rounded-md">{displayValue}</span>
             </Tooltip>
             <IconButton
               size="small"

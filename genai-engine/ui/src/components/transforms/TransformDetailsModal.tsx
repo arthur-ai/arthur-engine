@@ -42,7 +42,7 @@ export const TransformDetailsModal: React.FC<TransformDetailsModalProps> = ({ op
                 alignItems: "center",
                 gap: 1,
                 p: 1.5,
-                backgroundColor: "grey.50",
+                backgroundColor: "action.hover",
                 borderRadius: 1,
                 border: "1px solid",
                 borderColor: "divider",
@@ -94,7 +94,7 @@ export const TransformDetailsModal: React.FC<TransformDetailsModalProps> = ({ op
                   key={idx}
                   sx={{
                     p: 2,
-                    backgroundColor: "grey.50",
+                    backgroundColor: "action.hover",
                     borderRadius: 1,
                     border: "1px solid",
                     borderColor: "divider",
@@ -120,19 +120,22 @@ export const TransformDetailsModal: React.FC<TransformDetailsModalProps> = ({ op
             <Typography variant="subtitle2" fontWeight="medium" gutterBottom>
               Full JSON Definition
             </Typography>
-            <pre
-              style={{
-                backgroundColor: "#ffffff",
-                padding: 16,
-                borderRadius: 4,
+            <Box
+              component="pre"
+              sx={{
+                backgroundColor: "background.paper",
+                p: 2,
+                borderRadius: 1,
                 overflow: "auto",
                 maxHeight: 400,
                 fontSize: 12,
-                border: "1px solid #e0e0e0",
+                border: 1,
+                borderColor: "divider",
+                m: 0,
               }}
             >
               {JSON.stringify(transform.definition, null, 2)}
-            </pre>
+            </Box>
           </Box>
         </Box>
       </DialogContent>

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from db_models.base import Base, IsArchivable
 
 if TYPE_CHECKING:
-    from db_models.agent_polling_models import DatabaseAgentPollingData
+    from db_models.agent_polling_models import DatabaseTaskPollingState
     from db_models.agentic_prompt_models import DatabaseAgenticPrompt
     from db_models.llm_eval_models import DatabaseLLMEval
     from db_models.rule_models import DatabaseRule
@@ -23,6 +23,8 @@ class DatabaseTask(Base, IsArchivable):
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP)
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP)
     is_agentic: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_autocreated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_system_task: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     task_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     rule_links: Mapped[list["DatabaseTaskToRules"]] = relationship(
         back_populates="task",
@@ -40,7 +42,7 @@ class DatabaseTask(Base, IsArchivable):
         back_populates="task",
         lazy="select",
     )
-    agent_polling_data: Mapped[Optional["DatabaseAgentPollingData"]] = relationship(
+    task_polling_state: Mapped[Optional["DatabaseTaskPollingState"]] = relationship(
         back_populates="task",
         cascade="all, delete-orphan",
         uselist=False,

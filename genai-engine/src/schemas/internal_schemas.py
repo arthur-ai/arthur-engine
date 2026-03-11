@@ -4,6 +4,12 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional, Union
 
+from arthur_common.models.agent_governance_schemas import (
+    AgentCreationSource,
+    GCPAgentCreationSource,
+    ManualAgentCreationSource,
+    TaskMetadata,
+)
 from arthur_common.models.common_schemas import (
     AuthUserRole,
     ExampleConfig,
@@ -17,7 +23,6 @@ from arthur_common.models.common_schemas import (
 )
 from arthur_common.models.enums import (
     AgenticAnnotationType,
-    AgentPollingStatus,
     ComparisonOperatorEnum,
     ContinuousEvalRunStatus,
     InferenceFeedbackTarget,
@@ -47,6 +52,7 @@ from arthur_common.models.response_schemas import (
     ExternalInferencePrompt,
     ExternalInferenceResponse,
     ExternalRuleResult,
+    GCPAgentMetadataResponse,
     HallucinationClaimResponse,
     HallucinationDetailsResponse,
     InferenceFeedbackResponse,
@@ -84,10 +90,10 @@ from weaviate.collections.classes.grpc import (
 )
 from weaviate.types import INCLUDE_VECTOR
 
+from config.currency_config import currency_config
 from db_models import (
     DatabaseAgenticAnnotation,
     DatabaseAgenticNotebook,
-    DatabaseAgentPollingData,
     DatabaseApiKey,
     DatabaseApplicationConfiguration,
     DatabaseDataset,
@@ -573,60 +579,46 @@ class TaskToMetricLink(BaseModel):
         )
 
 
-class RegisteredGCPAgentCredentials(BaseModel):
-    """
-    Credentials required for polling registered GCP agents.
-    """
-
-    region: str
-    project_id: str
-    resource_id: str
-
-
-class TaskMetadata(BaseModel):
-    """
-    Metadata for a task.
-    """
-
-    provider: RegisteredAgentProvider = Field(
-        ...,
-        description="Provider of the registered agent.",
-    )
-    gcp_metadata: Optional[RegisteredGCPAgentCredentials] = Field(
-        default=None,
-        description="Metadata for a registered GCP agent.",
-    )
-
-
 class Task(BaseModel):
     id: str
     name: str
     created_at: datetime
     updated_at: datetime
     is_agentic: bool = False
+    is_autocreated: bool = False
+    is_system_task: bool = False
+    is_archived: bool = False
     task_metadata: Optional[TaskMetadata] = None
+    service_names: List[str] = Field(
+        default_factory=list,
+        description="Service names from service_name_task_mappings (populated at query time)",
+    )
     rule_links: Optional[List[TaskToRuleLink]] = None
     metric_links: Optional[List[TaskToMetricLink]] = None
 
     @staticmethod
     def _from_request_model(x: NewTaskRequest) -> "Task":
-        # Convert AgentMetadata to dict for database storage
+        # Convert AgentMetadata request to new TaskMetadata format for DB storage
         task_metadata = None
         if x.agent_metadata:
-            gcp_metadata = None
+            creation_source: Optional[AgentCreationSource] = None
+
             if x.agent_metadata.provider == RegisteredAgentProvider.GCP:
                 if x.agent_metadata.gcp_metadata is None:
                     raise ValueError("GCP metadata is required when provider is GCP.")
 
-                gcp_metadata = RegisteredGCPAgentCredentials(
-                    region=x.agent_metadata.gcp_metadata.region,
-                    project_id=x.agent_metadata.gcp_metadata.project_id,
-                    resource_id=x.agent_metadata.gcp_metadata.resource_id,
+                creation_source = AgentCreationSource(
+                    root=GCPAgentCreationSource(
+                        gcp_project_id=x.agent_metadata.gcp_metadata.project_id,
+                        gcp_region=x.agent_metadata.gcp_metadata.region,
+                        gcp_reasoning_engine_id=x.agent_metadata.gcp_metadata.resource_id,
+                    )
                 )
+            else:
+                creation_source = AgentCreationSource(root=ManualAgentCreationSource())
 
             task_metadata = TaskMetadata(
-                provider=x.agent_metadata.provider,
-                gcp_metadata=gcp_metadata,
+                creation_source=creation_source,
             )
 
         return Task(
@@ -646,6 +638,9 @@ class Task(BaseModel):
             created_at=x.created_at,
             updated_at=x.updated_at,
             is_agentic=x.is_agentic,
+            is_autocreated=x.is_autocreated,
+            is_system_task=x.is_system_task,
+            is_archived=x.archived,
             task_metadata=(
                 TaskMetadata.model_validate(x.task_metadata)
                 if x.task_metadata
@@ -666,6 +661,8 @@ class Task(BaseModel):
             created_at=self.created_at,
             updated_at=self.updated_at,
             is_agentic=self.is_agentic,
+            is_autocreated=self.is_autocreated,
+            is_system_task=self.is_system_task,
             task_metadata=(
                 self.task_metadata.model_dump(exclude_none=True)
                 if self.task_metadata
@@ -686,12 +683,26 @@ class Task(BaseModel):
             response_metric.enabled = metric_link.enabled
             response_metrics.append(response_metric)
 
-        # Convert dict back to AgentMetadataResponse
+        # Convert new TaskMetadata format to old AgentMetadataResponse format
         agent_metadata_response = None
-        if self.task_metadata:
-            agent_metadata_response = AgentMetadataResponse(
-                **self.task_metadata.model_dump(exclude_none=True),
-            )
+        if self.task_metadata and self.task_metadata.creation_source:
+            cs = self.task_metadata.creation_source.root
+            svc_names = self.service_names or None
+            if isinstance(cs, GCPAgentCreationSource):
+                agent_metadata_response = AgentMetadataResponse(
+                    provider=RegisteredAgentProvider.GCP,
+                    gcp_metadata=GCPAgentMetadataResponse(
+                        project_id=cs.gcp_project_id,
+                        region=cs.gcp_region,
+                        resource_id=cs.gcp_reasoning_engine_id,
+                    ),
+                    service_names=svc_names,
+                )
+            else:
+                agent_metadata_response = AgentMetadataResponse(
+                    provider=RegisteredAgentProvider.EXTERNAL,
+                    service_names=svc_names,
+                )
 
         return TaskResponse(
             id=self.id,
@@ -699,6 +710,9 @@ class Task(BaseModel):
             created_at=_serialize_datetime(self.created_at),
             updated_at=_serialize_datetime(self.updated_at),
             is_agentic=self.is_agentic,
+            is_autocreated=self.is_autocreated,
+            is_system_task=self.is_system_task,
+            is_archived=self.is_archived,
             agent_metadata=agent_metadata_response,
             rules=response_rules,
             metrics=response_metrics,
@@ -1843,6 +1857,7 @@ class DocumentStorageConfiguration(BaseModel):
 
 class ApplicationConfiguration(BaseModel):
     chat_task_id: Optional[str] = None
+    default_currency: Optional[str] = None
     document_storage_configuration: Optional[DocumentStorageConfiguration] = None
     max_llm_rules_per_task_count: int
 
@@ -1901,11 +1916,20 @@ class ApplicationConfiguration(BaseModel):
             if config_value is not None:
                 max_llm_rules_per_task_count = int(config_value)
 
+        default_currency = config_if_exists(
+            ApplicationConfigurations.DEFAULT_CURRENCY,
+            configs,
+        )
+        if not default_currency or not default_currency.strip():
+            default_currency = currency_config.DEFAULT_CURRENCY or "USD"
+        default_currency = default_currency.strip().upper()
+
         return ApplicationConfiguration(
             chat_task_id=config_if_exists(
                 ApplicationConfigurations.CHAT_TASK_ID,
                 configs,
             ),
+            default_currency=default_currency,
             document_storage_configuration=doc_storage,
             max_llm_rules_per_task_count=max_llm_rules_per_task_count,
         )
@@ -1913,6 +1937,7 @@ class ApplicationConfiguration(BaseModel):
     def _to_response_model(self) -> ApplicationConfigurationResponse:
         return ApplicationConfigurationResponse(
             chat_task_id=self.chat_task_id,
+            default_currency=self.default_currency,
             document_storage_configuration=(
                 self.document_storage_configuration._to_response_model()
                 if self.document_storage_configuration is not None
@@ -4408,73 +4433,3 @@ class AgenticNotebook(BaseModel):
             ]
 
         return state
-
-
-class AgentPollingData(BaseModel):
-    """
-    Data required for polling registered agents.
-    """
-
-    id: uuid.UUID = Field(description="ID of the agent polling data.")
-    task_id: str = Field(description="ID of the parent task.")
-    created_at: datetime = Field(description="Time the agent polling data was created.")
-    updated_at: datetime = Field(
-        description="Time the agent polling data was last updated.",
-    )
-    last_fetched: Optional[datetime] = Field(
-        default=None,
-        description="Time the registered agent was last polled.",
-    )
-    status: AgentPollingStatus = Field(description="Status of the agent polling data.")
-    error_message: Optional[str] = Field(
-        default=None,
-        description="Error message if the agent polling data failed.",
-    )
-    failed_runs: int = Field(
-        default=0,
-        description="Number of times the agent polling data ran into api errors",
-    )
-
-    @staticmethod
-    def from_task_id(
-        task_id: str,
-    ) -> "AgentPollingData":
-        now = datetime.now()
-
-        return AgentPollingData(
-            id=uuid.uuid4(),
-            task_id=task_id,
-            created_at=now,
-            updated_at=now,
-            last_fetched=None,
-            status=AgentPollingStatus.PENDING,
-            error_message=None,
-            failed_runs=0,
-        )
-
-    @staticmethod
-    def from_database_model(
-        db_model: DatabaseAgentPollingData,
-    ) -> "AgentPollingData":
-        return AgentPollingData(
-            id=db_model.id,
-            task_id=db_model.task_id,
-            created_at=db_model.created_at,
-            updated_at=db_model.updated_at,
-            last_fetched=db_model.last_fetched,
-            status=AgentPollingStatus(db_model.status),
-            error_message=db_model.error_message,
-            failed_runs=db_model.failed_runs,
-        )
-
-    def to_database_model(self) -> DatabaseAgentPollingData:
-        return DatabaseAgentPollingData(
-            id=self.id,
-            task_id=self.task_id,
-            created_at=self.created_at,
-            updated_at=self.updated_at,
-            last_fetched=self.last_fetched,
-            status=self.status.value,
-            error_message=self.error_message,
-            failed_runs=self.failed_runs,
-        )

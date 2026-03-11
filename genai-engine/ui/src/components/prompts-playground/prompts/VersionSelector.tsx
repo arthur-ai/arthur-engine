@@ -87,23 +87,23 @@ const VersionSelector = ({ promptName, promptId, currentVersion, isDirty, onVers
           options={versions}
           value={versions.find((v) => v.version === currentVersion) || null}
           onChange={handleAutocompleteChange}
-          getOptionLabel={(option) => `${option.version}${isDirty ? "*" : ""}`}
+          getOptionLabel={(option) => `${option.version}${isDirty && option.version === currentVersion ? "*" : ""}`}
           isOptionEqualToValue={(option, value) => option.version === value?.version}
           disabled={!promptName || isFetchingVersions.current || versions.length === 0}
           loading={isFetchingVersions.current}
           noOptionsText={isFetchingVersions.current ? "Loading versions..." : "No versions available"}
           sx={{
-            backgroundColor: "white",
+            backgroundColor: "background.paper",
             "& .MuiOutlinedInput-root": {
               "& fieldset": {
-                borderColor: isDirty ? "#f97316" : undefined, // Orange border when dirty
+                borderColor: isDirty ? "warning.main" : undefined,
                 borderWidth: isDirty ? "2px" : undefined,
               },
               "&:hover fieldset": {
-                borderColor: isDirty ? "#ea580c" : undefined, // Darker orange on hover
+                borderColor: isDirty ? "warning.dark" : undefined,
               },
               "&.Mui-focused fieldset": {
-                borderColor: isDirty ? "#f97316" : undefined,
+                borderColor: isDirty ? "warning.main" : undefined,
               },
             },
           }}
@@ -129,7 +129,7 @@ const VersionSelector = ({ promptName, promptId, currentVersion, isDirty, onVers
               variant="outlined"
               size="small"
               sx={{
-                backgroundColor: "white",
+                backgroundColor: "background.paper",
               }}
             />
           )}

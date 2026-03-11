@@ -19,6 +19,26 @@ const filterSchema = z.array(
 );
 
 /**
+ * Fields that were migrated from supporting "eq" to exclusively using "in".
+ * Legacy URLs may still have operator="eq" for these fields; migrate them on
+ * load so users can see and remove the filter in the current UI.
+ */
+const IN_ONLY_FIELDS = new Set(["span_types", "trace_ids", "session_ids", "span_ids", "user_ids"]);
+
+function migrateLegacyFilters(filters: IncomingFilter[]): IncomingFilter[] {
+  return filters.map((filter) => {
+    if (filter.operator === "eq" && IN_ONLY_FIELDS.has(filter.name)) {
+      return {
+        ...filter,
+        operator: "in",
+        value: Array.isArray(filter.value) ? filter.value : [filter.value],
+      };
+    }
+    return filter;
+  });
+}
+
+/**
  * Hook to sync filters with URL search parameters
  * Reads filters from URL on mount and writes filters to URL when they change
  */
@@ -33,7 +53,7 @@ export function useSyncFiltersToUrl() {
   // Sync from URL to store on mount (only once)
   useEffect(() => {
     if (!hasInitializedFromUrl.current && urlFilters.length > 0) {
-      setStoreFilters(urlFilters as IncomingFilter[]);
+      setStoreFilters(migrateLegacyFilters(urlFilters as IncomingFilter[]));
       track(EVENT_NAMES.TRACING_FILTERS_FROM_URL_LOADED, {
         filter_count: urlFilters.length,
         source: "url",

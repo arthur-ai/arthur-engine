@@ -2,6 +2,8 @@
 Unit tests for the Databricks connector functionality.
 """
 
+import base64
+import json
 import logging
 import os
 from datetime import datetime, timezone
@@ -30,7 +32,12 @@ from arthur_common.models.connectors import (
 )
 from mock_data.connector_helpers import mock_databricks_connector_spec
 
-from connectors.databricks_connector import DatabricksConnector
+from connectors.databricks_connector import (
+    AUTH_METHOD_AWS_TOKEN_EXCHANGE_IDA,
+    AUTH_METHOD_OAUTH_M2M,
+    AUTH_METHOD_PAT,
+    DatabricksConnector,
+)
 
 logger = logging.getLogger("databricks_test_logger")
 
@@ -57,6 +64,7 @@ def _make_dataset_with_timestamp(
     return Mock(
         spec=Dataset,
         id=str(uuid4()),
+        is_static=False,
         dataset_locator=DatasetLocator(
             fields=[
                 DatasetLocatorField(
@@ -623,6 +631,50 @@ class TestDatabricksConnectorRead:
         assert len(result) == 1
         assert result.iloc[0]["x"] == 1
 
+    @patch("connectors.databricks_connector.Config")
+    @patch("connectors.databricks_connector.create_engine")
+    def test_read_static_dataset_skips_timestamp_filter(self, mock_create_engine, mock_config):
+        """Static datasets must produce a SELECT without WHERE or ORDER BY clauses."""
+        mock_config.return_value = MagicMock()
+        mock_engine = Mock()
+        mock_conn = Mock()
+        mock_engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = Mock(return_value=None)
+        mock_create_engine.return_value = mock_engine
+
+        expected_df = pd.DataFrame([{"value": 1.0}])
+        static_dataset = Mock(
+            spec=Dataset,
+            id=str(uuid4()),
+            is_static=True,
+            dataset_locator=DatasetLocator(
+                fields=[
+                    DatasetLocatorField(key=DATABRICKS_DATASET_CATALOG_FIELD, value="cat"),
+                    DatasetLocatorField(key=DATABRICKS_DATASET_SCHEMA_FIELD, value="schema"),
+                    DatasetLocatorField(key=ODBC_CONNECTOR_TABLE_NAME_FIELD, value="tbl"),
+                ],
+            ),
+            dataset_schema=None,
+        )
+
+        captured_queries = []
+
+        def capture_read_sql(query, conn):
+            captured_queries.append(str(query))
+            return expected_df
+
+        with patch("connectors.databricks_connector.pd.read_sql", side_effect=capture_read_sql):
+            spec = _make_connector_spec()
+            conn = DatabricksConnector(spec, logger)
+            start = datetime(2025, 1, 1, tzinfo=timezone.utc)
+            end = datetime(2025, 1, 2, tzinfo=timezone.utc)
+            result = conn.read(static_dataset, start, end)
+
+        assert isinstance(result, pd.DataFrame)
+        assert len(captured_queries) == 1
+        assert "WHERE" not in captured_queries[0]
+        assert "ORDER BY" not in captured_queries[0]
+
 
 class TestDatabricksConnectorQualifiedNames:
     """Test qualified table name building with proper escaping."""
@@ -771,3 +823,455 @@ class TestDatabricksConnectorConnectionRobust:
 
         # Should still succeed (connection works, just no queryable tables)
         assert result.connection_check_outcome == ConnectorCheckOutcome.SUCCEEDED
+
+
+class TestDatabricksConnectorExplicitAuthMethod:
+    """Test explicit auth_method field overrides auto-detection."""
+
+    @patch("connectors.databricks_connector.oauth_service_principal")
+    @patch("connectors.databricks_connector.Config")
+    @patch("connectors.databricks_connector.create_engine")
+    def test_explicit_oauth_m2m(self, mock_engine, mock_config, mock_oauth):
+        """Explicit auth_method=oauth_m2m is respected."""
+        mock_engine.return_value = MagicMock()
+        mock_config.return_value = MagicMock()
+        mock_oauth.return_value = MagicMock()
+        mock_oauth.return_value.oauth_token.return_value.access_token = "token"
+
+        spec = _make_connector_spec(
+            access_token=None,
+            client_id="test_client_id",
+            client_secret="test_client_secret",
+        )
+        # Add auth_method field
+        spec.fields.append(Mock(key="auth_method", value="oauth_m2m"))
+        conn = DatabricksConnector(spec, logger)
+        assert conn._auth_method == AUTH_METHOD_OAUTH_M2M
+
+    @patch("connectors.databricks_connector.create_engine")
+    def test_explicit_pat(self, mock_engine):
+        """Explicit auth_method=pat is respected."""
+        mock_engine.return_value = Mock()
+        spec = _make_connector_spec(access_token="test_token")
+        spec.fields.append(Mock(key="auth_method", value="pat"))
+        conn = DatabricksConnector(spec, logger)
+        assert conn._auth_method == AUTH_METHOD_PAT
+
+    def test_existing_pat_still_works_without_explicit_method(self):
+        """Backward compat: PAT auto-detection still works without auth_method."""
+        with patch("connectors.databricks_connector.create_engine") as mock_engine:
+            mock_engine.return_value = Mock()
+            spec = _make_connector_spec(
+                access_token="test_pat_token",
+                client_id=None,
+                client_secret=None,
+            )
+            conn = DatabricksConnector(spec, logger)
+            assert conn._auth_method == AUTH_METHOD_PAT
+
+    @patch("connectors.databricks_connector.oauth_service_principal")
+    @patch("connectors.databricks_connector.Config")
+    @patch("connectors.databricks_connector.create_engine")
+    def test_existing_oauth_m2m_still_works_without_explicit_method(
+        self, mock_engine, mock_config, mock_oauth
+    ):
+        """Backward compat: OAuth M2M auto-detection still works without auth_method."""
+        mock_engine.return_value = MagicMock()
+        mock_config.return_value = MagicMock()
+        mock_oauth.return_value = MagicMock()
+        mock_oauth.return_value.oauth_token.return_value.access_token = "token"
+
+        spec = _make_connector_spec(
+            access_token=None,
+            client_id="cid",
+            client_secret="csec",
+        )
+        conn = DatabricksConnector(spec, logger)
+        assert conn._auth_method == AUTH_METHOD_OAUTH_M2M
+
+
+class TestDatabricksConnectorAWSTokenExchange:
+    """Test AWS token exchange IDA auth method."""
+
+    def _make_aws_spec(self, **overrides):
+        """Build a connector spec for AWS token exchange tests."""
+        defaults = {
+            "access_token": None,
+            "client_id": None,
+            "client_secret": None,
+        }
+        defaults.update(overrides)
+
+        spec_dict = mock_databricks_connector_spec(
+            auth_method="aws_token_exchange_ida",
+            ida_resource_uri="test:resource:uri",
+            ida_provider_uri="https://ida.example.com/token/",
+            c2c_audience_uri="https://c2c.example.com",
+            c2c_token_endpoint="https://c2c.{region}.example.com/token",
+            c2c_audience_header_name="x-custom-audience",
+            c2c_subject_token_type="urn:test:token-type:aws-get-caller-identity",
+            **defaults,
+        )
+        mock_spec = Mock(spec=ConnectorSpec)
+        mock_spec.connector_type = Mock(value="databricks")
+        mock_spec.fields = [
+            Mock(key=f["key"], value=f["value"]) for f in spec_dict["fields"]
+        ]
+        return mock_spec
+
+    @patch("connectors.databricks_connector.requests.post")
+    @patch("connectors.databricks_connector.create_engine")
+    def test_determine_auth_method_aws_token_exchange(
+        self, mock_engine, mock_requests_post
+    ):
+        """Verify auth method is set when explicitly configured."""
+        mock_engine.return_value = MagicMock()
+        # Mock the token exchange chain
+        mock_requests_post.side_effect = [
+            Mock(status_code=200, json=Mock(return_value={"access_token": "c2c_token"})),
+            Mock(status_code=200, json=Mock(return_value={"access_token": "ida_token"})),
+        ]
+
+        with patch("connectors.databricks_connector.boto3") as mock_boto3:
+            mock_session = MagicMock()
+            mock_session.region_name = "us-east-1"
+            mock_creds = MagicMock()
+            mock_creds.access_key = "AKIAIOSFODNN7EXAMPLE"
+            mock_creds.secret_key = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+            mock_creds.token = "session_token"
+            mock_session.get_credentials.return_value.get_frozen_credentials.return_value = mock_creds
+            mock_session.get_credentials.return_value = MagicMock()
+            mock_session.get_credentials.return_value.get_frozen_credentials.return_value = mock_creds
+            mock_boto3.Session.return_value = mock_session
+
+            spec = self._make_aws_spec()
+            conn = DatabricksConnector(spec, logger)
+            assert conn._auth_method == AUTH_METHOD_AWS_TOKEN_EXCHANGE_IDA
+
+    def test_validate_missing_required_fields_raises(self):
+        """Validate that missing required fields raises error."""
+        spec_dict = mock_databricks_connector_spec(
+            access_token=None,
+            auth_method="aws_token_exchange_ida",
+        )
+        mock_spec = Mock(spec=ConnectorSpec)
+        mock_spec.connector_type = Mock(value="databricks")
+        mock_spec.fields = [
+            Mock(key=f["key"], value=f["value"]) for f in spec_dict["fields"]
+        ]
+
+        with pytest.raises(ValueError, match="aws_token_exchange_ida requires the following fields"):
+            DatabricksConnector(mock_spec, logger)
+
+    def test_validate_non_aws_environment_raises(self):
+        """Validate that non-AWS environment raises clear error."""
+        spec_dict = mock_databricks_connector_spec(
+            access_token=None,
+            auth_method="aws_token_exchange_ida",
+            ida_resource_uri="test:resource:uri",
+            ida_provider_uri="https://ida.example.com/token/",
+            c2c_audience_uri="https://c2c.example.com",
+            c2c_token_endpoint="https://c2c.example.com/token",
+            c2c_audience_header_name="x-custom-audience",
+            c2c_subject_token_type="urn:test:token-type:aws-get-caller-identity",
+        )
+        mock_spec = Mock(spec=ConnectorSpec)
+        mock_spec.connector_type = Mock(value="databricks")
+        mock_spec.fields = [
+            Mock(key=f["key"], value=f["value"]) for f in spec_dict["fields"]
+        ]
+
+        with patch("connectors.databricks_connector.boto3") as mock_boto3:
+            mock_session = MagicMock()
+            mock_session.get_credentials.return_value = None
+            mock_boto3.Session.return_value = mock_session
+
+            with pytest.raises(ValueError, match="No AWS credentials available"):
+                DatabricksConnector(mock_spec, logger)
+
+    def test_validate_no_aws_region_raises(self):
+        """Validate that missing AWS region raises clear error."""
+        spec_dict = mock_databricks_connector_spec(
+            access_token=None,
+            auth_method="aws_token_exchange_ida",
+            ida_resource_uri="test:resource:uri",
+            ida_provider_uri="https://ida.example.com/token/",
+            c2c_audience_uri="https://c2c.example.com",
+            c2c_token_endpoint="https://c2c.example.com/token",
+            c2c_audience_header_name="x-custom-audience",
+            c2c_subject_token_type="urn:test:token-type:aws-get-caller-identity",
+        )
+        mock_spec = Mock(spec=ConnectorSpec)
+        mock_spec.connector_type = Mock(value="databricks")
+        mock_spec.fields = [
+            Mock(key=f["key"], value=f["value"]) for f in spec_dict["fields"]
+        ]
+
+        with patch("connectors.databricks_connector.boto3") as mock_boto3:
+            mock_session = MagicMock()
+            mock_session.region_name = None
+            mock_boto3.Session.return_value = mock_session
+
+            with pytest.raises(ValueError, match="No AWS region configured"):
+                DatabricksConnector(mock_spec, logger)
+
+    @patch("connectors.databricks_connector.requests.post")
+    @patch("connectors.databricks_connector.create_engine")
+    def test_get_aws_exchange_token_full_flow(self, mock_engine, mock_requests_post):
+        """Test the full 3-step token exchange with mocked boto3 and requests."""
+        mock_engine.return_value = MagicMock()
+
+        # Mock C2C response then IDA response
+        mock_requests_post.side_effect = [
+            Mock(status_code=200, json=Mock(return_value={"access_token": "c2c_intermediary_token"})),
+            Mock(status_code=200, json=Mock(return_value={"access_token": "final_ida_token"})),
+        ]
+
+        with patch("connectors.databricks_connector.boto3") as mock_boto3:
+            mock_session = MagicMock()
+            mock_session.region_name = "us-east-1"
+            mock_creds = MagicMock()
+            mock_creds.access_key = "AKIAIOSFODNN7EXAMPLE"
+            mock_creds.secret_key = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+            mock_creds.token = "session_token"
+            mock_session.get_credentials.return_value = MagicMock()
+            mock_session.get_credentials.return_value.get_frozen_credentials.return_value = mock_creds
+            mock_boto3.Session.return_value = mock_session
+
+            spec = self._make_aws_spec()
+            conn = DatabricksConnector(spec, logger)
+
+            # Verify engine was created with the IDA token
+            call_args = mock_engine.call_args[0][0]
+            assert "token:final_ida_token@" in call_args
+
+            # Verify C2C endpoint was called with {region} substituted
+            c2c_call = mock_requests_post.call_args_list[0]
+            assert c2c_call[0][0] == "https://c2c.us-east-1.example.com/token"
+            assert c2c_call[1]["data"]["grant_type"] == "urn:ietf:params:oauth:grant-type:token-exchange"
+            assert c2c_call[1]["data"]["subject_token_type"] == "urn:test:token-type:aws-get-caller-identity"
+
+            # Verify IDA endpoint was called correctly
+            ida_call = mock_requests_post.call_args_list[1]
+            assert ida_call[0][0] == "https://ida.example.com/token/"
+            assert ida_call[1]["data"]["grant_type"] == "client_credentials"
+            assert ida_call[1]["data"]["resource"] == "test:resource:uri"
+            assert ida_call[1]["data"]["client_assertion"] == "c2c_intermediary_token"
+
+    @patch("connectors.databricks_connector.requests.post")
+    @patch("connectors.databricks_connector.create_engine")
+    def test_c2c_exchange_failure_raises(self, mock_engine, mock_requests_post):
+        """Test that C2C exchange failure raises ValueError."""
+        mock_engine.return_value = MagicMock()
+
+        mock_requests_post.return_value = Mock(
+            status_code=400,
+            json=Mock(return_value={
+                "error": "invalid_grant",
+                "error_description": "Bad token",
+            }),
+        )
+
+        with patch("connectors.databricks_connector.boto3") as mock_boto3:
+            mock_session = MagicMock()
+            mock_session.region_name = "us-east-1"
+            mock_creds = MagicMock()
+            mock_creds.access_key = "AKIAIOSFODNN7EXAMPLE"
+            mock_creds.secret_key = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+            mock_creds.token = "session_token"
+            mock_session.get_credentials.return_value = MagicMock()
+            mock_session.get_credentials.return_value.get_frozen_credentials.return_value = mock_creds
+            mock_boto3.Session.return_value = mock_session
+
+            spec = self._make_aws_spec()
+            with pytest.raises(ValueError, match="C2C token exchange failed"):
+                DatabricksConnector(spec, logger)
+
+    @patch("connectors.databricks_connector.requests.post")
+    @patch("connectors.databricks_connector.create_engine")
+    def test_ida_exchange_failure_raises(self, mock_engine, mock_requests_post):
+        """Test that IDA exchange failure raises ValueError."""
+        mock_engine.return_value = MagicMock()
+
+        # C2C succeeds, IDA fails
+        mock_requests_post.side_effect = [
+            Mock(status_code=200, json=Mock(return_value={"access_token": "c2c_token"})),
+            Mock(
+                status_code=400,
+                json=Mock(return_value={
+                    "error": "invalid_client",
+                    "error_description": "Bad assertion",
+                }),
+            ),
+        ]
+
+        with patch("connectors.databricks_connector.boto3") as mock_boto3:
+            mock_session = MagicMock()
+            mock_session.region_name = "us-east-1"
+            mock_creds = MagicMock()
+            mock_creds.access_key = "AKIAIOSFODNN7EXAMPLE"
+            mock_creds.secret_key = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+            mock_creds.token = "session_token"
+            mock_session.get_credentials.return_value = MagicMock()
+            mock_session.get_credentials.return_value.get_frozen_credentials.return_value = mock_creds
+            mock_boto3.Session.return_value = mock_session
+
+            spec = self._make_aws_spec()
+            with pytest.raises(ValueError, match="IDA token exchange failed"):
+                DatabricksConnector(spec, logger)
+
+    def test_build_gci_token_structure(self):
+        """Verify the GCI token is a valid base64 JSON with expected structure."""
+        token = DatabricksConnector._build_gci_token(
+            region="us-east-1",
+            audience="https://c2c.example.com",
+            access_key_id="AKIAIOSFODNN7EXAMPLE",
+            secret_access_key="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+            audience_header_name="x-custom-audience",
+            session_token="session_token",
+        )
+        # Should be valid base64
+        decoded = json.loads(base64.b64decode(token))
+        assert "uri" in decoded
+        assert "headers" in decoded
+        assert "sts.us-east-1.amazonaws.com" in decoded["uri"]
+        assert "Authorization" in decoded["headers"]
+        assert "X-Custom-Audience" in decoded["headers"]
+        assert "X-Amz-Security-Token" in decoded["headers"]
+
+    def test_build_gci_token_without_session_token(self):
+        """Verify GCI token works without session token (long-term creds)."""
+        token = DatabricksConnector._build_gci_token(
+            region="us-east-1",
+            audience="https://c2c.example.com",
+            access_key_id="AKIAIOSFODNN7EXAMPLE",
+            secret_access_key="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+            audience_header_name="x-custom-audience",
+            session_token=None,
+        )
+        decoded = json.loads(base64.b64decode(token))
+        assert "X-Amz-Security-Token" not in decoded["headers"]
+
+    @patch("connectors.databricks_connector.requests.post")
+    @patch("connectors.databricks_connector.create_engine")
+    def test_recreate_engine_on_auth_error(self, mock_engine, mock_requests_post):
+        """Verify engine recreation works for AWS token exchange on auth errors."""
+        mock_engine_1 = MagicMock()
+        mock_engine_2 = MagicMock()
+        mock_engine.side_effect = [mock_engine_1, mock_engine_2]
+
+        # 4 token exchange calls: 2 for initial engine, 2 for recreated engine
+        mock_requests_post.side_effect = [
+            Mock(status_code=200, json=Mock(return_value={"access_token": "c2c_1"})),
+            Mock(status_code=200, json=Mock(return_value={"access_token": "ida_1"})),
+            Mock(status_code=200, json=Mock(return_value={"access_token": "c2c_2"})),
+            Mock(status_code=200, json=Mock(return_value={"access_token": "ida_2"})),
+        ]
+
+        with patch("connectors.databricks_connector.boto3") as mock_boto3:
+            mock_session = MagicMock()
+            mock_session.region_name = "us-east-1"
+            mock_creds = MagicMock()
+            mock_creds.access_key = "AKIAIOSFODNN7EXAMPLE"
+            mock_creds.secret_key = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+            mock_creds.token = "session_token"
+            mock_session.get_credentials.return_value = MagicMock()
+            mock_session.get_credentials.return_value.get_frozen_credentials.return_value = mock_creds
+            mock_boto3.Session.return_value = mock_session
+
+            spec = self._make_aws_spec()
+            conn = DatabricksConnector(spec, logger)
+
+            # Simulate auth error triggering engine recreation
+            recreated = conn._recreate_engine_if_needed(Exception("401 unauthorized"))
+            assert recreated is True
+            assert mock_engine_1.dispose.called
+
+    @patch("connectors.databricks_connector.requests.post")
+    @patch("connectors.databricks_connector.create_engine")
+    def test_custom_ida_provider_uri(self, mock_engine, mock_requests_post):
+        """Verify custom IDA provider URI is used when configured."""
+        mock_engine.return_value = MagicMock()
+        custom_ida_uri = "https://custom-ida.example.com/token/"
+
+        mock_requests_post.side_effect = [
+            Mock(status_code=200, json=Mock(return_value={"access_token": "c2c_token"})),
+            Mock(status_code=200, json=Mock(return_value={"access_token": "ida_token"})),
+        ]
+
+        with patch("connectors.databricks_connector.boto3") as mock_boto3:
+            mock_session = MagicMock()
+            mock_session.region_name = "us-east-1"
+            mock_creds = MagicMock()
+            mock_creds.access_key = "AKIAIOSFODNN7EXAMPLE"
+            mock_creds.secret_key = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+            mock_creds.token = "session_token"
+            mock_session.get_credentials.return_value = MagicMock()
+            mock_session.get_credentials.return_value.get_frozen_credentials.return_value = mock_creds
+            mock_boto3.Session.return_value = mock_session
+
+            spec_dict = mock_databricks_connector_spec(
+                access_token=None,
+                auth_method="aws_token_exchange_ida",
+                ida_resource_uri="test:resource:uri",
+                ida_provider_uri=custom_ida_uri,
+                c2c_audience_uri="https://c2c.example.com",
+                c2c_token_endpoint="https://c2c.{region}.example.com/token",
+                c2c_audience_header_name="x-custom-audience",
+                c2c_subject_token_type="urn:test:token-type:aws-get-caller-identity",
+            )
+            mock_spec = Mock(spec=ConnectorSpec)
+            mock_spec.connector_type = Mock(value="databricks")
+            mock_spec.fields = [
+                Mock(key=f["key"], value=f["value"]) for f in spec_dict["fields"]
+            ]
+
+            conn = DatabricksConnector(mock_spec, logger)
+            assert conn.ida_provider_uri == custom_ida_uri
+
+            # Verify IDA call used custom URI
+            ida_call = mock_requests_post.call_args_list[1]
+            assert ida_call[0][0] == custom_ida_uri
+
+    @patch("connectors.databricks_connector.requests.post")
+    @patch("connectors.databricks_connector.create_engine")
+    def test_ida_resource_uri_from_env_var(self, mock_engine, mock_requests_post):
+        """Verify ida_resource_uri falls back to env var."""
+        mock_engine.return_value = MagicMock()
+
+        mock_requests_post.side_effect = [
+            Mock(status_code=200, json=Mock(return_value={"access_token": "c2c_token"})),
+            Mock(status_code=200, json=Mock(return_value={"access_token": "ida_token"})),
+        ]
+
+        with patch("connectors.databricks_connector.boto3") as mock_boto3:
+            mock_session = MagicMock()
+            mock_session.region_name = "us-east-1"
+            mock_creds = MagicMock()
+            mock_creds.access_key = "AKIAIOSFODNN7EXAMPLE"
+            mock_creds.secret_key = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+            mock_creds.token = "session_token"
+            mock_session.get_credentials.return_value = MagicMock()
+            mock_session.get_credentials.return_value.get_frozen_credentials.return_value = mock_creds
+            mock_boto3.Session.return_value = mock_session
+
+            with patch.dict(os.environ, {
+                "ARTHUR_ENGINE_DATABRICKS_IDA_RESOURCE_URI": "env:resource:uri",
+            }):
+                spec_dict = mock_databricks_connector_spec(
+                    access_token=None,
+                    auth_method="aws_token_exchange_ida",
+                    ida_provider_uri="https://ida.example.com/token/",
+                    c2c_audience_uri="https://c2c.example.com",
+                    c2c_token_endpoint="https://c2c.example.com/token",
+                    c2c_audience_header_name="x-custom-audience",
+                    c2c_subject_token_type="urn:test:token-type:aws-get-caller-identity",
+                )
+                mock_spec = Mock(spec=ConnectorSpec)
+                mock_spec.connector_type = Mock(value="databricks")
+                mock_spec.fields = [
+                    Mock(key=f["key"], value=f["value"]) for f in spec_dict["fields"]
+                ]
+
+                conn = DatabricksConnector(mock_spec, logger)
+                assert conn.ida_resource_uri == "env:resource:uri"

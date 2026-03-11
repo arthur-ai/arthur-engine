@@ -1,8 +1,11 @@
+import AddIcon from "@mui/icons-material/Add";
+import BalanceOutlinedIcon from "@mui/icons-material/BalanceOutlined";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import TablePagination from "@mui/material/TablePagination";
+import Typography from "@mui/material/Typography";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
@@ -14,13 +17,22 @@ import { useDeleteEvalMutation } from "./hooks/useDeleteEvalMutation";
 import { useEvals } from "./hooks/useEvals";
 import EvalsTable from "./table/EvalsTable";
 
+import { SearchBar } from "@/components/common/SearchBar";
 import { getContentHeight } from "@/constants/layout";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useTask } from "@/hooks/useTask";
 import { CreateEvalRequest } from "@/lib/api-client/api-client";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
-const Evaluators: React.FC = () => {
+interface EvaluatorsProps {
+  embedded?: boolean;
+  isCreateModalOpen?: boolean;
+  onCreateModalOpen?: () => void;
+  onCreateModalClose?: () => void;
+}
+
+const Evaluators: React.FC<EvaluatorsProps> = ({ embedded = false, isCreateModalOpen: externalOpen, onCreateModalOpen, onCreateModalClose }) => {
   const { task } = useTask();
   const { id: taskId, evaluatorName: urlEvaluatorName, version: urlVersion } = useParams<{ id: string; evaluatorName?: string; version?: string }>();
   const navigate = useNavigate();
@@ -29,7 +41,24 @@ const Evaluators: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
+
+  const isCreateModalOpen = embedded ? (externalOpen ?? false) : internalOpen;
+  const setIsCreateModalOpen = (value: boolean) => {
+    if (embedded) {
+      if (value) onCreateModalOpen?.();
+      else onCreateModalClose?.();
+    } else {
+      setInternalOpen(value);
+    }
+  };
+
+  // Reset to first page when search changes
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearchQuery]);
 
   // Sync fullScreenEval with URL parameter
   useEffect(() => {
@@ -41,16 +70,24 @@ const Evaluators: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlEvaluatorName]);
 
+  // When searching, fetch all evals (up to API max) so client-side filter spans the full dataset,
+  // not just the current server page.
   const filters = useMemo(
     () => ({
-      page,
-      pageSize,
+      page: debouncedSearchQuery ? 0 : page,
+      pageSize: debouncedSearchQuery ? 5000 : pageSize,
       sort: sortDirection,
     }),
-    [page, pageSize, sortDirection]
+    [page, pageSize, sortDirection, debouncedSearchQuery]
   );
 
   const { evals, count, error, isLoading, refetch } = useEvals(task?.id, filters);
+
+  const filteredEvals = useMemo(() => {
+    if (!debouncedSearchQuery) return evals;
+    const query = debouncedSearchQuery.toLowerCase();
+    return evals.filter((e) => e.name.toLowerCase().includes(query));
+  }, [evals, debouncedSearchQuery]);
 
   const createMutation = useCreateEvalMutation(task?.id, (evalData) => {
     setIsCreateModalOpen(false);
@@ -81,8 +118,8 @@ const Evaluators: React.FC = () => {
 
   const handleCloseFullScreen = useCallback(() => {
     setFullScreenEval(null);
-    // Update URL to go back to the main evaluators view
-    navigate(`/tasks/${taskId}/evaluators`);
+    // Navigate back to the combined Evaluate view
+    navigate(`/tasks/${taskId}/evaluate`);
   }, [taskId, navigate]);
 
   const handleSort = useCallback(
@@ -140,17 +177,32 @@ const Evaluators: React.FC = () => {
     );
   }
 
+  // Standalone uses 4 explicit rows (header + search + error + table); embedded uses 3 (search + error + table)
+  const gridTemplateRows = embedded ? "auto auto 1fr" : "auto auto auto 1fr";
+
   return (
     <Box
       sx={{
         width: "100%",
         height: getContentHeight(),
         display: "grid",
-        gridTemplateRows: "auto auto 1fr",
+        gridTemplateRows,
         overflow: "hidden",
       }}
     >
-      <EvaluatorsHeader onCreateEval={() => setIsCreateModalOpen(true)} />
+      {!embedded && <EvaluatorsHeader onCreateEval={() => setIsCreateModalOpen(true)} />}
+
+      <Box
+        sx={{
+          px: 3,
+          py: 1.5,
+          borderBottom: 1,
+          borderColor: "divider",
+          backgroundColor: "background.paper",
+        }}
+      >
+        <SearchBar value={searchQuery} onChange={setSearchQuery} onClear={() => setSearchQuery("")} placeholder="Search evaluators by name..." />
+      </Box>
 
       {error && evals.length > 0 && (
         <Box sx={{ px: 3, pt: 2 }}>
@@ -164,36 +216,45 @@ const Evaluators: React.FC = () => {
           minHeight: 0,
         }}
       >
-        {!isLoading && evals.length === 0 ? (
+        {!isLoading && filteredEvals.length === 0 ? (
           <Box
             sx={{
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              flex: 1,
-              p: 3,
+              height: "100%",
+              textAlign: "center",
+              py: 8,
             }}
           >
-            <Box sx={{ textAlign: "center" }}>
-              <Box
-                sx={{
-                  fontWeight: 600,
-                  fontSize: "1.25rem",
-                  color: "text.primary",
-                  mb: 1,
-                }}
-              >
-                No evals found
-              </Box>
-              <Box sx={{ color: "text.secondary", mb: 2 }}>Create your first eval to get started.</Box>
-              <Button variant="contained" onClick={() => setIsCreateModalOpen(true)} sx={{ mt: 1 }}>
-                Create Evaluator
-              </Button>
-            </Box>
+            <BalanceOutlinedIcon sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
+            {debouncedSearchQuery ? (
+              <>
+                <Typography variant="h5" gutterBottom sx={{ fontWeight: 500, color: "text.primary" }}>
+                  No results found
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  No evaluators match &ldquo;{debouncedSearchQuery}&rdquo;
+                </Typography>
+              </>
+            ) : (
+              <>
+                <Typography variant="h5" gutterBottom sx={{ fontWeight: 500, color: "text.primary" }}>
+                  No evals yet
+                </Typography>
+                <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                  Get started by creating your first eval
+                </Typography>
+                <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => setIsCreateModalOpen(true)} size="large">
+                  Evaluator
+                </Button>
+              </>
+            )}
           </Box>
         ) : (
           <EvalsTable
-            evals={evals}
+            evals={filteredEvals}
             sortColumn={sortColumn}
             sortDirection={sortDirection}
             onSort={handleSort}
@@ -203,7 +264,7 @@ const Evaluators: React.FC = () => {
         )}
       </Box>
 
-      {evals.length > 0 && (
+      {!debouncedSearchQuery && filteredEvals.length > 0 && (
         <Box
           sx={{
             borderTop: 1,
@@ -215,7 +276,7 @@ const Evaluators: React.FC = () => {
         >
           <TablePagination
             component="div"
-            count={count}
+            count={debouncedSearchQuery ? filteredEvals.length : count}
             page={page}
             onPageChange={handlePageChange}
             rowsPerPage={pageSize}

@@ -43,7 +43,6 @@ from routers.auth_routes import auth_routes
 from routers.chat_routes import app_chat_routes
 from routers.health_routes import health_router
 from routers.user_routes import user_management_routes
-from routers.v1.agent_discovery_routes import agent_discovery_routes
 from routers.v1.agent_polling_routes import agent_polling_routes
 from routers.v1.agentic_experiment_routes import agentic_experiment_routes
 from routers.v1.agentic_notebook_routes import agentic_notebook_routes
@@ -79,8 +78,8 @@ from services.currency import (
     shutdown_currency_conversion_service,
 )
 from services.task import (
-    initialize_registered_agent_polling_service,
-    shutdown_registered_agent_polling_service,
+    initialize_global_agent_polling_service,
+    shutdown_global_agent_polling_service,
 )
 from utils import constants as constants
 from utils import model_load
@@ -232,11 +231,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         initialize_currency_conversion_service()
     except Exception as e:
         logger.error(f"Error initializing currency conversion service: {e}")
-    # Initialize registered agent polling service
+    # Initialize global agent polling service
     try:
-        initialize_registered_agent_polling_service(num_workers=4)
+        initialize_global_agent_polling_service(num_workers=4)
     except Exception as e:
-        logger.error(f"Error initializing registered agent polling service: {e}")
+        logger.error(f"Error initializing global agent polling service: {e}")
 
     # Conditionally load relevance models
     if relevance_models_enabled():
@@ -256,7 +255,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     cleanup_cuda_cache()
     shutdown_currency_conversion_service()
     shutdown_continuous_eval_queue_service()
-    shutdown_registered_agent_polling_service()
+    shutdown_global_agent_polling_service()
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -446,7 +445,6 @@ def get_app_with_routes() -> FastAPI:
             agentic_experiment_routes,
             transform_routes,
             continuous_eval_routes,
-            agent_discovery_routes,
             agent_polling_routes,
         ],
     )
@@ -487,7 +485,6 @@ def get_test_app() -> FastAPI:
             agentic_experiment_routes,
             transform_routes,
             continuous_eval_routes,
-            agent_discovery_routes,
             agent_polling_routes,
         ],
     )
@@ -538,7 +535,6 @@ def get_app() -> FastAPI:
             agentic_experiment_routes,
             transform_routes,
             continuous_eval_routes,
-            agent_discovery_routes,
             agent_polling_routes,
         ],
     )

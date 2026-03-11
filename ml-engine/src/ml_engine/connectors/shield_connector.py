@@ -45,6 +45,7 @@ from arthur_common.models.response_schemas import (
     RuleResponse,
     TaskResponse,
 )
+from genai_client import AgentMetadata as GenaiAgentMetadata
 from genai_client import (
     ApiClient,
     APIKeysApi,
@@ -141,6 +142,13 @@ class ShieldBaseConnector(Connector, ABC):
         may return less than page_size rows if there is not enough data in the query.
         Starts from end_time and works backward.
         """
+        # Shield datasets are always time-series — static datasets are not supported
+        if dataset.is_static:
+            raise ValueError(
+                "Static datasets are not supported by the Shield connector. "
+                "Shield datasets must have a time dimension.",
+            )
+
         if not dataset.dataset_locator:
             raise ValueError(
                 f"Dataset {dataset.id} has no dataset locator, cannot read from Shield.",
@@ -325,12 +333,16 @@ class ShieldBaseConnector(Connector, ABC):
         is_agentic: bool = False,
         agent_metadata: Optional[AgentMetadata] = None,
     ) -> TaskResponse:
-        # Serialize to dict to bridge the gap between arthur_common and generated client types
-        agent_metadata_dict = agent_metadata.model_dump() if agent_metadata else None
+        # Bridge arthur_common AgentMetadata to the genai_client generated type
+        genai_agent_metadata = (
+            GenaiAgentMetadata.from_dict(agent_metadata.model_dump())
+            if agent_metadata
+            else None
+        )
         new_task_req = NewTaskRequest(
             name=name,
             is_agentic=is_agentic,
-            agent_metadata=agent_metadata_dict,
+            agent_metadata=genai_agent_metadata,
         )
         resp = self._tasks_client.create_task_api_v2_tasks_post_with_http_info(
             new_task_request=new_task_req,

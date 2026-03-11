@@ -30,6 +30,7 @@ from schemas.request_schemas import (
     TransformListFilterRequest,
 )
 from schemas.response_schemas import (
+    TransformDependents,
     TransformExtractionResponseList,
 )
 from utils.transform_executor import execute_transform
@@ -71,6 +72,7 @@ def list_transforms_for_task(
         )
         return ListTraceTransformsResponse(
             transforms=[transform.to_response_model() for transform in transforms],
+            count=len(transforms),
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -99,6 +101,32 @@ def get_transform(
             )
 
         return trace_transform.to_response_model()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@transform_routes.get(
+    "/traces/transforms/{transform_id}/dependents",
+    description="Get resources that depend on this transform.",
+    response_model=TransformDependents,
+    tags=["Transforms"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def get_transform_dependents(
+    transform_id: UUID = Path(description="ID of the transform."),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> TransformDependents:
+    try:
+        repo = TraceTransformRepository(db_session)
+        if not repo.get_transform_by_id(transform_id):
+            raise HTTPException(
+                status_code=404,
+                detail=f"Transform {transform_id} not found",
+            )
+        return repo.get_transform_dependents(transform_id)
     except HTTPException:
         raise
     except Exception as e:
@@ -156,9 +184,14 @@ def update_transform(
 
 @transform_routes.delete(
     "/traces/transforms/{transform_id}",
-    description="Delete a transform.",
+    description="Delete a transform. Returns 409 if the transform is referenced by continuous evals, agentic experiments, or agentic notebooks.",
     tags=["Transforms"],
     status_code=HTTP_204_NO_CONTENT,
+    responses={
+        409: {
+            "description": "Transform has dependent resources that must be removed first."
+        }
+    },
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def delete_transform(
@@ -207,6 +240,7 @@ def execute_trace_transform_extraction(
         # Fetch the trace
         tasks_metrics_repo = TasksMetricsRepository(db_session)
         metrics_repo = MetricRepository(db_session)
+
         span_repo = SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
 
         trace = span_repo.get_trace_by_id(

@@ -1,3 +1,4 @@
+import { useAppForm } from "@arthur/shared-components";
 import { Button, Dialog, DialogActions, DialogContent } from "@mui/material";
 import { useState } from "react";
 
@@ -9,7 +10,6 @@ import { VllmFields } from "./components/vllm";
 import { BedrockFormValues, editFormOptions, VertexAIFormValues, VllmFormValues } from "./form";
 import { parseCredentials } from "./utils";
 
-import { useAppForm } from "@/components/traces/components/filtering/hooks/form";
 import { ModelProvider, PutModelProviderCredentials } from "@/lib/api-client/api-client";
 
 type Props = {

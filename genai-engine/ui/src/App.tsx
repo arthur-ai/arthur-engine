@@ -4,21 +4,19 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { SnackbarProvider } from "notistack";
 import { NuqsAdapter } from "nuqs/adapters/react-router/v7";
-import { Navigate, Route, BrowserRouter as Router, Routes, useParams } from "react-router-dom";
+import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-dom";
 
 import "./App.css";
-import { AgentExperiments } from "./components/agent-experiments";
 import { AgentExperimentDetail } from "./components/agent-experiments/[experimentId]";
 import { NewAgentExperiment } from "./components/agent-experiments/new";
-import { AgentNotebook } from "./components/agent-notebook";
 import { AgentNotebookDetail } from "./components/agent-notebook/[notebookId]";
 import { AllTasks } from "./components/AllTasks";
 import { ApiKeysManagement } from "./components/ApiKeysManagement";
 import { DatasetDetailView } from "./components/datasets/DatasetDetailView";
 import { DatasetExperimentsView } from "./components/datasets/DatasetExperimentsView";
 import { DatasetsView } from "./components/datasets/DatasetsView";
+import { EvaluateView } from "./components/evaluate/EvaluateView";
 import Evaluators from "./components/evaluators/Evaluators";
-import { LiveEvals } from "./components/live-evals";
 import { LiveEvalDetail } from "./components/live-evals/[evalId]";
 import { LiveEvalsNew } from "./components/live-evals/new";
 import { LoginPage } from "./components/LoginPage";
@@ -26,429 +24,161 @@ import { ModelProviders } from "./components/model-providers";
 import Notebooks from "./components/notebooks/Notebooks";
 import { ExperimentDetailView } from "./components/prompt-experiments/ExperimentDetailView";
 import { PromptExperimentsView } from "./components/prompt-experiments/PromptExperimentsView";
+import { PromptsView } from "./components/prompts/PromptsView";
 import PromptsManagement from "./components/prompts-management/PromptsManagement";
-import PromptsPlayground from "./components/prompts-playground/PromptsPlayground";
+import PromptsPlayground from "./components/prompts-playground/PromptsPlaygroundWrapper";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { RagView } from "./components/rag/RagView";
 import { RagExperimentsListView, RagExperimentDetailView } from "./components/rag-experiments";
 import { RagNotebooks } from "./components/retrievals/notebooks";
 import { RagConfigurationsPage } from "./components/retrievals/RagConfigurationsPage";
 import { RagExperimentsPage } from "./components/retrievals/RagExperimentsPage";
-import { TaskDetailContent } from "./components/TaskDetailContent";
+import { SettingsPage } from "./components/settings/SettingsPage";
 import { TaskLayout } from "./components/TaskLayout";
 import { TaskOverview } from "./components/TaskOverview";
+import { TestView } from "./components/test/TestView";
 import { TracesView } from "./components/TracesView";
 import TransformsManagement from "./components/transforms/TransformsManagement";
 import { AuthProvider } from "./contexts/AuthContext";
+import { DisplaySettingsProvider } from "./contexts/DisplaySettingsContext";
 import { queryClient } from "./lib/queryClient";
-
-const TaskRedirect = () => {
-  const { id } = useParams<{ id: string }>();
-  return <Navigate to={`/tasks/${id}/overview`} replace />;
-};
+import { AppThemeProvider } from "./theme/ThemeProvider";
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <NuqsAdapter>
-          <SnackbarProvider
-            anchorOrigin={{
-              vertical: "top",
-              horizontal: "center",
-            }}
-          >
-            <>
-              <ReactQueryDevtools />
-              <AuthProvider>
-                <Router>
-                  <div className="min-h-screen bg-gray-50">
-                    <Routes>
-                      {/* Public routes */}
-                      <Route path="/login" element={<LoginPage />} />
+      <AppThemeProvider>
+        <LocalizationProvider dateAdapter={AdapterDayjs}>
+          <NuqsAdapter>
+            <SnackbarProvider
+              anchorOrigin={{
+                vertical: "top",
+                horizontal: "center",
+              }}
+            >
+              <>
+                <ReactQueryDevtools />
+                <AuthProvider>
+                  <DisplaySettingsProvider>
+                    <Router>
+                      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+                        <Routes>
+                          {/* Public routes */}
+                          <Route path="/login" element={<LoginPage />} />
 
-                      {/* Protected routes */}
-                      <Route
-                        path="/"
-                        element={
-                          <ProtectedRoute>
-                            <AllTasks />
-                          </ProtectedRoute>
-                        }
-                      />
+                          {/* Protected routes */}
+                          <Route
+                            path="/"
+                            element={
+                              <ProtectedRoute>
+                                <AllTasks />
+                              </ProtectedRoute>
+                            }
+                          />
 
-                      {/* Task routes with layout */}
-                      <Route path="/tasks/:id" element={<TaskRedirect />} />
+                          {/* Settings routes - global/org-level pages */}
+                          <Route
+                            path="/settings/model-providers"
+                            element={
+                              <ProtectedRoute>
+                                <SettingsPage>
+                                  <ModelProviders />
+                                </SettingsPage>
+                              </ProtectedRoute>
+                            }
+                          />
+                          <Route
+                            path="/settings/api-keys"
+                            element={
+                              <ProtectedRoute>
+                                <SettingsPage>
+                                  <ApiKeysManagement />
+                                </SettingsPage>
+                              </ProtectedRoute>
+                            }
+                          />
 
-                      <Route
-                        path="/tasks/:id/overview"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <TaskOverview />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
+                          {/* Task layout route: single layout with nested section routes */}
+                          <Route
+                            path="/tasks/:id"
+                            element={
+                              <ProtectedRoute>
+                                <TaskLayout />
+                              </ProtectedRoute>
+                            }
+                          >
+                            <Route index element={<Navigate to="overview" replace />} />
+                            <Route path="overview" element={<TaskOverview />} />
+                            <Route path="model-providers" element={<Navigate to="/settings/model-providers" replace />} />
+                            <Route path="api-keys" element={<Navigate to="/settings/api-keys" replace />} />
+                            <Route path="rag-configurations" element={<RagConfigurationsPage />} />
+                            <Route path="rag-configurations/:configId" element={<RagConfigurationsPage />} />
+                            <Route path="rag-configurations/:configId/versions/:version" element={<RagConfigurationsPage />} />
 
-                      <Route
-                        path="/tasks/:id/task-details"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <TaskDetailContent />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
+                            <Route path="test" element={<TestView />} />
 
-                      <Route
-                        path="/tasks/:id/model-providers"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <ModelProviders />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
+                            {/* Legacy redirects: old agent routes → /test */}
+                            <Route path="agent-experiments" element={<Navigate to="../test?section=agent-experiments" replace />} />
+                            <Route path="agent-experiments/new" element={<NewAgentExperiment />} />
+                            <Route path="agent-experiments/:experimentId" element={<AgentExperimentDetail />} />
 
-                      <Route
-                        path="/tasks/:id/api-keys"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <ApiKeysManagement />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path="/tasks/:id/rag-configurations"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <RagConfigurationsPage />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
+                            <Route path="agentic-notebooks" element={<Navigate to="../test?section=agentic-notebooks" replace />} />
+                            <Route path="agentic-notebooks/:notebookId" element={<AgentNotebookDetail />} />
 
-                      <Route path="/tasks/:id/agent-experiments">
-                        <Route
-                          index
-                          element={
-                            <ProtectedRoute>
-                              <TaskLayout>
-                                <AgentExperiments />
-                              </TaskLayout>
-                            </ProtectedRoute>
-                          }
-                        />
+                            <Route path="datasets" element={<DatasetsView />} />
+                            <Route path="datasets/:datasetId" element={<DatasetDetailView />} />
+                            <Route path="transforms" element={<TransformsManagement />} />
+                            <Route path="datasets/:datasetId/experiments" element={<DatasetExperimentsView />} />
 
-                        <Route
-                          path="new"
-                          element={
-                            <ProtectedRoute>
-                              <TaskLayout>
-                                <NewAgentExperiment />
-                              </TaskLayout>
-                            </ProtectedRoute>
-                          }
-                        />
+                            <Route path="evaluate" element={<EvaluateView />} />
 
-                        <Route
-                          path=":experimentId"
-                          element={
-                            <ProtectedRoute>
-                              <TaskLayout>
-                                <AgentExperimentDetail />
-                              </TaskLayout>
-                            </ProtectedRoute>
-                          }
-                        />
-                      </Route>
+                            {/* Legacy redirect: /evaluators → /evaluate */}
+                            <Route path="evaluators" element={<Navigate to="../evaluate" replace />} />
+                            <Route path="evaluators/:evaluatorName" element={<Evaluators />} />
+                            <Route path="evaluators/:evaluatorName/versions/:version" element={<Evaluators />} />
 
-                      <Route path="/tasks/:id/agentic-notebooks">
-                        <Route
-                          index
-                          element={
-                            <ProtectedRoute>
-                              <TaskLayout>
-                                <AgentNotebook />
-                              </TaskLayout>
-                            </ProtectedRoute>
-                          }
-                        />
+                            <Route path="continuous-evals">
+                              {/* Legacy redirect: /continuous-evals → /evaluate?section=continuous-evals */}
+                              <Route index element={<Navigate to="../evaluate?section=ce-management" replace />} />
+                              <Route path="new" element={<LiveEvalsNew />} />
+                              <Route path=":evalId" element={<LiveEvalDetail />} />
+                            </Route>
 
-                        <Route
-                          path=":notebookId"
-                          element={
-                            <ProtectedRoute>
-                              <TaskLayout>
-                                <AgentNotebookDetail />
-                              </TaskLayout>
-                            </ProtectedRoute>
-                          }
-                        />
-                      </Route>
+                            <Route path="prompts-management" element={<PromptsManagement />} />
+                            <Route path="prompts/:promptName" element={<PromptsManagement />} />
+                            <Route path="prompts/:promptName/versions/:version" element={<PromptsManagement />} />
 
-                      <Route
-                        path="/tasks/:id/datasets"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <DatasetsView />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
+                            <Route path="prompts" element={<PromptsView />} />
 
-                      <Route
-                        path="/tasks/:id/datasets/:datasetId"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <DatasetDetailView />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
+                            <Route path="notebooks" element={<Notebooks />} />
+                            <Route path="playgrounds/prompts" element={<PromptsPlayground />} />
 
-                      <Route
-                        path="/tasks/:id/transforms"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <TransformsManagement />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
+                            <Route path="prompt-experiments" element={<PromptExperimentsView />} />
+                            <Route path="prompt-experiments/:experimentId" element={<ExperimentDetailView />} />
 
-                      <Route
-                        path="/tasks/:id/datasets/:datasetId/experiments"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <DatasetExperimentsView />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
+                            <Route path="rag" element={<RagView />} />
 
-                      <Route
-                        path="/tasks/:id/evaluators"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <Evaluators />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
+                            <Route path="rag-experiments" element={<RagExperimentsListView />} />
+                            <Route path="rag-experiments/:experimentId" element={<RagExperimentDetailView />} />
 
-                      <Route path="/tasks/:id/continuous-evals">
-                        <Route
-                          index
-                          element={
-                            <ProtectedRoute>
-                              <TaskLayout>
-                                <LiveEvals />
-                              </TaskLayout>
-                            </ProtectedRoute>
-                          }
-                        />
+                            <Route path="rag-notebooks" element={<RagNotebooks />} />
+                            <Route path="rag-notebooks/:notebookId" element={<RagExperimentsPage />} />
 
-                        <Route
-                          path=":evalId"
-                          element={
-                            <ProtectedRoute>
-                              <TaskLayout>
-                                <LiveEvalDetail />
-                              </TaskLayout>
-                            </ProtectedRoute>
-                          }
-                        />
+                            <Route path="traces" element={<TracesView />} />
+                          </Route>
 
-                        <Route
-                          path="new"
-                          element={
-                            <ProtectedRoute>
-                              <TaskLayout>
-                                <LiveEvalsNew />
-                              </TaskLayout>
-                            </ProtectedRoute>
-                          }
-                        />
-                      </Route>
-
-                      <Route
-                        path="/tasks/:id/evaluators/:evaluatorName"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <Evaluators />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
-
-                      <Route
-                        path="/tasks/:id/evaluators/:evaluatorName/versions/:version"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <Evaluators />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
-
-                      <Route
-                        path="/tasks/:id/prompts-management"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <PromptsManagement />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
-
-                      <Route
-                        path="/tasks/:id/prompts/:promptName"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <PromptsManagement />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
-
-                      <Route
-                        path="/tasks/:id/prompts/:promptName/versions/:version"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <PromptsManagement />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
-
-                      <Route
-                        path="/tasks/:id/notebooks"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <Notebooks />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
-
-                      <Route
-                        path="/tasks/:id/playgrounds/prompts"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <PromptsPlayground />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
-
-                      <Route
-                        path="/tasks/:id/prompt-experiments"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <PromptExperimentsView />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
-
-                      <Route
-                        path="/tasks/:id/prompt-experiments/:experimentId"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <ExperimentDetailView />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
-
-                      {/* RAG Experiments - List View */}
-                      <Route
-                        path="/tasks/:id/rag-experiments"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <RagExperimentsListView />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
-
-                      {/* RAG Experiments - Detail View */}
-                      <Route
-                        path="/tasks/:id/rag-experiments/:experimentId"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <RagExperimentDetailView />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
-
-                      {/* RAG Notebooks routes */}
-                      <Route
-                        path="/tasks/:id/rag-notebooks"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <RagNotebooks />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
-
-                      <Route
-                        path="/tasks/:id/rag-notebooks/:notebookId"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <RagExperimentsPage />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
-
-                      <Route
-                        path="/tasks/:id/traces"
-                        element={
-                          <ProtectedRoute>
-                            <TaskLayout>
-                              <TracesView />
-                            </TaskLayout>
-                          </ProtectedRoute>
-                        }
-                      />
-
-                      {/* Redirect root to tasks */}
-                      <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes>
-                  </div>
-                </Router>
-              </AuthProvider>
-            </>
-          </SnackbarProvider>
-        </NuqsAdapter>
-      </LocalizationProvider>
+                          {/* Redirect root to tasks */}
+                          <Route path="*" element={<Navigate to="/" replace />} />
+                        </Routes>
+                      </div>
+                    </Router>
+                  </DisplaySettingsProvider>
+                </AuthProvider>
+              </>
+            </SnackbarProvider>
+          </NuqsAdapter>
+        </LocalizationProvider>
+      </AppThemeProvider>
     </QueryClientProvider>
   );
 }

@@ -1,3 +1,4 @@
+import { MustacheHighlightedTextField } from "@arthur/shared-components";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -20,11 +21,11 @@ import {
 
 import { CopyableChip } from "@/components/common";
 import { useEval } from "@/components/evaluators/hooks/useEval";
-import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
 import { useAnnotation } from "@/components/live-evals/hooks/useAnnotation";
 import { useRerunContinuousEval } from "@/components/live-evals/hooks/useRerunContinuousEval";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useTask } from "@/hooks/useTask";
-import { formatDate } from "@/utils/formatters";
+import { formatCurrency, formatDate } from "@/utils/formatters";
 
 type Props = {
   annotationId?: string;
@@ -35,6 +36,7 @@ type Props = {
 
 export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunComplete }: Props) => {
   const { task } = useTask();
+  const { defaultCurrency } = useDisplaySettings();
 
   const { data, isLoading } = useAnnotation(annotationId!);
 
@@ -146,7 +148,7 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
                   variant="outlined"
                   sx={{
                     p: 2,
-                    backgroundColor: "grey.50",
+                    backgroundColor: "action.hover",
                     borderRadius: 1,
                   }}
                 >
@@ -187,7 +189,7 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
                     },
                   }}
                 >
-                  <NunjucksHighlightedTextField
+                  <MustacheHighlightedTextField
                     value={instructions}
                     onChange={() => {}} // Read-only, no-op
                     disabled
@@ -214,7 +216,7 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
                       variant="outlined"
                       sx={{
                         p: 2,
-                        backgroundColor: "grey.50",
+                        backgroundColor: "action.hover",
                       }}
                     >
                       <Box className="flex items-center gap-2 mb-2">
@@ -225,7 +227,7 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
                         sx={{
                           m: 0,
                           p: 1.5,
-                          backgroundColor: "white",
+                          backgroundColor: "background.paper",
                           borderRadius: 1,
                           border: "1px solid",
                           borderColor: "divider",
@@ -260,7 +262,7 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
                       Cost
                     </Typography>
                     <Typography variant="body1" fontWeight={600}>
-                      ${data.cost?.toFixed(6) ?? "N/A"}
+                      {data.cost != null ? formatCurrency(data.cost, defaultCurrency) : "N/A"}
                     </Typography>
                   </Box>
                 </Paper>

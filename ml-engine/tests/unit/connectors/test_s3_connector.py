@@ -478,6 +478,47 @@ def test_s3_read_filters(
     assert_column_names_are_strings(rows)
 
 
+@patch("s3fs.S3FileSystem.open", side_effect=open)
+@patch("s3fs.S3FileSystem.walk", side_effect=os.walk)
+@patch("s3fs.S3FileSystem.isfile", side_effect=os.path.isfile)
+def test_s3_read_static_dataset(mock_s3fs_walk, mock_s3fs_open, mock_s3fs_is_file):
+    """Static datasets must bypass time-range filtering and read all files under the prefix."""
+    static_locator = DatasetLocator(
+        fields=[
+            DatasetLocatorField(
+                key=BUCKET_BASED_DATASET_FILE_PREFIX_FIELD,
+                value="7461c078-cc90-4cad-a590-25c534458dfd/b2f420b8-92ed-425e-9d35-bab014af965e/",
+            ),
+            DatasetLocatorField(
+                key=BUCKET_BASED_DATASET_FILE_SUFFIX_FIELD,
+                value=".json",
+            ),
+            DatasetLocatorField(
+                key=BUCKET_BASED_DATASET_FILE_TYPE_FIELD,
+                value=DatasetFileType.JSON,
+            ),
+        ],
+    )
+    dataset_dict = mock_expel_tabular_dataset(static_locator)
+    dataset_dict["is_static"] = True
+    dataset = Dataset.model_validate(dataset_dict)
+
+    spec = ConnectorSpec.model_validate(MOCK_S3_CONNECTOR_SPEC)
+    conn = S3Connector(spec, logger)
+
+    # time range is irrelevant for static datasets — all files should be returned
+    rows = conn.read(
+        dataset,
+        start_time=datetime(2099, 1, 1).astimezone(pytz.timezone("UTC")),
+        end_time=datetime(2099, 1, 2).astimezone(pytz.timezone("UTC")),
+        filters=None,
+        pagination_options=None,
+    )
+
+    assert len(rows) > 0
+    assert_column_names_are_strings(rows)
+
+
 def test_secondary_filter_primary_timestamp_with_different_types():
     """Test that _secondary_filter_primary_timestamp handles both string and datetime/pd.Timestamp types.
 

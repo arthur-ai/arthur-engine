@@ -16,6 +16,7 @@ type TracesTableProps<T extends MRT_RowData> = {
   isLoading: boolean;
   onRowClick?: (row: T) => void;
   sorting?: SortingState;
+  onSortingChange?: OnChangeFn<SortingState>;
 };
 
 export const TracesTable = <T extends MRT_RowData>({
@@ -27,12 +28,14 @@ export const TracesTable = <T extends MRT_RowData>({
   isLoading,
   onRowClick,
   sorting,
+  onSortingChange,
 }: TracesTableProps<T>) => {
   const table = useTable<T>({
     data,
     columns,
     pagination: { state: pagination, onChange: onPaginationChange, rowCount },
     onRowClick,
+    onSortingChange,
     state: {
       sorting: sorting ?? [],
       isLoading,

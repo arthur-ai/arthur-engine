@@ -19,7 +19,11 @@ from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import ApplicationConfiguration, User
 from schemas.request_schemas import ApplicationConfigurationUpdateRequest
-from schemas.response_schemas import ApplicationConfigurationResponse
+from schemas.response_schemas import (
+    ApplicationConfigurationResponse,
+    DisplaySettingsResponse,
+)
+from utils.currency_display import get_display_currency
 from utils.users import permission_checker
 from utils.utils import public_endpoint
 
@@ -59,10 +63,23 @@ def get_token_usage(
             end_time=end_time,
             group_by=group_by,
         )
-    except:
-        raise
     finally:
         db_session.close()
+
+
+@system_management_routes.get(
+    "/display-settings",
+    description="Get display settings (e.g. default currency for cost formatting).",
+    response_model=DisplaySettingsResponse,
+    tags=["Settings"],
+)
+@public_endpoint
+def get_display_settings(
+    application_config: ApplicationConfiguration = Depends(get_application_config),
+) -> DisplaySettingsResponse:
+    return DisplaySettingsResponse(
+        default_currency=get_display_currency(application_config),
+    )
 
 
 @system_management_routes.get(
@@ -81,8 +98,6 @@ def get_configuration(
         config = config_repo.get_configurations()
 
         return config._to_response_model()
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -114,8 +129,6 @@ def update_configuration(
         new_config = config_repo.update_configurations(body)
 
         return new_config._to_response_model()
-    except:
-        raise
     finally:
         db_session.close()
 

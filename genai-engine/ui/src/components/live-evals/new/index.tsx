@@ -1,8 +1,10 @@
+import { MustacheHighlightedTextField } from "@arthur/shared-components";
+import { useAppForm, withFieldGroup } from "@arthur/shared-components";
 import AddIcon from "@mui/icons-material/Add";
 import { Autocomplete, Box, Button, Divider, FormControlLabel, Paper, Stack, Switch, TextField, Typography } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Suspense, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import z from "zod";
 
 import { VariableMappingSection } from "../components/variable-mapping";
@@ -10,10 +12,9 @@ import { useContinuousEvalVariableMapping } from "../hooks/useContinuousEvalVari
 import { useCreateContinuousEval } from "../hooks/useCreateContinuousEval";
 
 import { EvaluatorSelector } from "./components/EvaluatorSelector";
+import { ContinuousEvalWithTracePage } from "./ContinuousEvalWithTracePage";
 
 import { useEval } from "@/components/evaluators/hooks/useEval";
-import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
-import { useAppForm, withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
 import { useCreateTransformMutation } from "@/components/transforms/hooks/useCreateTransformMutation";
 import { useTransforms } from "@/components/transforms/hooks/useTransforms";
 import TransformFormModal from "@/components/transforms/TransformFormModal";
@@ -31,6 +32,27 @@ type TransformFormState = {
 };
 
 export const LiveEvalsNew = () => {
+  const [searchParams] = useSearchParams();
+  const traceId = searchParams.get("traceId");
+
+  if (traceId) {
+    return (
+      <Suspense
+        fallback={
+          <Box sx={{ p: 3 }}>
+            <Typography>Loading trace...</Typography>
+          </Box>
+        }
+      >
+        <ContinuousEvalWithTracePage traceId={traceId} />
+      </Suspense>
+    );
+  }
+
+  return <LiveEvalsNewForm />;
+};
+
+const LiveEvalsNewForm = () => {
   const { task } = useTask();
 
   const navigate = useNavigate();
@@ -90,7 +112,7 @@ export const LiveEvalsNew = () => {
     onSubmit: async ({ value }) => {
       const { id } = await createContinuousEval.mutateAsync({
         name: value.name,
-        description: value.description,
+        description: value.description?.trim() || undefined,
         enabled: value.enabled,
         llm_eval_name: value.evaluator.name!,
         llm_eval_version: value.evaluator.version!,
@@ -191,7 +213,7 @@ export const LiveEvalsNew = () => {
             <Typography variant="body1" color="text.primary" fontWeight="bold" mb={2}>
               Evaluator Instructions
             </Typography>
-            <NunjucksHighlightedTextField value={evaluatorData?.instructions ?? ""} onChange={() => {}} readOnly size="small" />
+            <MustacheHighlightedTextField value={evaluatorData?.instructions ?? ""} onChange={() => {}} readOnly size="small" />
           </Paper>
         )}
 

@@ -1,17 +1,16 @@
+import AddIcon from "@mui/icons-material/Add";
+import StorageOutlinedIcon from "@mui/icons-material/StorageOutlined";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogContentText from "@mui/material/DialogContentText";
-import DialogTitle from "@mui/material/DialogTitle";
 import TablePagination from "@mui/material/TablePagination";
+import Typography from "@mui/material/Typography";
 import { parseAsString, useQueryState } from "nuqs";
 import React, { useCallback, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 
+import DeleteTransformDialog from "./DeleteTransformDialog";
 import { useCreateTransformMutation } from "./hooks/useCreateTransformMutation";
 import { useDeleteTransformMutation } from "./hooks/useDeleteTransformMutation";
 import { useUpdateTransformMutation } from "./hooks/useUpdateTransformMutation";
@@ -193,29 +192,24 @@ const TransformsManagement: React.FC = () => {
           <Box
             sx={{
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              flex: 1,
-              p: 3,
-              minHeight: 400,
+              height: "100%",
+              textAlign: "center",
+              py: 8,
             }}
           >
-            <Box sx={{ textAlign: "center" }}>
-              <Box
-                sx={{
-                  fontWeight: 600,
-                  fontSize: "1.25rem",
-                  color: "text.primary",
-                  mb: 1,
-                }}
-              >
-                No transforms found
-              </Box>
-              <Box sx={{ color: "text.secondary", mb: 2 }}>Create your first transform to extract data from traces.</Box>
-              <Button variant="contained" onClick={() => setIsCreateModalOpen(true)} sx={{ mt: 1 }}>
-                Create Transform
-              </Button>
-            </Box>
+            <StorageOutlinedIcon sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
+            <Typography variant="h5" gutterBottom sx={{ fontWeight: 500, color: "text.primary" }}>
+              No transforms yet
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              Get started by creating your first transform
+            </Typography>
+            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => setIsCreateModalOpen(true)} size="large">
+              Transform
+            </Button>
           </Box>
         ) : (
           <TransformsTable
@@ -271,18 +265,12 @@ const TransformsManagement: React.FC = () => {
 
       <TransformDetailsModal open={!!viewingTransform} onClose={() => setTransformId(null)} transform={viewingTransform ?? null} />
 
-      <Dialog open={!!deleteConfirmId} onClose={() => setDeleteConfirmId(null)}>
-        <DialogTitle>Delete Transform</DialogTitle>
-        <DialogContent>
-          <DialogContentText>Are you sure you want to delete this transform? This action cannot be undone.</DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteConfirmId(null)}>Cancel</Button>
-          <Button onClick={handleConfirmDelete} color="error" variant="contained">
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <DeleteTransformDialog
+        transformId={deleteConfirmId}
+        onClose={() => setDeleteConfirmId(null)}
+        onConfirm={handleConfirmDelete}
+        isDeleting={deleteMutation.isPending}
+      />
     </Box>
   );
 };

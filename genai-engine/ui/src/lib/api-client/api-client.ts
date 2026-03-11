@@ -20,6 +20,50 @@ export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVe
 
 export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPutError = HTTPValidationError;
 
+/** AgentCreationSource */
+export type AgentCreationSource = GCPAgentCreationSource | OTELAgentCreationSource | ManualAgentCreationSource;
+
+/** AgentMetadata */
+export interface AgentMetadata {
+  /** Metadata for the agent. */
+  gcp_metadata?: GCPAgentMetadata | null;
+  /** Provider of the registered agent. */
+  provider: RegisteredAgentProvider;
+}
+
+/**
+ * AgentMetadataResponse
+ * Agent metadata for responses.
+ */
+export interface AgentMetadataResponse {
+  /** Metadata for the agent. */
+  gcp_metadata?: GCPAgentMetadataResponse | null;
+  /** Provider of the registered agent. */
+  provider: RegisteredAgentProvider;
+  /**
+   * Service Names
+   * List of service names that send traces to this task
+   */
+  service_names?: string[] | null;
+}
+
+/**
+ * AgenticAnnotationAnalyticsResponse
+ * Response containing daily aggregated statistics.
+ */
+export interface AgenticAnnotationAnalyticsResponse {
+  /**
+   * Count
+   * Number of days with data
+   */
+  count: number;
+  /**
+   * Stats
+   * Daily statistics ordered by date descending
+   */
+  stats: DailyAgenticAnnotationStats[];
+}
+
 /** AgenticAnnotationRequest */
 export interface AgenticAnnotationRequest {
   /**
@@ -1810,6 +1854,60 @@ export type CreateUserUsersPostData = any;
 export type CreateUserUsersPostError = HTTPValidationError;
 
 /**
+ * DailyAgenticAnnotationStats
+ * Statistics for a single day of agentic annotations.
+ */
+export interface DailyAgenticAnnotationStats {
+  /**
+   * Date
+   * Date in YYYY-MM-DD format
+   */
+  date: string;
+  /**
+   * Error Count
+   * Count of annotations with run_status='error'
+   */
+  error_count: number;
+  /**
+   * Failed Count
+   * Count of annotations with score=0
+   */
+  failed_count: number;
+  /**
+   * Passed Count
+   * Count of annotations with score=1
+   */
+  passed_count: number;
+  /**
+   * Skipped Count
+   * Count of annotations with run_status='skipped'
+   */
+  skipped_count: number;
+  /**
+   * Total Cost
+   * Total cost for the day
+   */
+  total_cost: number;
+  /**
+   * Total Count
+   * Total annotations for the day
+   */
+  total_count: number;
+}
+
+/**
+ * DataSource
+ * Data source used by an agent.
+ */
+export interface DataSource {
+  /**
+   * Url
+   * URL of the data source.
+   */
+  url: string;
+}
+
+/**
  * DatasetColumnSource
  * Reference to a dataset column
  */
@@ -2146,6 +2244,112 @@ export type DeleteUserUsersUserIdDeleteData = any;
 export type DeleteUserUsersUserIdDeleteError = HTTPValidationError;
 
 /**
+ * DiscoverAndPollResponse
+ * Response model for the execute-all agent polling endpoint.
+ */
+export interface DiscoverAndPollResponse {
+  /**
+   * Discovered
+   * Number of new agent tasks created
+   */
+  discovered: number;
+  /**
+   * Status
+   * Status of the operation
+   */
+  status: string;
+  /**
+   * Traces Fetched
+   * Total number of traces fetched across all tasks (0 in async mode)
+   */
+  traces_fetched: number;
+}
+
+/**
+ * DisplaySettingsResponse
+ * Public display settings (e.g. default currency for cost formatting).
+ */
+export interface DisplaySettingsResponse {
+  /**
+   * Default Currency
+   * @default "USD"
+   */
+  default_currency?: string;
+}
+
+/**
+ * EnrichedTaskResponse
+ * Response model for agent-tasks endpoint with enriched metadata.
+ */
+export interface EnrichedTaskResponse {
+  /**
+   * Created At
+   * Task creation timestamp
+   * @format date-time
+   */
+  created_at: string;
+  /** Information about how this task/agent was created */
+  creation_source?: AgentCreationSource | null;
+  /**
+   * Data Sources
+   * Data sources used by this agent (computed from spans)
+   */
+  data_sources?: DataSource[] | null;
+  /**
+   * Id
+   * Task ID
+   */
+  id: string;
+  /**
+   * Is Autocreated
+   * Whether this task was auto-created (vs manually created)
+   * @default false
+   */
+  is_autocreated?: boolean;
+  /**
+   * Last Fetched
+   * Last time traces were fetched for this task (from task_polling_state)
+   */
+  last_fetched?: string | null;
+  /**
+   * Models
+   * Models used by this agent (computed from spans)
+   */
+  models?: LLMModel[] | null;
+  /**
+   * Name
+   * Task name
+   */
+  name: string;
+  /**
+   * Num Spans
+   * Number of spans associated with this task
+   */
+  num_spans?: number | null;
+  /**
+   * Rules
+   * Rules associated with this task
+   */
+  rules?: RuleResponse[];
+  /**
+   * Sub Agents
+   * Sub-agents used by this agent (computed from spans)
+   */
+  sub_agents?: SubAgent[] | null;
+  /**
+   * Tools
+   * Tools used by this agent (computed from spans)
+   */
+  tools?: Tool[] | null;
+  /**
+   * Updated At
+   * Task last update timestamp
+   * @format date-time
+   */
+  updated_at: string;
+}
+
+/**
  * EvalExecution
  * Details of an eval execution
  */
@@ -2342,6 +2546,24 @@ export interface ExamplesConfig {
   hint?: string | null;
 }
 
+export type ExecuteAgentPollingApiV1TasksTaskIdAgentPollingExecutePostData = ExecutePollingResponse;
+
+export type ExecuteAgentPollingApiV1TasksTaskIdAgentPollingExecutePostError = HTTPValidationError;
+
+export type ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostData = DiscoverAndPollResponse;
+
+export type ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostError = HTTPValidationError;
+
+export interface ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostParams {
+  /** Timeout */
+  timeout?: number | null;
+  /**
+   * Wait For Completion
+   * @default false
+   */
+  wait_for_completion?: boolean;
+}
+
 export type ExecuteHybridSearchApiV1RagProvidersProviderIdHybridSearchPostData = RagProviderQueryResponse;
 
 export type ExecuteHybridSearchApiV1RagProvidersProviderIdHybridSearchPostError = HTTPValidationError;
@@ -2349,6 +2571,23 @@ export type ExecuteHybridSearchApiV1RagProvidersProviderIdHybridSearchPostError 
 export type ExecuteKeywordSearchApiV1RagProvidersProviderIdKeywordSearchPostData = RagProviderQueryResponse;
 
 export type ExecuteKeywordSearchApiV1RagProvidersProviderIdKeywordSearchPostError = HTTPValidationError;
+
+/**
+ * ExecutePollingResponse
+ * Response model for the single-task agent polling endpoint.
+ */
+export interface ExecutePollingResponse {
+  /**
+   * Status
+   * Status of the operation
+   */
+  status: string;
+  /**
+   * Task Id
+   * Task ID that was enqueued
+   */
+  task_id: string;
+}
 
 export type ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPostData = RagProviderQueryResponse;
 
@@ -2540,6 +2779,79 @@ export interface FileUploadResult {
   word_count: number;
 }
 
+/**
+ * GCPAgentCreationSource
+ * Creation source for GCP-discovered agents.
+ */
+export interface GCPAgentCreationSource {
+  /**
+   * Gcp Project Id
+   * GCP project ID
+   */
+  gcp_project_id: string;
+  /**
+   * Gcp Reasoning Engine Id
+   * GCP Vertex AI Reasoning Engine ID
+   */
+  gcp_reasoning_engine_id: string;
+  /**
+   * Gcp Region
+   * GCP region
+   */
+  gcp_region: string;
+  /**
+   * Service Names
+   * Service names associated with this agent
+   */
+  service_names?: string[];
+  /**
+   * Type
+   * @default "GCP"
+   */
+  type?: "GCP";
+}
+
+/** GCPAgentMetadata */
+export interface GCPAgentMetadata {
+  /**
+   * Project Id
+   * Project ID of the agent.
+   */
+  project_id: string;
+  /**
+   * Region
+   * Region of the agent.
+   */
+  region: string;
+  /**
+   * Resource Id
+   * Resource ID of the agent.
+   */
+  resource_id: string;
+}
+
+/**
+ * GCPAgentMetadataResponse
+ * GCP-specific agent metadata for responses.
+ */
+export interface GCPAgentMetadataResponse {
+  /**
+   * Project Id
+   * Project ID of the agent.
+   */
+  project_id: string;
+  /**
+   * Region
+   * Region of the agent.
+   */
+  region: string;
+  /**
+   * Resource Id
+   * Resource ID of the agent.
+   */
+  resource_id: string;
+}
+
 /** GCPServiceAccountCredentialsRequest */
 export interface GCPServiceAccountCredentialsRequest {
   /**
@@ -2616,6 +2928,9 @@ export interface GeneratedVariableSource {
    */
   type: "generated";
 }
+
+/** Response Get Agent Tasks Api V2 Agent Tasks Get */
+export type GetAgentTasksApiV2AgentTasksGetData = EnrichedTaskResponse[];
 
 export type GetAgenticExperimentApiV1AgenticExperimentsExperimentIdGetData = AgenticExperimentDetail;
 
@@ -2987,6 +3302,28 @@ export interface GetConversationsApiChatConversationsGetParams {
   size?: number;
 }
 
+export type GetDailyAnnotationAnalyticsApiV1TasksTaskIdContinuousEvalsAnalyticsDailyGetData = AgenticAnnotationAnalyticsResponse;
+
+export type GetDailyAnnotationAnalyticsApiV1TasksTaskIdContinuousEvalsAnalyticsDailyGetError = HTTPValidationError;
+
+export interface GetDailyAnnotationAnalyticsApiV1TasksTaskIdContinuousEvalsAnalyticsDailyGetParams {
+  /**
+   * End Time
+   * End time (exclusive). Defaults to now.
+   */
+  end_time?: string | null;
+  /**
+   * Start Time
+   * Start time (inclusive). Defaults to 30 days ago.
+   */
+  start_time?: string | null;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
+}
+
 export type GetDatasetApiV2DatasetsDatasetIdGetData = DatasetResponse;
 
 export type GetDatasetApiV2DatasetsDatasetIdGetError = HTTPValidationError;
@@ -3014,6 +3351,11 @@ export interface GetDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGet
    * @default 10
    */
   page_size?: number;
+  /**
+   * Search
+   * Search query to filter rows. Performs case-insensitive search across all column values.
+   */
+  search?: string | null;
   /**
    * Sort the results (asc/desc)
    * @default "desc"
@@ -3109,6 +3451,8 @@ export interface GetDatasetsApiV2TasksTaskIdDatasetsSearchGetParams {
 export type GetDefaultRulesApiV2DefaultRulesGetData = RuleResponse[];
 
 export type GetDefaultTaskApiChatDefaultTaskGetData = ChatDefaultTaskResponse;
+
+export type GetDisplaySettingsApiV2DisplaySettingsGetData = DisplaySettingsResponse;
 
 export type GetExperimentTestCasesApiV1PromptExperimentsExperimentIdTestCasesGetData = TestCaseListResponse;
 
@@ -3549,6 +3893,10 @@ export type GetTraceByIdApiV1TracesTraceIdGetError = HTTPValidationError;
 export type GetTransformApiV1TracesTransformsTransformIdGetData = TraceTransformResponse;
 
 export type GetTransformApiV1TracesTransformsTransformIdGetError = HTTPValidationError;
+
+export type GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGetData = TransformDependents;
+
+export type GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGetError = HTTPValidationError;
 
 export type GetUnregisteredRootSpansApiV1TracesSpansUnregisteredGetData = UnregisteredRootSpansResponse;
 
@@ -4129,6 +4477,18 @@ export interface LLMGetAllMetadataResponse {
   versions: number;
 }
 
+/**
+ * LLMModel
+ * Model used by an agent.
+ */
+export interface LLMModel {
+  /**
+   * Name
+   * Name of the model.
+   */
+  name: string;
+}
+
 /** LLMPromptRequestConfigSettings */
 export interface LLMPromptRequestConfigSettings {
   /**
@@ -4567,7 +4927,7 @@ export interface ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResu
   created_before?: string | null;
   /**
    * Eval Name
-   * Name of the llm eval to filter on.
+   * Name of the continuous eval to filter on.
    */
   eval_name?: string | null;
   /**
@@ -4615,6 +4975,11 @@ export type ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetError = HTTPVal
 
 export interface ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetParams {
   /**
+   * Continuous Eval Ids
+   * List of continuous eval IDs to filter on.
+   */
+  continuous_eval_ids?: string[] | null;
+  /**
    * Created After
    * Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).
    */
@@ -4634,6 +4999,16 @@ export interface ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetParams {
    * Name of the llm eval to filter on
    */
   llm_eval_name?: string | null;
+  /**
+   * Llm Eval Name Exact
+   * Exact LLM eval name to filter on (case-sensitive exact match).
+   */
+  llm_eval_name_exact?: string | null;
+  /**
+   * Llm Eval Version
+   * LLM eval version to filter on.
+   */
+  llm_eval_version?: number | null;
   /**
    * Name
    * Name of the continuous eval to filter on.
@@ -5147,6 +5522,11 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
 /** ListTraceTransformsResponse */
 export interface ListTraceTransformsResponse {
   /**
+   * Count
+   * Total number of transforms matching filters
+   */
+  count: number;
+  /**
    * Transforms
    * List of transforms for the task.
    */
@@ -5472,6 +5852,18 @@ export interface LogitBiasItem {
    * Token ID to bias
    */
   token_id: number;
+}
+
+/**
+ * ManualAgentCreationSource
+ * Creation source for manually created tasks.
+ */
+export interface ManualAgentCreationSource {
+  /**
+   * Type
+   * @default "MANUAL"
+   */
+  type?: "MANUAL";
 }
 
 /** MessageRole */
@@ -5857,6 +6249,11 @@ export interface NewDatasetVersionRowRequest {
    * List of column-value pairs in the new dataset row.
    */
   data: NewDatasetVersionRowColumnItemRequest[];
+  /**
+   * Id
+   * Optional ID for the row (used for synthetic data generation).
+   */
+  id?: string | null;
 }
 
 /**
@@ -5926,6 +6323,8 @@ export interface NewRuleRequest {
 
 /** NewTaskRequest */
 export interface NewTaskRequest {
+  /** Metadata to describe the creation source/provider for registered agents. */
+  agent_metadata?: AgentMetadata | null;
   /**
    * Is Agentic
    * Whether the task is agentic or not.
@@ -6155,6 +6554,23 @@ export interface NotebookSummary {
    * ISO timestamp when last updated
    */
   updated_at: string;
+}
+
+/**
+ * OTELAgentCreationSource
+ * Creation source for OTEL-discovered agents (auto-created from traces).
+ */
+export interface OTELAgentCreationSource {
+  /**
+   * Service Names
+   * Service names associated with this agent
+   */
+  service_names?: string[];
+  /**
+   * Type
+   * @default "OTEL"
+   */
+  type?: "OTEL";
 }
 
 /**
@@ -8515,6 +8931,9 @@ export interface RegexSpanResponse {
   pattern?: string | null;
 }
 
+/** RegisteredAgentProvider */
+export type RegisteredAgentProvider = "gcp" | "external";
+
 /**
  * RelevanceMetricConfig
  * Configuration for relevance metrics including QueryRelevance and ResponseRelevance
@@ -8906,10 +9325,20 @@ export interface SearchTasksApiV2TasksSearchPostParams {
 /** SearchTasksRequest */
 export interface SearchTasksRequest {
   /**
+   * Include Archived
+   * Include archived tasks in results. True returns both active and archived tasks, False or None returns only active tasks. If only_archived is True, this flag is ignored.
+   */
+  include_archived?: boolean | null;
+  /**
    * Is Agentic
    * Filter tasks by agentic status. If not provided, returns both agentic and non-agentic tasks.
    */
   is_agentic?: boolean | null;
+  /**
+   * Only Archived
+   * Return only archived tasks. True returns exclusively archived tasks, False or None has no effect. Takes precedence over include_archived when both are set.
+   */
+  only_archived?: boolean | null;
   /**
    * Task Ids
    * List of tasks to query for.
@@ -8980,6 +9409,11 @@ export interface SessionListResponse {
    * Total number of sessions matching filters
    */
   count: number;
+  /**
+   * Display Currency
+   * Currency code for cost fields
+   */
+  display_currency?: string | null;
   /**
    * Sessions
    * List of session metadata
@@ -9082,6 +9516,11 @@ export interface SessionTracesResponse {
    */
   count: number;
   /**
+   * Display Currency
+   * Currency code for cost fields
+   */
+  display_currency?: string | null;
+  /**
    * Session Id
    * Session identifier
    */
@@ -9150,6 +9589,11 @@ export interface SpanListResponse {
    * Total number of spans matching filters
    */
   count: number;
+  /**
+   * Display Currency
+   * Currency code for cost fields
+   */
+  display_currency?: string | null;
   /**
    * Spans
    * List of span metadata
@@ -9391,6 +9835,18 @@ export interface StreamOptions {
 }
 
 /**
+ * SubAgent
+ * Sub-agent definition.
+ */
+export interface SubAgent {
+  /**
+   * Name
+   * Name of the sub-agent.
+   */
+  name: string;
+}
+
+/**
  * SummaryResults
  * Summary results across all prompt versions and evaluations
  */
@@ -9542,6 +9998,8 @@ export interface SyntheticDataRowResponse {
 
 /** TaskResponse */
 export interface TaskResponse {
+  /** Metadata to describe the creation source/provider for registered agents. */
+  agent_metadata?: AgentMetadataResponse | null;
   /**
    * Created At
    * Time the task was created in unix milliseconds
@@ -9557,6 +10015,24 @@ export interface TaskResponse {
    * Whether the task is agentic or not
    */
   is_agentic?: boolean | null;
+  /**
+   * Is Archived
+   * Whether this task is archived
+   * @default false
+   */
+  is_archived?: boolean | null;
+  /**
+   * Is Autocreated
+   * Whether this task was automatically created by Arthur
+   * @default false
+   */
+  is_autocreated?: boolean | null;
+  /**
+   * Is System Task
+   * Whether this is a system-managed task (e.g., for traces without a task_id or service name, or for Arthur-created traces)
+   * @default false
+   */
+  is_system_task?: boolean | null;
   /**
    * Metrics
    * List of all the metrics for the task.
@@ -9751,6 +10227,40 @@ export interface TokenUsageResponse {
 /** TokenUsageScope */
 export type TokenUsageScope = "rule_type" | "task";
 
+/**
+ * Tool
+ * Tool definition with arguments.
+ */
+export interface Tool {
+  /**
+   * Arguments
+   * List of arguments for this tool.
+   */
+  arguments?: ToolArgument[];
+  /**
+   * Name
+   * Name of the tool.
+   */
+  name: string;
+}
+
+/**
+ * ToolArgument
+ * Argument definition for a tool.
+ */
+export interface ToolArgument {
+  /**
+   * Name
+   * Name of the tool argument.
+   */
+  name: string;
+  /**
+   * Type
+   * Type of the tool argument.
+   */
+  type: string;
+}
+
 /** ToolCall */
 export interface ToolCall {
   /** Function details */
@@ -9878,6 +10388,11 @@ export interface TraceListResponse {
    * Total number of traces matching filters
    */
   count: number;
+  /**
+   * Display Currency
+   * Currency code for cost fields
+   */
+  display_currency?: string | null;
   /**
    * Traces
    * List of trace metadata
@@ -10170,6 +10685,11 @@ export interface TraceUserListResponse {
    */
   count: number;
   /**
+   * Display Currency
+   * Currency code for cost fields
+   */
+  display_currency?: string | null;
+  /**
    * Users
    * List of user metadata
    */
@@ -10260,6 +10780,39 @@ export interface TraceUserMetadataResponse {
   user_id: string;
 }
 
+/** TransformDependentRef */
+export interface TransformDependentRef {
+  /**
+   * Id
+   * ID of the dependent resource.
+   */
+  id: string;
+  /**
+   * Name
+   * Name of the dependent resource.
+   */
+  name: string;
+}
+
+/** TransformDependents */
+export interface TransformDependents {
+  /**
+   * Agentic Experiments
+   * Agentic experiments that reference this transform.
+   */
+  agentic_experiments?: TransformDependentRef[];
+  /**
+   * Agentic Notebooks
+   * Agentic notebooks that reference this transform.
+   */
+  agentic_notebooks?: TransformDependentRef[];
+  /**
+   * Continuous Evals
+   * Continuous evals that reference this transform.
+   */
+  continuous_evals?: TransformDependentRef[];
+}
+
 /** TransformExtractionResponseList */
 export interface TransformExtractionResponseList {
   /**
@@ -10296,6 +10849,10 @@ export interface TransformVariableExperimentOutputSource {
    */
   type?: "transform_variable";
 }
+
+export type UnarchiveTaskApiV2TasksTaskIdUnarchivePostData = any;
+
+export type UnarchiveTaskApiV2TasksTaskIdUnarchivePostError = HTTPValidationError;
 
 /**
  * UnregisteredRootSpanGroup
@@ -11664,7 +12221,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.339
+ * @version 2.1.449
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -12726,7 +13283,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Delete a transform.
+     * @description Delete a transform. Returns 409 if the transform is referenced by continuous evals, agentic experiments, or agentic notebooks.
      *
      * @tags Transforms
      * @name DeleteTransformApiV1TracesTransformsTransformIdDelete
@@ -12739,6 +13296,46 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v1/traces/transforms/${transformId}`,
         method: "DELETE",
         secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Manually trigger a polling job for a task. Does not require any particular state — admins can use this to force an immediate poll outside the normal loop cadence.
+     *
+     * @tags Agent Discovery
+     * @name ExecuteAgentPollingApiV1TasksTaskIdAgentPollingExecutePost
+     * @summary Execute Agent Polling
+     * @request POST:/api/v1/tasks/{task_id}/agent-polling/execute
+     * @secure
+     */
+    executeAgentPollingApiV1TasksTaskIdAgentPollingExecutePost: (taskId: string, params: RequestParams = {}) =>
+      this.request<ExecuteAgentPollingApiV1TasksTaskIdAgentPollingExecutePostData, ExecuteAgentPollingApiV1TasksTaskIdAgentPollingExecutePostError>({
+        path: `/api/v1/tasks/${taskId}/agent-polling/execute`,
+        method: "POST",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Manually trigger a full agent discovery and polling cycle. Discovers new GCP agents and enqueues trace-fetch jobs for all eligible tasks. Use wait_for_completion=true to block until all polling jobs finish.
+     *
+     * @tags Agent Discovery
+     * @name ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPost
+     * @summary Execute All Agent Polling
+     * @request POST:/api/v1/agent-polling/execute-all
+     * @secure
+     */
+    executeAllAgentPollingApiV1AgentPollingExecuteAllPost: (
+      query: ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostData, ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostError>({
+        path: `/api/v1/agent-polling/execute-all`,
+        method: "POST",
+        query: query,
+        secure: true,
+        format: "json",
         ...params,
       }),
 
@@ -13036,6 +13633,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Get agentic tasks with enriched agent metadata (tools, sub-agents, models). Returns only agentic tasks.
+     *
+     * @tags Tasks
+     * @name GetAgentTasksApiV2AgentTasksGet
+     * @summary Get Agent Tasks
+     * @request GET:/api/v2/agent-tasks
+     * @secure
+     */
+    getAgentTasksApiV2AgentTasksGet: (params: RequestParams = {}) =>
+      this.request<GetAgentTasksApiV2AgentTasksGetData, any>({
+        path: `/api/v2/agent-tasks`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get all agentic prompts for a given task with optional filtering.
      *
      * @tags Prompts
@@ -13226,6 +13841,31 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Returns daily counts of passed/failed/error/skipped annotations and total cost per day
+     *
+     * @tags Continuous Evals
+     * @name GetDailyAnnotationAnalyticsApiV1TasksTaskIdContinuousEvalsAnalyticsDailyGet
+     * @summary Get daily aggregated analytics for agentic annotations
+     * @request GET:/api/v1/tasks/{task_id}/continuous_evals/analytics/daily
+     * @secure
+     */
+    getDailyAnnotationAnalyticsApiV1TasksTaskIdContinuousEvalsAnalyticsDailyGet: (
+      { taskId, ...query }: GetDailyAnnotationAnalyticsApiV1TasksTaskIdContinuousEvalsAnalyticsDailyGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetDailyAnnotationAnalyticsApiV1TasksTaskIdContinuousEvalsAnalyticsDailyGetData,
+        GetDailyAnnotationAnalyticsApiV1TasksTaskIdContinuousEvalsAnalyticsDailyGetError
+      >({
+        path: `/api/v1/tasks/${taskId}/continuous_evals/analytics/daily`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get a dataset.
      *
      * @tags Datasets
@@ -13367,6 +14007,22 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getDefaultTaskApiChatDefaultTaskGet: (params: RequestParams = {}) =>
       this.request<GetDefaultTaskApiChatDefaultTaskGetData, any>({
         path: `/api/chat/default_task`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get display settings (e.g. default currency for cost formatting).
+     *
+     * @tags Settings
+     * @name GetDisplaySettingsApiV2DisplaySettingsGet
+     * @summary Get Display Settings
+     * @request GET:/api/v2/display-settings
+     */
+    getDisplaySettingsApiV2DisplaySettingsGet: (params: RequestParams = {}) =>
+      this.request<GetDisplaySettingsApiV2DisplaySettingsGetData, any>({
+        path: `/api/v2/display-settings`,
         method: "GET",
         format: "json",
         ...params,
@@ -13993,6 +14649,27 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getTransformApiV1TracesTransformsTransformIdGet: (transformId: string, params: RequestParams = {}) =>
       this.request<GetTransformApiV1TracesTransformsTransformIdGetData, GetTransformApiV1TracesTransformsTransformIdGetError>({
         path: `/api/v1/traces/transforms/${transformId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get resources that depend on this transform.
+     *
+     * @tags Transforms
+     * @name GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGet
+     * @summary Get Transform Dependents
+     * @request GET:/api/v1/traces/transforms/{transform_id}/dependents
+     * @secure
+     */
+    getTransformDependentsApiV1TracesTransformsTransformIdDependentsGet: (transformId: string, params: RequestParams = {}) =>
+      this.request<
+        GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGetData,
+        GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGetError
+      >({
+        path: `/api/v1/traces/transforms/${transformId}/dependents`,
         method: "GET",
         secure: true,
         format: "json",
@@ -14906,6 +15583,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         body: data,
         secure: true,
         type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Unarchive a previously archived task. Also unarchives all task-scoped rules and metrics that were archived with it.
+     *
+     * @tags Tasks
+     * @name UnarchiveTaskApiV2TasksTaskIdUnarchivePost
+     * @summary Unarchive Task
+     * @request POST:/api/v2/tasks/{task_id}/unarchive
+     * @secure
+     */
+    unarchiveTaskApiV2TasksTaskIdUnarchivePost: (taskId: string, params: RequestParams = {}) =>
+      this.request<UnarchiveTaskApiV2TasksTaskIdUnarchivePostData, UnarchiveTaskApiV2TasksTaskIdUnarchivePostError>({
+        path: `/api/v2/tasks/${taskId}/unarchive`,
+        method: "POST",
+        secure: true,
         format: "json",
         ...params,
       }),

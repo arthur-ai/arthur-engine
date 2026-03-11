@@ -72,6 +72,7 @@ from schemas.enums import (
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
 )
+from arthur_common.models.agent_governance_schemas import EnrichedTaskResponse
 from schemas.internal_schemas import AgenticAnnotation
 from schemas.request_schemas import (
     AgenticAnnotationRequest,
@@ -348,6 +349,32 @@ class GenaiEngineTestClientBase(httpx.Client):
             ),
         )
 
+    def get_agent_tasks(
+        self,
+    ) -> tuple[int, list[EnrichedTaskResponse]]:
+        """Get agentic tasks with enriched agent metadata.
+
+        Returns only agentic tasks.
+
+        Returns:
+            Tuple of (status_code, list of EnrichedTaskResponse)
+        """
+        path = "api/v2/agent-tasks"
+
+        resp = self.base_client.get(
+            path, headers=self.authorized_user_api_key_headers
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                [EnrichedTaskResponse.model_validate(task) for task in resp.json()]
+                if resp.status_code == 200
+                else []
+            ),
+        )
+
     def search_tasks(
         self,
         sort: PaginationSortMethod = None,
@@ -356,6 +383,8 @@ class GenaiEngineTestClientBase(httpx.Client):
         task_ids: list[str] = None,
         task_name: str = None,
         is_agentic: bool = None,
+        include_archived: bool = None,
+        only_archived: bool = None,
     ) -> tuple[int, SearchTasksResponse]:
         path = "api/v2/tasks/search?"
         params = get_base_pagination_parameters(
@@ -370,6 +399,10 @@ class GenaiEngineTestClientBase(httpx.Client):
             body.task_name = task_name
         if is_agentic is not None:
             body.is_agentic = is_agentic
+        if include_archived is not None:
+            body.include_archived = include_archived
+        if only_archived is not None:
+            body.only_archived = only_archived
 
         resp = self.base_client.post(
             "{}{}".format(path, urllib.parse.urlencode(params, doseq=True)),
@@ -944,6 +977,16 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         return resp.status_code
 
+    def unarchive_task(self, task_id: str) -> int:
+        resp = self.base_client.post(
+            f"/api/v2/tasks/{task_id}/unarchive",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code
+
     def create_dataset(
         self,
         name: str,
@@ -1080,6 +1123,16 @@ class GenaiEngineTestClientBase(httpx.Client):
                 else resp.json()
             ),
         )
+
+    def get_transform_dependents(self, transform_id: str) -> tuple[int, Any]:
+        resp = self.base_client.get(
+            f"/api/v1/traces/transforms/{transform_id}/dependents",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code, resp.json()
 
     def list_transforms(
         self,
@@ -2694,6 +2747,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         version_number: int,
         page: int = None,
         page_size: int = None,
+        search: str = None,
     ) -> tuple[int, DatasetVersionResponse]:
         """Get a dataset version."""
         path = f"/api/v2/datasets/{dataset_id}/versions/{version_number}"
@@ -2702,6 +2756,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["page"] = page
         if page_size is not None:
             params["page_size"] = page_size
+        if search is not None:
+            params["search"] = search
 
         url = path
         if params:
@@ -4547,17 +4603,40 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.json() if resp.status_code == 200 else None,
         )
 
-    def retry_agent_polling_task(
+    def execute_agent_polling(
         self,
         task_id: str,
-        agent_polling_data_id: str,
     ) -> tuple[int, dict]:
-        """Retry an agent polling task"""
-        url = f"/api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}"
+        """Manually trigger a polling job for a task."""
+        url = f"/api/v1/tasks/{task_id}/agent-polling/execute"
 
         resp = self.base_client.post(
             url,
             headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json(),
+        )
+
+    def execute_all_agent_polling(
+        self,
+        wait_for_completion: bool = False,
+        timeout: int | None = None,
+    ) -> tuple[int, dict]:
+        """Manually trigger a full discovery + polling cycle."""
+        params: dict = {}
+        if wait_for_completion:
+            params["wait_for_completion"] = wait_for_completion
+        if timeout is not None:
+            params["timeout"] = timeout
+        resp = self.base_client.post(
+            "/api/v1/agent-polling/execute-all",
+            headers=self.authorized_user_api_key_headers,
+            params=params,
         )
 
         log_response(resp)

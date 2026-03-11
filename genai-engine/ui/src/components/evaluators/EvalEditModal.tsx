@@ -1,3 +1,4 @@
+import { MustacheHighlightedTextField } from "@arthur/shared-components";
 import Alert from "@mui/material/Alert";
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
@@ -12,8 +13,6 @@ import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-import NunjucksHighlightedTextField from "./MustacheHighlightedTextField";
 
 import { useApi } from "@/hooks/useApi";
 import type { CreateEvalRequest, ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";
@@ -221,11 +220,11 @@ const EvalEditModal = ({
                 value={evalName}
                 disabled
                 size="small"
-                sx={{
+                sx={(theme) => ({
                   "& .MuiInputBase-input.Mui-disabled": {
-                    WebkitTextFillColor: "rgba(0, 0, 0, 0.6)",
+                    WebkitTextFillColor: theme.palette.text.secondary,
                   },
-                }}
+                })}
               />
               <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
                 Eval name cannot be changed. Saving will create a new version.
@@ -238,7 +237,7 @@ const EvalEditModal = ({
                   Instructions
                 </Typography>
               </FormLabel>
-              <NunjucksHighlightedTextField
+              <MustacheHighlightedTextField
                 value={instructions}
                 onChange={(e) => setInstructions(e.target.value)}
                 placeholder="Enter eval instructions..."
@@ -265,7 +264,7 @@ const EvalEditModal = ({
                     onChange={handleProviderChange}
                     disabled={providerDisabled || isLoading}
                     renderInput={(params) => (
-                      <TextField {...params} label="Select Provider" variant="outlined" size="small" sx={{ backgroundColor: "white" }} />
+                      <TextField {...params} label="Select Provider" variant="outlined" size="small" sx={{ backgroundColor: "background.paper" }} />
                     )}
                   />
                 </Tooltip>
@@ -283,7 +282,7 @@ const EvalEditModal = ({
                   onChange={handleModelChange}
                   disabled={modelDisabled || isLoading}
                   renderInput={(params) => (
-                    <TextField {...params} label="Select Model" variant="outlined" size="small" sx={{ backgroundColor: "white" }} />
+                    <TextField {...params} label="Select Model" variant="outlined" size="small" sx={{ backgroundColor: "background.paper" }} />
                   )}
                 />
               </FormControl>

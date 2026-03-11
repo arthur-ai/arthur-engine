@@ -30,7 +30,7 @@ export const SpanTree = ({ level = 0, spans, ancestors = new Set(), selectedSpan
           value={span.span_id}
           key={span.span_id}
           data-selected={span.span_id === selectedSpanId ? "" : undefined}
-          className="group data-selected:*:bg-gray-200"
+          className="group data-selected:*:bg-gray-200 data-selected:*:dark:bg-gray-700"
           onClick={(e) => {
             e.stopPropagation();
             onSelectSpan(span.span_id);
@@ -39,7 +39,7 @@ export const SpanTree = ({ level = 0, spans, ancestors = new Set(), selectedSpan
           <SpanTreeItem span={span} level={level} selectedSpanId={selectedSpanId} />
           <Accordion.Panel
             render={
-              <Box className="h-(--accordion-panel-height) text-base text-gray-600 transition-[height] ease-out data-ending-style:h-0 data-starting-style:h-0 data-open:rounded-b overflow-hidden" />
+              <Box className="h-(--accordion-panel-height) text-base text-gray-600 dark:text-gray-400 transition-[height] ease-out data-ending-style:h-0 data-starting-style:h-0 data-open:rounded-b overflow-hidden" />
             }
           >
             <SpanTree

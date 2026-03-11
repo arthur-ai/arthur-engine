@@ -1,9 +1,12 @@
+import AddIcon from "@mui/icons-material/Add";
+import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import TablePagination from "@mui/material/TablePagination";
-import React, { useCallback, useMemo, useState } from "react";
+import Typography from "@mui/material/Typography";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
 import { CreateRagNotebookModal } from "./CreateRagNotebookModal";
@@ -18,7 +21,11 @@ import type { CreateRagNotebookRequest } from "@/lib/api-client/api-client";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
-const RagNotebooks: React.FC = () => {
+interface RagNotebooksProps {
+  onRegisterCreate?: (fn: () => void) => void;
+}
+
+const RagNotebooks: React.FC<RagNotebooksProps> = ({ onRegisterCreate }) => {
   const { task } = useTask();
   const { id: taskId } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -57,6 +64,11 @@ const RagNotebooks: React.FC = () => {
   const handleCreateNotebook = useCallback(() => {
     setIsCreateModalOpen(true);
   }, []);
+
+  const onRegisterCreateRef = useRef(onRegisterCreate);
+  useEffect(() => {
+    onRegisterCreateRef.current?.(handleCreateNotebook);
+  }, [handleCreateNotebook]);
 
   const handleCloseCreateModal = useCallback(() => {
     setIsCreateModalOpen(false);
@@ -142,7 +154,7 @@ const RagNotebooks: React.FC = () => {
         overflow: "hidden",
       }}
     >
-      <RagNotebooksHeader onCreateNotebook={handleCreateNotebook} />
+      {!onRegisterCreate && <RagNotebooksHeader onCreateNotebook={handleCreateNotebook} />}
 
       {error && notebooks.length > 0 && (
         <Box sx={{ px: 3, pt: 2 }}>
@@ -160,28 +172,24 @@ const RagNotebooks: React.FC = () => {
           <Box
             sx={{
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              flex: 1,
-              p: 3,
+              height: "100%",
+              textAlign: "center",
+              py: 8,
             }}
           >
-            <Box sx={{ textAlign: "center" }}>
-              <Box
-                sx={{
-                  fontWeight: 600,
-                  fontSize: "1.25rem",
-                  color: "text.primary",
-                  mb: 1,
-                }}
-              >
-                No RAG notebooks found
-              </Box>
-              <Box sx={{ color: "text.secondary", mb: 2 }}>Create your first notebook to start experimenting with RAG configurations.</Box>
-              <Button variant="contained" onClick={handleCreateNotebook} sx={{ mt: 1 }}>
-                Create Notebook
-              </Button>
-            </Box>
+            <MenuBookOutlinedIcon sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
+            <Typography variant="h5" gutterBottom sx={{ fontWeight: 500, color: "text.primary" }}>
+              No RAG notebooks yet
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              Get started by creating your first RAG notebook
+            </Typography>
+            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleCreateNotebook} size="large">
+              Notebook
+            </Button>
           </Box>
         ) : (
           <RagNotebooksTable

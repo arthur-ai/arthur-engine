@@ -14,20 +14,21 @@ import { PAGE_SIZE_OPTIONS } from "@/constants/datasetConstants";
 import { getContentHeight } from "@/constants/layout";
 import { useCreateDatasetMutation } from "@/hooks/datasets/useCreateDatasetMutation";
 import { useDatasetsModalState } from "@/hooks/datasets/useDatasetsModalState";
-import { useDatasetsPaginationQuery } from "@/hooks/datasets/useDatasetsPaginationQuery";
 import { useDatasetsSearchQuery } from "@/hooks/datasets/useDatasetsSearchQuery";
 import { useDatasetsSortingQuery } from "@/hooks/datasets/useDatasetsSortingQuery";
 import { useDeleteDatasetMutation } from "@/hooks/datasets/useDeleteDatasetMutation";
 import { useUpdateDatasetMutation } from "@/hooks/datasets/useUpdateDatasetMutation";
 import { useDatasets } from "@/hooks/useDatasets";
+import { usePagination } from "@/hooks/usePagination";
 import { useTask } from "@/hooks/useTask";
 import type { DatasetResponse, NewDatasetRequest } from "@/lib/api-client/api-client";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 
 export const DatasetsView: React.FC = () => {
   const { task } = useTask();
   const navigate = useNavigate();
 
-  const pagination = useDatasetsPaginationQuery();
+  const pagination = usePagination();
   const search = useDatasetsSearchQuery(pagination.resetPage);
   const sorting = useDatasetsSortingQuery();
   const modals = useDatasetsModalState();
@@ -37,9 +38,9 @@ export const DatasetsView: React.FC = () => {
       searchQuery: search.debouncedSearchQuery,
       sortOrder: sorting.sortOrder,
       page: pagination.page,
-      pageSize: pagination.pageSize,
+      pageSize: pagination.rowsPerPage,
     }),
-    [search.debouncedSearchQuery, sorting.sortOrder, pagination.page, pagination.pageSize]
+    [search.debouncedSearchQuery, sorting.sortOrder, pagination.page, pagination.rowsPerPage]
   );
 
   const { datasets, count, error, isLoading, refetch } = useDatasets(task?.id, filters);
@@ -57,10 +58,19 @@ export const DatasetsView: React.FC = () => {
 
   const handleRowClick = useCallback(
     (dataset: DatasetResponse) => {
+      track(EVENT_NAMES.DATASET_SELECTED, {
+        dataset_id: dataset.id,
+        task_id: task?.id,
+      });
       navigate(`/tasks/${task?.id}/datasets/${dataset.id}`);
     },
     [navigate, task?.id]
   );
+
+  const handleOpenCreate = useCallback(() => {
+    track(EVENT_NAMES.DATASET_CREATE_OPENED, { task_id: task?.id });
+    modals.openCreateModal();
+  }, [modals, task?.id]);
 
   const handleCreateDataset = useCallback(
     async (formData: NewDatasetRequest) => {
@@ -94,7 +104,7 @@ export const DatasetsView: React.FC = () => {
         width: "100%",
         height: getContentHeight(),
         display: "grid",
-        gridTemplateRows: "auto auto 1fr auto",
+        gridTemplateRows: "auto auto auto 1fr auto",
         overflow: "hidden",
       }}
     >
@@ -108,8 +118,25 @@ export const DatasetsView: React.FC = () => {
           backgroundColor: "background.paper",
         }}
       >
-        <DatasetsViewHeader onCreateDataset={modals.openCreateModal} />
-        <DatasetsSearchBar value={search.searchQuery} onChange={search.setSearchQuery} />
+        <DatasetsViewHeader onCreateDataset={handleOpenCreate} />
+      </Box>
+      <Box
+        sx={{
+          px: 3,
+          pt: 2,
+          pb: 2,
+          borderBottom: 1,
+          borderColor: "divider",
+          backgroundColor: "background.paper",
+        }}
+      >
+        <DatasetsSearchBar
+          value={search.searchQuery}
+          onChange={(value) => {
+            track(EVENT_NAMES.DATASET_SEARCH_CHANGED, { task_id: task?.id });
+            search.setSearchQuery(value);
+          }}
+        />
       </Box>
 
       {error && datasets.length > 0 && (
@@ -127,15 +154,21 @@ export const DatasetsView: React.FC = () => {
         {!isLoading && datasets.length === 0 ? (
           <DatasetsEmptyState
             type={search.debouncedSearchQuery ? "no-results" : "no-datasets"}
-            onCreateDataset={!search.debouncedSearchQuery ? modals.openCreateModal : undefined}
+            onCreateDataset={!search.debouncedSearchQuery ? handleOpenCreate : undefined}
           />
         ) : (
           <DatasetsTable
             datasets={datasets}
             sortOrder={sorting.sortOrder}
-            onSort={sorting.handleSort}
+            onSort={() => {
+              track(EVENT_NAMES.DATASET_SORT_CHANGED, { task_id: task?.id });
+              sorting.handleSort();
+            }}
             onRowClick={handleRowClick}
-            onEdit={modals.openEditModal}
+            onEdit={(dataset) => {
+              track(EVENT_NAMES.DATASET_EDIT_OPENED, { dataset_id: dataset.id, task_id: task?.id });
+              modals.openEditModal(dataset);
+            }}
             onDelete={deleteMutation.mutateAsync}
           />
         )}
@@ -155,9 +188,15 @@ export const DatasetsView: React.FC = () => {
             component="div"
             count={count}
             page={pagination.page}
-            onPageChange={pagination.handlePageChange}
-            rowsPerPage={pagination.pageSize}
-            onRowsPerPageChange={pagination.handlePageSizeChange}
+            onPageChange={(event, page) => {
+              track(EVENT_NAMES.DATASET_PAGINATION_CHANGED, { task_id: task?.id });
+              pagination.handlePageChange(event, page);
+            }}
+            rowsPerPage={pagination.rowsPerPage}
+            onRowsPerPageChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+              track(EVENT_NAMES.DATASET_PAGINATION_CHANGED, { task_id: task?.id });
+              pagination.handleRowsPerPageChange(event);
+            }}
             rowsPerPageOptions={PAGE_SIZE_OPTIONS}
           />
         </Box>

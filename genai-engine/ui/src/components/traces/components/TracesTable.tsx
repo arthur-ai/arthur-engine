@@ -11,21 +11,14 @@ type Props<TTable> = {
 
 export const TracesTable = <TTable,>({ table, ref, loading, onScroll, onRowClick }: Props<TTable>) => {
   return (
-    <TableContainer component={Paper} sx={{ flexGrow: 0, flexShrink: 1 }} ref={ref ?? undefined} onScroll={onScroll}>
+    <TableContainer component={Paper} elevation={1} sx={{ flexGrow: 0, flexShrink: 1 }} ref={ref ?? undefined} onScroll={onScroll}>
       {loading && <LinearProgress />}
       <Table stickyHeader size="small">
         <TableHead>
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
-                <TableCell
-                  key={header.id}
-                  colSpan={header.colSpan}
-                  sx={{
-                    backgroundColor: "grey.50",
-                  }}
-                  sortDirection={header.column.getIsSorted()}
-                >
+                <TableCell key={header.id} colSpan={header.colSpan} sortDirection={header.column.getIsSorted()}>
                   <TableSortLabel
                     disabled={!header.column.getCanSort()}
                     active={header.column.getIsSorted() !== false}
