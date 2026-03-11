@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.449"
+        "version": "2.1.450"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -13976,6 +13976,42 @@
                             "title": "Continuous Eval Ids"
                         },
                         "description": "List of continuous eval IDs to filter on."
+                    },
+                    {
+                        "name": "llm_eval_name_exact",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Exact LLM eval name to filter on (case-sensitive exact match).",
+                            "title": "Llm Eval Name Exact"
+                        },
+                        "description": "Exact LLM eval name to filter on (case-sensitive exact match)."
+                    },
+                    {
+                        "name": "llm_eval_version",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "LLM eval version to filter on.",
+                            "title": "Llm Eval Version"
+                        },
+                        "description": "LLM eval version to filter on."
                     }
                 ],
                 "responses": {
