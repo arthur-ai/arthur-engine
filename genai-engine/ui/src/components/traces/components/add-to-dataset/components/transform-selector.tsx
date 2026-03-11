@@ -7,7 +7,7 @@ import { addToDatasetFormOptions } from "../form/shared";
 import { useExecuteTransform } from "../hooks/useExecuteTransform";
 import { MatchStatus, useMatchingVariables } from "../hooks/useMatchingVariables";
 
-import { getNestedValue } from "@/components/traces/utils/spans";
+import { getNestedValue, getNestedValueWildcard } from "@/components/traces/utils/spans";
 import { useTransforms } from "@/hooks/transforms/useTransforms";
 import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
 import { DatasetVersionMetadataResponse, NestedSpanWithMetricsResponse, TraceTransformResponse } from "@/lib/api-client/api-client";
@@ -67,10 +67,12 @@ export const TransformSelector = withFieldGroup({
           let validatedAttributePath = "";
 
           if (span) {
-            // Check if the attribute path exists
-            const data = getNestedValue(span.raw_data, variableDef.attribute_path);
+            const hasWildcard = variableDef.attribute_path.includes("*");
+            const data = hasWildcard
+              ? getNestedValueWildcard(span.raw_data, variableDef.attribute_path)
+              : getNestedValue(span.raw_data, variableDef.attribute_path);
 
-            if (data) {
+            if (data !== undefined && (Array.isArray(data) ? data.length > 0 : true)) {
               validatedPath = `${variableDef.span_name}.${variableDef.attribute_path}`;
               validatedSpanName = variableDef.span_name;
               validatedAttributePath = variableDef.attribute_path;

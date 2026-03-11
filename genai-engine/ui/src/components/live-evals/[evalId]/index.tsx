@@ -1,3 +1,4 @@
+import { Operators, TracesEmptyState } from "@arthur/shared-components";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import {
@@ -35,9 +36,8 @@ import { continuousEvalsResultsQueryOptions } from "../hooks/useContinuousEvalsR
 import { createColumns } from "./columns";
 
 import { CopyableChip } from "@/components/common";
-import { Operators } from "@/components/traces/components/filtering/types";
-import { TracesEmptyState } from "@/components/traces/components/TracesEmptyState";
 import { getContentHeight } from "@/constants/layout";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useTransform } from "@/hooks/transforms/useTransform";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
@@ -60,6 +60,7 @@ export const LiveEvalDetail = () => {
   const { evalId } = useParams<{ evalId: string }>();
 
   const { task } = useTask();
+  const { defaultCurrency } = useDisplaySettings();
   const api = useApi()!;
 
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
@@ -94,7 +95,7 @@ export const LiveEvalDetail = () => {
   const transform = useTransform(liveEval?.transform_id);
   const hasVariableMappings = liveEval?.transform_variable_mapping && liveEval.transform_variable_mapping.length > 0;
 
-  const columns = useMemo(() => createColumns({ taskId: task?.id ?? "" }), [task?.id]);
+  const columns = useMemo(() => createColumns({ taskId: task?.id ?? "", defaultCurrency }), [task?.id, defaultCurrency]);
 
   const table = useMaterialReactTable({
     columns,

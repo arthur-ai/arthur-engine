@@ -383,6 +383,8 @@ class GenaiEngineTestClientBase(httpx.Client):
         task_ids: list[str] = None,
         task_name: str = None,
         is_agentic: bool = None,
+        include_archived: bool = None,
+        only_archived: bool = None,
     ) -> tuple[int, SearchTasksResponse]:
         path = "api/v2/tasks/search?"
         params = get_base_pagination_parameters(
@@ -397,6 +399,10 @@ class GenaiEngineTestClientBase(httpx.Client):
             body.task_name = task_name
         if is_agentic is not None:
             body.is_agentic = is_agentic
+        if include_archived is not None:
+            body.include_archived = include_archived
+        if only_archived is not None:
+            body.only_archived = only_archived
 
         resp = self.base_client.post(
             "{}{}".format(path, urllib.parse.urlencode(params, doseq=True)),
@@ -971,6 +977,16 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         return resp.status_code
 
+    def unarchive_task(self, task_id: str) -> int:
+        resp = self.base_client.post(
+            f"/api/v2/tasks/{task_id}/unarchive",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code
+
     def create_dataset(
         self,
         name: str,
@@ -1107,6 +1123,16 @@ class GenaiEngineTestClientBase(httpx.Client):
                 else resp.json()
             ),
         )
+
+    def get_transform_dependents(self, transform_id: str) -> tuple[int, Any]:
+        resp = self.base_client.get(
+            f"/api/v1/traces/transforms/{transform_id}/dependents",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code, resp.json()
 
     def list_transforms(
         self,
@@ -4596,11 +4622,21 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.json(),
         )
 
-    def execute_all_agent_polling(self) -> tuple[int, dict]:
+    def execute_all_agent_polling(
+        self,
+        wait_for_completion: bool = False,
+        timeout: int | None = None,
+    ) -> tuple[int, dict]:
         """Manually trigger a full discovery + polling cycle."""
+        params: dict = {}
+        if wait_for_completion:
+            params["wait_for_completion"] = wait_for_completion
+        if timeout is not None:
+            params["timeout"] = timeout
         resp = self.base_client.post(
             "/api/v1/agent-polling/execute-all",
             headers=self.authorized_user_api_key_headers,
+            params=params,
         )
 
         log_response(resp)

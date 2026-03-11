@@ -1,18 +1,36 @@
-import { TrendingUpOutlined, OpenInNewOutlined, BalanceOutlined } from "@mui/icons-material";
+import { TrendingUpOutlined, OpenInNewOutlined, BalanceOutlined, CloseOutlined, InfoOutlined } from "@mui/icons-material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import GeneratingTokensOutlinedIcon from "@mui/icons-material/GeneratingTokensOutlined";
 import TollOutlinedIcon from "@mui/icons-material/TollOutlined";
-import { Alert, Box, Button, CircularProgress, Paper, Stack, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  IconButton,
+  Paper,
+  Stack,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
+} from "@mui/material";
 import { BarChart } from "@mui/x-charts/BarChart";
 import { LineChart } from "@mui/x-charts/LineChart";
 import React, { useState } from "react";
 
 import { ChartCard } from "./task-overview/ChartCard";
-import { METRIC_COLORS, formatCostAxisValue, formatCurrency, formatNumber, formatPercentValue, formatXLabel } from "./task-overview/constants";
+import { METRIC_COLORS, formatCostAxisValue, formatNumber, formatPercentValue, formatXLabel } from "./task-overview/constants";
 import { MetricCard } from "./task-overview/MetricCard";
 
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useTask } from "@/hooks/useTask";
 import { useTaskOverviewMetrics } from "@/hooks/useTaskOverviewMetrics";
+import { formatCurrency } from "@/utils/formatters";
 import { TimeInterval } from "@/utils/timeWindows";
 
 type TimeRangeButton = "Day" | "Last 7 Days" | "MTD" | "YTD";
@@ -38,7 +56,9 @@ const getTimeRangeLabel = (button: TimeRangeButton): string => {
 
 export const TaskOverview: React.FC = () => {
   const { task } = useTask();
+  const { defaultCurrency } = useDisplaySettings();
   const [selectedTimeRangeButton, setSelectedTimeRangeButton] = useState<TimeRangeButton>("Last 7 Days");
+  const [taskDetailsOpen, setTaskDetailsOpen] = useState(false);
 
   const interval = timeIntervalMap[selectedTimeRangeButton];
 
@@ -83,14 +103,36 @@ export const TaskOverview: React.FC = () => {
     <Box sx={{ py: 3, px: 3, bgcolor: "background.default" }}>
       <Stack spacing={3} sx={{ maxWidth: 1400, mx: "auto" }}>
         {/* Header */}
-        <Stack direction="row" justifyContent="space-between" alignItems="flex-end">
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Box>
             <Typography variant="h5" fontWeight={600} color="text.primary">
-              Task Overview
+              {task.name || "Task Overview"}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Key performance metrics at a glance
-            </Typography>
+            <Stack direction="row" alignItems="center" gap={0.5} sx={{ mt: 0.5 }}>
+              <Typography variant="body2" color="text.secondary">
+                Analyze key performance metrics at a glance
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                ·
+              </Typography>
+              <Button
+                size="small"
+                variant="text"
+                startIcon={<InfoOutlined sx={{ fontSize: "14px !important" }} />}
+                onClick={() => setTaskDetailsOpen(true)}
+                sx={{
+                  textTransform: "none",
+                  color: "text.secondary",
+                  fontSize: "0.875rem",
+                  p: 0,
+                  minWidth: 0,
+                  lineHeight: "inherit",
+                  "&:hover": { color: "text.primary", bgcolor: "transparent" },
+                }}
+              >
+                Task Details
+              </Button>
+            </Stack>
           </Box>
           <ToggleButtonGroup
             size="small"
@@ -107,6 +149,63 @@ export const TaskOverview: React.FC = () => {
             ))}
           </ToggleButtonGroup>
         </Stack>
+
+        {/* Task Details Modal */}
+        <Dialog open={taskDetailsOpen} onClose={() => setTaskDetailsOpen(false)} maxWidth="sm" fullWidth>
+          <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pb: 1 }}>
+            <Stack direction="row" alignItems="center" gap={1}>
+              <Typography variant="subtitle1" fontWeight={600}>
+                {task?.name || "Untitled Task"}
+              </Typography>
+              {task?.is_agentic && <Chip label="Agentic" size="small" color="primary" variant="outlined" />}
+            </Stack>
+            <IconButton size="small" onClick={() => setTaskDetailsOpen(false)} edge="end">
+              <CloseOutlined fontSize="small" />
+            </IconButton>
+          </DialogTitle>
+          <Divider />
+          <DialogContent>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 3, pt: 1 }}>
+              <Box>
+                <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                  Task ID
+                </Typography>
+                <Typography variant="body2" color="text.primary" sx={{ mt: 0.5, fontFamily: "monospace", wordBreak: "break-all" }}>
+                  {task?.id}
+                </Typography>
+              </Box>
+
+              {task?.is_agentic !== undefined && (
+                <Box>
+                  <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                    Type
+                  </Typography>
+                  <Typography variant="body2" color="text.primary" sx={{ mt: 0.5 }}>
+                    {task.is_agentic ? "Agentic Task" : "Standard Task"}
+                  </Typography>
+                </Box>
+              )}
+
+              <Box>
+                <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                  Created At
+                </Typography>
+                <Typography variant="body2" color="text.primary" sx={{ mt: 0.5 }}>
+                  {task?.created_at ? new Date(task.created_at).toLocaleString() : "Not available"}
+                </Typography>
+              </Box>
+
+              <Box>
+                <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                  Updated At
+                </Typography>
+                <Typography variant="body2" color="text.primary" sx={{ mt: 0.5 }}>
+                  {task?.updated_at ? new Date(task.updated_at).toLocaleString() : "Not available"}
+                </Typography>
+              </Box>
+            </Box>
+          </DialogContent>
+        </Dialog>
 
         {/* Error state */}
         {error && <Alert severity="error">Failed to load metrics. Please try again.</Alert>}
@@ -140,7 +239,7 @@ export const TaskOverview: React.FC = () => {
           <MetricCard
             icon={<TollOutlinedIcon fontSize="inherit" />}
             label="Cost"
-            value={formatCurrency(metrics?.totalCost || 0)}
+            value={formatCurrency(metrics?.totalCost ?? 0, defaultCurrency)}
             subLabel="est. spend"
             color={METRIC_COLORS.cost.main}
             bgColor={METRIC_COLORS.cost.light}
@@ -245,7 +344,7 @@ export const TaskOverview: React.FC = () => {
               <LineChart
                 height={256}
                 xAxis={sharedXAxis}
-                yAxis={[{ valueFormatter: (v: number) => formatCostAxisValue(v) }]}
+                yAxis={[{ valueFormatter: (v: number) => formatCostAxisValue(v, defaultCurrency) }]}
                 series={[
                   {
                     data: costValues,
@@ -253,7 +352,7 @@ export const TaskOverview: React.FC = () => {
                     area: true,
                     showMark: true,
                     label: "Cost",
-                    valueFormatter: (v: number | null) => (v != null ? formatCostAxisValue(v) : ""),
+                    valueFormatter: (v: number | null) => (v != null ? formatCostAxisValue(v, defaultCurrency) : ""),
                   },
                 ]}
                 grid={{ horizontal: true }}

@@ -1,12 +1,11 @@
+import { MustacheHighlightedTextField } from "@arthur/shared-components";
+import { withFieldGroup } from "@arthur/shared-components";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { Box, Button, Divider, IconButton, Paper, Stack, TextField, Typography } from "@mui/material";
 import { z } from "zod";
 
 import { NewAgentExperimentFormData } from "../form";
-
-import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
-import { withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
 
 export const EndpointSetup = withFieldGroup({
   defaultValues: {} as Pick<NewAgentExperimentFormData, "endpoint">,
@@ -170,7 +169,7 @@ export const EndpointSetup = withFieldGroup({
                   </Typography>
                 </Stack>
                 <Divider sx={{ my: 2 }} />
-                <NunjucksHighlightedTextField
+                <MustacheHighlightedTextField
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
                   placeholder="Enter request body..."

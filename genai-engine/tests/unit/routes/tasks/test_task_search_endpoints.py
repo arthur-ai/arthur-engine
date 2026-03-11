@@ -222,6 +222,48 @@ def test_search_tasks_agentic_with_other_filters(client: GenaiEngineTestClientBa
 
 
 @pytest.mark.unit_tests
+def test_search_tasks_archived_flags(client: GenaiEngineTestClientBase):
+    """Test that only_archived and include_archived correctly filter archived tasks."""
+    unique_prefix = str(random.random()) + "archived_search_test_"
+
+    task_ids = []
+    for i in range(3):
+        sc, task = client.create_task(name=f"{unique_prefix}{i}")
+        assert sc == 200
+        task_ids.append(task.id)
+
+    archived_ids = task_ids[:2]
+    active_ids = task_ids[2:]
+
+    for task_id in archived_ids:
+        sc = client.delete_task(task_id)
+        assert sc == 204
+
+    # Default search returns only active tasks
+    sc, resp = client.search_tasks(task_ids=task_ids, page_size=50)
+    assert sc == 200
+    assert set(t.id for t in resp.tasks) == set(active_ids)
+
+    # include_archived=True returns active and archived tasks
+    sc, resp = client.search_tasks(task_ids=task_ids, page_size=50, include_archived=True)
+    assert sc == 200
+    assert set(t.id for t in resp.tasks) == set(task_ids)
+
+    # only_archived=True returns only archived tasks
+    sc, resp = client.search_tasks(task_ids=task_ids, page_size=50, only_archived=True)
+    assert sc == 200
+    assert set(t.id for t in resp.tasks) == set(archived_ids)
+    assert all(t.is_archived for t in resp.tasks)
+
+    # only_archived takes precedence when both flags are True
+    sc, resp = client.search_tasks(
+        task_ids=task_ids, page_size=50, only_archived=True, include_archived=True
+    )
+    assert sc == 200
+    assert set(t.id for t in resp.tasks) == set(archived_ids)
+
+
+@pytest.mark.unit_tests
 def test_search_tasks_agentic_with_pagination(client: GenaiEngineTestClientBase):
     """Test is_agentic filter with pagination"""
     unique_prefix = str(random.random()) + "pagination_test_"

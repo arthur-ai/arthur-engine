@@ -90,6 +90,7 @@ from weaviate.collections.classes.grpc import (
 )
 from weaviate.types import INCLUDE_VECTOR
 
+from config.currency_config import currency_config
 from db_models import (
     DatabaseAgenticAnnotation,
     DatabaseAgenticNotebook,
@@ -586,6 +587,7 @@ class Task(BaseModel):
     is_agentic: bool = False
     is_autocreated: bool = False
     is_system_task: bool = False
+    is_archived: bool = False
     task_metadata: Optional[TaskMetadata] = None
     service_names: List[str] = Field(
         default_factory=list,
@@ -638,6 +640,7 @@ class Task(BaseModel):
             is_agentic=x.is_agentic,
             is_autocreated=x.is_autocreated,
             is_system_task=x.is_system_task,
+            is_archived=x.archived,
             task_metadata=(
                 TaskMetadata.model_validate(x.task_metadata)
                 if x.task_metadata
@@ -709,6 +712,7 @@ class Task(BaseModel):
             is_agentic=self.is_agentic,
             is_autocreated=self.is_autocreated,
             is_system_task=self.is_system_task,
+            is_archived=self.is_archived,
             agent_metadata=agent_metadata_response,
             rules=response_rules,
             metrics=response_metrics,
@@ -1853,6 +1857,7 @@ class DocumentStorageConfiguration(BaseModel):
 
 class ApplicationConfiguration(BaseModel):
     chat_task_id: Optional[str] = None
+    default_currency: Optional[str] = None
     document_storage_configuration: Optional[DocumentStorageConfiguration] = None
     max_llm_rules_per_task_count: int
 
@@ -1911,11 +1916,20 @@ class ApplicationConfiguration(BaseModel):
             if config_value is not None:
                 max_llm_rules_per_task_count = int(config_value)
 
+        default_currency = config_if_exists(
+            ApplicationConfigurations.DEFAULT_CURRENCY,
+            configs,
+        )
+        if not default_currency or not default_currency.strip():
+            default_currency = currency_config.DEFAULT_CURRENCY or "USD"
+        default_currency = default_currency.strip().upper()
+
         return ApplicationConfiguration(
             chat_task_id=config_if_exists(
                 ApplicationConfigurations.CHAT_TASK_ID,
                 configs,
             ),
+            default_currency=default_currency,
             document_storage_configuration=doc_storage,
             max_llm_rules_per_task_count=max_llm_rules_per_task_count,
         )
@@ -1923,6 +1937,7 @@ class ApplicationConfiguration(BaseModel):
     def _to_response_model(self) -> ApplicationConfigurationResponse:
         return ApplicationConfigurationResponse(
             chat_task_id=self.chat_task_id,
+            default_currency=self.default_currency,
             document_storage_configuration=(
                 self.document_storage_configuration._to_response_model()
                 if self.document_storage_configuration is not None
