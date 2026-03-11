@@ -8,9 +8,10 @@ interface UseDatasetQueriesParams {
   selectedVersion: number | undefined;
   page: number;
   rowsPerPage: number;
+  searchQuery: string;
 }
 
-export function useDatasetQueries({ datasetId, selectedVersion, page, rowsPerPage }: UseDatasetQueriesParams): UseDatasetQueriesReturn {
+export function useDatasetQueries({ datasetId, selectedVersion, page, rowsPerPage, searchQuery }: UseDatasetQueriesParams): UseDatasetQueriesReturn {
   const {
     data: datasetData,
     isLoading: datasetLoading,
@@ -62,6 +63,7 @@ export function useDatasetQueries({ datasetId, selectedVersion, page, rowsPerPag
         page,
         page_size: rowsPerPage,
         sort: "asc",
+        search: searchQuery.trim() || undefined,
       },
     ] as const,
     enabled: !!datasetId && currentVersion !== undefined,

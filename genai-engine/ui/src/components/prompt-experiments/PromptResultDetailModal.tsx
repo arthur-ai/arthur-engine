@@ -9,8 +9,10 @@ import React, { useState } from "react";
 import { MessageDisplay, VariableTile } from "./PromptResultComponents";
 
 import { UpdateDatasetRowModal } from "@/components/common/UpdateDatasetRowModal";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import useSnackbar from "@/hooks/useSnackbar";
 import type { InputVariable, EvalExecution, PromptOutput } from "@/lib/api-client/api-client";
+import { formatCurrency } from "@/utils/formatters";
 
 interface Message {
   role: "system" | "user" | "assistant";
@@ -55,6 +57,7 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
   datasetVersion,
   datasetRowId,
 }) => {
+  const { defaultCurrency } = useDisplaySettings();
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
@@ -137,7 +140,7 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
         <Box className="p-6">
           {/* Input Variables Section */}
           <Box className="mb-6">
-            <Typography variant="h6" className="font-bold mb-4 pb-2 border-b-2 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, pb: 1, borderBottom: 2, borderColor: "divider", color: "text.primary" }}>
               Input Variables
             </Typography>
             <Box className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -149,13 +152,13 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
 
           {/* Messages: Rendered Prompt and Output */}
           <Box className="mb-6">
-            <Typography variant="h6" className="font-bold mb-4 pb-2 border-b-2 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, pb: 1, borderBottom: 2, borderColor: "divider", color: "text.primary" }}>
               Messages
             </Typography>
             <Box className="grid grid-cols-2 gap-4">
               {/* Rendered Prompt Messages */}
               <Box>
-                <Typography variant="subtitle2" className="font-medium text-gray-700 mb-2">
+                <Typography variant="subtitle2" sx={{ fontWeight: 500, color: "text.secondary", mb: 1 }}>
                   Input Messages:
                 </Typography>
                 <Box className="max-h-96 overflow-auto">
@@ -165,8 +168,16 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
                       return messages.map((message, msgIndex) => <MessageDisplay key={msgIndex} message={message} />);
                     } catch {
                       return (
-                        <Box className="p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded">
-                          <Typography variant="body2" className="whitespace-pre-wrap text-gray-900 dark:text-gray-100">
+                        <Box
+                          sx={{
+                            p: 1.5,
+                            backgroundColor: "action.hover",
+                            border: 1,
+                            borderColor: "divider",
+                            borderRadius: 1,
+                          }}
+                        >
+                          <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", color: "text.primary" }}>
                             {renderedPrompt}
                           </Typography>
                         </Box>
@@ -179,7 +190,7 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
               {/* Output */}
               <Box>
                 <Box className="flex items-center justify-between mb-2">
-                  <Typography variant="subtitle2" className="font-medium text-gray-700 dark:text-gray-300">
+                  <Typography variant="subtitle2" sx={{ fontWeight: 500, color: "text.secondary" }}>
                     Output Message:
                   </Typography>
                   {canUpdateDataset && (
@@ -207,8 +218,16 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
                       )}
                     </>
                   ) : (
-                    <Box className="p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded">
-                      <Typography variant="body2" className="text-gray-500 dark:text-gray-400 italic">
+                    <Box
+                      sx={{
+                        p: 1.5,
+                        backgroundColor: "action.hover",
+                        border: 1,
+                        borderColor: "divider",
+                        borderRadius: 1,
+                      }}
+                    >
+                      <Typography variant="body2" sx={{ color: "text.secondary", fontStyle: "italic" }}>
                         No output available
                       </Typography>
                     </Box>
@@ -221,10 +240,7 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
           {/* Evals */}
           {evals.length > 0 && (
             <Box>
-              <Typography
-                variant="h6"
-                className="font-bold mb-4 pb-2 border-b-2 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
-              >
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, pb: 1, borderBottom: 2, borderColor: "divider", color: "text.primary" }}>
                 Evaluations
               </Typography>
               <Box className="space-y-2">
@@ -242,7 +258,11 @@ export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = (
                               size="small"
                               sx={getEvalChipSx(evalItem.eval_results.score === 1)}
                             />
-                            <Chip label={`Cost: $${evalItem.eval_results.cost}`} size="small" variant="outlined" />
+                            <Chip
+                              label={`Cost: ${formatCurrency(parseFloat(String(evalItem.eval_results.cost)), defaultCurrency)}`}
+                              size="small"
+                              variant="outlined"
+                            />
                           </>
                         ) : (
                           <Chip label="Pending" size="small" sx={getPendingChipSx()} />

@@ -15,17 +15,22 @@ const EvaluatorsHeader = ({ onCreateEval }: EvaluatorsHeaderProps) => {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          p: 2,
+          px: 3,
+          pt: 3,
+          pb: 2,
           backgroundColor: "background.paper",
         }}
       >
         <Box>
-          <Typography variant="subtitle1" color="text.primary">
+          <Typography variant="h5" fontWeight={600} color="text.primary">
+            Evals Management
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
             Manage and organize your evaluation metrics
           </Typography>
         </Box>
         <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={onCreateEval}>
-          New Evaluator
+          Evaluator
         </Button>
       </Box>
       <Divider />

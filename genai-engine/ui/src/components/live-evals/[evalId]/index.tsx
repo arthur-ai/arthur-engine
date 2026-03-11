@@ -1,12 +1,18 @@
+import { Operators, TracesEmptyState } from "@arthur/shared-components";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import {
   Box,
   Chip,
   CircularProgress,
+  Dialog,
   Divider,
+  FormControl,
   IconButton,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Skeleton,
   Stack,
   Table,
@@ -17,24 +23,103 @@ import {
   Typography,
 } from "@mui/material";
 import { Link as MuiLink } from "@mui/material";
+import { useQuery } from "@tanstack/react-query";
+import { PaginationState } from "@tanstack/react-table";
+import { MaterialReactTable, useMaterialReactTable } from "material-react-table";
+import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
+import { Details } from "../components/results/components/details";
 import { useContinuousEval } from "../hooks/useContinuousEval";
+import { continuousEvalsResultsQueryOptions } from "../hooks/useContinuousEvalsResults";
+
+import { createColumns } from "./columns";
 
 import { CopyableChip } from "@/components/common";
 import { getContentHeight } from "@/constants/layout";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useTransform } from "@/hooks/transforms/useTransform";
+import { useApi } from "@/hooks/useApi";
+import { useTask } from "@/hooks/useTask";
+import { AgenticAnnotationResponse, ContinuousEvalRunStatus } from "@/lib/api-client/api-client";
 import { formatDate } from "@/utils/formatters";
+
+const DEFAULT_DATA: AgenticAnnotationResponse[] = [];
+
+const STATUS_OPTIONS: Array<{ label: string; value: ContinuousEvalRunStatus | "" }> = [
+  { label: "All", value: "" },
+  { label: "Passed", value: "passed" },
+  { label: "Failed", value: "failed" },
+  { label: "Error", value: "error" },
+  { label: "Pending", value: "pending" },
+  { label: "Running", value: "running" },
+  { label: "Skipped", value: "skipped" },
+];
 
 export const LiveEvalDetail = () => {
   const { evalId } = useParams<{ evalId: string }>();
 
-  // In real implementation, fetch data using evalId
+  const { task } = useTask();
+  const { defaultCurrency } = useDisplaySettings();
+  const api = useApi()!;
+
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
+  const [selectedAnnotationId, setSelectedAnnotationId] = useState("");
+  const [statusFilter, setStatusFilter] = useState<ContinuousEvalRunStatus | "">("");
+
+  const filters = [
+    { name: "continuous_eval_id", operator: Operators.IN, value: [evalId!] },
+    ...(statusFilter ? [{ name: "run_status", operator: Operators.EQUALS, value: statusFilter }] : []),
+  ];
+
+  const {
+    data: resultsData,
+    isLoading,
+    isFetching,
+  } = useQuery({
+    ...continuousEvalsResultsQueryOptions({
+      api,
+      taskId: task?.id ?? "",
+      pagination: { page: pagination.pageIndex, page_size: pagination.pageSize },
+      filters,
+    }),
+    enabled: !!task?.id && !!evalId,
+  });
+
+  const handleStatusChange = (value: ContinuousEvalRunStatus | "") => {
+    setStatusFilter(value);
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  };
+
   const { data: liveEval } = useContinuousEval(evalId ?? "");
-
   const transform = useTransform(liveEval?.transform_id);
-
   const hasVariableMappings = liveEval?.transform_variable_mapping && liveEval.transform_variable_mapping.length > 0;
+
+  const columns = useMemo(() => createColumns({ taskId: task?.id ?? "", defaultCurrency }), [task?.id, defaultCurrency]);
+
+  const table = useMaterialReactTable({
+    columns,
+    data: resultsData?.annotations ?? DEFAULT_DATA,
+    manualPagination: true,
+    onPaginationChange: setPagination,
+    state: { pagination, isLoading, showProgressBars: isFetching },
+    rowCount: resultsData?.count ?? 0,
+    enableTopToolbar: false,
+    enableColumnActions: false,
+    enableColumnFilters: false,
+    enableGlobalFilter: false,
+    enableSorting: false,
+    muiTablePaperProps: { elevation: 0, sx: { border: "none" } },
+    renderEmptyRowsFallback: () => (
+      <Box sx={{ p: 2 }}>
+        <TracesEmptyState title="No evaluated traces found" />
+      </Box>
+    ),
+    muiTableBodyRowProps: ({ row }) => ({
+      onClick: () => setSelectedAnnotationId(row.original.id),
+      sx: { cursor: "pointer" },
+    }),
+  });
 
   if (!liveEval) {
     return (
@@ -87,36 +172,6 @@ export const LiveEvalDetail = () => {
       {/* Content */}
       <Box sx={{ flex: 1, overflow: "auto", p: 3 }}>
         <Stack spacing={3}>
-          {/* Stats Overview */}
-          {/* <Stack direction="row" spacing={2} sx={{ flexWrap: "wrap" }} useFlexGap>
-            <StatCard
-              icon={<TimelineIcon />}
-              label="Total Evaluated"
-              value={liveEval.stats.totalEvaluated.toLocaleString()}
-              subValue={`${liveEval.stats.evaluatedToday} today`}
-            />
-            <StatCard
-              icon={<CheckCircleOutlineIcon />}
-              label="Pass Rate"
-              value={`${liveEval.stats.passRate}%`}
-              subValue={`${liveEval.stats.passCount} passed`}
-              color="success"
-            />
-            <StatCard
-              icon={<RemoveCircleOutlineIcon />}
-              label="Failed"
-              value={liveEval.stats.failCount}
-              subValue={`${liveEval.stats.errorCount} errors`}
-              color={liveEval.stats.failCount > 0 ? "error" : "default"}
-            />
-            <StatCard
-              icon={<SpeedIcon />}
-              label="Avg Score"
-              value={liveEval.stats.avgScore?.toFixed(2) ?? "-"}
-              subValue={`~${liveEval.stats.avgLatencyMs}ms latency`}
-            />
-          </Stack> */}
-
           {/* Configuration Section */}
           <Paper variant="outlined" sx={{ p: 3 }}>
             <Typography variant="h6" fontWeight={600} mb={2}>
@@ -164,7 +219,7 @@ export const LiveEvalDetail = () => {
                   </Typography>
                   <Table size="small">
                     <TableHead>
-                      <TableRow sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50") }}>
+                      <TableRow>
                         <TableCell sx={{ fontWeight: 600 }}>Eval Variable</TableCell>
                         <TableCell sx={{ width: 40 }} />
                         <TableCell sx={{ fontWeight: 600 }}>Transform Variable</TableCell>
@@ -203,101 +258,26 @@ export const LiveEvalDetail = () => {
                     Real-time evaluation results as traces are processed
                   </Typography>
                 </Stack>
-                {/* <Chip label={`${liveEval.evaluatedTraces.length} recent`} size="small" variant="outlined" /> */}
+                <FormControl size="small" sx={{ minWidth: 140 }}>
+                  <InputLabel>Status</InputLabel>
+                  <Select value={statusFilter} label="Status" onChange={(e) => handleStatusChange(e.target.value as ContinuousEvalRunStatus | "")}>
+                    {STATUS_OPTIONS.map((opt) => (
+                      <MenuItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Stack>
             </Box>
-            {/* <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50") }}>
-                    <TableCell sx={{ fontWeight: 600 }}>Trace</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Evaluated</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Result</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Reason</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }} align="right">
-                      Latency
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 600 }} align="right">
-                      Tokens
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 600, width: 48 }} />
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {liveEval.evaluatedTraces.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((trace) => (
-                    <TableRow key={trace.id} hover>
-                      <TableCell>
-                        <CopyableChip label={trace.traceId} sx={{ fontFamily: "monospace", fontSize: "0.75rem" }} />
-                      </TableCell>
-                      <TableCell>
-                        <Tooltip title={formatDate(trace.evaluatedAt)}>
-                          <Typography variant="body2" color="text.secondary">
-                            {formatRelativeTime(trace.evaluatedAt)}
-                          </Typography>
-                        </Tooltip>
-                      </TableCell>
-                      <TableCell>
-                        <ResultChip result={trace.result} score={trace.score} />
-                      </TableCell>
-                      <TableCell sx={{ maxWidth: 300 }}>
-                        <Tooltip title={trace.reason ?? ""}>
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                              maxWidth: 280,
-                            }}
-                          >
-                            {trace.reason ?? "-"}
-                          </Typography>
-                        </Tooltip>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography variant="body2" color="text.secondary">
-                          {trace.latencyMs}ms
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Tooltip title={`Input: ${trace.inputTokens} / Output: ${trace.outputTokens}`}>
-                          <Typography variant="body2" color="text.secondary">
-                            {trace.inputTokens + trace.outputTokens}
-                          </Typography>
-                        </Tooltip>
-                      </TableCell>
-                      <TableCell>
-                        <Tooltip title="View trace">
-                          <IconButton
-                            size="small"
-                            component={Link}
-                            to={`/tasks/${task?.id}/traces${serializeDrawerTarget({ target: "trace", id: trace.traceId })}`}
-                          >
-                            <OpenInNewIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer> */}
-            {/* <TablePagination
-              component="div"
-              count={liveEval.evaluatedTraces.length}
-              page={page}
-              onPageChange={(_, newPage) => setPage(newPage)}
-              rowsPerPage={rowsPerPage}
-              onRowsPerPageChange={(e) => {
-                setRowsPerPage(parseInt(e.target.value, 10));
-                setPage(0);
-              }}
-              rowsPerPageOptions={[10, 25, 50]}
-            /> */}
+            <MaterialReactTable table={table} />
           </Paper>
         </Stack>
       </Box>
+
+      <Dialog open={!!selectedAnnotationId} onClose={() => setSelectedAnnotationId("")} maxWidth="xl" fullWidth>
+        <Details annotationId={selectedAnnotationId || undefined} onClose={() => setSelectedAnnotationId("")} onRerunComplete={() => {}} />
+      </Dialog>
     </Stack>
   );
 };

@@ -20,6 +20,7 @@ import {
   DialogActions,
   Link,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
 
@@ -28,6 +29,7 @@ import { ExperimentResultsTable } from "./ExperimentResultsTable";
 import { PromptVersionDrawer } from "./PromptVersionDrawer";
 
 import { getContentHeight } from "@/constants/layout";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useCreateNotebookMutation, useAttachExperimentToNotebookMutation, useSetNotebookStateMutation } from "@/hooks/useNotebooks";
 import { usePromptExperiment, useCreateExperiment, useDeleteExperiment } from "@/hooks/usePromptExperiments";
 import { formatUTCTimestamp, formatTimestampDuration, formatCurrency } from "@/utils/formatters";
@@ -49,6 +51,7 @@ interface PromptVersionDetails {
 export const ExperimentDetailView: React.FC = () => {
   const { id: taskId, experimentId } = useParams<{ id: string; experimentId: string }>();
   const navigate = useNavigate();
+  const { defaultCurrency } = useDisplaySettings();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -360,14 +363,22 @@ export const ExperimentDetailView: React.FC = () => {
             </Box>
             {experiment.total_cost && (
               <Box>
-                <span className="font-medium">Total Cost:</span> {formatCurrency(parseFloat(experiment.total_cost))}
+                <span className="font-medium">Total Cost:</span> {formatCurrency(parseFloat(experiment.total_cost), defaultCurrency)}
               </Box>
             )}
           </Box>
 
           {/* Dataset Row Filter Section */}
           {experiment.dataset_row_filter && experiment.dataset_row_filter.length > 0 && (
-            <Box className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
+            <Box
+              sx={(theme) => ({
+                mt: 2,
+                p: 1.5,
+                bgcolor: alpha(theme.palette.info.main, 0.08),
+                border: `1px solid ${alpha(theme.palette.info.main, 0.3)}`,
+                borderRadius: 1,
+              })}
+            >
               <Box className="flex items-center gap-2 mb-2">
                 <Typography variant="body2" className="font-medium text-gray-900 dark:text-gray-100">
                   Dataset Row Filter Applied
@@ -521,7 +532,7 @@ export const ExperimentDetailView: React.FC = () => {
                           })}
                         </Box>
 
-                        {/* Open in Notebook button in lower left corner - only for saved prompts */}
+                        {/* Open in Playground button in lower left corner - only for saved prompts */}
                         {(promptSummary.prompt_type === "saved" || !promptSummary.prompt_type) &&
                           promptSummary.prompt_name &&
                           promptSummary.prompt_version && (
@@ -541,7 +552,7 @@ export const ExperimentDetailView: React.FC = () => {
                                 },
                               }}
                             >
-                              Open in Notebook
+                              Open in Playground
                             </Button>
                           )}
 
@@ -589,6 +600,7 @@ export const ExperimentDetailView: React.FC = () => {
           {taskId && experimentId && (
             <ExperimentResultsTable
               experimentId={experimentId}
+              experimentStatus={experiment.status}
               refreshTrigger={refreshTrigger}
               datasetId={experiment.dataset_ref.id}
               datasetVersion={experiment.dataset_ref.version}

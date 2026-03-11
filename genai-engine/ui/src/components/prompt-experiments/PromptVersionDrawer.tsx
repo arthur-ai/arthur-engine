@@ -1,3 +1,4 @@
+import { MustacheHighlightedTextField } from "@arthur/shared-components";
 import CloseIcon from "@mui/icons-material/Close";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -29,11 +30,11 @@ import { Link as RouterLink } from "react-router-dom";
 
 import { PromptResultDetailModal, EvalInputsDialog } from "./PromptResultDetailModal";
 
-import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
 import { usePrompt } from "@/components/prompts-management/hooks/usePrompt";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { usePromptVersionResults } from "@/hooks/usePromptExperiments";
 import { EvalExecution, OpenAIMessageInput, LLMToolInput } from "@/lib/api-client/api-client";
-import { formatUTCTimestamp } from "@/utils/formatters";
+import { formatCurrency, formatUTCTimestamp } from "@/utils/formatters";
 
 interface EvalResult {
   eval_name: string;
@@ -83,6 +84,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
   datasetId,
   datasetVersion,
 }) => {
+  const { defaultCurrency } = useDisplaySettings();
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
@@ -295,7 +297,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   </Button>
                 </Box>
                 <Box>
-                  <Typography variant="caption" className="text-gray-500 font-medium">
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
                     Created At
                   </Typography>
                   <Typography variant="body2" className="text-gray-900 dark:text-gray-100">
@@ -303,7 +305,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   </Typography>
                 </Box>
                 <Box>
-                  <Typography variant="caption" className="text-gray-500 font-medium">
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
                     Model
                   </Typography>
                   <Typography variant="body2" className="text-gray-900 dark:text-gray-100 font-mono">
@@ -311,7 +313,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   </Typography>
                 </Box>
                 <Box>
-                  <Typography variant="caption" className="text-gray-500 font-medium">
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
                     Provider
                   </Typography>
                   <Typography variant="body2" className="text-gray-900 dark:text-gray-100">
@@ -319,7 +321,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   </Typography>
                 </Box>
                 <Box>
-                  <Typography variant="caption" className="text-gray-500 font-medium">
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
                     Messages
                   </Typography>
                   <Typography variant="body2" className="text-gray-900 dark:text-gray-100">
@@ -426,8 +428,9 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                       results.map((result, idx) => {
                         // Sort evals by name for consistent ordering across rows
                         const sortedEvals = [...result.evals].sort((a, b) => a.eval_name.localeCompare(b.eval_name));
-                        const passedCount = sortedEvals.filter((e) => e.eval_results && e.eval_results.score >= 0.5).length;
-                        const totalCount = sortedEvals.length;
+                        const evalsWithResults = sortedEvals.filter((e) => e.eval_results);
+                        const passedCount = evalsWithResults.filter((e) => e.eval_results!.score >= 0.5).length;
+                        const totalCount = evalsWithResults.length;
 
                         return (
                           <TableRow key={`${result.dataset_row_id}-${idx}`} hover onClick={() => handleRowClick(idx)} sx={{ cursor: "pointer" }}>
@@ -486,7 +489,18 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                                 </Typography>
                                 <Box className="flex gap-1 flex-wrap justify-center">
                                   {sortedEvals.map((evalExec, eidx) => {
-                                    const passed = evalExec.eval_results && evalExec.eval_results.score >= 0.5;
+                                    if (!evalExec.eval_results) {
+                                      return (
+                                        <Chip
+                                          key={eidx}
+                                          label={`${evalExec.eval_name} (v${evalExec.eval_version})`}
+                                          size="small"
+                                          variant="outlined"
+                                          sx={{ fontSize: "0.65rem", height: "20px", color: "text.secondary", borderColor: "text.secondary" }}
+                                        />
+                                      );
+                                    }
+                                    const passed = evalExec.eval_results.score >= 0.5;
                                     return (
                                       <Chip
                                         key={eidx}
@@ -502,7 +516,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                             </TableCell>
                             <TableCell align="right">
                               <Typography variant="body2" className="font-mono text-xs">
-                                ${result.total_cost || "0.00"}
+                                {formatCurrency(parseFloat(result.total_cost || "0"), defaultCurrency)}
                               </Typography>
                             </TableCell>
                           </TableRow>
@@ -556,7 +570,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                 </Typography>
                 <Box className="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded">
                   <Box>
-                    <Typography variant="caption" className="text-gray-500 font-medium">
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
                       Model
                     </Typography>
                     <Typography variant="body2" className="text-gray-900 dark:text-gray-100 font-mono">
@@ -564,7 +578,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                     </Typography>
                   </Box>
                   <Box>
-                    <Typography variant="caption" className="text-gray-500 font-medium">
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
                       Provider
                     </Typography>
                     <Typography variant="body2" className="text-gray-900 dark:text-gray-100 font-mono">
@@ -573,7 +587,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   </Box>
                   {prompt.config?.temperature !== undefined && (
                     <Box>
-                      <Typography variant="caption" className="text-gray-500 font-medium">
+                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
                         Temperature
                       </Typography>
                       <Typography variant="body2" className="text-gray-900 dark:text-gray-100 font-mono">
@@ -583,7 +597,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   )}
                   {prompt.config?.max_tokens !== undefined && (
                     <Box>
-                      <Typography variant="caption" className="text-gray-500 font-medium">
+                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
                         Max Tokens
                       </Typography>
                       <Typography variant="body2" className="text-gray-900 dark:text-gray-100 font-mono">
@@ -600,7 +614,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   Messages
                 </Typography>
                 <Box>
-                  <NunjucksHighlightedTextField
+                  <MustacheHighlightedTextField
                     value={messagesJson}
                     onChange={() => {}} // Read-only, no-op
                     disabled

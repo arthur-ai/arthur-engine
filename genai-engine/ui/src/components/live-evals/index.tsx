@@ -46,7 +46,7 @@ export const LiveEvals = () => {
             </Typography>
           </Stack>
           <Button variant="contained" color="primary" startIcon={<AddIcon />} to={`/tasks/${task?.id}/continuous-evals/new`} component={Link}>
-            New Continuous Eval
+            Continuous Eval
           </Button>
         </Stack>
         <Tabs

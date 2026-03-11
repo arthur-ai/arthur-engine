@@ -9,3 +9,4 @@ yarn.lock
 .gitignore
 .prettierignore
 tsconfig.**.*
+.claude

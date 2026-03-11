@@ -134,7 +134,6 @@ export const DatasetTable: React.FC<DatasetTableProps> = ({
                 sx={{
                   fontWeight: 600,
                   minWidth: 150,
-                  backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.100"),
                 }}
               >
                 <Box
@@ -161,7 +160,6 @@ export const DatasetTable: React.FC<DatasetTableProps> = ({
               sx={{
                 fontWeight: 600,
                 minWidth: 100,
-                backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.100"),
                 textAlign: "center",
                 position: "sticky",
                 right: 0,

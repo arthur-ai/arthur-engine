@@ -36,6 +36,7 @@ from utils.constants import (
     UNMAPPED_TASK_ID,
     USER_ID_KEY,
 )
+from utils.gcp import parse_gcp_resource_path
 from utils.token_count import safe_add
 
 logger = logging.getLogger(__name__)
@@ -75,8 +76,11 @@ class TraceIngestionService:
 
     def __init__(self, db_session: Session):
         self.db_session = db_session
-
         self.span_normalizer = SpanNormalizationService()
+
+        config_repo = ConfigurationRepository(db_session)
+        app_config = config_repo.get_configurations()
+        self.task_repo = get_task_repository(db_session, app_config)
 
     def process_trace_data(
         self,
@@ -135,11 +139,12 @@ class TraceIngestionService:
                         f"Failed to create resource metadata: {e}", exc_info=True
                     )
 
-            # Resolve task_id using 4-step priority hierarchy
+            # Resolve task_id using priority hierarchy
             # This ensures all traces have a task_id (no NULL values)
             resolved_task_id = self._resolve_task_id(
                 explicit_task_id=resource_task_id,
                 service_name=service_name,
+                resource_attributes=resource_attributes,
             )
 
             logger.debug(f"Resolved task_id: {resolved_task_id}")
@@ -224,19 +229,23 @@ class TraceIngestionService:
         self,
         explicit_task_id: str | None,
         service_name: str | None,
+        resource_attributes: dict[str, Any] | None = None,
     ) -> str:
-        """Resolve task_id using 4-step priority hierarchy.
+        """Resolve task_id using priority hierarchy.
 
         Priority order:
         1. If explicit_task_id (arthur.task) present → use it
-        2. If no task_id but service.name present → lookup in mapping
-        3. If lookup finds mapping → return mapped task_id
-        4. If no mapping → auto-create task and mapping, return new task_id
-        5. If no service.name → return __unmapped__ task_id
+        2. If service.name present → lookup in service_name_task_mappings
+        3. If mapping found → return mapped task_id
+        4. If no mapping but cloud.resource_id present → match by GCP engine ID
+        5. If GCP match found → create service_name mapping for future speed, return task_id
+        6. If no match → auto-create task and mapping, return new task_id
+        7. If no service.name → return __unmapped__ task_id
 
         Args:
             explicit_task_id: Task ID from arthur.task resource attribute
             service_name: Service name from service.name resource attribute
+            resource_attributes: All resource attributes from the trace
 
         Returns:
             Resolved task_id (never None after migration)
@@ -244,6 +253,20 @@ class TraceIngestionService:
         # Step 1: If explicit_task_id (arthur.task) present → use it
         if explicit_task_id:
             logger.debug(f"Using explicit task_id: {explicit_task_id}")
+            try:
+                task = self.task_repo.get_db_task_by_id(
+                    explicit_task_id, include_archived=True
+                )
+                if task.archived:
+                    logger.warning(
+                        f"Trace received with explicit task ID '{explicit_task_id}' which is archived. "
+                        "Traces are still being written to this task. "
+                        "Unarchive the task to resume normal operation."
+                    )
+            except Exception as e:
+                logger.debug(
+                    f"Could not check archived status for task '{explicit_task_id}': {e}"
+                )
             return explicit_task_id
 
         # Step 2: If no task_id but service.name present → lookup in mapping
@@ -256,19 +279,62 @@ class TraceIngestionService:
                 logger.debug(
                     f"Found existing mapping: {service_name} → {existing_task_id}"
                 )
+                # Check if the mapped task is archived — warn but still route to it
+                try:
+                    mapped_task = self.task_repo.get_db_task_by_id(
+                        existing_task_id, include_archived=True
+                    )
+                    if mapped_task.archived:
+                        logger.warning(
+                            f"Service name '{service_name}' is mapped to archived task "
+                            f"{existing_task_id}. Traces are still being written to this task. "
+                            "Unarchive the task to resume normal operation."
+                        )
+                except Exception as e:
+                    logger.debug(
+                        f"Could not check archived status for task '{existing_task_id}': {e}"
+                    )
                 return existing_task_id
 
-            # Step 4: If no mapping → auto-create task and mapping, return new task_id
+            # Step 4: Check resource attributes for GCP cloud.resource_id
+            if resource_attributes:
+                cloud_resource_id = resource_attributes.get("cloud.resource_id")
+                if cloud_resource_id:
+                    try:
+                        _, _, engine_id = parse_gcp_resource_path(cloud_resource_id)
+                        if engine_id:
+                            existing_task = self.task_repo.find_by_gcp_engine_id(
+                                engine_id
+                            )
+                            if existing_task:
+                                if existing_task.archived:
+                                    logger.warning(
+                                        f"Service name '{service_name}' matched GCP task "
+                                        f"'{existing_task.name}' ({existing_task.id}) which is archived. "
+                                        "Traces are still being written to this task. "
+                                        "Unarchive the task to resume normal operation."
+                                    )
+                                # Step 5: Create service_name mapping for future speed
+                                mapping_repo.create_mapping(
+                                    service_name, existing_task.id
+                                )
+                                logger.info(
+                                    f"Matched service.name='{service_name}' to existing GCP task "
+                                    f"'{existing_task.name}' (id={existing_task.id}) via cloud.resource_id"
+                                )
+                                return existing_task.id
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to match cloud.resource_id '{cloud_resource_id}': {e}"
+                        )
+
+            # Step 6: If no mapping and no GCP match → auto-create task and mapping
             logger.info(
                 f"No mapping found for service.name='{service_name}'. Auto-creating task.",
             )
 
             try:
-                config_repo = ConfigurationRepository(self.db_session)
-                app_config = config_repo.get_configurations()
-                task_repo = get_task_repository(self.db_session, app_config)
-
-                new_task = task_repo.create_auto_task(service_name)
+                new_task = self.task_repo.create_auto_task(service_name)
 
                 mapping_repo.create_mapping(service_name, new_task.id)
 
@@ -283,7 +349,7 @@ class TraceIngestionService:
                 )
                 return UNMAPPED_TASK_ID
 
-        # Step 5: If no service.name → return __unmapped__ task_id
+        # Step 7: If no service.name → return __unmapped__ task_id
         logger.debug(f"No service.name provided, using UNMAPPED_TASK_ID")
         return UNMAPPED_TASK_ID
 

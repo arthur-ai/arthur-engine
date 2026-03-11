@@ -2,6 +2,7 @@ import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
+import Typography from "@mui/material/Typography";
 
 import { Level, type TimeRange } from "../constants";
 
@@ -30,29 +31,42 @@ export const TracesViewLayout = ({ level, timeRange, onLevelChange, onTimeRangeC
     >
       <Box
         sx={{
-          display: "flex",
-          flexDirection: "column",
-          p: 2,
-          gap: 2,
-          flex: 1,
-          overflow: "hidden",
+          px: 3,
+          pt: 3,
+          pb: 2,
+          borderBottom: 1,
+          borderColor: "divider",
+          backgroundColor: "background.paper",
         }}
       >
-        {welcomeDismissed && (
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ flexShrink: 0 }}>
-            <Tabs value={level} onChange={(_, newValue) => onLevelChange(newValue as Level)}>
-              <Tab value="trace" label="Traces" />
-              <Tab value="span" label="Spans" />
-              <Tab value="session" label="Sessions" />
-              <Tab value="user" label="Users" />
-            </Tabs>
-
-            <TimeRangeSelect value={timeRange} onValueChange={onTimeRangeChange} />
-          </Stack>
-        )}
-
-        <Box sx={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>{children}</Box>
+        <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
+          <Box>
+            <Typography variant="h5" fontWeight={600} color="text.primary">
+              Traces
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              Monitor and analyze inference traces
+            </Typography>
+          </Box>
+          {welcomeDismissed && <TimeRangeSelect value={timeRange} onValueChange={onTimeRangeChange} />}
+        </Stack>
       </Box>
+
+      {welcomeDismissed && (
+        <Tabs
+          variant="fullWidth"
+          value={level}
+          onChange={(_, newValue) => onLevelChange(newValue as Level)}
+          sx={{ backgroundColor: "background.paper", borderBottom: 1, borderColor: "divider" }}
+        >
+          <Tab value="trace" label="Traces" />
+          <Tab value="span" label="Spans" />
+          <Tab value="session" label="Sessions" />
+          <Tab value="user" label="Users" />
+        </Tabs>
+      )}
+
+      <Box sx={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>{children}</Box>
     </Box>
   );
 };

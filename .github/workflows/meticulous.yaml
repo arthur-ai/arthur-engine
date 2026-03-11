@@ -24,6 +24,8 @@ jobs:
   test:
     name: Meticulous
     runs-on: ubuntu-latest
+    env:
+      GITLAB_UNIFY_FRONTEND_TOKEN: ${{ secrets.GITLAB_UNIFY_FRONTEND_TOKEN }}
 
     steps:
       - name: Checkout repository

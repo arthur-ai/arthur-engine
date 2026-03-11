@@ -104,7 +104,7 @@ export const DatasetsView: React.FC = () => {
         width: "100%",
         height: getContentHeight(),
         display: "grid",
-        gridTemplateRows: "auto auto 1fr auto",
+        gridTemplateRows: "auto auto auto 1fr auto",
         overflow: "hidden",
       }}
     >
@@ -119,6 +119,17 @@ export const DatasetsView: React.FC = () => {
         }}
       >
         <DatasetsViewHeader onCreateDataset={handleOpenCreate} />
+      </Box>
+      <Box
+        sx={{
+          px: 3,
+          pt: 2,
+          pb: 2,
+          borderBottom: 1,
+          borderColor: "divider",
+          backgroundColor: "background.paper",
+        }}
+      >
         <DatasetsSearchBar
           value={search.searchQuery}
           onChange={(value) => {

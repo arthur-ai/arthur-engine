@@ -108,8 +108,6 @@ def upload_embeddings_file(
             word_count=len(parsed_words),
             success=True,
         )
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -131,8 +129,6 @@ def get_files(
         docs = doc_repo.get_documents(current_user.email)
 
         return [d._to_response_model() for d in docs]
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -159,8 +155,6 @@ def delete_file(
             )
         doc_repo.delete_document(str(file_id))
         return Response(status_code=status.HTTP_200_OK)
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -276,8 +270,6 @@ def chat(
             prompt_results=validation_prompt_request.rule_results or [],
             response_results=validation_response_request.rule_results or [],
         )
-    except Exception as err:
-        raise err
     finally:
         db_session.close()
 
@@ -299,8 +291,6 @@ def get_inference_document_context(
         embeddings = inference_repo.get_inference_document_context(str(inference_id))
 
         return [e._to_response_model() for e in embeddings]
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -329,8 +319,6 @@ def post_chat_feedback(
             db_session,
         )
         return Response(status_code=status.HTTP_201_CREATED)
-    except Exception as e:
-        raise e
     finally:
         db_session.close()
 
@@ -394,7 +382,5 @@ def update_default_task(
             ApplicationConfigurationUpdateRequest(chat_task_id=body.task_id),
         )
         return ChatDefaultTaskResponse(task_id=body.task_id)
-    except Exception as e:
-        raise e
     finally:
         db_session.close()

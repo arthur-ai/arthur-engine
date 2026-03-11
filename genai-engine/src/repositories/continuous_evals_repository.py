@@ -261,6 +261,18 @@ class ContinuousEvalsRepository:
                     ),
                 )
 
+            if filter_request.llm_eval_name_exact:
+                base_query = base_query.filter(
+                    DatabaseContinuousEval.llm_eval_name
+                    == filter_request.llm_eval_name_exact,
+                )
+
+            if filter_request.llm_eval_version is not None:
+                base_query = base_query.filter(
+                    DatabaseContinuousEval.llm_eval_version
+                    == filter_request.llm_eval_version,
+                )
+
             if filter_request.created_after:
                 base_query = base_query.filter(
                     DatabaseContinuousEval.created_at >= filter_request.created_after,
@@ -449,7 +461,7 @@ class ContinuousEvalsRepository:
                     task_id=task_id,
                     delay_seconds=delay_seconds,
                 )
-                queue_service.enqueue(job)
+                queue_service.enqueue(job)  # Ignore return value
 
             logger.info(
                 f"Enqueued {len(continuous_evals)} continuous eval jobs for trace {trace_id}",
@@ -558,7 +570,7 @@ class ContinuousEvalsRepository:
             task_id=continuous_eval.task_id,
             delay_seconds=delay_seconds,
         )
-        queue_service.enqueue(job)
+        queue_service.enqueue(job)  # Ignore return value
 
         return ContinuousEvalRerunResponse(run_id=run_id, trace_id=annotation.trace_id)
 

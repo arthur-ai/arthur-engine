@@ -1,8 +1,12 @@
 import { OpenInferenceSpanKind, SemanticConventions } from "@arizeai/openinference-semantic-conventions";
+import Chip from "@mui/material/Chip";
+import { alpha, type Theme, useTheme } from "@mui/material/styles";
 import { motion, AnimatePresence } from "framer-motion";
 import React, { useState, useEffect } from "react";
 
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { TraceResponse, NestedSpanWithMetricsResponse } from "@/lib/api";
+import { formatCurrency } from "@/utils/formatters";
 
 interface TraceDetailsPanelProps {
   trace: TraceResponse | null;
@@ -47,6 +51,7 @@ const getSpanTotalCost = (span: NestedSpanWithMetricsResponse) => {
 };
 
 const SpanNode: React.FC<SpanNodeProps> = ({ span, level, onSpanClick, selectedSpanId }) => {
+  const theme = useTheme();
   const [isExpanded, setIsExpanded] = useState(true);
   const hasChildren = span.children && span.children.length > 0;
   const isSelected = span.span_id === selectedSpanId;
@@ -92,29 +97,19 @@ const SpanNode: React.FC<SpanNodeProps> = ({ span, level, onSpanClick, selectedS
     return null;
   };
 
-  const getSpanTypeColor = (spanType: string | null) => {
-    switch (spanType) {
-      case OpenInferenceSpanKind.LLM:
-        return "text-blue-600";
-      case OpenInferenceSpanKind.RETRIEVER:
-        return "text-green-600";
-      case OpenInferenceSpanKind.EMBEDDING:
-        return "text-purple-600";
-      case OpenInferenceSpanKind.CHAIN:
-        return "text-orange-600";
-      case OpenInferenceSpanKind.AGENT:
-        return "text-red-600";
-      case OpenInferenceSpanKind.TOOL:
-        return "text-yellow-600";
-      case OpenInferenceSpanKind.RERANKER:
-        return "text-indigo-600";
-      case OpenInferenceSpanKind.GUARDRAIL:
-        return "text-red-700";
-      case OpenInferenceSpanKind.EVALUATOR:
-        return "text-green-700";
-      default:
-        return "text-gray-600";
-    }
+  const getSpanTypeColor = (theme: Theme, spanType: string | null): string => {
+    const colorMap: Record<string, string> = {
+      [OpenInferenceSpanKind.LLM]: theme.palette.info.main,
+      [OpenInferenceSpanKind.RETRIEVER]: theme.palette.success.main,
+      [OpenInferenceSpanKind.EMBEDDING]: theme.palette.secondary.main,
+      [OpenInferenceSpanKind.CHAIN]: theme.palette.warning.main,
+      [OpenInferenceSpanKind.AGENT]: theme.palette.error.main,
+      [OpenInferenceSpanKind.TOOL]: theme.palette.warning.light,
+      [OpenInferenceSpanKind.RERANKER]: theme.palette.primary.main,
+      [OpenInferenceSpanKind.GUARDRAIL]: theme.palette.error.dark,
+      [OpenInferenceSpanKind.EVALUATOR]: theme.palette.success.dark,
+    };
+    return spanType ? (colorMap[spanType] ?? theme.palette.text.secondary) : theme.palette.text.secondary;
   };
 
   const inputTokens = getInputTokens(span);
@@ -130,7 +125,21 @@ const SpanNode: React.FC<SpanNodeProps> = ({ span, level, onSpanClick, selectedS
       >
         <div className="flex-1 cursor-pointer flex items-center" onClick={() => onSpanClick(span)}>
           {spanType && (
-            <span className={`mr-2 text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 ${getSpanTypeColor(spanType)}`}>{spanType}</span>
+            <Chip
+              label={spanType}
+              size="small"
+              sx={{
+                mr: 1,
+                height: 20,
+                fontSize: "0.75rem",
+                color: getSpanTypeColor(theme, spanType),
+                backgroundColor: (theme) => alpha(getSpanTypeColor(theme, spanType), 0.12),
+                "& .MuiChip-label": {
+                  px: 1,
+                  py: 0,
+                },
+              }}
+            />
           )}
           <span className="text-gray-900 dark:text-gray-100 font-medium">{span.span_name}</span>
           <span className="text-gray-600 dark:text-gray-400 ml-2">({formatDuration(span.start_time, span.end_time)})</span>
@@ -356,6 +365,7 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span }) => {
 };
 
 export const TraceDetailsPanel: React.FC<TraceDetailsPanelProps> = ({ trace, isOpen, onClose }) => {
+  const { defaultCurrency } = useDisplaySettings();
   const [selectedSpan, setSelectedSpan] = useState<NestedSpanWithMetricsResponse | null>(null);
   const [shouldRender, setShouldRender] = useState(false);
 
@@ -479,7 +489,7 @@ export const TraceDetailsPanel: React.FC<TraceDetailsPanelProps> = ({ trace, isO
                 </div>
                 <div>
                   <span className="text-gray-600 dark:text-gray-400">Total Cost:</span>
-                  <span className="ml-1 text-gray-900 dark:text-gray-100">${getTotalCost(trace).toFixed(5)}</span>
+                  <span className="ml-1 text-gray-900 dark:text-gray-100">{formatCurrency(getTotalCost(trace), defaultCurrency)}</span>
                 </div>
                 <div>
                   <span className="text-gray-600 dark:text-gray-400">Token Counts:</span>
@@ -501,7 +511,7 @@ export const TraceDetailsPanel: React.FC<TraceDetailsPanelProps> = ({ trace, isO
                       ))}
                     </div>
                   ) : (
-                    <div className="text-gray-400">No trace data available</div>
+                    <div className="text-gray-400 dark:text-gray-500">No trace data available</div>
                   )}
                 </div>
               </div>

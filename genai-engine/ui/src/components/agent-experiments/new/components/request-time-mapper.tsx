@@ -1,21 +1,26 @@
+import { VariableChip } from "@arthur/shared-components";
+import { withForm } from "@arthur/shared-components";
 import { Box, Divider, Stack, TextField } from "@mui/material";
 import { Paper, Typography } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 import { newAgentExperimentFormOpts } from "../form";
 
-import { VariableChip } from "@/components/evaluators/VariableChip";
-import { withForm } from "@/components/traces/components/filtering/hooks/form";
 import { TemplateVariableMappingInput } from "@/lib/api-client/api-client";
 
 export const RequestTimeMapper = withForm({
   ...newAgentExperimentFormOpts,
   render: function Render({ form }) {
-    const templateVariableMapping = useStore(form.store, (state) =>
-      state.values.templateVariableMapping.filter(
-        (item): item is TemplateVariableMappingInput & { source: { type: "request_time_parameter" } } => item.source.type === "request_time_parameter"
-      )
+    const allMapping = useStore(form.store, (state) => state.values.templateVariableMapping);
+
+    const templateVariableMapping = useMemo(
+      () =>
+        allMapping.filter(
+          (item): item is TemplateVariableMappingInput & { source: { type: "request_time_parameter" } } =>
+            item.source.type === "request_time_parameter"
+        ),
+      [allMapping]
     );
 
     useEffect(() => {

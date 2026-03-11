@@ -1,6 +1,6 @@
 import AddIcon from "@mui/icons-material/Add";
-import FolderOpenIcon from "@mui/icons-material/FolderOpen";
 import SearchIcon from "@mui/icons-material/Search";
+import TableChartOutlinedIcon from "@mui/icons-material/TableChartOutlined";
 import { Box, Button, Typography } from "@mui/material";
 import React from "react";
 
@@ -20,10 +20,10 @@ export const DatasetsEmptyState: React.FC<DatasetsEmptyStateProps> = ({ type, on
           justifyContent: "center",
           height: "100%",
           textAlign: "center",
-          py: 4,
+          py: 8,
         }}
       >
-        <FolderOpenIcon sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
+        <TableChartOutlinedIcon sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
         <Typography variant="h5" gutterBottom sx={{ fontWeight: 500, color: "text.primary" }}>
           No datasets yet
         </Typography>
@@ -31,7 +31,7 @@ export const DatasetsEmptyState: React.FC<DatasetsEmptyStateProps> = ({ type, on
           Get started by creating your first dataset
         </Typography>
         <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={onCreateDataset} size="large">
-          Create Dataset
+          Dataset
         </Button>
       </Box>
     );
@@ -46,14 +46,14 @@ export const DatasetsEmptyState: React.FC<DatasetsEmptyStateProps> = ({ type, on
         justifyContent: "center",
         height: "100%",
         textAlign: "center",
-        py: 4,
+        py: 8,
       }}
     >
-      <SearchIcon sx={{ fontSize: 64, color: "text.primary", mb: 2 }} />
-      <Typography variant="h6" gutterBottom>
+      <SearchIcon sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
+      <Typography variant="h5" gutterBottom sx={{ fontWeight: 500, color: "text.primary" }}>
         No datasets found
       </Typography>
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body1" color="text.secondary">
         Try adjusting your search query
       </Typography>
     </Box>

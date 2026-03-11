@@ -2,10 +2,16 @@ import { createMRTColumnHelper } from "material-react-table";
 
 import { StatusBadge } from "@/components/agent-experiments/components/status-badge";
 import { CopyableChip } from "@/components/common";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import type { AgenticTestCase } from "@/lib/api-client/api-client";
 import { formatCurrency } from "@/utils/formatters";
 
 const columnHelper = createMRTColumnHelper<AgenticTestCase>();
+
+function CostCell({ value }: { value: string | null | undefined }) {
+  const { defaultCurrency } = useDisplaySettings();
+  return value ? formatCurrency(parseFloat(value), defaultCurrency) : "N/A";
+}
 
 export const columns = [
   columnHelper.accessor("status", {
@@ -24,10 +30,7 @@ export const columns = [
   }),
   columnHelper.accessor("total_cost", {
     header: "Total Cost",
-    Cell: ({ cell }) => {
-      const totalCost = cell.getValue();
-      return totalCost ? formatCurrency(parseFloat(totalCost)) : "N/A";
-    },
+    Cell: ({ cell }) => <CostCell value={cell.getValue()} />,
   }),
   columnHelper.accessor("dataset_row_id", {
     header: "Dataset Row ID",

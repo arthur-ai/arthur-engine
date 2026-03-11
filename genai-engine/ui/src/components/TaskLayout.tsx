@@ -5,7 +5,6 @@ import { SidebarNavigation } from "@/components/SidebarNavigation";
 import { TaskErrorState } from "@/components/TaskErrorState";
 import { TaskLoadingState } from "@/components/TaskLoadingState";
 import { TaskNotFoundState } from "@/components/TaskNotFoundState";
-import { useAuth } from "@/contexts/AuthContext";
 import { TaskProvider } from "@/contexts/TaskContext";
 import { useApi } from "@/hooks/useApi";
 import { TaskResponse } from "@/lib/api";
@@ -14,7 +13,6 @@ export const TaskLayout: React.FC = () => {
   const params = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth();
   const api = useApi();
   const [task, setTask] = useState<TaskResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,38 +30,19 @@ export const TaskLayout: React.FC = () => {
     const section = pathSegments[taskIndex + 1];
     if (section === "playgrounds" && pathSegments[taskIndex + 2]) {
       activeSection = `playgrounds/${pathSegments[taskIndex + 2]}`;
-    } else if (section === "prompts") {
-      // Map /tasks/:id/prompts/:promptName to prompts-management
+    } else if (section === "prompts" && pathSegments[taskIndex + 2]) {
+      // Map /tasks/:id/prompts/:promptName to prompts-management (legacy routes)
       activeSection = "prompts-management";
+    } else if (section === "evaluators" || section === "continuous-evals") {
+      // Map legacy evaluator/continuous-evals paths to the combined Evaluate nav item
+      activeSection = "evaluate";
+    } else if (section === "rag-notebooks" || section === "rag-experiments" || section === "rag-configurations") {
+      // Legacy RAG sub-page routes highlight the unified "rag" sidebar item
+      activeSection = "rag";
     } else {
       activeSection = section;
     }
   }
-
-  // Map section IDs to display titles
-  const getPageTitle = (section: string): string => {
-    const titleMap: Record<string, string> = {
-      overview: "Overview",
-      "task-details": "Task Details",
-      "model-providers": "Model Providers",
-      "api-keys": "API Keys",
-      "rag-configurations": "RAG Configurations",
-      traces: "Traces",
-      evaluators: "Evaluators",
-      datasets: "Datasets",
-      transforms: "Transforms",
-      notebooks: "Notebooks",
-      "prompt-experiments": "Prompt Experiments",
-      "rag-experiments": "RAG Experiments",
-      "rag-notebooks": "RAG Notebooks",
-      "agent-experiments": "Agent Experiments",
-      "playgrounds/prompts": "Prompts Playground",
-      "playgrounds/retrievals": "Retrievals Playground",
-      "prompts-management": "Prompts Management",
-      "continuous-evals": "Continuous Evals",
-    };
-    return titleMap[section] || "Task Details";
-  };
 
   useEffect(() => {
     const fetchTask = async () => {
@@ -91,10 +70,6 @@ export const TaskLayout: React.FC = () => {
     fetchTask();
   }, [api, taskId]);
 
-  const handleLogout = () => {
-    logout();
-  };
-
   const handleBack = () => {
     navigate("/");
   };
@@ -103,22 +78,10 @@ export const TaskLayout: React.FC = () => {
     navigate(`/tasks/${taskId}/${sectionId}`);
   };
 
-  const pageTitle = task ? getPageTitle(activeSection) : "Task Details";
-  const pageSubtitle = task ? task.name : null;
-
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-950 flex flex-col overflow-hidden">
-      <header className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-4">
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{pageTitle}</h1>
-            {pageSubtitle && <p className="text-gray-600 dark:text-gray-400">{pageSubtitle}</p>}
-          </div>
-        </div>
-      </header>
-
       <div className="flex flex-1 overflow-hidden">
-        <SidebarNavigation onBackToDashboard={handleBack} onNavigate={handleNavigate} onLogout={handleLogout} activeSection={activeSection} />
+        <SidebarNavigation onBackToDashboard={handleBack} onNavigate={handleNavigate} activeSection={activeSection} taskName={task?.name} />
 
         <main className="flex-1 overflow-auto">
           {loading && (
