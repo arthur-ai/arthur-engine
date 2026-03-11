@@ -25,16 +25,19 @@ import { PromptExperimentsTable, PromptExperiment } from "../prompt-experiments/
 import { PromptExperimentsViewHeader } from "../prompt-experiments/PromptExperimentsViewHeader";
 
 import { getContentHeight } from "@/constants/layout";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useDataset } from "@/hooks/useDataset";
 import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { usePromptExperiments, useCreateExperiment, usePromptExperiment } from "@/hooks/usePromptExperiments";
 import type { PromptExperimentDetail } from "@/lib/api-client/api-client";
+import { formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 export const DatasetExperimentsView: React.FC = () => {
   const { id: taskId, datasetId } = useParams<{ id: string; datasetId: string }>();
   const navigate = useNavigate();
+  const { defaultCurrency } = useDisplaySettings();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSelectExistingModalOpen, setIsSelectExistingModalOpen] = useState(false);
   const [selectedExperimentId, setSelectedExperimentId] = useState<string | null>(null);
@@ -378,7 +381,7 @@ export const DatasetExperimentsView: React.FC = () => {
                                 </Typography>
                                 {experiment.total_cost && (
                                   <Typography variant="caption" color="text.secondary">
-                                    <strong>Cost:</strong> ${parseFloat(experiment.total_cost).toFixed(4)}
+                                    <strong>Cost:</strong> {formatCurrency(parseFloat(experiment.total_cost), defaultCurrency)}
                                   </Typography>
                                 )}
                               </Box>

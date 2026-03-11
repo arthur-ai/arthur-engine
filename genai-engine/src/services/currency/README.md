@@ -37,9 +37,9 @@ This package provides the in-app currency conversion layer: it keeps an in-memor
 
 ## Configuration
 
-See `config.currency_config`. Env prefix: `CURRENCY_`.
+See `config.currency_config`. Env prefix: `CURRENCY_`. Environment variable `CURRENCY_DEFAULT_CURRENCY` (e.g. in `.env` or `docker-compose.yml`) populates `DEFAULT_CURRENCY`; both default to `USD`.
 
-- **`DEFAULT_CURRENCY`** – App-wide display currency (e.g. `EUR`). Use when converting: `convert_usd_to(amount_usd, currency_config.DEFAULT_CURRENCY)`.
+- **`DEFAULT_CURRENCY`** – App-wide display currency (e.g. `EUR`). Used by API/display layer when no per-application override is set. The conversion service does not read it; callers pass the target when converting: `convert_usd_to(amount_usd, currency_config.DEFAULT_CURRENCY)`.
 - **`CURRENCY_PROVIDER`** – `frankfurter` (default) or `static`. When `static`, no external calls and no background thread.
 - **`CURRENCY_EXCHANGE_RATE`** – Required when provider is `static`: rate from USD to `DEFAULT_CURRENCY` (e.g. `0.92` for EUR).
 - **`CURRENCY_PROVIDER_API_KEY`** – Optional; Frankfurter does not use it; other providers can.

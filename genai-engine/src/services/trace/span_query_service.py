@@ -199,6 +199,9 @@ class SpanQueryService:
         if self.filter_service.has_span_level_filters(filters):
             query = self._apply_span_level_filters_with_joins(query, filters)
 
+        # Prevent duplicate rows from JOINs
+        query = query.distinct()
+
         return query
 
     def _apply_trace_level_filters(
@@ -444,9 +447,6 @@ class SpanQueryService:
 
         if span_conditions:
             query = query.where(and_(*span_conditions))
-
-        # Use DISTINCT to avoid duplicate traces from JOINs
-        query = query.distinct()
 
         return query
 

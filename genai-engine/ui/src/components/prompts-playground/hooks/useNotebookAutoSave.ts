@@ -45,12 +45,10 @@ export function useNotebookAutoSave({
   const setNotebookStateMutation = useSetNotebookStateMutation();
   const updateNotebookMutation = useUpdateNotebookMutation(task?.id);
 
-  // Notebook name state
   const [notebookName, setNotebookName] = useState<string>(initialName);
   const [isRenaming, setIsRenaming] = useState(false);
   const [newNotebookName, setNewNotebookName] = useState<string>("");
 
-  // Save tracking refs
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const periodicSaveIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedStateRef = useRef<string>(initialBaseline);

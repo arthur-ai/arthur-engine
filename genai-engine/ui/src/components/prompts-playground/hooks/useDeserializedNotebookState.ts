@@ -22,16 +22,11 @@ export function useDeserializedNotebookState(notebookId: string | undefined, tas
   const { state: rawState } = useNotebookState(notebookId);
 
   const { data, isLoading, error } = useQuery({
-    // Intentionally keyed by notebookId+taskId only (not rawState/apiClient).
-    // rawState is guarded by `enabled` and including it would re-run deserialization
-    // on every auto-save, regenerating UUIDs and clobbering in-progress edits.
-    // apiClient is a stable singleton and doesn't affect cache identity.
+    // Key only by notebookId+taskId to avoid re-running deserialization on every auto-save.
     // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.notebooks.deserialized(notebookId, taskId),
     queryFn: () => deserializeNotebookState(rawState!, apiClient!, taskId!),
     enabled: !!rawState && !!apiClient && !!taskId,
-    // Don't refetch eagerly — deserialization generates new UUIDs for prompts,
-    // so refetching would replace user's in-progress edits.
     staleTime: Infinity,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
