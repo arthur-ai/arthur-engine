@@ -167,7 +167,7 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
               <Button variant="outlined" startIcon={<Search />} onClick={handleSearch}>
                 Search
               </Button>
-              <TracingFilterModal />
+              <TracingFilterModal mode="span" />
             </Stack>
           </Paper>
         )}
