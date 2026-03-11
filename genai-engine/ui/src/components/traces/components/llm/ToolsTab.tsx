@@ -18,7 +18,6 @@ type Props = {
 
 export const ToolsTab = ({ span }: Props) => {
   const tools = isSpanWithLlmAttrs(span) ? getTools(span).map(getToolDefinition) : [];
-  console.log("tools", span);
   const snackbar = useSnackbar({ duration: "short" });
   const { handleCopy } = useCopy({
     onCopy: () => {
@@ -32,8 +31,13 @@ export const ToolsTab = ({ span }: Props) => {
   if (tools.length === 0) {
     return (
       <TracesEmptyState title="No tools found">
-        <Typography variant="body2" color="text.secondary">
-          This span seems not to have used any tools.
+        <Typography variant="body2" color="text.secondary" textAlign="center">
+          The LLM didn&apos;t have any tools available, or the tracing instrumentation is not
+          capturing the tools the LLM has access to.
+        </Typography>
+        <Typography variant="body2" color="text.secondary" textAlign="center">
+          To fix this, review your tracing setup and ensure it includes the tool definitions in the
+          span attributes when instrumenting LLM calls.
         </Typography>
       </TracesEmptyState>
     );
