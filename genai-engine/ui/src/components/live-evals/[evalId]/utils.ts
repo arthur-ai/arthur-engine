@@ -1,10 +1,6 @@
 import { formatDateInTimezone, type FormatDateInTimezoneOptions } from "@/utils/formatters";
 
-export const formatRelativeTime = (
-  dateStr: string,
-  timezone: string,
-  options?: FormatDateInTimezoneOptions
-): string => {
+export const formatRelativeTime = (dateStr: string, timezone: string, options?: FormatDateInTimezoneOptions): string => {
   const now = Date.now();
   const then = new Date(dateStr).getTime();
   const diffMs = now - then;

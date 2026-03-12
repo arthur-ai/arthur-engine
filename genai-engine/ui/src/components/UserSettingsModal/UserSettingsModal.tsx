@@ -98,12 +98,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         </FormControl>
         <FormControl fullWidth size="small" disabled={isLoading} sx={{ mt: 2 }}>
           <InputLabel id="user-settings-time-format-label">{timeFormatLabel}</InputLabel>
-          <Select
-            labelId="user-settings-time-format-label"
-            label={timeFormatLabel}
-            value={use24Hour ? "24" : "12"}
-            onChange={handleTimeFormatChange}
-          >
+          <Select labelId="user-settings-time-format-label" label={timeFormatLabel} value={use24Hour ? "24" : "12"} onChange={handleTimeFormatChange}>
             <MenuItem value="12">12-hour</MenuItem>
             <MenuItem value="24">24-hour</MenuItem>
           </Select>

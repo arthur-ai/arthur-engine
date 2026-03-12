@@ -10,15 +10,7 @@ import { formatDateInTimezone } from "@/utils/formatters";
 
 const columnHelper = createColumnHelper<ContinuousEvalResponse>();
 
-export const createColumns = ({
-  onEdit,
-  timezone,
-  use24Hour,
-}: {
-  onEdit: (id: string) => void;
-  timezone: string;
-  use24Hour: boolean;
-}) => {
+export const createColumns = ({ onEdit, timezone, use24Hour }: { onEdit: (id: string) => void; timezone: string; use24Hour: boolean }) => {
   const columns = [
     columnHelper.accessor("name", {
       header: "Name",
