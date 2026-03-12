@@ -13,9 +13,9 @@ import { TestCases } from "./components/test-cases";
 import { usePollAgentExperiment } from "./hooks/usePollAgentExperiment";
 
 import { getContentHeight } from "@/constants/layout";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useTask } from "@/hooks/useTask";
 import { EVENT_NAMES, track } from "@/services/amplitude";
-import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { formatDateInTimezone, formatTimestampDuration } from "@/utils/formatters";
 
 export const AgentExperimentDetail = () => {

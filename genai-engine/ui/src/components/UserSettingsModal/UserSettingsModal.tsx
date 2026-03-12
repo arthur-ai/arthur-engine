@@ -1,4 +1,3 @@
-import React, { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -10,6 +9,7 @@ import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
 import Select, { type SelectChangeEvent } from "@mui/material/Select";
+import React, { useEffect, useState } from "react";
 
 import { DEFAULT_TIMEZONE_OPTIONS } from "./constants";
 import type { UserSettingsModalProps } from "./types";

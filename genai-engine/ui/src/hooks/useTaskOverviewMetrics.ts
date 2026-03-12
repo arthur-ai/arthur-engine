@@ -63,7 +63,7 @@ export const useTaskOverviewMetrics = ({ taskId, interval }: UseTaskOverviewMetr
   const { timezone } = useDisplaySettings();
 
   return useQuery({
-    queryKey: queryKeys.metrics.overview(taskId, interval),
+    queryKey: queryKeys.metrics.overview(taskId, interval, timezone),
     enabled: !!taskId,
     queryFn: async (): Promise<TaskOverviewMetrics> => {
       const queryTime = new Date();

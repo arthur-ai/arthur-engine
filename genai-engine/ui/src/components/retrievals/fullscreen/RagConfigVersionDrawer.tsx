@@ -18,8 +18,8 @@ import ListItemText from "@mui/material/ListItemText";
 import Typography from "@mui/material/Typography";
 import { useMemo, useState, useCallback } from "react";
 
-import { useRagConfigVersions } from "@/hooks/rag-search-settings/useRagConfigVersions";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { useRagConfigVersions } from "@/hooks/rag-search-settings/useRagConfigVersions";
 import { formatDateInTimezone } from "@/utils/formatters";
 
 interface RagConfigVersionDrawerProps {

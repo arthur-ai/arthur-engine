@@ -29,8 +29,8 @@ import type { EvalDetailViewProps } from "../types";
 
 import ImpactedCEsDialog from "./ImpactedCEsDialog";
 
-import type { ContinuousEvalResponse, CreateEvalRequest } from "@/lib/api-client/api-client";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import type { ContinuousEvalResponse, CreateEvalRequest } from "@/lib/api-client/api-client";
 import { formatDateInTimezone } from "@/utils/formatters";
 
 const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestVersion, taskId, onClose, onRefetch }: EvalDetailViewProps) => {

@@ -21,9 +21,9 @@ import { mapApiSettingsToLocal, getMethodFromApiKind } from "../utils/ragSetting
 
 import { RagConfigEditModal } from "./RagConfigEditModal";
 
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useUpdateVersionTags } from "@/hooks/rag-search-settings/useUpdateVersionTags";
 import type { RagProviderCollectionResponse, RagSearchSettingConfigurationResponse } from "@/lib/api-client/api-client";
-import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { formatDateInTimezone } from "@/utils/formatters";
 
 interface RagConfigDetailViewProps {

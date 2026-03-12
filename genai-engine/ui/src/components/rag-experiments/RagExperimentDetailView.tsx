@@ -25,8 +25,8 @@ import { RagExperimentTestCasesTable } from "./RagExperimentTestCasesTable";
 import { formatRagConfigName, getRagConfigDisplayName } from "./utils";
 
 import { getContentHeight } from "@/constants/layout";
-import { useRagExperimentWithPolling, useDeleteRagExperiment } from "@/hooks/useRagExperiments";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { useRagExperimentWithPolling, useDeleteRagExperiment } from "@/hooks/useRagExperiments";
 import { formatDateInTimezone, formatTimestampDuration, capitalize } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 

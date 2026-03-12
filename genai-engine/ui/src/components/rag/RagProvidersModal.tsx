@@ -24,10 +24,10 @@ import { RagProviderFormModal } from "@/components/rag/RagProviderFormModal";
 import { RagProvidersEmptyState } from "@/components/rag/RagProvidersEmptyState";
 import { RagProvidersErrorState } from "@/components/rag/RagProvidersErrorState";
 import { RagProvidersLoadingState } from "@/components/rag/RagProvidersLoadingState";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useRagProviderMutations } from "@/hooks/rag/useRagProviderMutations";
 import { useRagProviders } from "@/hooks/rag/useRagProviders";
 import type { RagProviderConfigurationResponse } from "@/lib/api-client/api-client";
-import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { formatDateInTimezone } from "@/utils/formatters";
 
 interface RagProvidersModalProps {
@@ -157,7 +157,7 @@ export const RagProvidersModal: React.FC<RagProvidersModalProps> = ({ open, onCl
         ),
       },
     ];
-  }, [handleOpenDeleteModal, handleOpenEditModal]);
+  }, [handleOpenDeleteModal, handleOpenEditModal, timezone, use24Hour]);
 
   const providerRows = providers ?? [];
 

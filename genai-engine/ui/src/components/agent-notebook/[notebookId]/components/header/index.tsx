@@ -10,8 +10,8 @@ import { agentNotebookStateFormOpts } from "../../form";
 import { useMetaStore } from "../../store/meta.store";
 import { SubmitButton } from "../submit-button";
 
-import { AgenticNotebookDetail } from "@/lib/api-client/api-client";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { AgenticNotebookDetail } from "@/lib/api-client/api-client";
 import { formatDateInTimezone } from "@/utils/formatters";
 
 type Props = {

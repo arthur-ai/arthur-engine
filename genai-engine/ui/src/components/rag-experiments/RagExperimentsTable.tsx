@@ -16,8 +16,8 @@ import React from "react";
 
 import { formatRagConfigName } from "./utils";
 
-import type { RagExperimentSummary } from "@/lib/api-client/api-client";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import type { RagExperimentSummary } from "@/lib/api-client/api-client";
 import { formatDateInTimezone, formatTimestampDuration, capitalize } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
