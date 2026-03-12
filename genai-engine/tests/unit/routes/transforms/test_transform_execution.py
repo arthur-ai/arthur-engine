@@ -768,3 +768,89 @@ def test_execute_transform_array_index_extraction(
 
         status_code = client.delete_task(agentic_task.id)
         assert status_code == 204
+
+
+@pytest.mark.unit_tests
+def test_execute_transform_wildcard_extraction(
+    client: GenaiEngineTestClientBase,
+    setup_test_data,
+) -> None:
+    """Test transform execution with wildcard '*' in attribute_path."""
+    test_data = setup_test_data
+
+    status_code, agentic_task = client.create_task(
+        name="test_execute_transform_wildcard_extraction_task",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    try:
+        # Wildcard to extract all names from the results array
+        transform_definition = {
+            "variables": [
+                {
+                    "variable_name": "all_names",
+                    "span_name": "rag-retrieval-savedQueries",
+                    "attribute_path": "attributes.output.value.results.*.name",
+                    "fallback": None,
+                },
+                {
+                    "variable_name": "all_ids",
+                    "span_name": "rag-retrieval-savedQueries",
+                    "attribute_path": "attributes.output.value.results.*.id",
+                    "fallback": None,
+                },
+            ],
+        }
+
+        status_code, transform = client.create_transform(
+            task_id=agentic_task.id,
+            name="test_wildcard_transform",
+            definition=transform_definition,
+        )
+        assert status_code == 200
+
+        status_code, result = client.execute_transform_extraction(
+            transform_id=transform.id,
+            trace_id=test_data["trace_id"],
+        )
+
+        assert status_code == 200
+        assert result is not None
+        assert len(result.variables) == 2
+
+        variables = {var.name: var.value for var in result.variables}
+        assert variables["all_names"] == '["John", "Jane"]'
+        assert variables["all_ids"] == "[1, 2]"
+
+        # Test wildcard with fallback when path doesn't match
+        transform_definition = {
+            "variables": [
+                {
+                    "variable_name": "missing_wildcard",
+                    "span_name": "rag-retrieval-savedQueries",
+                    "attribute_path": "attributes.nonexistent.*.value",
+                    "fallback": "[]",
+                },
+            ],
+        }
+        status_code, transform = client.update_transform(
+            transform_id=transform.id,
+            definition=transform_definition,
+        )
+        assert status_code == 200
+
+        status_code, result = client.execute_transform_extraction(
+            transform_id=transform.id,
+            trace_id=test_data["trace_id"],
+        )
+        assert status_code == 200
+        assert result is not None
+        variables = {var.name: var.value for var in result.variables}
+        assert variables["missing_wildcard"] == "[]"
+
+    finally:
+        client.delete_transform(transform.id)
+
+        status_code = client.delete_task(agentic_task.id)
+        assert status_code == 204

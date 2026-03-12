@@ -127,7 +127,7 @@ class DatabaseContinuousEval(Base):
 
     transform_id: Mapped[uuid.UUID] = mapped_column(
         UUID,
-        ForeignKey("trace_transforms.id", ondelete="CASCADE"),
+        ForeignKey("trace_transforms.id", ondelete="RESTRICT"),
         nullable=False,
     )
 
