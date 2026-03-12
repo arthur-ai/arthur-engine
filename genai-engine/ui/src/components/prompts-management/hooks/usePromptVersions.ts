@@ -2,6 +2,7 @@ import type { PromptVersionsFilters } from "../types";
 
 import { useApiQuery } from "@/hooks/useApiQuery";
 import type { AgenticPromptVersionListResponse } from "@/lib/api-client/api-client";
+import { encodePathParam } from "@/utils/url";
 
 export function usePromptVersions(taskId: string | undefined, promptName: string | undefined, filters: PromptVersionsFilters = {}) {
   const { data, error, isLoading, refetch } = useApiQuery<"getAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGet">({
@@ -9,7 +10,7 @@ export function usePromptVersions(taskId: string | undefined, promptName: string
     args: [
       {
         taskId: taskId!,
-        promptName: promptName!,
+        promptName: encodePathParam(promptName!),
         page: filters.page ?? 0,
         page_size: filters.pageSize ?? 10,
         sort: filters.sort ?? "desc",

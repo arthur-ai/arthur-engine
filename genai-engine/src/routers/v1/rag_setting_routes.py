@@ -8,6 +8,7 @@ from starlette.responses import Response
 from starlette.status import HTTP_204_NO_CONTENT
 
 from dependencies import get_application_config, get_db_session
+from utils.url_encoding import decoded_tag
 from repositories.metrics_repository import MetricRepository
 from repositories.rag_providers_repository import RagProvidersRepository
 from repositories.rules_repository import RuleRepository
@@ -317,10 +318,10 @@ def delete_rag_search_setting_version(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
 def get_rag_search_setting_version_by_tag(
+    tag: Annotated[str, Depends(decoded_tag)],
     setting_configuration_id: UUID = Path(
         description="ID of RAG search setting configuration.",
     ),
-    tag: str = Path(description="Tag to fetch the version by."),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> RagSearchSettingConfigurationVersionResponse:
