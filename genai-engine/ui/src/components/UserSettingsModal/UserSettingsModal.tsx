@@ -17,17 +17,6 @@ import type { UserSettingsModalProps } from "./types";
 const TITLE_ID = "user-settings-dialog-title";
 const DESCRIPTION_ID = "user-settings-dialog-description";
 
-const getDefaultTimezone = (): string => {
-  if (typeof Intl !== "undefined" && typeof Intl.DateTimeFormat !== "undefined") {
-    try {
-      return Intl.DateTimeFormat().resolvedOptions().timeZone;
-    } catch {
-      return "UTC";
-    }
-  }
-  return "UTC";
-};
-
 export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   open,
   onClose,
@@ -43,15 +32,15 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   timezoneLabel = "Timezone",
   timeFormatLabel = "Time format",
 }) => {
-  const resolvedTimezone = initialSettings?.timezone ?? getDefaultTimezone();
-  const resolvedUse24Hour = initialSettings?.use24Hour ?? true;
+  const resolvedTimezone = initialSettings?.timezone ?? "UTC";
+  const resolvedUse24Hour = initialSettings?.use24Hour ?? false;
   const [timezone, setTimezone] = useState<string>(resolvedTimezone);
   const [use24Hour, setUse24Hour] = useState<boolean>(resolvedUse24Hour);
 
   useEffect(() => {
     if (open) {
-      setTimezone(initialSettings?.timezone ?? getDefaultTimezone());
-      setUse24Hour(initialSettings?.use24Hour ?? true);
+      setTimezone(initialSettings?.timezone ?? "UTC");
+      setUse24Hour(initialSettings?.use24Hour ?? false);
     }
   }, [open, initialSettings?.timezone, initialSettings?.use24Hour]);
 

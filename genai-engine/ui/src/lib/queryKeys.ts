@@ -3,8 +3,7 @@ import type { TimeInterval } from "@/utils/timeWindows";
 
 export const queryKeys = {
   metrics: {
-    overview: (taskId: string, interval: TimeInterval, timezone?: string) =>
-      ["taskOverviewMetrics", { taskId, interval, timezone }] as const,
+    overview: (taskId: string, interval: TimeInterval, timezone?: string) => ["taskOverviewMetrics", { taskId, interval, timezone }] as const,
   },
   datasets: {
     search: {
