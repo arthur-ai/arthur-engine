@@ -84,7 +84,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
   datasetId,
   datasetVersion,
 }) => {
-  const { defaultCurrency, timezone } = useDisplaySettings();
+  const { defaultCurrency, timezone, use24Hour } = useDisplaySettings();
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
@@ -301,7 +301,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                     Created At
                   </Typography>
                   <Typography variant="body2" className="text-gray-900 dark:text-gray-100">
-                    {prompt.created_at ? formatDateInTimezone(prompt.created_at, timezone) : "N/A"}
+                    {prompt.created_at ? formatDateInTimezone(prompt.created_at, timezone, { hour12: !use24Hour }) : "N/A"}
                   </Typography>
                 </Box>
                 <Box>

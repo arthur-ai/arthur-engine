@@ -36,7 +36,7 @@ type Props = {
 
 export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunComplete }: Props) => {
   const { task } = useTask();
-  const { defaultCurrency, timezone } = useDisplaySettings();
+  const { defaultCurrency, timezone, use24Hour } = useDisplaySettings();
 
   const { data, isLoading } = useAnnotation(annotationId!);
 
@@ -274,7 +274,7 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
                       Created
                     </Typography>
                     <Typography variant="body2" fontWeight={500}>
-                      {data.created_at ? formatDateInTimezone(data.created_at, timezone) : "N/A"}
+                      {data.created_at ? formatDateInTimezone(data.created_at, timezone, { hour12: !use24Hour }) : "N/A"}
                     </Typography>
                   </Box>
                 </Paper>
@@ -286,7 +286,7 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
                       Updated
                     </Typography>
                     <Typography variant="body2" fontWeight={500}>
-                      {data.updated_at ? formatDateInTimezone(data.updated_at, timezone) : "N/A"}
+                      {data.updated_at ? formatDateInTimezone(data.updated_at, timezone, { hour12: !use24Hour }) : "N/A"}
                     </Typography>
                   </Box>
                 </Paper>

@@ -36,7 +36,7 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
   const api = useApi()!;
   const { task } = useTask();
   const [, setDrawerTarget] = useDrawerTarget();
-  const { timezone } = useDisplaySettings();
+  const { timezone, use24Hour } = useDisplaySettings();
 
   const timeRange = useFilterStore((state) => state.timeRange);
 
@@ -80,7 +80,7 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
 
   const columns = useMemo(() => {
     const deps: SharedColumnDependencies = {
-      formatDate: (v) => formatDateInTimezone(v, timezone),
+      formatDate: (v) => formatDateInTimezone(v, timezone, { hour12: !use24Hour }),
       formatCurrency: () => "",
       onTrack: track,
       Chip: SharedCopyableChip,
@@ -93,7 +93,7 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
       TokenCostTooltip,
     };
     return createUserLevelColumns(deps) as MRT_ColumnDef<TraceUserMetadataResponse, unknown>[];
-  }, [timezone]);
+  }, [timezone, use24Hour]);
 
   if (error) {
     return (

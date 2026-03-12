@@ -62,7 +62,7 @@ export const AllTasks: React.FC = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [userSettingsModalOpen, setUserSettingsModalOpen] = useState(false);
   const { hideSystemTasks, sortBy, inactiveDays, setHideSystemTasks, setSortBy, setInactiveDays } = useTaskListStore();
-  const { timezone, setTimezone } = useDisplaySettings();
+  const { timezone, setTimezone, use24Hour, setUse24Hour } = useDisplaySettings();
 
   const filteredTasks = useMemo(() => {
     let result = [...tasks];
@@ -464,9 +464,10 @@ export const AllTasks: React.FC = () => {
         <UserSettingsModal
           open={userSettingsModalOpen}
           onClose={() => setUserSettingsModalOpen(false)}
-          initialSettings={{ timezone }}
+          initialSettings={{ timezone, use24Hour }}
           onSave={(settings) => {
             setTimezone(settings.timezone ?? timezone);
+            if (settings.use24Hour !== undefined) setUse24Hour(settings.use24Hour);
             setUserSettingsModalOpen(false);
           }}
         />

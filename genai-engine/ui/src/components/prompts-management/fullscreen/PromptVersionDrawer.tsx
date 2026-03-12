@@ -39,7 +39,7 @@ const PromptVersionDrawer = ({
   const [versionToDelete, setVersionToDelete] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const { timezone } = useDisplaySettings();
+  const { timezone, use24Hour } = useDisplaySettings();
   const { versions, isLoading, error, refetch } = usePromptVersions(taskId, promptName, {
     sort: sortOrder,
     exclude_deleted: false,
@@ -252,7 +252,7 @@ const PromptVersionDrawer = ({
                               color: isDeleted ? "text.disabled" : "text.secondary",
                             }}
                           >
-                            {formatDateInTimezone(version.created_at, timezone)}
+                            {formatDateInTimezone(version.created_at, timezone, { hour12: !use24Hour })}
                           </Typography>
                           {isDeleted && version.deleted_at && (
                             <Typography
@@ -264,7 +264,7 @@ const PromptVersionDrawer = ({
                                 color: "text.disabled",
                               }}
                             >
-                              Deleted at: {formatDateInTimezone(version.deleted_at, timezone)}
+                              Deleted at: {formatDateInTimezone(version.deleted_at, timezone, { hour12: !use24Hour })}
                             </Typography>
                           )}
                         </Box>

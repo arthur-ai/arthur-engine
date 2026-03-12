@@ -41,15 +41,19 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   savingLabel = "Saving...",
   cancelLabel = "Cancel",
   timezoneLabel = "Timezone",
+  timeFormatLabel = "Time format",
 }) => {
   const resolvedTimezone = initialSettings?.timezone ?? getDefaultTimezone();
+  const resolvedUse24Hour = initialSettings?.use24Hour ?? true;
   const [timezone, setTimezone] = useState<string>(resolvedTimezone);
+  const [use24Hour, setUse24Hour] = useState<boolean>(resolvedUse24Hour);
 
   useEffect(() => {
     if (open) {
       setTimezone(initialSettings?.timezone ?? getDefaultTimezone());
+      setUse24Hour(initialSettings?.use24Hour ?? true);
     }
-  }, [open, initialSettings?.timezone]);
+  }, [open, initialSettings?.timezone, initialSettings?.use24Hour]);
 
   const options = timezoneOptions.length > 0 ? timezoneOptions : DEFAULT_TIMEZONE_OPTIONS;
   const value = options.some((opt) => opt.value === timezone) ? timezone : (options[0]?.value ?? "UTC");
@@ -58,8 +62,12 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     setTimezone(event.target.value);
   };
 
+  const handleTimeFormatChange = (event: SelectChangeEvent<string>) => {
+    setUse24Hour(event.target.value === "24");
+  };
+
   const handleSave = () => {
-    onSave({ timezone: value });
+    onSave({ timezone: value, use24Hour });
   };
 
   const handleCancel = () => {
@@ -86,6 +94,18 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 {opt.label}
               </MenuItem>
             ))}
+          </Select>
+        </FormControl>
+        <FormControl fullWidth size="small" disabled={isLoading} sx={{ mt: 2 }}>
+          <InputLabel id="user-settings-time-format-label">{timeFormatLabel}</InputLabel>
+          <Select
+            labelId="user-settings-time-format-label"
+            label={timeFormatLabel}
+            value={use24Hour ? "24" : "12"}
+            onChange={handleTimeFormatChange}
+          >
+            <MenuItem value="12">12-hour</MenuItem>
+            <MenuItem value="24">24-hour</MenuItem>
           </Select>
         </FormControl>
       </DialogContent>

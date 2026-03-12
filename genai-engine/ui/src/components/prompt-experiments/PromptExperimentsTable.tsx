@@ -65,7 +65,7 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
   onRowsPerPageChange,
   loading = false,
 }) => {
-  const { defaultCurrency, timezone } = useDisplaySettings();
+  const { defaultCurrency, timezone, use24Hour } = useDisplaySettings();
   const formatPromptName = (config: PromptConfig): string => {
     if (config.type === "saved") {
       return `${config.name} (v${config.version})`;
@@ -168,8 +168,8 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
                     {(experiment.status === "running" || experiment.status === "queued") && <CircularProgress size={16} />}
                   </Box>
                 </TableCell>
-                <TableCell>{formatDateInTimezone(experiment.created_at, timezone)}</TableCell>
-                <TableCell>{formatDateInTimezone(experiment.finished_at, timezone)}</TableCell>
+                <TableCell>{formatDateInTimezone(experiment.created_at, timezone, { hour12: !use24Hour })}</TableCell>
+                <TableCell>{formatDateInTimezone(experiment.finished_at, timezone, { hour12: !use24Hour })}</TableCell>
                 <TableCell>{experiment.finished_at ? formatTimestampDuration(experiment.created_at, experiment.finished_at) : "-"}</TableCell>
                 <TableCell>{experiment.total_cost ? formatCurrency(parseFloat(experiment.total_cost), defaultCurrency) : "-"}</TableCell>
               </TableRow>

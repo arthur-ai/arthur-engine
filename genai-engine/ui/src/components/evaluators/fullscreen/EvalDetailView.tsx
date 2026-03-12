@@ -47,7 +47,7 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
   const deleteTagMutation = useDeleteTagFromEvalVersionMutation();
   const createEvalMutation = useCreateEvalMutation(taskId);
   const { fetchImpactedCEs } = useImpactedContinuousEvals(taskId);
-  const { timezone } = useDisplaySettings();
+  const { timezone, use24Hour } = useDisplaySettings();
 
   const handleAddTagClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
     setTagAnchorEl(event.currentTarget);
@@ -237,7 +237,7 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
                 Created:
               </Typography>
               <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {evalData.created_at ? formatDateInTimezone(evalData.created_at, timezone) : "N/A"}
+                {evalData.created_at ? formatDateInTimezone(evalData.created_at, timezone, { hour12: !use24Hour }) : "N/A"}
               </Typography>
             </Box>
             {evalData.deleted_at && (
@@ -246,7 +246,7 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
                   Deleted:
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 500, color: "error.main" }}>
-                  {formatDateInTimezone(evalData.deleted_at, timezone)}
+                  {formatDateInTimezone(evalData.deleted_at, timezone, { hour12: !use24Hour })}
                 </Typography>
               </Box>
             )}

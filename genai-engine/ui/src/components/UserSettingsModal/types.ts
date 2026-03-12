@@ -1,5 +1,6 @@
 export interface UserSettings {
   timezone?: string;
+  use24Hour?: boolean;
 }
 
 export interface TimezoneOption {
@@ -24,4 +25,5 @@ export interface UserSettingsModalProps {
   savingLabel?: string;
   cancelLabel?: string;
   timezoneLabel?: string;
+  timeFormatLabel?: string;
 }

@@ -8,7 +8,7 @@ import { formatDateInTimezone } from "@/utils/formatters";
 
 const columnHelper = createMRTColumnHelper<AgenticNotebookSummary>();
 
-export const createColumns = (timezone: string) => [
+export const createColumns = (timezone: string, use24Hour: boolean) => [
   columnHelper.accessor("name", {
     header: "Name",
   }),
@@ -30,14 +30,14 @@ export const createColumns = (timezone: string) => [
     header: "Created At",
     Cell: ({ cell }) => {
       const value = cell.getValue() as string;
-      return <Typography variant="body2">{formatDateInTimezone(value, timezone)}</Typography>;
+      return <Typography variant="body2">{formatDateInTimezone(value, timezone, { hour12: !use24Hour })}</Typography>;
     },
   }),
   columnHelper.accessor("updated_at", {
     header: "Updated At",
     Cell: ({ cell }) => {
       const value = cell.getValue() as string;
-      return <Typography variant="body2">{formatDateInTimezone(value, timezone)}</Typography>;
+      return <Typography variant="body2">{formatDateInTimezone(value, timezone, { hour12: !use24Hour })}</Typography>;
     },
   }),
 

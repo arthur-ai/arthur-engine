@@ -8,7 +8,7 @@ import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { formatDateInTimezone } from "@/utils/formatters";
 
 export const TransformsTable: React.FC<TransformsTableProps> = ({ transforms, sortColumn, sortDirection, onSort, onView, onEdit, onDelete }) => {
-  const { timezone } = useDisplaySettings();
+  const { timezone, use24Hour } = useDisplaySettings();
 
   const handleSort = (column: string) => {
     onSort(column);
@@ -76,8 +76,8 @@ export const TransformsTable: React.FC<TransformsTableProps> = ({ transforms, so
                   {transform.description || <em style={{ color: "inherit", opacity: 0.5 }}>No description</em>}
                 </Box>
               </TableCell>
-              <TableCell>{formatDateInTimezone(transform.created_at, timezone)}</TableCell>
-              <TableCell>{formatDateInTimezone(transform.updated_at, timezone)}</TableCell>
+              <TableCell>{formatDateInTimezone(transform.created_at, timezone, { hour12: !use24Hour })}</TableCell>
+              <TableCell>{formatDateInTimezone(transform.updated_at, timezone, { hour12: !use24Hour })}</TableCell>
               <TableCell align="center">
                 <Box className="action-buttons" sx={{ display: "flex", gap: 0.5, justifyContent: "center" }} onClick={(e) => e.stopPropagation()}>
                   <Tooltip title="Edit">

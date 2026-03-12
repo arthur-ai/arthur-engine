@@ -120,7 +120,7 @@ type UserTableProps = {
 const UserTracesTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
   const api = useApi()!;
   const [, setDrawerTarget] = useDrawerTarget();
-  const { timezone } = useDisplaySettings();
+  const { timezone, use24Hour } = useDisplaySettings();
 
   const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
 
@@ -146,7 +146,7 @@ const UserTracesTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
   const columns = useMemo(
     () =>
       createTraceLevelColumns({
-        formatDate: (v) => formatDateInTimezone(v, timezone),
+        formatDate: (v) => formatDateInTimezone(v, timezone, { hour12: !use24Hour }),
         formatCurrency: () => "",
         onTrack: track,
         Chip: CopyableChip,
@@ -158,7 +158,7 @@ const UserTracesTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
         TokenCountTooltip,
         TokenCostTooltip,
       }),
-    [timezone]
+    [timezone, use24Hour]
   );
 
   const thresholds = useMemo(() => buildThresholdsFromSample(traces.data?.traces.map((trace) => trace.duration_ms) ?? []), [traces.data?.traces]);
@@ -226,7 +226,7 @@ const UserTracesTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
 const UserSessionsTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
   const api = useApi()!;
   const [, setDrawerTarget] = useDrawerTarget();
-  const { timezone } = useDisplaySettings();
+  const { timezone, use24Hour } = useDisplaySettings();
   const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
 
   const timeRange = useFilterStore((state) => state.timeRange);
@@ -250,7 +250,7 @@ const UserSessionsTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
   const columns = useMemo(
     () =>
       createSessionLevelColumns({
-        formatDate: (v) => formatDateInTimezone(v, timezone),
+        formatDate: (v) => formatDateInTimezone(v, timezone, { hour12: !use24Hour }),
         formatCurrency: () => "",
         onTrack: track,
         Chip: CopyableChip,
@@ -262,7 +262,7 @@ const UserSessionsTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
         TokenCountTooltip,
         TokenCostTooltip,
       }),
-    [timezone]
+    [timezone, use24Hour]
   );
 
   const handleRowClick = (row: SessionMetadataResponse) => {

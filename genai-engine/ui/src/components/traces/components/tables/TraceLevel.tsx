@@ -45,7 +45,7 @@ interface TraceLevelProps {
 
 export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
   const { task } = useTask();
-  const { defaultCurrency, timezone } = useDisplaySettings();
+  const { defaultCurrency, timezone, use24Hour } = useDisplaySettings();
   const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
 
   const [, setDrawerTarget] = useDrawerTarget();
@@ -106,7 +106,7 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
 
   const columns = useMemo(() => {
     const deps: SharedColumnDependencies = {
-      formatDate: (v) => formatDateInTimezone(v, timezone),
+      formatDate: (v) => formatDateInTimezone(v, timezone, { hour12: !use24Hour }),
       formatCurrency: (amount: number) => formatCurrency(amount, displayCurrency),
       onTrack: track,
       Chip: SharedCopyableChip,
@@ -119,7 +119,7 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
       TokenCostTooltip,
     };
     return createTraceLevelColumns(deps) as MRT_ColumnDef<TraceMetadataResponse, unknown>[];
-  }, [displayCurrency, timezone]);
+  }, [displayCurrency, timezone, use24Hour]);
 
   const setFilters = useFilterStore((state) => state.setFilters);
 

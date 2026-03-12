@@ -15,10 +15,12 @@ export const createColumns = ({
   taskId,
   defaultCurrency,
   timezone,
+  use24Hour,
 }: {
   taskId: string;
   defaultCurrency: string;
   timezone: string;
+  use24Hour: boolean;
 }) => [
   columnHelper.accessor("trace_id", {
     header: "Trace ID",
@@ -53,7 +55,7 @@ export const createColumns = ({
     header: "Created",
     Cell: ({ cell }) => (
       <Typography variant="body2" color="text.secondary">
-        {formatDateInTimezone(cell.getValue(), timezone)}
+        {formatDateInTimezone(cell.getValue(), timezone, { hour12: !use24Hour })}
       </Typography>
     ),
   }),

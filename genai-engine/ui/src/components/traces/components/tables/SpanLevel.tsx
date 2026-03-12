@@ -49,7 +49,7 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
   const api = useApi()!;
   const { task } = useTask();
   const [, setDrawerTarget] = useDrawerTarget();
-  const { timezone } = useDisplaySettings();
+  const { timezone, use24Hour } = useDisplaySettings();
   const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
   const [searchInput, setSearchInput] = useState("");
 
@@ -105,7 +105,7 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
 
   const columns = useMemo(() => {
     const deps: SharedColumnDependencies = {
-      formatDate: (v) => formatDateInTimezone(v, timezone),
+      formatDate: (v) => formatDateInTimezone(v, timezone, { hour12: !use24Hour }),
       formatCurrency: () => "",
       onTrack: track,
       Chip: SharedCopyableChip,
@@ -119,7 +119,7 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
       isValidStatusCode,
     };
     return createSpanLevelColumns(deps) as MRT_ColumnDef<SpanMetadataResponse, unknown>[];
-  }, [timezone]);
+  }, [timezone, use24Hour]);
 
   const setFilters = useFilterStore((state) => state.setFilters);
 

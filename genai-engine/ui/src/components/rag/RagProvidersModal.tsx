@@ -39,7 +39,7 @@ interface RagProvidersModalProps {
 export const RagProvidersModal: React.FC<RagProvidersModalProps> = ({ open, onClose, taskId }) => {
   const { providers, isLoading, error, refetch } = useRagProviders(taskId);
   const { deleteProvider } = useRagProviderMutations();
-  const { timezone } = useDisplaySettings();
+  const { timezone, use24Hour } = useDisplaySettings();
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editingProvider, setEditingProvider] = useState<RagProviderConfigurationResponse | null>(null);
@@ -137,7 +137,7 @@ export const RagProvidersModal: React.FC<RagProvidersModalProps> = ({ open, onCl
         accessorKey: "created_at",
         cell: ({ row }) => (
           <Typography variant="body2" color="text.secondary">
-            {formatDateInTimezone(row.original.created_at, timezone)}
+            {formatDateInTimezone(row.original.created_at, timezone, { hour12: !use24Hour })}
           </Typography>
         ),
       },

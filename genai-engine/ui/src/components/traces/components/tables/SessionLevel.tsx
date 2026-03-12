@@ -37,7 +37,7 @@ const DEFAULT_DATA: SessionMetadataResponse[] = [];
 export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
   const api = useApi()!;
   const { task } = useTask();
-  const { timezone } = useDisplaySettings();
+  const { timezone, use24Hour } = useDisplaySettings();
   const filters = useFilterStore((state) => state.filters);
   const timeRange = useFilterStore((state) => state.timeRange);
 
@@ -83,7 +83,7 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
 
   const columns = useMemo(() => {
     const deps: SharedColumnDependencies = {
-      formatDate: (v) => formatDateInTimezone(v, timezone),
+      formatDate: (v) => formatDateInTimezone(v, timezone, { hour12: !use24Hour }),
       formatCurrency: () => "",
       onTrack: track,
       Chip: SharedCopyableChip,
@@ -96,7 +96,7 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
       TokenCostTooltip,
     };
     return createSessionLevelColumns(deps) as MRT_ColumnDef<SessionMetadataResponse, unknown>[];
-  }, [timezone]);
+  }, [timezone, use24Hour]);
 
   // Check if any filters are active
   const hasActiveFilters = useMemo(() => filters.length > 0, [filters]);

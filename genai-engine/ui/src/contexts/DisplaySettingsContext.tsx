@@ -15,6 +15,8 @@ interface DisplaySettingsContextValue {
   isLoading: boolean;
   timezone: string;
   setTimezone: (timezone: string) => void;
+  use24Hour: boolean;
+  setUse24Hour: (use24Hour: boolean) => void;
 }
 
 const DisplaySettingsContext = createContext<DisplaySettingsContextValue | undefined>(undefined);
@@ -42,12 +44,16 @@ export const DisplaySettingsProvider: React.FC<DisplaySettingsProviderProps> = (
   const settings: DisplaySettingsResponse = data ?? defaultDisplaySettings;
   const timezone = useUserSettingsStore((s) => s.timezone);
   const setTimezone = useUserSettingsStore((s) => s.setTimezone);
+  const use24Hour = useUserSettingsStore((s) => s.use24Hour);
+  const setUse24Hour = useUserSettingsStore((s) => s.setUse24Hour);
 
   const value: DisplaySettingsContextValue = {
     defaultCurrency: settings.default_currency ?? "USD",
     isLoading: isPending,
     timezone,
     setTimezone,
+    use24Hour,
+    setUse24Hour,
   };
 
   return <DisplaySettingsContext.Provider value={value}>{children}</DisplaySettingsContext.Provider>;

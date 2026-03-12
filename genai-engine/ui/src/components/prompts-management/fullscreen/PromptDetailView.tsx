@@ -52,7 +52,7 @@ const PromptDetailView = ({
   const deleteTagMutation = useDeleteTagFromPromptVersionMutation();
   const apiClient = useApi();
   const navigate = useNavigate();
-  const { timezone } = useDisplaySettings();
+  const { timezone, use24Hour } = useDisplaySettings();
   const { enqueueSnackbar } = useSnackbar();
   const setNotebookStateMutation = useSetNotebookStateMutation();
 
@@ -324,7 +324,7 @@ const PromptDetailView = ({
                 Created At
               </Typography>
               <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                {promptData.created_at ? formatDateInTimezone(promptData.created_at, timezone) : "N/A"}
+                {promptData.created_at ? formatDateInTimezone(promptData.created_at, timezone, { hour12: !use24Hour }) : "N/A"}
               </Typography>
             </Box>
             {promptData.deleted_at && (
@@ -333,7 +333,7 @@ const PromptDetailView = ({
                   Deleted At
                 </Typography>
                 <Typography variant="body1" sx={{ fontWeight: 500, color: "error.main" }}>
-                  {formatDateInTimezone(promptData.deleted_at, timezone)}
+                  {formatDateInTimezone(promptData.deleted_at, timezone, { hour12: !use24Hour })}
                 </Typography>
               </Box>
             )}

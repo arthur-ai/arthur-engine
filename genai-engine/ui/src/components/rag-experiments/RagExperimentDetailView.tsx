@@ -33,7 +33,7 @@ import { getStatusChipSx } from "@/utils/statusChipStyles";
 export const RagExperimentDetailView: React.FC = () => {
   const { id: taskId, experimentId } = useParams<{ id: string; experimentId: string }>();
   const navigate = useNavigate();
-  const { timezone } = useDisplaySettings();
+  const { timezone, use24Hour } = useDisplaySettings();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const { experiment, isLoading, error } = useRagExperimentWithPolling(experimentId);
@@ -122,10 +122,10 @@ export const RagExperimentDetailView: React.FC = () => {
           )}
           <Box className="flex gap-6 text-sm text-gray-600 dark:text-gray-400">
             <Box>
-              <span className="font-medium">Created:</span> {formatDateInTimezone(experiment.created_at, timezone)}
+              <span className="font-medium">Created:</span> {formatDateInTimezone(experiment.created_at, timezone, { hour12: !use24Hour })}
             </Box>
             <Box>
-              <span className="font-medium">Finished:</span> {formatDateInTimezone(experiment.finished_at, timezone)}
+              <span className="font-medium">Finished:</span> {formatDateInTimezone(experiment.finished_at, timezone, { hour12: !use24Hour })}
             </Box>
             {experiment.finished_at && (
               <Box>

@@ -56,7 +56,7 @@ const getTimeRangeLabel = (button: TimeRangeButton): string => {
 
 export const TaskOverview: React.FC = () => {
   const { task } = useTask();
-  const { defaultCurrency, timezone } = useDisplaySettings();
+  const { defaultCurrency, timezone, use24Hour } = useDisplaySettings();
   const [selectedTimeRangeButton, setSelectedTimeRangeButton] = useState<TimeRangeButton>("Last 7 Days");
   const [taskDetailsOpen, setTaskDetailsOpen] = useState(false);
 
@@ -191,7 +191,7 @@ export const TaskOverview: React.FC = () => {
                   Created At
                 </Typography>
                 <Typography variant="body2" color="text.primary" sx={{ mt: 0.5 }}>
-                  {task?.created_at ? formatDateInTimezone(task.created_at, timezone) : "Not available"}
+                  {task?.created_at ? formatDateInTimezone(task.created_at, timezone, { hour12: !use24Hour }) : "Not available"}
                 </Typography>
               </Box>
 
@@ -200,7 +200,7 @@ export const TaskOverview: React.FC = () => {
                   Updated At
                 </Typography>
                 <Typography variant="body2" color="text.primary" sx={{ mt: 0.5 }}>
-                  {task?.updated_at ? formatDateInTimezone(task.updated_at, timezone) : "Not available"}
+                  {task?.updated_at ? formatDateInTimezone(task.updated_at, timezone, { hour12: !use24Hour }) : "Not available"}
                 </Typography>
               </Box>
             </Box>

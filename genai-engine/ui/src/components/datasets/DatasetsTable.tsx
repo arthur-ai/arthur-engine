@@ -41,7 +41,7 @@ export const DatasetsTable: React.FC<DatasetsTableProps> = ({ datasets, sortOrde
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [datasetToDelete, setDatasetToDelete] = useState<DatasetResponse | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const { timezone } = useDisplaySettings();
+  const { timezone, use24Hour } = useDisplaySettings();
 
   const handleDeleteClick = useCallback((e: React.MouseEvent, dataset: DatasetResponse) => {
     e.stopPropagation();
@@ -141,8 +141,8 @@ export const DatasetsTable: React.FC<DatasetsTableProps> = ({ datasets, sortOrde
                     </Box>
                   )}
                 </TableCell>
-                <TableCell>{formatDateInTimezone(dataset.updated_at, timezone)}</TableCell>
-                <TableCell>{formatDateInTimezone(dataset.created_at, timezone)}</TableCell>
+                <TableCell>{formatDateInTimezone(dataset.updated_at, timezone, { hour12: !use24Hour })}</TableCell>
+                <TableCell>{formatDateInTimezone(dataset.created_at, timezone, { hour12: !use24Hour })}</TableCell>
                 <TableCell align="center">
                   <Box sx={{ display: "flex", gap: 0.5, justifyContent: "center" }}>
                     {onEdit && (

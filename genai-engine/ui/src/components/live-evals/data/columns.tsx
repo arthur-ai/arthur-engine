@@ -10,7 +10,15 @@ import { formatDateInTimezone } from "@/utils/formatters";
 
 const columnHelper = createColumnHelper<ContinuousEvalResponse>();
 
-export const createColumns = ({ onEdit, timezone }: { onEdit: (id: string) => void; timezone: string }) => {
+export const createColumns = ({
+  onEdit,
+  timezone,
+  use24Hour,
+}: {
+  onEdit: (id: string) => void;
+  timezone: string;
+  use24Hour: boolean;
+}) => {
   const columns = [
     columnHelper.accessor("name", {
       header: "Name",
@@ -67,12 +75,12 @@ export const createColumns = ({ onEdit, timezone }: { onEdit: (id: string) => vo
     columnHelper.accessor("created_at", {
       header: "Created At",
       sortingFn: "datetime",
-      cell: ({ getValue }) => formatDateInTimezone(getValue(), timezone),
+      cell: ({ getValue }) => formatDateInTimezone(getValue(), timezone, { hour12: !use24Hour }),
     }),
     columnHelper.accessor("updated_at", {
       header: "Updated At",
       sortingFn: "datetime",
-      cell: ({ getValue }) => formatDateInTimezone(getValue(), timezone),
+      cell: ({ getValue }) => formatDateInTimezone(getValue(), timezone, { hour12: !use24Hour }),
     }),
     columnHelper.accessor("id", {
       header: "ID",

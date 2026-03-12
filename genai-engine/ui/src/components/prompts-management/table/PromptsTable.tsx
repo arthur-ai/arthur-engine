@@ -27,7 +27,7 @@ import { formatDateInTimezone } from "@/utils/formatters";
 type SortableColumn = "name" | "created_at" | "latest_version_created_at";
 
 const PromptsTable = ({ prompts, sortColumn, sortDirection, onSort, onExpandToFullScreen, onDelete }: PromptsTableProps) => {
-  const { timezone } = useDisplaySettings();
+  const { timezone, use24Hour } = useDisplaySettings();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [promptToDelete, setPromptToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -184,8 +184,8 @@ const PromptsTable = ({ prompts, sortColumn, sortDirection, onSort, onExpandToFu
                       )}
                     </Box>
                   </TableCell>
-                  <TableCell>{formatDateInTimezone(promptMetadata.created_at, timezone)}</TableCell>
-                  <TableCell>{formatDateInTimezone(promptMetadata.latest_version_created_at, timezone)}</TableCell>
+                  <TableCell>{formatDateInTimezone(promptMetadata.created_at, timezone, { hour12: !use24Hour })}</TableCell>
+                  <TableCell>{formatDateInTimezone(promptMetadata.latest_version_created_at, timezone, { hour12: !use24Hour })}</TableCell>
                   <TableCell>{promptMetadata.versions}</TableCell>
                   <TableCell>
                     <IconButton

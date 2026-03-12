@@ -8,14 +8,10 @@ import {
   ArrowBackOutlined,
   InsightsOutlined,
   ChevronRightOutlined,
-  SettingsOutlined,
 } from "@mui/icons-material";
-import { Box, Link, Typography } from "@mui/material";
-import React, { useState } from "react";
+import { Link, Typography } from "@mui/material";
+import React from "react";
 import { useParams } from "react-router-dom";
-
-import { UserSettingsModal } from "@/components/UserSettingsModal";
-import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 
 interface SidebarNavigationProps {
   onBackToDashboard: () => void;
@@ -71,23 +67,6 @@ const navigationSections: NavigationSection[] = [
 
 export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDashboard, onNavigate, activeSection = "overview", taskName }) => {
   const { id } = useParams<{ id: string }>();
-  const [userSettingsModalOpen, setUserSettingsModalOpen] = useState(false);
-  const { timezone, setTimezone } = useDisplaySettings();
-
-  const footerButtonSx = {
-    justifyContent: "flex-start",
-    textAlign: "left",
-    px: 1.5,
-    py: 1,
-    fontSize: "0.875rem",
-    fontWeight: 500,
-    color: "text.secondary",
-    borderRadius: 1,
-    "&:hover": {
-      bgcolor: "action.hover",
-      color: "text.primary",
-    },
-  } as const;
 
   return (
     <nav className="w-64 bg-white dark:bg-gray-900 shadow-sm border-r border-gray-200 dark:border-gray-700 flex flex-col h-full">
@@ -159,36 +138,6 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
           )}
         </ul>
       </div>
-
-      <Box sx={{ p: 1.5, borderTop: 1, borderColor: "divider" }}>
-        <Box
-          component="button"
-          onClick={() => setUserSettingsModalOpen(true)}
-          sx={{
-            ...footerButtonSx,
-            width: "100%",
-            border: "none",
-            background: "none",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 1.5,
-          }}
-        >
-          <SettingsOutlined fontSize="small" />
-          <span>User settings</span>
-        </Box>
-      </Box>
-
-      <UserSettingsModal
-        open={userSettingsModalOpen}
-        onClose={() => setUserSettingsModalOpen(false)}
-        initialSettings={{ timezone }}
-        onSave={(settings) => {
-          setTimezone(settings.timezone ?? timezone);
-          setUserSettingsModalOpen(false);
-        }}
-      />
     </nav>
   );
 };

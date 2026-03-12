@@ -60,7 +60,7 @@ export const LiveEvalDetail = () => {
   const { evalId } = useParams<{ evalId: string }>();
 
   const { task } = useTask();
-  const { defaultCurrency, timezone } = useDisplaySettings();
+  const { defaultCurrency, timezone, use24Hour } = useDisplaySettings();
   const api = useApi()!;
 
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
@@ -96,8 +96,8 @@ export const LiveEvalDetail = () => {
   const hasVariableMappings = liveEval?.transform_variable_mapping && liveEval.transform_variable_mapping.length > 0;
 
   const columns = useMemo(
-    () => createColumns({ taskId: task?.id ?? "", defaultCurrency, timezone }),
-    [task?.id, defaultCurrency, timezone]
+    () => createColumns({ taskId: task?.id ?? "", defaultCurrency, timezone, use24Hour }),
+    [task?.id, defaultCurrency, timezone, use24Hour]
   );
 
   const table = useMaterialReactTable({
@@ -165,7 +165,7 @@ export const LiveEvalDetail = () => {
             <Stack direction="row" gap={2} alignItems="center">
               <CopyableChip label={evalId ?? liveEval.id} sx={{ fontFamily: "monospace", fontSize: "0.75rem" }} />
               <Typography variant="body2" color="text.secondary">
-                Created {formatDateInTimezone(liveEval.created_at, timezone)}
+                Created {formatDateInTimezone(liveEval.created_at, timezone, { hour12: !use24Hour })}
               </Typography>
             </Stack>
           </Stack>

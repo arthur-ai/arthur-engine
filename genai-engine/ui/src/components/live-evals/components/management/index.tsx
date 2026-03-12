@@ -37,7 +37,7 @@ import { useTask } from "@/hooks/useTask";
 export const Management = () => {
   const { task } = useTask();
   const api = useApi()!;
-  const { timezone } = useDisplaySettings();
+  const { timezone, use24Hour } = useDisplaySettings();
 
   const [searchInput, setSearchInput] = useState("");
   const filters = useFilterStore((state) => state.filters);
@@ -81,8 +81,9 @@ export const Management = () => {
         createColumns({
           onEdit: (id) => setContinuousEvalId(id),
           timezone,
+          use24Hour,
         }),
-      [setContinuousEvalId, timezone]
+      [setContinuousEvalId, timezone, use24Hour]
     ),
     getCoreRowModel: getCoreRowModel(),
     state: {

@@ -27,7 +27,7 @@ import { formatDateInTimezone } from "@/utils/formatters";
 type SortableColumn = "name" | "created_at" | "latest_version_created_at";
 
 const EvalsTable = ({ evals, sortColumn, sortDirection, onSort, onExpandToFullScreen, onDelete }: EvalsTableProps) => {
-  const { timezone } = useDisplaySettings();
+  const { timezone, use24Hour } = useDisplaySettings();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [evalToDelete, setEvalToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -184,8 +184,8 @@ const EvalsTable = ({ evals, sortColumn, sortDirection, onSort, onExpandToFullSc
                       )}
                     </Box>
                   </TableCell>
-                  <TableCell>{formatDateInTimezone(evalMetadata.created_at, timezone)}</TableCell>
-                  <TableCell>{formatDateInTimezone(evalMetadata.latest_version_created_at, timezone)}</TableCell>
+                  <TableCell>{formatDateInTimezone(evalMetadata.created_at, timezone, { hour12: !use24Hour })}</TableCell>
+                  <TableCell>{formatDateInTimezone(evalMetadata.latest_version_created_at, timezone, { hour12: !use24Hour })}</TableCell>
                   <TableCell>{evalMetadata.versions}</TableCell>
                   <TableCell>
                     <IconButton

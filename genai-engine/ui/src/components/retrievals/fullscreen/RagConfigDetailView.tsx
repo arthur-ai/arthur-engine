@@ -62,7 +62,7 @@ const RagConfigDetailView = ({
   const [tagError, setTagError] = useState("");
   const [editModalKey, setEditModalKey] = useState(0);
   const isEditModalOpen = editModalKey > 0;
-  const { timezone } = useDisplaySettings();
+  const { timezone, use24Hour } = useDisplaySettings();
 
   const updateTagsMutation = useUpdateVersionTags();
 
@@ -221,7 +221,7 @@ const RagConfigDetailView = ({
                 Created:
               </Typography>
               <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {formatDateInTimezone(config.created_at, timezone)}
+                {formatDateInTimezone(config.created_at, timezone, { hour12: !use24Hour })}
               </Typography>
             </Box>
           </Box>

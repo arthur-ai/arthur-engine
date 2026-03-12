@@ -30,7 +30,7 @@ export const VersionDrawer: React.FC<VersionDrawerProps> = ({
   onVersionSelect,
 }) => {
   const { versions, totalCount, isLoading, error } = useDatasetVersionHistory(datasetId);
-  const { timezone } = useDisplaySettings();
+  const { timezone, use24Hour } = useDisplaySettings();
 
   const handleVersionClick = useCallback(
     (version: DatasetVersionMetadataResponse) => {
@@ -162,7 +162,7 @@ export const VersionDrawer: React.FC<VersionDrawerProps> = ({
                     </Stack>
 
                     <Typography variant="caption" color="text.secondary">
-                      {formatDateInTimezone(version.created_at, timezone)}
+                      {formatDateInTimezone(version.created_at, timezone, { hour12: !use24Hour })}
                     </Typography>
 
                     {isSelected && !isViewing && (

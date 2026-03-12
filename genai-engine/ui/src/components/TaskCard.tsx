@@ -28,7 +28,7 @@ interface TaskCardProps {
 export const TaskCard: React.FC<TaskCardProps> = ({ task, onArchiveToggle }) => {
   const navigate = useNavigate();
   const api = useApi();
-  const { timezone } = useDisplaySettings();
+  const { timezone, use24Hour } = useDisplaySettings();
   const [copiedTaskId, setCopiedTaskId] = useState<string | null>(null);
   const [isArchiving, setIsArchiving] = useState(false);
 
@@ -285,7 +285,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onArchiveToggle }) => 
                     Created
                   </Typography>
                   <Typography variant="caption" sx={{ display: "block", fontWeight: 500, color: "text.primary" }}>
-                    {formatDateInTimezone(task.created_at, timezone)}
+                    {formatDateInTimezone(task.created_at, timezone, { hour12: !use24Hour })}
                   </Typography>
                 </Box>
               </Stack>

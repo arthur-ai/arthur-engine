@@ -44,8 +44,8 @@ export const AgentNotebook = ({ embedded = false, isCreateModalOpen, onCreateMod
   const { id: taskId } = useParams<{ id: string }>();
   const { pagination, props } = useMRTPagination();
   const navigate = useNavigate();
-  const { timezone } = useDisplaySettings();
-  const columns = useMemo(() => createColumns(timezone), [timezone]);
+  const { timezone, use24Hour } = useDisplaySettings();
+  const columns = useMemo(() => createColumns(timezone, use24Hour), [timezone, use24Hour]);
 
   const form = useAppForm({
     defaultValues: {

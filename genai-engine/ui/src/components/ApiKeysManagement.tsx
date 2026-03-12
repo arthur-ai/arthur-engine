@@ -68,7 +68,7 @@ export const ApiKeysManagement: React.FC = () => {
   const [createdKey, setCreatedKey] = useState<string | null>(null);
   const [showCreatedKeyModal, setShowCreatedKeyModal] = useState(false);
   const [copied, setCopied] = useState(false);
-  const { timezone } = useDisplaySettings();
+  const { timezone, use24Hour } = useDisplaySettings();
 
   const fetchApiKeys = useCallback(async () => {
     if (!api) return;
@@ -351,7 +351,7 @@ export const ApiKeysManagement: React.FC = () => {
                           </Typography>
                         </TableCell>
                         <TableCell>
-                          <Typography variant="body2">{formatDateInTimezone(apiKey.created_at, timezone)}</Typography>
+                          <Typography variant="body2">{formatDateInTimezone(apiKey.created_at, timezone, { hour12: !use24Hour })}</Typography>
                         </TableCell>
                         <TableCell align="right">
                           <IconButton size="small" color="error" onClick={() => handleDeleteClick(apiKey)} title="Delete API key">

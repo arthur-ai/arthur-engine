@@ -184,7 +184,7 @@ const SpanNode: React.FC<SpanNodeProps> = ({ span, level, onSpanClick, selectedS
 };
 
 const SpanDetails: React.FC<SpanDetailsProps> = ({ span }) => {
-  const { timezone } = useDisplaySettings();
+  const { timezone, use24Hour } = useDisplaySettings();
 
   if (!span) {
     return <div className="h-full flex items-center justify-center text-gray-600 dark:text-gray-400">Select a span to view details</div>;
@@ -267,7 +267,7 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span }) => {
             </div>
             <div>
               <span className="text-gray-600 dark:text-gray-400">Start Time:</span>
-              <span className="ml-1 text-gray-900 dark:text-gray-100">{formatDateInTimezone(span.start_time, timezone)}</span>
+              <span className="ml-1 text-gray-900 dark:text-gray-100">{formatDateInTimezone(span.start_time, timezone, { hour12: !use24Hour })}</span>
             </div>
             {totalTokens > 0 && (
               <>

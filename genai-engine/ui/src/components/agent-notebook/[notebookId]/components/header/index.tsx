@@ -26,7 +26,7 @@ export const Header = withForm({
   props: {} as Props,
   render: function Render({ form, notebook, onLoadConfig, onSave, isSaving }) {
     const edited = useMetaStore((state) => state.edited);
-    const { timezone } = useDisplaySettings();
+    const { timezone, use24Hour } = useDisplaySettings();
 
     return (
       <Box
@@ -76,10 +76,10 @@ export const Header = withForm({
               </Typography>
               <Stack direction="row" gap={2}>
                 <Typography variant="body2" color="text.secondary">
-                  <span className="font-bold">Created:</span> {formatDateInTimezone(notebook?.created_at, timezone)}
+                  <span className="font-bold">Created:</span> {formatDateInTimezone(notebook?.created_at, timezone, { hour12: !use24Hour })}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  <span className="font-bold">Updated:</span> {formatDateInTimezone(notebook.updated_at, timezone)}
+                  <span className="font-bold">Updated:</span> {formatDateInTimezone(notebook.updated_at, timezone, { hour12: !use24Hour })}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   <span className="font-bold">Runs:</span>{" "}

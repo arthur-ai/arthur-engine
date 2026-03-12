@@ -1,6 +1,10 @@
-import { formatDateInTimezone } from "@/utils/formatters";
+import { formatDateInTimezone, type FormatDateInTimezoneOptions } from "@/utils/formatters";
 
-export const formatRelativeTime = (dateStr: string, timezone: string): string => {
+export const formatRelativeTime = (
+  dateStr: string,
+  timezone: string,
+  options?: FormatDateInTimezoneOptions
+): string => {
   const now = Date.now();
   const then = new Date(dateStr).getTime();
   const diffMs = now - then;
@@ -11,5 +15,5 @@ export const formatRelativeTime = (dateStr: string, timezone: string): string =>
   if (diffSecs < 60) return `${diffSecs}s ago`;
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
-  return formatDateInTimezone(dateStr, timezone);
+  return formatDateInTimezone(dateStr, timezone, options);
 };
