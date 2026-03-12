@@ -12,6 +12,13 @@ const createAppTheme = (mode: "light" | "dark") =>
     },
     typography: commonTypography,
     components: {
+      MuiPaper: {
+        styleOverrides: {
+          root: {
+            backgroundImage: "none",
+          },
+        },
+      },
       MuiTableContainer: {
         styleOverrides: {
           root: ({ theme }) => ({
