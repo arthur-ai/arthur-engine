@@ -26,7 +26,8 @@ interface PromptsManagementProps {
 
 const PromptsManagement: React.FC<PromptsManagementProps> = ({ onRegisterCreate }) => {
   const { task } = useTask();
-  const { id: taskId, promptName: urlPromptName, version: urlVersion } = useParams<{ id: string; promptName?: string; version?: string }>();
+  const { id: taskId, promptName: rawUrlPromptName, version: urlVersion } = useParams<{ id: string; promptName?: string; version?: string }>();
+  const urlPromptName = rawUrlPromptName ? decodeURIComponent(rawUrlPromptName) : undefined;
   const navigate = useNavigate();
   const [fullScreenPrompt, setFullScreenPrompt] = useState<string | null>(null);
   const [sortColumn, setSortColumn] = useState<string | null>("latest_version_created_at");
@@ -73,7 +74,7 @@ const PromptsManagement: React.FC<PromptsManagementProps> = ({ onRegisterCreate 
     (promptName: string) => {
       setFullScreenPrompt(promptName);
       // Update URL to reflect the selected prompt
-      navigate(`/tasks/${taskId}/prompts/${promptName}`);
+      navigate(`/tasks/${taskId}/prompts/${encodeURIComponent(promptName)}`);
     },
     [taskId, navigate]
   );

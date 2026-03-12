@@ -34,7 +34,12 @@ interface EvaluatorsProps {
 
 const Evaluators: React.FC<EvaluatorsProps> = ({ embedded = false, isCreateModalOpen: externalOpen, onCreateModalOpen, onCreateModalClose }) => {
   const { task } = useTask();
-  const { id: taskId, evaluatorName: urlEvaluatorName, version: urlVersion } = useParams<{ id: string; evaluatorName?: string; version?: string }>();
+  const {
+    id: taskId,
+    evaluatorName: rawUrlEvaluatorName,
+    version: urlVersion,
+  } = useParams<{ id: string; evaluatorName?: string; version?: string }>();
+  const urlEvaluatorName = rawUrlEvaluatorName ? decodeURIComponent(rawUrlEvaluatorName) : undefined;
   const navigate = useNavigate();
   const [fullScreenEval, setFullScreenEval] = useState<string | null>(null);
   const [sortColumn, setSortColumn] = useState<string | null>("latest_version_created_at");
@@ -93,7 +98,7 @@ const Evaluators: React.FC<EvaluatorsProps> = ({ embedded = false, isCreateModal
     setIsCreateModalOpen(false);
     refetch();
     // Navigate to the newly created eval's detail page
-    navigate(`/tasks/${taskId}/evaluators/${evalData.name}/versions/${evalData.version}`);
+    navigate(`/tasks/${taskId}/evaluators/${encodeURIComponent(evalData.name)}/versions/${evalData.version}`);
   });
 
   const deleteMutation = useDeleteEvalMutation(task?.id, () => {
@@ -111,7 +116,7 @@ const Evaluators: React.FC<EvaluatorsProps> = ({ embedded = false, isCreateModal
     (evalName: string) => {
       setFullScreenEval(evalName);
       // Update URL to reflect the selected evaluator
-      navigate(`/tasks/${taskId}/evaluators/${evalName}`);
+      navigate(`/tasks/${taskId}/evaluators/${encodeURIComponent(evalName)}`);
     },
     [taskId, navigate]
   );

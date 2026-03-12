@@ -1,5 +1,6 @@
 import { useApi } from "@/hooks/useApi";
 import { useApiMutation } from "@/hooks/useApiMutation";
+import { encodePathParam } from "@/utils/url";
 
 interface DeleteTagVariables {
   promptName: string;
@@ -16,9 +17,9 @@ export function useDeleteTagFromPromptVersionMutation() {
       if (!api) throw new Error("API not available");
 
       await api.api.deleteTagFromAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionTagsTagDelete(
-        promptName,
+        encodePathParam(promptName),
         promptVersion,
-        tag,
+        encodePathParam(tag),
         taskId
       );
     },
