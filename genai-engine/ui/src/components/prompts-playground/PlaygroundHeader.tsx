@@ -87,7 +87,7 @@ export default function PlaygroundHeader({
             <>
               <IconButton
                 size="small"
-                onClick={() => navigate(`/tasks/${task?.id}/notebooks`)}
+                onClick={() => navigate(`/tasks/${task?.id}/prompts?tab=notebooks`)}
                 sx={{
                   color: "text.secondary",
                   "&:hover": { backgroundColor: "action.hover" },
