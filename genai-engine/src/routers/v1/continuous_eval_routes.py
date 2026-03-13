@@ -18,7 +18,6 @@ from dependencies import (
 )
 from repositories.continuous_evals_repository import ContinuousEvalsRepository
 from repositories.llm_evals_repository import LLMEvalsRepository
-from utils.url_encoding import decoded_eval_name
 from repositories.trace_transform_repository import TraceTransformRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
@@ -34,6 +33,7 @@ from schemas.response_schemas import (
     AgenticAnnotationAnalyticsResponse,
     ContinuousEvalRerunResponse,
 )
+from utils.url_encoding import decoded_eval_name
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 

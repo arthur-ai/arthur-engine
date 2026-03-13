@@ -1,4 +1,3 @@
-from typing import Annotated
 from urllib.parse import unquote
 
 from fastapi import Path

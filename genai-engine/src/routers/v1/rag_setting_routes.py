@@ -8,7 +8,6 @@ from starlette.responses import Response
 from starlette.status import HTTP_204_NO_CONTENT
 
 from dependencies import get_application_config, get_db_session
-from utils.url_encoding import decoded_tag
 from repositories.metrics_repository import MetricRepository
 from repositories.rag_providers_repository import RagProvidersRepository
 from repositories.rules_repository import RuleRepository
@@ -36,6 +35,7 @@ from schemas.response_schemas import (
     RagSearchSettingConfigurationResponse,
     RagSearchSettingConfigurationVersionResponse,
 )
+from utils.url_encoding import decoded_tag
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 
