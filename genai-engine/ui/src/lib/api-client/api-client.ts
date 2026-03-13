@@ -5321,6 +5321,36 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
   /** Filter by trace annotation type (i.e. 'human' or 'continuous_eval'). */
   annotation_type?: AgenticAnnotationType;
   /**
+   * Completion Token Count Eq
+   * Completion token count exactly equal to this value.
+   * @min 0
+   */
+  completion_token_count_eq?: number;
+  /**
+   * Completion Token Count Gt
+   * Completion token count greater than this value.
+   * @min 0
+   */
+  completion_token_count_gt?: number;
+  /**
+   * Completion Token Count Gte
+   * Completion token count greater than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_gte?: number;
+  /**
+   * Completion Token Count Lt
+   * Completion token count less than this value.
+   * @min 0
+   */
+  completion_token_count_lt?: number;
+  /**
+   * Completion Token Count Lte
+   * Completion token count less than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_lte?: number;
+  /**
    * Continuous Eval Name
    * Filter by continuous eval name.
    */
@@ -5351,6 +5381,36 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
    * @default 10
    */
   page_size?: number;
+  /**
+   * Prompt Token Count Eq
+   * Prompt token count exactly equal to this value.
+   * @min 0
+   */
+  prompt_token_count_eq?: number;
+  /**
+   * Prompt Token Count Gt
+   * Prompt token count greater than this value.
+   * @min 0
+   */
+  prompt_token_count_gt?: number;
+  /**
+   * Prompt Token Count Gte
+   * Prompt token count greater than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_gte?: number;
+  /**
+   * Prompt Token Count Lt
+   * Prompt token count less than this value.
+   * @min 0
+   */
+  prompt_token_count_lt?: number;
+  /**
+   * Prompt Token Count Lte
+   * Prompt token count less than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_lte?: number;
   /**
    * Query Relevance Eq
    * Equal to this value.
@@ -5432,6 +5492,11 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Column to sort results by.
+   * @default "start_time"
+   */
+  sort_by?: TraceSortBy;
+  /**
    * Span Ids
    * Span IDs to filter on. Optional.
    */
@@ -5477,6 +5542,36 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
   tool_selection?: ToolClassEnum;
   /** Tool usage evaluation result. */
   tool_usage?: ToolClassEnum;
+  /**
+   * Total Token Count Eq
+   * Total token count exactly equal to this value.
+   * @min 0
+   */
+  total_token_count_eq?: number;
+  /**
+   * Total Token Count Gt
+   * Total token count greater than this value.
+   * @min 0
+   */
+  total_token_count_gt?: number;
+  /**
+   * Total Token Count Gte
+   * Total token count greater than or equal to this value.
+   * @min 0
+   */
+  total_token_count_gte?: number;
+  /**
+   * Total Token Count Lt
+   * Total token count less than this value.
+   * @min 0
+   */
+  total_token_count_lt?: number;
+  /**
+   * Total Token Count Lte
+   * Total token count less than or equal to this value.
+   * @min 0
+   */
+  total_token_count_lte?: number;
   /**
    * Trace Duration Eq
    * Duration exactly equal to this value (seconds).
@@ -5548,6 +5643,36 @@ export interface ListTracesMetadataApiV1TracesGetParams {
   /** Filter by trace annotation type (i.e. 'human' or 'continuous_eval'). */
   annotation_type?: AgenticAnnotationType;
   /**
+   * Completion Token Count Eq
+   * Completion token count exactly equal to this value.
+   * @min 0
+   */
+  completion_token_count_eq?: number;
+  /**
+   * Completion Token Count Gt
+   * Completion token count greater than this value.
+   * @min 0
+   */
+  completion_token_count_gt?: number;
+  /**
+   * Completion Token Count Gte
+   * Completion token count greater than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_gte?: number;
+  /**
+   * Completion Token Count Lt
+   * Completion token count less than this value.
+   * @min 0
+   */
+  completion_token_count_lt?: number;
+  /**
+   * Completion Token Count Lte
+   * Completion token count less than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_lte?: number;
+  /**
    * Continuous Eval Name
    * Filter by continuous eval name.
    */
@@ -5584,6 +5709,36 @@ export interface ListTracesMetadataApiV1TracesGetParams {
    * @default 10
    */
   page_size?: number;
+  /**
+   * Prompt Token Count Eq
+   * Prompt token count exactly equal to this value.
+   * @min 0
+   */
+  prompt_token_count_eq?: number;
+  /**
+   * Prompt Token Count Gt
+   * Prompt token count greater than this value.
+   * @min 0
+   */
+  prompt_token_count_gt?: number;
+  /**
+   * Prompt Token Count Gte
+   * Prompt token count greater than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_gte?: number;
+  /**
+   * Prompt Token Count Lt
+   * Prompt token count less than this value.
+   * @min 0
+   */
+  prompt_token_count_lt?: number;
+  /**
+   * Prompt Token Count Lte
+   * Prompt token count less than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_lte?: number;
   /**
    * Query Relevance Eq
    * Equal to this value.
@@ -5665,6 +5820,11 @@ export interface ListTracesMetadataApiV1TracesGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Column to sort results by.
+   * @default "start_time"
+   */
+  sort_by?: TraceSortBy;
+  /**
    * Span Ids
    * Span IDs to filter on. Optional.
    */
@@ -5710,6 +5870,36 @@ export interface ListTracesMetadataApiV1TracesGetParams {
   tool_selection?: ToolClassEnum;
   /** Tool usage evaluation result. */
   tool_usage?: ToolClassEnum;
+  /**
+   * Total Token Count Eq
+   * Total token count exactly equal to this value.
+   * @min 0
+   */
+  total_token_count_eq?: number;
+  /**
+   * Total Token Count Gt
+   * Total token count greater than this value.
+   * @min 0
+   */
+  total_token_count_gt?: number;
+  /**
+   * Total Token Count Gte
+   * Total token count greater than or equal to this value.
+   * @min 0
+   */
+  total_token_count_gte?: number;
+  /**
+   * Total Token Count Lt
+   * Total token count less than this value.
+   * @min 0
+   */
+  total_token_count_lt?: number;
+  /**
+   * Total Token Count Lte
+   * Total token count less than or equal to this value.
+   * @min 0
+   */
+  total_token_count_lte?: number;
   /**
    * Trace Duration Eq
    * Duration exactly equal to this value (seconds).
@@ -7542,6 +7732,36 @@ export interface QuerySpansV1TracesQueryGetParams {
   /** Filter by trace annotation type (i.e. 'human' or 'continuous_eval'). */
   annotation_type?: AgenticAnnotationType;
   /**
+   * Completion Token Count Eq
+   * Completion token count exactly equal to this value.
+   * @min 0
+   */
+  completion_token_count_eq?: number;
+  /**
+   * Completion Token Count Gt
+   * Completion token count greater than this value.
+   * @min 0
+   */
+  completion_token_count_gt?: number;
+  /**
+   * Completion Token Count Gte
+   * Completion token count greater than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_gte?: number;
+  /**
+   * Completion Token Count Lt
+   * Completion token count less than this value.
+   * @min 0
+   */
+  completion_token_count_lt?: number;
+  /**
+   * Completion Token Count Lte
+   * Completion token count less than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_lte?: number;
+  /**
    * Continuous Eval Name
    * Filter by continuous eval name.
    */
@@ -7572,6 +7792,36 @@ export interface QuerySpansV1TracesQueryGetParams {
    * @default 10
    */
   page_size?: number;
+  /**
+   * Prompt Token Count Eq
+   * Prompt token count exactly equal to this value.
+   * @min 0
+   */
+  prompt_token_count_eq?: number;
+  /**
+   * Prompt Token Count Gt
+   * Prompt token count greater than this value.
+   * @min 0
+   */
+  prompt_token_count_gt?: number;
+  /**
+   * Prompt Token Count Gte
+   * Prompt token count greater than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_gte?: number;
+  /**
+   * Prompt Token Count Lt
+   * Prompt token count less than this value.
+   * @min 0
+   */
+  prompt_token_count_lt?: number;
+  /**
+   * Prompt Token Count Lte
+   * Prompt token count less than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_lte?: number;
   /**
    * Query Relevance Eq
    * Equal to this value.
@@ -7653,6 +7903,11 @@ export interface QuerySpansV1TracesQueryGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Column to sort results by.
+   * @default "start_time"
+   */
+  sort_by?: TraceSortBy;
+  /**
    * Span Ids
    * Span IDs to filter on. Optional.
    */
@@ -7698,6 +7953,36 @@ export interface QuerySpansV1TracesQueryGetParams {
   tool_selection?: ToolClassEnum;
   /** Tool usage evaluation result. */
   tool_usage?: ToolClassEnum;
+  /**
+   * Total Token Count Eq
+   * Total token count exactly equal to this value.
+   * @min 0
+   */
+  total_token_count_eq?: number;
+  /**
+   * Total Token Count Gt
+   * Total token count greater than this value.
+   * @min 0
+   */
+  total_token_count_gt?: number;
+  /**
+   * Total Token Count Gte
+   * Total token count greater than or equal to this value.
+   * @min 0
+   */
+  total_token_count_gte?: number;
+  /**
+   * Total Token Count Lt
+   * Total token count less than this value.
+   * @min 0
+   */
+  total_token_count_lt?: number;
+  /**
+   * Total Token Count Lte
+   * Total token count less than or equal to this value.
+   * @min 0
+   */
+  total_token_count_lte?: number;
   /**
    * Trace Duration Eq
    * Duration exactly equal to this value (seconds).
@@ -7755,6 +8040,36 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
   /** Filter by trace annotation type (i.e. 'human' or 'continuous_eval'). */
   annotation_type?: AgenticAnnotationType;
   /**
+   * Completion Token Count Eq
+   * Completion token count exactly equal to this value.
+   * @min 0
+   */
+  completion_token_count_eq?: number;
+  /**
+   * Completion Token Count Gt
+   * Completion token count greater than this value.
+   * @min 0
+   */
+  completion_token_count_gt?: number;
+  /**
+   * Completion Token Count Gte
+   * Completion token count greater than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_gte?: number;
+  /**
+   * Completion Token Count Lt
+   * Completion token count less than this value.
+   * @min 0
+   */
+  completion_token_count_lt?: number;
+  /**
+   * Completion Token Count Lte
+   * Completion token count less than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_lte?: number;
+  /**
    * Continuous Eval Name
    * Filter by continuous eval name.
    */
@@ -7785,6 +8100,36 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
    * @default 10
    */
   page_size?: number;
+  /**
+   * Prompt Token Count Eq
+   * Prompt token count exactly equal to this value.
+   * @min 0
+   */
+  prompt_token_count_eq?: number;
+  /**
+   * Prompt Token Count Gt
+   * Prompt token count greater than this value.
+   * @min 0
+   */
+  prompt_token_count_gt?: number;
+  /**
+   * Prompt Token Count Gte
+   * Prompt token count greater than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_gte?: number;
+  /**
+   * Prompt Token Count Lt
+   * Prompt token count less than this value.
+   * @min 0
+   */
+  prompt_token_count_lt?: number;
+  /**
+   * Prompt Token Count Lte
+   * Prompt token count less than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_lte?: number;
   /**
    * Query Relevance Eq
    * Equal to this value.
@@ -7866,6 +8211,11 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Column to sort results by.
+   * @default "start_time"
+   */
+  sort_by?: TraceSortBy;
+  /**
    * Span Ids
    * Span IDs to filter on. Optional.
    */
@@ -7911,6 +8261,36 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
   tool_selection?: ToolClassEnum;
   /** Tool usage evaluation result. */
   tool_usage?: ToolClassEnum;
+  /**
+   * Total Token Count Eq
+   * Total token count exactly equal to this value.
+   * @min 0
+   */
+  total_token_count_eq?: number;
+  /**
+   * Total Token Count Gt
+   * Total token count greater than this value.
+   * @min 0
+   */
+  total_token_count_gt?: number;
+  /**
+   * Total Token Count Gte
+   * Total token count greater than or equal to this value.
+   * @min 0
+   */
+  total_token_count_gte?: number;
+  /**
+   * Total Token Count Lt
+   * Total token count less than this value.
+   * @min 0
+   */
+  total_token_count_lt?: number;
+  /**
+   * Total Token Count Lte
+   * Total token count less than or equal to this value.
+   * @min 0
+   */
+  total_token_count_lte?: number;
   /**
    * Trace Duration Eq
    * Duration exactly equal to this value (seconds).
@@ -10586,6 +10966,9 @@ export interface TraceResponse {
   trace_id: string;
 }
 
+/** TraceSortBy */
+export type TraceSortBy = "start_time" | "total_token_count" | "total_token_cost" | "span_count";
+
 /** TraceTransformDefinition */
 export interface TraceTransformDefinition {
   /**
@@ -12221,7 +12604,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.454
+ * @version 2.1.459
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {

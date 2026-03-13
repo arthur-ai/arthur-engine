@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any, Dict, Union
 
 import httpx
+from arthur_common.models.agent_governance_schemas import EnrichedTaskResponse
 from arthur_common.models.common_schemas import (
     ExamplesConfig,
     KeywordsConfig,
@@ -72,7 +73,6 @@ from schemas.enums import (
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
 )
-from arthur_common.models.agent_governance_schemas import EnrichedTaskResponse
 from schemas.internal_schemas import AgenticAnnotation
 from schemas.request_schemas import (
     AgenticAnnotationRequest,
@@ -361,9 +361,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         """
         path = "api/v2/agent-tasks"
 
-        resp = self.base_client.get(
-            path, headers=self.authorized_user_api_key_headers
-        )
+        resp = self.base_client.get(path, headers=self.authorized_user_api_key_headers)
         log_response(resp)
 
         return (
@@ -1603,6 +1601,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         page: int | None = None,
         page_size: int | None = None,
         sort: str | None = None,
+        sort_by: str | None = None,
         tool_name: str | None = None,
         span_types: list | None = None,
         # Query relevance filters
@@ -1626,6 +1625,22 @@ class GenaiEngineTestClientBase(httpx.Client):
         trace_duration_gte: float | None = None,
         trace_duration_lt: float | None = None,
         trace_duration_lte: float | None = None,
+        # Token count filters
+        total_token_count_eq: int | None = None,
+        total_token_count_gt: int | None = None,
+        total_token_count_gte: int | None = None,
+        total_token_count_lt: int | None = None,
+        total_token_count_lte: int | None = None,
+        prompt_token_count_eq: int | None = None,
+        prompt_token_count_gt: int | None = None,
+        prompt_token_count_gte: int | None = None,
+        prompt_token_count_lt: int | None = None,
+        prompt_token_count_lte: int | None = None,
+        completion_token_count_eq: int | None = None,
+        completion_token_count_gt: int | None = None,
+        completion_token_count_gte: int | None = None,
+        completion_token_count_lt: int | None = None,
+        completion_token_count_lte: int | None = None,
     ) -> tuple[int, QueryTracesWithMetricsResponse | str]:
         """Query traces with metrics for specified task IDs. Computes metrics for all LLM spans in the traces.
 
@@ -1637,6 +1652,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             page: Page number for pagination
             page_size: Number of items per page
             sort: Sort order ("asc" or "desc")
+            sort_by: Column to sort by (e.g. "start_time", "total_token_count", "total_token_cost", "span_count")
             tool_name: Return only results with this tool name
             span_types: Span types to filter on (optional)
             query_relevance_eq: Query relevance equal to this value
@@ -1656,6 +1672,9 @@ class GenaiEngineTestClientBase(httpx.Client):
             trace_duration_gte: Duration greater than or equal to this value (seconds)
             trace_duration_lt: Duration less than this value (seconds)
             trace_duration_lte: Duration less than or equal to this value (seconds)
+            total_token_count_eq/gt/gte/lt/lte: Total token count filters
+            prompt_token_count_eq/gt/gte/lt/lte: Prompt token count filters
+            completion_token_count_eq/gt/gte/lt/lte: Completion token count filters
 
         Returns:
             tuple[int, QueryTracesWithMetricsResponse | str]: Status code and response
@@ -1673,6 +1692,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["page_size"] = page_size
         if sort is not None:
             params["sort"] = sort
+        if sort_by is not None:
+            params["sort_by"] = sort_by
         if tool_name is not None:
             params["tool_name"] = tool_name
         if span_types is not None:
@@ -1715,6 +1736,27 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["trace_duration_lt"] = trace_duration_lt
         if trace_duration_lte is not None:
             params["trace_duration_lte"] = trace_duration_lte
+        # Token count filters
+        for token_param in [
+            "total_token_count_eq",
+            "total_token_count_gt",
+            "total_token_count_gte",
+            "total_token_count_lt",
+            "total_token_count_lte",
+            "prompt_token_count_eq",
+            "prompt_token_count_gt",
+            "prompt_token_count_gte",
+            "prompt_token_count_lt",
+            "prompt_token_count_lte",
+            "completion_token_count_eq",
+            "completion_token_count_gt",
+            "completion_token_count_gte",
+            "completion_token_count_lt",
+            "completion_token_count_lte",
+        ]:
+            val = locals()[token_param]
+            if val is not None:
+                params[token_param] = val
 
         resp = self.base_client.get(
             f"/v1/traces/metrics/?{urllib.parse.urlencode(params, doseq=True)}",
@@ -1740,6 +1782,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         page: int | None = None,
         page_size: int | None = None,
         sort: str | None = None,
+        sort_by: str | None = None,
         tool_name: str | None = None,
         span_types: list | None = None,
         # Query relevance filters
@@ -1763,6 +1806,22 @@ class GenaiEngineTestClientBase(httpx.Client):
         trace_duration_gte: float | None = None,
         trace_duration_lt: float | None = None,
         trace_duration_lte: float | None = None,
+        # Token count filters
+        total_token_count_eq: int | None = None,
+        total_token_count_gt: int | None = None,
+        total_token_count_gte: int | None = None,
+        total_token_count_lt: int | None = None,
+        total_token_count_lte: int | None = None,
+        prompt_token_count_eq: int | None = None,
+        prompt_token_count_gt: int | None = None,
+        prompt_token_count_gte: int | None = None,
+        prompt_token_count_lt: int | None = None,
+        prompt_token_count_lte: int | None = None,
+        completion_token_count_eq: int | None = None,
+        completion_token_count_gt: int | None = None,
+        completion_token_count_gte: int | None = None,
+        completion_token_count_lt: int | None = None,
+        completion_token_count_lte: int | None = None,
     ) -> tuple[int, QueryTracesWithMetricsResponse | str]:
         """Query traces with filters. Task IDs are required. Returns traces with any existing metrics but does not compute new ones.
 
@@ -1774,6 +1833,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             page: Page number for pagination
             page_size: Number of items per page
             sort: Sort order ("asc" or "desc")
+            sort_by: Column to sort by (e.g. "start_time", "total_token_count", "total_token_cost", "span_count")
             tool_name: Return only results with this tool name
             span_types: Span types to filter on (optional)
             query_relevance_eq: Query relevance equal to this value
@@ -1793,6 +1853,9 @@ class GenaiEngineTestClientBase(httpx.Client):
             trace_duration_gte: Duration greater than or equal to this value (seconds)
             trace_duration_lt: Duration less than this value (seconds)
             trace_duration_lte: Duration less than or equal to this value (seconds)
+            total_token_count_eq/gt/gte/lt/lte: Total token count filters
+            prompt_token_count_eq/gt/gte/lt/lte: Prompt token count filters
+            completion_token_count_eq/gt/gte/lt/lte: Completion token count filters
 
         Returns:
             tuple[int, QueryTracesWithMetricsResponse | str]: Status code and response
@@ -1810,6 +1873,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["page_size"] = page_size
         if sort is not None:
             params["sort"] = sort
+        if sort_by is not None:
+            params["sort_by"] = sort_by
         if tool_name is not None:
             params["tool_name"] = tool_name
         if span_types is not None:
@@ -1852,6 +1917,27 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["trace_duration_lt"] = trace_duration_lt
         if trace_duration_lte is not None:
             params["trace_duration_lte"] = trace_duration_lte
+        # Token count filters
+        for token_param in [
+            "total_token_count_eq",
+            "total_token_count_gt",
+            "total_token_count_gte",
+            "total_token_count_lt",
+            "total_token_count_lte",
+            "prompt_token_count_eq",
+            "prompt_token_count_gt",
+            "prompt_token_count_gte",
+            "prompt_token_count_lt",
+            "prompt_token_count_lte",
+            "completion_token_count_eq",
+            "completion_token_count_gt",
+            "completion_token_count_gte",
+            "completion_token_count_lt",
+            "completion_token_count_lte",
+        ]:
+            val = locals()[token_param]
+            if val is not None:
+                params[token_param] = val
 
         resp = self.base_client.get(
             f"/v1/traces/query?{urllib.parse.urlencode(params, doseq=True)}",

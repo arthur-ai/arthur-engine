@@ -26,6 +26,8 @@ from sqlalchemy import (
     desc,
     exists,
     func,
+    nullsfirst,
+    nullslast,
     or_,
     select,
 )
@@ -59,6 +61,15 @@ logger = logging.getLogger(__name__)
 # Constants
 DEFAULT_PAGE_SIZE = 5
 
+TRACE_SORT_COLUMN_MAP: dict[str, InstrumentedAttribute[Any]] = {
+    "start_time": DatabaseTraceMetadata.start_time,
+    "total_token_count": DatabaseTraceMetadata.total_token_count,
+    "total_token_cost": DatabaseTraceMetadata.total_token_cost,
+    "span_count": DatabaseTraceMetadata.span_count,
+}
+
+NULLABLE_SORT_COLUMNS = {"total_token_count", "total_token_cost"}
+
 
 class SpanQueryService:
     """
@@ -73,6 +84,7 @@ class SpanQueryService:
         self,
         filters: TraceQuerySchema,
         pagination_parameters: PaginationParameters,
+        sort_by: str = "start_time",
     ) -> Tuple[List[str], int]:
         """
         Single-query strategy that combines all filters and uses database pagination.
@@ -91,8 +103,15 @@ class SpanQueryService:
         if not total_count:
             return [], 0
 
-        # Apply sorting and pagination at database level
-        query = self._apply_sorting_and_pagination(base_query, pagination_parameters)
+        sort_column = TRACE_SORT_COLUMN_MAP.get(
+            sort_by, DatabaseTraceMetadata.start_time
+        )
+        query = self._apply_sorting_and_pagination(
+            base_query,
+            pagination_parameters,
+            sort_column=sort_column,
+            nullable=sort_by in NULLABLE_SORT_COLUMNS,
+        )
 
         # Execute with database-level pagination
         results = self.db_session.execute(query).scalars().all()
@@ -252,6 +271,31 @@ class SpanQueryService:
                     ),
                 )
             conditions.extend(duration_conditions)
+
+        # Token count filters (columns are directly indexed)
+        token_filter_mapping = [
+            (
+                filters.total_token_count_filters,
+                DatabaseTraceMetadata.total_token_count,
+            ),
+            (
+                filters.prompt_token_count_filters,
+                DatabaseTraceMetadata.prompt_token_count,
+            ),
+            (
+                filters.completion_token_count_filters,
+                DatabaseTraceMetadata.completion_token_count,
+            ),
+        ]
+        for token_filters, column in token_filter_mapping:
+            if token_filters:
+                for filter_item in token_filters:
+                    conditions.append(
+                        self.filter_service.build_comparison_condition(
+                            column,
+                            filter_item,
+                        ),
+                    )
 
         # Annotation filters - join with agentic_annotations table if any annotation filter is present
         if (
@@ -467,19 +511,23 @@ class SpanQueryService:
         sort_column: (
             InstrumentedAttribute[Any] | ColumnElement[Any] | Label[Any] | str | None
         ) = None,
+        nullable: bool = False,
     ) -> Select[Tuple[Any]]:
-        """Apply database-level sorting and pagination."""
-        # Default to trace metadata start_time if no column specified
+        """Apply database-level sorting and pagination.
+
+        When nullable=True, NULL values are pushed to the end of results
+        regardless of sort direction.
+        """
         if sort_column is None:
             sort_column = DatabaseTraceMetadata.start_time
 
-        # Apply sorting
         if pagination_parameters.sort == PaginationSortMethod.DESCENDING:
-            query = query.order_by(desc(sort_column))
+            order_expr = desc(sort_column)
+            query = query.order_by(nullslast(order_expr) if nullable else order_expr)
         else:
-            query = query.order_by(asc(sort_column))
+            order_expr = asc(sort_column)
+            query = query.order_by(nullslast(order_expr) if nullable else order_expr)
 
-        # Apply database-level pagination
         offset = pagination_parameters.page * pagination_parameters.page_size
         query = query.offset(offset).limit(pagination_parameters.page_size)
 
@@ -702,6 +750,9 @@ class SpanQueryService:
             or filters.start_time
             or filters.end_time
             or filters.trace_duration_filters
+            or filters.total_token_count_filters
+            or filters.prompt_token_count_filters
+            or filters.completion_token_count_filters
             or filters.annotation_score is not None
             or filters.annotation_type is not None
             or filters.continuous_eval_run_status is not None
@@ -757,6 +808,31 @@ class SpanQueryService:
                     ),
                 )
             conditions.extend(duration_conditions)
+
+        # Token count filters (columns are directly indexed)
+        token_filter_mapping = [
+            (
+                filters.total_token_count_filters,
+                DatabaseTraceMetadata.total_token_count,
+            ),
+            (
+                filters.prompt_token_count_filters,
+                DatabaseTraceMetadata.prompt_token_count,
+            ),
+            (
+                filters.completion_token_count_filters,
+                DatabaseTraceMetadata.completion_token_count,
+            ),
+        ]
+        for token_filters, column in token_filter_mapping:
+            if token_filters:
+                for filter_item in token_filters:
+                    conditions.append(
+                        self.filter_service.build_comparison_condition(
+                            column,
+                            filter_item,
+                        ),
+                    )
 
         # Annotation filters - join with agentic_annotations table if any annotation filter is present
         if (

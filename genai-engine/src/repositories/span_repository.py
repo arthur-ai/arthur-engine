@@ -84,6 +84,7 @@ class SpanRepository:
         pagination_parameters: PaginationParameters,
         user_ids: Optional[list[str]] = None,
         include_spans: bool = False,
+        sort_by: str = "start_time",
     ) -> tuple[int, list[TraceMetadata]]:
         """Get lightweight trace metadata for browsing/filtering operations.
 
@@ -107,6 +108,7 @@ class SpanRepository:
             self.span_query_service.get_paginated_trace_ids_with_filters(
                 filters=internal_filters,
                 pagination_parameters=pagination_parameters,
+                sort_by=sort_by,
             )
         )
 
@@ -725,6 +727,7 @@ class SpanRepository:
         pagination_parameters: PaginationParameters,
         include_metrics: bool = False,
         compute_new_metrics: bool = True,
+        sort_by: str = "start_time",
     ) -> tuple[int, list[TraceResponse]]:
         """Query traces with comprehensive filtering and optional metrics computation."""
         # Validate parameters
@@ -740,6 +743,7 @@ class SpanRepository:
         result = self.span_query_service.get_paginated_trace_ids_with_filters(
             filters=internal_filters,
             pagination_parameters=pagination_parameters,
+            sort_by=sort_by,
         )
 
         if not result:
