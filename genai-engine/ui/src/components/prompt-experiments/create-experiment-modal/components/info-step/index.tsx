@@ -53,18 +53,20 @@ export const InfoStep = withForm({
         );
       }
 
-      form.setFieldValue(
-        "evalVariableMappings",
-        evalVariables.map(({ name, version, variables }) => ({
-          name,
-          version: version ?? 1,
-          variables: variables.map((variable) => ({
-            name: variable!,
-            sourceType: "dataset_column",
-            source: columnNames.find((col) => col === variable) ?? "",
-          })),
-        }))
-      );
+      if (state.evalVariableMappings.length === 0) {
+        form.setFieldValue(
+          "evalVariableMappings",
+          evalVariables.map(({ name, version, variables }) => ({
+            name,
+            version: version ?? 1,
+            variables: variables.map((variable) => ({
+              name: variable!,
+              sourceType: "dataset_column",
+              source: columnNames.find((col) => col === variable) ?? "",
+            })),
+          }))
+        );
+      }
 
       form.handleSubmit();
     };
