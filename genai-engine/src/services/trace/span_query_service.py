@@ -26,7 +26,6 @@ from sqlalchemy import (
     desc,
     exists,
     func,
-    nullsfirst,
     nullslast,
     or_,
     select,
