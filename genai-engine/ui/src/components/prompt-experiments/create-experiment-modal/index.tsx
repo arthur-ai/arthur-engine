@@ -82,6 +82,8 @@ const CreateExperimentModalInner = ({
       const request = formDataToRequest(value);
 
       await createExperiment.mutateAsync(request);
+
+      formApi.reset();
     },
   });
 
