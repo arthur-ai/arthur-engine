@@ -194,15 +194,17 @@ def test_trace_query_token_count_with_other_filters(
     create_test_spans,
 ):
     """Combine token count filters with span_types and duration filters."""
+    # trace1 has total_token_count=500 and LLM spans -> included
+    # trace2 has total_token_count=1500 but only AGENT/RETRIEVER spans (no LLM) -> excluded
     status_code, response = client.query_traces(
         task_ids=["task1", "task2"],
         total_token_count_gte=400,
         span_types=["LLM"],
     )
     assert status_code == 200
-    assert response.count == 2
+    assert response.count == 1
     trace_ids = {t.trace_id for t in response.traces}
-    assert trace_ids == {"trace1", "trace2"}
+    assert trace_ids == {"trace1"}
 
     status_code, response = client.query_traces(
         task_ids=["task1", "task2"],
