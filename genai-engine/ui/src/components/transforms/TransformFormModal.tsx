@@ -330,7 +330,8 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
                       label="Attribute Path"
                       value={variable.attribute_path}
                       onChange={(e) => handleVariableChange(idx, "attribute_path", e.target.value)}
-                      placeholder="e.g., attributes.input.value"
+                      placeholder="e.g., attributes.input.value or attributes.results.*.name"
+                      helperText="Use * to extract from all items in an array"
                       size="small"
                       required
                       fullWidth

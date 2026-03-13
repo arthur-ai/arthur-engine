@@ -18,7 +18,7 @@ from arthur_common.models.task_eval_schemas import TraceTransformDefinition
 from schemas.response_schemas import (
     TransformExtractionResponseList,
 )
-from utils.trace import get_nested_value
+from utils.trace import get_nested_value, get_nested_value_wildcard
 
 
 def stringify_value(value: Any) -> str:
@@ -108,7 +108,10 @@ def execute_transform(
         else:
             # Use the first matching span
             span = matching_spans[0]
-            value = get_nested_value(span.raw_data, attribute_path)
+            if "*" in attribute_path:
+                value = get_nested_value_wildcard(span.raw_data, attribute_path)
+            else:
+                value = get_nested_value(span.raw_data, attribute_path)
 
             # Use value if found, otherwise use fallback
             if value is None:

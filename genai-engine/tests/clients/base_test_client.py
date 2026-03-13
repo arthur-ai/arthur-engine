@@ -1124,6 +1124,16 @@ class GenaiEngineTestClientBase(httpx.Client):
             ),
         )
 
+    def get_transform_dependents(self, transform_id: str) -> tuple[int, Any]:
+        resp = self.base_client.get(
+            f"/api/v1/traces/transforms/{transform_id}/dependents",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code, resp.json()
+
     def list_transforms(
         self,
         task_id: str,

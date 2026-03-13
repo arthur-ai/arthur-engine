@@ -851,3 +851,29 @@ class AgenticAnnotationAnalyticsResponse(BaseModel):
         description="Daily statistics ordered by date descending"
     )
     count: int = Field(description="Number of days with data")
+
+
+class TransformDependentRef(BaseModel):
+    id: str = Field(description="ID of the dependent resource.")
+    name: str = Field(description="Name of the dependent resource.")
+
+
+class TransformDependents(BaseModel):
+    continuous_evals: list[TransformDependentRef] = Field(
+        default_factory=list,
+        description="Continuous evals that reference this transform.",
+    )
+    agentic_experiments: list[TransformDependentRef] = Field(
+        default_factory=list,
+        description="Agentic experiments that reference this transform.",
+    )
+    agentic_notebooks: list[TransformDependentRef] = Field(
+        default_factory=list,
+        description="Agentic notebooks that reference this transform.",
+    )
+
+    @property
+    def has_dependents(self) -> bool:
+        return bool(
+            self.continuous_evals or self.agentic_experiments or self.agentic_notebooks
+        )

@@ -135,7 +135,9 @@ const createColumns = ({
   columnHelper.accessor("annotation_description", {
     header: "Annotation Explanation",
     cell: ({ getValue }) => {
-      return <div className="max-h-32 overflow-auto">{getValue()}</div>;
+      const value = getValue();
+      const text = value == null ? "" : typeof value === "object" ? JSON.stringify(value) : String(value);
+      return <div className="max-h-32 overflow-auto whitespace-pre-wrap">{text}</div>;
     },
   }),
   columnHelper.accessor("run_status", {

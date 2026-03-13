@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
-from pydantic import BaseModel, Discriminator, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Discriminator, Field, model_validator
 
 from schemas.base_experiment_schemas import (
     BaseConfigResult,
@@ -70,15 +70,14 @@ class RequestTimeParameter(BaseModel):
 class GeneratedVariableSource(BaseModel):
     """Variable source for generated values (e.g., UUIDs, timestamps)"""
 
+    model_config = ConfigDict(use_enum_values=True)
+
     type: Literal["generated"] = Field(
         description="Type of source: 'generated'",
     )
     generator_type: AgenticExperimentGeneratorType = Field(
         description="Type of generator to use. Supported values: 'uuid', 'session_id'. Exactly one session_id is required per experiment.",
     )
-
-    class Config:
-        use_enum_values = True
 
 
 # Union type for template variable sources
