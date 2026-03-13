@@ -210,9 +210,10 @@ def list_spans_metadata(
             sort=pagination_parameters.sort or PaginationSortMethod.DESCENDING,
             page=pagination_parameters.page,
             page_size=pagination_parameters.page_size,
-            include_metrics=False,  # No metrics for metadata endpoint
+            include_metrics=False,
             compute_new_metrics=False,
-            filters=trace_query,  # Enables comprehensive filtering
+            filters=trace_query,
+            sort_by=sort_by.value,
         )
 
         requested_currency = get_display_currency(application_config)

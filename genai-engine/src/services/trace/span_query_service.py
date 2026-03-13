@@ -67,6 +67,12 @@ TRACE_SORT_COLUMN_MAP: dict[str, InstrumentedAttribute[Any]] = {
     "span_count": DatabaseTraceMetadata.span_count,
 }
 
+SPAN_SORT_COLUMN_MAP: dict[str, InstrumentedAttribute[Any]] = {
+    "start_time": DatabaseSpan.start_time,
+    "total_token_count": DatabaseSpan.total_token_count,
+    "total_token_cost": DatabaseSpan.total_token_cost,
+}
+
 NULLABLE_SORT_COLUMNS = {"total_token_count", "total_token_cost"}
 
 
@@ -659,6 +665,7 @@ class SpanQueryService:
         self,
         filters: TraceQuerySchema,
         pagination_parameters: PaginationParameters,
+        sort_by: str = "start_time",
     ) -> tuple[list[Span], int]:
         """
         Span-based filtering that finds individual spans matching criteria.
@@ -695,11 +702,12 @@ class SpanQueryService:
         if not total_count:
             return [], 0
 
-        # Apply sorting and pagination at database level
+        sort_column = SPAN_SORT_COLUMN_MAP.get(sort_by, DatabaseSpan.start_time)
         query = self._apply_sorting_and_pagination(
             base_query,
             pagination_parameters,
-            DatabaseSpan.start_time,
+            sort_column=sort_column,
+            nullable=sort_by in NULLABLE_SORT_COLUMNS,
         )
 
         # Execute with database-level pagination
