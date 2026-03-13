@@ -7,6 +7,7 @@ from connectors.connector import Connector
 from connectors.databricks_connector import DatabricksConnector
 from connectors.gcs_connector import GCSConnector
 from connectors.odbc_connector import ODBCConnector
+from connectors.rest_connector import RestConnector
 from connectors.s3_connector import S3Connector
 from connectors.shield_connector import EngineInternalConnector, ShieldConnector
 from connectors.snowflake_connector import SnowflakeConnector
@@ -36,6 +37,8 @@ class ConnectorConstructor:
                 return SnowflakeConnector(connector_config, self.scope_logger)
             case ConnectorType.DATABRICKS:
                 return DatabricksConnector(connector_config, self.scope_logger)
+            case ConnectorType.REST:
+                return RestConnector(connector_config, self.scope_logger)
             case _:
                 raise NotImplementedError(
                     f"Connector not available for type {connector_config.connector_type}",
