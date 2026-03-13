@@ -6,7 +6,7 @@ import { useStore } from "@tanstack/react-form";
 import { useState } from "react";
 
 import { createExperimentModalFormOpts, CreateExperimentModalFormValues } from "../../form";
-import { useGetEvalVariables } from "../../hooks/useGetEvalVaraibles";
+import { useGetEvalVariables } from "../../hooks/useGetEvalVariables";
 import { useGetPromptsVariables } from "../../hooks/useGetPromptsVariables";
 
 import { useEvals } from "@/components/evaluators/hooks/useEvals";
