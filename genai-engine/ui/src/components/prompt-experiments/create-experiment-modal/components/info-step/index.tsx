@@ -267,7 +267,7 @@ const DatasetSelector = withForm({
                   getOptionLabel={(option) => option.name}
                   value={selected}
                   onChange={(_, value) => {
-                    field.handleChange(value?.id ?? null);
+                    field.handleChange(value?.id ?? "");
                   }}
                   renderInput={(params) => (
                     <TextField
@@ -288,6 +288,7 @@ const DatasetSelector = withForm({
               return (
                 <Autocomplete
                   options={versionsQuery.versions}
+                  disabled={!datasetId}
                   getOptionLabel={(option) => option.version_number.toString()}
                   value={selected}
                   onChange={(_, value) => {

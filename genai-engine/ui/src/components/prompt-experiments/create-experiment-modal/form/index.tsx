@@ -29,7 +29,7 @@ const InfoStepSchema = z.object({
     }),
     dataset: z.object({
       id: z.string().min(1, { error: "Dataset is required" }),
-      version: z.number().min(1, { error: "Dataset version is required" }),
+      version: z.number("Dataset version is required").min(1),
     }),
     evaluators: z.array(
       z.object({
@@ -67,7 +67,7 @@ export const createExperimentModalFormOpts = formOptions({
         versions: [] as number[],
       },
       dataset: {
-        id: null as string | null,
+        id: "" as string,
         version: null as number | null,
       },
       evaluators: [] as {
