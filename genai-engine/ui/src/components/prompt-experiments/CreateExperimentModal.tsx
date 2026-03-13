@@ -555,8 +555,11 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       // Transform formData to match API expectations
       // The parent component will handle the actual API call
       const result = await onSubmit(formData);
-      // Show success toast
-      showSnackbar(`Experiment "${formData.name}" created successfully!`, "success");
+      // Show success toast - different message for notebook config mode vs actual experiment creation
+      const successMessage = disableNavigation
+        ? `Experiment configuration "${formData.name}" saved! Click "Run All" to create and run the experiment.`
+        : `Experiment "${formData.name}" created successfully!`;
+      showSnackbar(successMessage, "success");
       // Reset form on success
       setFormData({
         name: "",
@@ -588,8 +591,11 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       }
     } catch (error) {
       console.error("Failed to create experiment:", error);
-      setErrors({ general: "Failed to create experiment. Please try again." });
-      showSnackbar("Failed to create experiment. Please try again.", "error");
+      const errorMessage = disableNavigation
+        ? "Failed to save experiment configuration. Please try again."
+        : "Failed to create experiment. Please try again.";
+      setErrors({ general: errorMessage });
+      showSnackbar(errorMessage, "error");
     } finally {
       setIsSubmitting(false);
     }
