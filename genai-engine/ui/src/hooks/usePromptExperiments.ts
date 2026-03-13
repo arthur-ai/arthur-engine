@@ -108,7 +108,7 @@ export function usePromptVersionResults(experimentId: string | undefined, prompt
 /**
  * Hook to create a new prompt experiment
  */
-export function useCreateExperiment(taskId: string | undefined) {
+export function useCreateExperiment(taskId: string | undefined, { onSuccess }: { onSuccess?: (data: PromptExperimentSummary) => void } = {}) {
   const api = useApi();
 
   return useApiMutation<PromptExperimentSummary, CreatePromptExperimentRequest>({
@@ -119,6 +119,7 @@ export function useCreateExperiment(taskId: string | undefined) {
       return response.data;
     },
     invalidateQueries: [{ queryKey: ["listPromptExperimentsApiV1TasksTaskIdPromptExperimentsGet"] }],
+    onSuccess,
   });
 }
 

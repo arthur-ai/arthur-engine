@@ -2,6 +2,9 @@ import type { GetFilteredSpansParams, GetFilteredTracesParams, GetSessionsParams
 import type { TimeInterval } from "@/utils/timeWindows";
 
 export const queryKeys = {
+  prompts: {
+    variables: (name: string, versions: number[]) => ["promptsVariables", { name, versions }] as const,
+  },
   metrics: {
     overview: (taskId: string, interval: TimeInterval) => ["taskOverviewMetrics", { taskId, interval }] as const,
   },

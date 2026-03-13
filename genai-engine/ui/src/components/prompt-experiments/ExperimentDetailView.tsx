@@ -24,14 +24,14 @@ import { alpha } from "@mui/material/styles";
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
 
-import { CreateExperimentModal, ExperimentFormData } from "./CreateExperimentModal";
+import { CreateExperimentModal } from "./create-experiment-modal";
 import { ExperimentResultsTable } from "./ExperimentResultsTable";
 import { PromptVersionDrawer } from "./PromptVersionDrawer";
 
 import { getContentHeight } from "@/constants/layout";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useCreateNotebookMutation, useAttachExperimentToNotebookMutation, useSetNotebookStateMutation } from "@/hooks/useNotebooks";
-import { usePromptExperiment, useCreateExperiment, useDeleteExperiment } from "@/hooks/usePromptExperiments";
+import { usePromptExperiment, useDeleteExperiment } from "@/hooks/usePromptExperiments";
 import { formatUTCTimestamp, formatTimestampDuration, formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
@@ -61,7 +61,6 @@ export const ExperimentDetailView: React.FC = () => {
 
   // Disable query when deleting to prevent refetch attempts
   const { experiment, isLoading, error, refetch } = usePromptExperiment(experimentId, !isDeleting);
-  const createExperiment = useCreateExperiment(taskId);
   const deleteExperiment = useDeleteExperiment();
   const createNotebook = useCreateNotebookMutation(taskId);
   const attachExperimentToNotebook = useAttachExperimentToNotebookMutation();
@@ -194,85 +193,6 @@ export const ExperimentDetailView: React.FC = () => {
       console.error("Failed to delete experiment:", err);
       setIsDeleting(false);
       // Keep dialog open on error so user can see the error
-    }
-  };
-
-  const handleSubmitExperiment = async (data: ExperimentFormData): Promise<{ id: string }> => {
-    // Validate that datasetVersion is a number
-    if (typeof data.datasetVersion !== "number") {
-      throw new Error("Dataset version must be selected");
-    }
-
-    try {
-      // Transform prompt variable mappings to API format
-      const promptVariableMapping = Object.entries(data.promptVariableMappings || {}).map(([varName, columnName]) => ({
-        variable_name: varName,
-        source: {
-          type: "dataset_column" as const,
-          dataset_column: {
-            name: columnName,
-          },
-        },
-      }));
-
-      // Transform eval variable mappings to API format
-      const evalList = data.evaluators.map((evaluator) => {
-        const evalMapping = data.evalVariableMappings?.find((m) => m.evalName === evaluator.name && m.evalVersion === evaluator.version);
-
-        const variableMapping = evalMapping
-          ? Object.entries(evalMapping.mappings).map(([varName, mapping]) => {
-              if (mapping.sourceType === "dataset_column") {
-                return {
-                  variable_name: varName,
-                  source: {
-                    type: "dataset_column" as const,
-                    dataset_column: {
-                      name: mapping.datasetColumn || "",
-                    },
-                  },
-                };
-              } else {
-                return {
-                  variable_name: varName,
-                  source: {
-                    type: "experiment_output" as const,
-                    experiment_output: {
-                      json_path: mapping.jsonPath || null,
-                    },
-                  },
-                };
-              }
-            })
-          : [];
-
-        return {
-          name: evaluator.name,
-          version: evaluator.version,
-          variable_mapping: variableMapping,
-        };
-      });
-
-      const result = await createExperiment.mutateAsync({
-        name: data.name,
-        description: data.description,
-        dataset_ref: {
-          id: data.datasetId,
-          version: data.datasetVersion,
-        },
-        prompt_configs: data.promptVersions.map((pv) => ({
-          type: "saved" as const,
-          name: pv.promptName,
-          version: pv.version,
-        })),
-        prompt_variable_mapping: promptVariableMapping,
-        eval_list: evalList,
-        dataset_row_filter: data.datasetRowFilter && data.datasetRowFilter.length > 0 ? data.datasetRowFilter : undefined,
-      });
-      handleCloseModal();
-      return { id: result.id };
-    } catch (err) {
-      console.error("Failed to create experiment:", err);
-      throw err;
     }
   };
 
@@ -622,7 +542,7 @@ export const ExperimentDetailView: React.FC = () => {
       </Box>
 
       {/* Create from Existing Modal */}
-      <CreateExperimentModal open={isModalOpen} onClose={handleCloseModal} onSubmit={handleSubmitExperiment} initialData={experiment} />
+      <CreateExperimentModal templateId={experimentId} open={isModalOpen} onClose={handleCloseModal} />
 
       {/* Prompt Version Drawer */}
       {taskId && experimentId && (
