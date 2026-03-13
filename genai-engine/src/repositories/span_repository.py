@@ -637,6 +637,7 @@ class SpanRepository:
         include_metrics: bool = False,
         compute_new_metrics: bool = True,
         filters: Optional[TraceQueryRequest] = None,
+        sort_by: str = "start_time",
     ) -> tuple[list[Span], int]:
         """Query spans with optional metrics computation.
 
@@ -663,6 +664,7 @@ class SpanRepository:
                         page=page,
                         page_size=page_size,
                     ),
+                    sort_by=sort_by,
                 )
             )
 
