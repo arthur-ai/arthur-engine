@@ -1,0 +1,47 @@
+# Settings2
+
+RAG search settings configuration
+
+## Properties
+
+Name | Type | Description | Notes
+------------ | ------------- | ------------- | -------------
+**collection_name** | **str** | Name of the vector collection used for the search. | 
+**limit** | **int** |  | [optional] 
+**include_vector** | [**IncludeVector**](IncludeVector.md) |  | [optional] 
+**offset** | **int** |  | [optional] 
+**auto_limit** | **int** |  | [optional] 
+**return_metadata** | [**ReturnMetadata**](ReturnMetadata.md) |  | [optional] 
+**return_properties** | **List[str]** |  | [optional] 
+**rag_provider** | **str** |  | [optional] [default to 'weaviate']
+**alpha** | **float** | Balance between the relative weights of the keyword and vector search. 1 is pure vector search, 0 is pure keyword search. | [optional] [default to 0.7]
+**query_properties** | **List[str]** |  | [optional] 
+**fusion_type** | [**HybridFusion**](HybridFusion.md) |  | [optional] 
+**max_vector_distance** | **float** |  | [optional] 
+**minimum_match_or_operator** | **int** |  | [optional] 
+**and_operator** | **bool** |  | [optional] 
+**target_vector** | [**TargetVector1**](TargetVector1.md) |  | [optional] 
+**search_kind** | **str** |  | [optional] [default to 'vector_similarity_text_search']
+**certainty** | **float** |  | [optional] 
+**distance** | **float** |  | [optional] 
+
+## Example
+
+```python
+from _generated.models.settings2 import Settings2
+
+# TODO update the JSON string below
+json = "{}"
+# create an instance of Settings2 from a JSON string
+settings2_instance = Settings2.from_json(json)
+# print the JSON string representation of the object
+print(Settings2.to_json())
+
+# convert the object into a dict
+settings2_dict = settings2_instance.to_dict()
+# create an instance of Settings2 from a dict
+settings2_from_dict = Settings2.from_dict(settings2_dict)
+```
+[[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
+
+
