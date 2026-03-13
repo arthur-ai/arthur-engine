@@ -2374,13 +2374,13 @@ examples = ["oauth2"]
 
 [[package]]
 name = "gliner"
-version = "0.2.21"
+version = "0.2.25"
 description = "Generalist model for NER (Extract any entity types from texts)"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "gliner-0.2.21-py3-none-any.whl", hash = "sha256:05f9b8f31bccd310e8d02796badb853e5c61e313af2afa252f791512d265311e"},
-    {file = "gliner-0.2.21.tar.gz", hash = "sha256:44bc73b3e8b1a2804b333912fca729eb1fb0065f8f7b34f601bc95aa39abc749"},
+    {file = "gliner-0.2.25-py3-none-any.whl", hash = "sha256:57c6406352e52bc8977c7819f6b131418c250d633045a31e436b45fc0b39d656"},
+    {file = "gliner-0.2.25.tar.gz", hash = "sha256:ac5a8c7e4f17f837969e3594f2bf95dc05ba05a01780a16f79d5d443b3b0b98f"},
 ]
 
 [package.dependencies]
@@ -2389,11 +2389,13 @@ onnxruntime = "*"
 sentencepiece = "*"
 torch = ">=2.0.0"
 tqdm = "*"
-transformers = ">=4.38.2"
+transformers = ">=4.51.3,<5.2.0"
 
 [package.extras]
 gpu = ["onnxruntime-gpu"]
-tokenizers = ["camel_tools", "indic-nlp-library", "janome", "jieba", "langdetect", "python-mecab-ko", "spacy"]
+stanza = ["langdetect", "stanza"]
+tokenizers = ["camel_tools", "indic-nlp-library", "janome", "jieba3", "langdetect", "python-mecab-ko", "spacy", "stanza"]
+training = ["accelerate"]
 
 [[package]]
 name = "google-api-core"
@@ -8167,6 +8169,13 @@ files = [
     {file = "torch-2.10.0-2-cp311-none-macosx_11_0_arm64.whl", hash = "sha256:418997cb02d0a0f1497cf6a09f63166f9f5df9f3e16c8a716ab76a72127c714f"},
     {file = "torch-2.10.0-2-cp312-none-macosx_11_0_arm64.whl", hash = "sha256:13ec4add8c3faaed8d13e0574f5cd4a323c11655546f91fbe6afa77b57423574"},
     {file = "torch-2.10.0-2-cp313-none-macosx_11_0_arm64.whl", hash = "sha256:e521c9f030a3774ed770a9c011751fb47c4d12029a3d6522116e48431f2ff89e"},
+    {file = "torch-2.10.0-3-cp310-cp310-manylinux_2_28_x86_64.whl", hash = "sha256:a1ff626b884f8c4e897c4c33782bdacdff842a165fee79817b1dd549fdda1321"},
+    {file = "torch-2.10.0-3-cp311-cp311-manylinux_2_28_x86_64.whl", hash = "sha256:ac5bdcbb074384c66fa160c15b1ead77839e3fe7ed117d667249afce0acabfac"},
+    {file = "torch-2.10.0-3-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:98c01b8bb5e3240426dcde1446eed6f40c778091c8544767ef1168fc663a05a6"},
+    {file = "torch-2.10.0-3-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:80b1b5bfe38eb0e9f5ff09f206dcac0a87aadd084230d4a36eea5ec5232c115b"},
+    {file = "torch-2.10.0-3-cp313-cp313t-manylinux_2_28_x86_64.whl", hash = "sha256:46b3574d93a2a8134b3f5475cfb98e2eb46771794c57015f6ad1fb795ec25e49"},
+    {file = "torch-2.10.0-3-cp314-cp314-manylinux_2_28_x86_64.whl", hash = "sha256:b1d5e2aba4eb7f8e87fbe04f86442887f9167a35f092afe4c237dfcaaef6e328"},
+    {file = "torch-2.10.0-3-cp314-cp314t-manylinux_2_28_x86_64.whl", hash = "sha256:0228d20b06701c05a8f978357f657817a4a63984b0c90745def81c18aedfa591"},
     {file = "torch-2.10.0-cp310-cp310-manylinux_2_28_aarch64.whl", hash = "sha256:5276fa790a666ee8becaffff8acb711922252521b28fbce5db7db5cf9cb2026d"},
     {file = "torch-2.10.0-cp310-cp310-manylinux_2_28_x86_64.whl", hash = "sha256:aaf663927bcd490ae971469a624c322202a2a1e68936eb952535ca4cd3b90444"},
     {file = "torch-2.10.0-cp310-cp310-win_amd64.whl", hash = "sha256:a4be6a2a190b32ff5c8002a0977a25ea60e64f7ba46b1be37093c141d9c49aeb"},
@@ -9377,4 +9386,4 @@ cffi = ["cffi (>=1.17,<2.0)", "cffi (>=2.0.0b)"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.12,<3.13.dev0"
-content-hash = "fb7c99b00adbbf19617edb24ed2c1ba21e5adb01083f8883d847fef8b785914e"
+content-hash = "172204a5ab2dea845554a273354bcc5e0033cb5e003bb818fbf05fdaffd4c8fb"
