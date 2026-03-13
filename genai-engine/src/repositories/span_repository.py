@@ -115,10 +115,9 @@ class SpanRepository:
         if total_count == 0:
             return 0, []
 
-        # Get trace metadata objects directly
+        # Get trace metadata objects directly (order matches paginated_trace_ids)
         trace_metadata_list = self.span_query_service.get_trace_metadata_by_ids(
             trace_ids=paginated_trace_ids,
-            sort_method=pagination_parameters.sort,
         )
 
         # Optionally fetch and attach spans as a flat list
@@ -197,7 +196,6 @@ class SpanRepository:
         # Fetch trace metadata for input/output content
         trace_metadata_list = self.span_query_service.get_trace_metadata_by_ids(
             [trace_id],
-            PaginationSortMethod.DESCENDING,
         )
         # Convert to database models for tree building service
         trace_metadata_db = [tm._to_database_model() for tm in trace_metadata_list]
@@ -771,6 +769,7 @@ class SpanRepository:
         traces = self.tree_building_service.group_spans_into_traces(
             valid_spans,
             pagination_parameters.sort or PaginationSortMethod.DESCENDING,
+            ordered_trace_ids=paginated_trace_ids,
         )
 
         # add annotation info to trace responses if it exists

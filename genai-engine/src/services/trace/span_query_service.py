@@ -993,13 +993,14 @@ class SpanQueryService:
     def get_trace_metadata_by_ids(
         self,
         trace_ids: list[str],
-        sort_method: Optional[PaginationSortMethod] = None,
     ) -> list[TraceMetadata]:
         """Query trace metadata table directly by trace IDs.
 
+        Results are returned in the same order as the input trace_ids list,
+        since SQL IN clauses do not guarantee ordering.
+
         Args:
-            trace_ids: List of trace IDs to fetch metadata for
-            sort_method: Optional sort method to apply to results by start_time
+            trace_ids: List of trace IDs to fetch metadata for (order is preserved)
         """
         if not trace_ids:
             return []
@@ -1011,12 +1012,11 @@ class SpanQueryService:
         results = self.db_session.execute(query).scalars().all()
         trace_metadata_list = [TraceMetadata._from_database_model(tm) for tm in results]
 
-        # Apply sorting if specified (IN clause doesn't preserve order)
-        if sort_method is not None:
-            if sort_method == PaginationSortMethod.DESCENDING:
-                trace_metadata_list.sort(key=lambda tm: tm.start_time, reverse=True)
-            else:
-                trace_metadata_list.sort(key=lambda tm: tm.start_time, reverse=False)
+        # IN clause doesn't preserve order, so re-sort to match input
+        trace_order = {tid: idx for idx, tid in enumerate(trace_ids)}
+        trace_metadata_list.sort(
+            key=lambda tm: trace_order.get(tm.trace_id, len(trace_ids)),
+        )
 
         return trace_metadata_list
 
