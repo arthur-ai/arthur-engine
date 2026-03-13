@@ -19,11 +19,11 @@ export const PromptStep = withForm({
     return (
       <>
         <DialogContent>
-          <div className="py-2">
+          <Box sx={{ py: 1 }}>
             <form.AppField name="promptVariableMappings" mode="array">
               {(field) =>
                 field.state.value.map((mapping, index) => (
-                  <div key={mapping.target}>
+                  <Box key={mapping.target}>
                     <form.AppField name={`promptVariableMappings[${index}].source`}>
                       {(field) => (
                         <FormControl fullWidth error={field.state.meta.errors.length > 0}>
@@ -40,11 +40,11 @@ export const PromptStep = withForm({
                         </FormControl>
                       )}
                     </form.AppField>
-                  </div>
+                  </Box>
                 ))
               }
             </form.AppField>
-          </div>
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={onCancel}>Cancel</Button>

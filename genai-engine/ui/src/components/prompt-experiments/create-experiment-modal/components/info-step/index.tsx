@@ -79,6 +79,7 @@ export const InfoStep = withForm({
               {(field) => (
                 <TextField
                   label="Experiment Name"
+                  variant="filled"
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
                   onBlur={field.handleBlur}
@@ -91,6 +92,7 @@ export const InfoStep = withForm({
               {(field) => (
                 <TextField
                   label="Description"
+                  variant="filled"
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
                   onBlur={field.handleBlur}
@@ -148,10 +150,10 @@ const PromptSelector = withForm({
 
     return (
       <Stack sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 2 }} gap={2}>
-        <Typography variant="subtitle2" className="font-semibold">
+        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
           Prompt Versions
         </Typography>
-        <div className="grid grid-cols-2 gap-2">
+        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 2 }}>
           <form.AppField
             name="info.prompt.name"
             listeners={{
@@ -176,6 +178,7 @@ const PromptSelector = withForm({
                     <TextField
                       {...params}
                       label="Prompt"
+                      variant="filled"
                       error={field.state.meta.errors.length > 0}
                       helperText={field.state.meta.errors[0]?.message}
                     />
@@ -213,6 +216,7 @@ const PromptSelector = withForm({
                     <TextField
                       {...params}
                       label="Versions"
+                      variant="filled"
                       error={field.state.meta.errors.length > 0}
                       helperText={field.state.meta.errors[0]?.message}
                     />
@@ -221,7 +225,7 @@ const PromptSelector = withForm({
               );
             }}
           </form.AppField>
-        </div>
+        </Box>
       </Stack>
     );
   },
@@ -240,10 +244,10 @@ const DatasetSelector = withForm({
 
     return (
       <Stack sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 2 }} gap={2}>
-        <Typography variant="subtitle2" className="font-semibold">
+        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
           Dataset
         </Typography>
-        <div className="grid grid-cols-2 gap-2">
+        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 2 }}>
           <form.AppField
             name="info.dataset.id"
             listeners={{
@@ -267,6 +271,7 @@ const DatasetSelector = withForm({
                     <TextField
                       {...params}
                       label="Dataset"
+                      variant="filled"
                       error={field.state.meta.errors.length > 0}
                       helperText={field.state.meta.errors[0]?.message}
                     />
@@ -290,6 +295,7 @@ const DatasetSelector = withForm({
                     <TextField
                       {...params}
                       label="Version"
+                      variant="filled"
                       error={field.state.meta.errors.length > 0}
                       helperText={field.state.meta.errors[0]?.message}
                     />
@@ -298,7 +304,7 @@ const DatasetSelector = withForm({
               );
             }}
           </form.AppField>
-        </div>
+        </Box>
       </Stack>
     );
   },
@@ -319,7 +325,7 @@ const DatasetRowFilterSection = withForm({
       <Stack sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 2 }} gap={2}>
         <Stack direction="row" alignItems="center" justifyContent="space-between">
           <Stack direction="row" alignItems="center" gap={1}>
-            <Typography variant="subtitle2" className="font-semibold">
+            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
               Dataset Row Filter
             </Typography>
             <Typography variant="caption" color="text.secondary">
@@ -346,6 +352,7 @@ const DatasetRowFilterSection = withForm({
                           <TextField
                             {...params}
                             label="Column"
+                            variant="filled"
                             error={subField.state.meta.errors.length > 0}
                             helperText={subField.state.meta.errors[0]?.message}
                           />
@@ -361,6 +368,7 @@ const DatasetRowFilterSection = withForm({
                         label="Value"
                         value={subField.state.value}
                         onChange={(e) => subField.handleChange(e.target.value)}
+                        variant="filled"
                         error={subField.state.meta.errors.length > 0}
                         helperText={subField.state.meta.errors[0]?.message}
                         sx={{ flex: 1 }}
@@ -422,7 +430,7 @@ const EvaluatorsSelector = ({
   return (
     <>
       <Stack sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 2 }} gap={2}>
-        <Typography variant="subtitle2" className="font-semibold">
+        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
           Evaluators
         </Typography>
         {evaluators.length > 0 && (
@@ -441,7 +449,7 @@ const EvaluatorsSelector = ({
             onChange={(_, value) => {
               setDraft({ name: value?.name ?? "", version: null });
             }}
-            renderInput={(params) => <TextField {...params} label="Evaluator" />}
+            renderInput={(params) => <TextField {...params} label="Evaluator" variant="filled" />}
             sx={{ flex: 1 }}
           />
           <Autocomplete
@@ -459,6 +467,7 @@ const EvaluatorsSelector = ({
                 label="Version"
                 error={!canAdd}
                 helperText={!canAdd ? "This evaluator and version have already been added" : undefined}
+                variant="filled"
               />
             )}
             sx={{ flex: 1 }}

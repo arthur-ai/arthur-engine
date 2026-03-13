@@ -118,6 +118,7 @@ export const EvalsStep = withForm({
                                             <TextField
                                               {...params}
                                               label="Dataset Column"
+                                              variant="filled"
                                               error={field.state.meta.errors.length > 0}
                                               helperText={field.state.meta.errors[0]?.message}
                                             />
