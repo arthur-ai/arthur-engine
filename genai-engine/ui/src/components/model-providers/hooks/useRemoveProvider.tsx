@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useApi } from "@/hooks/useApi";
 import { ModelProvider } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 
 type Opts = {
   onSuccess?: () => Promise<void>;
@@ -18,10 +19,15 @@ export const useRemoveProvider = ({ onSuccess }: Opts = {}) => {
 
       return response.data;
     },
-    onSuccess: async () => {
+    onSuccess: async (_data, provider) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.providers.all() });
 
+      track(EVENT_NAMES.MODEL_PROVIDER_DELETED, { provider_name: provider });
+
       await onSuccess?.();
+    },
+    onError: (_error, provider) => {
+      track(EVENT_NAMES.MODEL_PROVIDER_DELETE_FAILED, { provider_name: provider });
     },
   });
 };
