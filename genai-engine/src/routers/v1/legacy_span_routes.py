@@ -1,7 +1,8 @@
 import json
 import logging
 from datetime import datetime
-from typing import Annotated
+from enum import Enum
+from typing import Annotated, Optional
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import (
@@ -35,6 +36,14 @@ from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 
 logger = logging.getLogger(__name__)
+
+
+class TraceSortBy(str, Enum):
+    START_TIME = "start_time"
+    TOTAL_TOKEN_COUNT = "total_token_count"
+    TOTAL_TOKEN_COST = "total_token_cost"
+    SPAN_COUNT = "span_count"
+
 
 span_routes = APIRouter(
     prefix="/v1",
@@ -78,6 +87,26 @@ def _create_response(
         status_code=status_code,
         media_type="application/json",
     )
+
+
+class ExtendedTraceQueryRequest(TraceQueryRequest):
+    """Extends TraceQueryRequest with token count filter support."""
+
+    total_token_count_eq: Optional[int] = None
+    total_token_count_gt: Optional[int] = None
+    total_token_count_gte: Optional[int] = None
+    total_token_count_lt: Optional[int] = None
+    total_token_count_lte: Optional[int] = None
+    prompt_token_count_eq: Optional[int] = None
+    prompt_token_count_gt: Optional[int] = None
+    prompt_token_count_gte: Optional[int] = None
+    prompt_token_count_lt: Optional[int] = None
+    prompt_token_count_lte: Optional[int] = None
+    completion_token_count_eq: Optional[int] = None
+    completion_token_count_gt: Optional[int] = None
+    completion_token_count_gte: Optional[int] = None
+    completion_token_count_lt: Optional[int] = None
+    completion_token_count_lte: Optional[int] = None
 
 
 def trace_query_parameters(
@@ -247,13 +276,89 @@ def trace_query_parameters(
         ge=0,
         description="Duration less than or equal to this value (seconds).",
     ),
+    # Token count filters
+    total_token_count_eq: int = Query(
+        None,
+        ge=0,
+        description="Total token count exactly equal to this value.",
+    ),
+    total_token_count_gt: int = Query(
+        None,
+        ge=0,
+        description="Total token count greater than this value.",
+    ),
+    total_token_count_gte: int = Query(
+        None,
+        ge=0,
+        description="Total token count greater than or equal to this value.",
+    ),
+    total_token_count_lt: int = Query(
+        None,
+        ge=0,
+        description="Total token count less than this value.",
+    ),
+    total_token_count_lte: int = Query(
+        None,
+        ge=0,
+        description="Total token count less than or equal to this value.",
+    ),
+    prompt_token_count_eq: int = Query(
+        None,
+        ge=0,
+        description="Prompt token count exactly equal to this value.",
+    ),
+    prompt_token_count_gt: int = Query(
+        None,
+        ge=0,
+        description="Prompt token count greater than this value.",
+    ),
+    prompt_token_count_gte: int = Query(
+        None,
+        ge=0,
+        description="Prompt token count greater than or equal to this value.",
+    ),
+    prompt_token_count_lt: int = Query(
+        None,
+        ge=0,
+        description="Prompt token count less than this value.",
+    ),
+    prompt_token_count_lte: int = Query(
+        None,
+        ge=0,
+        description="Prompt token count less than or equal to this value.",
+    ),
+    completion_token_count_eq: int = Query(
+        None,
+        ge=0,
+        description="Completion token count exactly equal to this value.",
+    ),
+    completion_token_count_gt: int = Query(
+        None,
+        ge=0,
+        description="Completion token count greater than this value.",
+    ),
+    completion_token_count_gte: int = Query(
+        None,
+        ge=0,
+        description="Completion token count greater than or equal to this value.",
+    ),
+    completion_token_count_lt: int = Query(
+        None,
+        ge=0,
+        description="Completion token count less than this value.",
+    ),
+    completion_token_count_lte: int = Query(
+        None,
+        ge=0,
+        description="Completion token count less than or equal to this value.",
+    ),
     include_experiment_traces: bool = Query(
         default=True,
         description="Include traces originating from Arthur experiments. Defaults to true.",
     ),
-) -> TraceQueryRequest:
-    """Create a TraceQueryRequest from query parameters."""
-    return TraceQueryRequest(
+) -> ExtendedTraceQueryRequest:
+    """Create an ExtendedTraceQueryRequest from query parameters."""
+    return ExtendedTraceQueryRequest(
         task_ids=task_ids,
         trace_ids=trace_ids,
         start_time=start_time,
@@ -287,6 +392,21 @@ def trace_query_parameters(
         trace_duration_gte=trace_duration_gte,
         trace_duration_lt=trace_duration_lt,
         trace_duration_lte=trace_duration_lte,
+        total_token_count_eq=total_token_count_eq,
+        total_token_count_gt=total_token_count_gt,
+        total_token_count_gte=total_token_count_gte,
+        total_token_count_lt=total_token_count_lt,
+        total_token_count_lte=total_token_count_lte,
+        prompt_token_count_eq=prompt_token_count_eq,
+        prompt_token_count_gt=prompt_token_count_gt,
+        prompt_token_count_gte=prompt_token_count_gte,
+        prompt_token_count_lt=prompt_token_count_lt,
+        prompt_token_count_lte=prompt_token_count_lte,
+        completion_token_count_eq=completion_token_count_eq,
+        completion_token_count_gt=completion_token_count_gt,
+        completion_token_count_gte=completion_token_count_gte,
+        completion_token_count_lt=completion_token_count_lt,
+        completion_token_count_lte=completion_token_count_lte,
         include_experiment_traces=include_experiment_traces,
     )
 
@@ -340,6 +460,10 @@ def query_spans(
         TraceQueryRequest,
         Depends(trace_query_parameters),
     ],
+    sort_by: TraceSortBy = Query(
+        TraceSortBy.START_TIME,
+        description="Column to sort results by.",
+    ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> QueryTracesWithMetricsResponse:
@@ -349,8 +473,9 @@ def query_spans(
         span_count, traces = span_repo.query_traces_with_filters(
             filters=trace_query,
             pagination_parameters=pagination_parameters,
-            include_metrics=True,  # Include existing metrics
-            compute_new_metrics=False,  # Don't compute new metrics
+            include_metrics=True,
+            compute_new_metrics=False,
+            sort_by=sort_by.value,
         )
         return QueryTracesWithMetricsResponse(count=span_count, traces=traces)
     except ValidationError as e:
@@ -385,6 +510,10 @@ def query_spans_with_metrics(
         TraceQueryRequest,
         Depends(trace_query_parameters),
     ],
+    sort_by: TraceSortBy = Query(
+        TraceSortBy.START_TIME,
+        description="Column to sort results by.",
+    ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> QueryTracesWithMetricsResponse:
@@ -394,8 +523,9 @@ def query_spans_with_metrics(
         span_count, traces = span_repo.query_traces_with_filters(
             filters=trace_query,
             pagination_parameters=pagination_parameters,
-            include_metrics=True,  # Include existing metrics
-            compute_new_metrics=True,  # Compute new metrics
+            include_metrics=True,
+            compute_new_metrics=True,
+            sort_by=sort_by.value,
         )
         return QueryTracesWithMetricsResponse(count=span_count, traces=traces)
     except ValidationError as e:

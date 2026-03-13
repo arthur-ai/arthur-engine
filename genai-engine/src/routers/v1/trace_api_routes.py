@@ -23,7 +23,11 @@ from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from routers.route_handler import GenaiEngineRoute
-from routers.v1.legacy_span_routes import _create_response, trace_query_parameters
+from routers.v1.legacy_span_routes import (
+    TraceSortBy,
+    _create_response,
+    trace_query_parameters,
+)
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import ApplicationConfiguration, User
@@ -118,6 +122,10 @@ def list_traces_metadata(
         TraceQueryRequest,
         Depends(trace_query_parameters),
     ],
+    sort_by: TraceSortBy = Query(
+        TraceSortBy.START_TIME,
+        description="Column to sort results by.",
+    ),
     include_spans: bool = Query(
         False,
         description="Include flat list of spans for each trace. Defaults to false for performance.",
@@ -134,6 +142,7 @@ def list_traces_metadata(
             pagination_parameters=pagination_parameters,
             user_ids=trace_query.user_ids,
             include_spans=include_spans,
+            sort_by=sort_by.value,
         )
 
         requested_currency = get_display_currency(application_config)
@@ -184,6 +193,10 @@ def list_spans_metadata(
         TraceQueryRequest,
         Depends(trace_query_parameters),
     ],
+    sort_by: TraceSortBy = Query(
+        TraceSortBy.START_TIME,
+        description="Column to sort results by.",
+    ),
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
