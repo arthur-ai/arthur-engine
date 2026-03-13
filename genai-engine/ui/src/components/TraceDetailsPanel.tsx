@@ -6,7 +6,7 @@ import React, { useState, useEffect } from "react";
 
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { TraceResponse, NestedSpanWithMetricsResponse } from "@/lib/api";
-import { formatCurrency } from "@/utils/formatters";
+import { formatCurrency, formatDateInTimezone } from "@/utils/formatters";
 
 interface TraceDetailsPanelProps {
   trace: TraceResponse | null;
@@ -184,31 +184,11 @@ const SpanNode: React.FC<SpanNodeProps> = ({ span, level, onSpanClick, selectedS
 };
 
 const SpanDetails: React.FC<SpanDetailsProps> = ({ span }) => {
+  const { timezone, use24Hour } = useDisplaySettings();
+
   if (!span) {
     return <div className="h-full flex items-center justify-center text-gray-600 dark:text-gray-400">Select a span to view details</div>;
   }
-
-  const formatTimestamp = (timestamp: string) => {
-    try {
-      const utcTimestamp = timestamp.endsWith("Z") ? timestamp : timestamp + "Z";
-      const date = new Date(utcTimestamp);
-      if (isNaN(date.getTime())) {
-        return "Invalid Date";
-      }
-      return date.toLocaleString("en-US", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
-        timeZoneName: "short",
-      });
-    } catch {
-      return "Invalid Date";
-    }
-  };
 
   const formatDuration = (startTime: string, endTime: string) => {
     const start = new Date(startTime);
@@ -287,7 +267,7 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span }) => {
             </div>
             <div>
               <span className="text-gray-600 dark:text-gray-400">Start Time:</span>
-              <span className="ml-1 text-gray-900 dark:text-gray-100">{formatTimestamp(span.start_time)}</span>
+              <span className="ml-1 text-gray-900 dark:text-gray-100">{formatDateInTimezone(span.start_time, timezone, { hour12: !use24Hour })}</span>
             </div>
             {totalTokens > 0 && (
               <>

@@ -13,13 +13,15 @@ import { TestCases } from "./components/test-cases";
 import { usePollAgentExperiment } from "./hooks/usePollAgentExperiment";
 
 import { getContentHeight } from "@/constants/layout";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useTask } from "@/hooks/useTask";
 import { EVENT_NAMES, track } from "@/services/amplitude";
-import { formatDate, formatTimestampDuration } from "@/utils/formatters";
+import { formatDateInTimezone, formatTimestampDuration } from "@/utils/formatters";
 
 export const AgentExperimentDetail = () => {
   const { task } = useTask();
   const { experimentId } = useParams<{ experimentId: string }>();
+  const { timezone, use24Hour } = useDisplaySettings();
 
   const { data: agentExperiment } = usePollAgentExperiment(experimentId);
 
@@ -67,10 +69,10 @@ export const AgentExperimentDetail = () => {
             </Stack>
             <Stack direction="row" gap={2}>
               <Typography variant="body2" color="text.secondary">
-                <span className="font-bold">Created:</span> {formatDate(agentExperiment.created_at)}
+                <span className="font-bold">Created:</span> {formatDateInTimezone(agentExperiment.created_at, timezone, { hour12: !use24Hour })}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                <span className="font-bold">Finished:</span> {formatDate(agentExperiment.finished_at)}
+                <span className="font-bold">Finished:</span> {formatDateInTimezone(agentExperiment.finished_at, timezone, { hour12: !use24Hour })}
               </Typography>
               {agentExperiment.finished_at && (
                 <Typography variant="body2" color="text.secondary">
