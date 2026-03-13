@@ -245,7 +245,7 @@ const PromptDetailView = ({
   return (
     <Box sx={{ p: 3, height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3, flexShrink: 0 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", minWidth: 0, overflow: "hidden" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", minWidth: 0, overflow: "hidden", flex: 1 }}>
           <Typography variant="h5" noWrap sx={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>
             {promptName}
           </Typography>
