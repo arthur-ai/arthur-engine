@@ -56,12 +56,13 @@ export async function computeTraceMetrics(api: Api<unknown>, { traceId }: GetTra
 
 export type GetFilteredSpansParams = CommonParams;
 
-export async function getFilteredSpans(api: Api<unknown>, { taskId, page, pageSize, filters, timeRange, sort = "desc" }: GetFilteredSpansParams) {
+export async function getFilteredSpans(api: Api<unknown>, { taskId, page, pageSize, filters, timeRange, sort = "desc", sortBy }: GetFilteredSpansParams) {
   const response = await api.api.listSpansMetadataApiV1TracesSpansGet({
     task_ids: [taskId],
     page,
     page_size: pageSize,
     sort,
+    ...(sortBy && { sort_by: sortBy }),
     start_time: getStartDate(timeRange).toISOString(),
     ...mapFiltersToRequest(filters),
   });
