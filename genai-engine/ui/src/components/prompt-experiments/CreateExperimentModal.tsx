@@ -335,7 +335,20 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
         promptName,
         page_size: 100,
       });
-      setPromptVersions(response.data.versions.filter((v) => !v.deleted_at));
+      const versions = response.data.versions.filter((v) => !v.deleted_at);
+      setPromptVersions(versions);
+
+      // Auto-select the version if there is only one available
+      if (versions.length === 1) {
+        setFormData((prev) => {
+          const alreadySelected = prev.promptVersions.some((pv) => pv.promptName === promptName && pv.version === versions[0].version);
+          if (alreadySelected) return prev;
+          return {
+            ...prev,
+            promptVersions: [...prev.promptVersions, { promptName, version: versions[0].version }],
+          };
+        });
+      }
     } catch (error) {
       console.error("Failed to load prompt versions:", error);
     } finally {
