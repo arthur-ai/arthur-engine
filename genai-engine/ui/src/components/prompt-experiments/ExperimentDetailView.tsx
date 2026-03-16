@@ -188,7 +188,7 @@ export const ExperimentDetailView: React.FC = () => {
       await deleteExperiment.mutateAsync(experimentId);
       setIsDeleteDialogOpen(false);
       // Navigate back to experiments list after successful deletion
-      navigate(`/tasks/${taskId}/prompt-experiments`);
+      navigate(`/tasks/${taskId}/prompts?tab=prompt-experiments`);
     } catch (err) {
       console.error("Failed to delete experiment:", err);
       setIsDeleting(false);
@@ -219,7 +219,7 @@ export const ExperimentDetailView: React.FC = () => {
         <Box className="mb-4">
           <Box
             className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 cursor-pointer w-fit"
-            onClick={() => navigate(`/tasks/${taskId}/prompt-experiments`)}
+            onClick={() => navigate(`/tasks/${taskId}/prompts?tab=prompt-experiments`)}
           >
             <ArrowBackIcon fontSize="small" />
             <Typography variant="body2" className="font-medium">
