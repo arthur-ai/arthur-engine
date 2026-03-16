@@ -43,13 +43,31 @@ export const TracesWelcomePage: React.FC = () => {
   };
 
   const handleCopyTaskId = async () => {
-    if (task?.id) {
+    const id = task?.id;
+    if (id) {
       try {
-        await navigator.clipboard.writeText(task.id);
+        if (navigator.clipboard) {
+          await navigator.clipboard.writeText(id);
+        } else {
+          // Fallback for non-secure contexts (HTTP) where navigator.clipboard is unavailable
+          const textArea = document.createElement("textarea");
+          textArea.value = id;
+          textArea.style.position = "fixed";
+          textArea.style.left = "-9999px";
+          textArea.style.top = "-9999px";
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          const success = document.execCommand("copy");
+          document.body.removeChild(textArea);
+          if (!success) {
+            throw new Error("Failed to copy to clipboard");
+          }
+        }
         welcomeStore.getState().setTaskIdCopied(true);
         enqueueSnackbar("Task ID copied to clipboard", { variant: "success" });
         track(EVENT_NAMES.ONBOARDING_TASK_ID_COPIED, {
-          task_id: task.id,
+          task_id: id,
           source: "traces_welcome",
         });
       } catch (_err) {
