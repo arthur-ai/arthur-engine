@@ -150,7 +150,14 @@ class Arthur:
                 f"Missing optional dependency '{package}'. "
                 f"Install it with: pip install arthur-observability-sdk[{extra_name}]"
             )
-        instrumentor_cls = getattr(mod, class_name)
+        try:
+            instrumentor_cls = getattr(mod, class_name)
+        except AttributeError:
+            raise ImportError(
+                f"Module '{module_path}' does not export '{class_name}'. "
+                f"You may have an incompatible version of '{package}'. "
+                f"Try: pip install --upgrade {package}"
+            )
         instrumentor = instrumentor_cls()
         kwargs: Dict[str, Any] = {}
         if self._tracer_provider is not None:
@@ -370,9 +377,16 @@ class Arthur:
     # Shutdown
     # ------------------------------------------------------------------
 
-    def shutdown(self) -> None:
+    def shutdown(self, timeout_millis: int = 30_000) -> None:
+        """Flush pending spans and release resources.
+
+        Args:
+            timeout_millis: Max time (ms) to wait for span export before
+                giving up.  Defaults to 30 000 (30 s).
+        """
         try:
             if self._tracer_provider is not None:
+                self._tracer_provider.force_flush(timeout_millis=timeout_millis)
                 self._tracer_provider.shutdown()
         finally:
             self._api_client.close()

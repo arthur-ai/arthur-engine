@@ -151,4 +151,7 @@ class ArthurAPIClient:
         )
 
     def close(self) -> None:
-        self._api_client.rest_client.pool_manager.clear()
+        try:
+            self._api_client.rest_client.pool_manager.clear()
+        except AttributeError:
+            logger.debug("Could not close API client pool — internal structure may have changed.")
