@@ -8,10 +8,10 @@ import { Link as MuiLink } from "@mui/material";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
+import { useUpdateAgenticNotebook } from "../../../hooks/useUpdateAgenticNotebook";
 import { agentNotebookStateFormOpts } from "../../form";
 import { useMetaStore } from "../../store/meta.store";
 import { SubmitButton } from "../submit-button";
-import { useUpdateAgenticNotebook } from "../../../hooks/useUpdateAgenticNotebook";
 
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { AgenticNotebookDetail } from "@/lib/api-client/api-client";
