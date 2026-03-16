@@ -11,16 +11,17 @@ type Opts = {
 
 export const useUpdateAgenticNotebook = (opts: Opts = {}) => {
   const queryClient = useQueryClient();
-  const { api } = useApi()!;
+  const apiContext = useApi();
   const { task } = useTask();
 
   return useMutation({
     mutationFn: async ({ notebookId, request }: { notebookId: string; request: UpdateAgenticNotebookRequest }) => {
-      const response = await api.updateAgenticNotebookApiV1AgenticNotebooksNotebookIdPut(notebookId, request);
+      if (!apiContext) throw new Error("API client not available");
+      const response = await apiContext.api.updateAgenticNotebookApiV1AgenticNotebooksNotebookIdPut(notebookId, request);
       return response.data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.agentNotebooks.all(task!.id) });
+      if (task?.id) queryClient.invalidateQueries({ queryKey: queryKeys.agentNotebooks.all(task.id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.agentNotebooks.byId(data.id) });
       opts.onSuccess?.(data);
     },

@@ -5,7 +5,7 @@ import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import SaveIcon from "@mui/icons-material/Save";
 import { Box, Button, ButtonGroup, Chip, CircularProgress, IconButton, Stack, TextField, Tooltip, Typography } from "@mui/material";
 import { Link as MuiLink } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { useUpdateAgenticNotebook } from "../../../hooks/useUpdateAgenticNotebook";
@@ -34,6 +34,7 @@ export const Header = withForm({
     const updateMutation = useUpdateAgenticNotebook();
     const [isRenaming, setIsRenaming] = useState(false);
     const [newNotebookName, setNewNotebookName] = useState(notebook.name);
+    const isSavingRenameRef = useRef(false);
 
     useEffect(() => {
       setNewNotebookName(notebook.name);
@@ -50,13 +51,19 @@ export const Header = withForm({
     };
 
     const handleSaveRename = async () => {
+      if (isSavingRenameRef.current) return;
       const trimmed = newNotebookName.trim();
       if (!trimmed || trimmed === notebook.name) {
         handleCancelRename();
         return;
       }
+      isSavingRenameRef.current = true;
       setIsRenaming(false);
-      await updateMutation.mutateAsync({ notebookId: notebook.id, request: { name: trimmed, description: notebook.description } });
+      try {
+        await updateMutation.mutateAsync({ notebookId: notebook.id, request: { name: trimmed, description: notebook.description } });
+      } finally {
+        isSavingRenameRef.current = false;
+      }
     };
 
     return (

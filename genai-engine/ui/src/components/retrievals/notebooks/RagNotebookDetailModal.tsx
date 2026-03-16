@@ -18,7 +18,7 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { useRagNotebook, useRagNotebookHistoryWithPolling, useUpdateRagNotebookMutation } from "@/hooks/useRagNotebooks";
@@ -39,6 +39,7 @@ const RagNotebookDetailModal: React.FC<RagNotebookDetailModalProps> = ({ open, n
 
   const [isRenaming, setIsRenaming] = useState(false);
   const [newNotebookName, setNewNotebookName] = useState("");
+  const isSavingRenameRef = useRef(false);
 
   useEffect(() => {
     if (notebook?.name) {
@@ -57,13 +58,19 @@ const RagNotebookDetailModal: React.FC<RagNotebookDetailModalProps> = ({ open, n
   };
 
   const handleSaveRename = async () => {
+    if (isSavingRenameRef.current) return;
     const trimmed = newNotebookName.trim();
     if (!trimmed || !notebookId || trimmed === notebook?.name) {
       handleCancelRename();
       return;
     }
+    isSavingRenameRef.current = true;
     setIsRenaming(false);
-    await updateMutation.mutateAsync({ notebookId, request: { name: trimmed, description: notebook?.description } });
+    try {
+      await updateMutation.mutateAsync({ notebookId, request: { name: trimmed, description: notebook?.description } });
+    } finally {
+      isSavingRenameRef.current = false;
+    }
   };
 
   const handleLaunchNotebook = () => {
@@ -123,7 +130,7 @@ const RagNotebookDetailModal: React.FC<RagNotebookDetailModalProps> = ({ open, n
           )}
         </Box>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Button variant="outlined" size="small" startIcon={<LaunchIcon />} onClick={handleLaunchNotebook} disabled={!notebookId}>
+          <Button variant="contained" size="small" startIcon={<LaunchIcon />} onClick={handleLaunchNotebook} disabled={!notebookId}>
             Launch
           </Button>
           <IconButton onClick={onClose} size="small">

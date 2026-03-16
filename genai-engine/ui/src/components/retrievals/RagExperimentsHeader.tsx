@@ -8,7 +8,7 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { useRagPanels } from "./RagPanelsContext";
@@ -44,6 +44,7 @@ export const RagExperimentsHeader: React.FC<RagExperimentsHeaderProps> = ({
   const updateMutation = useUpdateRagNotebookMutation();
   const [isRenaming, setIsRenaming] = useState(false);
   const [newNotebookName, setNewNotebookName] = useState(notebookName ?? "");
+  const isSavingRenameRef = useRef(false);
 
   useEffect(() => {
     if (notebookName) setNewNotebookName(notebookName);
@@ -60,13 +61,19 @@ export const RagExperimentsHeader: React.FC<RagExperimentsHeaderProps> = ({
   };
 
   const handleSaveRename = async () => {
+    if (isSavingRenameRef.current) return;
     const trimmed = newNotebookName.trim();
     if (!trimmed || !notebookId || trimmed === notebookName) {
       handleCancelRename();
       return;
     }
+    isSavingRenameRef.current = true;
     setIsRenaming(false);
-    await updateMutation.mutateAsync({ notebookId, request: { name: trimmed, description: notebookDescription } });
+    try {
+      await updateMutation.mutateAsync({ notebookId, request: { name: trimmed, description: notebookDescription } });
+    } finally {
+      isSavingRenameRef.current = false;
+    }
   };
 
   const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
