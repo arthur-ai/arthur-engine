@@ -98,12 +98,12 @@ export const Header = withForm({
                     onBlur={handleSaveRename}
                     autoFocus
                     sx={{
-                      "& .MuiInputBase-root": { fontSize: "1.5rem", fontWeight: 700 },
+                      "& .MuiInputBase-root": { fontSize: "1.25rem", fontWeight: 600 },
                     }}
                   />
                 ) : (
                   <>
-                    <Typography variant="h5" color="text.primary" fontWeight="bold">
+                    <Typography variant="h6" sx={{ fontWeight: 600, color: "text.primary" }}>
                       {notebook.name}
                     </Typography>
                     <IconButton

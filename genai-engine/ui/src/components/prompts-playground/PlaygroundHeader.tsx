@@ -113,7 +113,7 @@ export default function PlaygroundHeader({
                     autoFocus
                     sx={{
                       "& .MuiInputBase-root": {
-                        fontSize: "0.875rem",
+                        fontSize: "1.25rem",
                         fontWeight: 600,
                       },
                     }}
@@ -161,7 +161,7 @@ export default function PlaygroundHeader({
                         </Button>
                       </span>
                     </Tooltip>
-                    <Typography variant="body2" sx={{ fontWeight: 600, color: "text.primary" }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600, color: "text.primary" }}>
                       {notebookName || "Notebook"}
                     </Typography>
                     <IconButton
