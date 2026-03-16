@@ -18,7 +18,14 @@ from arthur_common.models.llm_model_providers import (
 from arthur_common.models.task_eval_schemas import TraceTransformDefinition
 from fastapi import HTTPException, Query
 from litellm.types.llms.anthropic import AnthropicThinkingParam
-from pydantic import BaseModel, Field, PrivateAttr, SecretStr, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    PrivateAttr,
+    SecretStr,
+    model_validator,
+)
 from pydantic_core import Url
 from weaviate.classes.query import BM25Operator
 from weaviate.collections.classes.grpc import (
@@ -79,6 +86,7 @@ ALLOWED_TRACE_RETENTION_DAYS = (7, 14, 30, 90, 120, 365)
 
 class ApplicationConfigurationUpdateRequest(BaseModel):
     chat_task_id: Optional[str] = None
+    default_currency: Optional[str] = None
     document_storage_configuration: Optional[
         DocumentStorageConfigurationUpdateRequest
     ] = None
@@ -817,6 +825,8 @@ class CreateEvalRequest(BaseModel):
 
 
 class CreateAgenticPromptRequest(BaseModel):
+    model_config = ConfigDict(use_enum_values=True)
+
     messages: List[OpenAIMessage] = Field(
         description="List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])",
     )
@@ -834,9 +844,6 @@ class CreateAgenticPromptRequest(BaseModel):
         None,
         description="LLM configurations for this prompt (e.g. temperature, max_tokens, etc.)",
     )
-
-    class Config:
-        use_enum_values = True
 
 
 class BaseCompletionRequest(BaseModel):
@@ -1045,6 +1052,14 @@ class ContinuousEvalListFilterRequest(BaseModel):
         None,
         description="List of continuous eval IDs to filter on",
     )
+    llm_eval_name_exact: Optional[str] = Field(
+        None,
+        description="Exact LLM eval name to filter on (case-sensitive exact match)",
+    )
+    llm_eval_version: Optional[int] = Field(
+        None,
+        description="LLM eval version to filter on",
+    )
 
     @staticmethod
     def from_query_parameters(
@@ -1072,6 +1087,14 @@ class ContinuousEvalListFilterRequest(BaseModel):
             None,
             description="List of continuous eval IDs to filter on.",
         ),
+        llm_eval_name_exact: Optional[str] = Query(
+            None,
+            description="Exact LLM eval name to filter on (case-sensitive exact match).",
+        ),
+        llm_eval_version: Optional[int] = Query(
+            None,
+            description="LLM eval version to filter on.",
+        ),
     ) -> "ContinuousEvalListFilterRequest":
         """Create a ContinuousEvalListFilterRequest from query parameters."""
         parsed_continuous_eval_ids = None
@@ -1095,6 +1118,8 @@ class ContinuousEvalListFilterRequest(BaseModel):
             ),
             enabled=enabled.lower() == "true" if enabled else None,
             continuous_eval_ids=parsed_continuous_eval_ids,
+            llm_eval_name_exact=llm_eval_name_exact,
+            llm_eval_version=llm_eval_version,
         )
 
 

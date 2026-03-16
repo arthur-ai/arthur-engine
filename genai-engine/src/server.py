@@ -43,7 +43,6 @@ from routers.auth_routes import auth_routes
 from routers.chat_routes import app_chat_routes
 from routers.health_routes import health_router
 from routers.user_routes import user_management_routes
-from routers.v1.agent_discovery_routes import agent_discovery_routes
 from routers.v1.agent_polling_routes import agent_polling_routes
 from routers.v1.agentic_experiment_routes import agentic_experiment_routes
 from routers.v1.agentic_notebook_routes import agentic_notebook_routes
@@ -458,7 +457,6 @@ def get_app_with_routes() -> FastAPI:
             agentic_experiment_routes,
             transform_routes,
             continuous_eval_routes,
-            agent_discovery_routes,
             agent_polling_routes,
         ],
     )
@@ -499,7 +497,6 @@ def get_test_app() -> FastAPI:
             agentic_experiment_routes,
             transform_routes,
             continuous_eval_routes,
-            agent_discovery_routes,
             agent_polling_routes,
         ],
     )
@@ -550,7 +547,6 @@ def get_app() -> FastAPI:
             agentic_experiment_routes,
             transform_routes,
             continuous_eval_routes,
-            agent_discovery_routes,
             agent_polling_routes,
         ],
     )

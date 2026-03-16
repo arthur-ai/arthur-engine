@@ -23,7 +23,21 @@ const getCellValue = (value: unknown) => {
   try {
     return JSON.stringify(value);
   } catch {
-    return String(value);
+    // JSON.stringify failed (e.g. circular reference). Use a replacer to handle
+    // circular refs rather than falling back to .toString() which produces
+    // "[object Object],[object Object]" for arrays of objects.
+    try {
+      const seen = new WeakSet();
+      return JSON.stringify(value, (_, v) => {
+        if (typeof v === "object" && v !== null) {
+          if (seen.has(v)) return "[Circular]";
+          seen.add(v);
+        }
+        return v;
+      });
+    } catch {
+      return String(value);
+    }
   }
 };
 

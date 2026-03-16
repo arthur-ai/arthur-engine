@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.427"
+        "version": "2.1.460"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -82,6 +82,28 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/display-settings": {
+            "get": {
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Get Display Settings",
+                "description": "Get display settings (e.g. default currency for cost formatting).",
+                "operationId": "get_display_settings_api_v2_display_settings_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DisplaySettingsResponse"
                                 }
                             }
                         }
@@ -13533,7 +13555,7 @@
                     "Transforms"
                 ],
                 "summary": "Delete Transform",
-                "description": "Delete a transform.",
+                "description": "Delete a transform. Returns 409 if the transform is referenced by continuous evals, agentic experiments, or agentic notebooks.",
                 "operationId": "delete_transform_api_v1_traces_transforms__transform_id__delete",
                 "security": [
                     {
@@ -13557,6 +13579,60 @@
                 "responses": {
                     "204": {
                         "description": "Successful Response"
+                    },
+                    "409": {
+                        "description": "Transform has dependent resources that must be removed first."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/traces/transforms/{transform_id}/dependents": {
+            "get": {
+                "tags": [
+                    "Transforms"
+                ],
+                "summary": "Get Transform Dependents",
+                "description": "Get resources that depend on this transform.",
+                "operationId": "get_transform_dependents_api_v1_traces_transforms__transform_id__dependents_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "transform_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the transform.",
+                            "title": "Transform Id"
+                        },
+                        "description": "ID of the transform."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TransformDependents"
+                                }
+                            }
+                        }
                     },
                     "422": {
                         "description": "Validation Error",
@@ -13954,6 +14030,42 @@
                             "title": "Continuous Eval Ids"
                         },
                         "description": "List of continuous eval IDs to filter on."
+                    },
+                    {
+                        "name": "llm_eval_name_exact",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Exact LLM eval name to filter on (case-sensitive exact match).",
+                            "title": "Llm Eval Name Exact"
+                        },
+                        "description": "Exact LLM eval name to filter on (case-sensitive exact match)."
+                    },
+                    {
+                        "name": "llm_eval_version",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "LLM eval version to filter on.",
+                            "title": "Llm Eval Version"
+                        },
+                        "description": "LLM eval version to filter on."
                     }
                 ],
                 "responses": {
@@ -14511,54 +14623,6 @@
                         }
                     }
                 }
-            }
-        },
-        "/api/v1/discover-agents": {
-            "post": {
-                "tags": [
-                    "Agent Discovery"
-                ],
-                "summary": "Discover Agents",
-                "description": "DEPRECATED: Use GET /api/v2/agent-tasks instead. Discovery is now handled automatically by the global polling service.",
-                "operationId": "discover_agents_api_v1_discover_agents_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/DiscoverAgentsRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/DiscoverAgentsResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "deprecated": true,
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ]
             }
         },
         "/api/v1/tasks/{task_id}/agent-polling/execute": {
@@ -18323,74 +18387,6 @@
                 ],
                 "title": "CreateUserRequest"
             },
-            "CreationSource": {
-                "properties": {
-                    "task_id": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "uuid"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Task Id",
-                        "description": "Optional UUID of the task that created this agent."
-                    },
-                    "top_level_span_name": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Top Level Span Name",
-                        "description": "Optional top-level span name (legacy field, prefer GCP fields for GCP agents)."
-                    },
-                    "gcp_project_id": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Gcp Project Id",
-                        "description": "Optional GCP project ID where the agent is running."
-                    },
-                    "gcp_region": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Gcp Region",
-                        "description": "Optional GCP region where the agent is running."
-                    },
-                    "gcp_reasoning_engine_id": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Gcp Reasoning Engine Id",
-                        "description": "Optional GCP Vertex AI Reasoning Engine ID."
-                    }
-                },
-                "type": "object",
-                "title": "CreationSource",
-                "description": "Source information for how an unregistered agent was created.\n\n.. deprecated::\n    This flat CreationSource model is deprecated.\n    Use the discriminated union CreationSource from\n    arthur_common.models.agent_governance_schemas instead."
-            },
             "DailyAgenticAnnotationStats": {
                 "properties": {
                     "date": {
@@ -18825,52 +18821,6 @@
                 ],
                 "title": "DatasetVersionRowResponse"
             },
-            "DiscoverAgentsRequest": {
-                "properties": {
-                    "data_plane_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Data Plane Id",
-                        "description": "UUID of the data plane to discover agents from"
-                    },
-                    "lookback_hours": {
-                        "type": "integer",
-                        "title": "Lookback Hours",
-                        "description": "Number of hours to look back for traces (default 30 days)",
-                        "default": 720
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "data_plane_id"
-                ],
-                "title": "DiscoverAgentsRequest",
-                "description": "Request to discover agents from infrastructure.\n\n.. deprecated::\n    Use GET /api/v2/agent-tasks instead."
-            },
-            "DiscoverAgentsResponse": {
-                "properties": {
-                    "agents": {
-                        "items": {
-                            "$ref": "#/components/schemas/DiscoveredAgent"
-                        },
-                        "type": "array",
-                        "title": "Agents",
-                        "description": "List of discovered agents"
-                    },
-                    "metadata": {
-                        "additionalProperties": true,
-                        "type": "object",
-                        "title": "Metadata",
-                        "description": "Discovery metadata (e.g., traces processed, errors)"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "agents"
-                ],
-                "title": "DiscoverAgentsResponse",
-                "description": "Response containing discovered agents.\n\n.. deprecated::\n    Use GET /api/v2/agent-tasks instead."
-            },
             "DiscoverAndPollResponse": {
                 "properties": {
                     "status": {
@@ -18897,73 +18847,6 @@
                 ],
                 "title": "DiscoverAndPollResponse",
                 "description": "Response model for the execute-all agent polling endpoint."
-            },
-            "DiscoveredAgent": {
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "title": "Name",
-                        "description": "Name of the agent."
-                    },
-                    "creation_source": {
-                        "$ref": "#/components/schemas/CreationSource",
-                        "description": "Information about how this agent was created."
-                    },
-                    "first_detected": {
-                        "type": "string",
-                        "title": "First Detected",
-                        "description": "ISO 8601 timestamp when agent was first detected."
-                    },
-                    "num_spans": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Num Spans",
-                        "description": "Number of spans associated with this agent."
-                    },
-                    "infrastructure": {
-                        "type": "string",
-                        "title": "Infrastructure",
-                        "description": "Infrastructure where this agent is running (e.g., 'GCP')."
-                    },
-                    "data_plane_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Data Plane Id",
-                        "description": "UUID of the data plane where this agent was detected."
-                    },
-                    "tools": {
-                        "items": {
-                            "$ref": "#/components/schemas/Tool"
-                        },
-                        "type": "array",
-                        "title": "Tools",
-                        "description": "List of tools used by this agent."
-                    },
-                    "sub_agents": {
-                        "items": {
-                            "$ref": "#/components/schemas/SubAgent"
-                        },
-                        "type": "array",
-                        "title": "Sub Agents",
-                        "description": "List of sub-agents used by this agent."
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "name",
-                    "creation_source",
-                    "first_detected",
-                    "infrastructure",
-                    "data_plane_id"
-                ],
-                "title": "DiscoveredAgent",
-                "description": "A discovered agent from infrastructure.\n\n.. deprecated::\n    Use GET /api/v2/agent-tasks with EnrichedTaskResponse instead."
             },
             "EnrichedTaskResponse": {
                 "properties": {
@@ -19109,6 +18992,18 @@
                 ],
                 "title": "EnrichedTaskResponse",
                 "description": "Response model for agent-tasks endpoint with enriched metadata."
+            },
+            "DisplaySettingsResponse": {
+                "properties": {
+                    "default_currency": {
+                        "type": "string",
+                        "title": "Default Currency",
+                        "default": "USD"
+                    }
+                },
+                "type": "object",
+                "title": "DisplaySettingsResponse",
+                "description": "Public display settings (e.g. default currency for cost formatting)."
             },
             "EvalExecution": {
                 "properties": {
@@ -27245,6 +27140,18 @@
                         "title": "Count",
                         "description": "Total number of sessions matching filters"
                     },
+                    "display_currency": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Display Currency",
+                        "description": "Currency code for cost fields"
+                    },
                     "sessions": {
                         "items": {
                             "$ref": "#/components/schemas/SessionMetadataResponse"
@@ -27420,6 +27327,18 @@
                         "title": "Count",
                         "description": "Number of traces in this session"
                     },
+                    "display_currency": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Display Currency",
+                        "description": "Currency code for cost fields"
+                    },
                     "traces": {
                         "items": {
                             "$ref": "#/components/schemas/TraceResponse"
@@ -27486,6 +27405,18 @@
                         "type": "integer",
                         "title": "Count",
                         "description": "Total number of spans matching filters"
+                    },
+                    "display_currency": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Display Currency",
+                        "description": "Currency code for cost fields"
                     },
                     "spans": {
                         "items": {
@@ -28932,6 +28863,18 @@
                         "title": "Count",
                         "description": "Total number of traces matching filters"
                     },
+                    "display_currency": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Display Currency",
+                        "description": "Currency code for cost fields"
+                    },
                     "traces": {
                         "items": {
                             "$ref": "#/components/schemas/TraceMetadataResponse"
@@ -29470,6 +29413,18 @@
                         "title": "Count",
                         "description": "Total number of users matching filters"
                     },
+                    "display_currency": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Display Currency",
+                        "description": "Currency code for cost fields"
+                    },
                     "users": {
                         "items": {
                             "$ref": "#/components/schemas/TraceUserMetadataResponse"
@@ -29629,6 +29584,56 @@
                 ],
                 "title": "TraceUserMetadataResponse",
                 "description": "User summary metadata in trace context"
+            },
+            "TransformDependentRef": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "ID of the dependent resource."
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the dependent resource."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name"
+                ],
+                "title": "TransformDependentRef"
+            },
+            "TransformDependents": {
+                "properties": {
+                    "continuous_evals": {
+                        "items": {
+                            "$ref": "#/components/schemas/TransformDependentRef"
+                        },
+                        "type": "array",
+                        "title": "Continuous Evals",
+                        "description": "Continuous evals that reference this transform."
+                    },
+                    "agentic_experiments": {
+                        "items": {
+                            "$ref": "#/components/schemas/TransformDependentRef"
+                        },
+                        "type": "array",
+                        "title": "Agentic Experiments",
+                        "description": "Agentic experiments that reference this transform."
+                    },
+                    "agentic_notebooks": {
+                        "items": {
+                            "$ref": "#/components/schemas/TransformDependentRef"
+                        },
+                        "type": "array",
+                        "title": "Agentic Notebooks",
+                        "description": "Agentic notebooks that reference this transform."
+                    }
+                },
+                "type": "object",
+                "title": "TransformDependents"
             },
             "TransformExtractionResponseList": {
                 "properties": {

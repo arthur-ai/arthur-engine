@@ -67,7 +67,7 @@ export const AllTasks: React.FC = () => {
       result = result.filter((t) => !t.is_system_task);
     }
 
-    if (inactiveDays > 0) {
+    if (inactiveDays !== "archived" && inactiveDays > 0) {
       const cutoff = Date.now() - inactiveDays * 24 * 60 * 60 * 1000;
       result = result.filter((t) => t.updated_at >= cutoff);
     }
@@ -365,11 +365,17 @@ export const AllTasks: React.FC = () => {
                 {filteredTasks.length === 0 ? (
                   <Box sx={{ textAlign: "center", py: 6 }}>
                     <Typography variant="h6" color="text.secondary">
-                      No tasks active in the last {inactiveDays} days
+                      {inactiveDays === 0
+                        ? "No tasks found"
+                        : inactiveDays === "archived"
+                          ? "No archived tasks found"
+                          : `No tasks active in the last ${inactiveDays} days`}
                     </Typography>
-                    <Typography variant="body2" color="text.disabled">
-                      Try expanding the time range or selecting "All time".
-                    </Typography>
+                    {inactiveDays !== 0 && inactiveDays !== "archived" && (
+                      <Typography variant="body2" color="text.disabled">
+                        Try expanding the time range or selecting &quot;All time&quot;.
+                      </Typography>
+                    )}
                   </Box>
                 ) : (
                   <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" } }}>

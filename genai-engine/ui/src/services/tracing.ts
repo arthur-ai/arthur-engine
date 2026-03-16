@@ -1,5 +1,5 @@
-import { getStartDate, IncomingFilter, mapFiltersToRequest } from "@/components/traces/components/filtering/mapper";
-import { TimeRange } from "@/components/traces/constants";
+import { getStartDate, IncomingFilter, mapFiltersToRequest, type TimeRange } from "@arthur/shared-components";
+
 import { Api } from "@/lib/api";
 
 type CommonParams = {

@@ -1,3 +1,4 @@
+import { useAppForm } from "@arthur/shared-components";
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Divider, FormControlLabel, Stack, Switch, Typography } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
 import { useSnackbar } from "notistack";
@@ -10,7 +11,6 @@ import { useCreateContinuousEval } from "../../hooks/useCreateContinuousEval";
 import { DetailsFieldGroup, EvaluatorSelector, TransformSelector } from "../../new";
 import { VariableMappingSection } from "../variable-mapping";
 
-import { useAppForm } from "@/components/traces/components/filtering/hooks/form";
 import type { ContinuousEvalTransformVariableMappingRequest } from "@/lib/api-client/api-client";
 
 type Props = {
@@ -88,7 +88,7 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
     onSubmit: async ({ value }) => {
       const { id } = await createContinuousEval.mutateAsync({
         name: value.name,
-        description: value.description,
+        description: value.description?.trim() || undefined,
         enabled: value.enabled,
         llm_eval_name: value.evaluator.name!,
         llm_eval_version: value.evaluator.version!,

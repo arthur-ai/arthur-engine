@@ -38,7 +38,6 @@ export function useExperimentConfig({
   const [experimentConfig, setExperimentConfig] = useState<Partial<PromptExperimentDetail> | null>(initialData.experimentConfig);
   const [experimentRuns, setExperimentRuns] = useState<PromptExperimentSummary[]>(initialData.experimentRuns);
 
-  // Overwrite dialog state
   const [createExperimentModalOpen, setCreateExperimentModalOpen] = useState(false);
   const [showPromptOverwriteDialog, setShowPromptOverwriteDialog] = useState(false);
   const [pendingConfigForPromptOverwrite, setPendingConfigForPromptOverwrite] = useState<Partial<PromptExperimentDetail> | null>(null);

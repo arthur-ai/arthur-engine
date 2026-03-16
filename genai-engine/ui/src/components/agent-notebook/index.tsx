@@ -1,3 +1,4 @@
+import { useAppForm } from "@arthur/shared-components";
 import AddIcon from "@mui/icons-material/Add";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import {
@@ -16,10 +17,8 @@ import {
 } from "@mui/material";
 import { MaterialReactTable, useMaterialReactTable } from "material-react-table";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import z from "zod";
-
-import { useAppForm } from "../traces/components/filtering/hooks/form";
 
 import { columns } from "./data/columns";
 import { useAgentNotebooks } from "./hooks/useAgentNotebooks";
@@ -33,7 +32,15 @@ import { EVENT_NAMES, track } from "@/services/amplitude";
 
 const DEFAULT_DATA: AgenticNotebookSummary[] = [];
 
-export const AgentNotebook = () => {
+interface AgentNotebookProps {
+  embedded?: boolean;
+  isCreateModalOpen?: boolean;
+  onCreateModalOpen?: () => void;
+  onCreateModalClose?: () => void;
+}
+
+export const AgentNotebook = ({ embedded = false, isCreateModalOpen, onCreateModalOpen, onCreateModalClose }: AgentNotebookProps) => {
+  const { id: taskId } = useParams<{ id: string }>();
   const { pagination, props } = useMRTPagination();
   const navigate = useNavigate();
 
@@ -46,14 +53,19 @@ export const AgentNotebook = () => {
       await createAgenticNotebook.mutateAsync(value);
     },
   });
-  const [newDialogOpen, setNewDialogOpen] = useState(false);
+  const [internalDialogOpen, setInternalDialogOpen] = useState(false);
+  const dialogOpen = isCreateModalOpen !== undefined ? isCreateModalOpen : internalDialogOpen;
   const { data, isLoading, isRefetching } = useAgentNotebooks({ page: pagination.pageIndex, page_size: pagination.pageSize });
 
   const createAgenticNotebook = useCreateAgenticNotebook({
     onSuccess: (data) => {
-      setNewDialogOpen(false);
+      if (onCreateModalClose) {
+        onCreateModalClose();
+      } else {
+        setInternalDialogOpen(false);
+      }
       track(EVENT_NAMES.AGENT_NOTEBOOK_CREATED, { notebook_id: data.id });
-      navigate(`./${data.id}`);
+      navigate(`/tasks/${taskId}/agentic-notebooks/${data.id}`);
     },
   });
 
@@ -61,12 +73,20 @@ export const AgentNotebook = () => {
 
   const handleCreateNotebook = () => {
     track(EVENT_NAMES.AGENT_NOTEBOOK_INTENT_CREATE);
-    setNewDialogOpen(true);
+    if (onCreateModalOpen) {
+      onCreateModalOpen();
+    } else {
+      setInternalDialogOpen(true);
+    }
   };
 
   const handleCloseCreateNotebook = () => {
     track(EVENT_NAMES.AGENT_NOTEBOOK_INTENT_CANCEL);
-    setNewDialogOpen(false);
+    if (onCreateModalClose) {
+      onCreateModalClose();
+    } else {
+      setInternalDialogOpen(false);
+    }
   };
 
   const table = useMaterialReactTable({
@@ -93,7 +113,7 @@ export const AgentNotebook = () => {
     },
     muiTableBodyRowProps: ({ row }) => ({
       onClick: () => {
-        navigate(`./${row.original.id}`);
+        navigate(`/tasks/${taskId}/agentic-notebooks/${row.original.id}`);
       },
       sx: {
         cursor: "pointer",
@@ -123,34 +143,36 @@ export const AgentNotebook = () => {
     <>
       <Stack
         sx={{
-          height: getContentHeight(),
+          height: embedded ? "100%" : getContentHeight(),
         }}
       >
-        <Box
-          className="flex flex-col lg:flex-row lg:items-center justify-between gap-4"
-          sx={{
-            px: 3,
-            pt: 3,
-            pb: 2,
-            borderBottom: 1,
-            borderColor: "divider",
-            backgroundColor: "background.paper",
-          }}
-        >
-          <div>
-            <Typography variant="h5" color="text.primary" fontWeight="bold" mb={0.5}>
-              Agentic Notebooks
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Use agentic notebooks to test and optimize agent-based task execution strategies with a reusable configuration.
-            </Typography>
-          </div>
-          <ButtonGroup size="small" variant="contained" disableElevation>
-            <Button startIcon={<AddIcon />} onClick={handleCreateNotebook}>
-              Notebook
-            </Button>
-          </ButtonGroup>
-        </Box>
+        {!embedded && (
+          <Box
+            className="flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+            sx={{
+              px: 3,
+              pt: 3,
+              pb: 2,
+              borderBottom: 1,
+              borderColor: "divider",
+              backgroundColor: "background.paper",
+            }}
+          >
+            <div>
+              <Typography variant="h5" color="text.primary" fontWeight="bold" mb={0.5}>
+                Agentic Notebooks
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Use agentic notebooks to test and optimize agent-based task execution strategies with a reusable configuration.
+              </Typography>
+            </div>
+            <ButtonGroup size="small" variant="contained" disableElevation>
+              <Button startIcon={<AddIcon />} onClick={handleCreateNotebook}>
+                Notebook
+              </Button>
+            </ButtonGroup>
+          </Box>
+        )}
         {!isLoading && (data?.data?.length ?? 0) === 0 ? (
           <Box
             sx={{
@@ -168,7 +190,7 @@ export const AgentNotebook = () => {
               No notebooks yet
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-              Get started by creating your first agentic notebook
+              Get started by creating your first agent notebook
             </Typography>
             <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleCreateNotebook} size="large">
               Notebook
@@ -179,7 +201,7 @@ export const AgentNotebook = () => {
         )}
       </Stack>
 
-      <Dialog open={newDialogOpen} onClose={handleCloseCreateNotebook} fullWidth>
+      <Dialog open={dialogOpen} onClose={handleCloseCreateNotebook} fullWidth>
         <DialogTitle>New Notebook</DialogTitle>
         <form
           className="contents"

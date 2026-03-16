@@ -30,9 +30,15 @@ export const TaskLayout: React.FC = () => {
     const section = pathSegments[taskIndex + 1];
     if (section === "playgrounds" && pathSegments[taskIndex + 2]) {
       activeSection = `playgrounds/${pathSegments[taskIndex + 2]}`;
-    } else if (section === "prompts") {
-      // Map /tasks/:id/prompts/:promptName to prompts-management
+    } else if (section === "prompts" && pathSegments[taskIndex + 2]) {
+      // Map /tasks/:id/prompts/:promptName to prompts-management (legacy routes)
       activeSection = "prompts-management";
+    } else if (section === "evaluators" || section === "continuous-evals") {
+      // Map legacy evaluator/continuous-evals paths to the combined Evaluate nav item
+      activeSection = "evaluate";
+    } else if (section === "rag-notebooks" || section === "rag-experiments" || section === "rag-configurations") {
+      // Legacy RAG sub-page routes highlight the unified "rag" sidebar item
+      activeSection = "rag";
     } else {
       activeSection = section;
     }

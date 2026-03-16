@@ -1,12 +1,20 @@
+import {
+  BucketProvider,
+  CopyableChip as SharedCopyableChip,
+  createTraceLevelColumns,
+  DurationCellWithBucket,
+  type ColumnDependencies as SharedColumnDependencies,
+  TextOperators,
+  TracesTable,
+} from "@arthur/shared-components";
 import { Search } from "@mui/icons-material";
 import { Alert, Box, Button, Paper, Stack, TextField } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
+import type { MRT_ColumnDef } from "material-react-table";
 import { memo, useCallback, useMemo, useState } from "react";
 
-import { BucketProvider } from "../../context/bucket-context";
 import { TokenCostTooltip, TokenCountTooltip } from "../../data/common";
-import { createTraceLevelColumns } from "../../data/create-trace-level-columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useSyncFiltersToUrl } from "../../hooks/useSyncFiltersToUrl";
 import { useFilterStore } from "../../stores/filter.store";
@@ -14,14 +22,11 @@ import { usePaginationContext } from "../../stores/pagination-context";
 import { buildThresholdsFromSample } from "../../utils/duration";
 import { AnnotationCell } from "../AnnotationCell";
 import { DataContentGate } from "../DataContentGate";
-import { DurationCellWithBucket } from "../DurationCell";
-import { TextOperators } from "../filtering/types";
 import { TraceContentCell } from "../TraceContentCell";
 
 import { TracingFilterModal } from "./components/TracingFilterModal";
-import { TracesTable } from "./TracesTable";
 
-import { CopyableChip } from "@/components/common";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
@@ -40,6 +45,7 @@ interface TraceLevelProps {
 
 export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
   const { task } = useTask();
+  const { defaultCurrency } = useDisplaySettings();
   const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
 
   const [, setDrawerTarget] = useDrawerTarget();
@@ -96,23 +102,24 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
     [data?.traces, setContext, setDrawerTarget, task?.id]
   );
 
-  const columns = useMemo(
-    () =>
-      createTraceLevelColumns({
-        formatDate,
-        formatCurrency,
-        onTrack: track,
-        Chip: CopyableChip,
-        DurationCell: DurationCellWithBucket,
-        TraceContentCell,
-        AnnotationCell,
-        SpanStatusBadge: () => null, // Not used in trace columns
-        TypeChip: () => null, // Not used in trace columns
-        TokenCountTooltip,
-        TokenCostTooltip,
-      }),
-    []
-  );
+  const displayCurrency = data?.display_currency ?? defaultCurrency;
+
+  const columns = useMemo(() => {
+    const deps: SharedColumnDependencies = {
+      formatDate,
+      formatCurrency: (amount: number) => formatCurrency(amount, displayCurrency),
+      onTrack: track,
+      Chip: SharedCopyableChip,
+      DurationCell: DurationCellWithBucket,
+      TraceContentCell,
+      AnnotationCell: AnnotationCell as unknown as SharedColumnDependencies["AnnotationCell"],
+      SpanStatusBadge: () => null,
+      TypeChip: () => null,
+      TokenCountTooltip,
+      TokenCostTooltip,
+    };
+    return createTraceLevelColumns(deps) as MRT_ColumnDef<TraceMetadataResponse, unknown>[];
+  }, [displayCurrency]);
 
   const setFilters = useFilterStore((state) => state.setFilters);
 
@@ -178,7 +185,7 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
             <BucketProvider thresholds={thresholds}>
               <TracesTable
                 data={data?.traces ?? DEFAULT_DATA}
-                columns={columns}
+                columns={columns as MRT_ColumnDef<TraceMetadataResponse, unknown>[]}
                 rowCount={data?.count ?? 0}
                 pagination={pagination}
                 onPaginationChange={props.onPaginationChange}

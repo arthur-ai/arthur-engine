@@ -8,7 +8,7 @@ import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 const columnHelper = createColumnHelper<AgenticAnnotationResponse>();
 
-export const createColumns = ({ onView }: { onView: (annotationId: string) => void }) => [
+export const createColumns = ({ onView, defaultCurrency }: { onView: (annotationId: string) => void; defaultCurrency: string }) => [
   columnHelper.accessor("continuous_eval_name", {
     header: "Eval Name",
     cell: ({ getValue }) => getValue() ?? "N/A",
@@ -21,7 +21,7 @@ export const createColumns = ({ onView }: { onView: (annotationId: string) => vo
     header: "Cost",
     cell: ({ getValue }) => {
       const cost = getValue();
-      return cost != null ? formatCurrency(cost) : "N/A";
+      return cost != null ? formatCurrency(cost, defaultCurrency) : "N/A";
     },
   }),
   columnHelper.accessor("run_status", {
