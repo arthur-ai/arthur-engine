@@ -1,5 +1,6 @@
 import { useAppForm } from "@arthur/shared-components";
 import AddIcon from "@mui/icons-material/Add";
+import LaunchIcon from "@mui/icons-material/Launch";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import {
   Box,
@@ -128,6 +129,19 @@ export const AgentNotebook = ({ embedded = false, isCreateModalOpen, onCreateMod
     initialState: { columnPinning: { right: ["mrt-row-actions"] } },
     enableRowActions: true,
     positionActionsColumn: "last",
+    renderRowActions: ({ row }) => (
+      <Button
+        variant="outlined"
+        size="small"
+        startIcon={<LaunchIcon />}
+        onClick={(e) => {
+          e.stopPropagation();
+          navigate(`/tasks/${taskId}/agentic-notebooks/${row.original.id}`);
+        }}
+      >
+        Launch
+      </Button>
+    ),
     renderRowActionMenuItems: ({ row }) => [
       <MenuItem
         disabled={!row.original.latest_run_id}
