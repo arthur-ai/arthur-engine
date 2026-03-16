@@ -6,7 +6,7 @@ import SaveIcon from "@mui/icons-material/Save";
 import { Box, Button, ButtonGroup, Chip, CircularProgress, IconButton, Stack, TextField, Tooltip, Typography } from "@mui/material";
 import { Link as MuiLink } from "@mui/material";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 import { agentNotebookStateFormOpts } from "../../form";
 import { useMetaStore } from "../../store/meta.store";
@@ -28,6 +28,7 @@ export const Header = withForm({
   ...agentNotebookStateFormOpts,
   props: {} as Props,
   render: function Render({ form, notebook, onLoadConfig, onSave, isSaving }) {
+    const { id: taskId } = useParams<{ id: string }>();
     const edited = useMetaStore((state) => state.edited);
     const { timezone, use24Hour } = useDisplaySettings();
     const updateMutation = useUpdateAgenticNotebook();
@@ -74,7 +75,7 @@ export const Header = withForm({
             <Button
               size="small"
               component={Link}
-              to=".."
+              to={`/tasks/${taskId}/test?section=agentic-notebooks`}
               variant="text"
               startIcon={<ArrowBackIcon />}
               color="inherit"

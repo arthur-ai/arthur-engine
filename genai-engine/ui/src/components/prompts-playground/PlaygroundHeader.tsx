@@ -85,16 +85,16 @@ export default function PlaygroundHeader({
         <Stack direction="row" alignItems="center" spacing={2}>
           {notebookId && (
             <>
-              <IconButton
+              <Button
                 size="small"
+                variant="text"
+                startIcon={<ArrowBackIcon />}
+                color="inherit"
                 onClick={() => navigate(`/tasks/${task?.id}/prompts`)}
-                sx={{
-                  color: "text.secondary",
-                  "&:hover": { backgroundColor: "action.hover" },
-                }}
+                sx={{ color: "text.primary", whiteSpace: "nowrap" }}
               >
-                <ArrowBackIcon fontSize="small" />
-              </IconButton>
+                Back to Notebooks
+              </Button>
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 {isRenaming ? (
                   <TextField
