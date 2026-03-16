@@ -1,5 +1,6 @@
 import { useAppForm } from "@arthur/shared-components";
 import AddIcon from "@mui/icons-material/Add";
+import DeleteIcon from "@mui/icons-material/Delete";
 import LaunchIcon from "@mui/icons-material/Launch";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import {
@@ -10,15 +11,15 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
-  MenuItem,
+  IconButton,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { MaterialReactTable, useMaterialReactTable } from "material-react-table";
 import { useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import z from "zod";
 
 import AgentNotebookDetailModal from "./AgentNotebookDetailModal";
@@ -128,37 +129,37 @@ export const AgentNotebook = ({ embedded = false, isCreateModalOpen, onCreateMod
     enableColumnPinning: true,
     initialState: { columnPinning: { right: ["mrt-row-actions"] } },
     displayColumnDefOptions: {
-      "mrt-row-actions": { size: 160 },
+      "mrt-row-actions": { size: 140 },
     },
     enableRowActions: true,
     positionActionsColumn: "last",
     renderRowActions: ({ row }) => (
-      <Button
-        variant="outlined"
-        size="small"
-        startIcon={<LaunchIcon />}
-        onClick={(e) => {
-          e.stopPropagation();
-          navigate(`/tasks/${taskId}/agentic-notebooks/${row.original.id}`);
-        }}
-      >
-        Launch
-      </Button>
+      <Box sx={{ display: "flex", gap: 1 }}>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<LaunchIcon />}
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/tasks/${taskId}/agentic-notebooks/${row.original.id}`);
+          }}
+        >
+          Launch
+        </Button>
+        <Tooltip title="Delete Notebook">
+          <IconButton
+            size="small"
+            color="error"
+            onClick={(e) => {
+              e.stopPropagation();
+              deleteAgenticNotebook.mutate(row.original.id);
+            }}
+          >
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Box>
     ),
-    renderRowActionMenuItems: ({ row }) => [
-      <MenuItem
-        disabled={!row.original.latest_run_id}
-        key="view_run"
-        component={Link}
-        to={`/tasks/${row.original.task_id}/agent-experiments/${row.original.latest_run_id}`}
-      >
-        View Latest Run
-      </MenuItem>,
-      <Divider />,
-      <MenuItem key="delete" onClick={() => deleteAgenticNotebook.mutate(row.original.id)}>
-        Delete
-      </MenuItem>,
-    ],
   });
 
   return (
