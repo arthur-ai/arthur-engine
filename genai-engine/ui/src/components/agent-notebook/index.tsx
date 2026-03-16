@@ -136,6 +136,17 @@ export const AgentNotebook = ({ embedded = false, isCreateModalOpen, onCreateMod
     positionActionsColumn: "last",
     renderRowActions: ({ row }) => (
       <Box sx={{ display: "flex", gap: 1 }}>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<LaunchIcon />}
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/tasks/${taskId}/agentic-notebooks/${row.original.id}`);
+          }}
+        >
+          Launch
+        </Button>
         <Tooltip title={row.original.latest_run_id ? "View last run" : "No runs yet"}>
           <span>
             <IconButton
@@ -152,17 +163,6 @@ export const AgentNotebook = ({ embedded = false, isCreateModalOpen, onCreateMod
             </IconButton>
           </span>
         </Tooltip>
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<LaunchIcon />}
-          onClick={(e) => {
-            e.stopPropagation();
-            navigate(`/tasks/${taskId}/agentic-notebooks/${row.original.id}`);
-          }}
-        >
-          Launch
-        </Button>
         <Tooltip title="Delete Notebook">
           <IconButton
             size="small"

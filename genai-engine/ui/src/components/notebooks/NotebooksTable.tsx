@@ -156,6 +156,19 @@ const NotebooksTable: React.FC<NotebooksTableProps> = ({
                 </TableCell>
                 <TableCell align="right">
                   <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+                    <Tooltip title="Launch Notebook">
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<LaunchIcon />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onLaunchNotebook(notebook.id);
+                        }}
+                      >
+                        Launch
+                      </Button>
+                    </Tooltip>
                     <Tooltip title={notebook.latest_run_id ? "View last run" : "No runs yet"}>
                       <span>
                         <IconButton
@@ -169,19 +182,6 @@ const NotebooksTable: React.FC<NotebooksTableProps> = ({
                           <HistoryIcon fontSize="small" />
                         </IconButton>
                       </span>
-                    </Tooltip>
-                    <Tooltip title="Launch Notebook">
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        startIcon={<LaunchIcon />}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onLaunchNotebook(notebook.id);
-                        }}
-                      >
-                        Launch
-                      </Button>
                     </Tooltip>
                     <Tooltip title="Delete Notebook">
                       <IconButton size="small" onClick={(e) => handleDeleteClick(notebook, e)} color="error">
