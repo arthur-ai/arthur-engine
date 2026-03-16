@@ -127,6 +127,9 @@ export const AgentNotebook = ({ embedded = false, isCreateModalOpen, onCreateMod
     }),
     enableColumnPinning: true,
     initialState: { columnPinning: { right: ["mrt-row-actions"] } },
+    displayColumnDefOptions: {
+      "mrt-row-actions": { size: 160 },
+    },
     enableRowActions: true,
     positionActionsColumn: "last",
     renderRowActions: ({ row }) => (
