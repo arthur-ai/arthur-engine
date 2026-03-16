@@ -84,14 +84,14 @@ export default function PlaygroundHeader({
       <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2}>
         <Stack direction="row" alignItems="center" spacing={2}>
           {notebookId && (
-            <>
+            <Stack alignItems="flex-start">
               <Button
                 size="small"
                 variant="text"
                 startIcon={<ArrowBackIcon />}
                 color="inherit"
                 onClick={() => navigate(`/tasks/${task?.id}/prompts`)}
-                sx={{ color: "text.primary", whiteSpace: "nowrap" }}
+                sx={{ color: "text.primary" }}
               >
                 Back to Notebooks
               </Button>
@@ -181,7 +181,7 @@ export default function PlaygroundHeader({
                   </>
                 )}
               </Box>
-            </>
+            </Stack>
           )}
         </Stack>
 

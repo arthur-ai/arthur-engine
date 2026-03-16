@@ -111,21 +111,21 @@ export const RagExperimentsHeader: React.FC<RagExperimentsHeaderProps> = ({
         gap: 1.5,
       }}
     >
+      {/* Back to Notebooks */}
+      {hasNotebook && (
+        <Button
+          size="small"
+          variant="text"
+          startIcon={<ArrowBack />}
+          color="inherit"
+          onClick={() => navigate(`/tasks/${taskId}/rag-notebooks`)}
+          sx={{ color: "text.primary", alignSelf: "flex-start" }}
+        >
+          Back to Notebooks
+        </Button>
+      )}
       {/* Row 1: Title + Query Input + Run */}
       <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-        {/* Back button */}
-        {hasNotebook && (
-          <Button
-            size="small"
-            variant="text"
-            startIcon={<ArrowBack />}
-            color="inherit"
-            onClick={() => navigate(`/tasks/${taskId}/rag-notebooks`)}
-            sx={{ color: "text.primary", whiteSpace: "nowrap" }}
-          >
-            Back to Notebooks
-          </Button>
-        )}
         {/* Title */}
         {hasNotebook && isRenaming ? (
           <TextField
