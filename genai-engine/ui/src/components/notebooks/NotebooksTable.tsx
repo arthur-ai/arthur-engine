@@ -117,7 +117,7 @@ const NotebooksTable: React.FC<NotebooksTableProps> = ({
                   </Typography>
                 </TableSortLabel>
               </TableCell>
-              <TableCell align="right">
+              <TableCell>
                 <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                   Actions
                 </Typography>
@@ -154,8 +154,8 @@ const NotebooksTable: React.FC<NotebooksTableProps> = ({
                     {new Date(notebook.updated_at).toLocaleString()}
                   </Typography>
                 </TableCell>
-                <TableCell align="right">
-                  <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+                <TableCell>
+                  <Box sx={{ display: "flex", gap: 1 }}>
                     <Tooltip title="Launch Notebook">
                       <Button
                         variant="outlined"
