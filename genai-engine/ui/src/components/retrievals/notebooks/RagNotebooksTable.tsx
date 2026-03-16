@@ -1,4 +1,5 @@
 import DeleteIcon from "@mui/icons-material/Delete";
+import HistoryIcon from "@mui/icons-material/History";
 import LaunchIcon from "@mui/icons-material/Launch";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -34,6 +35,7 @@ const RagNotebooksTable: React.FC<RagNotebooksTableProps> = ({
   onSort,
   onRowClick,
   onLaunchNotebook,
+  onViewLastRun,
   onDelete,
 }) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -152,6 +154,20 @@ const RagNotebooksTable: React.FC<RagNotebooksTableProps> = ({
                 </TableCell>
                 <TableCell align="right">
                   <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+                    <Tooltip title={notebook.latest_run_id ? "View last run" : "No runs yet"}>
+                      <span>
+                        <IconButton
+                          size="small"
+                          disabled={!notebook.latest_run_id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (notebook.latest_run_id) onViewLastRun(notebook.latest_run_id);
+                          }}
+                        >
+                          <HistoryIcon fontSize="small" />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
                     <Tooltip title="Launch Notebook">
                       <Button
                         variant="outlined"

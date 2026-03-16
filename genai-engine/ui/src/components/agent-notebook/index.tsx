@@ -1,6 +1,7 @@
 import { useAppForm } from "@arthur/shared-components";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
+import HistoryIcon from "@mui/icons-material/History";
 import LaunchIcon from "@mui/icons-material/Launch";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import {
@@ -129,12 +130,28 @@ export const AgentNotebook = ({ embedded = false, isCreateModalOpen, onCreateMod
     enableColumnPinning: true,
     initialState: { columnPinning: { right: ["mrt-row-actions"] } },
     displayColumnDefOptions: {
-      "mrt-row-actions": { size: 140 },
+      "mrt-row-actions": { size: 180 },
     },
     enableRowActions: true,
     positionActionsColumn: "last",
     renderRowActions: ({ row }) => (
       <Box sx={{ display: "flex", gap: 1 }}>
+        <Tooltip title={row.original.latest_run_id ? "View last run" : "No runs yet"}>
+          <span>
+            <IconButton
+              size="small"
+              disabled={!row.original.latest_run_id}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (row.original.latest_run_id) {
+                  navigate(`/tasks/${taskId}/agent-experiments/${row.original.latest_run_id}`);
+                }
+              }}
+            >
+              <HistoryIcon fontSize="small" />
+            </IconButton>
+          </span>
+        </Tooltip>
         <Button
           variant="outlined"
           size="small"
