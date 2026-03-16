@@ -47,7 +47,7 @@ export const AgentExperimentDetail = () => {
           <Stack alignItems="flex-start">
             <Button
               component={Link}
-              to=".."
+              to={`/tasks/${task?.id}/test?section=agent-experiments`}
               size="small"
               variant="text"
               startIcon={<ArrowBackIcon />}
