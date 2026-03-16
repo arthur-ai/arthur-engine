@@ -52,9 +52,7 @@ def delete_trace_batch(db_session: Session, trace_ids: list[str]) -> None:
     )
 
     # 2. Span ids for these traces (for metric_results)
-    span_ids_stmt = select(DatabaseSpan.id).where(
-        DatabaseSpan.trace_id.in_(trace_ids)
-    )
+    span_ids_stmt = select(DatabaseSpan.id).where(DatabaseSpan.trace_id.in_(trace_ids))
     span_ids = [row[0] for row in db_session.execute(span_ids_stmt).all()]
 
     if span_ids:
@@ -65,9 +63,7 @@ def delete_trace_batch(db_session: Session, trace_ids: list[str]) -> None:
         )
 
     # 3. Spans for these traces
-    db_session.execute(
-        delete(DatabaseSpan).where(DatabaseSpan.trace_id.in_(trace_ids))
-    )
+    db_session.execute(delete(DatabaseSpan).where(DatabaseSpan.trace_id.in_(trace_ids)))
 
     # 4. Trace metadata
     db_session.execute(
@@ -77,14 +73,16 @@ def delete_trace_batch(db_session: Session, trace_ids: list[str]) -> None:
     )
 
     # 5. Orphan resource_metadata (no longer referenced by any span or trace)
-    remaining_span_resource_ids = select(DatabaseSpan.resource_id).where(
-        DatabaseSpan.resource_id.isnot(None)
-    ).distinct()
-    remaining_trace_resource_ids = select(
-        DatabaseTraceMetadata.root_span_resource_id
-    ).where(
-        DatabaseTraceMetadata.root_span_resource_id.isnot(None)
-    ).distinct()
+    remaining_span_resource_ids = (
+        select(DatabaseSpan.resource_id)
+        .where(DatabaseSpan.resource_id.isnot(None))
+        .distinct()
+    )
+    remaining_trace_resource_ids = (
+        select(DatabaseTraceMetadata.root_span_resource_id)
+        .where(DatabaseTraceMetadata.root_span_resource_id.isnot(None))
+        .distinct()
+    )
     db_session.execute(
         delete(DatabaseResourceMetadata).where(
             ~DatabaseResourceMetadata.id.in_(remaining_span_resource_ids),

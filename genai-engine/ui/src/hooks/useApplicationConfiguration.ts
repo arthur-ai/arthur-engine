@@ -35,9 +35,7 @@ export function useApplicationConfiguration() {
     enabled: !!api,
   });
 
-  const updateConfiguration = async (
-    body: ApplicationConfigurationUpdateRequest
-  ): Promise<ApplicationConfigurationResponse> => {
+  const updateConfiguration = async (body: ApplicationConfigurationUpdateRequest): Promise<ApplicationConfigurationResponse> => {
     if (!api) throw new Error("API client not available");
     const res = await api.request<ApplicationConfigurationResponse>({
       method: "POST",
