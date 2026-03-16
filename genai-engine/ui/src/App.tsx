@@ -33,6 +33,7 @@ import { RagExperimentsListView, RagExperimentDetailView } from "./components/ra
 import { RagNotebooks } from "./components/retrievals/notebooks";
 import { RagConfigurationsPage } from "./components/retrievals/RagConfigurationsPage";
 import { RagExperimentsPage } from "./components/retrievals/RagExperimentsPage";
+import { ApplicationConfigSettings } from "./components/settings/ApplicationConfigSettings";
 import { SettingsPage } from "./components/settings/SettingsPage";
 import { TaskLayout } from "./components/TaskLayout";
 import { TaskOverview } from "./components/TaskOverview";
@@ -97,6 +98,16 @@ function App() {
                               </ProtectedRoute>
                             }
                           />
+                          <Route
+                            path="/settings/application-config"
+                            element={
+                              <ProtectedRoute>
+                                <SettingsPage>
+                                  <ApplicationConfigSettings />
+                                </SettingsPage>
+                              </ProtectedRoute>
+                            }
+                          />
 
                           {/* Task layout route: single layout with nested section routes */}
                           <Route
@@ -111,6 +122,7 @@ function App() {
                             <Route path="overview" element={<TaskOverview />} />
                             <Route path="model-providers" element={<Navigate to="/settings/model-providers" replace />} />
                             <Route path="api-keys" element={<Navigate to="/settings/api-keys" replace />} />
+                            <Route path="application-config" element={<Navigate to="/settings/application-config" replace />} />
                             <Route path="rag-configurations" element={<RagConfigurationsPage />} />
                             <Route path="rag-configurations/:configId" element={<RagConfigurationsPage />} />
                             <Route path="rag-configurations/:configId/versions/:version" element={<RagConfigurationsPage />} />

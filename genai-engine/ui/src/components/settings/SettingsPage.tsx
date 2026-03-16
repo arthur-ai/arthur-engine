@@ -3,6 +3,7 @@ import ArrowBackOutlined from "@mui/icons-material/ArrowBackOutlined";
 import KeyOutlined from "@mui/icons-material/KeyOutlined";
 import LogoutOutlined from "@mui/icons-material/LogoutOutlined";
 import SettingsIcon from "@mui/icons-material/Settings";
+import SettingsApplicationsOutlined from "@mui/icons-material/SettingsApplicationsOutlined";
 import { Box, Button, Divider, IconButton, ListItemIcon, ListItemText, Menu, MenuItem } from "@mui/material";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -78,6 +79,17 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ children }) => {
                     <KeyOutlined />
                   </ListItemIcon>
                   <ListItemText>API Keys</ListItemText>
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    handleMenuClose();
+                    navigate("/settings/application-config");
+                  }}
+                >
+                  <ListItemIcon>
+                    <SettingsApplicationsOutlined />
+                  </ListItemIcon>
+                  <ListItemText>Application config</ListItemText>
                 </MenuItem>
                 <Divider />
                 <Box sx={{ px: 2, py: 1 }}>

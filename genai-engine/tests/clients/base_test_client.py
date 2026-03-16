@@ -62,7 +62,7 @@ from arthur_common.models.task_eval_schemas import (
     TraceTransformResponse,
 )
 from pydantic import TypeAdapter
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from weaviate.collections.classes.grpc import HybridFusion, TargetVectorJoinType
 
 from config.database_config import DatabaseConfig
@@ -174,7 +174,7 @@ def override_get_keycloak_client():
     return MockAuthClient()
 
 
-def override_get_db_session():
+def override_get_db_session() -> Session:
     global DATABASE_ENGINE
     if DATABASE_ENGINE is None:
         DATABASE_ENGINE = get_db_engine(DatabaseConfig(TEST_DATABASE=True))

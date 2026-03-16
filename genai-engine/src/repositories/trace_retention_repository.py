@@ -55,6 +55,34 @@ def delete_trace_batch(db_session: Session, trace_ids: list[str]) -> None:
     span_ids_stmt = select(DatabaseSpan.id).where(DatabaseSpan.trace_id.in_(trace_ids))
     span_ids = [row[0] for row in db_session.execute(span_ids_stmt).all()]
 
+    # Collect resource_ids referenced by this batch (before we delete spans/trace_metadata)
+    # so we only delete orphan resource_metadata that belonged to this batch.
+    batch_resource_ids_stmt = (
+        select(DatabaseSpan.resource_id)
+        .where(
+            DatabaseSpan.trace_id.in_(trace_ids),
+            DatabaseSpan.resource_id.isnot(None),
+        )
+        .distinct()
+    )
+    batch_resource_ids = [
+        row[0] for row in db_session.execute(batch_resource_ids_stmt).all()
+    ]
+    trace_resource_ids_stmt = (
+        select(DatabaseTraceMetadata.root_span_resource_id)
+        .where(
+            DatabaseTraceMetadata.trace_id.in_(trace_ids),
+            DatabaseTraceMetadata.root_span_resource_id.isnot(None),
+        )
+        .distinct()
+    )
+    batch_resource_ids.extend(
+        row[0] for row in db_session.execute(trace_resource_ids_stmt).all()
+    )
+    batch_resource_ids = list(
+        dict.fromkeys(batch_resource_ids)
+    )  # unique, preserve order
+
     if span_ids:
         db_session.execute(
             delete(DatabaseMetricResult).where(
@@ -72,23 +100,25 @@ def delete_trace_batch(db_session: Session, trace_ids: list[str]) -> None:
         )
     )
 
-    # 5. Orphan resource_metadata (no longer referenced by any span or trace)
-    remaining_span_resource_ids = (
-        select(DatabaseSpan.resource_id)
-        .where(DatabaseSpan.resource_id.isnot(None))
-        .distinct()
-    )
-    remaining_trace_resource_ids = (
-        select(DatabaseTraceMetadata.root_span_resource_id)
-        .where(DatabaseTraceMetadata.root_span_resource_id.isnot(None))
-        .distinct()
-    )
-    db_session.execute(
-        delete(DatabaseResourceMetadata).where(
-            ~DatabaseResourceMetadata.id.in_(remaining_span_resource_ids),
-            ~DatabaseResourceMetadata.id.in_(remaining_trace_resource_ids),
+    # 5. Orphan resource_metadata: only those referenced by this batch and no longer referenced elsewhere
+    if batch_resource_ids:
+        remaining_span_resource_ids = (
+            select(DatabaseSpan.resource_id)
+            .where(DatabaseSpan.resource_id.isnot(None))
+            .distinct()
         )
-    )
+        remaining_trace_resource_ids = (
+            select(DatabaseTraceMetadata.root_span_resource_id)
+            .where(DatabaseTraceMetadata.root_span_resource_id.isnot(None))
+            .distinct()
+        )
+        db_session.execute(
+            delete(DatabaseResourceMetadata).where(
+                DatabaseResourceMetadata.id.in_(batch_resource_ids),
+                ~DatabaseResourceMetadata.id.in_(remaining_span_resource_ids),
+                ~DatabaseResourceMetadata.id.in_(remaining_trace_resource_ids),
+            )
+        )
 
     db_session.commit()
     logger.info(
