@@ -21,6 +21,8 @@ interface FilterState {
   promptTokenCountMax: string;
   completionTokenCountMin: string;
   completionTokenCountMax: string;
+  spanCountMin: string;
+  spanCountMax: string;
   traceIds: string[];
   sessionIds: string[];
   spanIds: string[];
@@ -45,6 +47,8 @@ interface ValidationErrors {
   promptTokenCountMax?: string;
   completionTokenCountMin?: string;
   completionTokenCountMax?: string;
+  spanCountMin?: string;
+  spanCountMax?: string;
   startTime?: string;
   endTime?: string;
 }
@@ -127,6 +131,7 @@ const buildFiltersFromFormValues = (value: FilterState): IncomingFilter[] => {
   filters.push(...buildTokenCountFilters("total_token_count", value.totalTokenCountMin, value.totalTokenCountMax));
   filters.push(...buildTokenCountFilters("prompt_token_count", value.promptTokenCountMin, value.promptTokenCountMax));
   filters.push(...buildTokenCountFilters("completion_token_count", value.completionTokenCountMin, value.completionTokenCountMax));
+  filters.push(...buildTokenCountFilters("span_count", value.spanCountMin, value.spanCountMax));
 
   // IDs
   if (value.traceIds.length > 0) {
@@ -199,6 +204,8 @@ const DEFAULT_FILTER_STATE: FilterState = {
   promptTokenCountMax: "",
   completionTokenCountMin: "",
   completionTokenCountMax: "",
+  spanCountMin: "",
+  spanCountMax: "",
   traceIds: [],
   sessionIds: [],
   spanIds: [],
@@ -269,6 +276,10 @@ export const TracingFilterModal = () => {
     const completionTokenCount = parseTokenCountFromFilters(currentFilters, "completion_token_count");
     newFilterState.completionTokenCountMin = completionTokenCount.min;
     newFilterState.completionTokenCountMax = completionTokenCount.max;
+
+    const spanCount = parseTokenCountFromFilters(currentFilters, "span_count");
+    newFilterState.spanCountMin = spanCount.min;
+    newFilterState.spanCountMax = spanCount.max;
 
     currentFilters.forEach((filter) => {
       switch (filter.name) {
@@ -399,6 +410,8 @@ export const TracingFilterModal = () => {
     formState.promptTokenCountMax !== "" ||
     formState.completionTokenCountMin !== "" ||
     formState.completionTokenCountMax !== "" ||
+    formState.spanCountMin !== "" ||
+    formState.spanCountMax !== "" ||
     formState.traceIds.length > 0 ||
     formState.sessionIds.length > 0 ||
     formState.spanIds.length > 0 ||
@@ -594,6 +607,9 @@ export const TracingFilterModal = () => {
                 "completionTokenCountMin",
                 "completionTokenCountMax"
               )}
+
+              {/* Number of Spans */}
+              {renderNumericRangeFilter("Number of Spans", "spanCountMin", "spanCountMax", "spanCountMin", "spanCountMax")}
 
               {/* Tool Name */}
               <Box>

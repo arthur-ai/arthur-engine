@@ -277,8 +277,8 @@ class SpanQueryService:
                 )
             conditions.extend(duration_conditions)
 
-        # Token count filters (columns are directly indexed)
-        token_filter_mapping = [
+        # Token count and span count filters (columns are directly indexed)
+        numeric_filter_mapping = [
             (
                 filters.total_token_count_filters,
                 DatabaseTraceMetadata.total_token_count,
@@ -291,10 +291,14 @@ class SpanQueryService:
                 filters.completion_token_count_filters,
                 DatabaseTraceMetadata.completion_token_count,
             ),
+            (
+                filters.span_count_filters,
+                DatabaseTraceMetadata.span_count,
+            ),
         ]
-        for token_filters, column in token_filter_mapping:
-            if token_filters:
-                for filter_item in token_filters:
+        for numeric_filters, column in numeric_filter_mapping:
+            if numeric_filters:
+                for filter_item in numeric_filters:
                     conditions.append(
                         self.filter_service.build_comparison_condition(
                             column,
@@ -760,6 +764,7 @@ class SpanQueryService:
             or filters.total_token_count_filters
             or filters.prompt_token_count_filters
             or filters.completion_token_count_filters
+            or filters.span_count_filters
             or filters.annotation_score is not None
             or filters.annotation_type is not None
             or filters.continuous_eval_run_status is not None
@@ -816,8 +821,8 @@ class SpanQueryService:
                 )
             conditions.extend(duration_conditions)
 
-        # Token count filters (columns are directly indexed)
-        token_filter_mapping = [
+        # Token count and span count filters (columns are directly indexed)
+        numeric_filter_mapping = [
             (
                 filters.total_token_count_filters,
                 DatabaseTraceMetadata.total_token_count,
@@ -830,10 +835,14 @@ class SpanQueryService:
                 filters.completion_token_count_filters,
                 DatabaseTraceMetadata.completion_token_count,
             ),
+            (
+                filters.span_count_filters,
+                DatabaseTraceMetadata.span_count,
+            ),
         ]
-        for token_filters, column in token_filter_mapping:
-            if token_filters:
-                for filter_item in token_filters:
+        for numeric_filters, column in numeric_filter_mapping:
+            if numeric_filters:
+                for filter_item in numeric_filters:
                     conditions.append(
                         self.filter_service.build_comparison_condition(
                             column,

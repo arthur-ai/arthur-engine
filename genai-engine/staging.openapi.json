@@ -3034,6 +3034,66 @@
                         "description": "Completion token count less than or equal to this value."
                     },
                     {
+                        "name": "span_count_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count exactly equal to this value.",
+                            "title": "Span Count Eq"
+                        },
+                        "description": "Span count exactly equal to this value."
+                    },
+                    {
+                        "name": "span_count_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count greater than this value.",
+                            "title": "Span Count Gt"
+                        },
+                        "description": "Span count greater than this value."
+                    },
+                    {
+                        "name": "span_count_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count greater than or equal to this value.",
+                            "title": "Span Count Gte"
+                        },
+                        "description": "Span count greater than or equal to this value."
+                    },
+                    {
+                        "name": "span_count_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count less than this value.",
+                            "title": "Span Count Lt"
+                        },
+                        "description": "Span count less than this value."
+                    },
+                    {
+                        "name": "span_count_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count less than or equal to this value.",
+                            "title": "Span Count Lte"
+                        },
+                        "description": "Span count less than or equal to this value."
+                    },
+                    {
                         "name": "include_experiment_traces",
                         "in": "query",
                         "required": false,
@@ -3727,6 +3787,66 @@
                             "title": "Completion Token Count Lte"
                         },
                         "description": "Completion token count less than or equal to this value."
+                    },
+                    {
+                        "name": "span_count_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count exactly equal to this value.",
+                            "title": "Span Count Eq"
+                        },
+                        "description": "Span count exactly equal to this value."
+                    },
+                    {
+                        "name": "span_count_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count greater than this value.",
+                            "title": "Span Count Gt"
+                        },
+                        "description": "Span count greater than this value."
+                    },
+                    {
+                        "name": "span_count_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count greater than or equal to this value.",
+                            "title": "Span Count Gte"
+                        },
+                        "description": "Span count greater than or equal to this value."
+                    },
+                    {
+                        "name": "span_count_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count less than this value.",
+                            "title": "Span Count Lt"
+                        },
+                        "description": "Span count less than this value."
+                    },
+                    {
+                        "name": "span_count_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count less than or equal to this value.",
+                            "title": "Span Count Lte"
+                        },
+                        "description": "Span count less than or equal to this value."
                     },
                     {
                         "name": "include_experiment_traces",
@@ -4663,6 +4783,66 @@
                         "description": "Completion token count less than or equal to this value."
                     },
                     {
+                        "name": "span_count_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count exactly equal to this value.",
+                            "title": "Span Count Eq"
+                        },
+                        "description": "Span count exactly equal to this value."
+                    },
+                    {
+                        "name": "span_count_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count greater than this value.",
+                            "title": "Span Count Gt"
+                        },
+                        "description": "Span count greater than this value."
+                    },
+                    {
+                        "name": "span_count_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count greater than or equal to this value.",
+                            "title": "Span Count Gte"
+                        },
+                        "description": "Span count greater than or equal to this value."
+                    },
+                    {
+                        "name": "span_count_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count less than this value.",
+                            "title": "Span Count Lt"
+                        },
+                        "description": "Span count less than this value."
+                    },
+                    {
+                        "name": "span_count_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count less than or equal to this value.",
+                            "title": "Span Count Lte"
+                        },
+                        "description": "Span count less than or equal to this value."
+                    },
+                    {
                         "name": "include_experiment_traces",
                         "in": "query",
                         "required": false,
@@ -5355,6 +5535,66 @@
                             "title": "Completion Token Count Lte"
                         },
                         "description": "Completion token count less than or equal to this value."
+                    },
+                    {
+                        "name": "span_count_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count exactly equal to this value.",
+                            "title": "Span Count Eq"
+                        },
+                        "description": "Span count exactly equal to this value."
+                    },
+                    {
+                        "name": "span_count_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count greater than this value.",
+                            "title": "Span Count Gt"
+                        },
+                        "description": "Span count greater than this value."
+                    },
+                    {
+                        "name": "span_count_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count greater than or equal to this value.",
+                            "title": "Span Count Gte"
+                        },
+                        "description": "Span count greater than or equal to this value."
+                    },
+                    {
+                        "name": "span_count_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count less than this value.",
+                            "title": "Span Count Lt"
+                        },
+                        "description": "Span count less than this value."
+                    },
+                    {
+                        "name": "span_count_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count less than or equal to this value.",
+                            "title": "Span Count Lte"
+                        },
+                        "description": "Span count less than or equal to this value."
                     },
                     {
                         "name": "include_experiment_traces",

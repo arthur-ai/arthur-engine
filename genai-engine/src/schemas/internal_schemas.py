@@ -2358,6 +2358,7 @@ class TraceQuerySchema(BaseModel):
     total_token_count_filters: Optional[list[FloatRangeFilter]] = None
     prompt_token_count_filters: Optional[list[FloatRangeFilter]] = None
     completion_token_count_filters: Optional[list[FloatRangeFilter]] = None
+    span_count_filters: Optional[list[FloatRangeFilter]] = None
     user_ids: Optional[list[str]] = Field(
         None,
         description="User IDs to filter on. Optional.",
@@ -2420,6 +2421,7 @@ class TraceQuerySchema(BaseModel):
         total_token_count = resolve_filters("total_token_count")
         prompt_token_count = resolve_filters("prompt_token_count")
         completion_token_count = resolve_filters("completion_token_count")
+        span_count = resolve_filters("span_count")
 
         return TraceQuerySchema(
             task_ids=request.task_ids,
@@ -2440,6 +2442,7 @@ class TraceQuerySchema(BaseModel):
             total_token_count_filters=total_token_count,
             prompt_token_count_filters=prompt_token_count,
             completion_token_count_filters=completion_token_count,
+            span_count_filters=span_count,
             user_ids=request.user_ids,
             session_ids=request.session_ids,
             span_ids=request.span_ids,

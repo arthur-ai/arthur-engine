@@ -131,6 +131,12 @@ export const TRACE_FIELDS = [
     min: 0,
   }),
   createPrimitiveField({
+    name: "span_count",
+    type: "numeric",
+    operators: [...Object.values(ComparisonOperators)],
+    min: 1,
+  }),
+  createPrimitiveField({
     name: "tool_name",
     type: "text",
     operators: [TextOperators.EQUALS],

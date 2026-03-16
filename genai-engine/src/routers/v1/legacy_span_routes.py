@@ -90,7 +90,7 @@ def _create_response(
 
 
 class ExtendedTraceQueryRequest(TraceQueryRequest):
-    """Extends TraceQueryRequest with token count filter support."""
+    """Extends TraceQueryRequest with token count and span count filter support."""
 
     total_token_count_eq: Optional[int] = None
     total_token_count_gt: Optional[int] = None
@@ -107,6 +107,11 @@ class ExtendedTraceQueryRequest(TraceQueryRequest):
     completion_token_count_gte: Optional[int] = None
     completion_token_count_lt: Optional[int] = None
     completion_token_count_lte: Optional[int] = None
+    span_count_eq: Optional[int] = None
+    span_count_gt: Optional[int] = None
+    span_count_gte: Optional[int] = None
+    span_count_lt: Optional[int] = None
+    span_count_lte: Optional[int] = None
 
 
 def trace_query_parameters(
@@ -352,6 +357,32 @@ def trace_query_parameters(
         ge=0,
         description="Completion token count less than or equal to this value.",
     ),
+    # Span count filters
+    span_count_eq: int = Query(
+        None,
+        ge=1,
+        description="Span count exactly equal to this value.",
+    ),
+    span_count_gt: int = Query(
+        None,
+        ge=1,
+        description="Span count greater than this value.",
+    ),
+    span_count_gte: int = Query(
+        None,
+        ge=1,
+        description="Span count greater than or equal to this value.",
+    ),
+    span_count_lt: int = Query(
+        None,
+        ge=1,
+        description="Span count less than this value.",
+    ),
+    span_count_lte: int = Query(
+        None,
+        ge=1,
+        description="Span count less than or equal to this value.",
+    ),
     include_experiment_traces: bool = Query(
         default=True,
         description="Include traces originating from Arthur experiments. Defaults to true.",
@@ -407,6 +438,11 @@ def trace_query_parameters(
         completion_token_count_gte=completion_token_count_gte,
         completion_token_count_lt=completion_token_count_lt,
         completion_token_count_lte=completion_token_count_lte,
+        span_count_eq=span_count_eq,
+        span_count_gt=span_count_gt,
+        span_count_gte=span_count_gte,
+        span_count_lt=span_count_lt,
+        span_count_lte=span_count_lte,
         include_experiment_traces=include_experiment_traces,
     )
 

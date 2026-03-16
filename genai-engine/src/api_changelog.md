@@ -2,13 +2,35 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
-# 04/12/2026
+# 03/16/2026
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_count_eq'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_count_gt'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_count_gte'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_count_lt'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_count_lte'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_count_eq'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_count_gt'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_count_gte'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_count_lt'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_count_lte'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_count_eq'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_count_gt'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_count_gte'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_count_lt'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_count_lte'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_count_eq'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_count_gt'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_count_gte'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_count_lt'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_count_lte'
+
+# 03/13/2026
 - **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'sort_by'
 - **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'sort_by'
 - **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'sort_by'
 - **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'sort_by'
 
-# 04/12/2026
+# 03/13/2026
 - **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'completion_token_count_eq'
 - **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'completion_token_count_gt'
 - **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'completion_token_count_gte'

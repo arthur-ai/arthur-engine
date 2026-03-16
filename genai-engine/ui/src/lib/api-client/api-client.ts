@@ -5497,6 +5497,36 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
    */
   sort_by?: TraceSortBy;
   /**
+   * Span Count Eq
+   * Span count exactly equal to this value.
+   * @min 1
+   */
+  span_count_eq?: number;
+  /**
+   * Span Count Gt
+   * Span count greater than this value.
+   * @min 1
+   */
+  span_count_gt?: number;
+  /**
+   * Span Count Gte
+   * Span count greater than or equal to this value.
+   * @min 1
+   */
+  span_count_gte?: number;
+  /**
+   * Span Count Lt
+   * Span count less than this value.
+   * @min 1
+   */
+  span_count_lt?: number;
+  /**
+   * Span Count Lte
+   * Span count less than or equal to this value.
+   * @min 1
+   */
+  span_count_lte?: number;
+  /**
    * Span Ids
    * Span IDs to filter on. Optional.
    */
@@ -5824,6 +5854,36 @@ export interface ListTracesMetadataApiV1TracesGetParams {
    * @default "start_time"
    */
   sort_by?: TraceSortBy;
+  /**
+   * Span Count Eq
+   * Span count exactly equal to this value.
+   * @min 1
+   */
+  span_count_eq?: number;
+  /**
+   * Span Count Gt
+   * Span count greater than this value.
+   * @min 1
+   */
+  span_count_gt?: number;
+  /**
+   * Span Count Gte
+   * Span count greater than or equal to this value.
+   * @min 1
+   */
+  span_count_gte?: number;
+  /**
+   * Span Count Lt
+   * Span count less than this value.
+   * @min 1
+   */
+  span_count_lt?: number;
+  /**
+   * Span Count Lte
+   * Span count less than or equal to this value.
+   * @min 1
+   */
+  span_count_lte?: number;
   /**
    * Span Ids
    * Span IDs to filter on. Optional.
@@ -7908,6 +7968,36 @@ export interface QuerySpansV1TracesQueryGetParams {
    */
   sort_by?: TraceSortBy;
   /**
+   * Span Count Eq
+   * Span count exactly equal to this value.
+   * @min 1
+   */
+  span_count_eq?: number;
+  /**
+   * Span Count Gt
+   * Span count greater than this value.
+   * @min 1
+   */
+  span_count_gt?: number;
+  /**
+   * Span Count Gte
+   * Span count greater than or equal to this value.
+   * @min 1
+   */
+  span_count_gte?: number;
+  /**
+   * Span Count Lt
+   * Span count less than this value.
+   * @min 1
+   */
+  span_count_lt?: number;
+  /**
+   * Span Count Lte
+   * Span count less than or equal to this value.
+   * @min 1
+   */
+  span_count_lte?: number;
+  /**
    * Span Ids
    * Span IDs to filter on. Optional.
    */
@@ -8215,6 +8305,36 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
    * @default "start_time"
    */
   sort_by?: TraceSortBy;
+  /**
+   * Span Count Eq
+   * Span count exactly equal to this value.
+   * @min 1
+   */
+  span_count_eq?: number;
+  /**
+   * Span Count Gt
+   * Span count greater than this value.
+   * @min 1
+   */
+  span_count_gt?: number;
+  /**
+   * Span Count Gte
+   * Span count greater than or equal to this value.
+   * @min 1
+   */
+  span_count_gte?: number;
+  /**
+   * Span Count Lt
+   * Span count less than this value.
+   * @min 1
+   */
+  span_count_lt?: number;
+  /**
+   * Span Count Lte
+   * Span count less than or equal to this value.
+   * @min 1
+   */
+  span_count_lte?: number;
   /**
    * Span Ids
    * Span IDs to filter on. Optional.

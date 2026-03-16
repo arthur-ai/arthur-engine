@@ -1641,6 +1641,12 @@ class GenaiEngineTestClientBase(httpx.Client):
         completion_token_count_gte: int | None = None,
         completion_token_count_lt: int | None = None,
         completion_token_count_lte: int | None = None,
+        # Span count filters
+        span_count_eq: int | None = None,
+        span_count_gt: int | None = None,
+        span_count_gte: int | None = None,
+        span_count_lt: int | None = None,
+        span_count_lte: int | None = None,
     ) -> tuple[int, QueryTracesWithMetricsResponse | str]:
         """Query traces with metrics for specified task IDs. Computes metrics for all LLM spans in the traces.
 
@@ -1675,6 +1681,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             total_token_count_eq/gt/gte/lt/lte: Total token count filters
             prompt_token_count_eq/gt/gte/lt/lte: Prompt token count filters
             completion_token_count_eq/gt/gte/lt/lte: Completion token count filters
+            span_count_eq/gt/gte/lt/lte: Span count filters
 
         Returns:
             tuple[int, QueryTracesWithMetricsResponse | str]: Status code and response
@@ -1736,8 +1743,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["trace_duration_lt"] = trace_duration_lt
         if trace_duration_lte is not None:
             params["trace_duration_lte"] = trace_duration_lte
-        # Token count filters
-        for token_param in [
+        # Token count and span count filters
+        for numeric_param in [
             "total_token_count_eq",
             "total_token_count_gt",
             "total_token_count_gte",
@@ -1753,10 +1760,15 @@ class GenaiEngineTestClientBase(httpx.Client):
             "completion_token_count_gte",
             "completion_token_count_lt",
             "completion_token_count_lte",
+            "span_count_eq",
+            "span_count_gt",
+            "span_count_gte",
+            "span_count_lt",
+            "span_count_lte",
         ]:
-            val = locals()[token_param]
+            val = locals()[numeric_param]
             if val is not None:
-                params[token_param] = val
+                params[numeric_param] = val
 
         resp = self.base_client.get(
             f"/v1/traces/metrics/?{urllib.parse.urlencode(params, doseq=True)}",
@@ -1822,6 +1834,12 @@ class GenaiEngineTestClientBase(httpx.Client):
         completion_token_count_gte: int | None = None,
         completion_token_count_lt: int | None = None,
         completion_token_count_lte: int | None = None,
+        # Span count filters
+        span_count_eq: int | None = None,
+        span_count_gt: int | None = None,
+        span_count_gte: int | None = None,
+        span_count_lt: int | None = None,
+        span_count_lte: int | None = None,
     ) -> tuple[int, QueryTracesWithMetricsResponse | str]:
         """Query traces with filters. Task IDs are required. Returns traces with any existing metrics but does not compute new ones.
 
@@ -1856,6 +1874,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             total_token_count_eq/gt/gte/lt/lte: Total token count filters
             prompt_token_count_eq/gt/gte/lt/lte: Prompt token count filters
             completion_token_count_eq/gt/gte/lt/lte: Completion token count filters
+            span_count_eq/gt/gte/lt/lte: Span count filters
 
         Returns:
             tuple[int, QueryTracesWithMetricsResponse | str]: Status code and response
@@ -1917,8 +1936,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["trace_duration_lt"] = trace_duration_lt
         if trace_duration_lte is not None:
             params["trace_duration_lte"] = trace_duration_lte
-        # Token count filters
-        for token_param in [
+        # Token count and span count filters
+        for numeric_param in [
             "total_token_count_eq",
             "total_token_count_gt",
             "total_token_count_gte",
@@ -1934,10 +1953,15 @@ class GenaiEngineTestClientBase(httpx.Client):
             "completion_token_count_gte",
             "completion_token_count_lt",
             "completion_token_count_lte",
+            "span_count_eq",
+            "span_count_gt",
+            "span_count_gte",
+            "span_count_lt",
+            "span_count_lte",
         ]:
-            val = locals()[token_param]
+            val = locals()[numeric_param]
             if val is not None:
-                params[token_param] = val
+                params[numeric_param] = val
 
         resp = self.base_client.get(
             f"/v1/traces/query?{urllib.parse.urlencode(params, doseq=True)}",
