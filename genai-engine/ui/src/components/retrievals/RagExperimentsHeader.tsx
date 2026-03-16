@@ -1,4 +1,4 @@
-import { Add, Clear, PlayArrow, Settings, Science, History, Save } from "@mui/icons-material";
+import { Add, Clear, Edit, PlayArrow, Settings, Science, History, Save } from "@mui/icons-material";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -8,16 +8,20 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import { useRagPanels } from "./RagPanelsContext";
 import { MAX_PANELS } from "./ragPanelsReducer";
+
+import { useUpdateRagNotebookMutation } from "@/hooks/useRagNotebooks";
 
 interface RagExperimentsHeaderProps {
   onManageProviders: () => void;
   onRunExperiment: () => void;
   onToggleHistory: () => void;
   notebookName?: string;
+  notebookId?: string | null;
+  notebookDescription?: string | null;
   hasNotebook?: boolean;
   historyOpen?: boolean;
 }
@@ -27,11 +31,40 @@ export const RagExperimentsHeader: React.FC<RagExperimentsHeaderProps> = ({
   onRunExperiment,
   onToggleHistory,
   notebookName,
+  notebookId,
+  notebookDescription,
   hasNotebook = false,
   historyOpen = false,
 }) => {
   const { state, setSharedQuery, addPanel, runAllPanels, canAddPanel, saveNotebookState, isDirty } = useRagPanels();
   const [isSaving, setIsSaving] = useState(false);
+  const updateMutation = useUpdateRagNotebookMutation();
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [newNotebookName, setNewNotebookName] = useState(notebookName ?? "");
+
+  useEffect(() => {
+    if (notebookName) setNewNotebookName(notebookName);
+  }, [notebookName]);
+
+  const handleStartRename = () => {
+    setNewNotebookName(notebookName ?? "");
+    setIsRenaming(true);
+  };
+
+  const handleCancelRename = () => {
+    setIsRenaming(false);
+    setNewNotebookName(notebookName ?? "");
+  };
+
+  const handleSaveRename = async () => {
+    const trimmed = newNotebookName.trim();
+    if (!trimmed || !notebookId || trimmed === notebookName) {
+      handleCancelRename();
+      return;
+    }
+    setIsRenaming(false);
+    await updateMutation.mutateAsync({ notebookId, request: { name: trimmed, description: notebookDescription } });
+  };
 
   const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSharedQuery(e.target.value);
@@ -78,9 +111,43 @@ export const RagExperimentsHeader: React.FC<RagExperimentsHeaderProps> = ({
       {/* Row 1: Title + Query Input + Run */}
       <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
         {/* Title */}
-        <Typography variant="h6" sx={{ fontWeight: 600, whiteSpace: "nowrap", color: "text.primary", minWidth: "fit-content" }}>
-          {notebookName || "RAG Playground"}
-        </Typography>
+        {hasNotebook && isRenaming ? (
+          <TextField
+            variant="filled"
+            size="small"
+            value={newNotebookName}
+            onChange={(e) => setNewNotebookName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSaveRename();
+              else if (e.key === "Escape") handleCancelRename();
+            }}
+            onBlur={handleSaveRename}
+            autoFocus
+            sx={{
+              minWidth: 200,
+              "& .MuiInputBase-root": { fontSize: "1.25rem", fontWeight: 600 },
+            }}
+          />
+        ) : (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, minWidth: "fit-content" }}>
+            <Typography variant="h6" sx={{ fontWeight: 600, whiteSpace: "nowrap", color: "text.primary" }}>
+              {notebookName || "RAG Playground"}
+            </Typography>
+            {hasNotebook && (
+              <IconButton
+                size="small"
+                onClick={handleStartRename}
+                sx={{
+                  padding: 0.5,
+                  color: "text.secondary",
+                  "&:hover": { color: "text.primary", backgroundColor: "action.hover" },
+                }}
+              >
+                <Edit sx={{ fontSize: "1rem" }} />
+              </IconButton>
+            )}
+          </Box>
+        )}
 
         {/* Shared Query Input */}
         <TextField

@@ -1,14 +1,17 @@
 import { withForm } from "@arthur/shared-components";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import EditIcon from "@mui/icons-material/Edit";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import SaveIcon from "@mui/icons-material/Save";
-import { Box, Button, ButtonGroup, Chip, CircularProgress, Stack, Tooltip, Typography } from "@mui/material";
+import { Box, Button, ButtonGroup, Chip, CircularProgress, IconButton, Stack, TextField, Tooltip, Typography } from "@mui/material";
 import { Link as MuiLink } from "@mui/material";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { agentNotebookStateFormOpts } from "../../form";
 import { useMetaStore } from "../../store/meta.store";
 import { SubmitButton } from "../submit-button";
+import { useUpdateAgenticNotebook } from "../../../hooks/useUpdateAgenticNotebook";
 
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { AgenticNotebookDetail } from "@/lib/api-client/api-client";
@@ -27,6 +30,33 @@ export const Header = withForm({
   render: function Render({ form, notebook, onLoadConfig, onSave, isSaving }) {
     const edited = useMetaStore((state) => state.edited);
     const { timezone, use24Hour } = useDisplaySettings();
+    const updateMutation = useUpdateAgenticNotebook();
+    const [isRenaming, setIsRenaming] = useState(false);
+    const [newNotebookName, setNewNotebookName] = useState(notebook.name);
+
+    useEffect(() => {
+      setNewNotebookName(notebook.name);
+    }, [notebook.name]);
+
+    const handleStartRename = () => {
+      setNewNotebookName(notebook.name);
+      setIsRenaming(true);
+    };
+
+    const handleCancelRename = () => {
+      setIsRenaming(false);
+      setNewNotebookName(notebook.name);
+    };
+
+    const handleSaveRename = async () => {
+      const trimmed = newNotebookName.trim();
+      if (!trimmed || trimmed === notebook.name) {
+        handleCancelRename();
+        return;
+      }
+      setIsRenaming(false);
+      await updateMutation.mutateAsync({ notebookId: notebook.id, request: { name: trimmed, description: notebook.description } });
+    };
 
     return (
       <Box
@@ -54,9 +84,40 @@ export const Header = withForm({
             </Button>
             <Stack mb={1}>
               <Stack direction="row" alignItems="center" gap={1}>
-                <Typography variant="h5" color="text.primary" fontWeight="bold">
-                  {notebook.name}
-                </Typography>
+                {isRenaming ? (
+                  <TextField
+                    variant="filled"
+                    size="small"
+                    value={newNotebookName}
+                    onChange={(e) => setNewNotebookName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveRename();
+                      else if (e.key === "Escape") handleCancelRename();
+                    }}
+                    onBlur={handleSaveRename}
+                    autoFocus
+                    sx={{
+                      "& .MuiInputBase-root": { fontSize: "1.5rem", fontWeight: 700 },
+                    }}
+                  />
+                ) : (
+                  <>
+                    <Typography variant="h5" color="text.primary" fontWeight="bold">
+                      {notebook.name}
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      onClick={handleStartRename}
+                      sx={{
+                        padding: 0.5,
+                        color: "text.secondary",
+                        "&:hover": { color: "text.primary", backgroundColor: "action.hover" },
+                      }}
+                    >
+                      <EditIcon sx={{ fontSize: "1rem" }} />
+                    </IconButton>
+                  </>
+                )}
                 {edited && (
                   <Chip
                     label={

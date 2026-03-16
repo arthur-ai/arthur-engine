@@ -20,6 +20,7 @@ import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import z from "zod";
 
+import AgentNotebookDetailModal from "./AgentNotebookDetailModal";
 import { createColumns } from "./data/columns";
 import { useAgentNotebooks } from "./hooks/useAgentNotebooks";
 import { useCreateAgenticNotebook } from "./hooks/useCreateAgenticNotebook";
@@ -57,6 +58,7 @@ export const AgentNotebook = ({ embedded = false, isCreateModalOpen, onCreateMod
     },
   });
   const [internalDialogOpen, setInternalDialogOpen] = useState(false);
+  const [selectedNotebookId, setSelectedNotebookId] = useState<string | null>(null);
   const dialogOpen = isCreateModalOpen !== undefined ? isCreateModalOpen : internalDialogOpen;
   const { data, isLoading, isRefetching } = useAgentNotebooks({ page: pagination.pageIndex, page_size: pagination.pageSize });
 
@@ -116,7 +118,7 @@ export const AgentNotebook = ({ embedded = false, isCreateModalOpen, onCreateMod
     },
     muiTableBodyRowProps: ({ row }) => ({
       onClick: () => {
-        navigate(`/tasks/${taskId}/agentic-notebooks/${row.original.id}`);
+        setSelectedNotebookId(row.original.id);
       },
       sx: {
         cursor: "pointer",
@@ -203,6 +205,8 @@ export const AgentNotebook = ({ embedded = false, isCreateModalOpen, onCreateMod
           <MaterialReactTable table={table} />
         )}
       </Stack>
+
+      <AgentNotebookDetailModal open={selectedNotebookId !== null} notebookId={selectedNotebookId} onClose={() => setSelectedNotebookId(null)} />
 
       <Dialog open={dialogOpen} onClose={handleCloseCreateNotebook} fullWidth>
         <DialogTitle>New Notebook</DialogTitle>

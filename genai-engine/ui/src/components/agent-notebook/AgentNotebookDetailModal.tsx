@@ -10,6 +10,7 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
+import Stack from "@mui/material/Stack";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -21,29 +22,28 @@ import Typography from "@mui/material/Typography";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { useRagNotebook, useRagNotebookHistoryWithPolling, useUpdateRagNotebookMutation } from "@/hooks/useRagNotebooks";
+import { useAgenticNotebook } from "./hooks/useAgenticNotebook";
+import { useUpdateAgenticNotebook } from "./hooks/useUpdateAgenticNotebook";
+
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
-interface RagNotebookDetailModalProps {
+interface AgentNotebookDetailModalProps {
   open: boolean;
   notebookId: string | null;
   onClose: () => void;
 }
 
-const RagNotebookDetailModal: React.FC<RagNotebookDetailModalProps> = ({ open, notebookId, onClose }) => {
+const AgentNotebookDetailModal: React.FC<AgentNotebookDetailModalProps> = ({ open, notebookId, onClose }) => {
   const navigate = useNavigate();
   const { id: taskId } = useParams<{ id: string }>();
-  const { notebook, isLoading: isLoadingNotebook } = useRagNotebook(notebookId ?? undefined);
-  const { experiments, isLoading: isLoadingHistory } = useRagNotebookHistoryWithPolling(notebookId ?? undefined);
-  const updateMutation = useUpdateRagNotebookMutation();
+  const { data: notebook, isLoading } = useAgenticNotebook(notebookId ?? "");
+  const updateMutation = useUpdateAgenticNotebook();
 
   const [isRenaming, setIsRenaming] = useState(false);
   const [newNotebookName, setNewNotebookName] = useState("");
 
   useEffect(() => {
-    if (notebook?.name) {
-      setNewNotebookName(notebook.name);
-    }
+    if (notebook?.name) setNewNotebookName(notebook.name);
   }, [notebook?.name]);
 
   const handleStartRename = () => {
@@ -68,16 +68,14 @@ const RagNotebookDetailModal: React.FC<RagNotebookDetailModalProps> = ({ open, n
 
   const handleLaunchNotebook = () => {
     if (taskId && notebookId) {
-      navigate(`/tasks/${taskId}/rag-notebooks/${notebookId}`);
+      navigate(`/tasks/${taskId}/agentic-notebooks/${notebookId}`);
       onClose();
     }
   };
 
-  const isLoading = isLoadingNotebook || isLoadingHistory;
-
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth aria-labelledby="rag-notebook-detail-dialog-title">
-      <DialogTitle id="rag-notebook-detail-dialog-title" sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           {isRenaming ? (
             <TextField
@@ -86,25 +84,19 @@ const RagNotebookDetailModal: React.FC<RagNotebookDetailModalProps> = ({ open, n
               value={newNotebookName}
               onChange={(e) => setNewNotebookName(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleSaveRename();
-                } else if (e.key === "Escape") {
-                  handleCancelRename();
-                }
+                if (e.key === "Enter") handleSaveRename();
+                else if (e.key === "Escape") handleCancelRename();
               }}
               onBlur={handleSaveRename}
               autoFocus
               sx={{
-                "& .MuiInputBase-root": {
-                  fontSize: "1.25rem",
-                  fontWeight: 600,
-                },
+                "& .MuiInputBase-root": { fontSize: "1.25rem", fontWeight: 600 },
               }}
             />
           ) : (
             <>
               <Typography variant="h6" component="span">
-                {notebook?.name || "RAG Notebook Details"}
+                {notebook?.name || "Notebook Details"}
               </Typography>
               {notebook && (
                 <IconButton
@@ -131,83 +123,93 @@ const RagNotebookDetailModal: React.FC<RagNotebookDetailModalProps> = ({ open, n
           </IconButton>
         </Box>
       </DialogTitle>
-      <DialogContent>
+
+      <DialogContent dividers>
         {isLoading ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
             <CircularProgress />
           </Box>
+        ) : !notebook ? (
+          <Box sx={{ py: 4, textAlign: "center" }}>
+            <Typography color="error">Failed to load notebook details</Typography>
+          </Box>
         ) : (
-          <>
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                {notebook?.description || "No description"}
+          <Stack spacing={3}>
+            {/* Metadata */}
+            <Box>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2, color: "text.secondary" }}>
+                METADATA
               </Typography>
-              <Box sx={{ display: "flex", gap: 3, mt: 2 }}>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">
-                    Created
-                  </Typography>
-                  <Typography variant="body2">{notebook?.created_at ? new Date(notebook.created_at).toLocaleString() : "—"}</Typography>
+              <Stack spacing={1.5}>
+                {notebook.description && (
+                  <Box>
+                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                      Description
+                    </Typography>
+                    <Typography variant="body2">{notebook.description}</Typography>
+                  </Box>
+                )}
+                <Box sx={{ display: "flex", gap: 3 }}>
+                  <Box>
+                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                      Created
+                    </Typography>
+                    <Typography variant="body2">{new Date(notebook.created_at).toLocaleString()}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                      Updated
+                    </Typography>
+                    <Typography variant="body2">{new Date(notebook.updated_at).toLocaleString()}</Typography>
+                  </Box>
                 </Box>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">
-                    Last Updated
-                  </Typography>
-                  <Typography variant="body2">{notebook?.updated_at ? new Date(notebook.updated_at).toLocaleString() : "—"}</Typography>
-                </Box>
-              </Box>
+              </Stack>
             </Box>
 
-            <Divider sx={{ my: 2 }} />
+            <Divider />
 
+            {/* Experiment History */}
             <Box>
-              <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
-                Experiment History
-              </Typography>
-              {experiments.length === 0 ? (
-                <Box sx={{ py: 3, textAlign: "center" }}>
-                  <Typography variant="body2" color="text.secondary">
-                    No experiments have been run from this notebook yet.
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "text.secondary" }}>
+                  EXPERIMENT HISTORY
+                </Typography>
+                {notebook.experiments.length > 0 && (
+                  <Typography variant="caption" color="text.secondary">
+                    {notebook.experiments.length} run{notebook.experiments.length !== 1 ? "s" : ""}
                   </Typography>
-                </Box>
+                )}
+              </Box>
+              {notebook.experiments.length === 0 ? (
+                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic", py: 2 }}>
+                  No experiments run yet
+                </Typography>
               ) : (
                 <TableContainer sx={{ maxHeight: 300 }}>
                   <Table size="small" stickyHeader>
                     <TableHead>
                       <TableRow>
-                        <TableCell>
-                          <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                            Name
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                            Status
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                            Configs
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                            Created
-                          </Typography>
-                        </TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>Created</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {experiments.map((experiment) => (
-                        <TableRow key={experiment.id} hover>
+                      {notebook.experiments.map((experiment) => (
+                        <TableRow
+                          key={experiment.id}
+                          hover
+                          sx={{ cursor: "pointer" }}
+                          onClick={() => {
+                            navigate(`/tasks/${taskId}/agent-experiments/${experiment.id}`);
+                            onClose();
+                          }}
+                        >
                           <TableCell>
                             <Typography variant="body2">{experiment.name}</Typography>
                           </TableCell>
                           <TableCell>
                             <Chip label={experiment.status} size="small" sx={getStatusChipSx(experiment.status)} />
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body2">{experiment.rag_configs?.length || 0}</Typography>
                           </TableCell>
                           <TableCell>
                             <Typography variant="body2" color="text.secondary">
@@ -221,11 +223,11 @@ const RagNotebookDetailModal: React.FC<RagNotebookDetailModalProps> = ({ open, n
                 </TableContainer>
               )}
             </Box>
-          </>
+          </Stack>
         )}
       </DialogContent>
     </Dialog>
   );
 };
 
-export default RagNotebookDetailModal;
+export default AgentNotebookDetailModal;

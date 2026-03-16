@@ -1,6 +1,9 @@
 import CloseIcon from "@mui/icons-material/Close";
+import EditIcon from "@mui/icons-material/Edit";
+import LaunchIcon from "@mui/icons-material/Launch";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
 import Dialog from "@mui/material/Dialog";
@@ -15,11 +18,12 @@ import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
+import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { useNotebook, useNotebookHistory } from "@/hooks/useNotebooks";
+import { useNotebook, useNotebookHistory, useUpdateNotebookMutation } from "@/hooks/useNotebooks";
 import {
   EvalRefOutput,
   PromptExperimentSummary,
@@ -40,6 +44,34 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
   const navigate = useNavigate();
   const { notebook, isLoading, error } = useNotebook(notebookId || undefined);
   const { experiments, isLoading: isLoadingHistory } = useNotebookHistory(notebookId || undefined, 0, 10);
+  const updateMutation = useUpdateNotebookMutation(taskId);
+
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [newNotebookName, setNewNotebookName] = useState("");
+
+  useEffect(() => {
+    if (notebook?.name) setNewNotebookName(notebook.name);
+  }, [notebook?.name]);
+
+  const handleStartRename = () => {
+    setNewNotebookName(notebook?.name ?? "");
+    setIsRenaming(true);
+  };
+
+  const handleCancelRename = () => {
+    setIsRenaming(false);
+    setNewNotebookName(notebook?.name ?? "");
+  };
+
+  const handleSaveRename = async () => {
+    const trimmed = newNotebookName.trim();
+    if (!trimmed || !notebookId || trimmed === notebook?.name) {
+      handleCancelRename();
+      return;
+    }
+    setIsRenaming(false);
+    await updateMutation.mutateAsync({ notebookId, request: { name: trimmed, description: notebook?.description } });
+  };
 
   const handleExperimentClick = (experimentId: string) => {
     navigate(`/tasks/${taskId}/prompt-experiments/${experimentId}`);
@@ -48,11 +80,59 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            Notebook Details
-          </Typography>
+      <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          {isRenaming ? (
+            <TextField
+              variant="filled"
+              size="small"
+              value={newNotebookName}
+              onChange={(e) => setNewNotebookName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSaveRename();
+                else if (e.key === "Escape") handleCancelRename();
+              }}
+              onBlur={handleSaveRename}
+              autoFocus
+              sx={{
+                "& .MuiInputBase-root": { fontSize: "1.25rem", fontWeight: 600 },
+              }}
+            />
+          ) : (
+            <>
+              <Typography variant="h6" component="span">
+                {notebook?.name || "Notebook Details"}
+              </Typography>
+              {notebook && (
+                <IconButton
+                  size="small"
+                  onClick={handleStartRename}
+                  sx={{
+                    padding: 0.5,
+                    color: "text.secondary",
+                    "&:hover": { color: "text.primary", backgroundColor: "action.hover" },
+                  }}
+                >
+                  <EditIcon sx={{ fontSize: "1rem" }} />
+                </IconButton>
+              )}
+            </>
+          )}
+        </Box>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          {notebookId && (
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<LaunchIcon />}
+              onClick={() => {
+                navigate(`/tasks/${taskId}/playgrounds/prompts?notebookId=${notebookId}`);
+                onClose();
+              }}
+            >
+              Launch
+            </Button>
+          )}
           <IconButton onClick={onClose} size="small">
             <CloseIcon />
           </IconButton>
