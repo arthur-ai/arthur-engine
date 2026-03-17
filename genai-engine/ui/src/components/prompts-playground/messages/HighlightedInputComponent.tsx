@@ -1,4 +1,4 @@
-import { MustacheHighlightedTextField } from "@arthur/shared-components";
+import TextField from "@mui/material/TextField";
 import React from "react";
 
 import { OpenAIMessageItem } from "@/lib/api-client/api-client";
@@ -15,23 +15,16 @@ export const HighlightedInputComponent = ({
   // Convert OpenAIMessageItem[] to string
   const stringValue = typeof value === "string" ? value : value.map((item) => item.text || "").join(" ");
 
-  // Adapter to handle the onChange type difference
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    onChange({
-      target: { value: e.target.value },
-    } as React.ChangeEvent<HTMLInputElement>);
-  };
-
   return (
-    <MustacheHighlightedTextField
+    <TextField
       value={stringValue}
-      onChange={handleChange}
+      onChange={(e) => onChange(e as React.ChangeEvent<HTMLInputElement>)}
       placeholder={placeholder}
       multiline
       minRows={2}
       maxRows={20}
       size="small"
-      hideTokens={true}
+      fullWidth
     />
   );
 };
