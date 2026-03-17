@@ -46,8 +46,6 @@ export function useNotebookAutoSave({
   const updateNotebookMutation = useUpdateNotebookMutation(task?.id);
 
   const [notebookName, setNotebookName] = useState<string>(initialName);
-  const [isRenaming, setIsRenaming] = useState(false);
-  const [newNotebookName, setNewNotebookName] = useState<string>("");
 
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const periodicSaveIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -154,48 +152,25 @@ export function useNotebookAutoSave({
     immediateSaveRef.current = true;
   }, []);
 
-  const handleStartRename = useCallback(() => {
-    setNewNotebookName(notebookName);
-    setIsRenaming(true);
-  }, [notebookName]);
-
-  const handleCancelRename = useCallback(() => {
-    setIsRenaming(false);
-    setNewNotebookName("");
-  }, []);
-
-  const handleSaveRename = useCallback(async () => {
-    if (!notebookId || !newNotebookName.trim()) {
-      return;
-    }
-
-    try {
+  const handleSaveRename = useCallback(
+    async (newName: string) => {
+      if (!notebookId) return;
       await updateNotebookMutation.mutateAsync({
         notebookId,
-        request: { name: newNotebookName.trim(), description: notebook?.description },
+        request: { name: newName, description: notebook?.description },
       });
-      setNotebookName(newNotebookName.trim());
-      setIsRenaming(false);
-      setNewNotebookName("");
-
-      track(EVENT_NAMES.NOTEBOOK_RENAMED, {
-        notebook_id: notebookId,
-      });
-    } catch (error) {
-      console.error("Failed to rename notebook:", error);
-    }
-  }, [notebookId, newNotebookName, updateNotebookMutation, notebook?.description]);
+      setNotebookName(newName);
+      track(EVENT_NAMES.NOTEBOOK_RENAMED, { notebook_id: notebookId });
+    },
+    [notebookId, updateNotebookMutation, notebook?.description]
+  );
 
   return {
     saveStatus,
     notebookName,
-    isRenaming,
-    newNotebookName,
-    setNewNotebookName,
+    isRenamePending: updateNotebookMutation.isPending,
     autoSaveNotebookState,
     requestImmediateSave,
-    handleStartRename,
-    handleCancelRename,
     handleSaveRename,
   };
 }
