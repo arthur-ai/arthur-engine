@@ -1,19 +1,14 @@
 name: Arthur Observability SDK - Release
 
-# Two independent trigger paths share the same client-generation job:
+# Both branches publish to pypi.org via the same pipeline:
 #
-# Path A — Dev pre-release (any push to `dev` touching arthur-observability-sdk/):
-#   generate-client → build-dev-wheel → publish-test-pypi
-#   Version: {base}.dev0, published to test.pypi.org.
-#   The version override is in-workspace only — never committed.
+# Dev pre-release (push to `dev` touching arthur-observability-sdk/):
+#   generate-client → build-wheel (.dev0 suffix) → publish-pypi
+#   Install: pip install --pre arthur-ai-observability-sdk
 #
-# Path B — Stable release (push to `main` with an "Increment arthur-engine version to …" commit):
-#   generate-client → build-stable-wheel → publish-pypi → create-git-tag
-#   Version: whatever pyproject.toml says (set by version-workflow.yml).
-#   Published to pypi.org; git tag sdk-v{VERSION} is created after publish.
-#
-# Consumers of dev builds:
-#   pip install --extra-index-url https://test.pypi.org/simple/ --pre arthur-observability-sdk
+# Stable release (push to `main` with "Increment arthur-engine version to …" commit):
+#   generate-client → build-wheel → publish-pypi → create-git-tag
+#   Install: pip install arthur-ai-observability-sdk
 on:
   push:
     branches:
@@ -54,10 +49,9 @@ jobs:
           name: arthur-genai-client
           path: arthur-observability-sdk/python/src/arthur_genai_client
 
-  # ── Path A: dev pre-release ────────────────────────────────────────────────
-  build-dev-wheel:
+  # ── build wheel ───────────────────────────────────────────────────────────
+  build-wheel:
     needs: generate-client
-    if: github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
     container: python:3.12-bullseye
     env:
@@ -80,75 +74,26 @@ jobs:
         with:
           working-directory: arthur-observability-sdk/python
 
-      - name: Compute dev version and build wheel
+      - name: Compute version and build wheel
         run: |
           BASE_VERSION=$(poetry -C arthur-observability-sdk/python version --short)
-          DEV_VERSION="${BASE_VERSION}.dev0"
-          echo "Building dev version: ${DEV_VERSION}"
-          # Override version in workspace only — not committed.
-          poetry -C arthur-observability-sdk/python version "${DEV_VERSION}"
+          if [ "${{ github.ref }}" = "refs/heads/dev" ]; then
+            DEV_VERSION="${BASE_VERSION}.dev0"
+            echo "Building dev version: ${DEV_VERSION}"
+            poetry -C arthur-observability-sdk/python version "${DEV_VERSION}"
+          else
+            echo "Building stable version: ${BASE_VERSION}"
+          fi
           ./arthur-observability-sdk/scripts/build_sdk_wheel.sh
 
       - uses: actions/upload-artifact@v4
         with:
-          name: sdk-dev-wheel
+          name: sdk-wheel
           path: arthur-observability-sdk/dist/*.whl
 
-  publish-test-pypi:
-    needs: build-dev-wheel
-    if: github.ref == 'refs/heads/dev'
-    runs-on: ubuntu-latest
-    environment: shared-protected-branch-secrets
-    permissions:
-      id-token: write
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: sdk-dev-wheel
-          path: dist/
-
-      - name: Publish to Test PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
-
-  # ── Path B: stable release ─────────────────────────────────────────────────
-  build-stable-wheel:
-    needs: generate-client
-    if: github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'Increment arthur-engine version to')
-    runs-on: ubuntu-latest
-    container: python:3.12-bullseye
-    env:
-      GIT_DEPTH: 100
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: ${{ env.GIT_DEPTH }}
-
-      - uses: ./.github/workflows/composite-actions/setup-git
-        with:
-          safe-directory: ${{ runner.workspace }}
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: arthur-genai-client
-          path: arthur-observability-sdk/python/src/arthur_genai_client
-
-      - uses: ./.github/workflows/composite-actions/setup-poetry
-        with:
-          working-directory: arthur-observability-sdk/python
-
-      - name: Build stable wheel
-        run: ./arthur-observability-sdk/scripts/build_sdk_wheel.sh
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: sdk-stable-wheel
-          path: arthur-observability-sdk/dist/*.whl
-
+  # ── publish to PyPI ───────────────────────────────────────────────────────
   publish-pypi:
-    needs: build-stable-wheel
-    if: github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'Increment arthur-engine version to')
+    needs: build-wheel
     runs-on: ubuntu-latest
     environment: shared-protected-branch-secrets
     permissions:
@@ -156,12 +101,13 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: sdk-stable-wheel
+          name: sdk-wheel
           path: dist/
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
 
+  # ── create git tag (stable releases only) ─────────────────────────────────
   create-git-tag:
     needs: publish-pypi
     if: github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'Increment arthur-engine version to')

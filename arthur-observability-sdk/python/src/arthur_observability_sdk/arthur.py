@@ -148,7 +148,7 @@ class Arthur:
         except ImportError:
             raise ImportError(
                 f"Missing optional dependency '{package}'. "
-                f"Install it with: pip install arthur-observability-sdk[{extra_name}]"
+                f"Install it with: pip install arthur-ai-observability-sdk[{extra_name}]"
             )
         try:
             instrumentor_cls = getattr(mod, class_name)
@@ -156,7 +156,7 @@ class Arthur:
             raise ImportError(
                 f"Module '{module_path}' does not export '{class_name}'. "
                 f"You may have an incompatible version of '{package}'. "
-                f"Try: pip install --upgrade {package}"
+                f"Try: pip install --upgrade arthur-ai-observability-sdk[{extra_name}]"
             )
         instrumentor = instrumentor_cls()
         kwargs: Dict[str, Any] = {}
