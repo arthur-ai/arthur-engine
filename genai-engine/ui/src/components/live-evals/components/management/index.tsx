@@ -1,3 +1,4 @@
+import { TextOperators } from "@arthur/shared-components";
 import { Search } from "@mui/icons-material";
 import AddIcon from "@mui/icons-material/Add";
 import LiveTvOutlinedIcon from "@mui/icons-material/LiveTvOutlined";
@@ -27,8 +28,8 @@ import { EditFormDialog } from "../edit-form";
 
 import { FilterModal } from "./components/FilterModal";
 
-import { TextOperators } from "@/components/traces/components/filtering/types";
 import { useFilterStore } from "@/components/traces/stores/filter.store";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { usePagination } from "@/hooks/usePagination";
 import { useTask } from "@/hooks/useTask";
@@ -36,6 +37,7 @@ import { useTask } from "@/hooks/useTask";
 export const Management = () => {
   const { task } = useTask();
   const api = useApi()!;
+  const { timezone, use24Hour } = useDisplaySettings();
 
   const [searchInput, setSearchInput] = useState("");
   const filters = useFilterStore((state) => state.filters);
@@ -78,8 +80,10 @@ export const Management = () => {
       () =>
         createColumns({
           onEdit: (id) => setContinuousEvalId(id),
+          timezone,
+          use24Hour,
         }),
-      [setContinuousEvalId]
+      [setContinuousEvalId, timezone, use24Hour]
     ),
     getCoreRowModel: getCoreRowModel(),
     state: {

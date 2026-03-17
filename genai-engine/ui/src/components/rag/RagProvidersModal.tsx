@@ -24,10 +24,11 @@ import { RagProviderFormModal } from "@/components/rag/RagProviderFormModal";
 import { RagProvidersEmptyState } from "@/components/rag/RagProvidersEmptyState";
 import { RagProvidersErrorState } from "@/components/rag/RagProvidersErrorState";
 import { RagProvidersLoadingState } from "@/components/rag/RagProvidersLoadingState";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useRagProviderMutations } from "@/hooks/rag/useRagProviderMutations";
 import { useRagProviders } from "@/hooks/rag/useRagProviders";
 import type { RagProviderConfigurationResponse } from "@/lib/api-client/api-client";
-import { formatDate } from "@/utils/formatters";
+import { formatDateInTimezone } from "@/utils/formatters";
 
 interface RagProvidersModalProps {
   open: boolean;
@@ -38,6 +39,7 @@ interface RagProvidersModalProps {
 export const RagProvidersModal: React.FC<RagProvidersModalProps> = ({ open, onClose, taskId }) => {
   const { providers, isLoading, error, refetch } = useRagProviders(taskId);
   const { deleteProvider } = useRagProviderMutations();
+  const { timezone, use24Hour } = useDisplaySettings();
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editingProvider, setEditingProvider] = useState<RagProviderConfigurationResponse | null>(null);
@@ -135,7 +137,7 @@ export const RagProvidersModal: React.FC<RagProvidersModalProps> = ({ open, onCl
         accessorKey: "created_at",
         cell: ({ row }) => (
           <Typography variant="body2" color="text.secondary">
-            {formatDate(new Date(row.original.created_at).toISOString())}
+            {formatDateInTimezone(row.original.created_at, timezone, { hour12: !use24Hour })}
           </Typography>
         ),
       },
@@ -155,7 +157,7 @@ export const RagProvidersModal: React.FC<RagProvidersModalProps> = ({ open, onCl
         ),
       },
     ];
-  }, [handleOpenDeleteModal, handleOpenEditModal]);
+  }, [handleOpenDeleteModal, handleOpenEditModal, timezone, use24Hour]);
 
   const providerRows = providers ?? [];
 

@@ -10,11 +10,13 @@ import { useSuspensePollAgenticNotebookHistory } from "../../hooks/useSuspensePo
 
 import { StatusBadge } from "@/components/agent-experiments/components/status-badge";
 import { formatRelativeTime } from "@/components/live-evals/[evalId]/utils";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { usePagination } from "@/hooks/usePagination";
 import { useTask } from "@/hooks/useTask";
 import { useTrackOnMount } from "@/hooks/useTrackOnMount";
 import { AgenticExperimentSummary } from "@/lib/api-client/api-client";
 import { EVENT_NAMES } from "@/services/amplitude";
+import { formatCurrency } from "@/utils/formatters";
 
 const DRAWER_WIDTH = 400;
 
@@ -102,6 +104,7 @@ const HistoryContent = ({ notebookId }: { notebookId: string }) => {
 
 const HistoryItem = ({ item, onOpenChange }: { item: AgenticExperimentSummary; onOpenChange: (open: boolean) => void }) => {
   const { task } = useTask();
+  const { defaultCurrency, timezone, use24Hour } = useDisplaySettings();
   const isRunning = item.status === "running" || item.status === "queued";
   const progress = item.total_rows > 0 ? Math.round((item.completed_rows / item.total_rows) * 100) : 0;
 
@@ -121,7 +124,7 @@ const HistoryItem = ({ item, onOpenChange }: { item: AgenticExperimentSummary; o
             secondary={
               <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5 }}>
                 <Typography variant="caption" color="text.secondary">
-                  {formatRelativeTime(item.created_at)}
+                  {formatRelativeTime(item.created_at, timezone, { hour12: !use24Hour })}
                 </Typography>
               </Box>
             }
@@ -165,7 +168,7 @@ const HistoryItem = ({ item, onOpenChange }: { item: AgenticExperimentSummary; o
                 Total Cost
               </Typography>
               <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                ${item.total_cost}
+                {formatCurrency(parseFloat(item.total_cost), defaultCurrency)}
               </Typography>
             </Box>
           )}

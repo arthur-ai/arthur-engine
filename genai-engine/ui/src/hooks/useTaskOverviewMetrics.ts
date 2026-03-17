@@ -2,6 +2,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { useApi } from "./useApi";
 
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import type { TraceMetadataResponse } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
 import { getTimeWindowAndBucketing, TimeInterval } from "@/utils/timeWindows";
@@ -59,13 +60,14 @@ function getTraceEvalStats(trace: TraceMetadataResponse): { total: number; passe
 
 export const useTaskOverviewMetrics = ({ taskId, interval }: UseTaskOverviewMetricsParams) => {
   const api = useApi()!;
+  const { timezone } = useDisplaySettings();
 
   return useQuery({
-    queryKey: queryKeys.metrics.overview(taskId, interval),
+    queryKey: queryKeys.metrics.overview(taskId, interval, timezone),
     enabled: !!taskId,
     queryFn: async (): Promise<TaskOverviewMetrics> => {
       const queryTime = new Date();
-      const timeWindow = getTimeWindowAndBucketing(interval, queryTime);
+      const timeWindow = getTimeWindowAndBucketing(interval, queryTime, { timezone });
 
       const { start: startTime, end: endTime, bucketMs: bucketSize } = timeWindow;
 

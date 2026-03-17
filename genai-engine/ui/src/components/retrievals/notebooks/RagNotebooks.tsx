@@ -6,7 +6,7 @@ import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import TablePagination from "@mui/material/TablePagination";
 import Typography from "@mui/material/Typography";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
 import { CreateRagNotebookModal } from "./CreateRagNotebookModal";
@@ -21,7 +21,11 @@ import type { CreateRagNotebookRequest } from "@/lib/api-client/api-client";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
-const RagNotebooks: React.FC = () => {
+interface RagNotebooksProps {
+  onRegisterCreate?: (fn: () => void) => void;
+}
+
+const RagNotebooks: React.FC<RagNotebooksProps> = ({ onRegisterCreate }) => {
   const { task } = useTask();
   const { id: taskId } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -61,6 +65,11 @@ const RagNotebooks: React.FC = () => {
     setIsCreateModalOpen(true);
   }, []);
 
+  const onRegisterCreateRef = useRef(onRegisterCreate);
+  useEffect(() => {
+    onRegisterCreateRef.current?.(handleCreateNotebook);
+  }, [handleCreateNotebook]);
+
   const handleCloseCreateModal = useCallback(() => {
     setIsCreateModalOpen(false);
   }, []);
@@ -76,6 +85,15 @@ const RagNotebooks: React.FC = () => {
     (notebookId: string) => {
       if (taskId) {
         navigate(`/tasks/${taskId}/rag-notebooks/${notebookId}`);
+      }
+    },
+    [taskId, navigate]
+  );
+
+  const handleViewLastRun = useCallback(
+    (experimentId: string) => {
+      if (taskId) {
+        navigate(`/tasks/${taskId}/rag-experiments/${experimentId}`);
       }
     },
     [taskId, navigate]
@@ -145,7 +163,7 @@ const RagNotebooks: React.FC = () => {
         overflow: "hidden",
       }}
     >
-      <RagNotebooksHeader onCreateNotebook={handleCreateNotebook} />
+      {!onRegisterCreate && <RagNotebooksHeader onCreateNotebook={handleCreateNotebook} />}
 
       {error && notebooks.length > 0 && (
         <Box sx={{ px: 3, pt: 2 }}>
@@ -190,6 +208,7 @@ const RagNotebooks: React.FC = () => {
             onSort={handleSort}
             onRowClick={handleRowClick}
             onLaunchNotebook={handleLaunchNotebook}
+            onViewLastRun={handleViewLastRun}
             onDelete={deleteMutation.mutateAsync}
           />
         )}

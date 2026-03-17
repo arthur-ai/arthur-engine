@@ -1854,43 +1854,6 @@ export type CreateUserUsersPostData = any;
 export type CreateUserUsersPostError = HTTPValidationError;
 
 /**
- * CreationSource
- * Source information for how an unregistered agent was created.
- *
- * .. deprecated::
- *     This flat CreationSource model is deprecated.
- *     Use the discriminated union CreationSource from
- *     arthur_common.models.agent_governance_schemas instead.
- */
-export interface CreationSource {
-  /**
-   * Gcp Project Id
-   * Optional GCP project ID where the agent is running.
-   */
-  gcp_project_id?: string | null;
-  /**
-   * Gcp Reasoning Engine Id
-   * Optional GCP Vertex AI Reasoning Engine ID.
-   */
-  gcp_reasoning_engine_id?: string | null;
-  /**
-   * Gcp Region
-   * Optional GCP region where the agent is running.
-   */
-  gcp_region?: string | null;
-  /**
-   * Task Id
-   * Optional UUID of the task that created this agent.
-   */
-  task_id?: string | null;
-  /**
-   * Top Level Span Name
-   * Optional top-level span name (legacy field, prefer GCP fields for GCP agents).
-   */
-  top_level_span_name?: string | null;
-}
-
-/**
  * DailyAgenticAnnotationStats
  * Statistics for a single day of agentic annotations.
  */
@@ -2280,52 +2243,6 @@ export type DeleteUserUsersUserIdDeleteData = any;
 
 export type DeleteUserUsersUserIdDeleteError = HTTPValidationError;
 
-export type DiscoverAgentsApiV1DiscoverAgentsPostData = DiscoverAgentsResponse;
-
-export type DiscoverAgentsApiV1DiscoverAgentsPostError = HTTPValidationError;
-
-/**
- * DiscoverAgentsRequest
- * Request to discover agents from infrastructure.
- *
- * .. deprecated::
- *     Use GET /api/v2/agent-tasks instead.
- */
-export interface DiscoverAgentsRequest {
-  /**
-   * Data Plane Id
-   * UUID of the data plane to discover agents from
-   * @format uuid
-   */
-  data_plane_id: string;
-  /**
-   * Lookback Hours
-   * Number of hours to look back for traces (default 30 days)
-   * @default 720
-   */
-  lookback_hours?: number;
-}
-
-/**
- * DiscoverAgentsResponse
- * Response containing discovered agents.
- *
- * .. deprecated::
- *     Use GET /api/v2/agent-tasks instead.
- */
-export interface DiscoverAgentsResponse {
-  /**
-   * Agents
-   * List of discovered agents
-   */
-  agents: DiscoveredAgent[];
-  /**
-   * Metadata
-   * Discovery metadata (e.g., traces processed, errors)
-   */
-  metadata?: Record<string, any>;
-}
-
 /**
  * DiscoverAndPollResponse
  * Response model for the execute-all agent polling endpoint.
@@ -2349,51 +2266,15 @@ export interface DiscoverAndPollResponse {
 }
 
 /**
- * DiscoveredAgent
- * A discovered agent from infrastructure.
- *
- * .. deprecated::
- *     Use GET /api/v2/agent-tasks with EnrichedTaskResponse instead.
+ * DisplaySettingsResponse
+ * Public display settings (e.g. default currency for cost formatting).
  */
-export interface DiscoveredAgent {
-  /** Information about how this agent was created. */
-  creation_source: CreationSource;
+export interface DisplaySettingsResponse {
   /**
-   * Data Plane Id
-   * UUID of the data plane where this agent was detected.
-   * @format uuid
+   * Default Currency
+   * @default "USD"
    */
-  data_plane_id: string;
-  /**
-   * First Detected
-   * ISO 8601 timestamp when agent was first detected.
-   */
-  first_detected: string;
-  /**
-   * Infrastructure
-   * Infrastructure where this agent is running (e.g., 'GCP').
-   */
-  infrastructure: string;
-  /**
-   * Name
-   * Name of the agent.
-   */
-  name: string;
-  /**
-   * Num Spans
-   * Number of spans associated with this agent.
-   */
-  num_spans?: number | null;
-  /**
-   * Sub Agents
-   * List of sub-agents used by this agent.
-   */
-  sub_agents?: SubAgent[];
-  /**
-   * Tools
-   * List of tools used by this agent.
-   */
-  tools?: Tool[];
+  default_currency?: string;
 }
 
 /**
@@ -3571,6 +3452,8 @@ export type GetDefaultRulesApiV2DefaultRulesGetData = RuleResponse[];
 
 export type GetDefaultTaskApiChatDefaultTaskGetData = ChatDefaultTaskResponse;
 
+export type GetDisplaySettingsApiV2DisplaySettingsGetData = DisplaySettingsResponse;
+
 export type GetExperimentTestCasesApiV1PromptExperimentsExperimentIdTestCasesGetData = TestCaseListResponse;
 
 export type GetExperimentTestCasesApiV1PromptExperimentsExperimentIdTestCasesGetError = HTTPValidationError;
@@ -4010,6 +3893,10 @@ export type GetTraceByIdApiV1TracesTraceIdGetError = HTTPValidationError;
 export type GetTransformApiV1TracesTransformsTransformIdGetData = TraceTransformResponse;
 
 export type GetTransformApiV1TracesTransformsTransformIdGetError = HTTPValidationError;
+
+export type GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGetData = TransformDependents;
+
+export type GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGetError = HTTPValidationError;
 
 export type GetUnregisteredRootSpansApiV1TracesSpansUnregisteredGetData = UnregisteredRootSpansResponse;
 
@@ -5112,6 +4999,16 @@ export interface ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetParams {
    * Name of the llm eval to filter on
    */
   llm_eval_name?: string | null;
+  /**
+   * Llm Eval Name Exact
+   * Exact LLM eval name to filter on (case-sensitive exact match).
+   */
+  llm_eval_name_exact?: string | null;
+  /**
+   * Llm Eval Version
+   * LLM eval version to filter on.
+   */
+  llm_eval_version?: number | null;
   /**
    * Name
    * Name of the continuous eval to filter on.
@@ -9513,6 +9410,11 @@ export interface SessionListResponse {
    */
   count: number;
   /**
+   * Display Currency
+   * Currency code for cost fields
+   */
+  display_currency?: string | null;
+  /**
    * Sessions
    * List of session metadata
    */
@@ -9614,6 +9516,11 @@ export interface SessionTracesResponse {
    */
   count: number;
   /**
+   * Display Currency
+   * Currency code for cost fields
+   */
+  display_currency?: string | null;
+  /**
    * Session Id
    * Session identifier
    */
@@ -9682,6 +9589,11 @@ export interface SpanListResponse {
    * Total number of spans matching filters
    */
   count: number;
+  /**
+   * Display Currency
+   * Currency code for cost fields
+   */
+  display_currency?: string | null;
   /**
    * Spans
    * List of span metadata
@@ -10477,6 +10389,11 @@ export interface TraceListResponse {
    */
   count: number;
   /**
+   * Display Currency
+   * Currency code for cost fields
+   */
+  display_currency?: string | null;
+  /**
    * Traces
    * List of trace metadata
    */
@@ -10768,6 +10685,11 @@ export interface TraceUserListResponse {
    */
   count: number;
   /**
+   * Display Currency
+   * Currency code for cost fields
+   */
+  display_currency?: string | null;
+  /**
    * Users
    * List of user metadata
    */
@@ -10856,6 +10778,39 @@ export interface TraceUserMetadataResponse {
    * User identifier
    */
   user_id: string;
+}
+
+/** TransformDependentRef */
+export interface TransformDependentRef {
+  /**
+   * Id
+   * ID of the dependent resource.
+   */
+  id: string;
+  /**
+   * Name
+   * Name of the dependent resource.
+   */
+  name: string;
+}
+
+/** TransformDependents */
+export interface TransformDependents {
+  /**
+   * Agentic Experiments
+   * Agentic experiments that reference this transform.
+   */
+  agentic_experiments?: TransformDependentRef[];
+  /**
+   * Agentic Notebooks
+   * Agentic notebooks that reference this transform.
+   */
+  agentic_notebooks?: TransformDependentRef[];
+  /**
+   * Continuous Evals
+   * Continuous evals that reference this transform.
+   */
+  continuous_evals?: TransformDependentRef[];
 }
 
 /** TransformExtractionResponseList */
@@ -12266,7 +12221,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.420
+ * @version 2.1.454
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -13328,7 +13283,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Delete a transform.
+     * @description Delete a transform. Returns 409 if the transform is referenced by continuous evals, agentic experiments, or agentic notebooks.
      *
      * @tags Transforms
      * @name DeleteTransformApiV1TracesTransformsTransformIdDelete
@@ -13341,27 +13296,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v1/traces/transforms/${transformId}`,
         method: "DELETE",
         secure: true,
-        ...params,
-      }),
-
-    /**
-     * @description DEPRECATED: Use GET /api/v2/agent-tasks instead. Discovery is now handled automatically by the global polling service.
-     *
-     * @tags Agent Discovery
-     * @name DiscoverAgentsApiV1DiscoverAgentsPost
-     * @summary Discover Agents
-     * @request POST:/api/v1/discover-agents
-     * @deprecated
-     * @secure
-     */
-    discoverAgentsApiV1DiscoverAgentsPost: (data: DiscoverAgentsRequest, params: RequestParams = {}) =>
-      this.request<DiscoverAgentsApiV1DiscoverAgentsPostData, DiscoverAgentsApiV1DiscoverAgentsPostError>({
-        path: `/api/v1/discover-agents`,
-        method: "POST",
-        body: data,
-        secure: true,
-        type: ContentType.Json,
-        format: "json",
         ...params,
       }),
 
@@ -14079,6 +14013,22 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Get display settings (e.g. default currency for cost formatting).
+     *
+     * @tags Settings
+     * @name GetDisplaySettingsApiV2DisplaySettingsGet
+     * @summary Get Display Settings
+     * @request GET:/api/v2/display-settings
+     */
+    getDisplaySettingsApiV2DisplaySettingsGet: (params: RequestParams = {}) =>
+      this.request<GetDisplaySettingsApiV2DisplaySettingsGetData, any>({
+        path: `/api/v2/display-settings`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get paginated list of test case results for a prompt experiment
      *
      * @tags Prompt Experiments
@@ -14699,6 +14649,27 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getTransformApiV1TracesTransformsTransformIdGet: (transformId: string, params: RequestParams = {}) =>
       this.request<GetTransformApiV1TracesTransformsTransformIdGetData, GetTransformApiV1TracesTransformsTransformIdGetError>({
         path: `/api/v1/traces/transforms/${transformId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get resources that depend on this transform.
+     *
+     * @tags Transforms
+     * @name GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGet
+     * @summary Get Transform Dependents
+     * @request GET:/api/v1/traces/transforms/{transform_id}/dependents
+     * @secure
+     */
+    getTransformDependentsApiV1TracesTransformsTransformIdDependentsGet: (transformId: string, params: RequestParams = {}) =>
+      this.request<
+        GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGetData,
+        GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGetError
+      >({
+        path: `/api/v1/traces/transforms/${transformId}/dependents`,
         method: "GET",
         secure: true,
         format: "json",

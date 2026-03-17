@@ -1,3 +1,4 @@
+import { Operators, TracesEmptyState } from "@arthur/shared-components";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import {
@@ -35,14 +36,13 @@ import { continuousEvalsResultsQueryOptions } from "../hooks/useContinuousEvalsR
 import { createColumns } from "./columns";
 
 import { CopyableChip } from "@/components/common";
-import { Operators } from "@/components/traces/components/filtering/types";
-import { TracesEmptyState } from "@/components/traces/components/TracesEmptyState";
 import { getContentHeight } from "@/constants/layout";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useTransform } from "@/hooks/transforms/useTransform";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { AgenticAnnotationResponse, ContinuousEvalRunStatus } from "@/lib/api-client/api-client";
-import { formatDate } from "@/utils/formatters";
+import { formatDateInTimezone } from "@/utils/formatters";
 
 const DEFAULT_DATA: AgenticAnnotationResponse[] = [];
 
@@ -60,6 +60,7 @@ export const LiveEvalDetail = () => {
   const { evalId } = useParams<{ evalId: string }>();
 
   const { task } = useTask();
+  const { defaultCurrency, timezone, use24Hour } = useDisplaySettings();
   const api = useApi()!;
 
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
@@ -94,7 +95,10 @@ export const LiveEvalDetail = () => {
   const transform = useTransform(liveEval?.transform_id);
   const hasVariableMappings = liveEval?.transform_variable_mapping && liveEval.transform_variable_mapping.length > 0;
 
-  const columns = useMemo(() => createColumns({ taskId: task?.id ?? "" }), [task?.id]);
+  const columns = useMemo(
+    () => createColumns({ taskId: task?.id ?? "", defaultCurrency, timezone, use24Hour }),
+    [task?.id, defaultCurrency, timezone, use24Hour]
+  );
 
   const table = useMaterialReactTable({
     columns,
@@ -161,7 +165,7 @@ export const LiveEvalDetail = () => {
             <Stack direction="row" gap={2} alignItems="center">
               <CopyableChip label={evalId ?? liveEval.id} sx={{ fontFamily: "monospace", fontSize: "0.75rem" }} />
               <Typography variant="body2" color="text.secondary">
-                Created {formatDate(liveEval.created_at)}
+                Created {formatDateInTimezone(liveEval.created_at, timezone, { hour12: !use24Hour })}
               </Typography>
             </Stack>
           </Stack>

@@ -2,7 +2,7 @@ import { Collapsible } from "@base-ui/react/collapsible";
 import ConstructionIcon from "@mui/icons-material/Construction";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
-import { Alert, IconButton, Paper, Snackbar, Stack, Typography } from "@mui/material";
+import { Alert, IconButton, Link, Paper, Snackbar, Stack, Typography } from "@mui/material";
 
 import { TracesEmptyState } from "../TracesEmptyState";
 
@@ -17,7 +17,7 @@ type Props = {
 };
 
 export const ToolsTab = ({ span }: Props) => {
-  const tools = getTools(span).map(getToolDefinition);
+  const tools = isSpanWithLlmAttrs(span) ? getTools(span).map(getToolDefinition) : [];
   const snackbar = useSnackbar({ duration: "short" });
   const { handleCopy } = useCopy({
     onCopy: () => {
@@ -31,8 +31,16 @@ export const ToolsTab = ({ span }: Props) => {
   if (tools.length === 0) {
     return (
       <TracesEmptyState title="No tools found">
-        <Typography variant="body2" color="text.secondary">
-          This span seems not to have used any tools.
+        <Typography variant="body2" color="text.secondary" textAlign="center">
+          The LLM didn&apos;t have any tools available, or the tracing instrumentation is not capturing the tools the LLM has access to.
+        </Typography>
+        <Typography variant="body2" color="text.secondary" textAlign="center">
+          To fix this, review your tracing setup and ensure it includes the tool definitions in the span attributes when instrumenting LLM calls. See
+          the{" "}
+          <Link href="https://docs.arthur.ai/docs/get-started-with-tracing" target="_blank" rel="noopener">
+            tracing documentation
+          </Link>{" "}
+          for more details.
         </Typography>
       </TracesEmptyState>
     );
@@ -74,3 +82,10 @@ export const ToolsTab = ({ span }: Props) => {
     </>
   );
 };
+
+type SpanWithLlmAttrs = Parameters<typeof getTools>[0];
+
+// TODO: Export this to shared-components
+export function isSpanWithLlmAttrs(span: NestedSpanWithMetricsResponse): span is NestedSpanWithMetricsResponse & SpanWithLlmAttrs {
+  return "raw_data" in span && "attributes" in span.raw_data;
+}

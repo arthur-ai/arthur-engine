@@ -21,7 +21,8 @@ import { useMemo, useState, useCallback } from "react";
 import { usePromptVersions } from "../hooks/usePromptVersions";
 import type { PromptVersionDrawerProps } from "../types";
 
-import { formatDate } from "@/utils/formatters";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { formatDateInTimezone } from "@/utils/formatters";
 
 const PromptVersionDrawer = ({
   open,
@@ -38,6 +39,7 @@ const PromptVersionDrawer = ({
   const [versionToDelete, setVersionToDelete] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const { timezone, use24Hour } = useDisplaySettings();
   const { versions, isLoading, error, refetch } = usePromptVersions(taskId, promptName, {
     sort: sortOrder,
     exclude_deleted: false,
@@ -108,7 +110,7 @@ const PromptVersionDrawer = ({
       }}
     >
       <Box sx={{ p: 2, display: "flex", flexDirection: "column", height: "100%" }}>
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+        <Typography variant="h6" noWrap sx={{ mb: 2, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}>
           Versions: {promptName}
         </Typography>
 
@@ -250,7 +252,7 @@ const PromptVersionDrawer = ({
                               color: isDeleted ? "text.disabled" : "text.secondary",
                             }}
                           >
-                            {formatDate(version.created_at)}
+                            {formatDateInTimezone(version.created_at, timezone, { hour12: !use24Hour })}
                           </Typography>
                           {isDeleted && version.deleted_at && (
                             <Typography
@@ -262,7 +264,7 @@ const PromptVersionDrawer = ({
                                 color: "text.disabled",
                               }}
                             >
-                              Deleted at: {formatDate(version.deleted_at)}
+                              Deleted at: {formatDateInTimezone(version.deleted_at, timezone, { hour12: !use24Hour })}
                             </Typography>
                           )}
                         </Box>

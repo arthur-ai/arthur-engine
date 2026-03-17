@@ -33,10 +33,11 @@ import { MessageDisplay, VariableTile } from "./PromptResultComponents";
 import { EvalInputsDialog } from "./PromptResultDetailModal";
 
 import { UpdateDatasetRowModal } from "@/components/common/UpdateDatasetRowModal";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { useExperimentTestCases } from "@/hooks/usePromptExperiments";
 import useSnackbar from "@/hooks/useSnackbar";
-import type { TestCase, DatasetVersionRowResponse, EvalExecution } from "@/lib/api-client/api-client";
+import type { TestCase, DatasetVersionRowResponse, EvalExecution, ExperimentStatus } from "@/lib/api-client/api-client";
 import { formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
@@ -47,6 +48,7 @@ interface Message {
 
 interface ExperimentResultsTableProps {
   experimentId: string;
+  experimentStatus?: ExperimentStatus;
   promptSummaries?: Array<{
     prompt_key?: string | null;
     prompt_type?: string | null;
@@ -89,6 +91,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
   datasetId,
   datasetVersion,
 }) => {
+  const { defaultCurrency } = useDisplaySettings();
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const [selectedOutputForUpdate, setSelectedOutputForUpdate] = useState<string | null>(null);
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
@@ -196,7 +199,11 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                         {promptDisplayName}
                       </Typography>
                       {promptResult.output && (
-                        <Chip label={`Cost: $${promptResult.output.cost}`} size="small" className="bg-white dark:bg-gray-900" />
+                        <Chip
+                          label={`Cost: ${formatCurrency(parseFloat(String(promptResult.output.cost)), defaultCurrency)}`}
+                          size="small"
+                          className="bg-white dark:bg-gray-900"
+                        />
                       )}
                     </Box>
 
@@ -321,8 +328,14 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                                           size="small"
                                           sx={getEvalChipSx(evalItem.eval_results.score === 1)}
                                         />
-                                        <Chip label={`Cost: $${evalItem.eval_results.cost}`} size="small" variant="outlined" />
+                                        <Chip
+                                          label={`Cost: ${formatCurrency(parseFloat(String(evalItem.eval_results.cost)), defaultCurrency)}`}
+                                          size="small"
+                                          variant="outlined"
+                                        />
                                       </>
+                                    ) : testCase.status === "failed" || testCase.status === "completed" ? (
+                                      <Chip label="Not Run" size="small" sx={getPendingChipSx()} />
                                     ) : (
                                       <Chip label="Pending" size="small" sx={getPendingChipSx()} />
                                     )}
@@ -394,11 +407,13 @@ interface RowProps {
   testCase: TestCase;
   promptEvalColumns: PromptEvalColumn[];
   evalGroups: EvalGroup[];
+  experimentStatus?: ExperimentStatus;
   onClick: () => void;
   onViewData?: () => void;
+  defaultCurrency: string;
 }
 
-const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGroups, onClick, onViewData }) => {
+const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGroups, experimentStatus, onClick, onViewData, defaultCurrency }) => {
   return (
     <TableRow hover onClick={onClick} sx={{ cursor: "pointer" }}>
       <TableCell>
@@ -410,6 +425,9 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGrou
 
         const score = evalResult?.eval_results?.score;
         const isPending = !evalResult?.eval_results;
+        const isExperimentTerminal = experimentStatus === "failed" || experimentStatus === "completed";
+        const isActivelyRunning =
+          !isExperimentTerminal && (testCase.status === "running" || testCase.status === "evaluating" || testCase.status === "queued");
 
         // Check if this is the last eval in its prompt group
         const isLastInGroup = index === promptEvalColumns.length - 1 || promptEvalColumns[index + 1].promptKey !== column.promptKey;
@@ -425,7 +443,24 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGrou
             }}
           >
             {isPending ? (
-              <CircularProgress size={16} sx={{ color: "text.secondary" }} />
+              isActivelyRunning ? (
+                <CircularProgress size={16} sx={{ color: "text.secondary" }} />
+              ) : (
+                <Box
+                  sx={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "20px",
+                    height: "20px",
+                    color: "text.disabled",
+                    fontWeight: 600,
+                    fontSize: "0.8rem",
+                  }}
+                >
+                  —
+                </Box>
+              )
             ) : score === 1 ? (
               <Box
                 sx={{
@@ -502,7 +537,7 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGrou
           </TableCell>
         );
       })}
-      <TableCell align="right">{testCase.total_cost ? formatCurrency(parseFloat(testCase.total_cost)) : "-"}</TableCell>
+      <TableCell align="right">{testCase.total_cost ? formatCurrency(parseFloat(testCase.total_cost), defaultCurrency) : "-"}</TableCell>
       <TableCell align="center" onClick={(e) => e.stopPropagation()}>
         {onViewData && (
           <IconButton size="small" onClick={onViewData} title="View dataset row">
@@ -600,11 +635,13 @@ const DatasetRowModal: React.FC<DatasetRowModalProps> = ({ open, onClose, datase
 
 export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   experimentId,
+  experimentStatus,
   promptSummaries = [],
   refreshTrigger,
   datasetId,
   datasetVersion,
 }) => {
+  const { defaultCurrency } = useDisplaySettings();
   const [page, setPage] = useState(0);
   const pageSize = 20;
   const { testCases, totalPages, totalCount, isLoading, error, refetch } = useExperimentTestCases(experimentId, page, pageSize);
@@ -936,8 +973,10 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                   testCase={testCase}
                   promptEvalColumns={promptEvalColumns}
                   evalGroups={evalGroups}
+                  experimentStatus={experimentStatus}
                   onClick={() => handleRowClick(index)}
                   onViewData={datasetId && datasetVersion ? () => handleViewDatasetRow(testCase, datasetId, datasetVersion) : undefined}
+                  defaultCurrency={defaultCurrency}
                 />
               ))
             )}

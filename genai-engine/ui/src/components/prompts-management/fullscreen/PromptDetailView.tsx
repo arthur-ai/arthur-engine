@@ -1,3 +1,4 @@
+import { MustacheHighlightedTextField } from "@arthur/shared-components";
 import CloseIcon from "@mui/icons-material/Close";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -25,10 +26,10 @@ import { useAddTagToPromptVersionMutation } from "../hooks/useAddTagToPromptVers
 import { useDeleteTagFromPromptVersionMutation } from "../hooks/useDeleteTagFromPromptVersionMutation";
 import type { PromptDetailViewProps } from "../types";
 
-import MustacheHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { useCreateNotebookMutation, useSetNotebookStateMutation } from "@/hooks/useNotebooks";
-import { formatDate } from "@/utils/formatters";
+import { formatDateInTimezone } from "@/utils/formatters";
 
 const PromptDetailView = ({
   promptData,
@@ -51,6 +52,7 @@ const PromptDetailView = ({
   const deleteTagMutation = useDeleteTagFromPromptVersionMutation();
   const apiClient = useApi();
   const navigate = useNavigate();
+  const { timezone, use24Hour } = useDisplaySettings();
   const { enqueueSnackbar } = useSnackbar();
   const setNotebookStateMutation = useSetNotebookStateMutation();
 
@@ -245,8 +247,8 @@ const PromptDetailView = ({
   return (
     <Box sx={{ p: 3, height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3, flexShrink: 0 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-          <Typography variant="h5" sx={{ fontWeight: 600 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", minWidth: 0, overflow: "hidden" }}>
+          <Typography variant="h5" noWrap sx={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>
             {promptName}
           </Typography>
           {version !== null && <Chip label={`Version ${version}`} size="small" sx={{ height: 24 }} />}
@@ -322,7 +324,7 @@ const PromptDetailView = ({
                 Created At
               </Typography>
               <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                {promptData.created_at ? formatDate(promptData.created_at) : "N/A"}
+                {promptData.created_at ? formatDateInTimezone(promptData.created_at, timezone, { hour12: !use24Hour }) : "N/A"}
               </Typography>
             </Box>
             {promptData.deleted_at && (
@@ -331,7 +333,7 @@ const PromptDetailView = ({
                   Deleted At
                 </Typography>
                 <Typography variant="body1" sx={{ fontWeight: 500, color: "error.main" }}>
-                  {formatDate(promptData.deleted_at)}
+                  {formatDateInTimezone(promptData.deleted_at, timezone, { hour12: !use24Hour })}
                 </Typography>
               </Box>
             )}

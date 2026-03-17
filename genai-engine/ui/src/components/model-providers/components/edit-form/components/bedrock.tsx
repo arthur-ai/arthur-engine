@@ -1,10 +1,9 @@
+import { withFieldGroup } from "@arthur/shared-components";
 import { Divider, Stack, TextField, ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
 import z from "zod";
 
 import { BedrockFormValues } from "../form";
-
-import { withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
 
 export const BedrockFields = withFieldGroup({
   defaultValues: {

@@ -6,7 +6,7 @@ import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import TablePagination from "@mui/material/TablePagination";
 import Typography from "@mui/material/Typography";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
 import { CreateNotebookModal } from "./CreateNotebookModal";
@@ -21,7 +21,11 @@ import type { CreateNotebookRequest } from "@/lib/api-client/api-client";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
-const Notebooks: React.FC = () => {
+interface NotebooksProps {
+  onRegisterCreate?: (fn: () => void) => void;
+}
+
+const Notebooks: React.FC<NotebooksProps> = ({ onRegisterCreate }) => {
   const { task } = useTask();
   const { id: taskId } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -60,6 +64,10 @@ const Notebooks: React.FC = () => {
     setIsCreateModalOpen(true);
   }, []);
 
+  useEffect(() => {
+    onRegisterCreate?.(() => setIsCreateModalOpen(true));
+  }, [onRegisterCreate]);
+
   const handleCloseCreateModal = useCallback(() => {
     setIsCreateModalOpen(false);
   }, []);
@@ -75,6 +83,15 @@ const Notebooks: React.FC = () => {
     (notebookId: string) => {
       if (taskId) {
         navigate(`/tasks/${taskId}/playgrounds/prompts?notebookId=${notebookId}`);
+      }
+    },
+    [taskId, navigate]
+  );
+
+  const handleViewLastRun = useCallback(
+    (experimentId: string) => {
+      if (taskId) {
+        navigate(`/tasks/${taskId}/prompt-experiments/${experimentId}`);
       }
     },
     [taskId, navigate]
@@ -146,7 +163,7 @@ const Notebooks: React.FC = () => {
         overflow: "hidden",
       }}
     >
-      <NotebooksHeader onCreateNotebook={handleCreateNotebook} />
+      {!onRegisterCreate && <NotebooksHeader onCreateNotebook={handleCreateNotebook} />}
 
       {error && notebooks.length > 0 && (
         <Box sx={{ px: 3, pt: 2 }}>
@@ -191,6 +208,7 @@ const Notebooks: React.FC = () => {
             onSort={handleSort}
             onRowClick={handleRowClick}
             onLaunchNotebook={handleLaunchNotebook}
+            onViewLastRun={handleViewLastRun}
             onDelete={deleteMutation.mutateAsync}
           />
         )}
