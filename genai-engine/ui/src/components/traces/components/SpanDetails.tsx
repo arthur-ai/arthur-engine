@@ -14,8 +14,9 @@ import { SpanStatusBadge } from "./span-status-badge";
 
 import { CopyableChip } from "@/components/common";
 import { Tabs } from "@/components/ui/Tabs";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
-import { formatDate } from "@/utils/formatters";
+import { formatDateInTimezone } from "@/utils/formatters";
 
 const SpanDetailsContext = createContext<{
   span: NestedSpanWithMetricsResponse;
@@ -58,6 +59,7 @@ type SpanDetailsHeaderProps = {
 
 export const SpanDetailsHeader = ({ onOpenSpanDrawer, onOpenPlayground }: SpanDetailsHeaderProps = {}) => {
   const { span } = useSpanDetails();
+  const { timezone, use24Hour } = useDisplaySettings();
 
   const duration = getSpanDuration(span);
   const isLLM = isSpanOfType(span, OpenInferenceSpanKind.LLM);
@@ -102,7 +104,7 @@ export const SpanDetailsHeader = ({ onOpenSpanDrawer, onOpenPlayground }: SpanDe
       </Stack>
       <Stack direction="row" spacing={1}>
         <Typography variant="caption" color="text.secondary">
-          {formatDate(span.start_time)}
+          {formatDateInTimezone(span.start_time, timezone, { hour12: !use24Hour })}
         </Typography>
         <Typography variant="caption" color="text.secondary">
           {duration}ms

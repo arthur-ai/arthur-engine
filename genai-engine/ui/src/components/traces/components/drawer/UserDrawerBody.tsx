@@ -21,6 +21,7 @@ import { TracesEmptyState } from "../TracesEmptyState";
 
 import { CopyableChip } from "@/components/common";
 import { Tabs } from "@/components/ui/Tabs";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { SessionMetadataResponse, TraceMetadataResponse, TraceUserMetadataResponse } from "@/lib/api-client/api-client";
@@ -28,7 +29,7 @@ import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { track } from "@/services/amplitude";
 import { getFilteredSessions, getFilteredTraces } from "@/services/tracing";
-import { formatDate } from "@/utils/formatters";
+import { formatDateInTimezone } from "@/utils/formatters";
 
 type UserDrawerBodyProps = {
   user: TraceUserMetadataResponse;
@@ -119,6 +120,7 @@ type UserTableProps = {
 const UserTracesTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
   const api = useApi()!;
   const [, setDrawerTarget] = useDrawerTarget();
+  const { timezone, use24Hour } = useDisplaySettings();
 
   const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
 
@@ -144,7 +146,7 @@ const UserTracesTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
   const columns = useMemo(
     () =>
       createTraceLevelColumns({
-        formatDate,
+        formatDate: (v) => formatDateInTimezone(v, timezone, { hour12: !use24Hour }),
         formatCurrency: () => "",
         onTrack: track,
         Chip: CopyableChip,
@@ -156,7 +158,7 @@ const UserTracesTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
         TokenCountTooltip,
         TokenCostTooltip,
       }),
-    []
+    [timezone, use24Hour]
   );
 
   const thresholds = useMemo(() => buildThresholdsFromSample(traces.data?.traces.map((trace) => trace.duration_ms) ?? []), [traces.data?.traces]);
@@ -224,6 +226,7 @@ const UserTracesTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
 const UserSessionsTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
   const api = useApi()!;
   const [, setDrawerTarget] = useDrawerTarget();
+  const { timezone, use24Hour } = useDisplaySettings();
   const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
 
   const timeRange = useFilterStore((state) => state.timeRange);
@@ -247,7 +250,7 @@ const UserSessionsTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
   const columns = useMemo(
     () =>
       createSessionLevelColumns({
-        formatDate,
+        formatDate: (v) => formatDateInTimezone(v, timezone, { hour12: !use24Hour }),
         formatCurrency: () => "",
         onTrack: track,
         Chip: CopyableChip,
@@ -259,7 +262,7 @@ const UserSessionsTable = ({ ids, taskId, onRowClick }: UserTableProps) => {
         TokenCountTooltip,
         TokenCostTooltip,
       }),
-    []
+    [timezone, use24Hour]
   );
 
   const handleRowClick = (row: SessionMetadataResponse) => {

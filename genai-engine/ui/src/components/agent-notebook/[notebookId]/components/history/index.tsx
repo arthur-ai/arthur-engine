@@ -104,7 +104,7 @@ const HistoryContent = ({ notebookId }: { notebookId: string }) => {
 
 const HistoryItem = ({ item, onOpenChange }: { item: AgenticExperimentSummary; onOpenChange: (open: boolean) => void }) => {
   const { task } = useTask();
-  const { defaultCurrency } = useDisplaySettings();
+  const { defaultCurrency, timezone, use24Hour } = useDisplaySettings();
   const isRunning = item.status === "running" || item.status === "queued";
   const progress = item.total_rows > 0 ? Math.round((item.completed_rows / item.total_rows) * 100) : 0;
 
@@ -124,7 +124,7 @@ const HistoryItem = ({ item, onOpenChange }: { item: AgenticExperimentSummary; o
             secondary={
               <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5 }}>
                 <Typography variant="caption" color="text.secondary">
-                  {formatRelativeTime(item.created_at)}
+                  {formatRelativeTime(item.created_at, timezone, { hour12: !use24Hour })}
                 </Typography>
               </Box>
             }

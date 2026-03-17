@@ -28,6 +28,7 @@ import { TraceContentCell } from "../TraceContentCell";
 
 import { TracingFilterModal } from "./components/TracingFilterModal";
 
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
@@ -36,7 +37,7 @@ import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { EVENT_NAMES, track } from "@/services/amplitude";
 import { getFilteredSpans } from "@/services/tracing";
-import { formatDate } from "@/utils/formatters";
+import { formatDateInTimezone } from "@/utils/formatters";
 
 const DEFAULT_DATA: SpanMetadataResponse[] = [];
 
@@ -48,6 +49,7 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
   const api = useApi()!;
   const { task } = useTask();
   const [, setDrawerTarget] = useDrawerTarget();
+  const { timezone, use24Hour } = useDisplaySettings();
   const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
   const [searchInput, setSearchInput] = useState("");
 
@@ -103,7 +105,7 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
 
   const columns = useMemo(() => {
     const deps: SharedColumnDependencies = {
-      formatDate,
+      formatDate: (v) => formatDateInTimezone(v, timezone, { hour12: !use24Hour }),
       formatCurrency: () => "",
       onTrack: track,
       Chip: SharedCopyableChip,
@@ -117,7 +119,7 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
       isValidStatusCode,
     };
     return createSpanLevelColumns(deps) as MRT_ColumnDef<SpanMetadataResponse, unknown>[];
-  }, []);
+  }, [timezone, use24Hour]);
 
   const setFilters = useFilterStore((state) => state.setFilters);
 
