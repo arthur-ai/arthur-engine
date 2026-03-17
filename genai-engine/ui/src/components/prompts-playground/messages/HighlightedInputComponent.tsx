@@ -20,6 +20,7 @@ export const HighlightedInputComponent = ({
       value={stringValue}
       onChange={(e) => onChange(e as React.ChangeEvent<HTMLInputElement>)}
       placeholder={placeholder}
+      variant="filled"
       multiline
       minRows={2}
       maxRows={20}
