@@ -1,5 +1,4 @@
 import CloseIcon from "@mui/icons-material/Close";
-import EditIcon from "@mui/icons-material/Edit";
 import LaunchIcon from "@mui/icons-material/Launch";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import Box from "@mui/material/Box";
@@ -18,11 +17,11 @@ import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
-import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
+import { EditableTitle } from "@/components/common";
 import { useNotebook, useNotebookHistory, useUpdateNotebookMutation } from "@/hooks/useNotebooks";
 import {
   EvalRefOutput,
@@ -46,34 +45,6 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
   const { experiments, isLoading: isLoadingHistory } = useNotebookHistory(notebookId || undefined, 0, 10);
   const updateMutation = useUpdateNotebookMutation(taskId);
 
-  const [isRenaming, setIsRenaming] = useState(false);
-  const [newNotebookName, setNewNotebookName] = useState("");
-
-  useEffect(() => {
-    if (notebook?.name) setNewNotebookName(notebook.name);
-  }, [notebook?.name]);
-
-  const handleStartRename = () => {
-    setNewNotebookName(notebook?.name ?? "");
-    setIsRenaming(true);
-  };
-
-  const handleCancelRename = () => {
-    setIsRenaming(false);
-    setNewNotebookName(notebook?.name ?? "");
-  };
-
-  const handleSaveRename = async () => {
-    if (updateMutation.isPending) return;
-    const trimmed = newNotebookName.trim();
-    if (!trimmed || !notebookId || trimmed === notebook?.name) {
-      handleCancelRename();
-      return;
-    }
-    setIsRenaming(false);
-    await updateMutation.mutateAsync({ notebookId, request: { name: trimmed, description: notebook?.description } });
-  };
-
   const handleExperimentClick = (experimentId: string) => {
     navigate(`/tasks/${taskId}/prompt-experiments/${experimentId}`);
     onClose();
@@ -82,44 +53,17 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          {isRenaming ? (
-            <TextField
-              variant="filled"
-              size="small"
-              value={newNotebookName}
-              onChange={(e) => setNewNotebookName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSaveRename();
-                else if (e.key === "Escape") handleCancelRename();
-              }}
-              onBlur={handleSaveRename}
-              autoFocus
-              sx={{
-                "& .MuiInputBase-root": { fontSize: "1.25rem", fontWeight: 600 },
-              }}
-            />
-          ) : (
-            <>
-              <Typography variant="h6" component="span">
-                {notebook?.name || "Notebook Details"}
-              </Typography>
-              {notebook && (
-                <IconButton
-                  size="small"
-                  onClick={handleStartRename}
-                  sx={{
-                    padding: 0.5,
-                    color: "text.secondary",
-                    "&:hover": { color: "text.primary", backgroundColor: "action.hover" },
-                  }}
-                >
-                  <EditIcon sx={{ fontSize: "1rem" }} />
-                </IconButton>
-              )}
-            </>
-          )}
-        </Box>
+        <EditableTitle
+          value={notebook?.name ?? ""}
+          onSave={async (newName) => {
+            if (notebookId) {
+              await updateMutation.mutateAsync({ notebookId, request: { name: newName, description: notebook?.description } });
+            }
+          }}
+          isPending={updateMutation.isPending}
+          fallbackText="Notebook Details"
+          showEditButton={!!notebook}
+        />
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           {notebookId && (
             <Button
