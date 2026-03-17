@@ -20,7 +20,7 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { useNotebook, useNotebookHistory, useUpdateNotebookMutation } from "@/hooks/useNotebooks";
@@ -48,7 +48,6 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
 
   const [isRenaming, setIsRenaming] = useState(false);
   const [newNotebookName, setNewNotebookName] = useState("");
-  const isSavingRenameRef = useRef(false);
 
   useEffect(() => {
     if (notebook?.name) setNewNotebookName(notebook.name);
@@ -65,19 +64,14 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
   };
 
   const handleSaveRename = async () => {
-    if (isSavingRenameRef.current) return;
+    if (updateMutation.isPending) return;
     const trimmed = newNotebookName.trim();
     if (!trimmed || !notebookId || trimmed === notebook?.name) {
       handleCancelRename();
       return;
     }
-    isSavingRenameRef.current = true;
     setIsRenaming(false);
-    try {
-      await updateMutation.mutateAsync({ notebookId, request: { name: trimmed, description: notebook?.description } });
-    } finally {
-      isSavingRenameRef.current = false;
-    }
+    await updateMutation.mutateAsync({ notebookId, request: { name: trimmed, description: notebook?.description } });
   };
 
   const handleExperimentClick = (experimentId: string) => {
