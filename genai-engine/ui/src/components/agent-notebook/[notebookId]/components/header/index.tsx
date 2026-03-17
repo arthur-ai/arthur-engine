@@ -1,11 +1,9 @@
 import { withForm } from "@arthur/shared-components";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import EditIcon from "@mui/icons-material/Edit";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import SaveIcon from "@mui/icons-material/Save";
-import { Box, Button, ButtonGroup, Chip, CircularProgress, IconButton, Stack, TextField, Tooltip, Typography } from "@mui/material";
+import { Box, Button, ButtonGroup, Chip, CircularProgress, Stack, Tooltip, Typography } from "@mui/material";
 import { Link as MuiLink } from "@mui/material";
-import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { useUpdateAgenticNotebook } from "../../../hooks/useUpdateAgenticNotebook";
@@ -13,6 +11,7 @@ import { agentNotebookStateFormOpts } from "../../form";
 import { useMetaStore } from "../../store/meta.store";
 import { SubmitButton } from "../submit-button";
 
+import { EditableTitle } from "@/components/common";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { AgenticNotebookDetail } from "@/lib/api-client/api-client";
 import { formatDateInTimezone } from "@/utils/formatters";
@@ -32,39 +31,6 @@ export const Header = withForm({
     const edited = useMetaStore((state) => state.edited);
     const { timezone, use24Hour } = useDisplaySettings();
     const updateMutation = useUpdateAgenticNotebook();
-    const [isRenaming, setIsRenaming] = useState(false);
-    const [newNotebookName, setNewNotebookName] = useState(notebook.name);
-    const isSavingRenameRef = useRef(false);
-
-    useEffect(() => {
-      setNewNotebookName(notebook.name);
-    }, [notebook.name]);
-
-    const handleStartRename = () => {
-      setNewNotebookName(notebook.name);
-      setIsRenaming(true);
-    };
-
-    const handleCancelRename = () => {
-      setIsRenaming(false);
-      setNewNotebookName(notebook.name);
-    };
-
-    const handleSaveRename = async () => {
-      if (isSavingRenameRef.current) return;
-      const trimmed = newNotebookName.trim();
-      if (!trimmed || trimmed === notebook.name) {
-        handleCancelRename();
-        return;
-      }
-      isSavingRenameRef.current = true;
-      setIsRenaming(false);
-      try {
-        await updateMutation.mutateAsync({ notebookId: notebook.id, request: { name: trimmed, description: notebook.description } });
-      } finally {
-        isSavingRenameRef.current = false;
-      }
-    };
 
     return (
       <Box
@@ -92,40 +58,15 @@ export const Header = withForm({
             </Button>
             <Stack mb={1}>
               <Stack direction="row" alignItems="center" gap={1}>
-                {isRenaming ? (
-                  <TextField
-                    variant="filled"
-                    size="small"
-                    value={newNotebookName}
-                    onChange={(e) => setNewNotebookName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleSaveRename();
-                      else if (e.key === "Escape") handleCancelRename();
-                    }}
-                    onBlur={handleSaveRename}
-                    autoFocus
-                    sx={{
-                      "& .MuiInputBase-root": { fontSize: "1.25rem", fontWeight: 600 },
-                    }}
-                  />
-                ) : (
-                  <>
-                    <Typography variant="h6" sx={{ fontWeight: 600, color: "text.primary" }}>
-                      {notebook.name}
-                    </Typography>
-                    <IconButton
-                      size="small"
-                      onClick={handleStartRename}
-                      sx={{
-                        padding: 0.5,
-                        color: "text.secondary",
-                        "&:hover": { color: "text.primary", backgroundColor: "action.hover" },
-                      }}
-                    >
-                      <EditIcon sx={{ fontSize: "1rem" }} />
-                    </IconButton>
-                  </>
-                )}
+                <EditableTitle
+                  value={notebook.name}
+                  onSave={async (newName) => {
+                    await updateMutation.mutateAsync({ notebookId: notebook.id, request: { name: newName, description: notebook.description } });
+                  }}
+                  isPending={updateMutation.isPending}
+                  typographyVariant="h6"
+                  typographySx={{ fontWeight: 600, color: "text.primary" }}
+                />
                 {edited && (
                   <Chip
                     label={
