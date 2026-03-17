@@ -54,12 +54,13 @@ export const formatPercentValue = (value: number): string => {
   return `${value.toFixed(1)}%`;
 };
 
-export const formatXLabel = (date: Date, xLabelFormat: "time" | "date"): string => {
+export const formatXLabel = (date: Date, xLabelFormat: "time" | "date", timezone: string = "UTC"): string => {
+  const options: Intl.DateTimeFormatOptions = { timeZone: timezone };
   switch (xLabelFormat) {
     case "time":
-      return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+      return date.toLocaleTimeString("en-US", { ...options, hour: "numeric", minute: "2-digit", hour12: true });
     case "date":
-      return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      return date.toLocaleDateString("en-US", { ...options, month: "short", day: "numeric" });
     default:
       return "";
   }

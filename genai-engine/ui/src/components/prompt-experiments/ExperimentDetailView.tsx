@@ -32,7 +32,7 @@ import { getContentHeight } from "@/constants/layout";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useCreateNotebookMutation, useAttachExperimentToNotebookMutation, useSetNotebookStateMutation } from "@/hooks/useNotebooks";
 import { usePromptExperiment, useDeleteExperiment } from "@/hooks/usePromptExperiments";
-import { formatUTCTimestamp, formatTimestampDuration, formatCurrency } from "@/utils/formatters";
+import { formatDateInTimezone, formatTimestampDuration, formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 interface PromptVersionDetails {
@@ -51,7 +51,7 @@ interface PromptVersionDetails {
 export const ExperimentDetailView: React.FC = () => {
   const { id: taskId, experimentId } = useParams<{ id: string; experimentId: string }>();
   const navigate = useNavigate();
-  const { defaultCurrency } = useDisplaySettings();
+  const { defaultCurrency, timezone, use24Hour } = useDisplaySettings();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -253,10 +253,10 @@ export const ExperimentDetailView: React.FC = () => {
           )}
           <Box className="flex gap-6 text-sm text-gray-600 dark:text-gray-400">
             <Box>
-              <span className="font-medium">Created:</span> {formatUTCTimestamp(experiment.created_at)}
+              <span className="font-medium">Created:</span> {formatDateInTimezone(experiment.created_at, timezone, { hour12: !use24Hour })}
             </Box>
             <Box>
-              <span className="font-medium">Finished:</span> {formatUTCTimestamp(experiment.finished_at)}
+              <span className="font-medium">Finished:</span> {formatDateInTimezone(experiment.finished_at, timezone, { hour12: !use24Hour })}
             </Box>
             {experiment.finished_at &&
               (() => {

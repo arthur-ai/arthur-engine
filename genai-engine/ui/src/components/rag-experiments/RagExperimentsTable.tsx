@@ -16,8 +16,9 @@ import React from "react";
 
 import { formatRagConfigName } from "./utils";
 
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import type { RagExperimentSummary } from "@/lib/api-client/api-client";
-import { formatUTCTimestamp, formatTimestampDuration, capitalize } from "@/utils/formatters";
+import { formatDateInTimezone, formatTimestampDuration, capitalize } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 interface RagExperimentsTableProps {
@@ -41,6 +42,8 @@ export const RagExperimentsTable: React.FC<RagExperimentsTableProps> = ({
   onRowsPerPageChange,
   loading = false,
 }) => {
+  const { timezone, use24Hour } = useDisplaySettings();
+
   return (
     <>
       <TableContainer component={Paper} elevation={1} sx={{ flexGrow: 0, flexShrink: 1 }}>
@@ -130,8 +133,8 @@ export const RagExperimentsTable: React.FC<RagExperimentsTableProps> = ({
                     {(experiment.status === "running" || experiment.status === "queued") && <CircularProgress size={16} />}
                   </Box>
                 </TableCell>
-                <TableCell>{formatUTCTimestamp(experiment.created_at)}</TableCell>
-                <TableCell>{formatUTCTimestamp(experiment.finished_at)}</TableCell>
+                <TableCell>{formatDateInTimezone(experiment.created_at, timezone, { hour12: !use24Hour })}</TableCell>
+                <TableCell>{formatDateInTimezone(experiment.finished_at, timezone, { hour12: !use24Hour })}</TableCell>
                 <TableCell>{experiment.finished_at ? formatTimestampDuration(experiment.created_at, experiment.finished_at) : "-"}</TableCell>
               </TableRow>
             ))}
