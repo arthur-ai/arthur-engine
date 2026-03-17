@@ -34,7 +34,7 @@ export const ApplicationConfigSettings: React.FC = () => {
         enqueueSnackbar(message, { variant: "error" });
       }
     },
-    [updateConfiguration, enqueueSnackbar],
+    [updateConfiguration, enqueueSnackbar]
   );
 
   if (isLoading) {
