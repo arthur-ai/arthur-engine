@@ -1,7 +1,7 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { Box, Button, Stack, Typography, Link as MuiLink, ButtonGroup } from "@mui/material";
+import { Box, Button, CircularProgress, Stack, Typography, Link as MuiLink, ButtonGroup } from "@mui/material";
 import { Link, useParams } from "react-router-dom";
 
 import { StatusBadge } from "../components/status-badge";
@@ -23,12 +23,24 @@ export const AgentExperimentDetail = () => {
   const { experimentId } = useParams<{ experimentId: string }>();
   const { timezone, use24Hour } = useDisplaySettings();
 
-  const { data: agentExperiment } = usePollAgentExperiment(experimentId);
+  const { data: agentExperiment, isLoading } = usePollAgentExperiment(experimentId);
 
   const deleteAgentExperimentMutation = useDeleteAgentExperiment();
 
+  if (isLoading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: getContentHeight() }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   if (!agentExperiment) {
-    return <div>Experiment not found</div>;
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: getContentHeight() }}>
+        <Typography color="text.secondary">Experiment not found</Typography>
+      </Box>
+    );
   }
 
   return (
