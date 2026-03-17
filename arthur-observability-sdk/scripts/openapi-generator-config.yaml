@@ -1,0 +1,7 @@
+class_overrides: {}
+project_name_override: "arthur-api-client"
+package_name_override: "arthur_observability_sdk._generated"
+package_version_override: "0.1.0"
+post_hooks: []
+field_prefix: "field_"
+use_path_prefixes_for_title_model_names: true

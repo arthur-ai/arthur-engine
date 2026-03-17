@@ -1,0 +1,77 @@
+[project]
+name = "arthur-observability-sdk"
+version = "0.1.2"
+description = "Official Python SDK for Arthur platform APIs and OpenInference tracing"
+authors = [{name = "Arthur", email = "engineering@arthur.ai"}]
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+license = {text = "Apache-2.0"}
+keywords = ["arthur", "observability", "tracing", "opentelemetry", "openinference", "llm", "monitoring"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Monitoring",
+]
+
+dependencies = [
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+    "opentelemetry-exporter-otlp-proto-http>=1.20.0",
+    "openinference-instrumentation>=0.1.0",
+]
+
+[project.urls]
+Homepage = "https://arthur.ai"
+Documentation = "https://docs.arthur.ai"
+Repository = "https://github.com/arthur-ai/arthur-engine"
+"Bug Tracker" = "https://github.com/arthur-ai/arthur-engine/issues"
+Discord = "https://discord.gg/tdfUAtaVHz"
+
+[project.optional-dependencies]
+# Individual framework support
+openai = ["openinference-instrumentation-openai>=0.1.0"]
+langchain = ["openinference-instrumentation-langchain>=0.1.0"]
+anthropic = ["openinference-instrumentation-anthropic>=0.1.0"]
+llama-index = ["openinference-instrumentation-llama-index>=0.1.0"]
+bedrock = ["openinference-instrumentation-bedrock>=0.1.0"]
+vertexai = ["openinference-instrumentation-vertexai>=0.1.0"]
+mistralai = ["openinference-instrumentation-mistralai>=0.1.0"]
+groq = ["openinference-instrumentation-groq>=0.1.0"]
+
+# Combined extras
+all = [
+    "openinference-instrumentation-openai>=0.1.0",
+    "openinference-instrumentation-langchain>=0.1.0",
+    "openinference-instrumentation-anthropic>=0.1.0",
+    "openinference-instrumentation-llama-index>=0.1.0",
+    "openinference-instrumentation-bedrock>=0.1.0",
+    "openinference-instrumentation-vertexai>=0.1.0",
+    "openinference-instrumentation-mistralai>=0.1.0",
+    "openinference-instrumentation-groq>=0.1.0",
+]
+
+# Development extras
+dev = [
+    "pytest>=7.0.0",
+    "pytest-mock>=3.10.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "openapi-python-client>=0.28.0",
+]
+
+[tool.poetry]
+packages = [{include = "arthur_observability_sdk", from = "src"}]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
