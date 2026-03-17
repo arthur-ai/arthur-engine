@@ -21,8 +21,8 @@ jobs:
   # ── shared: generate the OpenAPI client artifact ──────────────────────────
   generate-client:
     if: |
-      github.ref == 'refs/heads/dev' ||
-      (github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'Increment arthur-engine version to'))
+      (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main') &&
+      startsWith(github.event.head_commit.message, 'Increment arthur-engine version to')
     runs-on: ubuntu-latest
     env:
       GIT_DEPTH: 100
@@ -95,8 +95,11 @@ jobs:
   publish-pypi:
     needs: build-wheel
     runs-on: ubuntu-latest
-    environment: shared-protected-branch-secrets
+    environment:
+      name: shared-protected-branch-secrets
+      url: https://pypi.org/project/arthur-ai-observability-sdk/
     permissions:
+      contents: read
       id-token: write
     steps:
       - uses: actions/download-artifact@v4
@@ -104,8 +107,10 @@ jobs:
           name: sdk-wheel
           path: dist/
 
-      - name: Publish to PyPI
+      - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist
 
   # ── create git tag (stable releases only) ─────────────────────────────────
   create-git-tag:

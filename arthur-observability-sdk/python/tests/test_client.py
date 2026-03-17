@@ -236,6 +236,6 @@ def test_resolve_task_id_does_not_fetch_beyond_last_page():
 def test_instrument_missing_dependency_raises_import_error(mocker):
     arthur = Arthur(service_name="svc", api_key="k", enable_telemetry=False)
     mocker.patch("importlib.import_module", side_effect=ImportError("no module"))
-    with pytest.raises(ImportError, match="pip install arthur-observability-sdk"):
+    with pytest.raises(ImportError, match="pip install arthur-ai-observability-sdk"):
         arthur.instrument_langchain()
     arthur.shutdown()
