@@ -8,9 +8,9 @@ vi.mock("../src/telemetry", () => ({
     })),
     forceFlush: vi.fn(() => Promise.resolve()),
     shutdown: vi.fn(() => Promise.resolve()),
-    register: vi.fn(),
   })),
 }));
+
 
 import { Arthur } from "../src/arthur";
 
@@ -130,5 +130,45 @@ describe("Arthur constructor", () => {
     });
     expect(a.telemetryActive).toBe(false);
     expect((a as any)._tracerProvider).toBeNull();
+  });
+});
+
+describe("createMastraExporter", () => {
+  it("throws when taskId is unavailable (taskName only, not yet resolved)", () => {
+    const a = new Arthur({
+      taskName: "my-task",
+      apiKey: "k",
+      enableTelemetry: false,
+    });
+    expect(() => a.createMastraExporter()).toThrow(
+      "Cannot create Mastra exporter: taskId is unavailable",
+    );
+  });
+
+  it("does not throw taskId error when taskId is provided directly", () => {
+    const a = new Arthur({
+      taskId: "uuid-1234",
+      apiKey: "k",
+      enableTelemetry: false,
+    });
+    // Should not throw the taskId unavailable error (may throw module-not-found in test env)
+    try {
+      a.createMastraExporter();
+    } catch (err: any) {
+      expect(err.message).not.toContain("taskId is unavailable");
+    }
+  });
+
+  it("does not throw taskId error when taskId is passed via overrides", () => {
+    const a = new Arthur({
+      taskName: "my-task",
+      apiKey: "k",
+      enableTelemetry: false,
+    });
+    try {
+      a.createMastraExporter({ taskId: "override-uuid" });
+    } catch (err: any) {
+      expect(err.message).not.toContain("taskId is unavailable");
+    }
   });
 });

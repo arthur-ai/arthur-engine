@@ -97,12 +97,12 @@ describe("setupTelemetry", () => {
     );
   });
 
-  it("registers the provider globally", () => {
+  it("does not register the provider globally", () => {
     setupTelemetry({
       serviceName: "svc",
       otlpEndpoint: "http://localhost:4318/v1/traces",
       apiKey: "key",
     });
-    expect(mockRegister).toHaveBeenCalled();
+    expect(mockRegister).not.toHaveBeenCalled();
   });
 });

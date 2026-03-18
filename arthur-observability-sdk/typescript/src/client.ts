@@ -98,7 +98,7 @@ export class ArthurAPIClient {
         this.handleError(err);
       }
 
-      for (const task of result.tasks) {
+      for (const task of result?.tasks ?? []) {
         if (task.name === taskName) {
           return String(task.id);
         }

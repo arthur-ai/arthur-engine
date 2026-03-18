@@ -410,11 +410,18 @@ export class Arthur {
   // --- Mastra ---
 
   createMastraExporter(overrides?: Record<string, any>): any {
+    const taskId = overrides?.taskId ?? this._resolvedTaskId ?? this._taskId;
+    if (!taskId) {
+      throw new Error(
+        "Cannot create Mastra exporter: taskId is unavailable. " +
+          "Provide taskId directly, pass it via overrides, or call getPrompt/renderPrompt first to resolve taskName.",
+      );
+    }
     const { ArthurExporter } = require("./mastra");
     return new ArthurExporter({
       url: this._baseUrl,
       apiKey: this._apiKey,
-      taskId: this._resolvedTaskId ?? this._taskId ?? "",
+      taskId,
       serviceName: this._serviceName ?? "arthur-app",
       ...overrides,
     });

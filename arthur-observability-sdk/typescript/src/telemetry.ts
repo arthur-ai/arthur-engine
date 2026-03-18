@@ -36,7 +36,10 @@ export function setupTelemetry(options: TelemetryOptions): NodeTracerProvider {
     spanProcessors: [new BatchSpanProcessor(exporter)],
   });
 
-  provider.register();
+  // Note: we intentionally do NOT call provider.register() here.
+  // The provider is passed explicitly to instrumentors and used directly
+  // by Arthur._getTracer(). Registering globally would silently replace
+  // any existing OTel provider the user may have configured.
 
   return provider;
 }
