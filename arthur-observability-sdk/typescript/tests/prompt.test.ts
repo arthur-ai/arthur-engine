@@ -1,5 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { trace, context } from "@opentelemetry/api";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   InMemorySpanExporter,
   SimpleSpanProcessor,

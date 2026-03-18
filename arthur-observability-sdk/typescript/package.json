@@ -27,7 +27,9 @@
       }
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "engines": {
     "node": ">=18"
   },
@@ -43,38 +45,56 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
+    "@arizeai/openinference-core": "^0.3.0",
+    "@arizeai/openinference-semantic-conventions": "^0.11.0",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.57.0",
+    "@opentelemetry/exporter-trace-otlp-proto": "^0.57.0",
     "@opentelemetry/resources": "^1.30.0",
     "@opentelemetry/sdk-trace-base": "^1.30.0",
     "@opentelemetry/sdk-trace-node": "^1.30.0",
     "@opentelemetry/semantic-conventions": "^1.28.0",
-    "@arizeai/openinference-core": "^0.3.0",
-    "@arizeai/openinference-semantic-conventions": "^0.11.0",
-    "@opentelemetry/exporter-trace-otlp-proto": "^0.57.0",
     "axios": "^1.7.0"
   },
   "peerDependencies": {
-    "@mastra/core": "*",
-    "@arizeai/openinference-instrumentation-openai": "*",
     "@arizeai/openinference-instrumentation-anthropic": "*",
-    "@arizeai/openinference-instrumentation-langchain": "*",
-    "@arizeai/openinference-instrumentation-claude-agent-sdk": "*",
     "@arizeai/openinference-instrumentation-bedrock": "*",
     "@arizeai/openinference-instrumentation-bedrock-agent-runtime": "*",
     "@arizeai/openinference-instrumentation-beeai": "*",
-    "@arizeai/openinference-instrumentation-mcp": "*"
+    "@arizeai/openinference-instrumentation-claude-agent-sdk": "*",
+    "@arizeai/openinference-instrumentation-langchain": "*",
+    "@arizeai/openinference-instrumentation-mcp": "*",
+    "@arizeai/openinference-instrumentation-openai": "*",
+    "@mastra/core": "*"
   },
   "peerDependenciesMeta": {
-    "@mastra/core": { "optional": true },
-    "@arizeai/openinference-instrumentation-openai": { "optional": true },
-    "@arizeai/openinference-instrumentation-anthropic": { "optional": true },
-    "@arizeai/openinference-instrumentation-langchain": { "optional": true },
-    "@arizeai/openinference-instrumentation-claude-agent-sdk": { "optional": true },
-    "@arizeai/openinference-instrumentation-bedrock": { "optional": true },
-    "@arizeai/openinference-instrumentation-bedrock-agent-runtime": { "optional": true },
-    "@arizeai/openinference-instrumentation-beeai": { "optional": true },
-    "@arizeai/openinference-instrumentation-mcp": { "optional": true }
+    "@mastra/core": {
+      "optional": true
+    },
+    "@arizeai/openinference-instrumentation-openai": {
+      "optional": true
+    },
+    "@arizeai/openinference-instrumentation-anthropic": {
+      "optional": true
+    },
+    "@arizeai/openinference-instrumentation-langchain": {
+      "optional": true
+    },
+    "@arizeai/openinference-instrumentation-claude-agent-sdk": {
+      "optional": true
+    },
+    "@arizeai/openinference-instrumentation-bedrock": {
+      "optional": true
+    },
+    "@arizeai/openinference-instrumentation-bedrock-agent-runtime": {
+      "optional": true
+    },
+    "@arizeai/openinference-instrumentation-beeai": {
+      "optional": true
+    },
+    "@arizeai/openinference-instrumentation-mcp": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
@@ -82,9 +102,17 @@
     "prettier": "^3.0.0",
     "tsup": "^8.0.0",
     "typescript": "^5.5.0",
+    "typescript-eslint": "^8.57.1",
     "vitest": "^3.0.0"
   },
-  "keywords": ["arthur", "observability", "opentelemetry", "llm", "ai", "monitoring"],
+  "keywords": [
+    "arthur",
+    "observability",
+    "opentelemetry",
+    "llm",
+    "ai",
+    "monitoring"
+  ],
   "license": "Apache-2.0",
   "repository": {
     "type": "git",

@@ -429,7 +429,7 @@ export class Arthur {
 
   // --- Shutdown ---
 
-  async shutdown(timeoutMillis: number = 30_000): Promise<void> {
+  async shutdown(_timeoutMillis: number = 30_000): Promise<void> {
     try {
       if (this._tracerProvider) {
         await this._tracerProvider.forceFlush();

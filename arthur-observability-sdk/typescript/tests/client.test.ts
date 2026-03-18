@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import axios from "axios";
 import { ArthurAPIClient } from "../src/client";
-import { ArthurAPIError } from "../src/errors";
 
 vi.mock("axios");
 
