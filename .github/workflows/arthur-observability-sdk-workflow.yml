@@ -145,7 +145,7 @@ jobs:
         run: bash arthur-observability-sdk/scripts/check_new_instrumentors_npm.sh
 
   # ── TypeScript SDK checks ──────────────────────────────────────────────
-  run-typescript-lint:
+  run-typescript-checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -164,31 +164,9 @@ jobs:
       - name: Format check
         working-directory: arthur-observability-sdk/typescript
         run: npm run format:check
-
-  run-typescript-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install dependencies
-        working-directory: arthur-observability-sdk/typescript
-        run: npm ci
       - name: Run tests
         working-directory: arthur-observability-sdk/typescript
         run: npm test
-
-  run-typescript-build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install dependencies
-        working-directory: arthur-observability-sdk/typescript
-        run: npm ci
       - name: Build
         working-directory: arthur-observability-sdk/typescript
         run: npm run build
