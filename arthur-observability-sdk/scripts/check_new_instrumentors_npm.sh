@@ -6,6 +6,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PACKAGE_JSON="$SCRIPT_DIR/../typescript/package.json"
 
+# Packages intentionally excluded (legacy, empty, or not relevant)
+IGNORED_PACKAGES=(
+  "@arizeai/openinference-instrumentation-langchain-v0"  # legacy — use langchain instead
+  "@arizeai/openinference-instrumentation-llama-index"   # empty package, no exports
+)
+
 echo "Fetching @arizeai/openinference-instrumentation-* packages from npm..."
 NPM_PACKAGES=$(npm search @arizeai/openinference-instrumentation --json 2>/dev/null \
   | node -e "
@@ -29,9 +35,10 @@ echo "$DECLARED_PACKAGES"
 
 echo ""
 echo "Diffing..."
+IGNORED=$(printf '%s\n' "${IGNORED_PACKAGES[@]}" | sort)
 NEW_PACKAGES=$(comm -23 \
   <(echo "$NPM_PACKAGES" | sort) \
-  <(echo "$DECLARED_PACKAGES" | sort))
+  <(sort -u <(echo "$DECLARED_PACKAGES") <(echo "$IGNORED")))
 
 if [ -z "$NEW_PACKAGES" ]; then
   echo "No new openinference instrumentors found on npm. package.json is up to date."
