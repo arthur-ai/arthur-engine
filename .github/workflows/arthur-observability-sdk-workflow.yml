@@ -30,7 +30,7 @@ jobs:
           name: arthur-genai-client
           path: arthur-observability-sdk/python/src/arthur_genai_client
 
-  run-linter:
+  run-python-checks:
     needs: generate-client
     runs-on: ubuntu-latest
     container: python:3.12-bullseye
@@ -80,53 +80,9 @@ jobs:
           echo "  black:     ${{ steps.black.outcome }}"
           echo "  mypy:      ${{ steps.mypy.outcome }}"
           exit 1
-
-  run-unit-tests:
-    needs: generate-client
-    runs-on: ubuntu-latest
-    container: python:3.12-bullseye
-    env:
-      GIT_DEPTH: 100
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: ${{ env.GIT_DEPTH }}
-      - uses: ./.github/workflows/composite-actions/setup-git
-        with:
-          safe-directory: ${{ runner.workspace }}
-      - uses: actions/download-artifact@v4
-        with:
-          name: arthur-genai-client
-          path: arthur-observability-sdk/python/src/arthur_genai_client
-      - uses: ./.github/workflows/composite-actions/setup-poetry
-        with:
-          working-directory: arthur-observability-sdk/python
-          with-groups: dev
       - name: Run unit tests
         run: |
           poetry -C arthur-observability-sdk/python run pytest tests -m "unit_tests" -v
-
-  run-integration-tests:
-    needs: generate-client
-    runs-on: ubuntu-latest
-    container: python:3.12-bullseye
-    env:
-      GIT_DEPTH: 100
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: ${{ env.GIT_DEPTH }}
-      - uses: ./.github/workflows/composite-actions/setup-git
-        with:
-          safe-directory: ${{ runner.workspace }}
-      - uses: actions/download-artifact@v4
-        with:
-          name: arthur-genai-client
-          path: arthur-observability-sdk/python/src/arthur_genai_client
-      - uses: ./.github/workflows/composite-actions/setup-poetry
-        with:
-          working-directory: arthur-observability-sdk/python
-          with-groups: dev
       - name: Run integration tests
         run: |
           poetry -C arthur-observability-sdk/python run pytest tests -m "integration_tests" -v
