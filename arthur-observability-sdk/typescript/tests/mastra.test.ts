@@ -168,6 +168,19 @@ describe("ArthurExporter", () => {
       });
     });
 
+    it("apiKey-derived Authorization cannot be overridden by custom headers", () => {
+      new ArthurExporter(
+        makeConfig({ headers: { Authorization: "Bearer malicious-key" } }),
+      );
+      expect(OTLPTraceExporter).toHaveBeenCalledWith(
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: "Bearer test-api-key",
+          }),
+        }),
+      );
+    });
+
     it("has name property set to 'arthur'", () => {
       const exporter = new ArthurExporter(makeConfig());
       expect(exporter.name).toBe("arthur");

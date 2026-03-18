@@ -56,8 +56,8 @@ export class ArthurExporter implements AITracingExporter {
     const exporter = new OTLPTraceExporter({
       url: tracesUrl,
       headers: {
-        Authorization: `Bearer ${config.apiKey}`,
         ...config.headers,
+        Authorization: `Bearer ${config.apiKey}`,
       },
     });
 
