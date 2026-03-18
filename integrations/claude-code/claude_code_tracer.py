@@ -1208,21 +1208,22 @@ def handle_post_tool_failure(data: dict, config: dict) -> None:
 def handle_stop(data: dict, config: dict) -> None:
     session_id = data.get("session_id", "unknown")
     end_ns = time.time_ns()
-
-    state = _load_state(session_id)
-    if not state.get("current_trace"):
-        log.debug("No active trace for session %s at stop", session_id)
-        return
-
     transcript_path = _find_transcript_path(data, session_id)
 
-    # Emit the final LLM span(s) — the last response has no tool call after it,
-    # so handle_post_tool never got the chance to emit it.
-    _emit_pending_llm_spans(state, transcript_path, config)
+    with _session_lock(session_id):
+        state = _load_state(session_id)
+        if not state.get("current_trace"):
+            log.debug("No active trace for session %s at stop", session_id)
+            return
 
-    _complete_turn(state, config, transcript_path, end_ns)
+        # Emit the final LLM span(s) — the last response has no tool call after it,
+        # so handle_post_tool never got the chance to emit it.
+        _emit_pending_llm_spans(state, transcript_path, config)
 
-    _delete_state(session_id)
+        _complete_turn(state, config, transcript_path, end_ns)
+
+        _delete_state(session_id)
+
     _cleanup_stale_states()
 
 
