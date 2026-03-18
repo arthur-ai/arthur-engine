@@ -9,6 +9,8 @@ on:
     branches:
       - main
       - dev
+    paths-ignore:
+      - 'arthur-observability-sdk/**'
   workflow_dispatch:
     inputs:
       commit_sha:
