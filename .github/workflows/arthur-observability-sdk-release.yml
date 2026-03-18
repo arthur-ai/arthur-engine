@@ -1,14 +1,18 @@
 name: Arthur Observability SDK - Release
 
-# Both branches publish to pypi.org via the same pipeline:
+# Both branches publish to pypi.org and npm via the same pipeline:
 #
 # Dev pre-release (push to `dev` touching arthur-observability-sdk/):
 #   generate-client → build-wheel (.dev0 suffix) → publish-pypi
+#   build-npm-package (-dev.0 tag) → publish-npm
 #   Install: pip install --pre arthur-ai-observability-sdk
+#   Install: npm install @arthur-ai/observability-sdk@dev
 #
 # Stable release (push to `main` with "Increment arthur-engine version to …" commit):
 #   generate-client → build-wheel → publish-pypi → create-git-tag
+#   build-npm-package → publish-npm
 #   Install: pip install arthur-ai-observability-sdk
+#   Install: npm install @arthur-ai/observability-sdk
 on:
   push:
     branches:
@@ -49,7 +53,7 @@ jobs:
           name: arthur-genai-client
           path: arthur-observability-sdk/python/src/arthur_genai_client
 
-  # ── build wheel ───────────────────────────────────────────────────────────
+  # ── Python: build wheel ─────────────────────────────────────────────────
   build-wheel:
     needs: generate-client
     runs-on: ubuntu-latest
@@ -91,7 +95,7 @@ jobs:
           name: sdk-wheel
           path: arthur-observability-sdk/dist/*.whl
 
-  # ── publish to PyPI ───────────────────────────────────────────────────────
+  # ── Python: publish to PyPI ─────────────────────────────────────────────
   publish-pypi:
     needs: build-wheel
     runs-on: ubuntu-latest
@@ -112,9 +116,75 @@ jobs:
         with:
           packages-dir: dist
 
-  # ── create git tag (stable releases only) ─────────────────────────────────
+  # ── TypeScript: build npm package ───────────────────────────────────────
+  build-npm-package:
+    if: |
+      (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main') &&
+      startsWith(github.event.head_commit.message, 'Increment arthur-engine version to')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: arthur-observability-sdk/typescript
+        run: npm ci
+
+      - name: Run tests
+        working-directory: arthur-observability-sdk/typescript
+        run: npm test
+
+      - name: Build
+        working-directory: arthur-observability-sdk/typescript
+        run: npm run build
+
+      - name: Pack tarball
+        working-directory: arthur-observability-sdk/typescript
+        run: npm pack
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-package
+          path: arthur-observability-sdk/typescript/*.tgz
+
+  # ── TypeScript: publish to npm ──────────────────────────────────────────
+  publish-npm:
+    needs: build-npm-package
+    runs-on: ubuntu-latest
+    environment:
+      name: shared-protected-branch-secrets
+      url: https://www.npmjs.com/package/@arthur-ai/observability-sdk
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-package
+          path: dist/
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Publish to npm
+        run: |
+          TARBALL=$(ls dist/*.tgz)
+          if [ "${{ github.ref }}" = "refs/heads/dev" ]; then
+            npm publish "${TARBALL}" --tag dev --access public
+          else
+            npm publish "${TARBALL}" --access public
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # ── create git tag (stable releases only) ───────────────────────────────
   create-git-tag:
-    needs: publish-pypi
+    needs: [publish-pypi, publish-npm]
     if: github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'Increment arthur-engine version to')
     runs-on: ubuntu-latest
     environment: shared-protected-branch-secrets

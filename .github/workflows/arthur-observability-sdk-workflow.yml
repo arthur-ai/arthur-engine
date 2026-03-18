@@ -139,6 +139,66 @@ jobs:
       - name: Check for new OpenInference instrumentors on PyPI
         run: bash arthur-observability-sdk/scripts/check_new_instrumentors.sh
 
+  check-new-instrumentors-npm:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check for new OpenInference instrumentors on npm
+        run: bash arthur-observability-sdk/scripts/check_new_instrumentors_npm.sh
+
+  # ── TypeScript SDK checks ──────────────────────────────────────────────
+  run-typescript-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        working-directory: arthur-observability-sdk/typescript
+        run: npm ci
+      - name: Type check
+        working-directory: arthur-observability-sdk/typescript
+        run: npm run type-check
+      - name: Lint
+        working-directory: arthur-observability-sdk/typescript
+        run: npm run lint
+      - name: Format check
+        working-directory: arthur-observability-sdk/typescript
+        run: npm run format:check
+
+  run-typescript-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        working-directory: arthur-observability-sdk/typescript
+        run: npm ci
+      - name: Run tests
+        working-directory: arthur-observability-sdk/typescript
+        run: npm test
+
+  run-typescript-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        working-directory: arthur-observability-sdk/typescript
+        run: npm ci
+      - name: Build
+        working-directory: arthur-observability-sdk/typescript
+        run: npm run build
+
   check-docs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest

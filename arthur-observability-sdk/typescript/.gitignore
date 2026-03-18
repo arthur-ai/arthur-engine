@@ -4,3 +4,6 @@ src/generated/
 *.tgz
 .vitest/
 coverage/
+
+# Override root .gitignore — npm ci requires package-lock.json
+!package-lock.json
