@@ -428,6 +428,27 @@ describe("getOpenInferenceSpanKind (via setSpanAttributes)", () => {
     );
   });
 
+  it("maps MODEL_CHUNK to LLM", async () => {
+    const exporter = new ArthurExporter(makeConfig());
+    await exporter.exportEvent({
+      type: "span_started",
+      exportedSpan: {
+        id: "s1",
+        traceId: "t1",
+        name: "chunk",
+        type: "model_chunk" as any,
+        startTime: new Date(),
+        attributes: {},
+        isEvent: false,
+      } as any,
+    });
+    expect(mockSetAttributes).toHaveBeenCalledWith(
+      expect.objectContaining({
+        "openinference.span.kind": "LLM",
+      }),
+    );
+  });
+
   it("maps TOOL_CALL to TOOL", async () => {
     const exporter = new ArthurExporter(makeConfig());
     await exporter.exportEvent({
