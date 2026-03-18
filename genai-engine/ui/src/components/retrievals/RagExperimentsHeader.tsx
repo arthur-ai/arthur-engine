@@ -1,4 +1,4 @@
-import { Add, Clear, PlayArrow, Settings, Science, History, Save } from "@mui/icons-material";
+import { Add, ArrowBack, Clear, PlayArrow, Settings, Science, History, Save } from "@mui/icons-material";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -9,15 +9,21 @@ import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import React, { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
 import { useRagPanels } from "./RagPanelsContext";
 import { MAX_PANELS } from "./ragPanelsReducer";
+
+import { EditableTitle } from "@/components/common";
+import { useUpdateRagNotebookMutation } from "@/hooks/useRagNotebooks";
 
 interface RagExperimentsHeaderProps {
   onManageProviders: () => void;
   onRunExperiment: () => void;
   onToggleHistory: () => void;
   notebookName?: string;
+  notebookId?: string | null;
+  notebookDescription?: string | null;
   hasNotebook?: boolean;
   historyOpen?: boolean;
 }
@@ -27,12 +33,16 @@ export const RagExperimentsHeader: React.FC<RagExperimentsHeaderProps> = ({
   onRunExperiment,
   onToggleHistory,
   notebookName,
+  notebookId,
+  notebookDescription,
   hasNotebook = false,
   historyOpen = false,
 }) => {
+  const { id: taskId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { state, setSharedQuery, addPanel, runAllPanels, canAddPanel, saveNotebookState, isDirty } = useRagPanels();
   const [isSaving, setIsSaving] = useState(false);
-
+  const updateMutation = useUpdateRagNotebookMutation();
   const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSharedQuery(e.target.value);
   };
@@ -75,12 +85,35 @@ export const RagExperimentsHeader: React.FC<RagExperimentsHeaderProps> = ({
         gap: 1.5,
       }}
     >
+      {/* Back to Notebooks */}
+      {hasNotebook && (
+        <Button
+          size="small"
+          variant="text"
+          startIcon={<ArrowBack />}
+          color="inherit"
+          onClick={() => navigate(`/tasks/${taskId}/rag-notebooks`)}
+          sx={{ color: "text.primary", alignSelf: "flex-start" }}
+        >
+          Back to Notebooks
+        </Button>
+      )}
       {/* Row 1: Title + Query Input + Run */}
       <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
         {/* Title */}
-        <Typography variant="h6" sx={{ fontWeight: 600, whiteSpace: "nowrap", color: "text.primary", minWidth: "fit-content" }}>
-          {notebookName || "RAG Playground"}
-        </Typography>
+        <EditableTitle
+          value={notebookName ?? ""}
+          onSave={async (newName) => {
+            if (notebookId) {
+              await updateMutation.mutateAsync({ notebookId, request: { name: newName, description: notebookDescription } });
+            }
+          }}
+          isPending={updateMutation.isPending}
+          fallbackText="RAG Playground"
+          showEditButton={hasNotebook}
+          typographySx={{ fontWeight: 600, whiteSpace: "nowrap", color: "text.primary" }}
+          textFieldSx={{ minWidth: 200 }}
+        />
 
         {/* Shared Query Input */}
         <TextField

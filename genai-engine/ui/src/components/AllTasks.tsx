@@ -38,7 +38,9 @@ import { ThemeToggle } from "./common/ThemeToggle";
 import { CreateTaskForm } from "./CreateTaskForm";
 import { TaskCard } from "./TaskCard";
 
+import { UserSettingsModal } from "@/components/UserSettingsModal";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { TaskResponse } from "@/lib/api";
 import { type InactiveDays, type SortBy, useTaskListStore } from "@/stores/task-list.store";
@@ -58,7 +60,9 @@ export const AllTasks: React.FC = () => {
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const isMenuOpen = Boolean(menuAnchorEl);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [userSettingsModalOpen, setUserSettingsModalOpen] = useState(false);
   const { hideSystemTasks, sortBy, inactiveDays, setHideSystemTasks, setSortBy, setInactiveDays } = useTaskListStore();
+  const { timezone, setTimezone, use24Hour, setUse24Hour } = useDisplaySettings();
 
   const filteredTasks = useMemo(() => {
     let result = [...tasks];
@@ -271,6 +275,17 @@ export const AllTasks: React.FC = () => {
                   <MenuItem
                     onClick={() => {
                       handleMenuClose();
+                      setUserSettingsModalOpen(true);
+                    }}
+                  >
+                    <ListItemIcon>
+                      <SettingsIcon />
+                    </ListItemIcon>
+                    <ListItemText>User settings</ListItemText>
+                  </MenuItem>
+                  <MenuItem
+                    onClick={() => {
+                      handleMenuClose();
                       navigate("/settings/model-providers");
                     }}
                   >
@@ -443,6 +458,18 @@ export const AllTasks: React.FC = () => {
             handleTaskCreated(taskId);
           }}
           onCancel={() => setShowCreateForm(false)}
+        />
+
+        {/* User Settings Modal */}
+        <UserSettingsModal
+          open={userSettingsModalOpen}
+          onClose={() => setUserSettingsModalOpen(false)}
+          initialSettings={{ timezone, use24Hour }}
+          onSave={(settings) => {
+            setTimezone(settings.timezone ?? timezone);
+            if (settings.use24Hour !== undefined) setUse24Hour(settings.use24Hour);
+            setUserSettingsModalOpen(false);
+          }}
         />
       </div>
     </>
