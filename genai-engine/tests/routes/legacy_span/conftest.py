@@ -490,21 +490,49 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
     db_session.commit()
 
     # Create trace metadata manually since we bypassed trace ingestion service
+    trace_token_counts = {
+        "trace1": {
+            "total_token_count": 500,
+            "prompt_token_count": 300,
+            "completion_token_count": 200,
+            "total_token_cost": 0.05,
+            "prompt_token_cost": 0.03,
+            "completion_token_cost": 0.02,
+        },
+        "trace2": {
+            "total_token_count": 1500,
+            "prompt_token_count": 1000,
+            "completion_token_count": 500,
+            "total_token_cost": 0.15,
+            "prompt_token_cost": 0.10,
+            "completion_token_cost": 0.05,
+        },
+        "trace3": {
+            "total_token_count": 100,
+            "prompt_token_count": 60,
+            "completion_token_count": 40,
+            "total_token_cost": 0.01,
+            "prompt_token_cost": 0.006,
+            "completion_token_cost": 0.004,
+        },
+    }
     trace_metadatas = []
     for trace_id in set(span.trace_id for span in spans):
         trace_spans = [span for span in spans if span.trace_id == trace_id]
         trace_start_time = min(span.start_time for span in trace_spans)
         trace_end_time = max(span.end_time for span in trace_spans)
+        token_counts = trace_token_counts.get(trace_id, {})
 
         trace_metadata = DatabaseTraceMetadata(
             task_id=trace_spans[0].task_id,
             trace_id=trace_id,
-            session_id=trace_spans[0].session_id,  # Use session_id from first span
+            session_id=trace_spans[0].session_id,
             span_count=len(trace_spans),
             start_time=trace_start_time,
             end_time=trace_end_time,
             created_at=trace_start_time,
             updated_at=trace_end_time,
+            **token_counts,
         )
         trace_metadatas.append(trace_metadata)
 

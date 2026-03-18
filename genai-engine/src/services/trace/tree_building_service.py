@@ -22,6 +22,7 @@ class TreeBuildingService:
         spans: list[Span],
         sort: PaginationSortMethod,
         trace_metadata: Optional[list[DatabaseTraceMetadata]] = None,
+        ordered_trace_ids: Optional[list[str]] = None,
     ) -> list[TraceResponse]:
         """Group spans into a nested trace structure."""
         if not spans:
@@ -116,7 +117,12 @@ class TreeBuildingService:
             )
             traces.append(trace_response)
 
-        if sort == PaginationSortMethod.ASCENDING:
+        if ordered_trace_ids is not None:
+            trace_order = {tid: idx for idx, tid in enumerate(ordered_trace_ids)}
+            traces.sort(
+                key=lambda t: trace_order.get(t.trace_id, len(ordered_trace_ids)),
+            )
+        elif sort == PaginationSortMethod.ASCENDING:
             traces.sort(key=lambda t: t.start_time, reverse=False)
         else:
             traces.sort(key=lambda t: t.start_time, reverse=True)
