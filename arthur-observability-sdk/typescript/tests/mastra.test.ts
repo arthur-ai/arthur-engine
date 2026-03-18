@@ -156,9 +156,7 @@ describe("ArthurExporter", () => {
     });
 
     it("merges custom headers with auth header", () => {
-      new ArthurExporter(
-        makeConfig({ headers: { "X-Custom": "value" } }),
-      );
+      new ArthurExporter(makeConfig({ headers: { "X-Custom": "value" } }));
       expect(OTLPTraceExporter).toHaveBeenCalledWith({
         url: "http://localhost:3030/api/v1/traces",
         headers: {
@@ -341,7 +339,9 @@ describe("ArthurExporter", () => {
 
     it("does not throw on errors during export", async () => {
       const exporter = new ArthurExporter(makeConfig());
-      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const consoleSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
 
       mockStartSpan.mockImplementationOnce(() => {
         throw new Error("boom");

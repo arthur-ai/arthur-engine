@@ -120,10 +120,13 @@ describe("attributes", () => {
     });
     let sessionId: any;
     let userId: any;
-    arthur.attributes({ sessionId: "attr-session", userId: "attr-user" }, () => {
-      sessionId = context.active().getValue(Symbol.for("session.id"));
-      userId = context.active().getValue(Symbol.for("user.id"));
-    });
+    arthur.attributes(
+      { sessionId: "attr-session", userId: "attr-user" },
+      () => {
+        sessionId = context.active().getValue(Symbol.for("session.id"));
+        userId = context.active().getValue(Symbol.for("user.id"));
+      },
+    );
     expect(sessionId).toBe("attr-session");
     expect(userId).toBe("attr-user");
   });

@@ -11,7 +11,6 @@ vi.mock("../src/telemetry", () => ({
   })),
 }));
 
-
 import { Arthur } from "../src/arthur";
 
 describe("Arthur constructor", () => {

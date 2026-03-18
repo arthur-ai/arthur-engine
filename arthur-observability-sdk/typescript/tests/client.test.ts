@@ -35,7 +35,11 @@ describe("ArthurAPIClient", () => {
       mockAxiosInstance.get.mockResolvedValue({
         data: { name: "MyPrompt", tags: ["latest"] },
       });
-      const result = await client.getPromptByTag("task-1", "MyPrompt", "latest");
+      const result = await client.getPromptByTag(
+        "task-1",
+        "MyPrompt",
+        "latest",
+      );
       expect(result.tags).toEqual(["latest"]);
       expect(mockAxiosInstance.get).toHaveBeenCalledWith(
         "/api/v1/tasks/task-1/prompts/MyPrompt/versions/tags/latest",
@@ -112,9 +116,15 @@ describe("ArthurAPIClient", () => {
     it("converts axios errors to ArthurAPIError", async () => {
       const axiosErr = new Error("Request failed") as any;
       axiosErr.isAxiosError = true;
-      axiosErr.response = { status: 404, data: { detail: "not found" }, statusText: "Not Found" };
+      axiosErr.response = {
+        status: 404,
+        data: { detail: "not found" },
+        statusText: "Not Found",
+      };
       // Make it an AxiosError instance
-      Object.defineProperty(axiosErr, "constructor", { value: axios.AxiosError || Error });
+      Object.defineProperty(axiosErr, "constructor", {
+        value: axios.AxiosError || Error,
+      });
 
       mockAxiosInstance.get.mockRejectedValue(axiosErr);
 

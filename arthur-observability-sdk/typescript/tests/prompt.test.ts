@@ -58,7 +58,9 @@ describe("getPrompt", () => {
   it("creates span with PROMPT kind", async () => {
     const { arthur, exporter, provider: p } = makeArthurWithInMemorySpans();
     provider = p;
-    vi.mocked(arthur._apiClient.getPromptByVersion).mockResolvedValue(MOCK_PROMPT);
+    vi.mocked(arthur._apiClient.getPromptByVersion).mockResolvedValue(
+      MOCK_PROMPT,
+    );
 
     await arthur.getPrompt(PROMPT_NAME);
 
@@ -170,9 +172,9 @@ describe("renderPrompt", () => {
       new Error("missing variable"),
     );
 
-    await expect(
-      arthur.renderPrompt(PROMPT_NAME, {}),
-    ).rejects.toThrow("missing variable");
+    await expect(arthur.renderPrompt(PROMPT_NAME, {})).rejects.toThrow(
+      "missing variable",
+    );
 
     expect(exporter.getFinishedSpans()[0].status.code).toBe(2);
   });

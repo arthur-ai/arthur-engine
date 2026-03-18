@@ -110,11 +110,11 @@ function processContentForToolCallsOrResults(
         if (defaultRole) {
           result[SemanticConventions.MESSAGE_ROLE] = "tool";
         }
-        result[SemanticConventions.MESSAGE_CONTENT] =
-          extractToolResultContent(parsed[0]);
+        result[SemanticConventions.MESSAGE_CONTENT] = extractToolResultContent(
+          parsed[0],
+        );
         if (parsed[0].toolCallId) {
-          result[MESSAGE_TOOL_CALL_ID] =
-            parsed[0].toolCallId;
+          result[MESSAGE_TOOL_CALL_ID] = parsed[0].toolCallId;
         }
         return result;
       }
@@ -136,8 +136,7 @@ function processContentForToolCallsOrResults(
         content[0],
       );
       if (content[0].toolCallId) {
-        result[MESSAGE_TOOL_CALL_ID] =
-          content[0].toolCallId;
+        result[MESSAGE_TOOL_CALL_ID] = content[0].toolCallId;
       }
       return result;
     }
@@ -359,10 +358,7 @@ function setMetadataAttributes(
  * Constructs LLM input and output messages from span input/output data
  * following OpenInference semantic conventions and sets them on the OpenTelemetry span
  */
-function constructLLMMessages(
-  otelSpan: OISpan,
-  span: AnyExportedAISpan,
-): void {
+function constructLLMMessages(otelSpan: OISpan, span: AnyExportedAISpan): void {
   // Process input messages
   if (span.input) {
     const inputMessages = extractMessagesFromData(span.input);
@@ -392,9 +388,7 @@ function constructLLMMessages(
 /**
  * Wraps output data as a single assistant message
  */
-function wrapOutputAsMessage(
-  output: unknown,
-): Record<string, unknown> | null {
+function wrapOutputAsMessage(output: unknown): Record<string, unknown> | null {
   if (output === null || output === undefined) {
     return null;
   }
@@ -502,9 +496,7 @@ function extractMessagesFromData(
 /**
  * Extracts a single message from an item, handling various formats
  */
-function extractMessageFromItem(
-  item: unknown,
-): Record<string, unknown> | null {
+function extractMessageFromItem(item: unknown): Record<string, unknown> | null {
   if (!isObject(item)) {
     return null;
   }
@@ -635,8 +627,7 @@ function setModelGenerationAttributes(
     }
     if (llmAttr.usage?.totalTokens) {
       otelSpan.setAttributes({
-        [SemanticConventions.LLM_TOKEN_COUNT_TOTAL]:
-          llmAttr.usage.totalTokens,
+        [SemanticConventions.LLM_TOKEN_COUNT_TOTAL]: llmAttr.usage.totalTokens,
       });
     }
     if (llmAttr.usage?.promptCacheHitTokens) {

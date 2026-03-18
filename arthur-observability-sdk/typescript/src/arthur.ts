@@ -64,7 +64,9 @@ export class Arthur {
     this._apiKey = apiKey;
 
     this._baseUrl = (
-      options.baseUrl ?? process.env.ARTHUR_BASE_URL ?? "http://localhost:3030"
+      options.baseUrl ??
+      process.env.ARTHUR_BASE_URL ??
+      "http://localhost:3030"
     ).replace(/\/+$/, "");
 
     this._serviceName = options.serviceName;
@@ -299,7 +301,10 @@ export class Arthur {
       ctx = ctx.setValue(Symbol.for("user.id"), attrs.userId);
     }
     if (attrs.metadata) {
-      ctx = ctx.setValue(Symbol.for("metadata"), JSON.stringify(attrs.metadata));
+      ctx = ctx.setValue(
+        Symbol.for("metadata"),
+        JSON.stringify(attrs.metadata),
+      );
     }
     if (attrs.tags) {
       ctx = ctx.setValue(Symbol.for("tag.tags"), attrs.tags);

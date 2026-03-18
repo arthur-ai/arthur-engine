@@ -5,7 +5,9 @@ const { mockRegister, mockBatchSpanProcessor, mockExporter, mockResource } =
     mockRegister: vi.fn(),
     mockBatchSpanProcessor: vi.fn(),
     mockExporter: vi.fn(),
-    mockResource: vi.fn().mockImplementation((attrs: any) => ({ attributes: attrs })),
+    mockResource: vi
+      .fn()
+      .mockImplementation((attrs: any) => ({ attributes: attrs })),
   }));
 
 vi.mock("@opentelemetry/sdk-trace-node", () => ({
