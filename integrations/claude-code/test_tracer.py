@@ -301,7 +301,14 @@ class TestTruncate:
         big = "x" * 20_000
         result = tracer._truncate(big)
         assert len(result.encode()) <= tracer._MAX_ATTR_BYTES + 20
-        assert "…[truncated]" in result
+        assert "...[truncated]" in result
+
+    def test_multibyte_chars_stay_within_limit(self):
+        # 4-byte emoji repeated; old char-slice would produce ~10 920 bytes
+        big = "😀" * 4_000
+        result = tracer._truncate(big)
+        assert len(result.encode()) <= tracer._MAX_ATTR_BYTES + 20
+        assert "...[truncated]" in result
 
     def test_non_string_json_serialised(self):
         result = tracer._truncate({"key": "value"})
