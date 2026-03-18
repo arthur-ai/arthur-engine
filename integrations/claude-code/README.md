@@ -108,55 +108,14 @@ If none of the above are configured, the tracer silently does nothing — safe t
 
 ## GitHub Actions setup
 
-Add a setup step before the Claude Code action in your workflow. The tracer is copied into `.claude/hooks/` in the checkout, and credentials are passed via the `env:` block.
+Copy the ready-to-use workflow files into your repo's `.github/workflows/` directory:
 
-**Interactive Claude (`@claude` mentions):**
+| File | Use case |
+|------|----------|
+| `workflow-claude-code.yml` | Interactive Claude (`@claude` mentions on issues/PRs) |
+| `workflow-claude-code-review.yml` | Automated PR review on every push |
 
-```yaml
-- name: Setup Arthur Engine tracing
-  run: |
-    pip install opentelemetry-sdk opentelemetry-exporter-otlp-proto-http
-    mkdir -p .claude/hooks
-    cp integrations/claude-code/claude_code_tracer.py .claude/hooks/claude_code_tracer.py
-
-- name: Run Claude Code
-  uses: anthropics/claude-code-action@v1
-  with:
-    anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-    settings: |
-      {
-        "hooks": {
-          "UserPromptSubmit":  [{"matcher": "", "hooks": [{"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/claude_code_tracer.py\" user_prompt_submit"}]}],
-          "PreToolUse":        [{"matcher": "", "hooks": [{"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/claude_code_tracer.py\" pre_tool"}]}],
-          "PostToolUse":       [{"matcher": "", "hooks": [{"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/claude_code_tracer.py\" post_tool"}]}],
-          "PostToolUseFailure":[{"matcher": "", "hooks": [{"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/claude_code_tracer.py\" post_tool_failure"}]}],
-          "Stop":              [{"matcher": "", "hooks": [{"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/claude_code_tracer.py\" stop"}]}]
-        }
-      }
-  env:
-    GENAI_ENGINE_API_KEY: ${{ secrets.GENAI_ENGINE_API_KEY }}
-    GENAI_ENGINE_TASK_ID: ${{ vars.GENAI_ENGINE_TASK_ID }}
-    GENAI_ENGINE_TRACE_ENDPOINT: ${{ vars.GENAI_ENGINE_TRACE_ENDPOINT }}
-```
-
-**Automated PR review:**
-
-```yaml
-- name: Setup Arthur Engine tracing
-  run: ./integrations/claude-code/install.sh
-
-- name: Run Claude Code Review
-  uses: anthropics/claude-code-action@v1
-  with:
-    anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-    plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
-    plugins: 'code-review@claude-code-plugins'
-    prompt: '/code-review:code-review --comment https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
-  env:
-    GENAI_ENGINE_API_KEY: ${{ secrets.GENAI_ENGINE_API_KEY }}
-    GENAI_ENGINE_TASK_ID: ${{ vars.GENAI_ENGINE_TASK_ID }}
-    GENAI_ENGINE_TRACE_ENDPOINT: ${{ vars.GENAI_ENGINE_TRACE_ENDPOINT }}
-```
+Credentials are passed via GitHub secrets/variables set in the `env:` block of each workflow.
 
 **GitHub repo configuration:**
 
@@ -190,6 +149,6 @@ python3 -m pytest test_tracer.py -v
 | `test_tracer.py` | Unit tests (pytest, no credentials needed) |
 | `install.sh` | Local dev installer |
 | `requirements.txt` | Python dependencies |
-| `workflow-claude-code.yml` | Copy-paste template for interactive Claude workflows |
-| `workflow-claude-code-review.yml` | Copy-paste template for automated PR review workflows |
+| `workflow-claude-code.yml` | GitHub Actions workflow for interactive Claude (`@claude` mentions) |
+| `workflow-claude-code-review.yml` | GitHub Actions workflow for automated PR review |
 | `.env` | Local credentials (not committed) |
