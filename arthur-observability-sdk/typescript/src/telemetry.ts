@@ -1,6 +1,6 @@
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
-import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
 import { Resource } from "@opentelemetry/resources";
 import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
 
@@ -36,10 +36,9 @@ export function setupTelemetry(options: TelemetryOptions): NodeTracerProvider {
     spanProcessors: [new BatchSpanProcessor(exporter)],
   });
 
-  // Note: we intentionally do NOT call provider.register() here.
-  // The provider is passed explicitly to instrumentors and used directly
-  // by Arthur._getTracer(). Registering globally would silently replace
-  // any existing OTel provider the user may have configured.
+  // Register globally so that instrumentors (which create spans via
+  // trace.getTracer()) use this provider instead of the NoopTracerProvider.
+  provider.register();
 
   return provider;
 }

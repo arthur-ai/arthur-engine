@@ -122,7 +122,7 @@ ARTHUR_TASK_ID=...
 | Agent | Status |
 |-------|--------|
 | analytics-agent | Done |
-| customer-support-agent | Pending |
-| mastra-translator-agent | Pending |
-| image-analysis-agent | Pending |
-| hosted-chatbot | Pending |
+| customer-support-agent | Done |
+| mastra-translator-agent | Done (version bump only — no observability/tracing to migrate) |
+| image-analysis-agent | N/A — not a Mastra agent (pure Next.js + OpenTelemetry) |
+| hosted-chatbot | N/A — not a Mastra agent (Python FastAPI + LangChain) |

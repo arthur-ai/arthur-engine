@@ -318,6 +318,7 @@ export class Arthur {
     packageName: string,
     extrasKey: string,
     className: string,
+    targetModuleName?: string,
   ): any {
     let mod: any;
     try {
@@ -336,13 +337,19 @@ export class Arthur {
       );
     }
     const instrumentor = new InstrumentorClass();
-    const opts: any = {};
-    if (this._tracerProvider) {
-      opts.tracerProvider = this._tracerProvider;
+    if (this._tracerProvider && typeof instrumentor.setTracerProvider === "function") {
+      instrumentor.setTracerProvider(this._tracerProvider);
     }
-    if (typeof instrumentor.manuallyInstrument === "function") {
-      instrumentor.manuallyInstrument(opts);
+    if (typeof instrumentor.manuallyInstrument === "function" && targetModuleName) {
+      const targetModule = require(targetModuleName);
+      instrumentor.manuallyInstrument(targetModule);
+    } else if (typeof instrumentor.manuallyInstrument === "function") {
+      instrumentor.manuallyInstrument();
     } else {
+      const opts: any = {};
+      if (this._tracerProvider) {
+        opts.tracerProvider = this._tracerProvider;
+      }
       instrumentor.instrument(opts);
     }
     return instrumentor;
@@ -353,6 +360,7 @@ export class Arthur {
       "@arizeai/openinference-instrumentation-openai",
       "openai",
       "OpenAIInstrumentation",
+      "openai",
     );
   }
 
@@ -361,6 +369,7 @@ export class Arthur {
       "@arizeai/openinference-instrumentation-anthropic",
       "anthropic",
       "AnthropicInstrumentation",
+      "@anthropic-ai/sdk",
     );
   }
 
@@ -377,6 +386,7 @@ export class Arthur {
       "@arizeai/openinference-instrumentation-claude-agent-sdk",
       "claude-agent-sdk",
       "ClaudeAgentSDKInstrumentation",
+      "@anthropic-ai/claude-agent-sdk",
     );
   }
 
@@ -385,6 +395,7 @@ export class Arthur {
       "@arizeai/openinference-instrumentation-bedrock",
       "bedrock",
       "BedrockInstrumentation",
+      "@aws-sdk/client-bedrock-runtime",
     );
   }
 
@@ -393,6 +404,7 @@ export class Arthur {
       "@arizeai/openinference-instrumentation-bedrock-agent-runtime",
       "bedrock-agent-runtime",
       "BedrockAgentInstrumentation",
+      "@aws-sdk/client-bedrock-agent-runtime",
     );
   }
 
@@ -409,6 +421,7 @@ export class Arthur {
       "@arizeai/openinference-instrumentation-mcp",
       "mcp",
       "MCPInstrumentation",
+      "@modelcontextprotocol/sdk",
     );
   }
 
@@ -437,8 +450,8 @@ export class Arthur {
   async shutdown(_timeoutMillis: number = 30_000): Promise<void> {
     try {
       if (this._tracerProvider) {
-        await this._tracerProvider.forceFlush();
-        await this._tracerProvider.shutdown();
+        await this._tracerProvider.forceFlush().catch(() => {});
+        await this._tracerProvider.shutdown().catch(() => {});
       }
     } finally {
       this._apiClient.close();

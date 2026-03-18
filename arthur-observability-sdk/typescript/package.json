@@ -1,6 +1,6 @@
 {
   "name": "@arthur-ai/observability-sdk",
-  "version": "1.0.1",
+  "version": "1.0.4",
   "description": "Arthur Observability SDK — telemetry, prompt management, and framework instrumentation for Node.js",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -47,6 +47,7 @@
   "dependencies": {
     "@arizeai/openinference-core": "^0.3.0",
     "@arizeai/openinference-semantic-conventions": "^0.11.0",
+    "@arthur-ai/observability-sdk": "file:arthur-ai-observability-sdk-1.0.1.tgz",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.57.0",
     "@opentelemetry/exporter-trace-otlp-proto": "^0.57.0",

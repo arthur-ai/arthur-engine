@@ -9,7 +9,8 @@ import {
   reviewAgent,
 } from "./agents";
 import { ConsoleLogger, LogLevel } from "@mastra/core/logger";
-import { ArthurExporter } from "./observability/arthur";
+import { Observability } from "@mastra/observability";
+import { ArthurExporter } from "@arthur-ai/observability-sdk/mastra";
 
 const LOG_LEVEL = (process.env.LOG_LEVEL as LogLevel) || "info";
 
@@ -23,26 +24,25 @@ export const mastra = new Mastra({
     reviewAgent,
   },
   storage: new LibSQLStore({
+    id: "customer-support-agent",
     url: ":memory:",
   }),
   logger: new ConsoleLogger({
     level: LOG_LEVEL,
   }),
-  observability: {
+  observability: new Observability({
     configs: {
       arthur: {
-        serviceName: "ai",
+        serviceName: "customer-support-agent",
         exporters: [
           new ArthurExporter({
             serviceName: "customer-support-agent",
             url: process.env.ARTHUR_BASE_URL!,
-            headers: {
-              Authorization: `Bearer ${process.env.ARTHUR_API_KEY!}`,
-            },
+            apiKey: process.env.ARTHUR_API_KEY!,
             taskId: process.env.ARTHUR_TASK_ID!,
           }),
         ],
       },
     },
-  },
+  }),
 });

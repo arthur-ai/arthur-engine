@@ -22,7 +22,7 @@ const OPENAI_API_KEY = "YOUR_OPENAI_API_KEY";
 const arthur = new Arthur({
   apiKey: ARTHUR_API_KEY,
   baseUrl: ARTHUR_BASE_URL,
-  serviceName: "getting-started-ts",
+  serviceName: "getting-started-ts-openai",
 });
 arthur.instrumentOpenAI();
 
@@ -39,4 +39,4 @@ async function main() {
   await arthur.shutdown();
 }
 
-main();
+main().catch(console.error);
