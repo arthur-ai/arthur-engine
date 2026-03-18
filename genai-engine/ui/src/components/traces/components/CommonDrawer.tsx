@@ -20,9 +20,7 @@ type DrawerTarget = "trace" | "span" | "session" | "user";
  * longer exist, causing "Failed to fetch dynamically imported module" errors.
  * Reloading the page fetches the updated index.html and the new chunk URLs.
  */
-const lazyWithChunkReload = <T extends React.ComponentType<{ id: string }>>(
-  factory: () => Promise<{ default: T }>
-): React.LazyExoticComponent<T> => {
+const lazyWithChunkReload = <T extends React.ComponentType<{ id: string }>>(factory: () => Promise<{ default: T }>): React.LazyExoticComponent<T> => {
   return lazy(() =>
     factory().catch((err: unknown) => {
       if (err instanceof TypeError && err.message.toLowerCase().includes("failed to fetch")) {
