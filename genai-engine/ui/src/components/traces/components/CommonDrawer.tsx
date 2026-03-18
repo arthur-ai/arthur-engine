@@ -12,23 +12,44 @@ import { createTitle } from "@/utils/title";
 
 type DrawerTarget = "trace" | "span" | "session" | "user";
 
+/**
+ * Wraps a lazy import factory to handle stale chunk load failures.
+ *
+ * When the app is redeployed, Vite generates new content-hashed chunk filenames.
+ * Users with the old page still open will try to fetch stale chunk URLs that no
+ * longer exist, causing "Failed to fetch dynamically imported module" errors.
+ * Reloading the page fetches the updated index.html and the new chunk URLs.
+ */
+const lazyWithChunkReload = <T extends React.ComponentType<{ id: string }>>(
+  factory: () => Promise<{ default: T }>
+): React.LazyExoticComponent<T> => {
+  return lazy(() =>
+    factory().catch((err: unknown) => {
+      if (err instanceof TypeError && err.message.toLowerCase().includes("failed to fetch")) {
+        window.location.reload();
+      }
+      throw err;
+    })
+  );
+};
+
 const CONTENT_MAP: Record<DrawerTarget, React.LazyExoticComponent<React.ComponentType<{ id: string }>>> = {
-  trace: lazy(() =>
+  trace: lazyWithChunkReload(() =>
     import("./TraceDrawerContent").then((module) => ({
       default: module.TraceDrawerContent,
     }))
   ),
-  span: lazy(() =>
+  span: lazyWithChunkReload(() =>
     import("./SpanDrawerContent").then((module) => ({
       default: module.SpanDrawerContent,
     }))
   ),
-  session: lazy(() =>
+  session: lazyWithChunkReload(() =>
     import("./SessionDrawerContent").then((module) => ({
       default: module.SessionDrawerContent,
     }))
   ),
-  user: lazy(() =>
+  user: lazyWithChunkReload(() =>
     import("./UserDrawerContent").then((module) => ({
       default: module.UserDrawerContent,
     }))
