@@ -9,8 +9,11 @@ on:
     branches:
       - main
       - dev
-    paths-ignore:
-      - 'arthur-observability-sdk/**'
+    paths:
+      - 'genai-engine/**'
+      - 'ml-engine/**'
+      - 'deployment/**'
+      - '.github/workflows/arthur-engine-workflow.yml'
   workflow_dispatch:
     inputs:
       commit_sha:
