@@ -630,6 +630,11 @@ def _truncate(value: Any) -> str:
     s = json.dumps(value) if not isinstance(value, str) else value
     if len(s.encode()) > _MAX_ATTR_BYTES:
         s = s[: _MAX_ATTR_BYTES // 3] + "…[truncated]"
+def _truncate(value: Any) -> str:
+    s = json.dumps(value) if not isinstance(value, str) else value
+    encoded = s.encode("utf-8")
+    if len(encoded) > _MAX_ATTR_BYTES:
+        s = encoded[:_MAX_ATTR_BYTES].decode("utf-8", errors="ignore") + "...[truncated]"
     return s
 
 
