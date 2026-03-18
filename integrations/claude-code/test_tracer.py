@@ -812,10 +812,12 @@ class TestHandlePostTool:
                 "turn_number": 1,
                 "human_count_at_start": 0,
             },
-            "current_tool": {
-                "tool_name": tool_name,
-                "tool_input": {"command": "echo hi"},
-                "start_ns": 1_000_000_000,
+            "pending_tools": {
+                tool_name: {
+                    "tool_name": tool_name,
+                    "tool_input": {"command": "echo hi"},
+                    "start_ns": 1_000_000_000,
+                },
             },
         }
         tracer._save_state(session_id, state)
@@ -946,10 +948,12 @@ class TestHandlePostTool:
                 "human_count_at_start": 0,
                 "emitted_llm_span_count": 0,
             },
-            "current_tool": {
-                "tool_name": "Read",
-                "tool_input": {"file_path": "/a"},
-                "start_ns": 1_000_000_000,
+            "pending_tools": {
+                "Read": {
+                    "tool_name": "Read",
+                    "tool_input": {"file_path": "/a"},
+                    "start_ns": 1_000_000_000,
+                },
             },
         }
         tracer._save_state("concurrent1", state)
@@ -1198,10 +1202,12 @@ class TestHandlePostToolFailure:
                 "turn_number": 1,
                 "human_count_at_start": 0,
             },
-            "current_tool": {
-                "tool_name": tool_name,
-                "tool_input": {"command": "echo hi"},
-                "start_ns": 1_000_000_000,
+            "pending_tools": {
+                tool_name: {
+                    "tool_name": tool_name,
+                    "tool_input": {"command": "echo hi"},
+                    "start_ns": 1_000_000_000,
+                },
             },
         }
         tracer._save_state(session_id, state)
@@ -1339,10 +1345,12 @@ class TestRetrieverSpanKind:
                 "turn_number": 1,
                 "human_count_at_start": 0,
             },
-            "current_tool": {
-                "tool_name": tool_name,
-                "tool_input": tool_input,
-                "start_ns": 1_000_000_000,
+            "pending_tools": {
+                tool_name: {
+                    "tool_name": tool_name,
+                    "tool_input": tool_input,
+                    "start_ns": 1_000_000_000,
+                },
             },
         }
         tracer._save_state(session_id, state)
@@ -1857,10 +1865,12 @@ class TestHandlePostToolFailureEdgeCases:
                 "turn_number": 1,
                 "human_count_at_start": 0,
             },
-            "current_tool": {
-                "tool_name": "Bash",
-                "tool_input": {"command": "bad cmd"},
-                "start_ns": 1_000_000_000,
+            "pending_tools": {
+                "Bash": {
+                    "tool_name": "Bash",
+                    "tool_input": {"command": "bad cmd"},
+                    "start_ns": 1_000_000_000,
+                },
             },
         }
         tracer._save_state(session_id, state)

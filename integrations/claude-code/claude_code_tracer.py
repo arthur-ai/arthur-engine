@@ -1073,7 +1073,7 @@ def handle_pre_tool(data: dict, config: dict) -> None:
             "prompt_preview": _truncate(prompt_preview) if prompt_preview else "",
         }
 
-    state["current_tool"] = {
+    state.setdefault("pending_tools", {})[tool_name] = {
         "tool_name": tool_name,
         "tool_input": tool_input,
         "start_ns": now_ns,
@@ -1116,8 +1116,8 @@ def handle_post_tool(data: dict, config: dict) -> None:
         log.debug("No current trace for session %s in post_tool", session_id)
         return
 
-    current_tool = state.get("current_tool", {})
-    tool_name = data.get("tool_name") or current_tool.get("tool_name", "unknown")
+    tool_name = data.get("tool_name", "unknown")
+    current_tool = state.get("pending_tools", {}).get(tool_name, {})
     tool_input = data.get("tool_input") or current_tool.get("tool_input", {})
     tool_response = data.get("tool_response", {})
     start_ns = current_tool.get("start_ns", end_ns - 1_000_000)
@@ -1147,7 +1147,7 @@ def handle_post_tool(data: dict, config: dict) -> None:
     transcript_path = _find_transcript_path(data, session_id)
     with _session_lock(session_id):
         state = _load_state(session_id)
-        state.pop("current_tool", None)
+        state.get("pending_tools", {}).pop(tool_name, None)
         _emit_pending_llm_spans(state, transcript_path, config)
         _save_state(session_id, state)
 
@@ -1167,8 +1167,8 @@ def handle_post_tool_failure(data: dict, config: dict) -> None:
         log.debug("No current trace for session %s in post_tool_failure", session_id)
         return
 
-    current_tool = state.get("current_tool", {})
-    tool_name = data.get("tool_name") or current_tool.get("tool_name", "unknown")
+    tool_name = data.get("tool_name", "unknown")
+    current_tool = state.get("pending_tools", {}).get(tool_name, {})
     tool_input = data.get("tool_input") or current_tool.get("tool_input", {})
     tool_response = data.get("tool_response", {})
     start_ns = current_tool.get("start_ns", end_ns - 1_000_000)
@@ -1204,7 +1204,7 @@ def handle_post_tool_failure(data: dict, config: dict) -> None:
     transcript_path = _find_transcript_path(data, session_id)
     with _session_lock(session_id):
         state = _load_state(session_id)
-        state.pop("current_tool", None)
+        state.get("pending_tools", {}).pop(tool_name, None)
         _emit_pending_llm_spans(state, transcript_path, config)
         _save_state(session_id, state)
 
