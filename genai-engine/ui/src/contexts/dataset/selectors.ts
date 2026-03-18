@@ -2,11 +2,11 @@ import type { DatasetState } from "./types";
 
 import type { DatasetVersionRowResponse } from "@/lib/api-client/api-client";
 import { convertFromApiFormat } from "@/utils/datasetRowUtils";
-import { sortRows } from "@/utils/datasetSortUtils";
+import { sortRowsWasm } from "@/utils/datasetSortUtils";
 import { createEmptyRow } from "@/utils/datasetUtils";
 
 export function selectSortedRows(state: DatasetState): DatasetVersionRowResponse[] {
-  return sortRows(state.rows, state.sorting.column, state.sorting.direction);
+  return sortRowsWasm(state.rows, state.sorting.column, state.sorting.direction);
 }
 
 export function selectFilteredRows(state: DatasetState): DatasetVersionRowResponse[] {

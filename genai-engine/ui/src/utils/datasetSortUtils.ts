@@ -1,3 +1,5 @@
+import { sort_rows } from "csv-utils-wasm";
+
 import { DatasetVersionRowResponse } from "@/lib/api-client/api-client";
 
 export function sortRows(rows: DatasetVersionRowResponse[], sortColumn: string | null, sortDirection: "asc" | "desc"): DatasetVersionRowResponse[] {
@@ -22,4 +24,16 @@ export function sortRows(rows: DatasetVersionRowResponse[], sortColumn: string |
     const comparison = aVal.localeCompare(bVal);
     return sortDirection === "asc" ? comparison : -comparison;
   });
+}
+
+export function sortRowsWasm(
+  rows: DatasetVersionRowResponse[],
+  sortColumn: string | null,
+  sortDirection: "asc" | "desc",
+): DatasetVersionRowResponse[] {
+  if (!sortColumn) return rows;
+
+  const values = rows.map((row) => row.data.find((col) => col.column_name === sortColumn)?.column_value ?? null);
+  const indices = sort_rows(JSON.stringify(values), sortDirection === "asc");
+  return Array.from(indices).map((i) => rows[i]);
 }

@@ -28,7 +28,7 @@ import { useTask } from "@/hooks/useTask";
 import { EVENT_NAMES, track } from "@/services/amplitude";
 import type { ColumnDefaults } from "@/types/dataset";
 import { fetchAllDatasetRows } from "@/utils/datasetApi";
-import { exportDatasetToCSV } from "@/utils/datasetExport";
+import { exportDatasetToCSVWasm } from "@/utils/datasetExport";
 
 export const DatasetDetailView: React.FC = () => {
   const { datasetId } = useParams<{ datasetId: string }>();
@@ -228,7 +228,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
     setIsExporting(true);
     try {
       const allRows = await fetchAllDatasetRows(api, datasetId, queries.currentVersion);
-      exportDatasetToCSV(queries.dataset.name, allRows);
+      exportDatasetToCSVWasm(queries.dataset.name, allRows);
       showSnackbar("Dataset exported successfully!", "success");
     } catch {
       showSnackbar("Failed to export dataset. Please try again.", "error");

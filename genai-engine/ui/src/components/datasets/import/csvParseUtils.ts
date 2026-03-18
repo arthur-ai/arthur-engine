@@ -1,3 +1,4 @@
+import { detect_delimiter, parse_csv } from "csv-utils-wasm";
 import Papa from "papaparse";
 
 import {
@@ -190,4 +191,63 @@ export function parseCSVFull(
       onError(CSV_IMPORT_MESSAGES.errors.importFailed(err.message));
     },
   });
+}
+
+// ---------------------------------------------------------------------------
+// WASM variants — same signatures, backed by the Rust csv-utils-wasm crate
+// ---------------------------------------------------------------------------
+
+export async function autoDetectDelimiterWasm(file: File): Promise<string> {
+  const preview = await file.slice(0, 8192).text();
+  return detect_delimiter(preview);
+}
+
+export async function parseCSVFullWasm(
+  file: File,
+  config: CsvParseConfig,
+  currentRowCount: number,
+  onSuccess: (columns: string[], rows: Record<string, string>[]) => void,
+  onError: (error: string) => void,
+): Promise<void> {
+  try {
+    const text = await file.text();
+    const result = JSON.parse(parse_csv(text, config.header, config.delimiter)) as {
+      columns: string[];
+      rows: Record<string, string>[];
+    };
+    const maxRows = MAX_DATASET_ROWS - currentRowCount;
+    onSuccess(result.columns, result.rows.slice(0, maxRows));
+  } catch (e) {
+    onError(CSV_IMPORT_MESSAGES.errors.importFailed(e instanceof Error ? e.message : String(e)));
+  }
+}
+
+export async function parseCSVPreviewWasm(
+  file: File,
+  config: CsvParseConfig,
+  currentRowCount: number,
+  onSuccess: (data: ParsedPreviewData, validation: ValidationResult) => void,
+  onError: (error: string) => void,
+): Promise<void> {
+  try {
+    const text = await file.text();
+    const result = JSON.parse(parse_csv(text, config.header, config.delimiter)) as {
+      columns: string[];
+      rows: Record<string, string>[];
+    };
+    const previewRows = result.rows.slice(0, PARSE_PREVIEW_LIMIT);
+    const validation = validateParseResults(result.columns, previewRows, [], config, currentRowCount);
+    onSuccess(
+      {
+        columns: result.columns,
+        rows: previewRows.slice(0, 10),
+        totalRows: previewRows.length,
+        errors: [],
+        warnings: validation.warnings,
+      },
+      validation,
+    );
+  } catch (e) {
+    onError(CSV_IMPORT_MESSAGES.errors.parseFailed(e instanceof Error ? e.message : String(e)));
+  }
 }

@@ -2,7 +2,7 @@ import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle } from "
 import React, { useCallback, useState } from "react";
 
 import { CSV_IMPORT_MESSAGES, DEFAULT_CONFIG, type CsvParseConfig, type ParsedPreviewData, type ValidationResult } from "./import/csvImportConstants";
-import { autoDetectDelimiter, parseCSVFull, parseCSVPreview } from "./import/csvParseUtils";
+import { autoDetectDelimiterWasm, parseCSVFullWasm, parseCSVPreviewWasm } from "./import/csvParseUtils";
 import { ImportConfigurationStep } from "./import/ImportConfigurationStep";
 import { ImportPreviewStep } from "./import/ImportPreviewStep";
 
@@ -55,7 +55,7 @@ export const ImportDatasetModal: React.FC<ImportDatasetModalProps> = ({ open, on
     setAutoDetectStatus("detecting");
 
     try {
-      const detectedDelimiter = await autoDetectDelimiter(file);
+      const detectedDelimiter = await autoDetectDelimiterWasm(file);
       setConfig((prev) => ({ ...prev, delimiter: detectedDelimiter }));
       setAutoDetectStatus("detected");
     } catch {
@@ -70,7 +70,7 @@ export const ImportDatasetModal: React.FC<ImportDatasetModalProps> = ({ open, on
     setProcessingStatus("processing");
     setErrorMessage(null);
 
-    parseCSVPreview(
+    void parseCSVPreviewWasm(
       selectedFile,
       config,
       currentRowCount,
@@ -101,7 +101,7 @@ export const ImportDatasetModal: React.FC<ImportDatasetModalProps> = ({ open, on
     setProcessingStatus("processing");
     setErrorMessage(null);
 
-    parseCSVFull(
+    void parseCSVFullWasm(
       selectedFile,
       config,
       currentRowCount,
