@@ -141,10 +141,8 @@ if not all(config.values()):
     print(f"  Warning: .env missing keys: {', '.join(missing)} — skipping config write", file=sys.stderr)
 else:
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(config, indent=2))
     out_path.chmod(0o600)
-    print(f"  Wrote {out_path}")
     print(f"  Wrote {out_path}")
 PYEOF
 }
