@@ -9,10 +9,6 @@ on:
     branches:
       - main
       - dev
-    paths:
-      - 'genai-engine/**'
-      - 'ml-engine/**'
-      - 'deployment/**'
   workflow_dispatch:
     inputs:
       commit_sha:
