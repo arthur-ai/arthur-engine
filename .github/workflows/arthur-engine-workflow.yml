@@ -377,6 +377,7 @@ jobs:
         with:
           version-prefix: "genai-engine-"
       - name: Set up QEMU
+        if: matrix.torch_device == 'cpu'
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.11.1
@@ -401,7 +402,7 @@ jobs:
             ${{ github.ref == 'refs/heads/main' && format('arthurplatform/genai-engine-{0}:latest', matrix.torch_device) || '' }}
             ${{ github.ref == 'refs/heads/dev' && format('arthurplatform/genai-engine-{0}:latest-dev', matrix.torch_device) || '' }}
           push: true
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ matrix.torch_device == 'cpu' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
 
   build-ml-engine-docker-images:
     environment: shared-protected-branch-secrets
