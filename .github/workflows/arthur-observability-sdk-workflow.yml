@@ -136,17 +136,11 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v5
-      - name: Check for new OpenInference instrumentors on PyPI
-        run: bash arthur-observability-sdk/scripts/check_new_instrumentors.sh
-
-  check-new-instrumentors-npm:
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v5
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Check for new OpenInference instrumentors on PyPI
+        run: bash arthur-observability-sdk/scripts/check_new_instrumentors.sh
       - name: Check for new OpenInference instrumentors on npm
         run: bash arthur-observability-sdk/scripts/check_new_instrumentors_npm.sh
 
