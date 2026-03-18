@@ -1,6 +1,6 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import { TracingContext } from "@mastra/core/ai-tracing";
+import { TracingContext } from "@mastra/core/observability";
 
 export type GenerateGraphToolResult = z.infer<
   typeof GenerateGraphToolResultSchema
@@ -44,7 +44,8 @@ export const generateGraphTool = createTool({
       .describe("The original SQL query that generated the results"),
   }),
   outputSchema: GenerateGraphToolResultSchema,
-  execute: async ({ context, runtimeContext, mastra, tracingContext }) => {
+  execute: async (inputData, executionContext) => {
+    const { mastra, runtimeContext, tracingContext } = executionContext ?? {};
     try {
       const agent = mastra?.getAgent("generateGraphAgent");
       if (!agent) {
@@ -53,7 +54,7 @@ export const generateGraphTool = createTool({
       const messages = [
         {
           role: "user" as const,
-          content: `SQL Query: ${context.sqlQuery}\n\nResults: ${JSON.stringify(context.sqlResults, null, 2)}`,
+          content: `SQL Query: ${inputData.sqlQuery}\n\nResults: ${JSON.stringify(inputData.sqlResults, null, 2)}`,
         },
       ];
       const response = await agent.generate(messages, {

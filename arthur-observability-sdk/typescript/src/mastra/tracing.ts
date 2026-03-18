@@ -82,6 +82,14 @@ export class ArthurExporter implements AITracingExporter {
     });
   }
 
+  /**
+   * Export a tracing event (new @mastra/observability 1.x interface).
+   * Delegates to exportEvent for the actual processing.
+   */
+  async exportTracingEvent(event: AITracingEvent): Promise<void> {
+    return this.exportEvent(event);
+  }
+
   async exportEvent(event: AITracingEvent): Promise<void> {
     try {
       if (event.exportedSpan.isEvent) {
@@ -168,6 +176,10 @@ export class ArthurExporter implements AITracingExporter {
   private updateOtelSpan(otelSpan: OISpan, span: AnyExportedAISpan): void {
     setSpanAttributes(otelSpan, span);
     setSpanErrorInfo(otelSpan, span.errorInfo);
+  }
+
+  async flush(): Promise<void> {
+    await this.provider.forceFlush();
   }
 
   async shutdown(): Promise<void> {

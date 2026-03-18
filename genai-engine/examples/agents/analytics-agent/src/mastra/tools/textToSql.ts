@@ -1,6 +1,6 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import { AISpanType, TracingContext } from "@mastra/core/ai-tracing";
+import { TracingContext, SpanType } from "@mastra/core/observability";
 import { getTemplatedPrompt } from "@/mastra/lib/arthur-api-client";
 
 export type TextToSqlToolResult = z.infer<typeof TextToSqlToolResultSchema>;
@@ -65,15 +65,16 @@ export const textToSqlTool = createTool({
       .describe("The user's natural language query to convert to SQL"),
   }),
   outputSchema: TextToSqlToolResultSchema,
-  execute: async ({ context, runtimeContext, mastra, tracingContext }) => {
+  execute: async (inputData, executionContext) => {
+    const { mastra, runtimeContext, tracingContext } = executionContext ?? {};
     try {
       // insert mock RAG span
       const ragSpan = tracingContext?.currentSpan?.createChildSpan({
-        type: AISpanType.GENERIC,
+        type: SpanType.GENERIC,
         name: `rag-retrieval-savedQueries`,
         input: {
           className: "savedQueries",
-          nearText: context.userQuery,
+          nearText: inputData.userQuery,
           limit: 10,
         },
         metadata: {
@@ -104,7 +105,7 @@ export const textToSqlTool = createTool({
       // pick a random database from postgres trino snowflake or redshift
       const databases = ["postgres", "trino", "snowflake", "redshift"];
       const database = databases[Math.floor(Math.random() * databases.length)];
-      const investigationTask = context.userQuery;
+      const investigationTask = inputData.userQuery;
 
       // Fetch and template the prompt with variables
       const { messages } = await getTemplatedPrompt({
@@ -113,7 +114,7 @@ export const textToSqlTool = createTool({
         taskId: process.env.ARTHUR_TASK_ID!,
         variables: [
           { name: "database", value: database },
-          { name: "investigationTask", value: investigationTask },
+          { name: "investigationTask", value: inputData.userQuery },
           {
             name: "golden_queries",
             value: JSON.stringify(MOCK_RAG_RESULTS),

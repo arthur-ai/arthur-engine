@@ -1,6 +1,6 @@
 {
   "name": "@arthur-ai/observability-sdk",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Arthur Observability SDK — telemetry, prompt management, and framework instrumentation for Node.js",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",

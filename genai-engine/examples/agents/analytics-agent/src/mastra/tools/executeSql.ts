@@ -1,6 +1,6 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import { TracingContext } from "@mastra/core/ai-tracing";
+import { TracingContext } from "@mastra/core/observability";
 
 export type ExecuteSqlToolResult = z.infer<typeof ExecuteSqlToolResultSchema>;
 
@@ -25,13 +25,14 @@ export const executeSqlTool = createTool({
     sqlQuery: z.string().describe("The SQL query to execute"),
   }),
   outputSchema: ExecuteSqlToolResultSchema,
-  execute: async ({ context, runtimeContext, mastra, tracingContext }) => {
+  execute: async (inputData, executionContext) => {
+    const { mastra, runtimeContext, tracingContext } = executionContext ?? {};
     try {
       const agent = mastra?.getAgent("executeSqlAgent");
       if (!agent) {
         throw new Error("Execute SQL agent not found");
       }
-      const messages = [{ role: "user" as const, content: context.sqlQuery }];
+      const messages = [{ role: "user" as const, content: inputData.sqlQuery }];
       const response = await agent.generate(messages, {
         output: ExecuteSqlToolResultSchema,
         runtimeContext,
