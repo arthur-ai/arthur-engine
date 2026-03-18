@@ -26,6 +26,7 @@ from sqlalchemy import (
     desc,
     exists,
     func,
+    nullslast,
     or_,
     select,
 )
@@ -59,6 +60,21 @@ logger = logging.getLogger(__name__)
 # Constants
 DEFAULT_PAGE_SIZE = 5
 
+TRACE_SORT_COLUMN_MAP: dict[str, InstrumentedAttribute[Any]] = {
+    "start_time": DatabaseTraceMetadata.start_time,
+    "total_token_count": DatabaseTraceMetadata.total_token_count,
+    "total_token_cost": DatabaseTraceMetadata.total_token_cost,
+    "span_count": DatabaseTraceMetadata.span_count,
+}
+
+SPAN_SORT_COLUMN_MAP: dict[str, InstrumentedAttribute[Any]] = {
+    "start_time": DatabaseSpan.start_time,
+    "total_token_count": DatabaseSpan.total_token_count,
+    "total_token_cost": DatabaseSpan.total_token_cost,
+}
+
+NULLABLE_SORT_COLUMNS = {"total_token_count", "total_token_cost"}
+
 
 class SpanQueryService:
     """
@@ -73,6 +89,7 @@ class SpanQueryService:
         self,
         filters: TraceQuerySchema,
         pagination_parameters: PaginationParameters,
+        sort_by: str = "start_time",
     ) -> Tuple[List[str], int]:
         """
         Single-query strategy that combines all filters and uses database pagination.
@@ -91,8 +108,15 @@ class SpanQueryService:
         if not total_count:
             return [], 0
 
-        # Apply sorting and pagination at database level
-        query = self._apply_sorting_and_pagination(base_query, pagination_parameters)
+        sort_column = TRACE_SORT_COLUMN_MAP.get(
+            sort_by, DatabaseTraceMetadata.start_time
+        )
+        query = self._apply_sorting_and_pagination(
+            base_query,
+            pagination_parameters,
+            sort_column=sort_column,
+            nullable=sort_by in NULLABLE_SORT_COLUMNS,
+        )
 
         # Execute with database-level pagination
         results = self.db_session.execute(query).scalars().all()
@@ -252,6 +276,35 @@ class SpanQueryService:
                     ),
                 )
             conditions.extend(duration_conditions)
+
+        # Token count and span count filters (columns are directly indexed)
+        numeric_filter_mapping = [
+            (
+                filters.total_token_count_filters,
+                DatabaseTraceMetadata.total_token_count,
+            ),
+            (
+                filters.prompt_token_count_filters,
+                DatabaseTraceMetadata.prompt_token_count,
+            ),
+            (
+                filters.completion_token_count_filters,
+                DatabaseTraceMetadata.completion_token_count,
+            ),
+            (
+                filters.span_count_filters,
+                DatabaseTraceMetadata.span_count,
+            ),
+        ]
+        for numeric_filters, column in numeric_filter_mapping:
+            if numeric_filters:
+                for filter_item in numeric_filters:
+                    conditions.append(
+                        self.filter_service.build_comparison_condition(
+                            column,
+                            filter_item,
+                        ),
+                    )
 
         # Annotation filters - join with agentic_annotations table if any annotation filter is present
         if (
@@ -467,19 +520,23 @@ class SpanQueryService:
         sort_column: (
             InstrumentedAttribute[Any] | ColumnElement[Any] | Label[Any] | str | None
         ) = None,
+        nullable: bool = False,
     ) -> Select[Tuple[Any]]:
-        """Apply database-level sorting and pagination."""
-        # Default to trace metadata start_time if no column specified
+        """Apply database-level sorting and pagination.
+
+        When nullable=True, NULL values are pushed to the end of results
+        regardless of sort direction.
+        """
         if sort_column is None:
             sort_column = DatabaseTraceMetadata.start_time
 
-        # Apply sorting
         if pagination_parameters.sort == PaginationSortMethod.DESCENDING:
-            query = query.order_by(desc(sort_column))
+            order_expr = desc(sort_column)
+            query = query.order_by(nullslast(order_expr) if nullable else order_expr)
         else:
-            query = query.order_by(asc(sort_column))
+            order_expr = asc(sort_column)
+            query = query.order_by(nullslast(order_expr) if nullable else order_expr)
 
-        # Apply database-level pagination
         offset = pagination_parameters.page * pagination_parameters.page_size
         query = query.offset(offset).limit(pagination_parameters.page_size)
 
@@ -612,6 +669,7 @@ class SpanQueryService:
         self,
         filters: TraceQuerySchema,
         pagination_parameters: PaginationParameters,
+        sort_by: str = "start_time",
     ) -> tuple[list[Span], int]:
         """
         Span-based filtering that finds individual spans matching criteria.
@@ -648,11 +706,12 @@ class SpanQueryService:
         if not total_count:
             return [], 0
 
-        # Apply sorting and pagination at database level
+        sort_column = SPAN_SORT_COLUMN_MAP.get(sort_by, DatabaseSpan.start_time)
         query = self._apply_sorting_and_pagination(
             base_query,
             pagination_parameters,
-            DatabaseSpan.start_time,
+            sort_column=sort_column,
+            nullable=sort_by in NULLABLE_SORT_COLUMNS,
         )
 
         # Execute with database-level pagination
@@ -702,6 +761,10 @@ class SpanQueryService:
             or filters.start_time
             or filters.end_time
             or filters.trace_duration_filters
+            or filters.total_token_count_filters
+            or filters.prompt_token_count_filters
+            or filters.completion_token_count_filters
+            or filters.span_count_filters
             or filters.annotation_score is not None
             or filters.annotation_type is not None
             or filters.continuous_eval_run_status is not None
@@ -757,6 +820,35 @@ class SpanQueryService:
                     ),
                 )
             conditions.extend(duration_conditions)
+
+        # Token count and span count filters (columns are directly indexed)
+        numeric_filter_mapping = [
+            (
+                filters.total_token_count_filters,
+                DatabaseTraceMetadata.total_token_count,
+            ),
+            (
+                filters.prompt_token_count_filters,
+                DatabaseTraceMetadata.prompt_token_count,
+            ),
+            (
+                filters.completion_token_count_filters,
+                DatabaseTraceMetadata.completion_token_count,
+            ),
+            (
+                filters.span_count_filters,
+                DatabaseTraceMetadata.span_count,
+            ),
+        ]
+        for numeric_filters, column in numeric_filter_mapping:
+            if numeric_filters:
+                for filter_item in numeric_filters:
+                    conditions.append(
+                        self.filter_service.build_comparison_condition(
+                            column,
+                            filter_item,
+                        ),
+                    )
 
         # Annotation filters - join with agentic_annotations table if any annotation filter is present
         if (
@@ -910,13 +1002,14 @@ class SpanQueryService:
     def get_trace_metadata_by_ids(
         self,
         trace_ids: list[str],
-        sort_method: Optional[PaginationSortMethod] = None,
     ) -> list[TraceMetadata]:
         """Query trace metadata table directly by trace IDs.
 
+        Results are returned in the same order as the input trace_ids list,
+        since SQL IN clauses do not guarantee ordering.
+
         Args:
-            trace_ids: List of trace IDs to fetch metadata for
-            sort_method: Optional sort method to apply to results by start_time
+            trace_ids: List of trace IDs to fetch metadata for (order is preserved)
         """
         if not trace_ids:
             return []
@@ -928,12 +1021,11 @@ class SpanQueryService:
         results = self.db_session.execute(query).scalars().all()
         trace_metadata_list = [TraceMetadata._from_database_model(tm) for tm in results]
 
-        # Apply sorting if specified (IN clause doesn't preserve order)
-        if sort_method is not None:
-            if sort_method == PaginationSortMethod.DESCENDING:
-                trace_metadata_list.sort(key=lambda tm: tm.start_time, reverse=True)
-            else:
-                trace_metadata_list.sort(key=lambda tm: tm.start_time, reverse=False)
+        # IN clause doesn't preserve order, so re-sort to match input
+        trace_order = {tid: idx for idx, tid in enumerate(trace_ids)}
+        trace_metadata_list.sort(
+            key=lambda tm: trace_order.get(tm.trace_id, len(trace_ids)),
+        )
 
         return trace_metadata_list
 

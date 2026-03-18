@@ -1,0 +1,198 @@
+name: Arthur Observability SDK CI
+
+on:
+  pull_request:
+    paths:
+      - 'arthur-observability-sdk/**'
+  workflow_dispatch:
+
+jobs:
+  generate-client:
+    runs-on: ubuntu-latest
+    env:
+      GIT_DEPTH: 100
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: ${{ env.GIT_DEPTH }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Generate API client
+        working-directory: arthur-observability-sdk
+        run: ./scripts/generate_openapi_client.sh generate python
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arthur-genai-client
+          path: arthur-observability-sdk/python/src/arthur_genai_client
+
+  run-linter:
+    needs: generate-client
+    runs-on: ubuntu-latest
+    container: python:3.12-bullseye
+    env:
+      GIT_DEPTH: 100
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: ${{ env.GIT_DEPTH }}
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: arthur-genai-client
+          path: arthur-observability-sdk/python/src/arthur_genai_client
+      - uses: ./.github/workflows/composite-actions/setup-poetry
+        with:
+          working-directory: arthur-observability-sdk/python
+          with-groups: dev
+      - name: Run isort
+        id: isort
+        continue-on-error: true
+        run: |
+          poetry -C arthur-observability-sdk/python run isort src/arthur_observability_sdk tests --profile black --check
+      - name: Run autoflake
+        id: autoflake
+        continue-on-error: true
+        run: |
+          poetry -C arthur-observability-sdk/python run autoflake --remove-all-unused-imports --in-place --check --recursive --quiet src/arthur_observability_sdk tests
+      - name: Run black
+        id: black
+        continue-on-error: true
+        run: |
+          poetry -C arthur-observability-sdk/python run black --check src/arthur_observability_sdk tests
+      - name: Run mypy
+        id: mypy
+        continue-on-error: true
+        run: |
+          poetry -C arthur-observability-sdk/python run mypy src/arthur_observability_sdk
+      - name: Check linter results
+        if: steps.isort.outcome == 'failure' || steps.autoflake.outcome == 'failure' || steps.black.outcome == 'failure' || steps.mypy.outcome == 'failure'
+        run: |
+          echo "One or more linters failed:"
+          echo "  isort:     ${{ steps.isort.outcome }}"
+          echo "  autoflake: ${{ steps.autoflake.outcome }}"
+          echo "  black:     ${{ steps.black.outcome }}"
+          echo "  mypy:      ${{ steps.mypy.outcome }}"
+          exit 1
+
+  run-unit-tests:
+    needs: generate-client
+    runs-on: ubuntu-latest
+    container: python:3.12-bullseye
+    env:
+      GIT_DEPTH: 100
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: ${{ env.GIT_DEPTH }}
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: arthur-genai-client
+          path: arthur-observability-sdk/python/src/arthur_genai_client
+      - uses: ./.github/workflows/composite-actions/setup-poetry
+        with:
+          working-directory: arthur-observability-sdk/python
+          with-groups: dev
+      - name: Run unit tests
+        run: |
+          poetry -C arthur-observability-sdk/python run pytest tests -m "unit_tests" -v
+
+  run-integration-tests:
+    needs: generate-client
+    runs-on: ubuntu-latest
+    container: python:3.12-bullseye
+    env:
+      GIT_DEPTH: 100
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: ${{ env.GIT_DEPTH }}
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: arthur-genai-client
+          path: arthur-observability-sdk/python/src/arthur_genai_client
+      - uses: ./.github/workflows/composite-actions/setup-poetry
+        with:
+          working-directory: arthur-observability-sdk/python
+          with-groups: dev
+      - name: Run integration tests
+        run: |
+          poetry -C arthur-observability-sdk/python run pytest tests -m "integration_tests" -v
+
+  check-new-instrumentors:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check for new OpenInference instrumentors on PyPI
+        run: bash arthur-observability-sdk/scripts/check_new_instrumentors.sh
+
+  check-docs:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Detect src change without docs update
+        id: check
+        run: |
+          BASE=${{ github.event.pull_request.base.sha }}
+          SRC=$(git diff --name-only "$BASE"...HEAD -- \
+                'arthur-observability-sdk/python/src/arthur_observability_sdk/' | wc -l)
+          DOCS=$(git diff --name-only "$BASE"...HEAD -- \
+                 'arthur-observability-sdk/docs/' | wc -l)
+          if [ "$SRC" -gt 0 ] && [ "$DOCS" -eq 0 ]; then
+            echo "stale=true"  >> "$GITHUB_OUTPUT"
+          else
+            echo "stale=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Post docs reminder
+        if: steps.check.outputs.stale == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} \
+            --repo ${{ github.repository }} \
+            --body "**Docs reminder:** \`python/src/arthur_observability_sdk/\` was modified in this PR but \`docs/\` was not updated. Consider running \`scripts/update-docs.sh\` locally (requires the \`claude\` CLI) and committing any resulting changes. This is a reminder only — the PR is not blocked."
+
+  claude-code-review:
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate[bot]'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+      actions: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Run Claude Code Review
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
+          plugins: 'code-review@claude-code-plugins'
+          prompt: '/code-review:code-review --comment https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}'

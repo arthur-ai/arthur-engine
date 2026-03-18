@@ -5,8 +5,9 @@ import { getSpanInput, getSpanOutput } from "../../utils/spans";
 
 import { Highlight } from "@/components/common/Highlight";
 import { Tabs } from "@/components/ui/Tabs";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { TraceResponse } from "@/lib/api";
-import { formatDate } from "@/utils/formatters";
+import { formatDateInTimezone } from "@/utils/formatters";
 import { tryFormatJson } from "@/utils/llm";
 
 type Props = {
@@ -16,6 +17,7 @@ type Props = {
 export const TraceRenderer = ({ trace }: Props) => {
   const root = trace.root_spans?.[0];
   const [, setDrawerTarget] = useDrawerTarget();
+  const { timezone } = useDisplaySettings();
 
   if (!root) return null;
 
@@ -53,7 +55,7 @@ export const TraceRenderer = ({ trace }: Props) => {
           </Stack>
 
           <Typography variant="body2" color="text.secondary">
-            {formatDate(rootSpan.start_time)}
+            {formatDateInTimezone(rootSpan.start_time, timezone)}
           </Typography>
         </Stack>
       </Box>

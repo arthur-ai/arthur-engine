@@ -1,7 +1,7 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { Box, Button, Stack, Typography, Link as MuiLink, ButtonGroup } from "@mui/material";
+import { Box, Button, CircularProgress, Stack, Typography, Link as MuiLink, ButtonGroup } from "@mui/material";
 import { Link, useParams } from "react-router-dom";
 
 import { StatusBadge } from "../components/status-badge";
@@ -13,20 +13,34 @@ import { TestCases } from "./components/test-cases";
 import { usePollAgentExperiment } from "./hooks/usePollAgentExperiment";
 
 import { getContentHeight } from "@/constants/layout";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useTask } from "@/hooks/useTask";
 import { EVENT_NAMES, track } from "@/services/amplitude";
-import { formatDate, formatTimestampDuration } from "@/utils/formatters";
+import { formatDateInTimezone, formatTimestampDuration } from "@/utils/formatters";
 
 export const AgentExperimentDetail = () => {
   const { task } = useTask();
   const { experimentId } = useParams<{ experimentId: string }>();
+  const { timezone, use24Hour } = useDisplaySettings();
 
-  const { data: agentExperiment } = usePollAgentExperiment(experimentId);
+  const { data: agentExperiment, isLoading } = usePollAgentExperiment(experimentId);
 
   const deleteAgentExperimentMutation = useDeleteAgentExperiment();
 
+  if (isLoading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: getContentHeight() }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   if (!agentExperiment) {
-    return <div>Experiment not found</div>;
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: getContentHeight() }}>
+        <Typography color="text.secondary">Experiment not found</Typography>
+      </Box>
+    );
   }
 
   return (
@@ -45,7 +59,7 @@ export const AgentExperimentDetail = () => {
           <Stack alignItems="flex-start">
             <Button
               component={Link}
-              to=".."
+              to={`/tasks/${task?.id}/test?section=agent-experiments`}
               size="small"
               variant="text"
               startIcon={<ArrowBackIcon />}
@@ -67,10 +81,10 @@ export const AgentExperimentDetail = () => {
             </Stack>
             <Stack direction="row" gap={2}>
               <Typography variant="body2" color="text.secondary">
-                <span className="font-bold">Created:</span> {formatDate(agentExperiment.created_at)}
+                <span className="font-bold">Created:</span> {formatDateInTimezone(agentExperiment.created_at, timezone, { hour12: !use24Hour })}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                <span className="font-bold">Finished:</span> {formatDate(agentExperiment.finished_at)}
+                <span className="font-bold">Finished:</span> {formatDateInTimezone(agentExperiment.finished_at, timezone, { hour12: !use24Hour })}
               </Typography>
               {agentExperiment.finished_at && (
                 <Typography variant="body2" color="text.secondary">
