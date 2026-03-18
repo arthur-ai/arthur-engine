@@ -375,35 +375,35 @@ export class Arthur {
     );
   }
 
-  instrumentVercelAI(): any {
+  instrumentBedrock(): any {
     return this._instrument(
-      "@arizeai/openinference-instrumentation-vercel-ai",
-      "vercel-ai",
-      "VercelAIInstrumentation",
+      "@arizeai/openinference-instrumentation-bedrock",
+      "bedrock",
+      "BedrockInstrumentation",
     );
   }
 
-  instrumentGroq(): any {
+  instrumentBedrockAgent(): any {
     return this._instrument(
-      "@arizeai/openinference-instrumentation-groq",
-      "groq",
-      "GroqInstrumentation",
+      "@arizeai/openinference-instrumentation-bedrock-agent-runtime",
+      "bedrock-agent-runtime",
+      "BedrockAgentInstrumentation",
     );
   }
 
-  instrumentMistralAI(): any {
+  instrumentBeeAI(): any {
     return this._instrument(
-      "@arizeai/openinference-instrumentation-mistralai",
-      "mistralai",
-      "MistralAIInstrumentation",
+      "@arizeai/openinference-instrumentation-beeai",
+      "beeai",
+      "BeeAIInstrumentation",
     );
   }
 
-  instrumentBeeAgent(): any {
+  instrumentMCP(): any {
     return this._instrument(
-      "@arizeai/openinference-instrumentation-bee-agent",
-      "bee-agent",
-      "BeeAgentInstrumentation",
+      "@arizeai/openinference-instrumentation-mcp",
+      "mcp",
+      "MCPInstrumentation",
     );
   }
 

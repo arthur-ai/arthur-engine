@@ -60,10 +60,10 @@
     "@arizeai/openinference-instrumentation-anthropic": "*",
     "@arizeai/openinference-instrumentation-langchain": "*",
     "@arizeai/openinference-instrumentation-claude-agent-sdk": "*",
-    "@arizeai/openinference-instrumentation-vercel-ai": "*",
-    "@arizeai/openinference-instrumentation-groq": "*",
-    "@arizeai/openinference-instrumentation-mistralai": "*",
-    "@arizeai/openinference-instrumentation-bee-agent": "*"
+    "@arizeai/openinference-instrumentation-bedrock": "*",
+    "@arizeai/openinference-instrumentation-bedrock-agent-runtime": "*",
+    "@arizeai/openinference-instrumentation-beeai": "*",
+    "@arizeai/openinference-instrumentation-mcp": "*"
   },
   "peerDependenciesMeta": {
     "@mastra/core": { "optional": true },
@@ -71,10 +71,10 @@
     "@arizeai/openinference-instrumentation-anthropic": { "optional": true },
     "@arizeai/openinference-instrumentation-langchain": { "optional": true },
     "@arizeai/openinference-instrumentation-claude-agent-sdk": { "optional": true },
-    "@arizeai/openinference-instrumentation-vercel-ai": { "optional": true },
-    "@arizeai/openinference-instrumentation-groq": { "optional": true },
-    "@arizeai/openinference-instrumentation-mistralai": { "optional": true },
-    "@arizeai/openinference-instrumentation-bee-agent": { "optional": true }
+    "@arizeai/openinference-instrumentation-bedrock": { "optional": true },
+    "@arizeai/openinference-instrumentation-bedrock-agent-runtime": { "optional": true },
+    "@arizeai/openinference-instrumentation-beeai": { "optional": true },
+    "@arizeai/openinference-instrumentation-mcp": { "optional": true }
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

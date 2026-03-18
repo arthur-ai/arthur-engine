@@ -104,10 +104,10 @@ await arthur.attributes(
 | `instrumentAnthropic()` | `@arizeai/openinference-instrumentation-anthropic` |
 | `instrumentLangchain()` | `@arizeai/openinference-instrumentation-langchain` |
 | `instrumentClaudeAgentSdk()` | `@arizeai/openinference-instrumentation-claude-agent-sdk` |
-| `instrumentVercelAI()` | `@arizeai/openinference-instrumentation-vercel-ai` |
-| `instrumentGroq()` | `@arizeai/openinference-instrumentation-groq` |
-| `instrumentMistralAI()` | `@arizeai/openinference-instrumentation-mistralai` |
-| `instrumentBeeAgent()` | `@arizeai/openinference-instrumentation-bee-agent` |
+| `instrumentBedrock()` | `@arizeai/openinference-instrumentation-bedrock` |
+| `instrumentBedrockAgent()` | `@arizeai/openinference-instrumentation-bedrock-agent-runtime` |
+| `instrumentBeeAI()` | `@arizeai/openinference-instrumentation-beeai` |
+| `instrumentMCP()` | `@arizeai/openinference-instrumentation-mcp` |
 
 ### Mastra Integration
 
