@@ -10,6 +10,7 @@ import { createContext, Fragment, useContext } from "react";
 import { getSpanDetailsStrategy, SpanDetailsStrategy } from "../data/details-strategy";
 import { getSpanDuration, isSpanOfType } from "../utils/spans";
 
+import { DurationCell } from "./DurationCell";
 import { SpanStatusBadge } from "./span-status-badge";
 
 import { CopyableChip } from "@/components/common";
@@ -102,13 +103,11 @@ export const SpanDetailsHeader = ({ onOpenSpanDrawer, onOpenPlayground }: SpanDe
           <CopyableChip label={span.span_id} sx={{ fontFamily: "monospace" }} />
         </Stack>
       </Stack>
-      <Stack direction="row" spacing={1}>
+      <Stack direction="row" spacing={1} alignItems="center">
         <Typography variant="caption" color="text.secondary">
           {formatDateInTimezone(span.start_time, timezone, { hour12: !use24Hour })}
         </Typography>
-        <Typography variant="caption" color="text.secondary">
-          {duration}ms
-        </Typography>
+        {typeof duration === "number" && <DurationCell duration={duration} />}
       </Stack>
     </Stack>
   );
