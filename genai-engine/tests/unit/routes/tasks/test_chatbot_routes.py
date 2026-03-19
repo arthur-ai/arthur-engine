@@ -157,3 +157,35 @@ def test_chatbot_conversation_history_persisted(mock_stream, client: GenaiEngine
 
     history = get_conversation_history(conversation_id)
     assert len(history) > 0
+
+
+@pytest.mark.unit_tests
+@patch("services.prompt.chat_completion_service.ChatCompletionService.stream_chat_completion")
+def test_clear_chatbot_history(mock_stream, client: GenaiEngineTestClientBase):
+    task_name = f"chatbot_task_{random.random()}"
+    _, task = client.create_task(task_name, is_agentic=True)
+
+    client.base_client.put(
+        "/api/v1/model_providers/openai",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+
+    conversation_id = f"test-conv-clear-{random.random()}"
+    mock_stream.return_value = make_stream(final_response_events("Hello."))
+
+    client.base_client.post(
+        f"/api/v1/tasks/{task.id}/chatbot/stream",
+        json={"message": "hello", "conversation_id": conversation_id},
+        headers=client.authorized_user_api_key_headers,
+    )
+
+    assert len(get_conversation_history(conversation_id)) > 0
+
+    response = client.base_client.delete(
+        f"/api/v1/chatbot/history/{conversation_id}",
+        headers=client.authorized_user_api_key_headers,
+    )
+
+    assert response.status_code == 200
+    assert len(get_conversation_history(conversation_id)) == 0
