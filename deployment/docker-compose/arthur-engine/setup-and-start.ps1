@@ -183,6 +183,7 @@ if ($DEFAULT_GENAI_CONFIG -eq "true") {
             $envLines += "GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$gptName::$gptEndpoint::$gptKey"
         } else {
             Write-Host "Skipping OpenAI configuration..."
+            $envLines += "GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=model_name::https://model_service.com/::my_api_key"
         }
     } else {
         Write-Host "Using existing OpenAI configuration from .env..."

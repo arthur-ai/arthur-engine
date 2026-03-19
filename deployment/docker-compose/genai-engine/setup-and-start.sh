@@ -80,7 +80,7 @@ GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$genai_engine_openai_gpt_name::$gen
     else
         echo ""
         echo "Skipping OpenAI configuration..."
-        all_env_vars=""
+        all_env_vars="GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=model_name::https://model_service.com/::my_api_key"
     fi
 
       # Generate a secure random key using /dev/urandom

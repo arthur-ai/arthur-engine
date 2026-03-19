@@ -86,7 +86,7 @@ GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$model::$endpoint::$apiKey
     } else {
         Write-Host ""
         Write-Host "Skipping OpenAI configuration..."
-        $envContent = ""
+        $envContent = "GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=model_name::https://model_service.com/::my_api_key"
     }
 
     # Generate a secure random key using .NET
