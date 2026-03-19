@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useApi } from "@/hooks/useApi";
 import { API_BASE_URL } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
 
@@ -35,6 +36,7 @@ export function useChatbot(taskId: string): UseChatbotReturn {
   const [conversationId] = useState(() => uuidv4());
   const abortControllerRef = useRef<AbortController | null>(null);
   const { token } = useAuth();
+  const api = useApi();
 
   const sendMessage = useCallback(
     (message: string) => {
@@ -186,7 +188,8 @@ export function useChatbot(taskId: string): UseChatbotReturn {
     setMessages([]);
     setIsStreaming(false);
     setActiveToolCall(null);
-  }, []);
+    api?.api.clearChatbotHistoryApiV1ChatbotHistoryConversationIdDelete(conversationId).catch(() => {});
+  }, [api, conversationId]);
 
   const abort = useCallback(() => {
     abortControllerRef.current?.abort();

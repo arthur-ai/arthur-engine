@@ -39,6 +39,10 @@ def get_conversation_history(conversation_id: str) -> List[OpenAIMessage]:
     return CONVERSATION_HISTORIES.get(conversation_id, [])
 
 
+def clear_conversation_history(conversation_id: str) -> None:
+    CONVERSATION_HISTORIES.pop(conversation_id, None)
+
+
 class ChatbotService:
     def __init__(
         self,

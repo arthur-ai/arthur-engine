@@ -1257,6 +1257,14 @@ export interface ChatResponse {
   timestamp: number;
 }
 
+/** ChatbotRequest */
+export interface ChatbotRequest {
+  /** Conversation Id */
+  conversation_id: string;
+  /** Message */
+  message: string;
+}
+
 export type CheckUserPermissionUsersPermissionsCheckGetData = any;
 
 export type CheckUserPermissionUsersPermissionsCheckGetError = HTTPValidationError;
@@ -1267,6 +1275,10 @@ export interface CheckUserPermissionUsersPermissionsCheckGetParams {
   /** Resource to check permissions of. */
   resource?: UserPermissionResource;
 }
+
+export type ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteData = any;
+
+export type ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteError = HTTPValidationError;
 
 /**
  * CompletionRequest
@@ -10325,6 +10337,10 @@ export interface SpanWithMetricsResponse {
 /** StatusCodeEnum */
 export type StatusCodeEnum = "Ok" | "Error" | "Unset";
 
+export type StreamChatbotApiV1TasksTaskIdChatbotStreamPostData = any;
+
+export type StreamChatbotApiV1TasksTaskIdChatbotStreamPostError = HTTPValidationError;
+
 /** StreamOptions */
 export interface StreamOptions {
   /**
@@ -12724,7 +12740,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.459
+ * @version 2.1.470
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -12967,6 +12983,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         method: "POST",
         body: data,
         type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Chatbot
+     * @name ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDelete
+     * @summary Clear chatbot conversation history
+     * @request DELETE:/api/v1/chatbot/history/{conversation_id}
+     * @secure
+     */
+    clearChatbotHistoryApiV1ChatbotHistoryConversationIdDelete: (conversationId: string, params: RequestParams = {}) =>
+      this.request<ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteData, ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteError>({
+        path: `/api/v1/chatbot/history/${conversationId}`,
+        method: "DELETE",
+        secure: true,
         format: "json",
         ...params,
       }),
@@ -16060,6 +16094,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v1/tasks/${taskId}/llm_evals/${evalName}/versions/${evalVersion}`,
         method: "DELETE",
         secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Send a message to the Arthur AI chatbot and receive a streaming response. The chatbot can call Arthur Engine API endpoints on your behalf.
+     *
+     * @tags Chatbot
+     * @name StreamChatbotApiV1TasksTaskIdChatbotStreamPost
+     * @summary Stream a chatbot response
+     * @request POST:/api/v1/tasks/{task_id}/chatbot/stream
+     * @secure
+     */
+    streamChatbotApiV1TasksTaskIdChatbotStreamPost: (taskId: string, data: ChatbotRequest, params: RequestParams = {}) =>
+      this.request<StreamChatbotApiV1TasksTaskIdChatbotStreamPostData, StreamChatbotApiV1TasksTaskIdChatbotStreamPostError>({
+        path: `/api/v1/tasks/${taskId}/chatbot/stream`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
         ...params,
       }),
 

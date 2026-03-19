@@ -7,6 +7,7 @@ from auth.authorization_header_elements import (
 )
 from dependencies import get_db_session
 from repositories.chatbot_repository import ChatbotRepository
+from services.chatbot.chatbot_service import clear_conversation_history
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.chatbot_schemas import ChatbotRequest
@@ -42,3 +43,16 @@ async def stream_chatbot(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@chatbot_routes.delete(
+    "/chatbot/history/{conversation_id}",
+    summary="Clear chatbot conversation history",
+    tags=["Chatbot"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+async def clear_chatbot_history(
+    conversation_id: str,
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> None:
+    clear_conversation_history(conversation_id)
