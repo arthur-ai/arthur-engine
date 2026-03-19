@@ -337,10 +337,16 @@ export class Arthur {
       );
     }
     const instrumentor = new InstrumentorClass();
-    if (this._tracerProvider && typeof instrumentor.setTracerProvider === "function") {
+    if (
+      this._tracerProvider &&
+      typeof instrumentor.setTracerProvider === "function"
+    ) {
       instrumentor.setTracerProvider(this._tracerProvider);
     }
-    if (typeof instrumentor.manuallyInstrument === "function" && targetModuleName) {
+    if (
+      typeof instrumentor.manuallyInstrument === "function" &&
+      targetModuleName
+    ) {
       const targetModule = require(targetModuleName);
       instrumentor.manuallyInstrument(targetModule);
     } else if (typeof instrumentor.manuallyInstrument === "function") {
