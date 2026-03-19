@@ -24,7 +24,11 @@ def make_tool_call(id: str, name: str, arguments: str) -> ChatCompletionMessageT
 
 
 def final_response_events(content: str) -> list[str]:
-    payload = AgenticPromptRunResponse(content=content, tool_calls=None, cost="0.0").model_dump_json()
+    payload = AgenticPromptRunResponse(
+        content=content,
+        tool_calls=None,
+        cost="0.0",
+    ).model_dump_json()
     return [f"event: final_response\ndata: {payload}\n\n"]
 
 
@@ -42,7 +46,9 @@ def test_chatbot_no_provider_configured(client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
-@patch("services.prompt.chat_completion_service.ChatCompletionService.stream_chat_completion")
+@patch(
+    "services.prompt.chat_completion_service.ChatCompletionService.stream_chat_completion",
+)
 def test_chatbot_simple_response(mock_stream, client: GenaiEngineTestClientBase):
     task_name = f"chatbot_task_{random.random()}"
     _, task = client.create_task(task_name, is_agentic=True)
@@ -53,7 +59,9 @@ def test_chatbot_simple_response(mock_stream, client: GenaiEngineTestClientBase)
         headers=client.authorized_user_api_key_headers,
     )
 
-    mock_stream.return_value = make_stream(final_response_events("Here are your results."))
+    mock_stream.return_value = make_stream(
+        final_response_events("Here are your results."),
+    )
 
     response = client.base_client.post(
         f"/api/v1/tasks/{task.id}/chatbot/stream",
@@ -68,8 +76,13 @@ def test_chatbot_simple_response(mock_stream, client: GenaiEngineTestClientBase)
 
 
 @pytest.mark.unit_tests
-@patch("services.prompt.chat_completion_service.ChatCompletionService.stream_chat_completion")
-def test_chatbot_search_tool_emits_search_complete(mock_stream, client: GenaiEngineTestClientBase):
+@patch(
+    "services.prompt.chat_completion_service.ChatCompletionService.stream_chat_completion",
+)
+def test_chatbot_search_tool_emits_search_complete(
+    mock_stream,
+    client: GenaiEngineTestClientBase,
+):
     task_name = f"chatbot_task_{random.random()}"
     _, task = client.create_task(task_name, is_agentic=True)
 
@@ -80,7 +93,11 @@ def test_chatbot_search_tool_emits_search_complete(mock_stream, client: GenaiEng
     )
 
     search_tool_call = make_tool_call("tc1", "search_arthur_api", '{"query": "evals"}')
-    search_response = AgenticPromptRunResponse(content=None, tool_calls=[search_tool_call], cost="0.0").model_dump_json()
+    search_response = AgenticPromptRunResponse(
+        content=None,
+        tool_calls=[search_tool_call],
+        cost="0.0",
+    ).model_dump_json()
     first_call_events = [f"event: final_response\ndata: {search_response}\n\n"]
     second_call_events = final_response_events("Found your evals.")
 
@@ -100,8 +117,14 @@ def test_chatbot_search_tool_emits_search_complete(mock_stream, client: GenaiEng
 
 @pytest.mark.unit_tests
 @patch("services.chatbot.api_call_service.ApiCallService.call")
-@patch("services.prompt.chat_completion_service.ChatCompletionService.stream_chat_completion")
-def test_chatbot_api_tool_emits_tool_call_and_result(mock_stream, mock_api_call, client: GenaiEngineTestClientBase):
+@patch(
+    "services.prompt.chat_completion_service.ChatCompletionService.stream_chat_completion",
+)
+def test_chatbot_api_tool_emits_tool_call_and_result(
+    mock_stream,
+    mock_api_call,
+    client: GenaiEngineTestClientBase,
+):
     task_name = f"chatbot_task_{random.random()}"
     _, task = client.create_task(task_name, is_agentic=True)
 
@@ -111,10 +134,23 @@ def test_chatbot_api_tool_emits_tool_call_and_result(mock_stream, mock_api_call,
         headers=client.authorized_user_api_key_headers,
     )
 
-    mock_api_call.return_value = ApiCallResult("GET", "/api/v2/tasks", 200, '{"items": []}')
+    mock_api_call.return_value = ApiCallResult(
+        "GET",
+        "/api/v2/tasks",
+        200,
+        '{"items": []}',
+    )
 
-    api_tool_call = make_tool_call("tc2", "call_arthur_api", '{"method": "GET", "path": "/api/v2/tasks"}')
-    api_response = AgenticPromptRunResponse(content=None, tool_calls=[api_tool_call], cost="0.0").model_dump_json()
+    api_tool_call = make_tool_call(
+        "tc2",
+        "call_arthur_api",
+        '{"method": "GET", "path": "/api/v2/tasks"}',
+    )
+    api_response = AgenticPromptRunResponse(
+        content=None,
+        tool_calls=[api_tool_call],
+        cost="0.0",
+    ).model_dump_json()
     first_call_events = [f"event: final_response\ndata: {api_response}\n\n"]
     second_call_events = final_response_events("You have no tasks.")
 
@@ -135,8 +171,13 @@ def test_chatbot_api_tool_emits_tool_call_and_result(mock_stream, mock_api_call,
 
 
 @pytest.mark.unit_tests
-@patch("services.prompt.chat_completion_service.ChatCompletionService.stream_chat_completion")
-def test_chatbot_conversation_history_persisted(mock_stream, client: GenaiEngineTestClientBase):
+@patch(
+    "services.prompt.chat_completion_service.ChatCompletionService.stream_chat_completion",
+)
+def test_chatbot_conversation_history_persisted(
+    mock_stream,
+    client: GenaiEngineTestClientBase,
+):
     task_name = f"chatbot_task_{random.random()}"
     _, task = client.create_task(task_name, is_agentic=True)
 
@@ -160,7 +201,9 @@ def test_chatbot_conversation_history_persisted(mock_stream, client: GenaiEngine
 
 
 @pytest.mark.unit_tests
-@patch("services.prompt.chat_completion_service.ChatCompletionService.stream_chat_completion")
+@patch(
+    "services.prompt.chat_completion_service.ChatCompletionService.stream_chat_completion",
+)
 def test_clear_chatbot_history(mock_stream, client: GenaiEngineTestClientBase):
     task_name = f"chatbot_task_{random.random()}"
     _, task = client.create_task(task_name, is_agentic=True)

@@ -51,7 +51,10 @@ class ApiCallService:
         }
 
         try:
-            async with httpx.AsyncClient(base_url=self.base_url, timeout=30.0) as client:
+            async with httpx.AsyncClient(
+                base_url=self.base_url,
+                timeout=30.0,
+            ) as client:
                 response = await client.request(
                     method=method,
                     url=path,

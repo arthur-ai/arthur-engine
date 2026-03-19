@@ -7,12 +7,12 @@ from auth.authorization_header_elements import (
 )
 from dependencies import get_db_session
 from repositories.chatbot_repository import ChatbotRepository
-from services.chatbot.chatbot_service import clear_conversation_history
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.chatbot_schemas import ChatbotRequest
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
+from services.chatbot.chatbot_service import clear_conversation_history
 from utils.users import permission_checker
 
 chatbot_routes = APIRouter(
@@ -38,7 +38,13 @@ async def stream_chatbot(
 ) -> StreamingResponse:
     try:
         repo = ChatbotRepository(db_session)
-        return repo.stream_response(body, task_id, token, request.app, str(request.base_url).rstrip("/"))
+        return repo.stream_response(
+            body,
+            task_id,
+            token,
+            request.app,
+            str(request.base_url).rstrip("/"),
+        )
     except HTTPException:
         raise
     except Exception as e:
