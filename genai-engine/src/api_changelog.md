@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 03/19/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/chatbot/stream  endpoint added
+
 # 03/16/2026
 - **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_count_eq'
 - **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_count_gt'

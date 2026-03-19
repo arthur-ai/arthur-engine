@@ -15743,6 +15743,62 @@
                 }
             }
         },
+        "/api/v1/tasks/{task_id}/chatbot/stream": {
+            "post": {
+                "tags": [
+                    "Chatbot"
+                ],
+                "summary": "Stream a chatbot response",
+                "description": "Send a message to the Arthur AI chatbot and receive a streaming response. The chatbot can call Arthur Engine API endpoints on your behalf.",
+                "operationId": "stream_chatbot_api_v1_tasks__task_id__chatbot_stream_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChatbotRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "post": {
                 "tags": [
@@ -18520,6 +18576,24 @@
                     "response_results"
                 ],
                 "title": "ChatResponse"
+            },
+            "ChatbotRequest": {
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "conversation_id": {
+                        "type": "string",
+                        "title": "Conversation Id"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "message",
+                    "conversation_id"
+                ],
+                "title": "ChatbotRequest"
             },
             "CompletionRequest": {
                 "properties": {
