@@ -66,7 +66,6 @@ export function ChatMessage({ message }: ChatMessageProps) {
           color: isUser ? "primary.contrastText" : "text.primary",
           borderRadius: isUser ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
           wordBreak: "break-word",
-          overflowX: "auto",
         }}
       >
         {isUser ? (
@@ -76,11 +75,21 @@ export function ChatMessage({ message }: ChatMessageProps) {
             variant="body2"
             component="div"
             sx={{
-              "& table": { borderCollapse: "collapse", whiteSpace: "nowrap" },
               "& th, & td": { border: "1px solid", borderColor: "divider", px: 1, py: 0.5 },
             }}
           >
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                table: ({ children }) => (
+                  <Box sx={{ overflowX: "auto" }}>
+                    <table style={{ borderCollapse: "collapse", whiteSpace: "nowrap" }}>{children}</table>
+                  </Box>
+                ),
+              }}
+            >
+              {message.content}
+            </ReactMarkdown>
           </Typography>
         )}
       </Paper>
