@@ -2,5 +2,5 @@ apiVersion: v2
 name: arthur-ml-engine
 description: Arthur's ML Engine Helm Chart
 type: application
-version: 2.1.469
-appVersion: 2.1.469
+version: 2.1.470
+appVersion: 2.1.470
