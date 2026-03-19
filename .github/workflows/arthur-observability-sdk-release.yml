@@ -129,21 +129,14 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install dependencies
-        working-directory: arthur-observability-sdk/typescript
-        run: npm ci
-
       - name: Run tests
         working-directory: arthur-observability-sdk/typescript
-        run: npm test
+        run: |
+          npm ci
+          npm test
 
-      - name: Build
-        working-directory: arthur-observability-sdk/typescript
-        run: npm run build
-
-      - name: Pack tarball
-        working-directory: arthur-observability-sdk/typescript
-        run: npm pack
+      - name: Build and pack
+        run: bash arthur-observability-sdk/scripts/build_ts_sdk.sh
 
       - uses: actions/upload-artifact@v4
         with:

@@ -123,9 +123,8 @@ jobs:
       - name: Run tests
         working-directory: arthur-observability-sdk/typescript
         run: npm test
-      - name: Build
-        working-directory: arthur-observability-sdk/typescript
-        run: npm run build
+      - name: Build and pack
+        run: bash arthur-observability-sdk/scripts/build_ts_sdk.sh
 
   check-docs:
     if: github.event_name == 'pull_request'
