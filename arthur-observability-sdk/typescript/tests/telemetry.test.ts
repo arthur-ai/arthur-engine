@@ -23,7 +23,7 @@ vi.mock("@opentelemetry/sdk-trace-base", () => ({
   BatchSpanProcessor: mockBatchSpanProcessor,
 }));
 
-vi.mock("@opentelemetry/exporter-trace-otlp-http", () => ({
+vi.mock("@opentelemetry/exporter-trace-otlp-proto", () => ({
   OTLPTraceExporter: mockExporter,
 }));
 
@@ -99,12 +99,12 @@ describe("setupTelemetry", () => {
     );
   });
 
-  it("does not register the provider globally", () => {
+  it("registers the provider globally", () => {
     setupTelemetry({
       serviceName: "svc",
       otlpEndpoint: "http://localhost:4318/v1/traces",
       apiKey: "key",
     });
-    expect(mockRegister).not.toHaveBeenCalled();
+    expect(mockRegister).toHaveBeenCalled();
   });
 });
