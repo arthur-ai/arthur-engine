@@ -1,7 +1,7 @@
 import json
 import logging
 from datetime import datetime, timezone
-from typing import AsyncGenerator, Dict, List
+from typing import AsyncGenerator, Dict, List, Tuple
 
 from arthur_common.models.llm_model_providers import (
     MessageRole,
@@ -32,15 +32,15 @@ MAX_ITERATIONS = int(
     get_env_var(constants.GENAI_ENGINE_CHATBOT_MAX_ITERATIONS_ENV_VAR, True) or 30,
 )
 
-CONVERSATION_HISTORIES: Dict[str, List[OpenAIMessage]] = {}
+CONVERSATION_HISTORIES: Dict[Tuple[str, str], List[OpenAIMessage]] = {}
 
 
-def get_conversation_history(conversation_id: str) -> List[OpenAIMessage]:
-    return CONVERSATION_HISTORIES.get(conversation_id, [])
+def get_conversation_history(user_id: str, conversation_id: str) -> List[OpenAIMessage]:
+    return CONVERSATION_HISTORIES.get((user_id, conversation_id), [])
 
 
-def clear_conversation_history(conversation_id: str) -> None:
-    CONVERSATION_HISTORIES.pop(conversation_id, None)
+def clear_conversation_history(user_id: str, conversation_id: str) -> None:
+    CONVERSATION_HISTORIES.pop((user_id, conversation_id), None)
 
 
 class ChatbotService:
@@ -83,6 +83,7 @@ class ChatbotService:
         self,
         prompt: AgenticPrompt,
         llm_client: LLMClient,
+        user_id: str,
         conversation_id: str,
     ) -> AsyncGenerator[str, None]:
         api_calls_made: List[ApiCallSummary] = []
@@ -109,7 +110,7 @@ class ChatbotService:
                 return
 
             if not final_response.tool_calls:
-                CONVERSATION_HISTORIES[conversation_id] = [
+                CONVERSATION_HISTORIES[(user_id, conversation_id)] = [
                     m for m in current_prompt.messages if m.role != MessageRole.SYSTEM
                 ]
                 yield f"event: final_response\ndata: {final_response.model_dump_json()}\n\n"

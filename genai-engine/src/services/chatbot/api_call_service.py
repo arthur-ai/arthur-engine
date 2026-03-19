@@ -1,17 +1,18 @@
 import logging
 from typing import Any, Dict, Optional
+from urllib.parse import urlparse
 
 import httpx
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
 
-class ApiCallResult:
-    def __init__(self, method: str, path: str, status_code: int, body: str):
-        self.method = method
-        self.path = path
-        self.status_code = status_code
-        self.body = body
+class ApiCallResult(BaseModel):
+    method: str
+    path: str
+    status_code: int
+    body: str
 
     def to_tool_result_content(self) -> str:
         return f"HTTP {self.status_code}\n{self.body}"
@@ -32,17 +33,26 @@ class ApiCallService:
         method = method.upper()
         if method not in {"GET", "POST", "PUT", "PATCH", "DELETE"}:
             return ApiCallResult(
-                method,
-                path,
-                400,
-                f"Unsupported HTTP method: {method}",
+                method=method,
+                path=path,
+                status_code=400,
+                body=f"Unsupported HTTP method: {method}",
             )
+        parsed = urlparse(path)
+        if parsed.scheme or parsed.netloc:
+            return ApiCallResult(
+                method=method,
+                path=path,
+                status_code=400,
+                body="Invalid path: absolute URLs are not permitted",
+            )
+
         if method == "DELETE" and "/tags/" not in path:
             return ApiCallResult(
-                method,
-                path,
-                403,
-                "DELETE is only permitted for tag endpoints",
+                method=method,
+                path=path,
+                status_code=403,
+                body="DELETE is only permitted for tag endpoints",
             )
 
         headers = {
@@ -62,7 +72,17 @@ class ApiCallService:
                     json=body,
                     headers=headers,
                 )
-            return ApiCallResult(method, path, response.status_code, response.text)
+            return ApiCallResult(
+                method=method,
+                path=path,
+                status_code=response.status_code,
+                body=response.text,
+            )
         except Exception as e:
             logger.error(f"ApiCallService error calling {method} {path}: {e}")
-            return ApiCallResult(method, path, 500, f"Internal error: {str(e)}")
+            return ApiCallResult(
+                method=method,
+                path=path,
+                status_code=500,
+                body=f"Internal error: {str(e)}",
+            )

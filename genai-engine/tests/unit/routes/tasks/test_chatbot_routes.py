@@ -2,12 +2,16 @@ import random
 from unittest.mock import patch
 
 import pytest
+from fastapi import HTTPException
 from litellm.types.utils import ChatCompletionMessageToolCall, Function
 
 from schemas.response_schemas import AgenticPromptRunResponse
 from services.chatbot.api_call_service import ApiCallResult
 from services.chatbot.chatbot_service import get_conversation_history
-from tests.clients.base_test_client import GenaiEngineTestClientBase
+from tests.clients.base_test_client import (
+    MASTER_KEY_AUTHORIZED_HEADERS,
+    GenaiEngineTestClientBase,
+)
 
 
 async def make_stream(events: list[str]):
@@ -33,7 +37,11 @@ def final_response_events(content: str) -> list[str]:
 
 
 @pytest.mark.unit_tests
-def test_chatbot_no_provider_configured(client: GenaiEngineTestClientBase):
+@patch(
+    "repositories.chatbot_repository.ChatbotRepository.get_provider_and_client",
+    side_effect=HTTPException(status_code=503, detail="No provider configured"),
+)
+def test_chatbot_no_provider_configured(_, client: GenaiEngineTestClientBase):
     task_name = f"chatbot_task_{random.random()}"
     _, task = client.create_task(task_name, is_agentic=True)
 
@@ -135,10 +143,10 @@ def test_chatbot_api_tool_emits_tool_call_and_result(
     )
 
     mock_api_call.return_value = ApiCallResult(
-        "GET",
-        "/api/v2/tasks",
-        200,
-        '{"items": []}',
+        method="GET",
+        path="/api/v2/tasks",
+        status_code=200,
+        body='{"items": []}',
     )
 
     api_tool_call = make_tool_call(
@@ -193,10 +201,10 @@ def test_chatbot_conversation_history_persisted(
     client.base_client.post(
         f"/api/v1/tasks/{task.id}/chatbot/stream",
         json={"message": "first message", "conversation_id": conversation_id},
-        headers=client.authorized_user_api_key_headers,
+        headers=MASTER_KEY_AUTHORIZED_HEADERS,
     )
 
-    history = get_conversation_history(conversation_id)
+    history = get_conversation_history("master-key", conversation_id)
     assert len(history) > 0
 
 
@@ -220,15 +228,15 @@ def test_clear_chatbot_history(mock_stream, client: GenaiEngineTestClientBase):
     client.base_client.post(
         f"/api/v1/tasks/{task.id}/chatbot/stream",
         json={"message": "hello", "conversation_id": conversation_id},
-        headers=client.authorized_user_api_key_headers,
+        headers=MASTER_KEY_AUTHORIZED_HEADERS,
     )
 
-    assert len(get_conversation_history(conversation_id)) > 0
+    assert len(get_conversation_history("master-key", conversation_id)) > 0
 
     response = client.base_client.delete(
         f"/api/v1/chatbot/history/{conversation_id}",
-        headers=client.authorized_user_api_key_headers,
+        headers=MASTER_KEY_AUTHORIZED_HEADERS,
     )
 
     assert response.status_code == 200
-    assert len(get_conversation_history(conversation_id)) == 0
+    assert len(get_conversation_history("master-key", conversation_id)) == 0

@@ -38,12 +38,14 @@ async def stream_chatbot(
 ) -> StreamingResponse:
     try:
         repo = ChatbotRepository(db_session)
+        user_id = current_user.id if current_user else "anonymous"
         return repo.stream_response(
             body,
             task_id,
             token,
             request.app,
             str(request.base_url).rstrip("/"),
+            user_id,
         )
     except HTTPException:
         raise
@@ -61,4 +63,5 @@ async def clear_chatbot_history(
     conversation_id: str,
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> None:
-    clear_conversation_history(conversation_id)
+    user_id = current_user.id if current_user else "anonymous"
+    clear_conversation_history(user_id, conversation_id)

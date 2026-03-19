@@ -10,7 +10,10 @@ from repositories.model_provider_repository import ModelProviderRepository
 from schemas.chatbot_schemas import ChatbotRequest
 from services.chatbot.api_call_service import ApiCallService
 from services.chatbot.chatbot_prompts import SYSTEM_PROMPT, get_api_index
-from services.chatbot.chatbot_service import ChatbotService, get_conversation_history
+from services.chatbot.chatbot_service import (
+    ChatbotService,
+    get_conversation_history,
+)
 from services.prompt.chat_completion_service import ChatCompletionService
 
 PROVIDER_PRIORITY = [
@@ -51,6 +54,7 @@ class ChatbotRepository:
         token: str,
         app: FastAPI,
         base_url: str,
+        user_id: str,
     ) -> StreamingResponse:
         provider, model_name, llm_client = self.get_provider_and_client()
         api_call_service = ApiCallService(token=token, base_url=base_url)
@@ -60,7 +64,7 @@ class ChatbotRepository:
             api_index=get_api_index(app),
         )
 
-        history = get_conversation_history(request.conversation_id)
+        history = get_conversation_history(user_id, request.conversation_id)
 
         prompt = chatbot_service.build_prompt(
             system_prompt=SYSTEM_PROMPT,
@@ -72,6 +76,11 @@ class ChatbotRepository:
         )
 
         return StreamingResponse(
-            chatbot_service.stream(prompt, llm_client, request.conversation_id),
+            chatbot_service.stream(
+                prompt,
+                llm_client,
+                user_id,
+                request.conversation_id,
+            ),
             media_type="text/event-stream",
         )
