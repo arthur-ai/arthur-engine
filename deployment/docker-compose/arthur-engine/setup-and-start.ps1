@@ -198,7 +198,7 @@ if (-not $GENAI_ENGINE_SECRET_STORE_KEY) {
     $randomBytes = New-Object byte[] 32
     $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
     $rng.GetBytes($randomBytes)
-    $secretKey = [Convert]::ToBase64String($randomBytes)
+    $secretKey = [System.BitConverter]::ToString($randomBytes) -replace '-', ''
     Write-Host "Generated random secret key since none was found"
 
     $envLines += "GENAI_ENGINE_SECRET_STORE_KEY=$secretKey"

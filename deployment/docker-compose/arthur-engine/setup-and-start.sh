@@ -221,7 +221,7 @@ fi
 # Prompt for secret store key if not already set
 if [[ -z "$GENAI_ENGINE_SECRET_STORE_KEY" ]]; then
     # Generate a secure random key using /dev/urandom
-    genai_engine_secret_store_key=$(LC_ALL=C tr -dc 'A-Za-z0-9!"#$%&'\''()*+,-./:;<=>?@[\]^_`{|}~' </dev/urandom | head -c 32)
+    genai_engine_secret_store_key=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32)
     echo "Generated random secret key since none was found"
 
     all_env_vars+="

@@ -93,7 +93,7 @@ GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$model::$endpoint::$apiKey
     $randomBytes = New-Object byte[] 32
     $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
     $rng.GetBytes($randomBytes)
-    $secretKey = [Convert]::ToBase64String($randomBytes)
+    $secretKey = [System.BitConverter]::ToString($randomBytes) -replace '-', ''
     Write-Host "Generated random secret key since none was found"
 
     if ([string]::IsNullOrWhiteSpace($envContent)) {
