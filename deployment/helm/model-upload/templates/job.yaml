@@ -45,7 +45,7 @@ spec:
       {{- end }}
       containers:
       - name: model-upload
-        {{- $imageRepo := .Values.image.repository | default (printf "%s/%s" (.Values.containerRepository.imageLocation | default "arthurplatform") (.Values.containerRepository.imageName | default "arthur-model-upload")) }}
+        {{- $imageRepo := .Values.image.repository | default (printf "%s/%s" (.Values.containerRepository.imageLocation | default "arthurplatform") (.Values.containerRepository.imageName | default "genai-engine-models")) }}
         {{- $imageTag := .Values.image.tag | default (.Values.containerRepository.imageVersion | default .Chart.AppVersion) }}
         image: "{{ $imageRepo }}:{{ $imageTag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
@@ -54,18 +54,19 @@ spec:
           {{- toYaml .Values.containerSecurityContext | nindent 10 }}
         {{- end }}
         env:
+        - name: STORAGE_BACKEND
+          value: {{ .Values.storageBackend | quote }}
+        - name: LOG_LEVEL
+          value: {{ .Values.logLevel | default "INFO" | quote }}
+        - name: MODELS_DIR
+          value: {{ .Values.modelsDir | default "/models" | quote }}
+        {{- if eq .Values.storageBackend "s3" }}
         - name: S3_BUCKET
           value: {{ .Values.s3.bucket | default .Values.s3Bucket | quote }}
         - name: S3_PREFIX
           value: {{ .Values.s3.prefix | default .Values.s3Prefix | default "" | quote }}
-        - name: MODELS_DIR
-          value: {{ .Values.modelsDir | default "/models" | quote }}
-        - name: LOG_LEVEL
-          value: {{ .Values.logLevel | default "INFO" | quote }}
         {{- if or .Values.serviceAccount.awsIrsaRoleArn .Values.serviceAccountAWSIrsaRoleArn }}
-        # AWS IRSA - no credentials needed, uses service account annotation
         {{- else if .Values.awsCredentials.create }}
-        # Use secret for AWS credentials
         - name: AWS_ACCESS_KEY_ID
           valueFrom:
             secretKeyRef:
@@ -84,17 +85,40 @@ spec:
               key: AWS_REGION
         {{- end }}
         {{- else }}
-        # Assume credentials are provided via environment or IAM instance profile
         {{- if .Values.awsCredentials.region }}
         - name: AWS_REGION
           value: {{ .Values.awsCredentials.region | quote }}
         {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- if eq .Values.storageBackend "gcs" }}
+        - name: GCS_BUCKET
+          value: {{ .Values.gcs.bucket | quote }}
+        - name: GCS_PREFIX
+          value: {{ .Values.gcs.prefix | default "" | quote }}
+        {{- end }}
+        {{- if eq .Values.storageBackend "filesystem" }}
+        - name: SOURCE_DIR
+          value: {{ .Values.filesystem.sourceDir | default "/models" | quote }}
+        - name: TARGET_DIR
+          value: {{ .Values.filesystem.targetDir | default "/models-output" | quote }}
         {{- end }}
         {{- with .Values.extraEnv }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
         resources:
           {{- toYaml .Values.resources | nindent 10 }}
+        {{- if eq .Values.storageBackend "filesystem" }}
+        volumeMounts:
+        - name: models-storage
+          mountPath: {{ .Values.filesystem.targetDir | default "/models-output" }}
+        {{- end }}
+      {{- if eq .Values.storageBackend "filesystem" }}
+      volumes:
+      - name: models-storage
+        persistentVolumeClaim:
+          claimName: {{ .Values.filesystem.pvc.claimName | default "arthur-models-pvc" }}
+      {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

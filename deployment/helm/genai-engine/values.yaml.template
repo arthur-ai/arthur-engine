@@ -129,6 +129,17 @@ genaiEngineAllowAdminKeyGeneralAccess: "enabled"
 # modelRepositoryURL: ""
 
 ###################################
+## Advanced - Model Storage (PVC)
+###################################
+# Enable to mount a PersistentVolumeClaim for pre-uploaded models (used with the model-upload Job)
+modelStorage:
+  enabled: false
+  # Mount path inside the genai-engine container
+  mountPath: "/model_output"
+  # Name of the PVC created by the model-upload chart or k8s manifests
+  pvcClaimName: "arthur-models-pvc"
+
+###################################
 ## Advanced - Secrets name customization
 ###################################
 # Name of the secret containing the credentials for the container repository holding the GenAI Engine image

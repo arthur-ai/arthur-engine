@@ -21,7 +21,7 @@ spec:
       restartPolicy: Never
       containers:
       - name: model-upload
-        image: arthurplatform/genai-engine-models:<genai_engine_models_version>-k8s
+        image: arthurplatform/genai-engine-models:<genai_engine_models_version>
         imagePullPolicy: Always  # Always pull to get the new version
         env:
         - name: STORAGE_BACKEND
