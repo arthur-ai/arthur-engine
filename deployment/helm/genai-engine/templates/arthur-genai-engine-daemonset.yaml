@@ -144,6 +144,21 @@ spec:
                   name: {{ .Values.genaiEngineSecretInternalApiKeyName }}
                   key: key
             {{- end }}
+            {{- if .Values.modelStorage.enabled }}
+            - name: MODEL_STORAGE_PATH
+              value: {{ .Values.modelStorage.mountPath | default "/model_output" | quote }}
+            {{- end }}
+          {{- if .Values.modelStorage.enabled }}
+          volumeMounts:
+            - name: models-volume
+              mountPath: {{ .Values.modelStorage.mountPath | default "/model_output" }}
+          {{- end }}
+      {{- if .Values.modelStorage.enabled }}
+      volumes:
+        - name: models-volume
+          persistentVolumeClaim:
+            claimName: {{ .Values.modelStorage.pvcClaimName | default "arthur-models-pvc" }}
+      {{- end }}
       {{- with .Values.arthurGenaiEngineDeployment.genaiEnginePodAffinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
