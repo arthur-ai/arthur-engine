@@ -198,7 +198,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         db = next(get_db_session())
 
         # Initialize system task
-        SystemTaskRepository(db).initialize_system_task()
+        SystemTaskRepository(db).initialize_system_tasks()
 
         db.close()
     except HTTPException as e:

@@ -18,7 +18,7 @@ from services.chatbot.chatbot_service import (
     get_conversation_history,
 )
 from services.prompt.chat_completion_service import ChatCompletionService
-from utils.constants import CHATBOT_PROMPT_NAME, UNMAPPED_TASK_ID
+from utils.constants import CHATBOT_PROMPT_NAME, CHATBOT_TASK_ID
 
 PROVIDER_PRIORITY = [
     (ModelProvider.ANTHROPIC, "claude-sonnet-4-6"),
@@ -66,7 +66,7 @@ class ChatbotRepository:
         chatbot_prompt = cast(
             AgenticPrompt,
             self.agentic_prompt_repo.get_llm_item_by_tag(
-                task_id=UNMAPPED_TASK_ID,
+                task_id=CHATBOT_TASK_ID,
                 item_name=CHATBOT_PROMPT_NAME,
                 tag="production",
             ),

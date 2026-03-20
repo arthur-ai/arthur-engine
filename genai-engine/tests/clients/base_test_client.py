@@ -229,7 +229,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         global SYSTEM_TASK_INITIALIZED
         if not SYSTEM_TASK_INITIALIZED:
             db = override_get_db_session()
-            SystemTaskRepository(db).initialize_system_task()
+            SystemTaskRepository(db).initialize_system_tasks()
             db.close()
             SYSTEM_TASK_INITIALIZED = True
 
