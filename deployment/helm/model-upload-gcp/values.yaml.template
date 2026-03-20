@@ -1,0 +1,68 @@
+###################################
+## Minimum Required Configurations
+###################################
+# GCS bucket name (required)
+gcs:
+  bucket: ""
+  prefix: ""
+
+###################################
+## Container Image
+###################################
+containerRepository:
+  imageLocation: "arthurplatform"
+  imageName: "genai-engine-models"
+  imageVersion: "latest"
+  credentialsRequired: false
+  imagePullSecretName: ""
+
+###################################
+## Service Account
+###################################
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  # GCP Workload Identity email (for GKE)
+  gcpWorkloadIdentityEmail: ""
+
+###################################
+## Job Configuration
+###################################
+job:
+  restartPolicy: Never
+  backoffLimit: 3
+  activeDeadlineSeconds: 3600  # 1 hour
+  ttlSecondsAfterFinished: 86400  # 24 hours
+  priorityClassName: ""
+  annotations: {}
+  podAnnotations: {}
+
+###################################
+## Resource Configuration
+###################################
+resources:
+  limits:
+    cpu: "1000m"
+    memory: "2Gi"
+  requests:
+    cpu: "500m"
+    memory: "1Gi"
+
+###################################
+## Advanced - General
+###################################
+arthurResourceNameSuffix: ""
+
+###################################
+## Advanced - Node Selection
+###################################
+nodeSelector: {}
+affinity: {}
+tolerations: []
+
+###################################
+## Advanced - Logging
+###################################
+logLevel: "INFO"
+modelsDir: "/models"

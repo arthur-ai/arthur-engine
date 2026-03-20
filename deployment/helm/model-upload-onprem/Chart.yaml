@@ -1,0 +1,6 @@
+apiVersion: v2
+name: arthur-model-upload-onprem
+description: A Helm chart for deploying Arthur Model Upload Job on-premises (filesystem/PVC)
+type: application
+version: 1.0.0
+appVersion: 1.0.0
