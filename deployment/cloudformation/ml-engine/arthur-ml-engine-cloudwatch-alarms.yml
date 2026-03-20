@@ -28,53 +28,55 @@ Parameters:
   MLEngineECSMemoryAlarmThreshold:
     Type: Number
     Default: 80
-    Description: 'Alarm is triggered when Arthur ML Engine service uses this percentage of memory in a minute'
+    Description: 'Alarm is triggered when Arthur ML Engine service average memory exceeds this percentage for a sustained period'
   MLEngineECSCPUAlarmThreshold:
     Type: Number
     Default: 80
-    Description: 'Alarm is triggered when Arthur ML Engine service uses this percentage of CPU in a minute'
+    Description: 'Alarm is triggered when Arthur ML Engine service average CPU exceeds this percentage for a sustained period'
 
 Resources:
   ArthurMLEngineECSMemory:
     Type: AWS::CloudWatch::Alarm
     Properties:
       AlarmName: !Sub "[${ArthurResourceNamespace}${ArthurResourceNameSuffix}] ml-engine-ecs-memory-alarm"
-      AlarmDescription: !Sub "Alarm when Arthur ML Engine service uses max ${MLEngineECSMemoryAlarmThreshold}% of memory in a minute"
+      AlarmDescription: !Sub "Alarm when Arthur ML Engine service average memory exceeds ${MLEngineECSMemoryAlarmThreshold}% for 15 minutes"
       ActionsEnabled: true
       AlarmActions:
         - !Ref AlarmSNSTopicArn
       MetricName: MemoryUtilization
       Namespace: AWS/ECS
-      Statistic: Maximum
+      Statistic: Average
       Dimensions:
         - Name: ServiceName
           Value: !Ref MLEngineECSServiceName
         - Name: ClusterName
           Value: !Ref ArthurECSClusterName
-      Period: 60
-      EvaluationPeriods: 1
-      DatapointsToAlarm: 1
+      Period: 300
+      EvaluationPeriods: 3
+      DatapointsToAlarm: 3
       Threshold: !Ref MLEngineECSMemoryAlarmThreshold
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
 
   ArthurMLEngineECSCPU:
     Type: AWS::CloudWatch::Alarm
     Properties:
       AlarmName: !Sub "[${ArthurResourceNamespace}${ArthurResourceNameSuffix}] ml-engine-ecs-cpu-alarm"
-      AlarmDescription: !Sub "Alarm when Arthur ML Engine service uses max ${MLEngineECSCPUAlarmThreshold}% of CPU in a minute"
+      AlarmDescription: !Sub "Alarm when Arthur ML Engine service average CPU exceeds ${MLEngineECSCPUAlarmThreshold}% for 15 minutes"
       ActionsEnabled: true
       AlarmActions:
         - !Ref AlarmSNSTopicArn
       MetricName: CPUUtilization
       Namespace: AWS/ECS
-      Statistic: Maximum
+      Statistic: Average
       Dimensions:
         - Name: ServiceName
           Value: !Ref MLEngineECSServiceName
         - Name: ClusterName
           Value: !Ref ArthurECSClusterName
-      Period: 60
-      EvaluationPeriods: 1
-      DatapointsToAlarm: 1
+      Period: 300
+      EvaluationPeriods: 3
+      DatapointsToAlarm: 3
       Threshold: !Ref MLEngineECSCPUAlarmThreshold
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching

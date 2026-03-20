@@ -26,9 +26,10 @@ import { useAddTagToPromptVersionMutation } from "../hooks/useAddTagToPromptVers
 import { useDeleteTagFromPromptVersionMutation } from "../hooks/useDeleteTagFromPromptVersionMutation";
 import type { PromptDetailViewProps } from "../types";
 
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { useCreateNotebookMutation, useSetNotebookStateMutation } from "@/hooks/useNotebooks";
-import { formatDate } from "@/utils/formatters";
+import { formatDateInTimezone } from "@/utils/formatters";
 
 const PromptDetailView = ({
   promptData,
@@ -51,6 +52,7 @@ const PromptDetailView = ({
   const deleteTagMutation = useDeleteTagFromPromptVersionMutation();
   const apiClient = useApi();
   const navigate = useNavigate();
+  const { timezone, use24Hour } = useDisplaySettings();
   const { enqueueSnackbar } = useSnackbar();
   const setNotebookStateMutation = useSetNotebookStateMutation();
 
@@ -322,7 +324,7 @@ const PromptDetailView = ({
                 Created At
               </Typography>
               <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                {promptData.created_at ? formatDate(promptData.created_at) : "N/A"}
+                {promptData.created_at ? formatDateInTimezone(promptData.created_at, timezone, { hour12: !use24Hour }) : "N/A"}
               </Typography>
             </Box>
             {promptData.deleted_at && (
@@ -331,7 +333,7 @@ const PromptDetailView = ({
                   Deleted At
                 </Typography>
                 <Typography variant="body1" sx={{ fontWeight: 500, color: "error.main" }}>
-                  {formatDate(promptData.deleted_at)}
+                  {formatDateInTimezone(promptData.deleted_at, timezone, { hour12: !use24Hour })}
                 </Typography>
               </Box>
             )}

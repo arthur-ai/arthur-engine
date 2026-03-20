@@ -112,4 +112,33 @@ export const TRACE_FIELDS = [
     name: "include_experiment_traces",
     operators: [EnumOperators.EQUALS],
   }),
+  createPrimitiveField({
+    name: "total_token_count",
+    type: "numeric",
+    operators: [...Object.values(ComparisonOperators)],
+    min: 0,
+  }),
+  createPrimitiveField({
+    name: "prompt_token_count",
+    type: "numeric",
+    operators: [...Object.values(ComparisonOperators)],
+    min: 0,
+  }),
+  createPrimitiveField({
+    name: "completion_token_count",
+    type: "numeric",
+    operators: [...Object.values(ComparisonOperators)],
+    min: 0,
+  }),
+  createPrimitiveField({
+    name: "span_count",
+    type: "numeric",
+    operators: [...Object.values(ComparisonOperators)],
+    min: 1,
+  }),
+  createPrimitiveField({
+    name: "tool_name",
+    type: "text",
+    operators: [TextOperators.EQUALS],
+  }),
 ] as const satisfies Field[];

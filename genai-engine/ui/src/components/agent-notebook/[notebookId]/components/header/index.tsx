@@ -4,14 +4,17 @@ import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import SaveIcon from "@mui/icons-material/Save";
 import { Box, Button, ButtonGroup, Chip, CircularProgress, Stack, Tooltip, Typography } from "@mui/material";
 import { Link as MuiLink } from "@mui/material";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
+import { useUpdateAgenticNotebook } from "../../../hooks/useUpdateAgenticNotebook";
 import { agentNotebookStateFormOpts } from "../../form";
 import { useMetaStore } from "../../store/meta.store";
 import { SubmitButton } from "../submit-button";
 
+import { EditableTitle } from "@/components/common";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { AgenticNotebookDetail } from "@/lib/api-client/api-client";
-import { formatDate } from "@/utils/formatters";
+import { formatDateInTimezone } from "@/utils/formatters";
 
 type Props = {
   notebook: AgenticNotebookDetail;
@@ -24,7 +27,10 @@ export const Header = withForm({
   ...agentNotebookStateFormOpts,
   props: {} as Props,
   render: function Render({ form, notebook, onLoadConfig, onSave, isSaving }) {
+    const { id: taskId } = useParams<{ id: string }>();
     const edited = useMetaStore((state) => state.edited);
+    const { timezone, use24Hour } = useDisplaySettings();
+    const updateMutation = useUpdateAgenticNotebook();
 
     return (
       <Box
@@ -42,7 +48,7 @@ export const Header = withForm({
             <Button
               size="small"
               component={Link}
-              to=".."
+              to={`/tasks/${taskId}/test?section=agentic-notebooks`}
               variant="text"
               startIcon={<ArrowBackIcon />}
               color="inherit"
@@ -52,9 +58,15 @@ export const Header = withForm({
             </Button>
             <Stack mb={1}>
               <Stack direction="row" alignItems="center" gap={1}>
-                <Typography variant="h5" color="text.primary" fontWeight="bold">
-                  {notebook.name}
-                </Typography>
+                <EditableTitle
+                  value={notebook.name}
+                  onSave={async (newName) => {
+                    await updateMutation.mutateAsync({ notebookId: notebook.id, request: { name: newName, description: notebook.description } });
+                  }}
+                  isPending={updateMutation.isPending}
+                  typographyVariant="h6"
+                  typographySx={{ fontWeight: 600, color: "text.primary" }}
+                />
                 {edited && (
                   <Chip
                     label={
@@ -74,10 +86,10 @@ export const Header = withForm({
               </Typography>
               <Stack direction="row" gap={2}>
                 <Typography variant="body2" color="text.secondary">
-                  <span className="font-bold">Created:</span> {formatDate(notebook?.created_at)}
+                  <span className="font-bold">Created:</span> {formatDateInTimezone(notebook?.created_at, timezone, { hour12: !use24Hour })}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  <span className="font-bold">Updated:</span> {formatDate(notebook.updated_at)}
+                  <span className="font-bold">Updated:</span> {formatDateInTimezone(notebook.updated_at, timezone, { hour12: !use24Hour })}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   <span className="font-bold">Runs:</span>{" "}

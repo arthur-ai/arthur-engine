@@ -14,9 +14,11 @@ import { useNavigate } from "react-router-dom";
 
 import { CopyableChip } from "./common";
 
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useTaskMetrics } from "@/hooks/tasks/useTaskMetrics";
 import { useApi } from "@/hooks/useApi";
 import { TaskResponse } from "@/lib/api";
+import { formatDateInTimezone } from "@/utils/formatters";
 
 interface TaskCardProps {
   task: TaskResponse;
@@ -26,6 +28,7 @@ interface TaskCardProps {
 export const TaskCard: React.FC<TaskCardProps> = ({ task, onArchiveToggle }) => {
   const navigate = useNavigate();
   const api = useApi();
+  const { timezone, use24Hour } = useDisplaySettings();
   const [copiedTaskId, setCopiedTaskId] = useState<string | null>(null);
   const [isArchiving, setIsArchiving] = useState(false);
 
@@ -282,7 +285,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onArchiveToggle }) => 
                     Created
                   </Typography>
                   <Typography variant="caption" sx={{ display: "block", fontWeight: 500, color: "text.primary" }}>
-                    {new Date(task.created_at).toLocaleDateString()}
+                    {formatDateInTimezone(task.created_at, timezone, { hour12: !use24Hour })}
                   </Typography>
                 </Box>
               </Stack>
