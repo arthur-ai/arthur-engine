@@ -5,6 +5,8 @@ from urllib.parse import urlparse
 import httpx
 from pydantic import BaseModel
 
+from services.chatbot.chatbot_prompts import is_allowed_delete_path
+
 logger = logging.getLogger(__name__)
 
 
@@ -47,9 +49,7 @@ class ApiCallService:
                 body="Invalid path: absolute URLs are not permitted",
             )
 
-        path_segments = parsed.path.rstrip("/").split("/")
-        is_tag_endpoint = len(path_segments) >= 2 and path_segments[-2] == "tags"
-        if method == "DELETE" and not is_tag_endpoint:
+        if method == "DELETE" and not is_allowed_delete_path(parsed.path):
             return ApiCallResult(
                 method=method,
                 path=path,

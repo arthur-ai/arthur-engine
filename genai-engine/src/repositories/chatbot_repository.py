@@ -12,6 +12,7 @@ from services.chatbot.api_call_service import ApiCallService
 from services.chatbot.chatbot_prompts import SYSTEM_PROMPT, get_api_index
 from services.chatbot.chatbot_service import (
     ChatbotService,
+    clear_conversation_history,
     get_conversation_history,
 )
 from services.prompt.chat_completion_service import ChatCompletionService
@@ -84,3 +85,10 @@ class ChatbotRepository:
             ),
             media_type="text/event-stream",
         )
+
+    def clear_conversation_history(
+        self,
+        user_id: str,
+        conversation_id: str,
+    ) -> None:
+        clear_conversation_history(user_id, conversation_id)

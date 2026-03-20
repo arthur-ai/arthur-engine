@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import datetime, timezone
 from typing import AsyncGenerator, List, MutableMapping, Tuple
@@ -124,7 +125,7 @@ class ChatbotService:
                 history.append(
                     OpenAIMessage(role=MessageRole.AI, content=final_response.content),
                 )
-                CONVERSATION_HISTORIES[(user_id, conversation_id)] = history
+                CONVERSATION_HISTORIES[(user_id, conversation_id)] = history[-15:]
                 yield f"event: final_response\ndata: {final_response.model_dump_json()}\n\n"
                 return
 
@@ -166,7 +167,7 @@ class ChatbotService:
                 elif tool_call.function.name == "call_arthur_api":
                     call_args = CallArthurApiArgs.model_validate_json(args_str)
 
-                    yield f"event: tool_call\ndata: {{'method': '{call_args.method}', 'path': '{call_args.path}'}}\n\n"
+                    yield f"event: tool_call\ndata: {json.dumps({'method': call_args.method, 'path': call_args.path})}\n\n"
 
                     result = await self.api_call_service.call(
                         call_args.method,
@@ -182,7 +183,7 @@ class ChatbotService:
                         ),
                     )
 
-                    yield f"event: tool_result\ndata: {{'method': '{call_args.method}', 'path': '{call_args.path}', 'status_code': {result.status_code}}}\n\n"
+                    yield f"event: tool_result\ndata: {json.dumps({'method': call_args.method, 'path': call_args.path, 'status_code': result.status_code})}\n\n"
 
                     new_messages.append(
                         OpenAIMessage(

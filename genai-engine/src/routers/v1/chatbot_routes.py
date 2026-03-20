@@ -12,7 +12,6 @@ from routers.v2 import multi_validator
 from schemas.chatbot_schemas import ChatbotRequest
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
-from services.chatbot.chatbot_service import clear_conversation_history
 from utils.users import permission_checker
 
 chatbot_routes = APIRouter(
@@ -38,7 +37,11 @@ async def stream_chatbot(
 ) -> StreamingResponse:
     try:
         repo = ChatbotRepository(db_session)
-        user_id = current_user.id if current_user else "anonymous"
+
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+
+        user_id = current_user.id
         return repo.stream_response(
             body,
             task_id,
@@ -61,7 +64,12 @@ async def stream_chatbot(
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 async def clear_chatbot_history(
     conversation_id: str,
+    db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> None:
-    user_id = current_user.id if current_user else "anonymous"
-    clear_conversation_history(user_id, conversation_id)
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    user_id = current_user.id
+    repo = ChatbotRepository(db_session)
+    repo.clear_conversation_history(user_id, conversation_id)
