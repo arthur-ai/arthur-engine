@@ -108,7 +108,7 @@ const PromptsManagement: React.FC<PromptsManagementProps> = ({ onRegisterCreate 
   if (fullScreenPrompt) {
     const initialVersion = urlVersion ? parseInt(urlVersion, 10) : null;
     return (
-      <Box sx={{ height: getContentHeight(), overflow: "hidden" }}>
+      <Box sx={{ height: "100%", overflow: "hidden" }}>
         <PromptFullScreenView promptName={fullScreenPrompt} initialVersion={initialVersion} onClose={handleCloseFullScreen} />
       </Box>
     );
