@@ -1,3 +1,1 @@
-export function wait(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+export { wait } from "@arthur/shared-components";

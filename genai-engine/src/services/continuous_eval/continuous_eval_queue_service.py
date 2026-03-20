@@ -1,8 +1,5 @@
 import logging
-import threading
-import time
 import uuid
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -20,12 +17,13 @@ from repositories.tasks_metrics_repository import TasksMetricsRepository
 from repositories.trace_transform_repository import TraceTransformRepository
 from schemas.internal_schemas import ContinuousEval
 from schemas.request_schemas import BaseCompletionRequest
+from services.base_queue_service import BaseQueueJob, BaseQueueService
 from utils.transform_executor import execute_transform
 
 logger = logging.getLogger(__name__)
 
 
-class ContinuousEvalJob:
+class ContinuousEvalJob(BaseQueueJob):
     """Represents a continuous eval job to be executed."""
 
     def __init__(
@@ -36,102 +34,27 @@ class ContinuousEvalJob:
         task_id: str,
         delay_seconds: int = 10,
     ):
+        super().__init__(delay_seconds)
         self.annotation_id = annotation_id
         self.trace_id = trace_id
         self.continuous_eval_id = continuous_eval_id
         self.task_id = task_id
-        self.enqueued_at = datetime.now()
-        self.delay_seconds = delay_seconds
-        self.execute_at = time.time() + delay_seconds
 
 
-class ContinuousEvalQueueService:
+class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
     """Service that manages async execution of continuous evals using ThreadPoolExecutor."""
 
-    def __init__(
-        self,
-        num_workers: int = 4,
-        override_execution_delay: Optional[int] = None,
-    ):
-        self.num_workers = num_workers
-        self.background_thread: Optional[threading.Thread] = None
-        self.executor: Optional[ThreadPoolExecutor] = None
-        self.shutdown_event = threading.Event()
-        self.override_execution_delay = override_execution_delay
+    job_model = ContinuousEvalJob
+    service_name = "continuous_eval_queue_service"
+    background_thread_name = "continuous-eval-background"
 
-    def start(self) -> None:
-        """Start executor and background thread."""
-        logger.info(
-            f"Starting continuous eval queue service with {self.num_workers} workers",
-        )
-
-        # Create executor for job execution
-        self.executor = ThreadPoolExecutor(max_workers=self.num_workers)
-
-        # Start background thread that checks for stale annotations
-        self.background_thread = threading.Thread(
-            target=self._background_loop,
-            name="continuous-eval-background",
-            daemon=True,
-        )
-        self.background_thread.start()
-
-        logger.info("Continuous eval queue service started")
-
-    def stop(self, timeout: int = 30) -> None:
-        """Stop executor and background thread"""
-        logger.info("Stopping continuous eval queue service")
-        self.shutdown_event.set()
-
-        if self.executor:
-            self.executor.shutdown(wait=True, cancel_futures=True)
-
-        if self.background_thread:
-            self.background_thread.join(timeout=timeout)
-            if self.background_thread.is_alive():
-                logger.warning("Background thread did not shut down gracefully")
-
-        logger.info("Continuous eval queue service stopped")
-
-    def _submit_job(self, job: ContinuousEvalJob, wait_time: float) -> None:
-        """Submit a job to the executor after the wait time."""
-        if self.shutdown_event.is_set():
-            logger.warning(f"Skipping job for trace {job.trace_id} due to shutdown")
-            return
-
-        if self.shutdown_event.wait(wait_time):
-            return
-
-        if not self.executor:
-            logger.error(
-                f"Cannot submit job for trace {job.trace_id}: executor is not initialized",
-            )
-            return
-
-        self.executor.submit(self._execute_job, job)
-
-    def enqueue(self, job: ContinuousEvalJob) -> None:
-        """Schedule a job to be executed"""
-        if self.override_execution_delay is not None:
-            wait_time = (
-                job.execute_at - job.delay_seconds + self.override_execution_delay
-            )
-        else:
-            wait_time = job.execute_at
-
-        wait_time = max(0, wait_time - time.time())
-        if not self.executor:
-            logger.error(
-                f"Cannot submit job for trace {job.trace_id}: executor is not initialized. Start the continuous eval queue service first.",
-            )
-            raise ValueError(
-                "Continuous eval queue service is not initialized. Start the continuous eval queue service first.",
-            )
-        self.executor.submit(self._submit_job, job, wait_time)
+    def _get_job_key(self, job: ContinuousEvalJob) -> uuid.UUID:
+        """Use annotation_id as the unique key for deduplication."""
+        return job.annotation_id
 
     def _background_loop(self) -> None:
         """Background thread that checks for stale pending annotations and re-queues them."""
-        logger.info("Background thread started")
+        logger.info(f"Background thread started for {self.service_name}")
 
         while not self.shutdown_event.is_set():
             try:
@@ -178,6 +101,7 @@ class ContinuousEvalQueueService:
                 f"Found {len(stale_annotations)} stale pending annotations, re-queueing",
             )
 
+            enqueued_count = 0
             for annotation, continuous_eval in stale_annotations:
                 job = ContinuousEvalJob(
                     annotation_id=annotation.id,
@@ -186,9 +110,18 @@ class ContinuousEvalQueueService:
                     task_id=continuous_eval.task_id,
                     delay_seconds=0,
                 )
-                self.enqueue(job)
+                enqueued, _ = self.enqueue(job)
+                if enqueued:
+                    enqueued_count += 1
 
-            logger.info(f"Re-queued {len(stale_annotations)} stale annotations")
+            if enqueued_count > 0:
+                info_message = f"Re-queued {enqueued_count} stale annotations"
+                info_message += (
+                    f" ({len(stale_annotations) - enqueued_count} already active)"
+                    if len(stale_annotations) - enqueued_count > 0
+                    else ""
+                )
+                logger.info(info_message)
 
         except Exception as e:
             logger.error(f"Error checking stale annotations: {e}", exc_info=True)

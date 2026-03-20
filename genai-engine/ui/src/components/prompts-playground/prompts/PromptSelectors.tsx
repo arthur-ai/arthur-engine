@@ -78,7 +78,7 @@ const PromptSelectors = ({
 }) => {
   const apiClient = useApi();
   const { task } = useTask();
-  const { state, dispatch } = usePromptContext();
+  const { state, dispatch, enabledProviders, availableModels: availableModelsMap } = usePromptContext();
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
   const fetchAndLoadPromptVersion = async (promptName: string, version: number) => {
@@ -168,24 +168,24 @@ const PromptSelectors = ({
   // Skip this if the prompt already has a provider set (when loading from backend)
   useEffect(() => {
     // Only set default provider for truly new prompts (no provider and no version)
-    if (state.enabledProviders.length > 0 && !prompt.modelProvider && !prompt.version) {
+    if (enabledProviders.length > 0 && !prompt.modelProvider && !prompt.version) {
       dispatch({
         type: "updatePromptProvider",
         payload: {
           promptId: prompt.id,
-          modelProvider: state.enabledProviders[0],
+          modelProvider: enabledProviders[0],
         },
       });
     }
-  }, [state.enabledProviders, dispatch, prompt.id, prompt.modelProvider, prompt.version]);
+  }, [enabledProviders, dispatch, prompt.id, prompt.modelProvider, prompt.version]);
 
-  const providerDisabled = state.enabledProviders.length === 0;
+  const providerDisabled = enabledProviders.length === 0;
   const modelDisabled = prompt.modelProvider === "";
   const tooltipTitle = providerDisabled ? "No providers available. Please configure at least one provider." : "";
   const backendPromptOptions = state.backendPrompts.map((backendPrompt) => backendPrompt.name);
   const availableModels = useMemo(
-    () => state.availableModels.get(prompt.modelProvider as ModelProvider) || [],
-    [state.availableModels, prompt.modelProvider]
+    () => availableModelsMap.get(prompt.modelProvider as ModelProvider) || [],
+    [availableModelsMap, prompt.modelProvider]
   );
 
   return (
@@ -222,7 +222,7 @@ const PromptSelectors = ({
             );
           }}
           renderInput={(params) => (
-            <TextField {...params} label={PROMPT_NAME_TEXT} variant="outlined" size="small" sx={{ backgroundColor: "white" }} />
+            <TextField {...params} label={PROMPT_NAME_TEXT} variant="outlined" size="small" sx={{ backgroundColor: "background.paper" }} />
           )}
         />
       </div>
@@ -237,12 +237,12 @@ const PromptSelectors = ({
         <Tooltip title={tooltipTitle} placement="top-start" arrow>
           <Autocomplete<ModelProvider>
             id={`provider-${prompt.id}`}
-            options={state.enabledProviders}
+            options={enabledProviders}
             value={prompt.modelProvider || null}
             onChange={handleProviderChange}
             disabled={providerDisabled}
             renderInput={(params) => (
-              <TextField {...params} label={PROVIDER_TEXT} variant="outlined" size="small" sx={{ backgroundColor: "white" }} />
+              <TextField {...params} label={PROVIDER_TEXT} variant="outlined" size="small" sx={{ backgroundColor: "background.paper" }} />
             )}
           />
         </Tooltip>
@@ -254,7 +254,9 @@ const PromptSelectors = ({
           value={prompt.modelName || ""}
           onChange={handleModelChange}
           disabled={modelDisabled}
-          renderInput={(params) => <TextField {...params} label={MODEL_TEXT} variant="outlined" size="small" sx={{ backgroundColor: "white" }} />}
+          renderInput={(params) => (
+            <TextField {...params} label={MODEL_TEXT} variant="outlined" size="small" sx={{ backgroundColor: "background.paper" }} />
+          )}
         />
       </div>
       <Snackbar {...snackbarProps}>

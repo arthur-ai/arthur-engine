@@ -4,6 +4,12 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional, Union
 
+from arthur_common.models.agent_governance_schemas import (
+    AgentCreationSource,
+    GCPAgentCreationSource,
+    ManualAgentCreationSource,
+    TaskMetadata,
+)
 from arthur_common.models.common_schemas import (
     AuthUserRole,
     ExampleConfig,
@@ -22,6 +28,7 @@ from arthur_common.models.enums import (
     InferenceFeedbackTarget,
     MetricType,
     PIIEntityTypes,
+    RegisteredAgentProvider,
     RuleResultEnum,
     RuleScope,
     RuleType,
@@ -36,6 +43,7 @@ from arthur_common.models.request_schemas import (
 )
 from arthur_common.models.response_schemas import (
     AgenticAnnotationResponse,
+    AgentMetadataResponse,
     ApiKeyResponse,
     BaseDetailsResponse,
     ChatDocumentContext,
@@ -44,6 +52,7 @@ from arthur_common.models.response_schemas import (
     ExternalInferencePrompt,
     ExternalInferenceResponse,
     ExternalRuleResult,
+    GCPAgentMetadataResponse,
     HallucinationClaimResponse,
     HallucinationDetailsResponse,
     InferenceFeedbackResponse,
@@ -81,6 +90,7 @@ from weaviate.collections.classes.grpc import (
 )
 from weaviate.types import INCLUDE_VECTOR
 
+from config.currency_config import currency_config
 from db_models import (
     DatabaseAgenticAnnotation,
     DatabaseAgenticNotebook,
@@ -575,17 +585,49 @@ class Task(BaseModel):
     created_at: datetime
     updated_at: datetime
     is_agentic: bool = False
+    is_autocreated: bool = False
+    is_system_task: bool = False
+    is_archived: bool = False
+    task_metadata: Optional[TaskMetadata] = None
+    service_names: List[str] = Field(
+        default_factory=list,
+        description="Service names from service_name_task_mappings (populated at query time)",
+    )
     rule_links: Optional[List[TaskToRuleLink]] = None
     metric_links: Optional[List[TaskToMetricLink]] = None
 
     @staticmethod
     def _from_request_model(x: NewTaskRequest) -> "Task":
+        # Convert AgentMetadata request to new TaskMetadata format for DB storage
+        task_metadata = None
+        if x.agent_metadata:
+            creation_source: Optional[AgentCreationSource] = None
+
+            if x.agent_metadata.provider == RegisteredAgentProvider.GCP:
+                if x.agent_metadata.gcp_metadata is None:
+                    raise ValueError("GCP metadata is required when provider is GCP.")
+
+                creation_source = AgentCreationSource(
+                    root=GCPAgentCreationSource(
+                        gcp_project_id=x.agent_metadata.gcp_metadata.project_id,
+                        gcp_region=x.agent_metadata.gcp_metadata.region,
+                        gcp_reasoning_engine_id=x.agent_metadata.gcp_metadata.resource_id,
+                    )
+                )
+            else:
+                creation_source = AgentCreationSource(root=ManualAgentCreationSource())
+
+            task_metadata = TaskMetadata(
+                creation_source=creation_source,
+            )
+
         return Task(
             id=str(uuid.uuid4()),
             name=x.name,
             created_at=datetime.now(),
             updated_at=datetime.now(),
             is_agentic=x.is_agentic,
+            task_metadata=task_metadata,
         )
 
     @staticmethod
@@ -596,6 +638,14 @@ class Task(BaseModel):
             created_at=x.created_at,
             updated_at=x.updated_at,
             is_agentic=x.is_agentic,
+            is_autocreated=x.is_autocreated,
+            is_system_task=x.is_system_task,
+            is_archived=x.archived,
+            task_metadata=(
+                TaskMetadata.model_validate(x.task_metadata)
+                if x.task_metadata
+                else None
+            ),
             rule_links=[
                 TaskToRuleLink._from_database_model(link) for link in x.rule_links
             ],
@@ -611,6 +661,13 @@ class Task(BaseModel):
             created_at=self.created_at,
             updated_at=self.updated_at,
             is_agentic=self.is_agentic,
+            is_autocreated=self.is_autocreated,
+            is_system_task=self.is_system_task,
+            task_metadata=(
+                self.task_metadata.model_dump(exclude_none=True)
+                if self.task_metadata
+                else None
+            ),
         )
 
     def _to_response_model(self) -> TaskResponse:
@@ -626,12 +683,37 @@ class Task(BaseModel):
             response_metric.enabled = metric_link.enabled
             response_metrics.append(response_metric)
 
+        # Convert new TaskMetadata format to old AgentMetadataResponse format
+        agent_metadata_response = None
+        if self.task_metadata and self.task_metadata.creation_source:
+            cs = self.task_metadata.creation_source.root
+            svc_names = self.service_names or None
+            if isinstance(cs, GCPAgentCreationSource):
+                agent_metadata_response = AgentMetadataResponse(
+                    provider=RegisteredAgentProvider.GCP,
+                    gcp_metadata=GCPAgentMetadataResponse(
+                        project_id=cs.gcp_project_id,
+                        region=cs.gcp_region,
+                        resource_id=cs.gcp_reasoning_engine_id,
+                    ),
+                    service_names=svc_names,
+                )
+            else:
+                agent_metadata_response = AgentMetadataResponse(
+                    provider=RegisteredAgentProvider.EXTERNAL,
+                    service_names=svc_names,
+                )
+
         return TaskResponse(
             id=self.id,
             name=self.name,
             created_at=_serialize_datetime(self.created_at),
             updated_at=_serialize_datetime(self.updated_at),
             is_agentic=self.is_agentic,
+            is_autocreated=self.is_autocreated,
+            is_system_task=self.is_system_task,
+            is_archived=self.is_archived,
+            agent_metadata=agent_metadata_response,
             rules=response_rules,
             metrics=response_metrics,
         )
@@ -1775,6 +1857,7 @@ class DocumentStorageConfiguration(BaseModel):
 
 class ApplicationConfiguration(BaseModel):
     chat_task_id: Optional[str] = None
+    default_currency: Optional[str] = None
     document_storage_configuration: Optional[DocumentStorageConfiguration] = None
     max_llm_rules_per_task_count: int
 
@@ -1833,11 +1916,20 @@ class ApplicationConfiguration(BaseModel):
             if config_value is not None:
                 max_llm_rules_per_task_count = int(config_value)
 
+        default_currency = config_if_exists(
+            ApplicationConfigurations.DEFAULT_CURRENCY,
+            configs,
+        )
+        if not default_currency or not default_currency.strip():
+            default_currency = currency_config.DEFAULT_CURRENCY or "USD"
+        default_currency = default_currency.strip().upper()
+
         return ApplicationConfiguration(
             chat_task_id=config_if_exists(
                 ApplicationConfigurations.CHAT_TASK_ID,
                 configs,
             ),
+            default_currency=default_currency,
             document_storage_configuration=doc_storage,
             max_llm_rules_per_task_count=max_llm_rules_per_task_count,
         )
@@ -1845,6 +1937,7 @@ class ApplicationConfiguration(BaseModel):
     def _to_response_model(self) -> ApplicationConfigurationResponse:
         return ApplicationConfigurationResponse(
             chat_task_id=self.chat_task_id,
+            default_currency=self.default_currency,
             document_storage_configuration=(
                 self.document_storage_configuration._to_response_model()
                 if self.document_storage_configuration is not None

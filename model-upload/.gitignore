@@ -35,3 +35,5 @@ htmlcov/
 
 # Logs
 *.log
+.env
+model-storage/

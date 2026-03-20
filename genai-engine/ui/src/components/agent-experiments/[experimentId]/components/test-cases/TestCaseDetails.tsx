@@ -1,10 +1,15 @@
 import { Collapsible } from "@base-ui/react/collapsible";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
-import { Box, Chip, DialogContent, Paper, Stack, Typography } from "@mui/material";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import { Box, Chip, DialogContent, Link as MuiLink, Paper, Stack, Typography } from "@mui/material";
+import { Link as RouterLink } from "react-router-dom";
 
 import { StatusBadge } from "@/components/agent-experiments/components/status-badge";
 import { CopyableChip } from "@/components/common";
 import { Highlight } from "@/components/common/Highlight";
+import { serializeDrawerTarget } from "@/components/traces/hooks/useDrawerTarget";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { useTask } from "@/hooks/useTask";
 import type { AgenticTestCase, EvalExecution, InputVariable } from "@/lib/api-client/api-client";
 import { formatCurrency } from "@/utils/formatters";
 import { tryFormatJson } from "@/utils/llm";
@@ -14,18 +19,20 @@ type Props = {
 };
 
 export const TestCaseDetails = ({ testCase }: Props) => {
+  const { defaultCurrency } = useDisplaySettings();
+  const { task } = useTask();
   const { status, dataset_row_id, total_cost, template_input_variables, agentic_result } = testCase;
   const { request_url, request_headers, request_body, output, evals } = agentic_result;
 
   return (
     <DialogContent dividers className="space-y-6">
-      <HeaderSection status={status} totalCost={total_cost} datasetRowId={dataset_row_id} />
+      <HeaderSection status={status} totalCost={total_cost} datasetRowId={dataset_row_id} defaultCurrency={defaultCurrency} />
 
       {template_input_variables.length > 0 && <InputVariablesSection variables={template_input_variables} />}
 
       <RequestSection url={request_url} headers={request_headers} body={request_body} />
 
-      <ResponseSection output={output} />
+      <ResponseSection output={output} taskId={task?.id} />
 
       {evals.length > 0 && <EvaluationsSection evals={evals} />}
     </DialogContent>
@@ -36,10 +43,12 @@ const HeaderSection = ({
   status,
   totalCost,
   datasetRowId,
+  defaultCurrency,
 }: {
   status: AgenticTestCase["status"];
   totalCost: string | null | undefined;
   datasetRowId: string;
+  defaultCurrency: string;
 }) => (
   <Stack direction="column" gap={2}>
     <Stack direction="row" gap={3} alignItems="center" flexWrap="wrap">
@@ -55,7 +64,7 @@ const HeaderSection = ({
           Total Cost:
         </Typography>
         <Typography variant="body2" fontWeight={600}>
-          {totalCost ? formatCurrency(parseFloat(totalCost)) : "N/A"}
+          {totalCost ? formatCurrency(parseFloat(totalCost), defaultCurrency) : "N/A"}
         </Typography>
       </Stack>
     </Stack>
@@ -133,7 +142,7 @@ const RequestSection = ({ url, headers, body }: { url: string; headers: Record<s
   </Stack>
 );
 
-const ResponseSection = ({ output }: { output: AgenticTestCase["agentic_result"]["output"] }) => {
+const ResponseSection = ({ output, taskId }: { output: AgenticTestCase["agentic_result"]["output"]; taskId?: string }) => {
   const statusCode = output?.status_code;
   const isSuccess = statusCode && statusCode >= 200 && statusCode < 300;
 
@@ -156,7 +165,22 @@ const ResponseSection = ({ output }: { output: AgenticTestCase["agentic_result"]
                 <Typography variant="body2" color="text.secondary" fontWeight={500}>
                   Trace ID:
                 </Typography>
-                <CopyableChip label={output.trace_id} />
+                {taskId ? (
+                  <MuiLink
+                    component={RouterLink}
+                    to={`/tasks/${taskId}/traces${serializeDrawerTarget({ target: "trace", id: output.trace_id })}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={{ display: "flex", alignItems: "center", gap: 0.5, textDecoration: "none", "&:hover": { textDecoration: "underline" } }}
+                  >
+                    <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
+                      {output.trace_id}
+                    </Typography>
+                    <OpenInNewIcon sx={{ fontSize: 14 }} />
+                  </MuiLink>
+                ) : (
+                  <CopyableChip label={output.trace_id} />
+                )}
               </Stack>
             )}
           </Stack>
@@ -188,6 +212,7 @@ const EvaluationsSection = ({ evals }: { evals: EvalExecution[] }) => (
 );
 
 const EvalCard = ({ evalItem }: { evalItem: EvalExecution }) => {
+  const { defaultCurrency } = useDisplaySettings();
   const { eval_name, eval_version, eval_results, eval_input_variables } = evalItem;
   const hasResults = !!eval_results;
   const isPass = hasResults && eval_results.score === 1;
@@ -203,7 +228,7 @@ const EvalCard = ({ evalItem }: { evalItem: EvalExecution }) => {
 
           {hasResults ? (
             <>
-              <Chip label={`Cost: ${formatCurrency(parseFloat(eval_results.cost))}`} size="small" variant="outlined" />
+              <Chip label={`Cost: ${formatCurrency(parseFloat(eval_results.cost), defaultCurrency)}`} size="small" variant="outlined" />
               <StatusBadge status={isPass ? "completed" : "failed"} />
             </>
           ) : (
@@ -212,7 +237,7 @@ const EvalCard = ({ evalItem }: { evalItem: EvalExecution }) => {
         </Stack>
 
         {hasResults && eval_results.explanation && (
-          <Paper variant="outlined" className="p-3 bg-gray-50">
+          <Paper variant="outlined" className="p-3 bg-gray-50 dark:bg-gray-800">
             <Typography variant="body2" color="text.secondary">
               <strong>Explanation:</strong> {eval_results.explanation}
             </Typography>

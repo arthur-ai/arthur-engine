@@ -29,8 +29,6 @@ spec:
                   value: BUCKET_NAME
                 - name: GCS_PREFIX
                   value: models
-                - name: MODELS_DIR
-                  value: /models
                 - name: LOG_LEVEL
                   value: INFO
               resources:

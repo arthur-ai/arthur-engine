@@ -590,6 +590,7 @@ def test_get_unregistered_root_spans_grouped(
     # Group 1: AppA - Trace 1
     trace_request1, resource_span1, scope_span1 = _create_base_trace_request(
         task_id=None,
+        service_name=None,
     )
     span1 = _create_span(
         trace_id=b"unregistered_endpoint_trace1",
@@ -604,6 +605,7 @@ def test_get_unregistered_root_spans_grouped(
     # Group 1: AppA - Trace 2
     trace_request2, resource_span2, scope_span2 = _create_base_trace_request(
         task_id=None,
+        service_name=None,
     )
     span2 = _create_span(
         trace_id=b"unregistered_endpoint_trace2",
@@ -618,6 +620,7 @@ def test_get_unregistered_root_spans_grouped(
     # Group 2: AppB - Trace 3
     trace_request3, resource_span3, scope_span3 = _create_base_trace_request(
         task_id=None,
+        service_name=None,
     )
     span3 = _create_span(
         trace_id=b"unregistered_endpoint_trace3",
@@ -632,6 +635,7 @@ def test_get_unregistered_root_spans_grouped(
     # Group 2: AppB - Trace 4
     trace_request4, resource_span4, scope_span4 = _create_base_trace_request(
         task_id=None,
+        service_name=None,
     )
     span4 = _create_span(
         trace_id=b"unregistered_endpoint_trace4",
@@ -646,6 +650,7 @@ def test_get_unregistered_root_spans_grouped(
     # Group 3: AppC - Trace 5
     trace_request5, resource_span5, scope_span5 = _create_base_trace_request(
         task_id=None,
+        service_name=None,
     )
     span5 = _create_span(
         trace_id=b"unregistered_endpoint_trace5",
@@ -851,6 +856,7 @@ def test_get_unregistered_root_spans_grouped_with_pagination(
 
         trace_request, resource_span, scope_span = _create_base_trace_request(
             task_id=None,
+            service_name=None,
         )
         span = _create_span(
             trace_id=trace_id.encode(),

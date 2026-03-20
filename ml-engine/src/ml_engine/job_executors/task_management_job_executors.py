@@ -568,6 +568,7 @@ class TaskCreator:
         task_resp = self.conn.create_task(
             name=self.job_spec.task_name,
             is_agentic=is_agentic,
+            agent_metadata=self.job_spec.agent_metadata,
         )
         self.logger.info(
             f"Created task: {self.job_spec.task_name} with id {task_resp.id}",

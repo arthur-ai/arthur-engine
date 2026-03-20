@@ -1,3 +1,8 @@
+import Box from "@mui/material/Box";
+import Checkbox from "@mui/material/Checkbox";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import FormGroup from "@mui/material/FormGroup";
+import Typography from "@mui/material/Typography";
 import React from "react";
 
 interface IncludeOptionsProps {
@@ -11,38 +16,33 @@ interface IncludeOptionsProps {
 export const IncludeOptions: React.FC<IncludeOptionsProps> = React.memo(
   ({ includeMetadata, includeVector, onIncludeMetadataChange, onIncludeVectorChange, isExecuting }) => {
     return (
-      <div>
-        <h4 className="text-sm font-medium text-gray-900 mb-3">Include in Results</h4>
-        <div className="space-y-2">
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="includeMetadata"
-              checked={includeMetadata}
-              onChange={(e) => onIncludeMetadataChange(e.target.checked)}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              disabled={isExecuting}
-            />
-            <label htmlFor="includeMetadata" className="ml-2 text-sm text-gray-900">
-              Metadata (distance, score, explainScore)
-            </label>
-          </div>
-
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="includeVector"
-              checked={includeVector}
-              onChange={(e) => onIncludeVectorChange(e.target.checked)}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              disabled={isExecuting}
-            />
-            <label htmlFor="includeVector" className="ml-2 text-sm text-gray-900">
-              Vector embeddings
-            </label>
-          </div>
-        </div>
-      </div>
+      <Box>
+        <Typography variant="body2" sx={{ fontWeight: 500, color: "text.primary", mb: 1.5 }}>
+          Include in Results
+        </Typography>
+        <FormGroup>
+          <FormControlLabel
+            control={
+              <Checkbox checked={includeMetadata} onChange={(e) => onIncludeMetadataChange(e.target.checked)} disabled={isExecuting} size="small" />
+            }
+            label={
+              <Typography variant="body2" sx={{ color: "text.primary" }}>
+                Metadata (distance, score, explainScore)
+              </Typography>
+            }
+          />
+          <FormControlLabel
+            control={
+              <Checkbox checked={includeVector} onChange={(e) => onIncludeVectorChange(e.target.checked)} disabled={isExecuting} size="small" />
+            }
+            label={
+              <Typography variant="body2" sx={{ color: "text.primary" }}>
+                Vector embeddings
+              </Typography>
+            }
+          />
+        </FormGroup>
+      </Box>
     );
   }
 );

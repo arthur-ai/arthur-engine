@@ -197,6 +197,8 @@ jobs:
       github.ref != 'refs/heads/dev' &&
       needs.check-genai-engine-changes.outputs.ui == 'true'
     runs-on: ubuntu-latest
+    env:
+      GITLAB_UNIFY_FRONTEND_TOKEN: ${{ secrets.GITLAB_UNIFY_FRONTEND_TOKEN }}
     defaults:
       run:
         working-directory: genai-engine/ui
@@ -391,6 +393,7 @@ jobs:
             ENABLE_TELEMETRY=${{ github.ref == 'refs/heads/main' && 'true' || 'false' }}
             METICULOUS_RECORDING_TOKEN=${{ secrets.METICULOUS_RECORDING_TOKEN }}
             METICULOUS_API_TOKEN=${{ secrets.METICULOUS_API_TOKEN }}
+            GITLAB_UNIFY_FRONTEND_TOKEN=${{ secrets.GITLAB_UNIFY_FRONTEND_TOKEN }}
           tags: |
             arthurplatform/genai-engine-${{ matrix.torch_device }}:${{ env.VERSION }}
             ${{ github.ref == 'refs/heads/main' && format('arthurplatform/genai-engine-{0}:latest', matrix.torch_device) || '' }}
@@ -683,6 +686,17 @@ jobs:
             docker tag arthurplatform/genai-engine-models-k8s:${SOURCE_TAG} arthurplatform/genai-engine-models-k8s:latest
             docker push arthurplatform/genai-engine-models-k8s:latest
           fi
+
+  build-gcp-model-upload-docker-image:
+    uses: ./.github/workflows/build-gcp-model-upload.yml
+    needs: [check-models-updates]
+    if: |
+      contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    with:
+      push: true
+      image: arthurplatform/arthur-model-upload
+    secrets: inherit
 
   push-all-cfts:
     needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]

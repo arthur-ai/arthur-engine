@@ -11,6 +11,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import Skeleton from "@mui/material/Skeleton";
+import { alpha, useTheme } from "@mui/material/styles";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import React, { useCallback, useEffect, useState } from "react";
@@ -68,6 +69,8 @@ const skeletons = () => (
 
 const OutputField = ({ promptId, running, runResponse, responseFormat, dialogOpen, onCloseDialog, highlightCost = false }: OutputFieldProps) => {
   const { dispatch } = usePromptContext();
+  const muiTheme = useTheme();
+  const editorTheme = muiTheme.palette.mode === "dark" ? "vs-dark" : "light";
   const [isPopoutOpen, setIsPopoutOpen] = useState(false);
   const [copiedFormat, setCopiedFormat] = useState<string | undefined>(getFormatValue(responseFormat));
 
@@ -148,7 +151,7 @@ const OutputField = ({ promptId, running, runResponse, responseFormat, dialogOpe
             <Editor
               height="300px"
               defaultLanguage="json"
-              theme="light"
+              theme={editorTheme}
               value={JSON.stringify(runResponse.tool_calls, null, 2)}
               options={{
                 readOnly: true,
@@ -208,7 +211,7 @@ const OutputField = ({ promptId, running, runResponse, responseFormat, dialogOpe
             sx={{
               ...(highlightCost && runResponse?.cost
                 ? {
-                    backgroundColor: "#ffeb3b",
+                    backgroundColor: (theme) => alpha(theme.palette.warning.light, theme.palette.mode === "dark" ? 0.2 : 0.4),
                     borderRadius: 1,
                     padding: "4px 8px",
                   }
@@ -229,7 +232,7 @@ const OutputField = ({ promptId, running, runResponse, responseFormat, dialogOpe
             <Editor
               height="300px"
               defaultLanguage="json"
-              theme="light"
+              theme={editorTheme}
               value={copiedFormat}
               onChange={(value) => {
                 handleChange(value || "");

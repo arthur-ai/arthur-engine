@@ -8,6 +8,7 @@ import KeyIcon from "@mui/icons-material/Key";
 import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
 import { Box, Button, Link, Paper, Stack, Typography } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { useSnackbar } from "notistack";
 import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -82,10 +83,10 @@ export const TracesWelcomePage: React.FC = () => {
           maxWidth: 750,
           borderRadius: 3,
           p: { xs: 2.5, sm: 3, md: 3.5 },
-          backgroundColor: "#ffffff",
-          boxShadow: "0 4px 24px rgba(0, 0, 0, 0.06)",
+          backgroundColor: "background.paper",
+          boxShadow: (theme) => (theme.palette.mode === "dark" ? "0 4px 24px rgba(0, 0, 0, 0.3)" : "0 4px 24px rgba(0, 0, 0, 0.06)"),
           border: "1px solid",
-          borderColor: "#e5e7eb",
+          borderColor: "divider",
         }}
       >
         <Box
@@ -113,12 +114,13 @@ export const TracesWelcomePage: React.FC = () => {
                 width: 42,
                 height: 42,
                 borderRadius: "50%",
-                background: "linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%)",
+                background: (theme) =>
+                  `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.2)} 0%, ${alpha(theme.palette.primary.main, 0.3)} 100%)`,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 mb: 0.75,
-                boxShadow: "0 4px 12px rgba(33, 150, 243, 0.2)",
+                boxShadow: (theme) => `0 4px 12px ${alpha(theme.palette.primary.main, 0.25)}`,
                 transition: "transform 0.3s ease-in-out",
                 "&:hover": {
                   transform: "scale(1.05)",
@@ -184,11 +186,11 @@ export const TracesWelcomePage: React.FC = () => {
                   p: { xs: 1, sm: 1.25 },
                   border: "2px solid",
                   borderColor: "success.main",
-                  backgroundColor: "#F1F8F4",
+                  backgroundColor: (theme) => alpha(theme.palette.success.main, 0.08),
                   borderRadius: 2,
                   transition: "all 0.3s ease-in-out",
                   "&:hover": {
-                    boxShadow: "0 6px 16px rgba(46, 125, 50, 0.2)",
+                    boxShadow: (theme) => `0 6px 16px ${alpha(theme.palette.success.main, 0.2)}`,
                     transform: "translateY(-1px)",
                   },
                 }}
@@ -204,7 +206,7 @@ export const TracesWelcomePage: React.FC = () => {
                       alignItems: "center",
                       justifyContent: "center",
                       flexShrink: 0,
-                      boxShadow: "0 2px 8px rgba(46, 125, 50, 0.3)",
+                      boxShadow: (theme) => `0 2px 8px ${alpha(theme.palette.success.main, 0.3)}`,
                     }}
                   >
                     <CheckCircleIcon sx={{ color: "white", fontSize: 18 }} />
@@ -244,12 +246,15 @@ export const TracesWelcomePage: React.FC = () => {
                   p: { xs: 1, sm: 1.25 },
                   border: "2px solid",
                   borderColor: stepStatus.apiKeyClicked ? "success.main" : "divider",
-                  backgroundColor: stepStatus.apiKeyClicked ? "#F1F8F4" : "background.paper",
+                  backgroundColor: (theme) => (stepStatus.apiKeyClicked ? alpha(theme.palette.success.main, 0.08) : theme.palette.background.paper),
                   borderRadius: 2,
                   transition: "all 0.3s ease-in-out",
                   cursor: stepStatus.apiKeyClicked ? "default" : "pointer",
                   "&:hover": {
-                    boxShadow: stepStatus.apiKeyClicked ? "0 6px 16px rgba(46, 125, 50, 0.2)" : "0 6px 16px rgba(33, 150, 243, 0.15)",
+                    boxShadow: (theme) =>
+                      stepStatus.apiKeyClicked
+                        ? `0 6px 16px ${alpha(theme.palette.success.main, 0.2)}`
+                        : `0 6px 16px ${alpha(theme.palette.primary.main, 0.15)}`,
                     borderColor: stepStatus.apiKeyClicked ? "success.main" : "primary.main",
                     transform: "translateY(-1px)",
                   },
@@ -267,7 +272,10 @@ export const TracesWelcomePage: React.FC = () => {
                       alignItems: "center",
                       justifyContent: "center",
                       flexShrink: 0,
-                      boxShadow: stepStatus.apiKeyClicked ? "0 2px 8px rgba(46, 125, 50, 0.25)" : "0 2px 8px rgba(33, 150, 243, 0.25)",
+                      boxShadow: (theme) =>
+                        stepStatus.apiKeyClicked
+                          ? `0 2px 8px ${alpha(theme.palette.success.main, 0.25)}`
+                          : `0 2px 8px ${alpha(theme.palette.primary.main, 0.25)}`,
                     }}
                   >
                     {stepStatus.apiKeyClicked ? (
@@ -287,7 +295,7 @@ export const TracesWelcomePage: React.FC = () => {
                             px: 0.875,
                             py: 0.25,
                             borderRadius: 1,
-                            backgroundColor: "#F5F5F5",
+                            backgroundColor: "action.selected",
                             color: "text.primary",
                             display: "flex",
                             alignItems: "center",
@@ -345,11 +353,14 @@ export const TracesWelcomePage: React.FC = () => {
                   p: { xs: 1, sm: 1.25 },
                   border: "2px solid",
                   borderColor: stepStatus.taskIdCopied ? "success.main" : "divider",
-                  backgroundColor: stepStatus.taskIdCopied ? "#F1F8F4" : "background.paper",
+                  backgroundColor: (theme) => (stepStatus.taskIdCopied ? alpha(theme.palette.success.main, 0.08) : theme.palette.background.paper),
                   borderRadius: 2,
                   transition: "all 0.3s ease-in-out",
                   "&:hover": {
-                    boxShadow: stepStatus.taskIdCopied ? "0 6px 16px rgba(46, 125, 50, 0.2)" : "0 6px 16px rgba(156, 39, 176, 0.15)",
+                    boxShadow: (theme) =>
+                      stepStatus.taskIdCopied
+                        ? `0 6px 16px ${alpha(theme.palette.success.main, 0.2)}`
+                        : `0 6px 16px ${alpha(theme.palette.secondary.main, 0.15)}`,
                     transform: "translateY(-1px)",
                   },
                 }}
@@ -360,12 +371,15 @@ export const TracesWelcomePage: React.FC = () => {
                       width: 28,
                       height: 28,
                       borderRadius: "50%",
-                      backgroundColor: stepStatus.taskIdCopied ? "success.main" : "#9C27B0",
+                      backgroundColor: stepStatus.taskIdCopied ? "success.main" : "secondary.main",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       flexShrink: 0,
-                      boxShadow: stepStatus.taskIdCopied ? "0 2px 8px rgba(46, 125, 50, 0.25)" : "0 2px 8px rgba(156, 39, 176, 0.25)",
+                      boxShadow: (theme) =>
+                        stepStatus.taskIdCopied
+                          ? `0 2px 8px ${alpha(theme.palette.success.main, 0.25)}`
+                          : `0 2px 8px ${alpha(theme.palette.secondary.main, 0.25)}`,
                     }}
                   >
                     {stepStatus.taskIdCopied ? (
@@ -385,7 +399,7 @@ export const TracesWelcomePage: React.FC = () => {
                             px: 0.875,
                             py: 0.25,
                             borderRadius: 1,
-                            backgroundColor: "#F5F5F5",
+                            backgroundColor: "action.selected",
                             color: "text.primary",
                             display: "flex",
                             alignItems: "center",
@@ -420,7 +434,7 @@ export const TracesWelcomePage: React.FC = () => {
                         sx={{
                           px: 0.3,
                           py: 0.05,
-                          backgroundColor: "grey.200",
+                          backgroundColor: "action.selected",
                           borderRadius: 0.5,
                           fontFamily: "monospace",
                           fontSize: "0.625rem",
@@ -436,13 +450,13 @@ export const TracesWelcomePage: React.FC = () => {
                         alignItems: "center",
                         gap: 0.4,
                         p: 0.75,
-                        backgroundColor: "#F5F5F5",
+                        backgroundColor: "action.hover",
                         border: "1px solid",
                         borderColor: "divider",
                         borderRadius: 1,
                         transition: "all 0.2s ease-in-out",
                         "&:hover": {
-                          backgroundColor: "#EEEEEE",
+                          backgroundColor: "action.selected",
                           borderColor: "primary.light",
                         },
                       }}
@@ -495,11 +509,14 @@ export const TracesWelcomePage: React.FC = () => {
                   p: { xs: 1, sm: 1.25 },
                   border: "2px solid",
                   borderColor: stepStatus.taskIdCopied ? "success.main" : "divider",
-                  backgroundColor: stepStatus.taskIdCopied ? "#F1F8F4" : "background.paper",
+                  backgroundColor: (theme) => (stepStatus.taskIdCopied ? alpha(theme.palette.success.main, 0.08) : theme.palette.background.paper),
                   borderRadius: 2,
                   transition: "all 0.3s ease-in-out",
                   "&:hover": {
-                    boxShadow: stepStatus.taskIdCopied ? "0 6px 16px rgba(46, 125, 50, 0.2)" : "0 6px 16px rgba(255, 152, 0, 0.15)",
+                    boxShadow: (theme) =>
+                      stepStatus.taskIdCopied
+                        ? `0 6px 16px ${alpha(theme.palette.success.main, 0.2)}`
+                        : `0 6px 16px ${alpha(theme.palette.warning.main, 0.15)}`,
                     transform: "translateY(-1px)",
                   },
                 }}
@@ -510,12 +527,15 @@ export const TracesWelcomePage: React.FC = () => {
                       width: 28,
                       height: 28,
                       borderRadius: "50%",
-                      backgroundColor: stepStatus.taskIdCopied ? "success.main" : "#FF9800",
+                      backgroundColor: stepStatus.taskIdCopied ? "success.main" : "warning.main",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       flexShrink: 0,
-                      boxShadow: stepStatus.taskIdCopied ? "0 2px 8px rgba(46, 125, 50, 0.25)" : "0 2px 8px rgba(255, 152, 0, 0.25)",
+                      boxShadow: (theme) =>
+                        stepStatus.taskIdCopied
+                          ? `0 2px 8px ${alpha(theme.palette.success.main, 0.25)}`
+                          : `0 2px 8px ${alpha(theme.palette.warning.main, 0.25)}`,
                     }}
                   >
                     {stepStatus.taskIdCopied ? (
@@ -535,7 +555,7 @@ export const TracesWelcomePage: React.FC = () => {
                             px: 0.875,
                             py: 0.25,
                             borderRadius: 1,
-                            backgroundColor: "#F5F5F5",
+                            backgroundColor: "action.selected",
                             color: "text.primary",
                             display: "flex",
                             alignItems: "center",
@@ -594,10 +614,10 @@ export const TracesWelcomePage: React.FC = () => {
                 fontSize: "0.875rem",
                 fontWeight: 600,
                 borderRadius: 1.5,
-                boxShadow: "0 2px 8px rgba(33, 150, 243, 0.25)",
+                boxShadow: (theme) => `0 2px 8px ${alpha(theme.palette.primary.main, 0.25)}`,
                 transition: "all 0.2s ease-in-out",
                 "&:hover": {
-                  boxShadow: "0 4px 12px rgba(33, 150, 243, 0.35)",
+                  boxShadow: (theme) => `0 4px 12px ${alpha(theme.palette.primary.main, 0.35)}`,
                   transform: "translateY(-1px)",
                 },
                 "&.Mui-disabled": {

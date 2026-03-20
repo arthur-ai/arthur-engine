@@ -23,6 +23,7 @@ import {
 import React, { useCallback, useState } from "react";
 
 import type { DatasetResponse } from "@/lib/api-client/api-client";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 import type { SortOrder } from "@/types/dataset";
 
 interface DatasetsTableProps {
@@ -66,6 +67,7 @@ export const DatasetsTable: React.FC<DatasetsTableProps> = ({ datasets, sortOrde
 
     try {
       setIsDeleting(true);
+      track(EVENT_NAMES.DATASET_DELETE_CONFIRMED, { dataset_id: datasetToDelete.id });
       await onDelete(datasetToDelete.id);
       setDeleteDialogOpen(false);
       setDatasetToDelete(null);

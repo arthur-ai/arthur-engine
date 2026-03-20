@@ -121,7 +121,5 @@ def query_inferences(
 
         results_formatted = [i._to_response_model() for i in results]
         return QueryInferencesResponse(count=count, inferences=results_formatted)
-    except:
-        raise
     finally:
         db_session.close()

@@ -1,3 +1,4 @@
+import { MustacheHighlightedTextField } from "@arthur/shared-components";
 import Alert from "@mui/material/Alert";
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
@@ -16,7 +17,6 @@ import { isAxiosError } from "axios";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useEvaluatorTemplates } from "./hooks/useEvaluatorTemplates";
-import NunjucksHighlightedTextField from "./MustacheHighlightedTextField";
 import { EvalFormModalProps } from "./types";
 
 import { useApi } from "@/hooks/useApi";
@@ -365,7 +365,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                               variant="caption"
                               component="span"
                               sx={{
-                                color: "rgba(0, 0, 0, 0.3)",
+                                color: "text.disabled",
                                 fontSize: "0.75rem",
                                 fontWeight: 400,
                                 fontStyle: "italic",
@@ -404,7 +404,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                   Instructions
                 </Typography>
               </FormLabel>
-              <NunjucksHighlightedTextField
+              <MustacheHighlightedTextField
                 value={instructions}
                 onChange={(e) => setInstructions(e.target.value)}
                 placeholder="Enter eval instructions..."
@@ -431,7 +431,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                     onChange={handleProviderChange}
                     disabled={providerDisabled || isLoading}
                     renderInput={(params) => (
-                      <TextField {...params} label="Select Provider" variant="outlined" size="small" sx={{ backgroundColor: "white" }} />
+                      <TextField {...params} label="Select Provider" variant="outlined" size="small" sx={{ backgroundColor: "background.paper" }} />
                     )}
                   />
                 </Tooltip>
@@ -449,7 +449,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                   onChange={handleModelChange}
                   disabled={modelDisabled || isLoading}
                   renderInput={(params) => (
-                    <TextField {...params} label="Select Model" variant="outlined" size="small" sx={{ backgroundColor: "white" }} />
+                    <TextField {...params} label="Select Model" variant="outlined" size="small" sx={{ backgroundColor: "background.paper" }} />
                   )}
                 />
               </FormControl>

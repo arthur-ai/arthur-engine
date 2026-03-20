@@ -84,7 +84,7 @@ export const RagExperimentDetailView: React.FC = () => {
       <Box className="p-6">
         <Box className="mb-4">
           <Box
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 cursor-pointer w-fit"
+            className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 cursor-pointer w-fit"
             onClick={() => navigate(`/tasks/${taskId}/rag-experiments`)}
           >
             <ArrowBackIcon fontSize="small" />
@@ -97,7 +97,7 @@ export const RagExperimentDetailView: React.FC = () => {
         <Box className="mb-6">
           <Box className="flex items-center justify-between mb-2">
             <Box className="flex items-center gap-3">
-              <Typography variant="h4" className="font-semibold text-gray-900">
+              <Typography variant="h4" className="font-semibold text-gray-900 dark:text-gray-100">
                 {experiment.name}
               </Typography>
               <Chip label={capitalize(experiment.status)} size="small" sx={getStatusChipSx(experiment.status)} />
@@ -114,11 +114,11 @@ export const RagExperimentDetailView: React.FC = () => {
             </Box>
           </Box>
           {experiment.description && (
-            <Typography variant="body1" className="text-gray-600 mb-4">
+            <Typography variant="body1" className="text-gray-600 dark:text-gray-400 mb-4">
               {experiment.description}
             </Typography>
           )}
-          <Box className="flex gap-6 text-sm text-gray-600">
+          <Box className="flex gap-6 text-sm text-gray-600 dark:text-gray-400">
             <Box>
               <span className="font-medium">Created:</span> {formatUTCTimestamp(experiment.created_at)}
             </Box>
@@ -151,9 +151,9 @@ export const RagExperimentDetailView: React.FC = () => {
           </Box>
 
           {experiment.dataset_row_filter && experiment.dataset_row_filter.length > 0 && (
-            <Box className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
+            <Box className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded">
               <Box className="flex items-center gap-2 mb-2">
-                <Typography variant="body2" className="font-medium text-gray-900">
+                <Typography variant="body2" className="font-medium text-gray-900 dark:text-gray-100">
                   Dataset Row Filter Applied
                 </Typography>
                 <Tooltip title="This experiment only includes dataset rows that match ALL of the following conditions." arrow placement="right">
@@ -174,9 +174,9 @@ export const RagExperimentDetailView: React.FC = () => {
                     size="small"
                     variant="outlined"
                     sx={{
-                      backgroundColor: "white",
-                      borderColor: "#3b82f6",
-                      color: "#1e40af",
+                      backgroundColor: "background.paper",
+                      borderColor: "primary.main",
+                      color: "primary.dark",
                     }}
                   />
                 ))}
@@ -187,7 +187,7 @@ export const RagExperimentDetailView: React.FC = () => {
 
         <Box className="mb-6">
           <Box className="flex items-center gap-2 mb-4">
-            <Typography variant="h5" className="font-semibold text-gray-900">
+            <Typography variant="h5" className="font-semibold text-gray-900 dark:text-gray-100">
               RAG Configurations
             </Typography>
             <Tooltip title="These are the RAG configurations being tested in this experiment." arrow placement="right">
@@ -217,7 +217,7 @@ export const RagExperimentDetailView: React.FC = () => {
 
         <Box className="mb-6">
           <Box className="flex items-center gap-2 mb-4">
-            <Typography variant="h5" className="font-semibold text-gray-900">
+            <Typography variant="h5" className="font-semibold text-gray-900 dark:text-gray-100">
               Overall RAG Config Performance
             </Typography>
             <Tooltip
@@ -236,8 +236,8 @@ export const RagExperimentDetailView: React.FC = () => {
           </Box>
 
           {experiment.summary_results.rag_eval_summaries.length === 0 ? (
-            <Box className="p-6 bg-gray-50 border border-gray-200 rounded">
-              <Typography variant="body1" className="text-gray-600 italic">
+            <Box className="p-6 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded">
+              <Typography variant="body1" className="text-gray-600 dark:text-gray-400 italic">
                 Overall performance will be shown when the experiment finishes executing test cases.
               </Typography>
             </Box>
@@ -269,14 +269,18 @@ export const RagExperimentDetailView: React.FC = () => {
                     <Card key={ragSummary.rag_config_key || idx} elevation={1} sx={{ position: "relative" }}>
                       <CardContent sx={{ position: "relative", paddingBottom: "16px !important", minHeight: "180px" }}>
                         <Box className="flex items-center gap-2 mb-3">
-                          <Typography variant="subtitle1" className="font-medium text-gray-800 truncate flex-1 min-w-0">
+                          <Typography variant="subtitle1" className="font-medium text-gray-800 dark:text-gray-200 truncate flex-1 min-w-0">
                             {displayName}
                           </Typography>
                           {ragSummary.rag_config_type === "unsaved" && (
                             <Chip
                               label="Unsaved"
                               size="small"
-                              sx={{ backgroundColor: "#fff3e0", color: "#f57c00", fontWeight: 600 }}
+                              sx={{
+                                backgroundColor: (theme) => (theme.palette.mode === "dark" ? "rgba(255,152,0,0.12)" : "#fff3e0"),
+                                color: (theme) => (theme.palette.mode === "dark" ? "#ffb74d" : "#f57c00"),
+                                fontWeight: 600,
+                              }}
                               className="shrink-0"
                             />
                           )}
@@ -290,10 +294,10 @@ export const RagExperimentDetailView: React.FC = () => {
                             return (
                               <Box key={`${evalResult.eval_name}-${evalResult.eval_version}`}>
                                 <Box className="flex justify-between items-center mb-1">
-                                  <Typography variant="caption" className="font-medium text-gray-700">
+                                  <Typography variant="caption" className="font-medium text-gray-700 dark:text-gray-300">
                                     {evalResult.eval_name} (v{evalResult.eval_version})
                                   </Typography>
-                                  <Typography variant="caption" className="text-gray-600">
+                                  <Typography variant="caption" className="text-gray-600 dark:text-gray-400">
                                     {percentage.toFixed(0)}%
                                   </Typography>
                                 </Box>
@@ -308,7 +312,7 @@ export const RagExperimentDetailView: React.FC = () => {
                                     },
                                   }}
                                 />
-                                <Typography variant="caption" className="text-gray-500 text-xs">
+                                <Typography variant="caption" className="text-gray-500 dark:text-gray-400 text-xs">
                                   {evalResult.pass_count} / {evalResult.total_count} test cases passed
                                 </Typography>
                               </Box>
@@ -327,7 +331,7 @@ export const RagExperimentDetailView: React.FC = () => {
         {experiment.eval_list && experiment.eval_list.length > 0 && (
           <Box className="mb-6">
             <Box className="flex items-center gap-2 mb-4">
-              <Typography variant="h5" className="font-semibold text-gray-900">
+              <Typography variant="h5" className="font-semibold text-gray-900 dark:text-gray-100">
                 Evaluators
               </Typography>
               <Tooltip title="These evaluators are being used to assess the RAG configurations." arrow placement="right">
@@ -358,7 +362,7 @@ export const RagExperimentDetailView: React.FC = () => {
 
         <Box className="mb-6">
           <Box className="flex items-center gap-2 mb-4">
-            <Typography variant="h5" className="font-semibold text-gray-900">
+            <Typography variant="h5" className="font-semibold text-gray-900 dark:text-gray-100">
               Test Case Results
             </Typography>
             <Tooltip

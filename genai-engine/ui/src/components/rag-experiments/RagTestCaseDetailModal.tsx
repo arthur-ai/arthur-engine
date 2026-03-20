@@ -18,11 +18,13 @@ import {
   DialogActions,
   Stack,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import React, { useEffect, useState } from "react";
 
 import { getRagConfigDisplayName, type RagConfig } from "./utils";
 
 import { ResultsDisplay } from "@/components/retrievals/ResultsDisplay";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import type { RagTestCase, EvalExecution } from "@/lib/api-client/api-client";
 import { formatCurrency } from "@/utils/formatters";
@@ -66,7 +68,14 @@ const DatasetRowSection: React.FC<DatasetRowSectionProps> = ({ datasetId, versio
 
   if (error) {
     return (
-      <Box className="p-4 bg-red-50 border border-red-200 rounded">
+      <Box
+        sx={(theme) => ({
+          p: 2,
+          backgroundColor: alpha(theme.palette.error.main, 0.08),
+          border: `1px solid ${alpha(theme.palette.error.main, 0.3)}`,
+          borderRadius: 1,
+        })}
+      >
         <Typography color="error" variant="body2">
           {error.message}
         </Typography>
@@ -79,11 +88,20 @@ const DatasetRowSection: React.FC<DatasetRowSectionProps> = ({ datasetId, versio
   return (
     <Box className="space-y-3">
       {rowData.data.map((item, index) => (
-        <Box key={index} className="p-3 bg-gray-50 rounded border border-gray-200">
-          <Typography variant="subtitle2" className="font-semibold text-gray-700 mb-1">
+        <Box
+          key={index}
+          sx={{
+            p: 1.5,
+            backgroundColor: "action.hover",
+            borderRadius: 1,
+            border: "1px solid",
+            borderColor: "divider",
+          }}
+        >
+          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }} color="text.secondary">
             {item.column_name}
           </Typography>
-          <Typography variant="body2" className="text-gray-900 whitespace-pre-wrap wrap-break-word">
+          <Typography variant="body2" color="text.primary" sx={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
             {item.column_value}
           </Typography>
         </Box>
@@ -109,11 +127,24 @@ const EvalInputsDialog: React.FC<EvalInputsDialogProps> = ({ open, onClose, eval
       <DialogContent>
         <Stack gap={2} className="mt-2">
           {evalExecution.eval_input_variables.map((variable, index) => (
-            <Box key={index} className="p-3 bg-gray-50 rounded border border-gray-200">
-              <Typography variant="subtitle2" className="font-semibold text-gray-700 mb-1">
+            <Box
+              key={index}
+              sx={{
+                p: 1.5,
+                backgroundColor: "action.hover",
+                borderRadius: 1,
+                border: "1px solid",
+                borderColor: "divider",
+              }}
+            >
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }} color="text.secondary">
                 {variable.variable_name}
               </Typography>
-              <Typography variant="body2" className="text-gray-900 whitespace-pre-wrap wrap-break-word font-mono text-sm">
+              <Typography
+                variant="body2"
+                color="text.primary"
+                sx={{ whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: "monospace", fontSize: "0.875rem" }}
+              >
                 {variable.value}
               </Typography>
             </Box>
@@ -176,6 +207,7 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
   datasetId,
   datasetVersion,
 }) => {
+  const { defaultCurrency } = useDisplaySettings();
   const [evalInputsDialogOpen, setEvalInputsDialogOpen] = useState(false);
   const [selectedEvalExecution, setSelectedEvalExecution] = useState<EvalExecution | null>(null);
 
@@ -212,17 +244,23 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
   return (
     <>
       <Modal open={open} onClose={onClose} aria-labelledby="rag-test-case-detail-modal">
-        <Box className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-7xl max-h-[90vh] bg-white rounded-lg shadow-xl overflow-auto">
+        <Box
+          className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-7xl max-h-[90vh] overflow-auto"
+          sx={{ backgroundColor: "background.paper", borderRadius: 2, boxShadow: 24 }}
+        >
           {/* Modal Header */}
-          <Box className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center z-10">
+          <Box
+            className="sticky top-0 flex justify-between items-center z-10"
+            sx={{ backgroundColor: "background.paper", borderBottom: "1px solid", borderColor: "divider", px: 3, py: 2 }}
+          >
             <Box className="flex items-center gap-3">
-              <IconButton onClick={onPrevious} size="small" disabled={currentIndex <= 0} className="hover:bg-gray-100">
+              <IconButton onClick={onPrevious} size="small" disabled={currentIndex <= 0}>
                 <ArrowBackIcon />
               </IconButton>
-              <Typography variant="h6" className="font-semibold text-gray-900">
+              <Typography variant="h6" sx={{ fontWeight: 600 }} color="text.primary">
                 Test Case {currentIndex + 1} of {totalCount}
               </Typography>
-              <IconButton onClick={onNext} size="small" disabled={currentIndex >= totalCount - 1} className="hover:bg-gray-100">
+              <IconButton onClick={onNext} size="small" disabled={currentIndex >= totalCount - 1}>
                 <ArrowForwardIcon />
               </IconButton>
               <Chip
@@ -230,7 +268,9 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
                 size="small"
                 color={testCase.status === "completed" ? "success" : testCase.status === "failed" ? "error" : "default"}
               />
-              {testCase.total_cost && <Chip label={`Cost: ${formatCurrency(parseFloat(testCase.total_cost))}`} size="small" variant="outlined" />}
+              {testCase.total_cost && (
+                <Chip label={`Cost: ${formatCurrency(parseFloat(testCase.total_cost), defaultCurrency)}`} size="small" variant="outlined" />
+              )}
             </Box>
             <IconButton onClick={onClose} size="small">
               <CloseIcon />
@@ -241,7 +281,7 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
           <Box className="p-6">
             {/* Dataset Row Section */}
             <Box className="mb-6">
-              <Typography variant="h6" className="font-bold mb-4 pb-2 border-b-2 border-gray-300 text-gray-900">
+              <Typography variant="h6" color="text.primary" sx={{ fontWeight: 700, mb: 2, pb: 1, borderBottom: "2px solid", borderColor: "divider" }}>
                 Dataset Row
               </Typography>
               <DatasetRowSection datasetId={datasetId} versionNumber={datasetVersion} rowId={testCase.dataset_row_id} />
@@ -249,7 +289,7 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
 
             {/* RAG Results Section */}
             <Box>
-              <Typography variant="h6" className="font-bold mb-4 pb-2 border-b-2 border-gray-300 text-gray-900">
+              <Typography variant="h6" color="text.primary" sx={{ fontWeight: 700, mb: 2, pb: 1, borderBottom: "2px solid", borderColor: "divider" }}>
                 RAG Results
               </Typography>
               <Box className="space-y-6">
@@ -271,13 +311,31 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
                   return (
                     <Card key={ragResult.rag_config_key || index} elevation={2}>
                       {/* RAG Config Header */}
-                      <Box className="bg-blue-100 border-b border-blue-200 px-4 py-3 flex items-center justify-between">
+                      <Box
+                        sx={(theme) => ({
+                          backgroundColor: alpha(theme.palette.info.main, 0.12),
+                          borderBottom: `1px solid ${alpha(theme.palette.info.main, 0.3)}`,
+                          px: 2,
+                          py: 1.5,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                        })}
+                      >
                         <Box className="flex items-center gap-2">
-                          <Typography variant="h6" className="font-semibold text-blue-900">
+                          <Typography variant="h6" sx={{ fontWeight: 600 }} color="info.main">
                             {displayName}
                           </Typography>
                           {ragResult.rag_config_type === "unsaved" && (
-                            <Chip label="Unsaved" size="small" sx={{ backgroundColor: "#fff3e0", color: "#f57c00", fontWeight: 600 }} />
+                            <Chip
+                              label="Unsaved"
+                              size="small"
+                              sx={(theme) => ({
+                                backgroundColor: alpha(theme.palette.warning.main, 0.12),
+                                color: theme.palette.warning.main,
+                                fontWeight: 600,
+                              })}
+                            />
                           )}
                         </Box>
                       </Box>
@@ -285,11 +343,11 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
                       <CardContent>
                         {/* Query Text */}
                         <Box className="mb-4">
-                          <Typography variant="subtitle2" className="font-medium text-gray-700 mb-2">
+                          <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 500, mb: 1 }}>
                             Query Text:
                           </Typography>
-                          <Box className="p-3 bg-gray-100 border border-gray-300 rounded">
-                            <Typography variant="body2" className="whitespace-pre-wrap text-gray-900">
+                          <Box sx={{ p: 1.5, backgroundColor: "action.hover", border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
+                            <Typography variant="body2" color="text.primary" sx={{ whiteSpace: "pre-wrap" }}>
                               {ragResult.query_text}
                             </Typography>
                           </Box>
@@ -297,7 +355,7 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
 
                         {/* RAG Search Results */}
                         <Box className="mb-4">
-                          <Typography variant="subtitle2" className="font-medium text-gray-700 mb-2">
+                          <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 500, mb: 1 }}>
                             Retrieved Documents:
                           </Typography>
                           {ragResult.output?.response?.response ? (
@@ -309,8 +367,8 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
                               searchMethod={searchMethod}
                             />
                           ) : (
-                            <Box className="p-3 bg-gray-100 border border-gray-300 rounded">
-                              <Typography variant="body2" className="text-gray-500 italic">
+                            <Box sx={{ p: 1.5, backgroundColor: "action.hover", border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
+                              <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic" }}>
                                 No results available yet
                               </Typography>
                             </Box>
@@ -320,15 +378,23 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
                         {/* Evaluations */}
                         {ragResult.evals.length > 0 && (
                           <Box>
-                            <Typography variant="subtitle2" className="font-medium text-gray-700 mb-2">
+                            <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 500, mb: 1 }}>
                               Evaluations:
                             </Typography>
                             <Box className="space-y-2">
                               {ragResult.evals.map((evalItem, evalIndex) => (
-                                <Box key={evalIndex} className="p-3 bg-blue-50 border border-blue-200 rounded">
+                                <Box
+                                  key={evalIndex}
+                                  sx={(theme) => ({
+                                    p: 1.5,
+                                    backgroundColor: alpha(theme.palette.info.main, 0.08),
+                                    border: `1px solid ${alpha(theme.palette.info.main, 0.3)}`,
+                                    borderRadius: 1,
+                                  })}
+                                >
                                   <Box className="flex items-center justify-between mb-2">
                                     <Box className="flex items-center gap-2">
-                                      <Typography variant="body2" className="font-medium text-gray-900">
+                                      <Typography variant="body2" color="text.primary" sx={{ fontWeight: 500 }}>
                                         {evalItem.eval_name} v{evalItem.eval_version}
                                       </Typography>
                                       {evalItem.eval_results ? (
@@ -339,7 +405,7 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
                                             sx={getEvalChipSx(evalItem.eval_results.score === 1)}
                                           />
                                           <Chip
-                                            label={`Cost: ${formatCurrency(parseFloat(evalItem.eval_results.cost))}`}
+                                            label={`Cost: ${formatCurrency(parseFloat(evalItem.eval_results.cost), defaultCurrency)}`}
                                             size="small"
                                             variant="outlined"
                                           />
@@ -358,7 +424,7 @@ export const RagTestCaseDetailModal: React.FC<RagTestCaseDetailModalProps> = ({
                                     </Button>
                                   </Box>
                                   {evalItem.eval_results?.explanation && (
-                                    <Typography variant="body2" className="text-gray-700 mt-1">
+                                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                                       {evalItem.eval_results.explanation}
                                     </Typography>
                                   )}

@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.345"
+        "version": "2.1.456"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -82,6 +82,28 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/display-settings": {
+            "get": {
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Get Display Settings",
+                "description": "Get display settings (e.g. default currency for cost formatting).",
+                "operationId": "get_display_settings_api_v2_display_settings_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DisplaySettingsResponse"
                                 }
                             }
                         }
@@ -1175,6 +1197,84 @@
                         }
                     }
                 }
+            }
+        },
+        "/api/v2/tasks/{task_id}/unarchive": {
+            "post": {
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Unarchive Task",
+                "description": "Unarchive a previously archived task. Also unarchives all task-scoped rules and metrics that were archived with it.",
+                "operationId": "unarchive_task_api_v2_tasks__task_id__unarchive_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/agent-tasks": {
+            "get": {
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Get Agent Tasks",
+                "description": "Get agentic tasks with enriched agent metadata (tools, sub-agents, models). Returns only agentic tasks.",
+                "operationId": "get_agent_tasks_api_v2_agent_tasks_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "items": {
+                                        "$ref": "#/components/schemas/EnrichedTaskResponse"
+                                    },
+                                    "type": "array",
+                                    "title": "Response Get Agent Tasks Api V2 Agent Tasks Get"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
             }
         },
         "/api/v2/task": {
@@ -7364,6 +7464,24 @@
                         "description": "Version number to fetch."
                     },
                     {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Search query to filter rows. Performs case-insensitive search across all column values.",
+                            "title": "Search"
+                        },
+                        "description": "Search query to filter rows. Performs case-insensitive search across all column values."
+                    },
+                    {
                         "name": "sort",
                         "in": "query",
                         "required": false,
@@ -13437,7 +13555,7 @@
                     "Transforms"
                 ],
                 "summary": "Delete Transform",
-                "description": "Delete a transform.",
+                "description": "Delete a transform. Returns 409 if the transform is referenced by continuous evals, agentic experiments, or agentic notebooks.",
                 "operationId": "delete_transform_api_v1_traces_transforms__transform_id__delete",
                 "security": [
                     {
@@ -13461,6 +13579,60 @@
                 "responses": {
                     "204": {
                         "description": "Successful Response"
+                    },
+                    "409": {
+                        "description": "Transform has dependent resources that must be removed first."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/traces/transforms/{transform_id}/dependents": {
+            "get": {
+                "tags": [
+                    "Transforms"
+                ],
+                "summary": "Get Transform Dependents",
+                "description": "Get resources that depend on this transform.",
+                "operationId": "get_transform_dependents_api_v1_traces_transforms__transform_id__dependents_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "transform_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the transform.",
+                            "title": "Transform Id"
+                        },
+                        "description": "ID of the transform."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TransformDependents"
+                                }
+                            }
+                        }
                     },
                     "422": {
                         "description": "Validation Error",
@@ -13837,6 +14009,63 @@
                             "title": "Enabled"
                         },
                         "description": "Whether the continuous eval is enabled."
+                    },
+                    {
+                        "name": "continuous_eval_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "List of continuous eval IDs to filter on.",
+                            "title": "Continuous Eval Ids"
+                        },
+                        "description": "List of continuous eval IDs to filter on."
+                    },
+                    {
+                        "name": "llm_eval_name_exact",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Exact LLM eval name to filter on (case-sensitive exact match).",
+                            "title": "Llm Eval Name Exact"
+                        },
+                        "description": "Exact LLM eval name to filter on (case-sensitive exact match)."
+                    },
+                    {
+                        "name": "llm_eval_version",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "LLM eval version to filter on.",
+                            "title": "Llm Eval Version"
+                        },
+                        "description": "LLM eval version to filter on."
                     }
                 ],
                 "responses": {
@@ -13980,43 +14209,49 @@
                         "description": "Page number"
                     },
                     {
-                        "name": "id",
+                        "name": "ids",
                         "in": "query",
                         "required": false,
                         "schema": {
                             "anyOf": [
                                 {
-                                    "type": "string"
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
                                 },
                                 {
                                     "type": "null"
                                 }
                             ],
-                            "description": "ID of the continuous eval to filter on.",
-                            "title": "Id"
+                            "description": "List of agentic annotation IDs to filter on.",
+                            "title": "Ids"
                         },
-                        "description": "ID of the continuous eval to filter on."
+                        "description": "List of agentic annotation IDs to filter on."
                     },
                     {
-                        "name": "continuous_eval_id",
+                        "name": "continuous_eval_ids",
                         "in": "query",
                         "required": false,
                         "schema": {
                             "anyOf": [
                                 {
-                                    "type": "string"
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
                                 },
                                 {
                                     "type": "null"
                                 }
                             ],
-                            "description": "ID of the continuous eval to filter on.",
-                            "title": "Continuous Eval Id"
+                            "description": "List of continuous eval IDs to filter on.",
+                            "title": "Continuous Eval Ids"
                         },
-                        "description": "ID of the continuous eval to filter on."
+                        "description": "List of continuous eval IDs to filter on."
                     },
                     {
-                        "name": "trace_id",
+                        "name": "eval_name",
                         "in": "query",
                         "required": false,
                         "schema": {
@@ -14028,10 +14263,31 @@
                                     "type": "null"
                                 }
                             ],
-                            "description": "Trace ID to filter on.",
-                            "title": "Trace Id"
+                            "description": "Name of the continuous eval to filter on.",
+                            "title": "Eval Name"
                         },
-                        "description": "Trace ID to filter on."
+                        "description": "Name of the continuous eval to filter on."
+                    },
+                    {
+                        "name": "trace_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "List of trace IDs to filter on.",
+                            "title": "Trace Ids"
+                        },
+                        "description": "List of trace IDs to filter on."
                     },
                     {
                         "name": "annotation_score",
@@ -14352,6 +14608,120 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/AgenticAnnotationAnalyticsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks/{task_id}/agent-polling/execute": {
+            "post": {
+                "tags": [
+                    "Agent Discovery"
+                ],
+                "summary": "Execute Agent Polling",
+                "description": "Manually trigger a polling job for a task. Does not require any particular state \u2014 admins can use this to force an immediate poll outside the normal loop cadence.",
+                "operationId": "execute_agent_polling_api_v1_tasks__task_id__agent_polling_execute_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExecutePollingResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent-polling/execute-all": {
+            "post": {
+                "tags": [
+                    "Agent Discovery"
+                ],
+                "summary": "Execute All Agent Polling",
+                "description": "Manually trigger a full agent discovery and polling cycle. Discovers new GCP agents and enqueues trace-fetch jobs for all eligible tasks. Use wait_for_completion=true to block until all polling jobs finish.",
+                "operationId": "execute_all_agent_polling_api_v1_agent_polling_execute_all_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "wait_for_completion",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "default": false,
+                            "title": "Wait For Completion"
+                        }
+                    },
+                    {
+                        "name": "timeout",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": 1
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Timeout"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DiscoverAndPollResponse"
                                 }
                             }
                         }
@@ -15059,6 +15429,84 @@
                     "ORG-ADMIN"
                 ],
                 "title": "APIKeysRolesEnum"
+            },
+            "AgentCreationSource": {
+                "anyOf": [
+                    {
+                        "$ref": "#/components/schemas/GCPAgentCreationSource"
+                    },
+                    {
+                        "$ref": "#/components/schemas/OTELAgentCreationSource"
+                    },
+                    {
+                        "$ref": "#/components/schemas/ManualAgentCreationSource"
+                    }
+                ],
+                "title": "AgentCreationSource"
+            },
+            "AgentMetadata": {
+                "properties": {
+                    "provider": {
+                        "$ref": "#/components/schemas/RegisteredAgentProvider",
+                        "description": "Provider of the registered agent."
+                    },
+                    "gcp_metadata": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/GCPAgentMetadata"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Metadata for the agent."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "provider"
+                ],
+                "title": "AgentMetadata"
+            },
+            "AgentMetadataResponse": {
+                "properties": {
+                    "provider": {
+                        "$ref": "#/components/schemas/RegisteredAgentProvider",
+                        "description": "Provider of the registered agent."
+                    },
+                    "gcp_metadata": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/GCPAgentMetadataResponse"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Metadata for the agent."
+                    },
+                    "service_names": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Service Names",
+                        "description": "List of service names that send traces to this task"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "provider"
+                ],
+                "title": "AgentMetadataResponse",
+                "description": "Agent metadata for responses."
             },
             "AgenticAnnotationAnalyticsResponse": {
                 "properties": {
@@ -17990,6 +18438,21 @@
                 "title": "DailyAgenticAnnotationStats",
                 "description": "Statistics for a single day of agentic annotations."
             },
+            "DataSource": {
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "title": "Url",
+                        "description": "URL of the data source."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "url"
+                ],
+                "title": "DataSource",
+                "description": "Data source used by an agent."
+            },
             "DatasetColumnSource": {
                 "properties": {
                     "name": {
@@ -18358,6 +18821,190 @@
                 ],
                 "title": "DatasetVersionRowResponse"
             },
+            "DiscoverAndPollResponse": {
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "title": "Status",
+                        "description": "Status of the operation"
+                    },
+                    "discovered": {
+                        "type": "integer",
+                        "title": "Discovered",
+                        "description": "Number of new agent tasks created"
+                    },
+                    "traces_fetched": {
+                        "type": "integer",
+                        "title": "Traces Fetched",
+                        "description": "Total number of traces fetched across all tasks (0 in async mode)"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "status",
+                    "discovered",
+                    "traces_fetched"
+                ],
+                "title": "DiscoverAndPollResponse",
+                "description": "Response model for the execute-all agent polling endpoint."
+            },
+            "EnrichedTaskResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Task ID"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Task name"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "Task creation timestamp"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At",
+                        "description": "Task last update timestamp"
+                    },
+                    "is_autocreated": {
+                        "type": "boolean",
+                        "title": "Is Autocreated",
+                        "description": "Whether this task was auto-created (vs manually created)",
+                        "default": false
+                    },
+                    "creation_source": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AgentCreationSource"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Information about how this task/agent was created"
+                    },
+                    "last_fetched": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Last Fetched",
+                        "description": "Last time traces were fetched for this task (from task_polling_state)"
+                    },
+                    "tools": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/Tool"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tools",
+                        "description": "Tools used by this agent (computed from spans)"
+                    },
+                    "sub_agents": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/SubAgent"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Sub Agents",
+                        "description": "Sub-agents used by this agent (computed from spans)"
+                    },
+                    "models": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/LLMModel"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Models",
+                        "description": "Models used by this agent (computed from spans)"
+                    },
+                    "data_sources": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/DataSource"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Data Sources",
+                        "description": "Data sources used by this agent (computed from spans)"
+                    },
+                    "num_spans": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Num Spans",
+                        "description": "Number of spans associated with this task"
+                    },
+                    "rules": {
+                        "items": {
+                            "$ref": "#/components/schemas/RuleResponse"
+                        },
+                        "type": "array",
+                        "title": "Rules",
+                        "description": "Rules associated with this task"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "EnrichedTaskResponse",
+                "description": "Response model for agent-tasks endpoint with enriched metadata."
+            },
+            "DisplaySettingsResponse": {
+                "properties": {
+                    "default_currency": {
+                        "type": "string",
+                        "title": "Default Currency",
+                        "default": "USD"
+                    }
+                },
+                "type": "object",
+                "title": "DisplaySettingsResponse",
+                "description": "Public display settings (e.g. default currency for cost formatting)."
+            },
             "EvalExecution": {
                 "properties": {
                     "eval_name": {
@@ -18654,6 +19301,27 @@
                     ],
                     "hint": "specific individual's blood type"
                 }
+            },
+            "ExecutePollingResponse": {
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "title": "Status",
+                        "description": "Status of the operation"
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "Task ID that was enqueued"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "status",
+                    "task_id"
+                ],
+                "title": "ExecutePollingResponse",
+                "description": "Response model for the single-task agent polling endpoint."
             },
             "ExperimentOutputSource": {
                 "properties": {
@@ -19119,6 +19787,100 @@
                     "success"
                 ],
                 "title": "FileUploadResult"
+            },
+            "GCPAgentCreationSource": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "const": "GCP",
+                        "title": "Type",
+                        "default": "GCP"
+                    },
+                    "gcp_project_id": {
+                        "type": "string",
+                        "title": "Gcp Project Id",
+                        "description": "GCP project ID"
+                    },
+                    "gcp_region": {
+                        "type": "string",
+                        "title": "Gcp Region",
+                        "description": "GCP region"
+                    },
+                    "gcp_reasoning_engine_id": {
+                        "type": "string",
+                        "title": "Gcp Reasoning Engine Id",
+                        "description": "GCP Vertex AI Reasoning Engine ID"
+                    },
+                    "service_names": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Service Names",
+                        "description": "Service names associated with this agent"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "gcp_project_id",
+                    "gcp_region",
+                    "gcp_reasoning_engine_id"
+                ],
+                "title": "GCPAgentCreationSource",
+                "description": "Creation source for GCP-discovered agents."
+            },
+            "GCPAgentMetadata": {
+                "properties": {
+                    "project_id": {
+                        "type": "string",
+                        "title": "Project Id",
+                        "description": "Project ID of the agent."
+                    },
+                    "region": {
+                        "type": "string",
+                        "title": "Region",
+                        "description": "Region of the agent."
+                    },
+                    "resource_id": {
+                        "type": "string",
+                        "title": "Resource Id",
+                        "description": "Resource ID of the agent."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "project_id",
+                    "region",
+                    "resource_id"
+                ],
+                "title": "GCPAgentMetadata"
+            },
+            "GCPAgentMetadataResponse": {
+                "properties": {
+                    "project_id": {
+                        "type": "string",
+                        "title": "Project Id",
+                        "description": "Project ID of the agent."
+                    },
+                    "region": {
+                        "type": "string",
+                        "title": "Region",
+                        "description": "Region of the agent."
+                    },
+                    "resource_id": {
+                        "type": "string",
+                        "title": "Resource Id",
+                        "description": "Resource ID of the agent."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "project_id",
+                    "region",
+                    "resource_id"
+                ],
+                "title": "GCPAgentMetadataResponse",
+                "description": "GCP-specific agent metadata for responses."
             },
             "GCPServiceAccountCredentialsRequest": {
                 "properties": {
@@ -20283,6 +21045,21 @@
                 ],
                 "title": "LLMGetAllMetadataResponse"
             },
+            "LLMModel": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the model."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "title": "LLMModel",
+                "description": "Model used by an agent."
+            },
             "LLMPromptRequestConfigSettings": {
                 "properties": {
                     "timeout": {
@@ -21079,11 +21856,17 @@
                         "type": "array",
                         "title": "Transforms",
                         "description": "List of transforms for the task."
+                    },
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "Total number of transforms matching filters"
                     }
                 },
                 "type": "object",
                 "required": [
-                    "transforms"
+                    "transforms",
+                    "count"
                 ],
                 "title": "ListTraceTransformsResponse"
             },
@@ -21108,6 +21891,19 @@
                     "bias"
                 ],
                 "title": "LogitBiasItem"
+            },
+            "ManualAgentCreationSource": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "const": "MANUAL",
+                        "title": "Type",
+                        "default": "MANUAL"
+                    }
+                },
+                "type": "object",
+                "title": "ManualAgentCreationSource",
+                "description": "Creation source for manually created tasks."
             },
             "MessageRole": {
                 "type": "string",
@@ -22102,6 +22898,17 @@
                         "title": "Is Agentic",
                         "description": "Whether the task is agentic or not.",
                         "default": false
+                    },
+                    "agent_metadata": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AgentMetadata"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Metadata to describe the creation source/provider for registered agents."
                     }
                 },
                 "type": "object",
@@ -22511,6 +23318,27 @@
                 ],
                 "title": "NotebookSummary",
                 "description": "Summary of a notebook"
+            },
+            "OTELAgentCreationSource": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "const": "OTEL",
+                        "title": "Type",
+                        "default": "OTEL"
+                    },
+                    "service_names": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Service Names",
+                        "description": "Service names associated with this agent"
+                    }
+                },
+                "type": "object",
+                "title": "OTELAgentCreationSource",
+                "description": "Creation source for OTEL-discovered agents (auto-created from traces)."
             },
             "OpenAIMessage-Input": {
                 "properties": {
@@ -25695,6 +26523,14 @@
                 ],
                 "title": "RegexSpanResponse"
             },
+            "RegisteredAgentProvider": {
+                "type": "string",
+                "enum": [
+                    "gcp",
+                    "external"
+                ],
+                "title": "RegisteredAgentProvider"
+            },
             "RelevanceMetricConfig": {
                 "properties": {
                     "relevance_threshold": {
@@ -26245,6 +27081,30 @@
                         ],
                         "title": "Is Agentic",
                         "description": "Filter tasks by agentic status. If not provided, returns both agentic and non-agentic tasks."
+                    },
+                    "include_archived": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Include Archived",
+                        "description": "Include archived tasks in results. True returns both active and archived tasks, False or None returns only active tasks. If only_archived is True, this flag is ignored."
+                    },
+                    "only_archived": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Only Archived",
+                        "description": "Return only archived tasks. True returns exclusively archived tasks, False or None has no effect. Takes precedence over include_archived when both are set."
                     }
                 },
                 "type": "object",
@@ -26279,6 +27139,18 @@
                         "type": "integer",
                         "title": "Count",
                         "description": "Total number of sessions matching filters"
+                    },
+                    "display_currency": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Display Currency",
+                        "description": "Currency code for cost fields"
                     },
                     "sessions": {
                         "items": {
@@ -26455,6 +27327,18 @@
                         "title": "Count",
                         "description": "Number of traces in this session"
                     },
+                    "display_currency": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Display Currency",
+                        "description": "Currency code for cost fields"
+                    },
                     "traces": {
                         "items": {
                             "$ref": "#/components/schemas/TraceResponse"
@@ -26521,6 +27405,18 @@
                         "type": "integer",
                         "title": "Count",
                         "description": "Total number of spans matching filters"
+                    },
+                    "display_currency": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Display Currency",
+                        "description": "Currency code for cost fields"
                     },
                     "spans": {
                         "items": {
@@ -27031,6 +27927,21 @@
                 "type": "object",
                 "title": "StreamOptions"
             },
+            "SubAgent": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the sub-agent."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "title": "SubAgent",
+                "description": "Sub-agent definition."
+            },
             "SummaryResults": {
                 "properties": {
                     "prompt_eval_summaries": {
@@ -27298,6 +28209,56 @@
                         ],
                         "title": "Is Agentic",
                         "description": "Whether the task is agentic or not"
+                    },
+                    "is_system_task": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Is System Task",
+                        "description": "Whether this is a system-managed task (e.g., for traces without a task_id or service name, or for Arthur-created traces)",
+                        "default": false
+                    },
+                    "is_autocreated": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Is Autocreated",
+                        "description": "Whether this task was automatically created by Arthur",
+                        "default": false
+                    },
+                    "is_archived": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Is Archived",
+                        "description": "Whether this task is archived",
+                        "default": false
+                    },
+                    "agent_metadata": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AgentMetadataResponse"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Metadata to describe the creation source/provider for registered agents."
                     },
                     "rules": {
                         "items": {
@@ -27604,6 +28565,50 @@
                 ],
                 "title": "TokenUsageScope"
             },
+            "Tool": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the tool."
+                    },
+                    "arguments": {
+                        "items": {
+                            "$ref": "#/components/schemas/ToolArgument"
+                        },
+                        "type": "array",
+                        "title": "Arguments",
+                        "description": "List of arguments for this tool."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "title": "Tool",
+                "description": "Tool definition with arguments."
+            },
+            "ToolArgument": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the tool argument."
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Type",
+                        "description": "Type of the tool argument."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "type"
+                ],
+                "title": "ToolArgument",
+                "description": "Argument definition for a tool."
+            },
             "ToolCall": {
                 "properties": {
                     "type": {
@@ -27857,6 +28862,18 @@
                         "type": "integer",
                         "title": "Count",
                         "description": "Total number of traces matching filters"
+                    },
+                    "display_currency": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Display Currency",
+                        "description": "Currency code for cost fields"
                     },
                     "traces": {
                         "items": {
@@ -28396,6 +29413,18 @@
                         "title": "Count",
                         "description": "Total number of users matching filters"
                     },
+                    "display_currency": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Display Currency",
+                        "description": "Currency code for cost fields"
+                    },
                     "users": {
                         "items": {
                             "$ref": "#/components/schemas/TraceUserMetadataResponse"
@@ -28555,6 +29584,56 @@
                 ],
                 "title": "TraceUserMetadataResponse",
                 "description": "User summary metadata in trace context"
+            },
+            "TransformDependentRef": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "ID of the dependent resource."
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the dependent resource."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name"
+                ],
+                "title": "TransformDependentRef"
+            },
+            "TransformDependents": {
+                "properties": {
+                    "continuous_evals": {
+                        "items": {
+                            "$ref": "#/components/schemas/TransformDependentRef"
+                        },
+                        "type": "array",
+                        "title": "Continuous Evals",
+                        "description": "Continuous evals that reference this transform."
+                    },
+                    "agentic_experiments": {
+                        "items": {
+                            "$ref": "#/components/schemas/TransformDependentRef"
+                        },
+                        "type": "array",
+                        "title": "Agentic Experiments",
+                        "description": "Agentic experiments that reference this transform."
+                    },
+                    "agentic_notebooks": {
+                        "items": {
+                            "$ref": "#/components/schemas/TransformDependentRef"
+                        },
+                        "type": "array",
+                        "title": "Agentic Notebooks",
+                        "description": "Agentic notebooks that reference this transform."
+                    }
+                },
+                "type": "object",
+                "title": "TransformDependents"
             },
             "TransformExtractionResponseList": {
                 "properties": {

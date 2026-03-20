@@ -32,9 +32,12 @@ import useSnackbar from "@/hooks/useSnackbar";
  * A prompt is a list of messages and templates, along with an associated output field/format.
  */
 const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp, highlightCost = false }: PromptComponentProps) => {
-  // This name value updates when an existing prompt is selected
   const [currentPromptName, setCurrentPromptName] = useState<string>(prompt.name || "");
-  const [nameInputValue, setNameInputValue] = useState("");
+  const prevPromptNameRef = useRef(prompt.name);
+  if (prompt.name !== prevPromptNameRef.current) {
+    prevPromptNameRef.current = prompt.name;
+    setCurrentPromptName(prompt.name || "");
+  }
   const [savePromptOpen, setSavePromptOpen] = useState<boolean>(false);
   const [toolsDialogOpen, setToolsDialogOpen] = useState<boolean>(false);
   const [responseSchemaDialogOpen, setResponseSchemaDialogOpen] = useState<boolean>(false);
@@ -74,10 +77,6 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp, highlightCost = 
   };
 
   useEffect(() => {
-    setNameInputValue(currentPromptName);
-  }, [currentPromptName]);
-
-  useEffect(() => {
     if (prompt.running && !hasTriggeredRunRef.current) {
       hasTriggeredRunRef.current = true;
       runPrompt();
@@ -86,9 +85,7 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp, highlightCost = 
     }
   }, [prompt.running, runPrompt]);
 
-  // Extract variables from prompt messages when they change
   useEffect(() => {
-    // React Query handles debouncing and caching automatically
     if (variablesQuery.data !== undefined) {
       dispatch({
         type: "extractPromptVariables",
@@ -105,7 +102,7 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp, highlightCost = 
   }, []);
 
   return (
-    <div ref={outerRef} className="h-full shadow-md rounded-lg p-1 bg-gray-200 flex flex-col">
+    <div ref={outerRef} className="h-full shadow-md rounded-lg p-1 bg-gray-200 dark:bg-gray-800 flex flex-col">
       <Container component="div" ref={containerRef} className="p-1 mt-1 flex flex-col h-full" maxWidth="lg" disableGutters>
         <div className="flex justify-between items-center gap-1 mb-2 shrink-0">
           <div className="flex justify-start items-center gap-1 min-w-0">
@@ -232,7 +229,7 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp, highlightCost = 
           </div>
         </div>
       </Container>
-      <SavePromptDialog open={savePromptOpen} setOpen={setSavePromptOpen} prompt={prompt} initialName={nameInputValue} />
+      <SavePromptDialog open={savePromptOpen} setOpen={setSavePromptOpen} prompt={prompt} initialName={currentPromptName} />
       <ToolsDialog open={toolsDialogOpen} setOpen={setToolsDialogOpen} prompt={prompt} />
       <Snackbar {...snackbarProps}>
         <Alert {...alertProps} />

@@ -256,6 +256,7 @@ export function datasetReducer(state: DatasetState, action: DatasetAction): Data
       return {
         ...state,
         searchQuery: action.payload,
+        pagination: { ...state.pagination, page: 0 },
       };
     }
 

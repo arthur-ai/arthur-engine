@@ -26,6 +26,7 @@ import {
   Snackbar,
   Alert,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
@@ -806,7 +807,7 @@ export const NotebookExperimentModal: React.FC<NotebookExperimentModalProps> = (
       />
 
       {/* Prompt Selection */}
-      <Box className="border border-gray-300 rounded p-4">
+      <Box sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 2 }}>
         <Box className="flex items-center gap-2 mb-2">
           <Typography variant="subtitle1" className="font-semibold">
             Prompt Versions *
@@ -844,7 +845,7 @@ export const NotebookExperimentModal: React.FC<NotebookExperimentModalProps> = (
 
         {selectedPromptName && (
           <Box className="mb-3">
-            <Typography variant="body2" className="text-gray-600 mb-2">
+            <Typography variant="body2" className="text-gray-600 dark:text-gray-400 mb-2">
               Select versions to include (click to toggle):
             </Typography>
             {loadingPromptVersions ? (
@@ -916,7 +917,7 @@ export const NotebookExperimentModal: React.FC<NotebookExperimentModalProps> = (
       </Box>
 
       {/* Dataset Selection */}
-      <Box className="border border-gray-300 rounded p-4">
+      <Box sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 2 }}>
         <Box className="flex items-center gap-2 mb-2">
           <Typography variant="subtitle1" className="font-semibold">
             Dataset *
@@ -960,7 +961,7 @@ export const NotebookExperimentModal: React.FC<NotebookExperimentModalProps> = (
                 <Box>
                   <Typography variant="body2">{option.name}</Typography>
                   {option.description && (
-                    <Typography variant="caption" className="text-gray-600">
+                    <Typography variant="caption" className="text-gray-600 dark:text-gray-400">
                       {option.description}
                     </Typography>
                   )}
@@ -1007,7 +1008,7 @@ export const NotebookExperimentModal: React.FC<NotebookExperimentModalProps> = (
       </Box>
 
       {/* Evaluator Selection */}
-      <Box className="border border-gray-300 rounded p-4">
+      <Box sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 2 }}>
         <Box className="flex items-center gap-2 mb-2">
           <Typography variant="subtitle1" className="font-semibold">
             Evaluators *
@@ -1141,7 +1142,7 @@ export const NotebookExperimentModal: React.FC<NotebookExperimentModalProps> = (
 
   const renderPromptVariableMappingStep = () => (
     <Box className="flex flex-col gap-4 mt-2">
-      <Typography variant="body1" className="text-gray-700">
+      <Typography variant="body1" className="text-gray-700 dark:text-gray-300">
         Map each prompt variable to a dataset column. Variables that match column names exactly have been auto-filled.
       </Typography>
 
@@ -1150,7 +1151,7 @@ export const NotebookExperimentModal: React.FC<NotebookExperimentModalProps> = (
           <CircularProgress />
         </Box>
       ) : promptVariables.length === 0 ? (
-        <Typography variant="body2" className="text-gray-600 italic">
+        <Typography variant="body2" className="text-gray-600 dark:text-gray-400 italic">
           No variables found for this prompt.
         </Typography>
       ) : (
@@ -1198,10 +1199,10 @@ export const NotebookExperimentModal: React.FC<NotebookExperimentModalProps> = (
     return (
       <Box className="flex flex-col gap-4 mt-2">
         <Box>
-          <Typography variant="body2" className="text-gray-500 mb-1">
+          <Typography variant="body2" className="text-gray-500 dark:text-gray-400 mb-1">
             Evaluator {evalIndex + 1} of {formData.evaluators.length}
           </Typography>
-          <Typography variant="body1" className="text-gray-700 mb-2">
+          <Typography variant="body1" className="text-gray-700 dark:text-gray-300 mb-2">
             Map each variable for{" "}
             <strong
               onClick={() => loadEvaluatorInstructions(evaluator.name, evaluator.version)}
@@ -1215,12 +1216,19 @@ export const NotebookExperimentModal: React.FC<NotebookExperimentModalProps> = (
             </strong>{" "}
             to either a dataset column or the experiment output.
           </Typography>
-          <Box className="p-3 bg-blue-50 border border-blue-200 rounded">
-            <Typography variant="body2" className="text-gray-800">
+          <Box
+            sx={(theme) => ({
+              p: 1.5,
+              bgcolor: alpha(theme.palette.info.main, 0.08),
+              border: `1px solid ${alpha(theme.palette.info.main, 0.3)}`,
+              borderRadius: 1,
+            })}
+          >
+            <Typography variant="body2" sx={{ color: "text.primary" }}>
               <strong>Dataset Column:</strong> Use this when the evaluator needs information from your test data (e.g., expected answers, reference
               text, ground truth labels).
             </Typography>
-            <Typography variant="body2" className="text-gray-800 mt-1">
+            <Typography variant="body2" sx={{ color: "text.primary", mt: 0.5 }}>
               <strong>Experiment Output:</strong> Use this when the evaluator needs to assess the prompt's generated response (e.g., to check
               accuracy, relevance, or quality of the output).
             </Typography>
@@ -1232,7 +1240,7 @@ export const NotebookExperimentModal: React.FC<NotebookExperimentModalProps> = (
             <CircularProgress />
           </Box>
         ) : evalVars.length === 0 ? (
-          <Typography variant="body2" className="text-gray-600 italic">
+          <Typography variant="body2" className="text-gray-600 dark:text-gray-400 italic">
             No variables found for this evaluator.
           </Typography>
         ) : (
@@ -1242,9 +1250,9 @@ export const NotebookExperimentModal: React.FC<NotebookExperimentModalProps> = (
               const sourceType = mapping?.sourceType || "dataset_column";
 
               return (
-                <Box key={varName} className="border border-gray-300 rounded p-3">
+                <Box key={varName} sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 1.5 }}>
                   <Box className="flex items-center justify-between mb-3">
-                    <Typography variant="subtitle2" className="font-medium">
+                    <Typography variant="subtitle2" sx={{ fontWeight: 500 }}>
                       {varName} *
                     </Typography>
 
@@ -1340,8 +1348,8 @@ export const NotebookExperimentModal: React.FC<NotebookExperimentModalProps> = (
                       </FormControl>
                     </Box>
                   ) : (
-                    <Box className="p-3 bg-gray-50 border border-gray-200 rounded">
-                      <Typography variant="body2" className="text-gray-600 italic">
+                    <Box className="p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded">
+                      <Typography variant="body2" className="text-gray-600 dark:text-gray-400 italic">
                         This variable will receive the full output from the prompt execution.
                       </Typography>
                     </Box>
@@ -1434,7 +1442,7 @@ export const NotebookExperimentModal: React.FC<NotebookExperimentModalProps> = (
             </Box>
           ) : selectedEvalInstructions ? (
             <Box
-              className="whitespace-pre-wrap font-mono text-sm p-4 bg-gray-50 border border-gray-200 rounded"
+              className="whitespace-pre-wrap font-mono text-sm p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded"
               sx={{
                 maxHeight: "70vh",
                 overflowY: "auto",

@@ -113,7 +113,7 @@ export const RagSearchPanel: React.FC<RagSearchPanelProps> = ({
       elevation={2}
       className="h-full flex flex-col overflow-hidden"
       sx={{
-        backgroundColor: "#f8fafc",
+        backgroundColor: "background.default",
         borderRadius: 2,
       }}
     >
@@ -123,7 +123,7 @@ export const RagSearchPanel: React.FC<RagSearchPanelProps> = ({
           py: 1,
           borderBottom: 1,
           borderColor: "divider",
-          backgroundColor: "white",
+          backgroundColor: "background.paper",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -136,7 +136,7 @@ export const RagSearchPanel: React.FC<RagSearchPanelProps> = ({
                 width: 8,
                 height: 8,
                 borderRadius: "50%",
-                backgroundColor: isReady ? "#22c55e" : "#9ca3af",
+                backgroundColor: isReady ? "success.main" : "text.disabled",
                 flexShrink: 0,
               }}
             />
@@ -182,7 +182,7 @@ export const RagSearchPanel: React.FC<RagSearchPanelProps> = ({
 
       <Box sx={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column" }}>
         <Collapse in={configExpanded}>
-          <Box sx={{ p: 2, backgroundColor: "white", borderBottom: 1, borderColor: "divider" }}>
+          <Box sx={{ p: 2, backgroundColor: "background.paper", borderBottom: 1, borderColor: "divider" }}>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
               <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
                 <Box sx={{ flex: 1 }}>
@@ -195,17 +195,19 @@ export const RagSearchPanel: React.FC<RagSearchPanelProps> = ({
 
               <Box sx={{ display: "flex", gap: 1 }}>
                 <Box sx={{ flex: 1 }}>
-                  <label htmlFor={`provider-${panel.id}`} className="block text-xs font-medium text-gray-700 mb-1">
+                  <label htmlFor={`provider-${panel.id}`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Provider
                   </label>
                   {isLoadingProviders ? (
-                    <Box className="px-2 py-1.5 border border-gray-300 rounded text-sm text-gray-500">Loading...</Box>
+                    <Box sx={{ px: 1, py: 0.75, border: 1, borderColor: "divider", borderRadius: 1, fontSize: "0.875rem", color: "text.secondary" }}>
+                      Loading...
+                    </Box>
                   ) : (
                     <select
                       id={`provider-${panel.id}`}
                       value={panel.providerId}
                       onChange={handleProviderChange}
-                      className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-900 dark:text-gray-100 dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
                       disabled={isExecuting || providers.length === 0}
                     >
                       <option value="">{providers.length === 0 ? "No providers" : "Select provider"}</option>
@@ -220,7 +222,7 @@ export const RagSearchPanel: React.FC<RagSearchPanelProps> = ({
 
                 {panel.providerId && (
                   <Box sx={{ flex: 1 }}>
-                    <label htmlFor={`collection-${panel.id}`} className="block text-xs font-medium text-gray-700 mb-1">
+                    <label htmlFor={`collection-${panel.id}`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Collection
                     </label>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -228,7 +230,7 @@ export const RagSearchPanel: React.FC<RagSearchPanelProps> = ({
                         id={`collection-${panel.id}`}
                         value={panel.collection?.identifier || ""}
                         onChange={handleCollectionChange}
-                        className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="flex-1 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-900 dark:text-gray-100 dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
                         disabled={isExecuting || isLoadingCollections}
                       >
                         {isLoadingCollections ? (
@@ -251,14 +253,14 @@ export const RagSearchPanel: React.FC<RagSearchPanelProps> = ({
 
               {panel.providerId && (
                 <Box>
-                  <label htmlFor={`method-${panel.id}`} className="block text-xs font-medium text-gray-700 mb-1">
+                  <label htmlFor={`method-${panel.id}`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Search Method
                   </label>
                   <select
                     id={`method-${panel.id}`}
                     value={panel.method}
                     onChange={handleMethodChange}
-                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-900 dark:text-gray-100 dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     disabled={isExecuting}
                   >
                     <option value="nearText">Near Text (Vector)</option>
@@ -306,7 +308,7 @@ export const RagSearchPanel: React.FC<RagSearchPanelProps> = ({
             sx={{
               px: 2,
               py: 1,
-              backgroundColor: "white",
+              backgroundColor: "background.paper",
               borderBottom: 1,
               borderColor: "divider",
               display: "flex",

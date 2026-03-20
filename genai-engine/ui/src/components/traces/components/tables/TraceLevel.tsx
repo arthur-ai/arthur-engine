@@ -1,11 +1,20 @@
-import { Alert, Box, Stack } from "@mui/material";
+import {
+  BucketProvider,
+  CopyableChip as SharedCopyableChip,
+  createTraceLevelColumns,
+  DurationCellWithBucket,
+  type ColumnDependencies as SharedColumnDependencies,
+  TextOperators,
+  TracesTable,
+} from "@arthur/shared-components";
+import { Search } from "@mui/icons-material";
+import { Alert, Box, Button, Paper, Stack, TextField } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
+import type { MRT_ColumnDef } from "material-react-table";
 import { memo, useCallback, useMemo, useState } from "react";
 
-import { BucketProvider } from "../../context/bucket-context";
 import { TokenCostTooltip, TokenCountTooltip } from "../../data/common";
-import { createTraceLevelColumns } from "../../data/create-trace-level-columns";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
 import { useSyncFiltersToUrl } from "../../hooks/useSyncFiltersToUrl";
 import { useFilterStore } from "../../stores/filter.store";
@@ -13,15 +22,11 @@ import { usePaginationContext } from "../../stores/pagination-context";
 import { buildThresholdsFromSample } from "../../utils/duration";
 import { AnnotationCell } from "../AnnotationCell";
 import { DataContentGate } from "../DataContentGate";
-import { DurationCellWithBucket } from "../DurationCell";
-import { FilterRow } from "../filtering/FilterRow";
-import { IncomingFilter } from "../filtering/mapper";
-import { TRACE_FIELDS } from "../filtering/trace-fields";
 import { TraceContentCell } from "../TraceContentCell";
 
-import { TracesTable } from "./TracesTable";
+import { TracingFilterModal } from "./components/TracingFilterModal";
 
-import { CopyableChip } from "@/components/common";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
@@ -40,9 +45,11 @@ interface TraceLevelProps {
 
 export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
   const { task } = useTask();
+  const { defaultCurrency } = useDisplaySettings();
   const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
 
   const [, setDrawerTarget] = useDrawerTarget();
+  const [searchInput, setSearchInput] = useState("");
 
   const timeRange = useFilterStore((state) => state.timeRange);
   const filters = useFilterStore((state) => state.filters);
@@ -54,6 +61,10 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
 
   const api = useApi()!;
 
+  const [sorting, setSorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
+
+  const sort: "asc" | "desc" = sorting[0]?.desc === false ? "asc" : "desc";
+
   const params = useMemo(
     () => ({
       taskId: task?.id ?? "",
@@ -61,8 +72,9 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
       pageSize: pagination.pageSize,
       filters,
       timeRange,
+      sort,
     }),
-    [task?.id, pagination.pageIndex, pagination.pageSize, filters, timeRange]
+    [task?.id, pagination.pageIndex, pagination.pageSize, filters, timeRange, sort]
   );
 
   const { data, isLoading, error } = useQuery({
@@ -71,8 +83,6 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
     placeholderData: keepPreviousData,
     queryFn: () => getFilteredTraces(api, params),
   });
-
-  const [sorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
 
   const handleRowClick = useCallback(
     (row: TraceMetadataResponse) => {
@@ -92,70 +102,82 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
     [data?.traces, setContext, setDrawerTarget, task?.id]
   );
 
-  const columns = useMemo(
-    () =>
-      createTraceLevelColumns({
-        formatDate,
-        formatCurrency,
-        onTrack: track,
-        Chip: CopyableChip,
-        DurationCell: DurationCellWithBucket,
-        TraceContentCell,
-        AnnotationCell,
-        SpanStatusBadge: () => null, // Not used in trace columns
-        TypeChip: () => null, // Not used in trace columns
-        TokenCountTooltip,
-        TokenCostTooltip,
-      }),
-    []
-  );
+  const displayCurrency = data?.display_currency ?? defaultCurrency;
+
+  const columns = useMemo(() => {
+    const deps: SharedColumnDependencies = {
+      formatDate,
+      formatCurrency: (amount: number) => formatCurrency(amount, displayCurrency),
+      onTrack: track,
+      Chip: SharedCopyableChip,
+      DurationCell: DurationCellWithBucket,
+      TraceContentCell,
+      AnnotationCell: AnnotationCell as unknown as SharedColumnDependencies["AnnotationCell"],
+      SpanStatusBadge: () => null,
+      TypeChip: () => null,
+      TokenCountTooltip,
+      TokenCostTooltip,
+    };
+    return createTraceLevelColumns(deps) as MRT_ColumnDef<TraceMetadataResponse, unknown>[];
+  }, [displayCurrency]);
 
   const setFilters = useFilterStore((state) => state.setFilters);
 
-  const handleFiltersChange = useCallback(
-    (newFilters: IncomingFilter[]) => {
-      setFilters(newFilters);
-    },
-    [setFilters]
-  );
-
-  const dynamicEnumArgMap = useMemo(
-    () => ({
-      trace_ids: { taskId: task?.id ?? "", api },
-      session_ids: { taskId: task?.id ?? "", api },
-      user_ids: { taskId: task?.id ?? "", api },
-      span_ids: { taskId: task?.id ?? "", api },
-    }),
-    [task?.id, api]
-  );
+  const handleSearch = useCallback(() => {
+    if (searchInput.trim()) {
+      const existingFilters = filters.filter((f) => f.name !== "span_name");
+      setFilters([
+        ...existingFilters,
+        {
+          name: "span_name",
+          operator: TextOperators.CONTAINS,
+          value: searchInput.trim(),
+        },
+      ]);
+    } else {
+      // Clear the span_name filter if search is empty
+      setFilters(filters.filter((f) => f.name !== "span_name"));
+    }
+  }, [searchInput, filters, setFilters]);
 
   const thresholds = useMemo(() => buildThresholdsFromSample(data?.traces?.map((trace) => trace.duration_ms) ?? []), [data?.traces]);
 
   // Check if any filters are active
   const hasActiveFilters = useMemo(() => filters.length > 0, [filters]);
 
-  if (error) {
-    return (
-      <Box sx={{ p: 2 }}>
-        <Alert severity="error">There was an error fetching traces.</Alert>
-      </Box>
-    );
-  }
-
   const hasData = Boolean(data?.traces?.length);
 
   return (
     <Stack gap={1} height="100%" overflow="hidden">
       <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={hasActiveFilters} dataType="traces">
-        {/* Only show FilterRow if we have traces or if filters are active */}
-        {(hasData || hasActiveFilters) && (
-          <FilterRow
-            filters={filters}
-            onFiltersChange={handleFiltersChange}
-            fieldConfig={TRACE_FIELDS}
-            dynamicEnumArgMap={dynamicEnumArgMap}
-            onTrack={track}
-          />
+        {/* Search bar and filter button */}
+        {(hasData || hasActiveFilters || error) && (
+          <Paper variant="outlined" sx={{ p: 2 }}>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <TextField
+                size="small"
+                placeholder="Search by span name"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleSearch();
+                  }
+                }}
+                sx={{ width: 300 }}
+              />
+              <Button variant="outlined" startIcon={<Search />} onClick={handleSearch}>
+                Search
+              </Button>
+              <TracingFilterModal />
+            </Stack>
+          </Paper>
+        )}
+
+        {error && (
+          <Box sx={{ p: 2 }}>
+            <Alert severity="error">There was an error fetching traces.</Alert>
+          </Box>
         )}
 
         {hasData && (
@@ -163,13 +185,14 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
             <BucketProvider thresholds={thresholds}>
               <TracesTable
                 data={data?.traces ?? DEFAULT_DATA}
-                columns={columns}
+                columns={columns as MRT_ColumnDef<TraceMetadataResponse, unknown>[]}
                 rowCount={data?.count ?? 0}
                 pagination={pagination}
                 onPaginationChange={props.onPaginationChange}
                 isLoading={isLoading}
                 onRowClick={handleRowClick}
                 sorting={sorting}
+                onSortingChange={setSorting}
               />
             </BucketProvider>
           </>

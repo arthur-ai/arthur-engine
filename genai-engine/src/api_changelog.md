@@ -1,9 +1,166 @@
 The intention of this changelog is to document API changes as they happen to effectively communicate them to customers.
 
 ---
+# 02/27/2026
+
+# 03/10/2026
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/dependents  endpoint added
+
+# 03/10/2026
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the non-success response with the status '409'
+
+# 02/27/2026
+- **CHANGE** for Component/Schema:  removed the schema 'CreationSource'
+- **CHANGE** for Component/Schema:  removed the schema 'DiscoverAgentsRequest'
+- **CHANGE** for Component/Schema:  removed the schema 'DiscoverAgentsResponse'
+- **CHANGE** for Component/Schema:  removed the schema 'DiscoveredAgent'
+- **CHANGE** for **URL**: /api/v1/discover-agents  api path removed with deprecation
+
+# 02/26/2026
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the new optional request property 'only_archived'
+
+# 02/26/2026
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property 'is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the new optional request property 'include_archived'
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the optional property 'tasks/items/is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  added the optional property 'is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id}  added the optional property 'is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/unarchive  endpoint added
+
+# 02/26/2026
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'display_currency' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions  added the optional property 'display_currency' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'display_currency' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'display_currency' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the optional property 'display_currency' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/users  added the optional property 'display_currency' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/display-settings  endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the new optional request property 'only_archived'
+
+# 02/25/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/agent-polling/execute-all  removed the required property 'enqueued' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  added the new optional 'query' request parameter 'timeout'
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  added the new optional 'query' request parameter 'wait_for_completion'
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  added the non-success response with the status '422'
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  added the required property 'traces_fetched' to the response with the '200' status
+
+# 02/25/2026
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added '#/components/schemas/AgentCreationSource' to the '/items/creation_source' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed '#/components/schemas/GCPAgentCreationSource, #/components/schemas/OTELAgentCreationSource, #/components/schemas/ManualAgentCreationSource' from the '/items/creation_source' response property 'anyOf' list for the response status '200'
+
+# 02/24/2026
+- **CHANGE** for Component/Schema:  removed the schema 'GCPCreationSource'
+- **CHANGE** for Component/Schema:  removed the schema 'ManualCreationSource'
+- **CHANGE** for Component/Schema:  removed the schema 'OTELCreationSource'
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added '#/components/schemas/GCPAgentCreationSource, #/components/schemas/OTELAgentCreationSource, #/components/schemas/ManualAgentCreationSource' to the '/items/creation_source' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed '#/components/schemas/GCPCreationSource, #/components/schemas/OTELCreationSource, #/components/schemas/ManualCreationSource' from the '/items/creation_source' response property 'anyOf' list for the response status '200'
+
+# 02/23/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  the '/items/models/anyOf[subschema #1]/items/' response's property type/format changed from 'string'/'' to 'object'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  removed the required property '/items/creation_source/anyOf[subschema #2: OTELCreationSource]/service_name' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/creation_source/anyOf[subschema #1: GCPCreationSource]/last_fetched' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/creation_source/anyOf[subschema #3: ManualCreationSource]/service_names' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/infrastructure' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/is_agentic' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/execute  endpoint added
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #2: OTELCreationSource]/service_names' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/data_sources' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/last_fetched' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  the 'type' response's property default value changed from 'manual' to 'MANUAL' for the status '200'
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the required property '/items/models/anyOf[subschema #1]/items/name' to the response with the '200' status
+
+# 02/23/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  the '/items/models/anyOf[subschema #1]/items/' response's property type/format changed from 'string'/'' to 'object'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  removed the required property '/items/creation_source/anyOf[subschema #2: OTELCreationSource]/service_name' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/creation_source/anyOf[subschema #1: GCPCreationSource]/last_fetched' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/creation_source/anyOf[subschema #3: ManualCreationSource]/service_names' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/infrastructure' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/is_agentic' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/execute  endpoint added
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #2: OTELCreationSource]/service_names' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/data_sources' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/last_fetched' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  the 'type' response's property default value changed from 'manual' to 'MANUAL' for the status '200'
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the required property '/items/models/anyOf[subschema #1]/items/name' to the response with the '200' status
+
+# 02/23/2026
+- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  the '/items/data_sources/anyOf[subschema #1]/items/' response's property type/format changed from 'string'/'' to 'object'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  the '/items/models/anyOf[subschema #1]/items/' response's property type/format changed from 'string'/'' to 'object'/'' for status '200'
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  endpoint added
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the required property '/items/data_sources/anyOf[subschema #1]/items/url' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the required property '/items/models/anyOf[subschema #1]/items/name' to the response with the '200' status
+
+02/20/2026
+- Added GET /api/v2/agent-tasks — new unified endpoint for listing agentic tasks with enriched metadata (tools, sub-agents, models, data sources, rules, creation source, span counts)
+- Added POST /api/v1/tasks/{task_id}/agent-polling/execute — manual trigger for global polling per task
+- POST /api/v1/discover-agents — deprecated in favor of /api/v2/agent-tasks
+- Removed POST /api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id} — replaced by the new /execute endpoint
+
+
+02/12/2026
+
+CHANGE for multiple endpoints: Added new 'external' enum value to 'agent_metadata/provider' in responses and requests for POST /api/v2/tasks, GET /api/v2/tasks/{task_id}, and PATCH /api/v2/tasks/{task_id}/metrics/{metric_id}
+CHANGE warning: Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead
+
+02/12/2026
+
+CHANGE for multiple endpoints: Added optional property 'service_names' to 'agent_metadata' in responses for /api/v2/tasks, /api/v2/tasks/search, /api/v2/tasks/{task_id}, /api/v2/tasks/{task_id}/metrics/{metric_id}, and /api/v2/tasks/{task_id}/rules/{rule_id}
+
+02/10/2026
+
+CHANGE for /api/v1/tasks/{task_id}/traces/transforms: Added required property 'count' to response with status '200'
+CHANGE for multiple endpoints: Added optional properties 'is_autocreated' and 'is_system_task' to responses for /api/v2/tasks, /api/v2/tasks/search, /api/v2/tasks/{task_id}, /api/v2/tasks/{task_id}/metrics/{metric_id}, and /api/v2/tasks/{task_id}/rules/{rule_id}
+
+# 02/06/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional 'query' request parameter 'continuous_eval_ids'
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks  added the new optional request property 'agent_metadata'
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the optional property 'tasks/items/agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id}  added the optional property 'agent_metadata' to the response with the '200' status
+
+# 02/05/2026
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks  added the new optional request property 'agent_metadata'
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the optional property 'tasks/items/agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id}  added the optional property 'agent_metadata' to the response with the '200' status
+
+# 02/04/2026
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks  added the new optional request property 'agent_metadata'
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the optional property 'tasks/items/agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id}  added the optional property 'agent_metadata' to the response with the '200' status
+
+# 02/04/2026
+- **CHANGE** for **URL**: /api/v1/discover-agents  endpoint added
 
 # 02/03/2026
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/analytics/daily  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'eval_name'
+
+# 02/02/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  deleted the 'query' request parameter 'continuous_eval_id'
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/continuous_evals/results
+- **CHANGE**warning [request-parameter-removed] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'continuous_eval_ids'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'ids'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'trace_ids'
 
 # 02/02/2026
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  added the new optional request property 'rows_to_add/items/id'

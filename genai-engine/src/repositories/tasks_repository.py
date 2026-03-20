@@ -1,21 +1,48 @@
+import uuid
+from datetime import datetime, timedelta
 from typing import Optional
 
-from arthur_common.models.enums import PaginationSortMethod, RuleScope, RuleType
+from arthur_common.models.agent_governance_schemas import (
+    AgentCreationSource,
+    DataSource,
+    EnrichedAgentMetadata,
+    GCPAgentCreationSource,
+    LLMModel,
+    ManualAgentCreationSource,
+    OTELAgentCreationSource,
+    SubAgent,
+    Tool,
+)
+from arthur_common.models.enums import (
+    PaginationSortMethod,
+    RuleScope,
+    RuleType,
+)
 from fastapi import HTTPException
+from openinference.semconv.trace import OpenInferenceSpanKindValues
 from opentelemetry import trace
-from sqlalchemy import asc, desc
+from sqlalchemy import asc, desc, func
 from sqlalchemy.orm import Session
 
 from db_models import (
     DatabaseRule,
+    DatabaseSpan,
     DatabaseTask,
     DatabaseTaskToMetrics,
     DatabaseTaskToRules,
 )
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
-from schemas.internal_schemas import ApplicationConfiguration, Rule, Task
+from repositories.service_name_mapping_repository import (
+    ServiceNameMappingRepository,
+)
+from schemas.internal_schemas import (
+    ApplicationConfiguration,
+    Rule,
+    Task,
+)
 from utils import constants
+from utils.trace import get_nested_value
 
 tracer = trace.get_tracer(__name__)
 
@@ -47,6 +74,7 @@ class TaskRepository:
         task_name: Optional[str] = None,
         is_agentic: Optional[bool] = None,
         include_archived: bool = False,
+        only_archived: bool = False,
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
         page_size: int = 10,
         page: int = 0,
@@ -58,7 +86,9 @@ class TaskRepository:
             stmt = stmt.where(DatabaseTask.name.ilike(f"%{task_name}%"))
         if is_agentic is not None:
             stmt = stmt.where(DatabaseTask.is_agentic == is_agentic)
-        if not include_archived:
+        if only_archived:
+            stmt = stmt.where(DatabaseTask.archived == True)
+        elif not include_archived:
             stmt = stmt.where(DatabaseTask.archived == False)
         if sort == PaginationSortMethod.DESCENDING:
             stmt = stmt.order_by(desc(DatabaseTask.created_at))
@@ -74,11 +104,13 @@ class TaskRepository:
 
         return results, count
 
-    def get_db_task_by_id(self, id: str) -> DatabaseTask:
+    def get_db_task_by_id(
+        self, id: str, include_archived: bool = False
+    ) -> DatabaseTask:
         db_task = (
             self.db_session.query(DatabaseTask).filter(DatabaseTask.id == id).first()
         )
-        if not db_task or db_task.archived:
+        if not db_task or (not include_archived and db_task.archived):
             raise HTTPException(
                 status_code=404,
                 detail="Task %s not found." % id,
@@ -87,7 +119,157 @@ class TaskRepository:
         return db_task
 
     def get_task_by_id(self, id: str) -> Task:
-        return Task._from_database_model(self.get_db_task_by_id(id))
+        db_task = self.get_db_task_by_id(id)
+        task = Task._from_database_model(db_task)
+
+        # Enrich with service names from service_name_task_mappings
+        if task.is_agentic:
+            service_name_repo = ServiceNameMappingRepository(self.db_session)
+            service_names = service_name_repo.get_service_names_by_task_id(id)
+            if service_names:
+                task.service_names = service_names
+
+        return task
+
+    def _extract_agent_metadata(self, task_id: str) -> EnrichedAgentMetadata:
+        """Extract tools, sub-agents, models, and span count from spans for an agent task.
+
+        Queries the spans table for the given task_id and extracts:
+        - Tools: spans where span_kind == TOOL (last 30 days)
+        - Sub-agents: spans where span_kind == AGENT (last 30 days)
+        - Models: extracted from LLM spans at attributes.llm.model_name (last 30 days)
+        - Total number of spans (all time, all span kinds)
+
+        Args:
+            task_id: UUID of the task to extract metadata for
+
+        Returns:
+            EnrichedAgentMetadata TypedDict with keys: tools, sub_agents, models, num_spans
+        """
+        # Query AGENT, TOOL, LLM spans for metadata extraction (last 30 days)
+        relevant_span_kinds = [
+            OpenInferenceSpanKindValues.AGENT.value,
+            OpenInferenceSpanKindValues.TOOL.value,
+            OpenInferenceSpanKindValues.LLM.value,
+        ]
+        thirty_days_ago = datetime.now() - timedelta(days=30)
+        spans = (
+            self.db_session.query(DatabaseSpan)
+            .filter(
+                DatabaseSpan.task_id == task_id,
+                DatabaseSpan.span_kind.in_(relevant_span_kinds),
+                DatabaseSpan.created_at >= thirty_days_ago,
+            )
+            .all()
+        )
+
+        # Count all spans for this task (not filtered by span_kind)
+        total_span_count = (
+            self.db_session.query(func.count(DatabaseSpan.id))
+            .filter(DatabaseSpan.task_id == task_id)
+            .scalar()
+        ) or 0
+
+        tools_set = set()
+        sub_agents_set = set()
+        models_set = set()
+        data_sources_set = set()
+
+        for span in spans:
+            raw_data = span.raw_data or {}
+            attributes = raw_data.get("attributes", {})
+
+            # Extract data_source from metadata for all span kinds
+            data_source = get_nested_value(attributes, "metadata.data_source")
+            if data_source:
+                data_sources_set.add(data_source)
+
+            if span.span_kind == OpenInferenceSpanKindValues.TOOL.value:
+                tool_name = (
+                    get_nested_value(attributes, "tool_call.function.name")
+                    or span.span_name
+                )
+                if tool_name:
+                    tools_set.add(tool_name)
+
+            elif span.span_kind == OpenInferenceSpanKindValues.AGENT.value:
+                agent_name = (
+                    get_nested_value(attributes, "agent.name") or span.span_name
+                )
+                if agent_name:
+                    sub_agents_set.add(agent_name)
+
+            elif span.span_kind == OpenInferenceSpanKindValues.LLM.value:
+                model_name = get_nested_value(attributes, "llm.model_name")
+                if model_name:
+                    models_set.add(model_name)
+
+        return {
+            "tools": [Tool(name=name, arguments=[]) for name in sorted(tools_set)],
+            "sub_agents": [SubAgent(name=name) for name in sorted(sub_agents_set)],
+            "models": [LLMModel(name=name) for name in sorted(models_set)],
+            "data_sources": [DataSource(url=url) for url in sorted(data_sources_set)],
+            "num_spans": total_span_count,
+        }
+
+    def _get_task_creation_source(self, task: Task) -> Optional[AgentCreationSource]:
+        """Get creation_source for a task, with service_names injected.
+
+        Reads creation_source directly from task_metadata.
+        For tasks without task_metadata, infers creation source from task properties.
+        Injects task.service_names (from service_name_task_mappings) into the
+        returned GCP/OTEL creation_source.
+
+        Args:
+            task: Task object with service_names already populated
+
+        Returns:
+            AgentCreationSource or None
+        """
+        service_names = task.service_names or []
+
+        if task.task_metadata and task.task_metadata.creation_source:
+            cs = task.task_metadata.creation_source.root
+            if isinstance(cs, GCPAgentCreationSource):
+                return AgentCreationSource(
+                    root=cs.model_copy(update={"service_names": service_names})
+                )
+            elif isinstance(cs, OTELAgentCreationSource):
+                return AgentCreationSource(
+                    root=cs.model_copy(update={"service_names": service_names})
+                )
+            return AgentCreationSource(root=cs)
+
+        # No task_metadata — infer from task properties
+        if task.is_autocreated:
+            return AgentCreationSource(
+                root=OTELAgentCreationSource(service_names=service_names)
+            )
+        elif task.is_agentic:
+            return AgentCreationSource(root=ManualAgentCreationSource())
+        else:
+            return None
+
+    def _enrich_tasks_with_service_names(self, tasks: list[Task]) -> list[Task]:
+        """Enrich tasks with service names from service_name_task_mappings.
+
+        Sets task.service_names for each agentic task.
+
+        Args:
+            tasks: List of tasks to enrich
+
+        Returns:
+            List of tasks with service_names populated
+        """
+        service_name_repo = ServiceNameMappingRepository(self.db_session)
+
+        for task in tasks:
+            if task.is_agentic:
+                service_names = service_name_repo.get_service_names_by_task_id(task.id)
+                if service_names:
+                    task.service_names = service_names
+
+        return tasks
 
     def get_all_tasks(self) -> list[Task]:
         # Continuously grab tasks until there are no more, DEFAULT_PAGE_SIZE at a time
@@ -105,17 +287,55 @@ class TaskRepository:
 
         tasks = [Task._from_database_model(op) for op in all_tasks]
 
+        # Enrich tasks with service names
+        tasks = self._enrich_tasks_with_service_names(tasks)
+
         return tasks
 
     def archive_task(self, task_id: str) -> None:
         db_task = self.get_db_task_by_id(task_id)
+
+        # Prevent archiving of system tasks
+        if db_task.is_system_task:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot archive system tasks",
+                headers={"full_stacktrace": "false"},
+            )
+
         for link in db_task.rule_links:
             if link.rule.scope == RuleScope.TASK:
-                self.rule_repository.archive_rule(link.rule_id)
+                self.rule_repository.archive_rule(link.rule_id, commit=False)
 
         for metric_link in db_task.metric_links:
-            self.metric_repository.archive_metric(metric_link.metric_id)
+            self.metric_repository.archive_metric(metric_link.metric_id, commit=False)
+
         db_task.archived = True
+        self.db_session.commit()
+
+    def unarchive_task(self, task_id: str) -> None:
+        db_task = (
+            self.db_session.query(DatabaseTask)
+            .filter(DatabaseTask.id == task_id)
+            .first()
+        )
+        if not db_task:
+            raise HTTPException(status_code=404, detail="Task %s not found." % task_id)
+        if not db_task.archived:
+            raise HTTPException(
+                status_code=400, detail="Task %s is not archived." % task_id
+            )
+        if db_task.is_system_task:
+            raise HTTPException(status_code=400, detail="Cannot unarchive system tasks")
+
+        for link in db_task.rule_links:
+            if link.rule.scope == RuleScope.TASK:
+                self.rule_repository.unarchive_rule(link.rule_id, commit=False)
+
+        for metric_link in db_task.metric_links:
+            self.metric_repository.unarchive_metric(metric_link.metric_id, commit=False)
+
+        db_task.archived = False
         self.db_session.commit()
 
     def create_task(self, task: Task, with_default_rules: bool = True) -> Task:
@@ -132,7 +352,59 @@ class TaskRepository:
         self.db_session.add(db_task)
         self.db_session.commit()
 
-        return Task._from_database_model(db_task)
+        result = Task._from_database_model(db_task)
+        return result
+
+    def create_auto_task(self, service_name: str) -> Task:
+        """Create an auto-generated task for a service name.
+
+        Auto-created tasks:
+        - Have name set to the service_name
+        - Have is_autocreated=True flag set
+        - Are agentic (is_agentic=True)
+        - Do NOT get default rules (with_default_rules=False)
+        - Have no task_metadata (not a registered agent)
+
+        Args:
+            service_name: The service name to create a task for
+
+        Returns:
+            Task: The created task
+        """
+        task_id = str(uuid.uuid4())
+
+        task = Task(
+            id=task_id,
+            name=service_name,
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+            is_agentic=True,
+            is_autocreated=True,
+        )
+
+        return self.create_task(task, with_default_rules=False)
+
+    def find_by_gcp_engine_id(self, engine_id: str) -> Optional[DatabaseTask]:
+        """Find a task by its GCP reasoning engine ID in task_metadata JSON.
+
+        Args:
+            engine_id: The GCP reasoning engine ID to search for
+
+        Returns:
+            The matching DatabaseTask, or None if not found
+        """
+        return (
+            self.db_session.query(DatabaseTask)
+            .filter(
+                func.json_extract_path_text(
+                    DatabaseTask.task_metadata,
+                    "creation_source",
+                    "gcp_reasoning_engine_id",
+                )
+                == engine_id,
+            )
+            .first()
+        )
 
     def link_rule_to_task(
         self,
@@ -225,6 +497,16 @@ class TaskRepository:
         self.db_session.commit()
 
     def delete_task(self, task_id: str) -> None:
+        db_task = self.get_db_task_by_id(task_id)
+
+        # Prevent deletion of system tasks
+        if db_task.is_system_task:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot delete system tasks",
+                headers={"full_stacktrace": "false"},
+            )
+
         self.db_session.query(DatabaseTask).filter(DatabaseTask.id == task_id).delete()
         self.db_session.commit()
 

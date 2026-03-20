@@ -76,6 +76,7 @@ class DocumentStorageConfigurationUpdateRequest(BaseModel):
 
 class ApplicationConfigurationUpdateRequest(BaseModel):
     chat_task_id: Optional[str] = None
+    default_currency: Optional[str] = None
     document_storage_configuration: Optional[
         DocumentStorageConfigurationUpdateRequest
     ] = None
@@ -1027,6 +1028,18 @@ class ContinuousEvalListFilterRequest(BaseModel):
         None,
         description="Whether the continuous eval is enabled.",
     )
+    continuous_eval_ids: Optional[List[UUID]] = Field(
+        None,
+        description="List of continuous eval IDs to filter on",
+    )
+    llm_eval_name_exact: Optional[str] = Field(
+        None,
+        description="Exact LLM eval name to filter on (case-sensitive exact match)",
+    )
+    llm_eval_version: Optional[int] = Field(
+        None,
+        description="LLM eval version to filter on",
+    )
 
     @staticmethod
     def from_query_parameters(
@@ -1050,8 +1063,30 @@ class ContinuousEvalListFilterRequest(BaseModel):
             None,
             description="Whether the continuous eval is enabled.",
         ),
+        continuous_eval_ids: Optional[List[str]] = Query(
+            None,
+            description="List of continuous eval IDs to filter on.",
+        ),
+        llm_eval_name_exact: Optional[str] = Query(
+            None,
+            description="Exact LLM eval name to filter on (case-sensitive exact match).",
+        ),
+        llm_eval_version: Optional[int] = Query(
+            None,
+            description="LLM eval version to filter on.",
+        ),
     ) -> "ContinuousEvalListFilterRequest":
         """Create a ContinuousEvalListFilterRequest from query parameters."""
+        parsed_continuous_eval_ids = None
+        if continuous_eval_ids:
+            try:
+                parsed_continuous_eval_ids = [UUID(id) for id in continuous_eval_ids]
+            except ValueError as e:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid UUID format for parameter 'continuous_eval_ids': {e}",
+                )
+
         return ContinuousEvalListFilterRequest(
             name=name,
             llm_eval_name=llm_eval_name,
@@ -1062,6 +1097,9 @@ class ContinuousEvalListFilterRequest(BaseModel):
                 datetime.fromisoformat(created_before) if created_before else None
             ),
             enabled=enabled.lower() == "true" if enabled else None,
+            continuous_eval_ids=parsed_continuous_eval_ids,
+            llm_eval_name_exact=llm_eval_name_exact,
+            llm_eval_version=llm_eval_version,
         )
 
 
@@ -1069,17 +1107,21 @@ class ContinuousEvalRunResultsListFilterRequest(BaseModel):
     """Request schema for filtering continuous eval run results"""
 
     # Optional filters
-    id: Optional[UUID] = Field(
+    ids: Optional[List[UUID]] = Field(
         None,
-        description="ID of the agentic annotation to filter on",
+        description="List of agentic annotation IDs to filter on",
     )
-    continuous_eval_id: Optional[UUID] = Field(
+    continuous_eval_ids: Optional[List[UUID]] = Field(
         None,
-        description="ID of the continuous eval to filter on",
+        description="List of continuous eval IDs to filter on",
     )
-    trace_id: Optional[str] = Field(
+    eval_name: Optional[str] = Field(
         None,
-        description="Trace ID to filter on",
+        description="Name of the continuous eval to filter on",
+    )
+    trace_ids: Optional[List[str]] = Field(
+        None,
+        description="List of trace IDs to filter on",
     )
     annotation_score: Optional[int] = Field(
         None,
@@ -1104,17 +1146,21 @@ class ContinuousEvalRunResultsListFilterRequest(BaseModel):
 
     @staticmethod
     def from_query_parameters(
-        id: Optional[str] = Query(
+        ids: Optional[List[str]] = Query(
             None,
-            description="ID of the continuous eval to filter on.",
+            description="List of agentic annotation IDs to filter on.",
         ),
-        continuous_eval_id: Optional[str] = Query(
+        continuous_eval_ids: Optional[List[str]] = Query(
             None,
-            description="ID of the continuous eval to filter on.",
+            description="List of continuous eval IDs to filter on.",
         ),
-        trace_id: Optional[str] = Query(
+        eval_name: Optional[str] = Query(
             None,
-            description="Trace ID to filter on.",
+            description="Name of the continuous eval to filter on.",
+        ),
+        trace_ids: Optional[List[str]] = Query(
+            None,
+            description="List of trace IDs to filter on.",
         ),
         annotation_score: Optional[int] = Query(
             None,
@@ -1139,30 +1185,31 @@ class ContinuousEvalRunResultsListFilterRequest(BaseModel):
     ) -> "ContinuousEvalRunResultsListFilterRequest":
         """Create a ContinuousEvalRunResultsListFilterRequest from query parameters."""
         # Validate UUID parameters
-        parsed_id = None
-        if id:
+        parsed_ids = None
+        if ids:
             try:
-                parsed_id = UUID(id)
-            except ValueError:
+                parsed_ids = [UUID(i) for i in ids]
+            except ValueError as e:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Invalid UUID format for parameter 'id': {id}",
+                    detail=f"Invalid UUID format for parameter 'ids': {e}",
                 )
 
-        parsed_continuous_eval_id = None
-        if continuous_eval_id:
+        parsed_continuous_eval_ids = None
+        if continuous_eval_ids:
             try:
-                parsed_continuous_eval_id = UUID(continuous_eval_id)
-            except ValueError:
+                parsed_continuous_eval_ids = [UUID(i) for i in continuous_eval_ids]
+            except ValueError as e:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Invalid UUID format for parameter 'continuous_eval_id': {continuous_eval_id}",
+                    detail=f"Invalid UUID format for parameter 'continuous_eval_ids': {e}",
                 )
 
         return ContinuousEvalRunResultsListFilterRequest(
-            id=parsed_id,
-            continuous_eval_id=parsed_continuous_eval_id,
-            trace_id=trace_id,
+            ids=parsed_ids,
+            continuous_eval_ids=parsed_continuous_eval_ids,
+            eval_name=eval_name,
+            trace_ids=trace_ids,
             annotation_score=annotation_score,
             run_status=run_status,
             created_after=(

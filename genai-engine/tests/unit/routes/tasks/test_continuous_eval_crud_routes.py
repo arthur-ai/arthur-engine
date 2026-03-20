@@ -979,6 +979,23 @@ def test_list_continuous_evals_filtering(client: GenaiEngineTestClientBase):
 
         continuous_evals = sorted(continuous_evals, key=lambda x: x.created_at)
 
+        # Test filtering by continuous eval ids
+        status_code, received_continuous_evals = client.list_continuous_evals(
+            task_id=agentic_task.id,
+            search_url=f"continuous_eval_ids={continuous_evals[0].id}",
+        )
+        assert status_code == 200
+        assert len(received_continuous_evals.evals) == 1
+        assert received_continuous_evals.count == 1
+
+        status_code, received_continuous_evals = client.list_continuous_evals(
+            task_id=agentic_task.id,
+            search_url=f"continuous_eval_ids={continuous_evals[0].id}&continuous_eval_ids={continuous_evals[1].id}",
+        )
+        assert status_code == 200
+        assert len(received_continuous_evals.evals) == 2
+        assert received_continuous_evals.count == 2
+
         # Test filtering by created after
         status_code, received_continuous_evals = client.list_continuous_evals(
             task_id=agentic_task.id,
@@ -1013,6 +1030,147 @@ def test_list_continuous_evals_filtering(client: GenaiEngineTestClientBase):
         assert status_code == 200
         assert len(received_continuous_evals.evals) == 1
         assert received_continuous_evals.count == 1
+    finally:
+        client.delete_task(agentic_task.id)
+
+
+@pytest.mark.unit_tests
+def test_list_continuous_evals_filtering_exact_name_and_version(
+    client: GenaiEngineTestClientBase,
+):
+    """Test listing continuous evals with llm_eval_name_exact and llm_eval_version filters"""
+
+    status_code, agentic_task = client.create_task(
+        name="test_list_ce_exact_filters",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    try:
+        # Create two evals with names where one is a substring of the other
+        status_code, llm_eval_short = create_test_llm_eval(
+            client, agentic_task.id, "test_eval"
+        )
+        assert status_code == 200
+
+        status_code, llm_eval_long = create_test_llm_eval(
+            client, agentic_task.id, "test_eval_extended"
+        )
+        assert status_code == 200
+
+        # Create a second version of the short eval
+        status_code, llm_eval_short_v2 = create_test_llm_eval(
+            client, agentic_task.id, "test_eval"
+        )
+        assert status_code == 200
+        assert llm_eval_short_v2.version == 2
+
+        # Create transforms for 3 CEs
+        transforms = []
+        for _ in range(3):
+            status_code, transform = create_test_transform(client, agentic_task.id)
+            assert status_code == 200
+            transforms.append(transform)
+
+        # CE 0: uses test_eval v1
+        status_code, ce_short_v1 = client.save_continuous_eval(
+            task_id=agentic_task.id,
+            continuous_eval_data={
+                "name": "ce_short_v1",
+                "llm_eval_name": llm_eval_short.name,
+                "llm_eval_version": llm_eval_short.version,
+                "transform_id": str(transforms[0].id),
+                "transform_variable_mapping": [
+                    {"transform_variable": "test_variable", "eval_variable": "test_variable"},
+                ],
+            },
+        )
+        assert status_code == 200
+
+        # CE 1: uses test_eval v2
+        status_code, ce_short_v2 = client.save_continuous_eval(
+            task_id=agentic_task.id,
+            continuous_eval_data={
+                "name": "ce_short_v2",
+                "llm_eval_name": llm_eval_short_v2.name,
+                "llm_eval_version": llm_eval_short_v2.version,
+                "transform_id": str(transforms[1].id),
+                "transform_variable_mapping": [
+                    {"transform_variable": "test_variable", "eval_variable": "test_variable"},
+                ],
+            },
+        )
+        assert status_code == 200
+
+        # CE 2: uses test_eval_extended v1
+        status_code, ce_long = client.save_continuous_eval(
+            task_id=agentic_task.id,
+            continuous_eval_data={
+                "name": "ce_long",
+                "llm_eval_name": llm_eval_long.name,
+                "llm_eval_version": llm_eval_long.version,
+                "transform_id": str(transforms[2].id),
+                "transform_variable_mapping": [
+                    {"transform_variable": "test_variable", "eval_variable": "test_variable"},
+                ],
+            },
+        )
+        assert status_code == 200
+
+        # ilike filter matches both "test_eval" and "test_eval_extended"
+        status_code, result = client.list_continuous_evals(
+            task_id=agentic_task.id,
+            search_url="llm_eval_name=test_eval",
+        )
+        assert status_code == 200
+        assert result.count == 3
+
+        # Exact name filter matches only "test_eval" (not "test_eval_extended")
+        status_code, result = client.list_continuous_evals(
+            task_id=agentic_task.id,
+            search_url="llm_eval_name_exact=test_eval",
+        )
+        assert status_code == 200
+        assert result.count == 2
+        returned_names = {ce.name for ce in result.evals}
+        assert returned_names == {"ce_short_v1", "ce_short_v2"}
+
+        # Exact name filter for the longer name
+        status_code, result = client.list_continuous_evals(
+            task_id=agentic_task.id,
+            search_url="llm_eval_name_exact=test_eval_extended",
+        )
+        assert status_code == 200
+        assert result.count == 1
+        assert result.evals[0].name == "ce_long"
+
+        # Version filter: only v1 CEs
+        status_code, result = client.list_continuous_evals(
+            task_id=agentic_task.id,
+            search_url="llm_eval_version=1",
+        )
+        assert status_code == 200
+        assert result.count == 2
+        returned_names = {ce.name for ce in result.evals}
+        assert returned_names == {"ce_short_v1", "ce_long"}
+
+        # Combined: exact name + version
+        status_code, result = client.list_continuous_evals(
+            task_id=agentic_task.id,
+            search_url="llm_eval_name_exact=test_eval&llm_eval_version=1",
+        )
+        assert status_code == 200
+        assert result.count == 1
+        assert result.evals[0].name == "ce_short_v1"
+
+        # No match scenario
+        status_code, result = client.list_continuous_evals(
+            task_id=agentic_task.id,
+            search_url="llm_eval_name_exact=nonexistent_eval",
+        )
+        assert status_code == 200
+        assert result.count == 0
+
     finally:
         client.delete_task(agentic_task.id)
 
@@ -1332,28 +1490,28 @@ def test_list_continuous_eval_run_results_filtering(client: GenaiEngineTestClien
     annotations = [annotation_1, annotation_2, annotation_3, annotation_4]
 
     try:
-        # Test filtering by annotation id
+        # Test filtering by annotation id (using plural parameter name)
         status_code, received_run_results = client.list_continuous_eval_run_results(
             task_id=task_id,
-            search_url=f"id={str(annotation_1.id)}",
+            search_url=f"ids={str(annotation_1.id)}",
         )
         assert status_code == 200
         assert len(received_run_results.annotations) == 1
         assert received_run_results.count == 1
 
-        # Test filtering by trace id
+        # Test filtering by trace id (using plural parameter name)
         status_code, received_run_results = client.list_continuous_eval_run_results(
             task_id=task_id,
-            search_url=f"trace_id={trace_id}",
+            search_url=f"trace_ids={trace_id}",
         )
         assert status_code == 200
         assert len(received_run_results.annotations) == 3
         assert received_run_results.count == 3
 
-        # Test filtering by continuous eval id
+        # Test filtering by continuous eval id (using plural parameter name)
         status_code, received_run_results = client.list_continuous_eval_run_results(
             task_id=task_id,
-            search_url=f"continuous_eval_id={continuous_eval.id}",
+            search_url=f"continuous_eval_ids={continuous_eval.id}",
         )
         assert status_code == 200
         assert len(received_run_results.annotations) == 2
@@ -1361,11 +1519,28 @@ def test_list_continuous_eval_run_results_filtering(client: GenaiEngineTestClien
 
         status_code, received_run_results = client.list_continuous_eval_run_results(
             task_id=task_id,
-            search_url=f"continuous_eval_id={continuous_eval_2.id}",
+            search_url=f"continuous_eval_ids={continuous_eval_2.id}",
         )
         assert status_code == 200
         assert len(received_run_results.annotations) == 1
         assert received_run_results.count == 1
+
+        # Test filtering by continuous eval name
+        status_code, received_run_results = client.list_continuous_eval_run_results(
+            task_id=task_id,
+            search_url=f"eval_name={continuous_eval.name}",
+        )
+        assert status_code == 200
+        assert len(received_run_results.annotations) == 3
+        assert received_run_results.count == 3
+
+        status_code, received_run_results = client.list_continuous_eval_run_results(
+            task_id=task_id,
+            search_url=f"eval_name=non_existent",
+        )
+        assert status_code == 200
+        assert len(received_run_results.annotations) == 0
+        assert received_run_results.count == 0
 
         # Test filtering by annotation score
         status_code, received_run_results = client.list_continuous_eval_run_results(
@@ -1433,6 +1608,24 @@ def test_list_continuous_eval_run_results_filtering(client: GenaiEngineTestClien
         assert status_code == 200
         assert len(received_run_results.annotations) == 1
         assert received_run_results.count == 1
+
+        # Test filtering by multiple annotation ids
+        status_code, received_run_results = client.list_continuous_eval_run_results(
+            task_id=task_id,
+            search_url=f"ids={str(annotation_1.id)}&ids={str(annotation_2.id)}",
+        )
+        assert status_code == 200
+        assert len(received_run_results.annotations) == 2
+        assert received_run_results.count == 2
+
+        # Test filtering by multiple continuous eval ids
+        status_code, received_run_results = client.list_continuous_eval_run_results(
+            task_id=task_id,
+            search_url=f"continuous_eval_ids={continuous_eval.id}&continuous_eval_ids={continuous_eval_2.id}",
+        )
+        assert status_code == 200
+        assert len(received_run_results.annotations) == 3
+        assert received_run_results.count == 3
     finally:
         client.delete_transform(transform.id)
         client.delete_llm_eval(task_id, llm_eval.name)
@@ -1454,23 +1647,23 @@ def test_list_continuous_eval_run_results_value_errors(
     try:
         status_code, error = client.list_continuous_eval_run_results(
             task_id=task_id,
-            search_url="id=invalid_uuid",
+            search_url="ids=invalid_uuid",
         )
         assert status_code == 400
         assert error is not None
         assert (
-            "invalid uuid format for parameter 'id': invalid_uuid"
+            "invalid uuid format for parameter 'ids':"
             in error.get("detail", "").lower()
         )
 
         status_code, error = client.list_continuous_eval_run_results(
             task_id=task_id,
-            search_url="continuous_eval_id=invalid_uuid",
+            search_url="continuous_eval_ids=invalid_uuid",
         )
         assert status_code == 400
         assert error is not None
         assert (
-            "invalid uuid format for parameter 'continuous_eval_id': invalid_uuid"
+            "invalid uuid format for parameter 'continuous_eval_ids':"
             in error.get("detail", "").lower()
         )
     finally:

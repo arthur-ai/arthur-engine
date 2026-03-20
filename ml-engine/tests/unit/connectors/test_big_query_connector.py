@@ -99,6 +99,8 @@ MOCK_BQ_DATASET_NO_TIMESTAMP_TAG = {
 start_timestamp = datetime(2024, 1, 1).astimezone(pytz.timezone("UTC"))
 end_timestamp = start_timestamp + timedelta(days=1)
 
+MOCK_BQ_STATIC_DATASET = {**MOCK_BQ_DATASET, "is_static": True}
+
 
 @pytest.mark.parametrize(
     "mock_dataset,pagination_options,expected_query,should_err",
@@ -126,6 +128,20 @@ end_timestamp = start_timestamp + timedelta(days=1)
             MOCK_BQ_DATASET_NO_TIMESTAMP_TAG,
             ConnectorPaginationOptions(page_size=10, page=3),
             f"SELECT * FROM `my_project_id.test_dataset.test_table` LIMIT 10 OFFSET 20",
+            False,
+        ),
+        # static dataset — no WHERE or ORDER BY regardless of time range
+        (
+            MOCK_BQ_STATIC_DATASET,
+            None,
+            "SELECT * FROM `my_project_id.test_dataset.test_table`",
+            False,
+        ),
+        # static dataset with pagination
+        (
+            MOCK_BQ_STATIC_DATASET,
+            ConnectorPaginationOptions(page_size=10),
+            "SELECT * FROM `my_project_id.test_dataset.test_table` LIMIT 10 OFFSET 0",
             False,
         ),
     ],

@@ -51,7 +51,6 @@ COPY --from=builder /app/upload_models.py .
 COPY --from=downloader /models /models
 
 ENV PYTHONPATH=/app/site-packages
-ENV MODELS_DIR=/models
 ENV LOG_LEVEL=INFO
 
 RUN groupadd -r nonroot -g 65532 && useradd -r -u 65532 -g nonroot nonroot \

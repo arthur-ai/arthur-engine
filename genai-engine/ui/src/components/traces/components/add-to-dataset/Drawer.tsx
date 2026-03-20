@@ -1,27 +1,31 @@
 import AddIcon from "@mui/icons-material/Add";
-import { Alert, Autocomplete, Button, Drawer, Snackbar, Stack, TextField, Typography } from "@mui/material";
+import { Autocomplete, Button, Drawer, Stack, TextField, Typography } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import { useControlled } from "@mui/material/utils";
 import { useStore } from "@tanstack/react-form";
 import { AxiosError } from "axios";
+import { useSnackbar } from "notistack";
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-import { flattenSpans, getNestedValue } from "../../utils/spans";
+import { flattenSpans } from "../../utils/spans";
 import { useAppForm } from "../filtering/hooks/form";
 
 import { AddColumnDialog } from "./AddColumnDialog";
+import { Matcher } from "./components/matcher";
+import { TransformSelector } from "./components/transform-selector";
 import { Configurator } from "./Configurator";
 import { CreateDatasetModal } from "./CreateDatasetModal";
 import { addToDatasetFormOptions, TransformDefinition } from "./form/shared";
-import { useTransforms } from "./hooks/useTransforms";
 import { PreviewTable } from "./PreviewTable";
 import { SaveTransformDialog } from "./SaveTransformDialog";
 
 import { useCreateDatasetMutation } from "@/hooks/datasets/useCreateDatasetMutation";
+import { useTransforms } from "@/hooks/transforms/useTransforms";
 import { useApi } from "@/hooks/useApi";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
 import { useDatasets } from "@/hooks/useDatasets";
-import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";
 import { useTrace } from "@/hooks/useTrace";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
@@ -36,7 +40,9 @@ type Props = {
 export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = false, onClose }: Props) => {
   const api = useApi()!;
   const { task } = useTask();
-  const snackbar = useSnackbar();
+  const { enqueueSnackbar } = useSnackbar();
+  const theme = useTheme();
+  const navigate = useNavigate();
 
   const [open, setOpen] = useControlled({
     controlled: openProp,
@@ -87,7 +93,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
       });
     },
     onSuccess: (_data, variables) => {
-      snackbar.showSnackbar("Row added", "success");
+      enqueueSnackbar("Row added", { variant: "success" });
       // Clear pending columns for this dataset
       setPendingColumns((prev) => {
         const updated = { ...prev };
@@ -97,7 +103,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
       setOpen(false);
     },
     onError: () => {
-      snackbar.showSnackbar("Failed to add row", "error");
+      enqueueSnackbar("Failed to add row", { variant: "error" });
     },
   });
 
@@ -116,23 +122,23 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
 
   useEffect(() => {
     if (traceQuery.error) {
-      snackbar.showSnackbar("Failed to fetch trace", "error");
+      enqueueSnackbar("Failed to fetch trace", { variant: "error" });
     } else if (datasetsQuery.error) {
-      snackbar.showSnackbar("Failed to fetch datasets", "error");
+      enqueueSnackbar("Failed to fetch datasets", { variant: "error" });
     }
-  }, [traceQuery.error, datasetsQuery.error, snackbar]);
+  }, [traceQuery.error, datasetsQuery.error, enqueueSnackbar]);
 
   const selectedDataset = datasetsQuery.datasets.find((dataset) => datasetId === dataset.id);
   const flatSpans = useMemo(() => flattenSpans(traceQuery.data?.root_spans ?? []), [traceQuery.data]);
 
   const { latestVersion } = useDatasetLatestVersion(selectedDataset?.id);
-  const transformsQuery = useTransforms(selectedDataset?.id);
+  const transformsQuery = useTransforms();
 
   // Get the selected transform ID from form state
   const selectedTransformId = useStore(form.store, (state) => state.values.transform);
 
   // Get columns from the selected transform
-  const selectedTransform = transformsQuery.data?.find((t) => t.id === selectedTransformId);
+  const selectedTransform = transformsQuery.data?.transforms?.find((t) => t.id === selectedTransformId);
   const transformColumns = selectedTransform?.definition.variables.map((varDef) => varDef.variable_name) || [];
 
   // Merge dataset columns with transform columns to get union of all columns
@@ -146,7 +152,14 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
     datasetsQuery.refetch();
     form.setFieldValue("dataset", newDataset.id);
     setShowCreateDatasetDialog(false);
-    snackbar.showSnackbar("Dataset created successfully", "success");
+    enqueueSnackbar("Dataset created successfully", {
+      variant: "success",
+      action: () => (
+        <Button size="small" color="inherit" onClick={() => navigate(`/tasks/${task?.id}/datasets/${newDataset.id}`)}>
+          View Dataset
+        </Button>
+      ),
+    });
   });
 
   const handleCreateDataset = async (name: string, description: string) => {
@@ -164,7 +177,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
 
     // Check if column already exists
     if (currentColumns.includes(columnName)) {
-      snackbar.showSnackbar("Column already exists", "error");
+      enqueueSnackbar("Column already exists", { variant: "error" });
       return;
     }
 
@@ -188,7 +201,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
     ]);
 
     setShowAddColumnDialog(false);
-    snackbar.showSnackbar("Column added", "success");
+    enqueueSnackbar("Column added", { variant: "success" });
   };
 
   const handleSaveTransform = async (name: string, description: string, definition: TransformDefinition) => {
@@ -202,11 +215,19 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
       });
 
       setSavedTransformId(response.data.id);
+      form.setFieldValue("transform", response.data.id);
       transformsQuery.refetch();
 
       setTimeout(() => {
         setShowSaveTransformDialog(false);
-        snackbar.showSnackbar("Transform saved", "success");
+        enqueueSnackbar("Transform saved", {
+          variant: "success",
+          action: () => (
+            <Button size="small" color="inherit" onClick={() => navigate(`/tasks/${task?.id}/transforms`)}>
+              View Transforms
+            </Button>
+          ),
+        });
       }, 100);
     } catch (error: unknown) {
       let errorMessage = "Failed to save transform";
@@ -252,7 +273,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
             sx={{
               px: 4,
               py: 2,
-              backgroundColor: "grey.100",
+              backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.100"),
               borderBottom: "1px solid",
               borderColor: "divider",
             }}
@@ -295,7 +316,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
                       renderOption={(props, option) => {
                         const isCreateNew = "id" in option && option.id === "__create_new__";
                         return (
-                          <li {...props} key={option.id} style={isCreateNew ? { fontWeight: 500, color: "#1976d2" } : undefined}>
+                          <li {...props} key={option.id} style={isCreateNew ? { fontWeight: 500, color: theme.palette.primary.main } : undefined}>
                             {option.name}
                           </li>
                         );
@@ -305,114 +326,25 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
                 }}
               </form.Field>
 
-              <form.Field name="transform">
-                {(field) => {
-                  const hasTransforms = selectedDataset && transformsQuery.data && transformsQuery.data.length > 0;
-                  const options = hasTransforms ? transformsQuery.data : [];
-                  const isDisabled = !selectedDataset || !hasTransforms;
-
-                  return (
-                    <Autocomplete
-                      options={options}
-                      value={options.find((opt) => opt.id === field.state.value) || null}
-                      disabled={isDisabled}
-                      disablePortal
-                      sx={{ flex: 1 }}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          label="Transform"
-                          helperText={
-                            !selectedDataset
-                              ? "Select a dataset first"
-                              : !hasTransforms
-                                ? "No transforms available for this dataset"
-                                : "Select a saved transform"
-                          }
-                        />
-                      )}
-                      onChange={async (_event, value) => {
-                        const transformId = value?.id ?? "";
-                        field.handleChange(transformId);
-
-                        if (transformId && value && selectedDataset && traceId) {
-                          try {
-                            const response = await api.api.executeTraceTransformExtractionApiV1TracesTraceIdTransformsTransformIdExtractionsPost(
-                              traceId,
-                              transformId
-                            );
-
-                            if (response.data.variables && response.data.variables.length > 0) {
-                              // Map extracted variables with path information from transform definition
-                              const executedColumns = response.data.variables.map((variable) => {
-                                const variableDef = value.definition.variables.find((v) => v.variable_name === variable.name);
-
-                                if (!variableDef) {
-                                  return {
-                                    name: variable.name,
-                                    value: variable.value,
-                                    path: "",
-                                    span_name: "",
-                                    attribute_path: "",
-                                  };
-                                }
-
-                                // Validate that the path exists in the trace data
-                                const span = flatSpans.find((s) => s.span_name === variableDef.span_name);
-                                let validatedPath = "";
-                                let validatedSpanName = "";
-                                let validatedAttributePath = "";
-
-                                if (span) {
-                                  // Check if the attribute path exists
-                                  const data = getNestedValue(span.raw_data, variableDef.attribute_path);
-                                  if (data !== undefined) {
-                                    validatedPath = `${variableDef.span_name}.${variableDef.attribute_path}`;
-                                    validatedSpanName = variableDef.span_name;
-                                    validatedAttributePath = variableDef.attribute_path;
-                                  }
-                                }
-
-                                return {
-                                  name: variable.name,
-                                  value: variable.value,
-                                  path: validatedPath,
-                                  span_name: validatedSpanName,
-                                  attribute_path: validatedAttributePath,
-                                };
-                              });
-
-                              const existingDatasetColumns = latestVersion?.column_names || [];
-                              const executedColumnNames = new Set(executedColumns.map((col) => col.name));
-
-                              // Create columns for dataset columns that aren't in the transform
-                              const datasetOnlyColumns = existingDatasetColumns
-                                .filter((columnName) => !executedColumnNames.has(columnName))
-                                .map((columnName) => ({
-                                  name: columnName,
-                                  value: "",
-                                  path: "",
-                                  span_name: "",
-                                  attribute_path: "",
-                                }));
-
-                              form.setFieldValue("columns", [...executedColumns, ...datasetOnlyColumns]);
-                            }
-                          } catch (error) {
-                            console.error("Failed to execute transform:", error);
-                            snackbar.showSnackbar("Failed to execute transform", "error");
-                            form.setFieldValue("columns", []);
-                          }
-                        } else {
-                          form.setFieldValue("columns", []);
-                        }
-                      }}
-                      getOptionLabel={(option) => option.name}
-                    />
-                  );
+              <TransformSelector
+                form={form}
+                fields={{
+                  dataset: "dataset",
+                  transform: "transform",
+                  columns: "columns",
                 }}
-              </form.Field>
+                traceId={traceId}
+                flatSpans={flatSpans}
+              />
             </Stack>
+
+            <Matcher
+              form={form}
+              fields={{
+                dataset: "dataset",
+                transform: "transform",
+              }}
+            />
 
             {selectedDataset && (
               <>
@@ -453,10 +385,6 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
         columns={form.state.values.columns}
         onSave={handleSaveTransform}
       />
-
-      <Snackbar {...snackbar.snackbarProps}>
-        <Alert {...snackbar.alertProps} />
-      </Snackbar>
     </>
   );
 };

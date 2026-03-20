@@ -1,14 +1,17 @@
 import logging
+import uuid
 from datetime import datetime
 from typing import Any, List, Optional, Tuple
 from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
-from arthur_common.models.enums import PaginationSortMethod
+from arthur_common.models.enums import PaginationSortMethod, RegisteredAgentProvider
 from arthur_common.models.request_schemas import TraceQueryRequest
 from arthur_common.models.response_schemas import TraceResponse
 from google.protobuf.message import DecodeError
+from openinference.semconv.trace import SpanAttributes
 from opentelemetry import trace
+from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
 from db_models import DatabaseSpan
@@ -26,11 +29,18 @@ from schemas.request_schemas import (
     AgenticAnnotationListFilterRequest,
     AgenticAnnotationRequest,
 )
+from services.trace.gcp_conversion_service import GcpConversionService
 from services.trace.metrics_integration_service import MetricsIntegrationService
+from services.trace.otel_conversion_service import OtelConversionService
 from services.trace.span_query_service import SpanQueryService
 from services.trace.trace_annotation_service import TraceAnnotationService
 from services.trace.trace_ingestion_service import TraceIngestionService
 from services.trace.tree_building_service import TreeBuildingService
+from utils import trace as trace_utils
+from utils.constants import (
+    EXPECTED_SPAN_VERSION,
+    SPAN_VERSION_KEY,
+)
 from utils.trace import validate_span_version
 
 logger = logging.getLogger(__name__)
@@ -61,6 +71,8 @@ class SpanRepository:
             metrics_repo,
         )
         self.tree_building_service = TreeBuildingService()
+        self.otel_conversion_service = OtelConversionService()
+        self.gcp_conversion_service = GcpConversionService()
 
     # ============================================================================
     # Public API Methods - Used by Optimized Trace Endpoints
@@ -436,6 +448,180 @@ class SpanRepository:
         except DecodeError as e:
             raise DecodeError("Failed to parse protobuf message.") from e
 
+    def create_traces_from_gcp(
+        self,
+        gcp_trace_data: dict[str, Any],
+        task_id: str | None = None,
+    ) -> Tuple[list[DatabaseSpan], tuple[int, int, int, list[str]]]:
+        """
+        Process GCP Cloud Trace data and store in database.
+
+        This method directly converts GCP spans to DatabaseSpan objects without
+        going through protobuf conversion.
+
+        Args:
+            gcp_trace_data: Dict in GCP Cloud Trace format with structure:
+                {
+                    "projectId": str,
+                    "traceId": str,
+                    "spans": [
+                        {
+                            "spanId": str,
+                            "name": str,
+                            "startTime": str (ISO8601),
+                            "endTime": str (ISO8601),
+                            "parentSpanId": str (optional),
+                            "labels": dict[str, str]
+                        }
+                    ]
+                }
+            task_id: Optional task ID to inject into all spans
+
+        Returns:
+            Tuple of (database_spans, (total_spans, accepted_spans, rejected_spans, rejection_reasons))
+
+        Raises:
+            ValueError: If GCP trace format is invalid
+        """
+        # Validate basic structure
+        if "spans" not in gcp_trace_data:
+            raise ValueError("Invalid GCP trace format: missing 'spans' field")
+
+        trace_id = gcp_trace_data.get("traceId", "")
+        gcp_spans = gcp_trace_data.get("spans", [])
+
+        total_spans = len(gcp_spans)
+        accepted_spans = 0
+        rejected_spans = 0
+        rejected_reasons = []
+        database_spans = []
+
+        for gcp_span in gcp_spans:
+            try:
+                # Extract basic span info
+                span_id_decimal = gcp_span.get("spanId", "")
+                parent_span_id_decimal = gcp_span.get("parentSpanId", "")
+                name = gcp_span.get("name", "")
+                labels = gcp_span.get("labels", {})
+
+                # Convert IDs to hex format
+                span_id_hex = self.gcp_conversion_service.decimal_span_id_to_hex(
+                    span_id_decimal,
+                )
+                parent_span_id_hex = (
+                    self.gcp_conversion_service.decimal_span_id_to_hex(
+                        parent_span_id_decimal,
+                    )
+                    if parent_span_id_decimal
+                    else None
+                )
+
+                # Convert timestamps
+                start_time = self.gcp_conversion_service.iso_timestamp_to_datetime(
+                    gcp_span.get("startTime", ""),
+                )
+                end_time = self.gcp_conversion_service.iso_timestamp_to_datetime(
+                    gcp_span.get("endTime", ""),
+                )
+
+                # Convert GCP labels to OpenInference attributes
+                attributes = (
+                    self.gcp_conversion_service.convert_gcp_labels_to_openinference(
+                        labels,
+                    )
+                )
+
+                # Extract span kind from attributes
+                # Use get_nested_value because convert_gcp_labels_to_openinference
+                # explodes dotted keys into nested dicts, so flat .get() won't find them.
+                span_kind = trace_utils.get_nested_value(
+                    attributes,
+                    SpanAttributes.OPENINFERENCE_SPAN_KIND,
+                    default="LLM",
+                )
+
+                # Extract session_id and user_id if present
+                session_id = trace_utils.get_nested_value(
+                    attributes, SpanAttributes.SESSION_ID
+                )
+                user_id = None  # GCP doesn't typically have user_id in labels
+
+                # Build raw_data dict (similar to what would come from OTLP)
+                raw_data = {
+                    "name": name,
+                    "traceId": trace_id,
+                    "spanId": span_id_hex,
+                    "parentSpanId": parent_span_id_hex,
+                    "startTimeUnixNano": int(start_time.timestamp() * 1_000_000_000),
+                    "endTimeUnixNano": int(end_time.timestamp() * 1_000_000_000),
+                    "attributes": attributes,
+                    SPAN_VERSION_KEY: EXPECTED_SPAN_VERSION,
+                }
+
+                # Extract token/cost info from attributes
+                token_data = trace_utils.extract_token_cost_from_span(
+                    raw_data,
+                    span_kind,
+                )
+
+                # Create DatabaseSpan object
+                db_span = DatabaseSpan(
+                    id=str(uuid.uuid4()),
+                    trace_id=trace_id,
+                    span_id=span_id_hex,
+                    parent_span_id=parent_span_id_hex,
+                    span_kind=span_kind,
+                    span_name=name,
+                    start_time=start_time,
+                    end_time=end_time,
+                    task_id=task_id,  # Use provided task_id
+                    session_id=session_id,
+                    user_id=user_id,
+                    status_code="Unset",  # GCP doesn't provide status
+                    raw_data=raw_data,
+                    prompt_token_count=token_data.prompt_token_count,
+                    completion_token_count=token_data.completion_token_count,
+                    total_token_count=token_data.total_token_count,
+                    prompt_token_cost=token_data.prompt_token_cost,
+                    completion_token_cost=token_data.completion_token_cost,
+                    total_token_cost=token_data.total_token_cost,
+                )
+
+                database_spans.append(db_span)
+                accepted_spans += 1
+
+            except Exception as e:
+                rejected_spans += 1
+                error_msg = f"Failed to process GCP span: {str(e)}"
+                rejected_reasons.append(error_msg)
+                logger.error(f"Error processing GCP span: {e}", exc_info=True)
+                continue
+
+        # Store spans using the ingestion service method
+        if database_spans:
+            self.trace_ingestion_service._store_spans(database_spans, commit=True)
+            logger.debug(f"Stored {len(database_spans)} GCP spans successfully")
+
+        return database_spans, (
+            total_spans,
+            accepted_spans,
+            rejected_spans,
+            rejected_reasons,
+        )
+
+    def convert_and_send_traces_from_external_provider(
+        self,
+        traces: list[dict[str, Any]],
+        provider: RegisteredAgentProvider,
+        task_id: str,
+    ) -> None:
+        """Convert and send traces from a provider to the database."""
+        for trace in traces:
+            if provider == RegisteredAgentProvider.GCP:
+                self.create_traces_from_gcp(trace, task_id)
+            else:
+                raise ValueError(f"Unsupported provider '{provider}'")
+
     def query_spans(
         self,
         sort: PaginationSortMethod,
@@ -676,10 +862,6 @@ class SpanRepository:
         This method is primarily used for testing and direct span insertion.
         For normal operation, use create_traces() instead.
         """
-        from sqlalchemy import insert
-
-        from db_models import DatabaseSpan
-
         if not spans:
             return
 

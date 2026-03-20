@@ -1,6 +1,7 @@
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import ClearOutlinedIcon from "@mui/icons-material/ClearOutlined";
 import CloseIcon from "@mui/icons-material/Close";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SaveAltIcon from "@mui/icons-material/SaveAlt";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
@@ -13,6 +14,7 @@ import IconButton from "@mui/material/IconButton";
 import Modal from "@mui/material/Modal";
 import Paper from "@mui/material/Paper";
 import Snackbar from "@mui/material/Snackbar";
+import { alpha, useTheme } from "@mui/material/styles";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -25,6 +27,7 @@ import React, { useState, useEffect } from "react";
 import { usePromptContext } from "../PromptsPlaygroundContext";
 
 import { UpdateDatasetRowModal } from "@/components/common/UpdateDatasetRowModal";
+import { EvalInputsDialog } from "@/components/prompt-experiments/PromptResultDetailModal";
 import { useExperimentTestCases } from "@/hooks/usePromptExperiments";
 import useSnackbar from "@/hooks/useSnackbar";
 import type { EvalExecution, EvalRefOutput, PromptResult, TestCase } from "@/lib/api-client/api-client";
@@ -40,18 +43,48 @@ interface Message {
 }
 
 const MessageDisplay: React.FC<{ message: Message }> = ({ message }) => {
-  const roleColors: Record<string, string> = {
-    system: "bg-purple-100 border-purple-300",
-    user: "bg-blue-100 border-blue-300",
-    assistant: "bg-green-100 border-green-300",
+  const theme = useTheme();
+
+  const getRoleStyles = (role: string) => {
+    const styleMap: Record<string, { bgColor: string; borderColor: string }> = {
+      system: {
+        bgColor: alpha(theme.palette.secondary.main, 0.12),
+        borderColor: theme.palette.secondary.main,
+      },
+      user: {
+        bgColor: alpha(theme.palette.info.main, 0.12),
+        borderColor: theme.palette.info.main,
+      },
+      assistant: {
+        bgColor: alpha(theme.palette.success.main, 0.12),
+        borderColor: theme.palette.success.main,
+      },
+    };
+    return (
+      styleMap[role] || {
+        bgColor: theme.palette.action.hover,
+        borderColor: theme.palette.divider,
+      }
+    );
   };
 
+  const styles = getRoleStyles(message.role);
+
   return (
-    <Box className={`p-3 border rounded mb-2 ${roleColors[message.role] || "bg-gray-100 border-gray-300"}`}>
-      <Typography variant="caption" className="font-medium uppercase text-gray-600 mb-1 block">
+    <Box
+      sx={{
+        p: 1.5,
+        border: 1,
+        borderColor: styles.borderColor,
+        borderRadius: 1,
+        mb: 1,
+        backgroundColor: styles.bgColor,
+      }}
+    >
+      <Typography variant="caption" sx={{ fontWeight: 500, textTransform: "uppercase", color: "text.secondary", mb: 0.5, display: "block" }}>
         {message.role}
       </Typography>
-      <Typography variant="body2" className="whitespace-pre-wrap text-gray-900">
+      <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", color: "text.primary" }}>
         {message.content}
       </Typography>
     </Box>
@@ -63,6 +96,7 @@ interface TestCaseDetailModalProps {
   testCaseIndex: number;
   open: boolean;
   onClose: () => void;
+  onViewEvalInputs?: (evalExecution: EvalExecution) => void;
   promptKey?: string;
   datasetId?: string;
   datasetVersion?: number;
@@ -73,6 +107,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
   testCaseIndex,
   open,
   onClose,
+  onViewEvalInputs,
   promptKey,
   datasetId,
   datasetVersion,
@@ -134,8 +169,8 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
         }}
       >
         {/* Modal Header */}
-        <Box className="flex items-center justify-between p-4 border-b" sx={{ backgroundColor: "#f9fafb" }}>
-          <Typography variant="h6" className="font-semibold text-gray-900">
+        <Box className="flex items-center justify-between p-4 border-b" sx={{ backgroundColor: "background.default" }}>
+          <Typography variant="h6" className="font-semibold text-gray-900 dark:text-gray-100">
             Test Case {testCaseIndex + 1}
           </Typography>
           <IconButton onClick={onClose} size="small">
@@ -146,13 +181,13 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
         {/* Modal Content */}
         <Box sx={{ overflow: "auto", p: 4 }}>
           <Box>
-            <Card elevation={0} sx={{ border: "1px solid #e5e7eb", mb: 3 }}>
+            <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", mb: 3 }}>
               <CardContent>
                 {/* Messages: Rendered Prompt and Output */}
                 <Box className="grid grid-cols-2 gap-4 mb-4">
                   {/* Rendered Prompt Messages */}
                   <Box>
-                    <Typography variant="subtitle2" className="font-medium text-gray-700 mb-2">
+                    <Typography variant="subtitle2" className="font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Input Messages:
                     </Typography>
                     <Box className="max-h-96 overflow-auto">
@@ -163,8 +198,16 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                             return messages.map((message, msgIndex) => <MessageDisplay key={msgIndex} message={message} />);
                           } catch {
                             return (
-                              <Box className="p-3 bg-gray-100 border border-gray-300 rounded">
-                                <Typography variant="body2" className="whitespace-pre-wrap text-gray-900">
+                              <Box
+                                sx={{
+                                  p: 1.5,
+                                  backgroundColor: "action.hover",
+                                  border: 1,
+                                  borderColor: "divider",
+                                  borderRadius: 1,
+                                }}
+                              >
+                                <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", color: "text.primary" }}>
                                   {promptResult.rendered_prompt}
                                 </Typography>
                               </Box>
@@ -172,8 +215,16 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                           }
                         })()
                       ) : (
-                        <Box className="p-3 bg-gray-100 border border-gray-300 rounded">
-                          <Typography variant="body2" className="text-gray-500 italic">
+                        <Box
+                          sx={{
+                            p: 1.5,
+                            backgroundColor: "action.hover",
+                            border: 1,
+                            borderColor: "divider",
+                            borderRadius: 1,
+                          }}
+                        >
+                          <Typography variant="body2" sx={{ color: "text.secondary", fontStyle: "italic" }}>
                             No input messages available
                           </Typography>
                         </Box>
@@ -184,7 +235,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                   {/* Output */}
                   <Box>
                     <Box className="flex items-center justify-between mb-2">
-                      <Typography variant="subtitle2" className="font-medium text-gray-700">
+                      <Typography variant="subtitle2" className="font-medium text-gray-700 dark:text-gray-300">
                         Output Message:
                       </Typography>
                       {canUpdateDataset && (
@@ -203,8 +254,16 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                       {promptResult?.output?.content ? (
                         <MessageDisplay message={{ role: "assistant", content: promptResult.output.content }} />
                       ) : (
-                        <Box className="p-3 bg-gray-100 border border-gray-300 rounded">
-                          <Typography variant="body2" className="text-gray-500 italic">
+                        <Box
+                          sx={{
+                            p: 1.5,
+                            backgroundColor: "action.hover",
+                            border: 1,
+                            borderColor: "divider",
+                            borderRadius: 1,
+                          }}
+                        >
+                          <Typography variant="body2" sx={{ color: "text.secondary", fontStyle: "italic" }}>
                             No output available
                           </Typography>
                         </Box>
@@ -216,17 +275,17 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                 {/* Evals */}
                 {promptResult?.evals && promptResult.evals.length > 0 && (
                   <Box>
-                    <Typography variant="subtitle2" className="font-medium text-gray-700 mb-2">
+                    <Typography variant="subtitle2" className="font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Evaluations:
                     </Typography>
                     <Box className="space-y-2">
                       {promptResult.evals.map((evalData: EvalExecution, evalIndex: number) => {
                         const evalResult = evalData.eval_results;
                         return (
-                          <Box key={evalIndex} className="p-3 bg-blue-50 border border-blue-200 rounded">
+                          <Box key={evalIndex} className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
                             <Box className="flex items-center justify-between mb-2">
                               <Box className="flex items-center gap-2">
-                                <Typography variant="body2" className="font-medium text-gray-900">
+                                <Typography variant="body2" className="font-medium text-gray-900 dark:text-gray-100">
                                   {evalData.eval_name} v{evalData.eval_version}
                                 </Typography>
                                 {evalResult?.score !== undefined ? (
@@ -237,9 +296,14 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                                   <Chip label="Pending" size="small" sx={getPendingChipSx()} />
                                 )}
                               </Box>
+                              {onViewEvalInputs && (
+                                <Button size="small" variant="outlined" startIcon={<InfoOutlinedIcon />} onClick={() => onViewEvalInputs(evalData)}>
+                                  View Inputs
+                                </Button>
+                              )}
                             </Box>
                             {evalResult?.explanation && (
-                              <Typography variant="body2" className="text-gray-700 mt-1">
+                              <Typography variant="body2" className="text-gray-700 dark:text-gray-300 mt-1">
                                 {evalResult.explanation}
                               </Typography>
                             )}
@@ -279,6 +343,8 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
   const [selectedTestCase, setSelectedTestCase] = useState<TestCase | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedTestCaseIndex, setSelectedTestCaseIndex] = useState<number>(0);
+  const [evalInputsDialogOpen, setEvalInputsDialogOpen] = useState(false);
+  const [selectedEvalExecution, setSelectedEvalExecution] = useState<EvalExecution | null>(null);
 
   const prompt = state.prompts.find((p) => p.id === promptId);
 
@@ -321,6 +387,16 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
     setSelectedTestCase(null);
   };
 
+  const handleViewEvalInputs = (evalExecution: EvalExecution) => {
+    setSelectedEvalExecution(evalExecution);
+    setEvalInputsDialogOpen(true);
+  };
+
+  const handleCloseEvalInputsDialog = () => {
+    setEvalInputsDialogOpen(false);
+    setSelectedEvalExecution(null);
+  };
+
   return (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column", p: 1 }}>
       <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
@@ -333,9 +409,10 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: "#f8f9fa",
+            backgroundColor: "background.default",
             borderRadius: 1,
-            border: "1px solid #e9ecef",
+            border: "1px solid",
+            borderColor: "divider",
           }}
         >
           <CircularProgress size={40} />
@@ -347,9 +424,10 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: "#f8f9fa",
+            backgroundColor: "background.default",
             borderRadius: 1,
-            border: "1px solid #e9ecef",
+            border: "1px solid",
+            borderColor: "divider",
           }}
         >
           <Typography variant="body2" color="text.secondary">
@@ -363,11 +441,10 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
       ) : (
         <TableContainer
           component={Paper}
+          elevation={1}
           sx={{
             flex: 1,
             overflow: "auto",
-            backgroundColor: "#f8f9fa",
-            boxShadow: "0 2px 4px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06)",
           }}
         >
           <Table stickyHeader size="small" sx={{ tableLayout: "fixed", width: "100%" }}>
@@ -377,8 +454,8 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
                   sx={{
                     fontWeight: 600,
                     width: `${100 / (2 + evals.length)}%`,
-                    backgroundColor: "#e9ecef",
-                    borderBottom: "2px solid #dee2e6",
+                    borderBottom: "2px solid",
+                    borderColor: "divider",
                   }}
                 >
                   Dataset Row
@@ -387,8 +464,8 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
                   sx={{
                     fontWeight: 600,
                     width: `${100 / (2 + evals.length)}%`,
-                    backgroundColor: "#e9ecef",
-                    borderBottom: "2px solid #dee2e6",
+                    borderBottom: "2px solid",
+                    borderColor: "divider",
                   }}
                 >
                   Status
@@ -401,8 +478,8 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
                       fontWeight: 600,
                       width: `${100 / (2 + evals.length)}%`,
                       padding: "6px 8px",
-                      backgroundColor: "#e9ecef",
-                      borderBottom: "2px solid #dee2e6",
+                      borderBottom: "2px solid",
+                      borderColor: "divider",
                     }}
                   >
                     {evalRef.name} (v{evalRef.version})
@@ -418,18 +495,18 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
                   onClick={() => handleRowClick(testCase, index)}
                   sx={{
                     cursor: "pointer",
-                    backgroundColor: "#f8f9fa",
+                    backgroundColor: "background.paper",
                     "&:hover": {
-                      backgroundColor: "#e9ecef",
+                      backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.100"),
                     },
                   }}
                 >
-                  <TableCell sx={{ borderBottom: "1px solid #e9ecef" }}>
+                  <TableCell sx={{ borderBottom: "1px solid", borderColor: "divider" }}>
                     <Typography variant="body2" sx={{ fontWeight: 500 }}>
                       {index + 1}
                     </Typography>
                   </TableCell>
-                  <TableCell sx={{ borderBottom: "1px solid #e9ecef" }}>
+                  <TableCell sx={{ borderBottom: "1px solid", borderColor: "divider" }}>
                     <Chip label={testCase.status} size="small" sx={getStatusChipSx(testCase.status)} />
                   </TableCell>
                   {evals.map((evalRef: EvalRefOutput) => {
@@ -443,19 +520,19 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
                       <TableCell
                         key={`${evalRef.name}-${evalRef.version}`}
                         align="center"
-                        sx={{ padding: "6px 8px", borderBottom: "1px solid #e9ecef" }}
+                        sx={{ padding: "6px 8px", borderBottom: "1px solid", borderColor: "divider" }}
                       >
                         {score === 1 ? (
                           <CheckCircleOutlinedIcon
                             sx={{
-                              color: "#10b981",
+                              color: "success.main",
                               fontSize: "1.25rem",
                             }}
                           />
                         ) : score === 0 ? (
                           <ClearOutlinedIcon
                             sx={{
-                              color: "#ef4444",
+                              color: "error.main",
                               fontSize: "1.25rem",
                             }}
                           />
@@ -479,6 +556,7 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
       )}
 
       <TestCaseDetailModal
+        onViewEvalInputs={handleViewEvalInputs}
         testCase={selectedTestCase}
         testCaseIndex={selectedTestCaseIndex}
         open={modalOpen}
@@ -487,6 +565,8 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
         datasetId={experimentConfig?.dataset_ref?.id}
         datasetVersion={experimentConfig?.dataset_ref?.version}
       />
+
+      <EvalInputsDialog open={evalInputsDialogOpen} onClose={handleCloseEvalInputsDialog} evalExecution={selectedEvalExecution} />
     </Box>
   );
 };

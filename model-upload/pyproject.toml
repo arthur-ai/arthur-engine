@@ -4,6 +4,7 @@ version = "1.0.0"
 description = "Unified model upload task for S3, GCS, and Kubernetes"
 authors = ["Arthur <engineering@arthur.ai>"]
 readme = "README.md"
+package-mode = false
 
 [tool.poetry.dependencies]
 python = ">=3.12,<3.13.dev0"

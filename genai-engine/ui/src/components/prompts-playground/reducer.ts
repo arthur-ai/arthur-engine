@@ -4,6 +4,7 @@ import {
   MessageType,
   MESSAGE_ROLE_OPTIONS,
   ModelParametersType,
+  PlaygroundInitialData,
   PromptAction,
   promptClassificationEnum,
   PromptPlaygroundState,
@@ -11,8 +12,9 @@ import {
   FrontendTool,
 } from "./types";
 import { generateId, arrayUtils, cleanupAndRecalculateKeywords } from "./utils";
+import { computePromptDirtyState } from "./utils/promptSaveState";
 
-import { LLMGetAllMetadataResponse, MessageRole, ModelProvider, ToolChoiceEnum, ToolChoice } from "@/lib/api-client/api-client";
+import { LLMGetAllMetadataResponse, MessageRole, ToolChoiceEnum, ToolChoice } from "@/lib/api-client/api-client";
 
 /****************************
  * Message factory functions *
@@ -87,10 +89,10 @@ const createModelParameters = (overrides: Partial<ModelParametersType> = {}): Mo
 });
 
 const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
-  id: uuidv4().slice(0, 8), // New prompts get a short 8-character id
+  id: uuidv4().slice(0, 8),
   classification: promptClassificationEnum.DEFAULT,
   name: "",
-  created_at: undefined, // created on BE
+  created_at: undefined,
   modelName: "",
   modelProvider: "",
   messages: [newMessage()],
@@ -102,19 +104,22 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
   running: false,
   version: null,
   isDirty: false,
+  needsSave: false,
+  savedSnapshot: null,
   ...overrides,
 });
 
 const newPrompt = (): PromptType => createPrompt();
 
 const duplicatePrompt = (original: PromptType): PromptType => {
-  const newId = uuidv4().slice(0, 8); // Short 8-character id for duplicates
+  const newId = uuidv4().slice(0, 8);
 
   return createPrompt({
     ...original,
     id: newId,
-    name: original.name, // Preserve original name so it shows in Select Prompt dropdown
-    version: original.version, // Preserve version to show which version this is based on
+    name: original.name,
+    version: null, // Duplicates are new unsaved prompts
+    savedSnapshot: null, // No saved baseline -- treat as new
     created_at: undefined,
     messages: original.messages.map(duplicateMessage),
     tools: original.tools.map((tool) => ({
@@ -133,11 +138,27 @@ const initialState: PromptPlaygroundState = {
   keywordTracker: new Map<string, Array<string>>(),
   prompts: [newPrompt()],
   backendPrompts: new Array<LLMGetAllMetadataResponse>(),
-  enabledProviders: new Array<ModelProvider>(),
-  availableModels: new Map<ModelProvider, string[]>(),
 };
 
-const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
+/**
+ * Recomputes derived dirty fields (isDirty, needsSave) for any prompts
+ * whose object reference changed between the previous and new state.
+ */
+function withDirtyRecompute(prevState: PromptPlaygroundState, newState: PromptPlaygroundState): PromptPlaygroundState {
+  if (prevState.prompts === newState.prompts) return newState;
+
+  const recomputedPrompts = newState.prompts.map((prompt, i) => {
+    if (prevState.prompts[i] === prompt) return prompt;
+
+    const { isDirty, needsSave } = computePromptDirtyState(prompt);
+    if (isDirty === prompt.isDirty && needsSave === prompt.needsSave) return prompt;
+    return { ...prompt, isDirty, needsSave };
+  });
+
+  return { ...newState, prompts: recomputedPrompts };
+}
+
+const promptsReducerInner = (state: PromptPlaygroundState, action: PromptAction) => {
   switch (action.type) {
     case "addPrompt":
       return { ...state, prompts: [...state.prompts, newPrompt()] };
@@ -145,20 +166,16 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       const { id } = action.payload;
       const index = state.prompts.findIndex((prompt) => prompt.id === id);
 
-      // Get message IDs from the prompt being deleted before removing it
       const promptToDelete = state.prompts[index];
       const messageIdsToRemove = promptToDelete ? promptToDelete.messages.map((msg) => msg.id) : [];
 
-      // Create new state with prompt removed
       const newPrompts = [...state.prompts.slice(0, index), ...state.prompts.slice(index + 1)];
 
-      // Clean up keywordTracker by removing entries for deleted message IDs and recalculate keywords
       const { keywordTracker: newKeywordTracker, keywords: newKeywords } = cleanupAndRecalculateKeywords(
         newPrompts,
         state.keywordTracker,
         state.keywords,
         (tracker) => {
-          // Remove keywordTracker entries for message IDs from the deleted prompt
           messageIdsToRemove.forEach((messageId) => {
             tracker.delete(messageId);
           });
@@ -216,59 +233,31 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       const { promptId, modelProvider } = action.payload;
       return {
         ...state,
-        prompts: state.prompts.map((prompt) => {
-          if (prompt.id === promptId) {
-            const wasChanged = prompt.modelProvider !== modelProvider;
-            const shouldMarkDirty = wasChanged && prompt.version;
-
-            return {
-              ...prompt,
-              modelProvider,
-              // Only mark dirty if value actually changed and prompt has a version
-              isDirty: shouldMarkDirty ? true : prompt.isDirty,
-            };
-          }
-          return prompt;
-        }),
+        prompts: state.prompts.map((prompt) => (prompt.id === promptId ? { ...prompt, modelProvider } : prompt)),
       };
     }
     case "updatePromptModelName": {
       const { promptId, modelName } = action.payload;
       return {
         ...state,
-        prompts: state.prompts.map((prompt) => {
-          if (prompt.id === promptId) {
-            const wasChanged = prompt.modelName !== modelName;
-            const shouldMarkDirty = wasChanged && prompt.version;
-
-            return {
-              ...prompt,
-              modelName,
-              // Only mark dirty if value actually changed and prompt has a version
-              isDirty: shouldMarkDirty ? true : prompt.isDirty,
-            };
-          }
-          return prompt;
-        }),
+        prompts: state.prompts.map((prompt) => (prompt.id === promptId ? { ...prompt, modelName } : prompt)),
       };
     }
     case "updatePrompt": {
       const { promptId, prompt } = action.payload;
+      // Strip id and derived fields from payload to prevent manual override
+      const { id: _incomingId, isDirty: _d, needsSave: _n, ...cleanPayload } = prompt;
       return {
         ...state,
         prompts: state.prompts.map((p) =>
           p.id === promptId
             ? {
                 ...p,
-                ...prompt,
-                // Ensure required properties are always defined
+                ...cleanPayload,
                 messages: prompt.messages ?? p.messages,
                 tools: prompt.tools ?? p.tools,
                 modelParameters: prompt.modelParameters ?? p.modelParameters,
                 responseFormat: prompt.responseFormat ?? p.responseFormat,
-                // Explicit isDirty in payload takes precedence, otherwise detect backend load, otherwise preserve existing
-                isDirty:
-                  prompt.isDirty !== undefined ? prompt.isDirty : prompt.version !== undefined && prompt.messages !== undefined ? false : p.isDirty,
               }
             : p
         ),
@@ -281,27 +270,11 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
         backendPrompts: prompts,
       };
     }
-    case "updateProviders": {
-      const { providers } = action.payload;
-      return {
-        ...state,
-        enabledProviders: providers as ModelProvider[],
-      };
-    }
-    case "updateAvailableModels": {
-      const { availableModels } = action.payload;
-      return {
-        ...state,
-        availableModels,
-      };
-    }
     case "addMessage": {
       const { parentId } = action.payload;
       return {
         ...state,
-        prompts: state.prompts.map((prompt) =>
-          prompt.id === parentId ? { ...prompt, messages: [...prompt.messages, newMessage()], isDirty: prompt.version ? true : false } : prompt
-        ),
+        prompts: state.prompts.map((prompt) => (prompt.id === parentId ? { ...prompt, messages: [...prompt.messages, newMessage()] } : prompt)),
       };
     }
     case "deleteMessage": {
@@ -313,7 +286,6 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             ? {
                 ...prompt,
                 messages: prompt.messages.filter((msg) => msg.id !== id),
-                isDirty: prompt.version ? true : false,
               }
             : prompt
         ),
@@ -329,13 +301,12 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
           const messageToDuplicate = prompt.messages.find((msg) => msg.id === id);
           if (!messageToDuplicate) return prompt;
 
-          const duplicatedMessage = duplicateMessage(messageToDuplicate);
+          const duplicatedMsg = duplicateMessage(messageToDuplicate);
           const messageIndex = prompt.messages.findIndex((msg) => msg.id === id);
 
           return {
             ...prompt,
-            messages: arrayUtils.duplicateAfter(prompt.messages, messageIndex, duplicatedMessage),
-            isDirty: prompt.version ? true : false,
+            messages: arrayUtils.duplicateAfter(prompt.messages, messageIndex, duplicatedMsg),
           };
         }),
       };
@@ -363,7 +334,6 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             ? {
                 ...prompt,
                 messages: prompt.messages.map((message) => (message.id === id ? { ...message, content } : message)),
-                isDirty: prompt.version ? true : false,
               }
             : prompt
         ),
@@ -373,24 +343,14 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       const { parentId, id, toolCalls } = action.payload;
       return {
         ...state,
-        prompts: state.prompts.map((prompt) => {
-          if (prompt.id === parentId) {
-            const message = prompt.messages.find((m) => m.id === id);
-
-            // Normalize undefined and null to be treated as equivalent (both mean "no tool calls")
-            const oldToolCalls = message?.tool_calls ?? null;
-            const newToolCalls = toolCalls ?? null;
-            const wasChanged = JSON.stringify(oldToolCalls) !== JSON.stringify(newToolCalls);
-            const shouldMarkDirty = wasChanged && prompt.version;
-
-            return {
-              ...prompt,
-              messages: prompt.messages.map((message) => (message.id === id ? { ...message, tool_calls: toolCalls } : message)),
-              isDirty: shouldMarkDirty ? true : prompt.isDirty,
-            };
-          }
-          return prompt;
-        }),
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === parentId
+            ? {
+                ...prompt,
+                messages: prompt.messages.map((message) => (message.id === id ? { ...message, tool_calls: toolCalls } : message)),
+              }
+            : prompt
+        ),
       };
     }
     case "changeMessageRole": {
@@ -402,7 +362,6 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             ? {
                 ...prompt,
                 messages: prompt.messages.map((message) => (message.id === id ? { ...message, role: role as MessageRole } : message)),
-                isDirty: prompt.version ? true : false,
               }
             : prompt
         ),
@@ -411,34 +370,27 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
     case "updateKeywords": {
       const { id, messageKeywords } = action.payload;
 
-      // Create new keyword tracker without mutating state
       const newKeywordTracker = new Map<string, Array<string>>(state.keywordTracker);
 
       if (messageKeywords.length === 0) {
-        // Remove message id from keyword tracker
         newKeywordTracker.delete(id);
       } else {
-        // Add or replace keyword array tied to new or existing message id
         newKeywordTracker.set(id, messageKeywords);
       }
 
-      // Collect all keywords that are currently in use across all messages
       const inUseKeywords = new Set<string>();
       newKeywordTracker.forEach((keywords) => {
         keywords.forEach((keyword) => inUseKeywords.add(keyword));
       });
 
-      // Build new keywords map starting with existing keywords to preserve all values
       const newKeywords = new Map<string, string>(state.keywords);
 
-      // Add any new keywords from messages that don't exist yet
       inUseKeywords.forEach((keyword) => {
         if (!newKeywords.has(keyword)) {
           newKeywords.set(keyword, "");
         }
       });
 
-      // Remove keywords that are not in use in any message
       for (const keyword of newKeywords.keys()) {
         if (!inUseKeywords.has(keyword)) {
           newKeywords.delete(keyword);
@@ -454,27 +406,21 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
     case "extractPromptVariables": {
       const { promptId, variables } = action.payload;
 
-      // Find the prompt to get its message IDs
       const prompt = state.prompts.find((p) => p.id === promptId);
       if (!prompt) {
         return state;
       }
 
-      // Get all message IDs from this prompt
       const messageIds = prompt.messages.map((msg) => msg.id);
 
-      // Clean up keywordTracker and update with new variables, then recalculate keywords
       const { keywordTracker: newKeywordTracker, keywords: newKeywords } = cleanupAndRecalculateKeywords(
         state.prompts,
         state.keywordTracker,
         state.keywords,
         (tracker) => {
           if (variables.length === 0) {
-            // Remove all message IDs from this prompt from keyword tracker
             messageIds.forEach((id) => tracker.delete(id));
           } else {
-            // Map all variables to all message IDs in this prompt
-            // (Backend doesn't provide per-message mapping, so we associate all variables with all messages)
             messageIds.forEach((id) => {
               tracker.set(id, variables);
             });
@@ -506,18 +452,14 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       const { promptId, modelParameters } = action.payload;
       return {
         ...state,
-        prompts: state.prompts.map((prompt) =>
-          prompt.id === promptId ? { ...prompt, modelParameters, isDirty: prompt.version ? true : false } : prompt
-        ),
+        prompts: state.prompts.map((prompt) => (prompt.id === promptId ? { ...prompt, modelParameters } : prompt)),
       };
     }
     case "updateResponseFormat": {
       const { promptId, responseFormat } = action.payload;
       return {
         ...state,
-        prompts: state.prompts.map((prompt) =>
-          prompt.id === promptId ? { ...prompt, responseFormat, isDirty: prompt.version ? true : false } : prompt
-        ),
+        prompts: state.prompts.map((prompt) => (prompt.id === promptId ? { ...prompt, responseFormat } : prompt)),
       };
     }
     case "addTool": {
@@ -529,7 +471,6 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             ? {
                 ...prompt,
                 tools: [...prompt.tools, createTool(prompt.tools.length + 1)],
-                isDirty: prompt.version ? true : false,
               }
             : prompt
         ),
@@ -545,15 +486,11 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
           const toolToDelete = prompt.tools.find((tool) => tool.id === toolId);
           if (!toolToDelete) return prompt;
 
-          // Check if the toolChoice references the tool being deleted
           let shouldResetToolChoice = false;
           if (prompt.toolChoice) {
             if (typeof prompt.toolChoice === "object" && "function" in prompt.toolChoice) {
-              // It's a ToolChoice object - check if function name matches
               shouldResetToolChoice = prompt.toolChoice.function?.name === toolToDelete.function.name;
             } else if (typeof prompt.toolChoice === "string") {
-              // It's a ToolChoiceEnum or potentially an old tool ID string
-              // Check if it matches the tool ID (for backwards compatibility)
               shouldResetToolChoice = prompt.toolChoice === toolId;
             }
           }
@@ -562,7 +499,6 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             ...prompt,
             tools: prompt.tools.filter((tool) => tool.id !== toolId),
             toolChoice: shouldResetToolChoice ? ("auto" as ToolChoiceEnum) : prompt.toolChoice,
-            isDirty: prompt.version ? true : false,
           };
         }),
       };
@@ -576,7 +512,6 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             ? {
                 ...prompt,
                 tools: prompt.tools.map((t) => (t.id === toolId ? { ...t, ...tool } : t)),
-                isDirty: prompt.version ? true : false,
               }
             : prompt
         ),
@@ -587,9 +522,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       return {
         ...state,
         prompts: state.prompts.map((prompt) =>
-          prompt.id === promptId
-            ? { ...prompt, toolChoice: toolChoice as ToolChoiceEnum | ToolChoice, isDirty: prompt.version ? true : false }
-            : prompt
+          prompt.id === promptId ? { ...prompt, toolChoice: toolChoice as ToolChoiceEnum | ToolChoice } : prompt
         ),
       };
     }
@@ -602,7 +535,6 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             ? {
                 ...prompt,
                 messages: arrayUtils.moveItem(prompt.messages, fromIndex, toIndex),
-                isDirty: prompt.version ? true : false,
               }
             : prompt
         ),
@@ -613,4 +545,21 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
   }
 };
 
-export { promptsReducer, initialState };
+const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
+  const newState = promptsReducerInner(state, action);
+  return withDirtyRecompute(state, newState);
+};
+
+/**
+ * Builds a PromptPlaygroundState from pre-resolved initial data.
+ * Used by the inner playground component to initialize useReducer
+ * with data that the wrapper already fetched, avoiding hydration effects.
+ */
+const buildInitialReducerState = (data: PlaygroundInitialData): PromptPlaygroundState => ({
+  keywords: data.keywords,
+  keywordTracker: new Map<string, Array<string>>(),
+  prompts: data.prompts.length > 0 ? data.prompts : [newPrompt()],
+  backendPrompts: new Array<LLMGetAllMetadataResponse>(),
+});
+
+export { promptsReducer, initialState, buildInitialReducerState };

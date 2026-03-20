@@ -14,6 +14,7 @@ import {
 } from "@mui/material";
 import React from "react";
 
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { SavedPromptConfig, UnsavedPromptConfig } from "@/lib/api-client/api-client";
 import { formatUTCTimestamp, formatTimestampDuration, formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
@@ -64,6 +65,7 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
   onRowsPerPageChange,
   loading = false,
 }) => {
+  const { defaultCurrency } = useDisplaySettings();
   const formatPromptName = (config: PromptConfig): string => {
     if (config.type === "saved") {
       return `${config.name} (v${config.version})`;
@@ -74,57 +76,57 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
 
   return (
     <>
-      <TableContainer component={Paper} sx={{ flexGrow: 0, flexShrink: 1 }}>
+      <TableContainer component={Paper} elevation={1} sx={{ flexGrow: 0, flexShrink: 1 }}>
         {loading && <LinearProgress />}
         <Table stickyHeader size="small" aria-label="experiments table">
           <TableHead>
             <TableRow>
-              <TableCell sx={{ backgroundColor: "grey.50" }}>
+              <TableCell>
                 <Box component="span" className="font-semibold">
                   Experiment Name
                 </Box>
               </TableCell>
-              <TableCell sx={{ backgroundColor: "grey.50" }}>
+              <TableCell>
                 <Box component="span" className="font-semibold">
                   Description
                 </Box>
               </TableCell>
-              <TableCell sx={{ backgroundColor: "grey.50" }}>
+              <TableCell>
                 <Box component="span" className="font-semibold">
                   Prompts
                 </Box>
               </TableCell>
-              <TableCell sx={{ backgroundColor: "grey.50" }}>
+              <TableCell>
                 <Box component="span" className="font-semibold">
                   Dataset (Version)
                 </Box>
               </TableCell>
-              <TableCell sx={{ backgroundColor: "grey.50" }}>
+              <TableCell>
                 <Box component="span" className="font-semibold">
                   Test Cases
                 </Box>
               </TableCell>
-              <TableCell sx={{ backgroundColor: "grey.50" }}>
+              <TableCell>
                 <Box component="span" className="font-semibold">
                   Status
                 </Box>
               </TableCell>
-              <TableCell sx={{ backgroundColor: "grey.50" }}>
+              <TableCell>
                 <Box component="span" className="font-semibold">
                   Created At
                 </Box>
               </TableCell>
-              <TableCell sx={{ backgroundColor: "grey.50" }}>
+              <TableCell>
                 <Box component="span" className="font-semibold">
                   Finished At
                 </Box>
               </TableCell>
-              <TableCell sx={{ backgroundColor: "grey.50" }}>
+              <TableCell>
                 <Box component="span" className="font-semibold">
                   Duration
                 </Box>
               </TableCell>
-              <TableCell sx={{ backgroundColor: "grey.50" }}>
+              <TableCell>
                 <Box component="span" className="font-semibold">
                   Total Cost
                 </Box>
@@ -169,7 +171,7 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
                 <TableCell>{formatUTCTimestamp(experiment.created_at)}</TableCell>
                 <TableCell>{formatUTCTimestamp(experiment.finished_at)}</TableCell>
                 <TableCell>{experiment.finished_at ? formatTimestampDuration(experiment.created_at, experiment.finished_at) : "-"}</TableCell>
-                <TableCell>{experiment.total_cost ? formatCurrency(parseFloat(experiment.total_cost)) : "-"}</TableCell>
+                <TableCell>{experiment.total_cost ? formatCurrency(parseFloat(experiment.total_cost), defaultCurrency) : "-"}</TableCell>
               </TableRow>
             ))}
           </TableBody>

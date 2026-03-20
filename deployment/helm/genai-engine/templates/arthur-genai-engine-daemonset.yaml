@@ -129,6 +129,14 @@ spec:
             - name: MODEL_REPOSITORY_URL
               value: {{ .Values.modelRepositoryURL | quote }}
             {{- end }}
+            {{- if .Values.gcpDiscoveryConfig.isEnabled }}
+            - name: GOOGLE_CLOUD_PROJECT
+              value: {{ .Values.gcpDiscoveryConfig.googleCloudProject | quote }}
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: "/var/secrets/google/credentials.json"
+            - name: GOOGLE_CLOUD_LOCATION
+              value: {{ .Values.gcpDiscoveryConfig.googleCloudLocation | quote }}
+            {{- end }}
             {{- if .Values.genaiEngineInternalHost }}
             - name: GENAI_ENGINE_INTERNAL_HOST
               value: {{ .Values.genaiEngineInternalHost | quote }}
@@ -148,17 +156,28 @@ spec:
             - name: MODEL_STORAGE_PATH
               value: {{ .Values.modelStorage.mountPath | default "/model_output" | quote }}
             {{- end }}
-          {{- if .Values.modelStorage.enabled }}
           volumeMounts:
+            {{- if .Values.modelStorage.enabled }}
             - name: models-volume
               mountPath: {{ .Values.modelStorage.mountPath | default "/model_output" }}
-          {{- end }}
-      {{- if .Values.modelStorage.enabled }}
+            {{- end }}
+            {{- if .Values.gcpDiscoveryConfig.isEnabled }}
+            - name: gcp-credentials
+              mountPath: /var/secrets/google
+              readOnly: true
+            {{- end }}
       volumes:
+        {{- if .Values.modelStorage.enabled }}
         - name: models-volume
           persistentVolumeClaim:
             claimName: {{ .Values.modelStorage.pvcClaimName | default "arthur-models-pvc" }}
-      {{- end }}
+        {{- end }}
+        {{- if .Values.gcpDiscoveryConfig.isEnabled }}
+        - name: gcp-credentials
+          secret:
+            secretName: {{ .Values.gcpDiscoveryConfig.googleCredentialsSecretName }}
+            defaultMode: 420
+        {{- end }}
       {{- with .Values.arthurGenaiEngineDeployment.genaiEnginePodAffinity }}
       affinity:
         {{- toYaml . | nindent 8 }}

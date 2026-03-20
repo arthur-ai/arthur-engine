@@ -1,10 +1,10 @@
+import { withFieldGroup } from "@arthur/shared-components";
 import { Autocomplete, Divider, Paper, Stack, TextField, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
 import { z } from "zod";
 
 import { NewAgentExperimentFormData } from "../form";
 
-import { withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
 import { useTransform } from "@/hooks/transforms/useTransform";
 import { useTransforms } from "@/hooks/transforms/useTransforms";
 import { useDatasetVersionData } from "@/hooks/useDatasetVersionData";
@@ -13,7 +13,9 @@ import { TraceTransformResponse } from "@/lib/api-client/api-client";
 export const EvaluatorMapper = withFieldGroup({
   defaultValues: {} as Pick<NewAgentExperimentFormData, "evals" | "datasetRef">,
   render: function Render({ group }) {
-    const { data: transforms } = useTransforms();
+    const { data } = useTransforms();
+
+    const transforms = data?.transforms ?? [];
 
     const ready = useStore(group.store, (state) => state.values.datasetRef.version && state.values.evals.length > 0);
 

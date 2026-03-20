@@ -1,7 +1,6 @@
+import { IncomingFilter, Operators } from "@arthur/shared-components";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
-import { IncomingFilter } from "@/components/traces/components/filtering/mapper";
-import { Operators } from "@/components/traces/components/filtering/types";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { Api } from "@/lib/api";
@@ -48,6 +47,10 @@ const mapFiltersToRequest = (filters: IncomingFilter[]) => {
 
     if (key === "enabled") {
       return (request[key] = filter.value as string);
+    }
+
+    if (key === "continuous_eval_id") {
+      return (request["continuous_eval_ids"] = filter.value as string[]);
     }
 
     if (key === "created_at") {

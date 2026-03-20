@@ -20,6 +20,7 @@ import {
   DialogActions,
   Link,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
 
@@ -28,6 +29,7 @@ import { ExperimentResultsTable } from "./ExperimentResultsTable";
 import { PromptVersionDrawer } from "./PromptVersionDrawer";
 
 import { getContentHeight } from "@/constants/layout";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useCreateNotebookMutation, useAttachExperimentToNotebookMutation, useSetNotebookStateMutation } from "@/hooks/useNotebooks";
 import { usePromptExperiment, useCreateExperiment, useDeleteExperiment } from "@/hooks/usePromptExperiments";
 import { formatUTCTimestamp, formatTimestampDuration, formatCurrency } from "@/utils/formatters";
@@ -49,6 +51,7 @@ interface PromptVersionDetails {
 export const ExperimentDetailView: React.FC = () => {
   const { id: taskId, experimentId } = useParams<{ id: string; experimentId: string }>();
   const navigate = useNavigate();
+  const { defaultCurrency } = useDisplaySettings();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -295,7 +298,7 @@ export const ExperimentDetailView: React.FC = () => {
         {/* Breadcrumb / Back Button */}
         <Box className="mb-4">
           <Box
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 cursor-pointer w-fit"
+            className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 cursor-pointer w-fit"
             onClick={() => navigate(`/tasks/${taskId}/prompt-experiments`)}
           >
             <ArrowBackIcon fontSize="small" />
@@ -309,7 +312,7 @@ export const ExperimentDetailView: React.FC = () => {
         <Box className="mb-6">
           <Box className="flex items-center justify-between mb-2">
             <Box className="flex items-center gap-3">
-              <Typography variant="h4" className="font-semibold text-gray-900">
+              <Typography variant="h4" className="font-semibold text-gray-900 dark:text-gray-100">
                 {experiment.name}
               </Typography>
               <Chip label={experiment.status} size="small" sx={getStatusChipSx(experiment.status)} />
@@ -324,11 +327,11 @@ export const ExperimentDetailView: React.FC = () => {
             </Box>
           </Box>
           {experiment.description && (
-            <Typography variant="body1" className="text-gray-600 mb-4">
+            <Typography variant="body1" className="text-gray-600 dark:text-gray-400 mb-4">
               {experiment.description}
             </Typography>
           )}
-          <Box className="flex gap-6 text-sm text-gray-600">
+          <Box className="flex gap-6 text-sm text-gray-600 dark:text-gray-400">
             <Box>
               <span className="font-medium">Created:</span> {formatUTCTimestamp(experiment.created_at)}
             </Box>
@@ -360,16 +363,24 @@ export const ExperimentDetailView: React.FC = () => {
             </Box>
             {experiment.total_cost && (
               <Box>
-                <span className="font-medium">Total Cost:</span> {formatCurrency(parseFloat(experiment.total_cost))}
+                <span className="font-medium">Total Cost:</span> {formatCurrency(parseFloat(experiment.total_cost), defaultCurrency)}
               </Box>
             )}
           </Box>
 
           {/* Dataset Row Filter Section */}
           {experiment.dataset_row_filter && experiment.dataset_row_filter.length > 0 && (
-            <Box className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
+            <Box
+              sx={(theme) => ({
+                mt: 2,
+                p: 1.5,
+                bgcolor: alpha(theme.palette.info.main, 0.08),
+                border: `1px solid ${alpha(theme.palette.info.main, 0.3)}`,
+                borderRadius: 1,
+              })}
+            >
               <Box className="flex items-center gap-2 mb-2">
-                <Typography variant="body2" className="font-medium text-gray-900">
+                <Typography variant="body2" className="font-medium text-gray-900 dark:text-gray-100">
                   Dataset Row Filter Applied
                 </Typography>
                 <Tooltip title="This experiment only includes dataset rows that match ALL of the following conditions." arrow placement="right">
@@ -390,9 +401,9 @@ export const ExperimentDetailView: React.FC = () => {
                     size="small"
                     variant="outlined"
                     sx={{
-                      backgroundColor: "white",
-                      borderColor: "#3b82f6",
-                      color: "#1e40af",
+                      backgroundColor: "background.paper",
+                      borderColor: "primary.main",
+                      color: "primary.dark",
                     }}
                   />
                 ))}
@@ -404,7 +415,7 @@ export const ExperimentDetailView: React.FC = () => {
         {/* Overall Prompt Performance Section */}
         <Box className="mb-6">
           <Box className="flex items-center gap-2 mb-4">
-            <Typography variant="h5" className="font-semibold text-gray-900">
+            <Typography variant="h5" className="font-semibold text-gray-900 dark:text-gray-100">
               Overall Prompt Performance
             </Typography>
             <Tooltip
@@ -423,8 +434,8 @@ export const ExperimentDetailView: React.FC = () => {
           </Box>
 
           {experiment.summary_results.prompt_eval_summaries.length === 0 ? (
-            <Box className="p-6 bg-gray-50 border border-gray-200 rounded">
-              <Typography variant="body1" className="text-gray-600 italic">
+            <Box className="p-6 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded">
+              <Typography variant="body1" className="text-gray-600 dark:text-gray-400 italic">
                 Overall performance will be shown when the experiment finishes executing test cases.
               </Typography>
             </Box>
@@ -470,14 +481,18 @@ export const ExperimentDetailView: React.FC = () => {
                     >
                       <CardContent sx={{ position: "relative", paddingBottom: "40px !important", minHeight: "200px" }}>
                         <Box className="flex items-center gap-2 mb-3">
-                          <Typography variant="subtitle1" className="font-medium text-gray-800 truncate flex-1 min-w-0">
+                          <Typography variant="subtitle1" className="font-medium text-gray-800 dark:text-gray-200 truncate flex-1 min-w-0">
                             Prompt: {promptDisplayName}
                           </Typography>
                           {promptSummary.prompt_type === "unsaved" && (
                             <Chip
                               label="Unsaved"
                               size="small"
-                              sx={{ backgroundColor: "#fff3e0", color: "#f57c00", fontWeight: 600 }}
+                              sx={(theme) => ({
+                                backgroundColor: theme.palette.mode === "dark" ? "rgba(255,152,0,0.12)" : "#fff3e0",
+                                color: theme.palette.mode === "dark" ? "#ffb74d" : "#f57c00",
+                                fontWeight: 600,
+                              })}
                               className="shrink-0"
                             />
                           )}
@@ -491,10 +506,10 @@ export const ExperimentDetailView: React.FC = () => {
                             return (
                               <Box key={`${evalResult.eval_name}-${evalResult.eval_version}`}>
                                 <Box className="flex justify-between items-center mb-1">
-                                  <Typography variant="caption" className="font-medium text-gray-700">
+                                  <Typography variant="caption" className="font-medium text-gray-700 dark:text-gray-300">
                                     {evalResult.eval_name} (v{evalResult.eval_version})
                                   </Typography>
-                                  <Typography variant="caption" className="text-gray-600">
+                                  <Typography variant="caption" className="text-gray-600 dark:text-gray-400">
                                     {percentage.toFixed(0)}%
                                   </Typography>
                                 </Box>
@@ -509,7 +524,7 @@ export const ExperimentDetailView: React.FC = () => {
                                     },
                                   }}
                                 />
-                                <Typography variant="caption" className="text-gray-500 text-xs">
+                                <Typography variant="caption" className="text-gray-500 dark:text-gray-400 text-xs">
                                   {evalResult.pass_count} / {evalResult.total_count} test cases passed
                                 </Typography>
                               </Box>
@@ -517,7 +532,7 @@ export const ExperimentDetailView: React.FC = () => {
                           })}
                         </Box>
 
-                        {/* Open in Notebook button in lower left corner - only for saved prompts */}
+                        {/* Open in Playground button in lower left corner - only for saved prompts */}
                         {(promptSummary.prompt_type === "saved" || !promptSummary.prompt_type) &&
                           promptSummary.prompt_name &&
                           promptSummary.prompt_version && (
@@ -533,11 +548,11 @@ export const ExperimentDetailView: React.FC = () => {
                                 fontSize: "0.75rem",
                                 color: "text.secondary",
                                 "&:hover": {
-                                  backgroundColor: "rgba(0, 0, 0, 0.04)",
+                                  backgroundColor: "action.hover",
                                 },
                               }}
                             >
-                              Open in Notebook
+                              Open in Playground
                             </Button>
                           )}
 
@@ -565,7 +580,7 @@ export const ExperimentDetailView: React.FC = () => {
         {/* Test Case Results Section */}
         <Box className="mb-6">
           <Box className="flex items-center gap-2 mb-4">
-            <Typography variant="h5" className="font-semibold text-gray-900">
+            <Typography variant="h5" className="font-semibold text-gray-900 dark:text-gray-100">
               Test Case Results
             </Typography>
             <Tooltip
@@ -585,6 +600,7 @@ export const ExperimentDetailView: React.FC = () => {
           {taskId && experimentId && (
             <ExperimentResultsTable
               experimentId={experimentId}
+              experimentStatus={experiment.status}
               refreshTrigger={refreshTrigger}
               datasetId={experiment.dataset_ref.id}
               datasetVersion={experiment.dataset_ref.version}

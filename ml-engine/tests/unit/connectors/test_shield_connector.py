@@ -787,3 +787,18 @@ def test_agentic_dataset_filter_parameter_mapping(
 
     # Verify the correct URL was called
     urllib3_mock.assert_all_responses_called()
+
+
+def test_shield_read_raises_for_static_dataset():
+    """Shield connector must raise ValueError when dataset.is_static is True."""
+    spec = ConnectorSpec.model_validate(mock_shield_connector_spec(MOCK_SHIELD_HOST))
+    conn = ShieldConnector(spec, logger)
+
+    static_dataset = AvailableDataset.model_validate(
+        {**MOCK_SHIELD_AVAILABLE_DATASET, "is_static": True},
+    )
+    start = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    end = datetime(2024, 1, 2, tzinfo=timezone.utc)
+
+    with pytest.raises(ValueError, match="Static datasets are not supported by the Shield connector"):
+        conn.read(static_dataset, start_time=start, end_time=end)

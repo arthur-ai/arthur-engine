@@ -1,11 +1,16 @@
 import json
+import random
+from datetime import datetime
 from unittest.mock import patch
+from uuid import uuid4
 
 import pytest
 from opentelemetry.proto.common.v1.common_pb2 import AnyValue, KeyValue
 from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans, Status
 
-from db_models import DatabaseSpan
+from db_models import DatabaseServiceNameTaskMapping, DatabaseSpan, DatabaseTask
+from arthur_common.models.agent_governance_schemas import GCPAgentCreationSource, TaskMetadata
+from services.trace.trace_ingestion_service import TraceIngestionService
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
@@ -394,3 +399,630 @@ def test_trace_api_token_count_calculation_from_messages(
     assert db_span.prompt_token_cost == 0.00039
     assert db_span.completion_token_cost == 0.00102
     assert db_span.total_token_cost == 0.00141
+
+
+# ============================================================================
+# RESOURCE METADATA TESTS
+# ============================================================================
+
+
+@pytest.mark.unit_tests
+def test_trace_api_resource_metadata_deduplication(
+    client: GenaiEngineTestClientBase,
+):
+    """Test that traces with identical resource attributes share the same resource_id."""
+
+    # Create two traces with identical resource attributes
+    task_id = "resource_dedup_test"
+
+    # First trace
+    trace_request_1, resource_span_1, scope_span_1 = _create_base_trace_request(
+        task_id=task_id,
+    )
+    span_1 = _create_span(
+        trace_id=b"trace_dedup_1",
+        span_id=b"span_dedup_1",
+        name="dedup_span_1",
+        span_type="LLM",
+    )
+    scope_span_1.spans.append(span_1)
+    resource_span_1.scope_spans.append(scope_span_1)
+    trace_request_1.resource_spans.append(resource_span_1)
+
+    # Second trace with identical resource attributes
+    trace_request_2, resource_span_2, scope_span_2 = _create_base_trace_request(
+        task_id=task_id,
+    )
+    span_2 = _create_span(
+        trace_id=b"trace_dedup_2",
+        span_id=b"span_dedup_2",
+        name="dedup_span_2",
+        span_type="LLM",
+    )
+    scope_span_2.spans.append(span_2)
+    resource_span_2.scope_spans.append(scope_span_2)
+    trace_request_2.resource_spans.append(resource_span_2)
+
+    # Send both traces
+    status_code_1, _ = client.trace_api_receive_traces(
+        trace_request_1.SerializeToString(),
+    )
+    assert status_code_1 == 200
+
+    status_code_2, _ = client.trace_api_receive_traces(
+        trace_request_2.SerializeToString(),
+    )
+    assert status_code_2 == 200
+
+    # Query database to verify both spans reference the same resource_id
+    from db_models import DatabaseResourceMetadata
+
+    db_session = override_get_db_session()
+
+    db_span_1 = (
+        db_session.query(DatabaseSpan)
+        .filter(DatabaseSpan.span_id == span_1.span_id.hex())
+        .first()
+    )
+    db_span_2 = (
+        db_session.query(DatabaseSpan)
+        .filter(DatabaseSpan.span_id == span_2.span_id.hex())
+        .first()
+    )
+
+    assert db_span_1 is not None
+    assert db_span_2 is not None
+    assert db_span_1.resource_id is not None
+    assert db_span_2.resource_id is not None
+
+    # Both spans should reference the same resource_id
+    assert db_span_1.resource_id == db_span_2.resource_id
+
+    # Verify only one resource metadata entry exists for this resource_id
+    resource_count = (
+        db_session.query(DatabaseResourceMetadata)
+        .filter(DatabaseResourceMetadata.id == db_span_1.resource_id)
+        .count()
+    )
+    assert resource_count == 1
+
+
+@pytest.mark.unit_tests
+def test_trace_api_resource_metadata_different_attributes(
+    client: GenaiEngineTestClientBase,
+):
+    """Test that traces with different resource attributes get different resource_ids."""
+
+    # First trace with task_id_1
+    task_id_1 = "resource_diff_test_1"
+    trace_request_1, resource_span_1, scope_span_1 = _create_base_trace_request(
+        task_id=task_id_1,
+    )
+    span_1 = _create_span(
+        trace_id=b"trace_diff_1",
+        span_id=b"span_diff_1",
+        name="diff_span_1",
+        span_type="LLM",
+    )
+    scope_span_1.spans.append(span_1)
+    resource_span_1.scope_spans.append(scope_span_1)
+    trace_request_1.resource_spans.append(resource_span_1)
+
+    # Second trace with task_id_2 (different resource attributes)
+    task_id_2 = "resource_diff_test_2"
+    trace_request_2, resource_span_2, scope_span_2 = _create_base_trace_request(
+        task_id=task_id_2,
+    )
+    span_2 = _create_span(
+        trace_id=b"trace_diff_2",
+        span_id=b"span_diff_2",
+        name="diff_span_2",
+        span_type="LLM",
+    )
+    scope_span_2.spans.append(span_2)
+    resource_span_2.scope_spans.append(scope_span_2)
+    trace_request_2.resource_spans.append(resource_span_2)
+
+    # Send both traces
+    status_code_1, _ = client.trace_api_receive_traces(
+        trace_request_1.SerializeToString(),
+    )
+    assert status_code_1 == 200
+
+    status_code_2, _ = client.trace_api_receive_traces(
+        trace_request_2.SerializeToString(),
+    )
+    assert status_code_2 == 200
+
+    # Query database to verify spans have different resource_ids
+    db_session = override_get_db_session()
+
+    db_span_1 = (
+        db_session.query(DatabaseSpan)
+        .filter(DatabaseSpan.span_id == span_1.span_id.hex())
+        .first()
+    )
+    db_span_2 = (
+        db_session.query(DatabaseSpan)
+        .filter(DatabaseSpan.span_id == span_2.span_id.hex())
+        .first()
+    )
+
+    assert db_span_1 is not None
+    assert db_span_2 is not None
+    assert db_span_1.resource_id is not None
+    assert db_span_2.resource_id is not None
+
+    # Spans should have different resource_ids
+    assert db_span_1.resource_id != db_span_2.resource_id
+
+
+@pytest.mark.unit_tests
+def test_trace_api_resource_metadata_storage(
+    client: GenaiEngineTestClientBase,
+):
+    """Test that resource attributes are correctly stored in resource_metadata table."""
+
+    task_id = "resource_storage_test"
+    service_name = "test_service"
+
+    trace_request, resource_span, scope_span = _create_base_trace_request(
+        task_id=task_id,
+    )
+
+    # Verify resource attributes include service.name and arthur.task
+    resource_attrs = {
+        attr.key: attr.value.string_value for attr in resource_span.resource.attributes
+    }
+    assert resource_attrs.get("service.name") == service_name
+    assert resource_attrs.get("arthur.task") == task_id
+
+    span = _create_span(
+        trace_id=b"trace_storage",
+        span_id=b"span_storage",
+        name="storage_span",
+        span_type="LLM",
+    )
+    scope_span.spans.append(span)
+    resource_span.scope_spans.append(scope_span)
+    trace_request.resource_spans.append(resource_span)
+
+    # Send trace
+    status_code, _ = client.trace_api_receive_traces(
+        trace_request.SerializeToString(),
+    )
+    assert status_code == 200
+
+    # Query database to verify resource metadata storage
+    from db_models import DatabaseResourceMetadata
+
+    db_session = override_get_db_session()
+
+    db_span = (
+        db_session.query(DatabaseSpan)
+        .filter(DatabaseSpan.span_id == span.span_id.hex())
+        .first()
+    )
+    assert db_span is not None
+    assert db_span.resource_id is not None
+
+    # Retrieve resource metadata
+    resource_metadata = (
+        db_session.query(DatabaseResourceMetadata)
+        .filter(DatabaseResourceMetadata.id == db_span.resource_id)
+        .first()
+    )
+    assert resource_metadata is not None
+    assert resource_metadata.service_name == service_name
+    assert resource_metadata.resource_attributes is not None
+
+    # Verify resource attributes are stored as JSON
+    stored_attrs = resource_metadata.resource_attributes
+    assert stored_attrs.get("service.name") == service_name
+    assert stored_attrs.get("arthur.task") == task_id
+
+
+@pytest.mark.unit_tests
+def test_trace_api_trace_metadata_root_span_resource_id(
+    client: GenaiEngineTestClientBase,
+):
+    """Test that trace_metadata correctly links to root span's resource_id."""
+
+    task_id = "trace_metadata_resource_test"
+    trace_id = b"trace_with_resource"
+    parent_span_id = b"parent_span_resource"
+    child_span_id = b"child_span_resource"
+
+    trace_request, resource_span, scope_span = _create_base_trace_request(
+        task_id=task_id,
+    )
+
+    # Create parent span (root span)
+    parent_span = _create_span(
+        trace_id=trace_id,
+        span_id=parent_span_id,
+        name="parent_span",
+        span_type="LLM",
+    )
+
+    # Create child span
+    child_span = _create_span(
+        trace_id=trace_id,
+        parent_span_id=parent_span_id,
+        span_id=child_span_id,
+        name="child_span",
+        span_type="CHAIN",
+    )
+
+    scope_span.spans.append(parent_span)
+    scope_span.spans.append(child_span)
+    resource_span.scope_spans.append(scope_span)
+    trace_request.resource_spans.append(resource_span)
+
+    # Send trace
+    status_code, _ = client.trace_api_receive_traces(
+        trace_request.SerializeToString(),
+    )
+    assert status_code == 200
+
+    # Query database to verify trace_metadata links to root span's resource_id
+    from db_models import DatabaseTraceMetadata
+
+    db_session = override_get_db_session()
+
+    # Get the parent (root) span
+    db_parent_span = (
+        db_session.query(DatabaseSpan)
+        .filter(DatabaseSpan.span_id == parent_span_id.hex())
+        .first()
+    )
+    assert db_parent_span is not None
+    assert db_parent_span.resource_id is not None
+    assert db_parent_span.parent_span_id is None  # Verify it's the root span
+
+    # Get trace metadata
+    trace_metadata = (
+        db_session.query(DatabaseTraceMetadata)
+        .filter(DatabaseTraceMetadata.trace_id == trace_id.hex())
+        .first()
+    )
+    assert trace_metadata is not None
+    assert trace_metadata.root_span_resource_id is not None
+
+    # Verify trace_metadata.root_span_resource_id matches root span's resource_id
+    assert trace_metadata.root_span_resource_id == db_parent_span.resource_id
+
+
+# ============================================================================
+# GCP RESOURCE ID DEDUP TESTS (Phase 5)
+# ============================================================================
+
+
+def _create_gcp_task(db_session, engine_id: str, name: str = None) -> DatabaseTask:
+    """Helper to create a GCP task with creation_source metadata."""
+    task_id = str(uuid4())
+    task_name = name or f"gcp_agent_{random.random()}"
+    task_metadata = TaskMetadata(
+        creation_source=GCPAgentCreationSource(
+            gcp_project_id="test-project",
+            gcp_region="us-central1",
+            gcp_reasoning_engine_id=engine_id,
+        ),
+    )
+    db_task = DatabaseTask(
+        id=task_id,
+        name=task_name,
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+        is_agentic=True,
+        is_autocreated=False,
+        task_metadata=task_metadata.model_dump(mode="json"),
+        archived=False,
+    )
+    db_session.add(db_task)
+    db_session.commit()
+    return db_task
+
+
+def _cleanup_task(db_session, task_id: str):
+    """Helper to clean up a task and its service name mappings."""
+    db_session.query(DatabaseServiceNameTaskMapping).filter(
+        DatabaseServiceNameTaskMapping.task_id == task_id
+    ).delete(synchronize_session=False)
+    db_session.query(DatabaseTask).filter(
+        DatabaseTask.id == task_id
+    ).delete(synchronize_session=False)
+    db_session.commit()
+
+
+@pytest.mark.unit_tests
+def test_resolve_task_id_matches_gcp_task_via_cloud_resource_id():
+    """Direct OTEL traces with cloud.resource_id should map to existing GCP tasks."""
+    db_session = override_get_db_session()
+    service = TraceIngestionService(db_session)
+
+    engine_id = f"engine_{uuid4().hex[:8]}"
+    gcp_task = _create_gcp_task(db_session, engine_id)
+
+    try:
+        service_name = f"test_service_{random.random()}"
+        resource_attributes = {
+            "cloud.resource_id": f"projects/test-project/locations/us-central1/reasoningEngines/{engine_id}",
+        }
+
+        # Mock find_by_gcp_engine_id since .astext is PostgreSQL-only
+        with patch(
+            "repositories.tasks_repository.TaskRepository.find_by_gcp_engine_id",
+            return_value=gcp_task,
+        ):
+            resolved_id = service._resolve_task_id(
+                explicit_task_id=None,
+                service_name=service_name,
+                resource_attributes=resource_attributes,
+            )
+
+        assert resolved_id == gcp_task.id
+    finally:
+        _cleanup_task(db_session, gcp_task.id)
+
+
+@pytest.mark.unit_tests
+def test_resolve_task_id_creates_mapping_after_gcp_match():
+    """After matching via cloud.resource_id, a service_name mapping should be created."""
+    db_session = override_get_db_session()
+    service = TraceIngestionService(db_session)
+
+    engine_id = f"engine_{uuid4().hex[:8]}"
+    gcp_task = _create_gcp_task(db_session, engine_id)
+
+    try:
+        service_name = f"test_service_{random.random()}"
+        resource_attributes = {
+            "cloud.resource_id": f"projects/test-project/locations/us-central1/reasoningEngines/{engine_id}",
+        }
+
+        # Mock find_by_gcp_engine_id since .astext is PostgreSQL-only
+        with patch(
+            "repositories.tasks_repository.TaskRepository.find_by_gcp_engine_id",
+            return_value=gcp_task,
+        ):
+            resolved_id = service._resolve_task_id(
+                explicit_task_id=None,
+                service_name=service_name,
+                resource_attributes=resource_attributes,
+            )
+        assert resolved_id == gcp_task.id
+
+        # Verify mapping was created for future cache hits
+        mapping = (
+            db_session.query(DatabaseServiceNameTaskMapping)
+            .filter(DatabaseServiceNameTaskMapping.service_name == service_name)
+            .first()
+        )
+        assert mapping is not None
+        assert mapping.task_id == gcp_task.id
+    finally:
+        _cleanup_task(db_session, gcp_task.id)
+
+
+@pytest.mark.unit_tests
+def test_resolve_task_id_uses_cached_mapping_on_subsequent_calls():
+    """Subsequent traces should use the service_name mapping (cache hit)."""
+    db_session = override_get_db_session()
+    service = TraceIngestionService(db_session)
+
+    engine_id = f"engine_{uuid4().hex[:8]}"
+    gcp_task = _create_gcp_task(db_session, engine_id)
+
+    try:
+        service_name = f"test_service_{random.random()}"
+        resource_attributes = {
+            "cloud.resource_id": f"projects/test-project/locations/us-central1/reasoningEngines/{engine_id}",
+        }
+
+        # First call: matches via cloud.resource_id, creates mapping
+        # Mock find_by_gcp_engine_id since .astext is PostgreSQL-only
+        with patch(
+            "repositories.tasks_repository.TaskRepository.find_by_gcp_engine_id",
+            return_value=gcp_task,
+        ):
+            first_id = service._resolve_task_id(
+                explicit_task_id=None,
+                service_name=service_name,
+                resource_attributes=resource_attributes,
+            )
+        assert first_id == gcp_task.id
+
+        # Second call: should use cached mapping (step 3), no mock needed
+        second_id = service._resolve_task_id(
+            explicit_task_id=None,
+            service_name=service_name,
+            resource_attributes=resource_attributes,
+        )
+        assert second_id == gcp_task.id
+    finally:
+        _cleanup_task(db_session, gcp_task.id)
+
+
+@pytest.mark.unit_tests
+def test_resolve_task_id_auto_creates_when_no_resource_id():
+    """Traces without cloud.resource_id should auto-create OTEL tasks as before."""
+    db_session = override_get_db_session()
+    service = TraceIngestionService(db_session)
+
+    service_name = f"new_otel_service_{random.random()}"
+    created_task_id = None
+
+    try:
+        resolved_id = service._resolve_task_id(
+            explicit_task_id=None,
+            service_name=service_name,
+            resource_attributes={},
+        )
+
+        assert resolved_id is not None
+        created_task_id = resolved_id
+
+        db_task = (
+            db_session.query(DatabaseTask)
+            .filter(DatabaseTask.id == resolved_id)
+            .first()
+        )
+        assert db_task is not None
+        assert db_task.name == service_name
+        assert db_task.is_autocreated is True
+    finally:
+        if created_task_id:
+            _cleanup_task(db_session, created_task_id)
+
+
+@pytest.mark.unit_tests
+def test_resolve_task_id_auto_creates_when_resource_id_doesnt_match():
+    """Traces with cloud.resource_id that doesn't match any GCP task should auto-create."""
+    db_session = override_get_db_session()
+    service = TraceIngestionService(db_session)
+
+    service_name = f"unknown_service_{random.random()}"
+    resource_attributes = {
+        "cloud.resource_id": "projects/test-project/locations/us-central1/reasoningEngines/nonexistent_engine",
+    }
+    created_task_id = None
+
+    try:
+        # Mock find_by_gcp_engine_id since .astext is PostgreSQL-only
+        with patch(
+            "repositories.tasks_repository.TaskRepository.find_by_gcp_engine_id",
+            return_value=None,
+        ):
+            resolved_id = service._resolve_task_id(
+                explicit_task_id=None,
+                service_name=service_name,
+                resource_attributes=resource_attributes,
+            )
+
+        assert resolved_id is not None
+        created_task_id = resolved_id
+
+        db_task = (
+            db_session.query(DatabaseTask)
+            .filter(DatabaseTask.id == resolved_id)
+            .first()
+        )
+        assert db_task is not None
+        assert db_task.name == service_name
+        assert db_task.is_autocreated is True
+    finally:
+        if created_task_id:
+            _cleanup_task(db_session, created_task_id)
+
+
+@pytest.mark.unit_tests
+def test_resolve_task_id_explicit_task_id_takes_priority():
+    """Explicit task_id (arthur.task) should take priority over cloud.resource_id."""
+    db_session = override_get_db_session()
+    service = TraceIngestionService(db_session)
+
+    engine_id = f"engine_{uuid4().hex[:8]}"
+    gcp_task = _create_gcp_task(db_session, engine_id)
+    explicit_id = "explicit-task-id-123"
+
+    try:
+        resource_attributes = {
+            "cloud.resource_id": f"projects/test-project/locations/us-central1/reasoningEngines/{engine_id}",
+        }
+
+        resolved_id = service._resolve_task_id(
+            explicit_task_id=explicit_id,
+            service_name="some_service",
+            resource_attributes=resource_attributes,
+        )
+
+        # Explicit task_id should win
+        assert resolved_id == explicit_id
+    finally:
+        _cleanup_task(db_session, gcp_task.id)
+
+
+@pytest.mark.unit_tests
+def test_resolve_task_id_existing_mapping_takes_priority_over_resource_id():
+    """Existing service_name mapping should take priority over cloud.resource_id matching."""
+    db_session = override_get_db_session()
+    service = TraceIngestionService(db_session)
+
+    engine_id = f"engine_{uuid4().hex[:8]}"
+    gcp_task = _create_gcp_task(db_session, engine_id)
+
+    # Create a different task with a pre-existing mapping
+    other_task_id = str(uuid4())
+    other_task = DatabaseTask(
+        id=other_task_id,
+        name=f"other_task_{random.random()}",
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+        is_agentic=True,
+        is_autocreated=True,
+        archived=False,
+    )
+    db_session.add(other_task)
+    db_session.commit()
+
+    service_name = f"mapped_service_{random.random()}"
+    mapping = DatabaseServiceNameTaskMapping(
+        service_name=service_name,
+        task_id=other_task_id,
+        created_at=datetime.now(),
+    )
+    db_session.add(mapping)
+    db_session.commit()
+
+    try:
+        resource_attributes = {
+            "cloud.resource_id": f"projects/test-project/locations/us-central1/reasoningEngines/{engine_id}",
+        }
+
+        resolved_id = service._resolve_task_id(
+            explicit_task_id=None,
+            service_name=service_name,
+            resource_attributes=resource_attributes,
+        )
+
+        # Existing mapping should win over cloud.resource_id
+        assert resolved_id == other_task_id
+    finally:
+        _cleanup_task(db_session, gcp_task.id)
+        _cleanup_task(db_session, other_task_id)
+
+
+@pytest.mark.unit_tests
+def test_resolve_task_id_handles_invalid_resource_id_gracefully():
+    """Invalid cloud.resource_id should not crash; should fall through to auto-create."""
+    db_session = override_get_db_session()
+    service = TraceIngestionService(db_session)
+
+    service_name = f"invalid_resource_service_{random.random()}"
+    resource_attributes = {
+        "cloud.resource_id": "not-a-valid-gcp-path",
+    }
+    created_task_id = None
+
+    try:
+        resolved_id = service._resolve_task_id(
+            explicit_task_id=None,
+            service_name=service_name,
+            resource_attributes=resource_attributes,
+        )
+
+        # Should fall through to auto-create since parse_gcp_resource_path returns None
+        assert resolved_id is not None
+        created_task_id = resolved_id
+
+        db_task = (
+            db_session.query(DatabaseTask)
+            .filter(DatabaseTask.id == resolved_id)
+            .first()
+        )
+        assert db_task is not None
+        assert db_task.is_autocreated is True
+    finally:
+        if created_task_id:
+            _cleanup_task(db_session, created_task_id)
