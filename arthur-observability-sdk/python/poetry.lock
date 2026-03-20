@@ -1987,15 +1987,15 @@ instruments = ["opentelemetry-sdk", "pyagentspec (>=26.1.0)"]
 
 [[package]]
 name = "openinference-instrumentation-agno"
-version = "0.1.28"
+version = "0.1.29"
 description = "OpenInference Agno Instrumentation"
 optional = true
 python-versions = "<3.15,>=3.10"
 groups = ["main"]
 markers = "extra == \"agno\" or extra == \"all\""
 files = [
-    {file = "openinference_instrumentation_agno-0.1.28-py3-none-any.whl", hash = "sha256:24335fe277212a31baa542fb89d64459442d0d6d1074c973742941b8d895643f"},
-    {file = "openinference_instrumentation_agno-0.1.28.tar.gz", hash = "sha256:bb783f3ea82482e5ce76008ee27df0e629c4b3cef0bbf72b237d137b6c3a24f6"},
+    {file = "openinference_instrumentation_agno-0.1.29-py3-none-any.whl", hash = "sha256:16fe00e100a26500129cb7379272a75ba66e85ad8d9b3de9a2f163e868159060"},
+    {file = "openinference_instrumentation_agno-0.1.29.tar.gz", hash = "sha256:dc549fbb42d0df5b890c73a8d6d17fe9c2b9aece488f902bf125dd929ec11883"},
 ]
 
 [package.dependencies]
@@ -2009,7 +2009,7 @@ wrapt = "*"
 
 [package.extras]
 instruments = ["agno (>=2.5.0)"]
-test = ["agno (>=2.5.0)", "ddgs", "fastapi", "openai", "opentelemetry-sdk", "pytest-recording", "yfinance"]
+test = ["agno (>=2.5.0)", "brotli", "ddgs", "fastapi", "openai", "opentelemetry-sdk", "pytest-recording", "yfinance"]
 
 [[package]]
 name = "openinference-instrumentation-anthropic"
@@ -2165,15 +2165,15 @@ instruments = ["claude-agent-sdk (>=0.1.45)"]
 
 [[package]]
 name = "openinference-instrumentation-crewai"
-version = "0.1.21"
+version = "1.0.0"
 description = "OpenInference Crewai Instrumentation"
 optional = true
 python-versions = "<3.14,>=3.10"
 groups = ["main"]
 markers = "extra == \"crewai\" or extra == \"all\""
 files = [
-    {file = "openinference_instrumentation_crewai-0.1.21-py3-none-any.whl", hash = "sha256:f6d08dcca3b4fbc69f906d6b6eb1129b55981c0a6433130f9a4de9ada518e4ce"},
-    {file = "openinference_instrumentation_crewai-0.1.21.tar.gz", hash = "sha256:0b0d051a033915315c387da989c85563d75b8a642aa76bbe638d756440592ae9"},
+    {file = "openinference_instrumentation_crewai-1.0.0-py3-none-any.whl", hash = "sha256:d2ab9f4e3e3e3c2df707ced5f26e3dbd9cc99766b27d8b7946539a3b7ac6b3a7"},
+    {file = "openinference_instrumentation_crewai-1.0.0.tar.gz", hash = "sha256:23274532362fb6818d7118d3155c48cb5572dfa7ab44818d72c4630474dd2479"},
 ]
 
 [package.dependencies]
@@ -2186,7 +2186,7 @@ typing-extensions = "*"
 wrapt = "*"
 
 [package.extras]
-instruments = ["crewai (>=1.9.0)"]
+instruments = ["crewai (>=1.10.1)"]
 
 [[package]]
 name = "openinference-instrumentation-dspy"
