@@ -1,41 +1,6 @@
 ###################################
-## Minimum Required Configurations
+## Filesystem Configuration
 ###################################
-# Storage backend: "s3", "gcs", or "filesystem"
-storageBackend: "s3"
-
-###################################
-## S3 Backend Configuration
-###################################
-# Required when storageBackend: s3
-s3Bucket: ""
-s3Prefix: ""
-
-# AWS Authentication (S3 backend only)
-# Option 1: Use AWS IRSA (recommended for EKS)
-#   Set serviceAccount.awsIrsaRoleArn and leave awsCredentials.create: false
-# Option 2: Use Kubernetes secret
-#   Set awsCredentials.create: true and provide credentials
-# Option 3: Use IAM instance profile (for EC2 nodes)
-#   Leave both false and ensure nodes have IAM role with S3 permissions
-awsCredentials:
-  create: false
-  accessKeyId: ""
-  secretAccessKey: ""
-  region: "us-east-1"
-
-###################################
-## GCS Backend Configuration
-###################################
-# Required when storageBackend: gcs
-gcs:
-  bucket: ""
-  prefix: ""
-
-###################################
-## Filesystem Backend Configuration
-###################################
-# Required when storageBackend: filesystem (Kubernetes PVC)
 filesystem:
   sourceDir: "/models"
   targetDir: "/models-output"
@@ -63,10 +28,6 @@ serviceAccount:
   create: true
   name: ""
   annotations: {}
-  # AWS IRSA Role ARN (for EKS with IAM Roles for Service Accounts)
-  awsIrsaRoleArn: ""
-  # GCP Workload Identity (for GKE)
-  gcpWorkloadIdentityEmail: ""
 
 ###################################
 ## Job Configuration
