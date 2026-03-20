@@ -1,6 +1,5 @@
 import json
 import logging
-from datetime import datetime, timezone
 from typing import AsyncGenerator, List, MutableMapping, Tuple
 
 from arthur_common.models.llm_model_providers import (
@@ -22,11 +21,7 @@ from schemas.chatbot_schemas import (
 from schemas.request_schemas import PromptCompletionRequest
 from schemas.response_schemas import AgenticPromptRunResponse
 from services.chatbot.api_call_service import ApiCallService
-from services.chatbot.chatbot_prompts import (
-    CALL_ARTHUR_API_TOOL,
-    SEARCH_ARTHUR_API_TOOL,
-    search_api_index,
-)
+from services.chatbot.chatbot_prompts import search_api_index
 from services.prompt.chat_completion_service import ChatCompletionService
 from utils import constants
 from utils.utils import get_env_var
@@ -65,28 +60,24 @@ class ChatbotService:
 
     def build_prompt(
         self,
-        system_prompt: str,
+        chatbot_prompt: AgenticPrompt,
+        model_provider: ModelProvider,
+        model_name: str,
         task_id: str,
         history: List[OpenAIMessage],
         user_message: str,
-        model_provider: ModelProvider,
-        model_name: str,
     ) -> AgenticPrompt:
-        system_content = f"{system_prompt}\n\nYou are currently operating within task ID: {task_id}. Use this task_id when making API calls that require it."
-        messages: List[OpenAIMessage] = [
-            OpenAIMessage(role=MessageRole.SYSTEM, content=system_content),
-        ]
+        chatbot_prompt.model_provider = model_provider
+        chatbot_prompt.model_name = model_name
+        self.chat_completion_service.replace_variables(
+            {"task_id": task_id},
+            chatbot_prompt.messages,
+        )
+        messages = list(chatbot_prompt.messages)
         messages.extend(history)
         messages.append(OpenAIMessage(role=MessageRole.USER, content=user_message))
-
-        return AgenticPrompt(
-            name="chatbot",
-            messages=messages,
-            model_name=model_name,
-            model_provider=model_provider,
-            tools=[SEARCH_ARTHUR_API_TOOL, CALL_ARTHUR_API_TOOL],
-            created_at=datetime.now(timezone.utc),
-        )
+        chatbot_prompt.messages = messages
+        return chatbot_prompt
 
     async def stream(
         self,

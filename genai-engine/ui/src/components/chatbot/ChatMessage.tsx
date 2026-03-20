@@ -75,7 +75,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
             variant="body2"
             component="div"
             sx={{
-              "& th, & td": { border: "1px solid", borderColor: "divider", px: 1, py: 0.5 },
+              "& th, & td": { border: "1px solid", borderColor: "divider", px: 1, py: 0.5, maxWidth: 400, whiteSpace: "normal", wordBreak: "break-word" },
             }}
           >
             <ReactMarkdown
@@ -83,7 +83,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
               components={{
                 table: ({ children }) => (
                   <Box sx={{ overflowX: "auto" }}>
-                    <Table sx={{ borderCollapse: "collapse", whiteSpace: "nowrap" }}>{children}</Table>
+                    <Table sx={{ borderCollapse: "collapse", width: "max-content" }}>{children}</Table>
                   </Box>
                 ),
               }}

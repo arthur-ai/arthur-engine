@@ -405,6 +405,9 @@ USER_ID_KEY = SpanAttributes.USER_ID
 DEFAULT_SERVICE_NAME = "__unmapped__"
 UNMAPPED_TASK_ID = "539b1da6-ebf8-4fe2-91e5-db2dc8ff626d"
 
+# Chatbot system prompt name (stored as an agentic prompt on the __unmapped__ task)
+CHATBOT_PROMPT_NAME = "__chatbot_prompt__"
+
 ##################################################################
 
 # Dataset constants

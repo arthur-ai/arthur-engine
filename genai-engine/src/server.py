@@ -38,6 +38,7 @@ from dependencies import (
     get_oauth_client,
     get_scorer_client,
 )
+from repositories.system_task_repository import SystemTaskRepository
 from routers.api_key_routes import api_keys_routes
 from routers.auth_routes import auth_routes
 from routers.chat_routes import app_chat_routes
@@ -194,7 +195,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info(f"Using device: {device.type}")
 
     try:
-        db = get_db_session()
+        db = next(get_db_session())
+
+        # Initialize system task
+        SystemTaskRepository(db).initialize_system_task()
+
         db.close()
     except HTTPException as e:
         raise ConnectionError(f"Error connecting to database: {e}") from None
