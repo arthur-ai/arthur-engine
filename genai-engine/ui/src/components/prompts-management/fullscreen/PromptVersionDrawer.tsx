@@ -15,6 +15,7 @@ import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
+import TablePagination from "@mui/material/TablePagination";
 import Typography from "@mui/material/Typography";
 import { useMemo, useState, useCallback } from "react";
 
@@ -22,6 +23,7 @@ import { usePromptVersions } from "../hooks/usePromptVersions";
 import type { PromptVersionDrawerProps } from "../types";
 
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { usePagination } from "@/hooks/usePagination";
 import { formatDateInTimezone } from "@/utils/formatters";
 
 const PromptVersionDrawer = ({
@@ -35,14 +37,17 @@ const PromptVersionDrawer = ({
   onDelete,
 }: PromptVersionDrawerProps) => {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const { page, rowsPerPage, handlePageChange, handleRowsPerPageChange } = usePagination(10);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [versionToDelete, setVersionToDelete] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const { timezone, use24Hour } = useDisplaySettings();
-  const { versions, isLoading, error, refetch } = usePromptVersions(taskId, promptName, {
+  const { versions, count, isLoading, error, refetch } = usePromptVersions(taskId, promptName, {
     sort: sortOrder,
     exclude_deleted: false,
+    page,
+    pageSize: rowsPerPage,
   });
 
   const sortedAndFilteredVersions = useMemo(() => {
@@ -285,6 +290,19 @@ const PromptVersionDrawer = ({
               );
             })}
           </List>
+        )}
+
+        {!isLoading && !error && count > 0 && (
+          <TablePagination
+            component="div"
+            count={count}
+            page={page}
+            onPageChange={handlePageChange}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleRowsPerPageChange}
+            rowsPerPageOptions={[10, 25, 50]}
+            sx={{ borderTop: 1, borderColor: "divider", flexShrink: 0 }}
+          />
         )}
       </Box>
 
