@@ -2165,15 +2165,15 @@ instruments = ["claude-agent-sdk (>=0.1.45)"]
 
 [[package]]
 name = "openinference-instrumentation-crewai"
-version = "0.1.21"
+version = "1.0.0"
 description = "OpenInference Crewai Instrumentation"
 optional = true
 python-versions = "<3.14,>=3.10"
 groups = ["main"]
 markers = "extra == \"crewai\" or extra == \"all\""
 files = [
-    {file = "openinference_instrumentation_crewai-0.1.21-py3-none-any.whl", hash = "sha256:f6d08dcca3b4fbc69f906d6b6eb1129b55981c0a6433130f9a4de9ada518e4ce"},
-    {file = "openinference_instrumentation_crewai-0.1.21.tar.gz", hash = "sha256:0b0d051a033915315c387da989c85563d75b8a642aa76bbe638d756440592ae9"},
+    {file = "openinference_instrumentation_crewai-1.0.0-py3-none-any.whl", hash = "sha256:d2ab9f4e3e3e3c2df707ced5f26e3dbd9cc99766b27d8b7946539a3b7ac6b3a7"},
+    {file = "openinference_instrumentation_crewai-1.0.0.tar.gz", hash = "sha256:23274532362fb6818d7118d3155c48cb5572dfa7ab44818d72c4630474dd2479"},
 ]
 
 [package.dependencies]
@@ -2186,7 +2186,7 @@ typing-extensions = "*"
 wrapt = "*"
 
 [package.extras]
-instruments = ["crewai (>=1.9.0)"]
+instruments = ["crewai (>=1.10.1)"]
 
 [[package]]
 name = "openinference-instrumentation-dspy"
