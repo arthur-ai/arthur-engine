@@ -1,6 +1,6 @@
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
-import { Box, Chip, CircularProgress, keyframes, Paper, Tooltip, Typography } from "@mui/material";
+import { Box, Chip, CircularProgress, keyframes, Paper, Table, Tooltip, Typography } from "@mui/material";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -83,7 +83,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
               components={{
                 table: ({ children }) => (
                   <Box sx={{ overflowX: "auto" }}>
-                    <table style={{ borderCollapse: "collapse", whiteSpace: "nowrap" }}>{children}</table>
+                    <Table sx={{ borderCollapse: "collapse", whiteSpace: "nowrap" }}>{children}</Table>
                   </Box>
                 ),
               }}

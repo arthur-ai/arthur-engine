@@ -134,7 +134,9 @@ def build_condensed_index(openapi_spec: Dict[str, Any]) -> List[str]:
             if method not in {"GET", "POST", "PUT", "PATCH", "DELETE"}:
                 continue
             # Exclude DELETE endpoints unless they are tag endpoints
-            if method == "DELETE" and "/tags" not in path:
+            path_segments = path.rstrip("/").split("/")
+            is_tag_endpoint = len(path_segments) >= 2 and path_segments[-2] == "tags"
+            if method == "DELETE" and not is_tag_endpoint:
                 continue
             tags = operation.get("tags", [])
             if not any(t in ALLOWED_TAGS for t in tags):

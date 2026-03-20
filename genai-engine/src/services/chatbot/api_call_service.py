@@ -47,7 +47,9 @@ class ApiCallService:
                 body="Invalid path: absolute URLs are not permitted",
             )
 
-        if method == "DELETE" and "/tags/" not in path:
+        path_segments = parsed.path.rstrip("/").split("/")
+        is_tag_endpoint = len(path_segments) >= 2 and path_segments[-2] == "tags"
+        if method == "DELETE" and not is_tag_endpoint:
             return ApiCallResult(
                 method=method,
                 path=path,

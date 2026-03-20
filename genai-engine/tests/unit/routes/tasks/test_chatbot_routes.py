@@ -1,4 +1,3 @@
-import random
 from unittest.mock import patch
 
 import pytest
@@ -42,7 +41,7 @@ def final_response_events(content: str) -> list[str]:
     side_effect=HTTPException(status_code=503, detail="No provider configured"),
 )
 def test_chatbot_no_provider_configured(_, client: GenaiEngineTestClientBase):
-    task_name = f"chatbot_task_{random.random()}"
+    task_name = "chatbot_task_no_provider"
     _, task = client.create_task(task_name, is_agentic=True)
 
     response = client.base_client.post(
@@ -58,7 +57,7 @@ def test_chatbot_no_provider_configured(_, client: GenaiEngineTestClientBase):
     "services.prompt.chat_completion_service.ChatCompletionService.stream_chat_completion",
 )
 def test_chatbot_simple_response(mock_stream, client: GenaiEngineTestClientBase):
-    task_name = f"chatbot_task_{random.random()}"
+    task_name = "chatbot_task_simple_response"
     _, task = client.create_task(task_name, is_agentic=True)
 
     client.base_client.put(
@@ -91,7 +90,7 @@ def test_chatbot_search_tool_emits_search_complete(
     mock_stream,
     client: GenaiEngineTestClientBase,
 ):
-    task_name = f"chatbot_task_{random.random()}"
+    task_name = "chatbot_task_search_tool"
     _, task = client.create_task(task_name, is_agentic=True)
 
     client.base_client.put(
@@ -133,7 +132,7 @@ def test_chatbot_api_tool_emits_tool_call_and_result(
     mock_api_call,
     client: GenaiEngineTestClientBase,
 ):
-    task_name = f"chatbot_task_{random.random()}"
+    task_name = "chatbot_task_api_tool"
     _, task = client.create_task(task_name, is_agentic=True)
 
     client.base_client.put(
@@ -186,7 +185,7 @@ def test_chatbot_conversation_history_persisted(
     mock_stream,
     client: GenaiEngineTestClientBase,
 ):
-    task_name = f"chatbot_task_{random.random()}"
+    task_name = "chatbot_task_history_persisted"
     _, task = client.create_task(task_name, is_agentic=True)
 
     client.base_client.put(
@@ -195,7 +194,7 @@ def test_chatbot_conversation_history_persisted(
         headers=client.authorized_user_api_key_headers,
     )
 
-    conversation_id = f"test-conv-history-{random.random()}"
+    conversation_id = "test-conv-history-persisted"
     mock_stream.return_value = make_stream(final_response_events("First response."))
 
     client.base_client.post(
@@ -213,7 +212,7 @@ def test_chatbot_conversation_history_persisted(
     "services.prompt.chat_completion_service.ChatCompletionService.stream_chat_completion",
 )
 def test_clear_chatbot_history(mock_stream, client: GenaiEngineTestClientBase):
-    task_name = f"chatbot_task_{random.random()}"
+    task_name = "chatbot_task_clear_history"
     _, task = client.create_task(task_name, is_agentic=True)
 
     client.base_client.put(
@@ -222,7 +221,7 @@ def test_clear_chatbot_history(mock_stream, client: GenaiEngineTestClientBase):
         headers=client.authorized_user_api_key_headers,
     )
 
-    conversation_id = f"test-conv-clear-{random.random()}"
+    conversation_id = "test-conv-clear-history"
     mock_stream.return_value = make_stream(final_response_events("Hello."))
 
     client.base_client.post(

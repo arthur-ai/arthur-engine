@@ -1,7 +1,6 @@
-import json
 import logging
 from datetime import datetime, timezone
-from typing import AsyncGenerator, Dict, List, Tuple
+from typing import AsyncGenerator, List, MutableMapping, Tuple
 
 from arthur_common.models.llm_model_providers import (
     MessageRole,
@@ -10,10 +9,15 @@ from arthur_common.models.llm_model_providers import (
     ToolCall,
     ToolCallFunction,
 )
+from cachetools import TTLCache
 
 from clients.llm.llm_client import LLMClient
 from schemas.agentic_prompt_schemas import AgenticPrompt
-from schemas.chatbot_schemas import ApiCallSummary
+from schemas.chatbot_schemas import (
+    ApiCallSummary,
+    CallArthurApiArgs,
+    SearchArthurApiArgs,
+)
 from schemas.request_schemas import PromptCompletionRequest
 from schemas.response_schemas import AgenticPromptRunResponse
 from services.chatbot.api_call_service import ApiCallService
@@ -28,11 +32,15 @@ from utils.utils import get_env_var
 
 logger = logging.getLogger(__name__)
 
+
 MAX_ITERATIONS = int(
     get_env_var(constants.GENAI_ENGINE_CHATBOT_MAX_ITERATIONS_ENV_VAR, True) or 30,
 )
 
-CONVERSATION_HISTORIES: Dict[Tuple[str, str], List[OpenAIMessage]] = {}
+CONVERSATION_HISTORIES: MutableMapping[Tuple[str, str], List[OpenAIMessage]] = TTLCache(
+    maxsize=1000,
+    ttl=3600,
+)
 
 
 def get_conversation_history(user_id: str, conversation_id: str) -> List[OpenAIMessage]:
@@ -110,9 +118,13 @@ class ChatbotService:
                 return
 
             if not final_response.tool_calls:
-                CONVERSATION_HISTORIES[(user_id, conversation_id)] = [
+                history = [
                     m for m in current_prompt.messages if m.role != MessageRole.SYSTEM
                 ]
+                history.append(
+                    OpenAIMessage(role=MessageRole.AI, content=final_response.content),
+                )
+                CONVERSATION_HISTORIES[(user_id, conversation_id)] = history
                 yield f"event: final_response\ndata: {final_response.model_dump_json()}\n\n"
                 return
 
@@ -137,17 +149,13 @@ class ChatbotService:
             for tool_call in tool_calls:
                 tool_call_id = tool_call.id
                 args_str = tool_call.function.arguments or "{}"
-                try:
-                    args = json.loads(args_str)
-                except json.JSONDecodeError:
-                    args = {}
 
                 if tool_call.function.name == "search_arthur_api":
-                    query = args.get("query", "")
+                    search_args = SearchArthurApiArgs.model_validate_json(args_str)
                     new_messages.append(
                         OpenAIMessage(
                             role=MessageRole.TOOL,
-                            content=search_api_index(self.api_index, query),
+                            content=search_api_index(self.api_index, search_args.query),
                             tool_call_id=tool_call_id,
                         ),
                     )
@@ -155,48 +163,42 @@ class ChatbotService:
                     # but the LLM's next response should be in a fresh bubble
                     yield "event: search_complete\ndata: {}\n\n"
                     continue
+                elif tool_call.function.name == "call_arthur_api":
+                    call_args = CallArthurApiArgs.model_validate_json(args_str)
 
-                method = args.get("method", "GET")
-                path = args.get("path", "/")
-                query_params_raw = args.get("query_params")
-                body_raw = args.get("body")
+                    yield f"event: tool_call\ndata: {{'method': '{call_args.method}', 'path': '{call_args.path}'}}\n\n"
 
-                try:
-                    query_params = (
-                        json.loads(query_params_raw) if query_params_raw else None
+                    result = await self.api_call_service.call(
+                        call_args.method,
+                        call_args.path,
+                        call_args.query_params,
+                        call_args.body,
                     )
-                except (json.JSONDecodeError, TypeError):
-                    query_params = None
+                    api_calls_made.append(
+                        ApiCallSummary(
+                            method=call_args.method,
+                            path=call_args.path,
+                            status_code=result.status_code,
+                        ),
+                    )
 
-                try:
-                    body = json.loads(body_raw) if body_raw else None
-                except (json.JSONDecodeError, TypeError):
-                    body = None
+                    yield f"event: tool_result\ndata: {{'method': '{call_args.method}', 'path': '{call_args.path}', 'status_code': {result.status_code}}}\n\n"
 
-                yield f"event: tool_call\ndata: {json.dumps({'method': method, 'path': path})}\n\n"
-
-                result = await self.api_call_service.call(
-                    method,
-                    path,
-                    query_params,
-                    body,
-                )
-                api_calls_made.append(
-                    ApiCallSummary(
-                        method=method,
-                        path=path,
-                        status_code=result.status_code,
-                    ),
-                )
-
-                yield f"event: tool_result\ndata: {json.dumps({'method': method, 'path': path, 'status_code': result.status_code})}\n\n"
-
-                tool_result_msg = OpenAIMessage(
-                    role=MessageRole.TOOL,
-                    content=result.to_tool_result_content(),
-                    tool_call_id=tool_call_id,
-                )
-                new_messages.append(tool_result_msg)
+                    new_messages.append(
+                        OpenAIMessage(
+                            role=MessageRole.TOOL,
+                            content=result.to_tool_result_content(),
+                            tool_call_id=tool_call_id,
+                        ),
+                    )
+                else:
+                    new_messages.append(
+                        OpenAIMessage(
+                            role=MessageRole.TOOL,
+                            content=f"Unknown tool: {tool_call.function.name}",
+                            tool_call_id=tool_call_id,
+                        ),
+                    )
 
             current_prompt = AgenticPrompt(
                 name=current_prompt.name,

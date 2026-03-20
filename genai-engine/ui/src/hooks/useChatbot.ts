@@ -162,6 +162,9 @@ export function useChatbot(taskId: string): UseChatbotReturn {
                   throw new Error(dataStr);
                 }
               } catch (parseError) {
+                if (parseError instanceof Error && parseError.message === dataStr) {
+                  throw parseError;
+                }
                 console.error("Error parsing SSE event:", parseError, dataStr);
               }
             }
