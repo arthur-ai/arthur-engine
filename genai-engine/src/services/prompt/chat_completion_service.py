@@ -1,4 +1,5 @@
 import logging
+import warnings
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Dict, List, Set, Tuple, Union, cast
 
@@ -24,6 +25,15 @@ from clients.llm.llm_client import LLMClient, LLMModelResponse
 from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.request_schemas import CompletionRequest, PromptCompletionRequest
 from schemas.response_schemas import AgenticPromptRunResponse
+
+# litellm's Anthropic streaming handler sets Choices instead of StreamingChoices on chunks,
+# causing pydantic serialization warnings on model_dump_json() and completion_cost().
+# This is a litellm bug — suppress it process-wide to avoid noise in logs.
+warnings.filterwarnings(
+    "ignore",
+    message="Pydantic serializer warnings",
+    category=UserWarning,
+)
 
 logger = logging.getLogger(__name__)
 

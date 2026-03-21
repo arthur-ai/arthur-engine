@@ -160,6 +160,7 @@ os.environ[constants.TELEMETRY_ENABLED_ENV_VAR] = "False"
 MASTER_KEY_AUTHORIZED_HEADERS = {"Authorization": "Bearer %s" % MASTER_API_KEY}
 AUTHORIZED_CHAT_HEADERS = {"Authorization": "Bearer %s" % "user_0"}
 DATABASE_ENGINE = None
+SYSTEM_TASK_INITIALIZED = False
 
 
 def override_get_scorer_client():
@@ -196,6 +197,7 @@ from dependencies import (
     get_oauth_client,
     get_scorer_client,
 )
+from repositories.system_task_repository import SystemTaskRepository
 from server import get_test_app
 
 app = get_test_app()
@@ -223,6 +225,13 @@ class GenaiEngineTestClientBase(httpx.Client):
         self.authorized_org_admin_api_key_headers: dict = {
             "Authorization": "Bearer admin_0",
         }
+
+        global SYSTEM_TASK_INITIALIZED
+        if not SYSTEM_TASK_INITIALIZED:
+            db = override_get_db_session()
+            SystemTaskRepository(db).initialize_system_tasks()
+            db.close()
+            SYSTEM_TASK_INITIALIZED = True
 
         if create_user_key:
             # Clear existing keys, create a new one to avoid hitting user key limits

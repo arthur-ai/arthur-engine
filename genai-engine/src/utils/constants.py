@@ -208,6 +208,7 @@ TELEMETRY_ENABLED_ENV_VAR = "TELEMETRY_ENABLED"
 GENAI_ENGINE_AGENTIC_POLLING_INTERVAL_SECONDS_ENV_VAR = (
     "GENAI_ENGINE_AGENTIC_POLLING_INTERVAL_SECONDS"
 )
+GENAI_ENGINE_CHATBOT_MAX_ITERATIONS_ENV_VAR = "GENAI_ENGINE_CHATBOT_MAX_ITERATIONS"
 
 ##################################################################
 # CONTEXT WINDOW LENGTHS
@@ -403,6 +404,12 @@ USER_ID_KEY = SpanAttributes.USER_ID
 # Service name mapping constants
 DEFAULT_SERVICE_NAME = "__unmapped__"
 UNMAPPED_TASK_ID = "539b1da6-ebf8-4fe2-91e5-db2dc8ff626d"
+
+CHATBOT_TASK_ID = "fcba8383-55ce-42ec-a5c3-528f3492ea8a"
+CHATBOT_TASK_NAME = "__chatbot__"
+
+# Chatbot system prompt name (stored as an agentic prompt on the chatbot system task)
+CHATBOT_PROMPT_NAME = "__chatbot_prompt__"
 
 ##################################################################
 
