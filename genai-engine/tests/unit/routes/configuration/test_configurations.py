@@ -86,6 +86,35 @@ def test_config_update_get(environment, client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
+def test_trace_retention_days_config(client: GenaiEngineTestClientBase):
+    """GET config returns default trace_retention_days (90); POST can update it."""
+    headers = {"Authorization": "Bearer admin_0"}
+    get_resp = client.get_configs(headers=headers)
+    assert get_resp.status_code == 200
+    configs = get_resp.json()
+    assert "trace_retention_days" in configs
+    assert configs["trace_retention_days"] == 90
+
+    update_resp = client.update_configs(
+        {"trace_retention_days": 30},
+        headers=headers,
+    )
+    assert update_resp.status_code == 200
+    assert update_resp.json()["trace_retention_days"] == 30
+
+    get_resp2 = client.get_configs(headers=headers)
+    assert get_resp2.status_code == 200
+    assert get_resp2.json()["trace_retention_days"] == 30
+
+    # Invalid value is rejected
+    invalid_resp = client.update_configs(
+        {"trace_retention_days": 99},
+        headers=headers,
+    )
+    assert invalid_resp.status_code == 422
+
+
+@pytest.mark.unit_tests
 def test_version_read_env_var_not_present():
     version = utils.get_genai_engine_version()
     semver_regex = r"^\d+\.\d+\.\d+$"

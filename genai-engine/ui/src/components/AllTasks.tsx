@@ -1,10 +1,6 @@
 import AddIcon from "@mui/icons-material/Add";
-import AppsOutlined from "@mui/icons-material/AppsOutlined";
 import CloseIcon from "@mui/icons-material/Close";
 import InventoryIcon from "@mui/icons-material/Inventory";
-import KeyOutlined from "@mui/icons-material/KeyOutlined";
-import LogoutOutlined from "@mui/icons-material/LogoutOutlined";
-import SettingsIcon from "@mui/icons-material/Settings";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
 import SortIcon from "@mui/icons-material/Sort";
 import VisibilityIcon from "@mui/icons-material/Visibility";
@@ -18,12 +14,8 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
-  Divider,
   FormControl,
   IconButton,
-  ListItemIcon,
-  ListItemText,
-  Menu,
   MenuItem,
   Select,
   Stack,
@@ -34,20 +26,16 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { ArthurLogo } from "./common/ArthurLogo";
-import { ThemeToggle } from "./common/ThemeToggle";
 import { CreateTaskForm } from "./CreateTaskForm";
 import { TaskCard } from "./TaskCard";
 
-import { UserSettingsModal } from "@/components/UserSettingsModal";
-import { useAuth } from "@/contexts/AuthContext";
-import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { SettingsMenuButton } from "@/components/settings/SettingsMenuButton";
 import { useApi } from "@/hooks/useApi";
 import { TaskResponse } from "@/lib/api";
 import { type InactiveDays, type SortBy, useTaskListStore } from "@/stores/task-list.store";
 
 export const AllTasks: React.FC = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
   const api = useApi();
   const [tasks, setTasks] = useState<TaskResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -57,12 +45,8 @@ export const AllTasks: React.FC = () => {
   const [archivedError, setArchivedError] = useState<string | null>(null);
   const [archivedLoaded, setArchivedLoaded] = useState(false);
   const [archivedDialogOpen, setArchivedDialogOpen] = useState(false);
-  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
-  const isMenuOpen = Boolean(menuAnchorEl);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [userSettingsModalOpen, setUserSettingsModalOpen] = useState(false);
   const { hideSystemTasks, sortBy, inactiveDays, setHideSystemTasks, setSortBy, setInactiveDays } = useTaskListStore();
-  const { timezone, setTimezone, use24Hour, setUse24Hour } = useDisplaySettings();
 
   const filteredTasks = useMemo(() => {
     let result = [...tasks];
@@ -174,14 +158,6 @@ export const AllTasks: React.FC = () => {
     }
   }, [api, archivedDialogOpen, archivedLoaded, fetchArchivedTasks]);
 
-  const handleMenuClose = () => {
-    setMenuAnchorEl(null);
-  };
-
-  const handleLogout = () => {
-    logout();
-  };
-
   const handleTaskCreated = async (taskId: string) => {
     await fetchActiveTasks();
     navigate(`/tasks/${taskId}/overview`);
@@ -250,73 +226,7 @@ export const AllTasks: React.FC = () => {
                 <ArthurLogo className="h-20 -ml-5 text-black dark:text-white" />
               </div>
               <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                <IconButton
-                  aria-label="settings"
-                  onClick={(e) => setMenuAnchorEl(e.currentTarget)}
-                  sx={{
-                    bgcolor: "background.paper",
-                    border: 1,
-                    borderColor: "divider",
-                    borderRadius: "4px",
-                    padding: "8px",
-                    width: "40px",
-                    height: "40px",
-                  }}
-                >
-                  <SettingsIcon />
-                </IconButton>
-                <Menu
-                  anchorEl={menuAnchorEl}
-                  open={isMenuOpen}
-                  onClose={handleMenuClose}
-                  anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-                  transformOrigin={{ vertical: "top", horizontal: "right" }}
-                >
-                  <MenuItem
-                    onClick={() => {
-                      handleMenuClose();
-                      setUserSettingsModalOpen(true);
-                    }}
-                  >
-                    <ListItemIcon>
-                      <SettingsIcon />
-                    </ListItemIcon>
-                    <ListItemText>User settings</ListItemText>
-                  </MenuItem>
-                  <MenuItem
-                    onClick={() => {
-                      handleMenuClose();
-                      navigate("/settings/model-providers");
-                    }}
-                  >
-                    <ListItemIcon>
-                      <AppsOutlined />
-                    </ListItemIcon>
-                    <ListItemText>Model Providers</ListItemText>
-                  </MenuItem>
-                  <MenuItem
-                    onClick={() => {
-                      handleMenuClose();
-                      navigate("/settings/api-keys");
-                    }}
-                  >
-                    <ListItemIcon>
-                      <KeyOutlined />
-                    </ListItemIcon>
-                    <ListItemText>API Keys</ListItemText>
-                  </MenuItem>
-                  <Divider />
-                  <Box sx={{ px: 2, py: 1 }}>
-                    <ThemeToggle />
-                  </Box>
-                  <Divider />
-                  <MenuItem onClick={handleLogout}>
-                    <ListItemIcon>
-                      <LogoutOutlined />
-                    </ListItemIcon>
-                    <ListItemText>Logout</ListItemText>
-                  </MenuItem>
-                </Menu>
+                <SettingsMenuButton />
               </Box>
             </div>
           </div>
@@ -458,18 +368,6 @@ export const AllTasks: React.FC = () => {
             handleTaskCreated(taskId);
           }}
           onCancel={() => setShowCreateForm(false)}
-        />
-
-        {/* User Settings Modal */}
-        <UserSettingsModal
-          open={userSettingsModalOpen}
-          onClose={() => setUserSettingsModalOpen(false)}
-          initialSettings={{ timezone, use24Hour }}
-          onSave={(settings) => {
-            setTimezone(settings.timezone ?? timezone);
-            if (settings.use24Hour !== undefined) setUse24Hour(settings.use24Hour);
-            setUserSettingsModalOpen(false);
-          }}
         />
       </div>
     </>
