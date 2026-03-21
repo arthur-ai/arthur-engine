@@ -152,19 +152,32 @@ spec:
                   name: {{ .Values.genaiEngineSecretInternalApiKeyName }}
                   key: key
             {{- end }}
-          {{- if .Values.gcpDiscoveryConfig.isEnabled }}
+            {{- if .Values.modelStorage.enabled }}
+            - name: MODEL_STORAGE_PATH
+              value: {{ .Values.modelStorage.mountPath | default "/model_output" | quote }}
+            {{- end }}
           volumeMounts:
+            {{- if .Values.modelStorage.enabled }}
+            - name: models-volume
+              mountPath: {{ .Values.modelStorage.mountPath | default "/model_output" }}
+            {{- end }}
+            {{- if .Values.gcpDiscoveryConfig.isEnabled }}
             - name: gcp-credentials
               mountPath: /var/secrets/google
               readOnly: true
-          {{- end }}
-      {{- if .Values.gcpDiscoveryConfig.isEnabled }}
+            {{- end }}
       volumes:
+        {{- if .Values.modelStorage.enabled }}
+        - name: models-volume
+          persistentVolumeClaim:
+            claimName: {{ .Values.modelStorage.pvcClaimName | default "arthur-models-pvc" }}
+        {{- end }}
+        {{- if .Values.gcpDiscoveryConfig.isEnabled }}
         - name: gcp-credentials
           secret:
             secretName: {{ .Values.gcpDiscoveryConfig.googleCredentialsSecretName }}
             defaultMode: 420
-      {{- end }}      
+        {{- end }}
       {{- with .Values.arthurGenaiEngineDeployment.genaiEnginePodNodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

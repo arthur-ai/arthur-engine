@@ -18,11 +18,13 @@ spec:
           timeoutSeconds: 3600
           serviceAccountName: SERVICE_ACCOUNT_EMAIL
           containers:
-            - image: arthurplatform/genai-engine-models-gcp:latest
+            - image: arthurplatform/genai-engine-models:IMAGE_VERSION
               command:
                 - python
                 - upload_models.py
               env:
+                - name: STORAGE_BACKEND
+                  value: gcs
                 - name: GCS_BUCKET
                   value: BUCKET_NAME
                 - name: GCS_PREFIX

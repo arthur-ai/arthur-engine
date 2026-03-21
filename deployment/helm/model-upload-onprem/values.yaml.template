@@ -1,52 +1,41 @@
 ###################################
-## Minimum Required Configurations
+## Filesystem Configuration
 ###################################
-# S3 bucket name (required)
-s3Bucket: ""
-
-# S3 prefix/path (optional, e.g., "models")
-s3Prefix: ""
-
-###################################
-## AWS Authentication
-###################################
-# Option 1: Use AWS IRSA (recommended for EKS)
-#   Set serviceAccountAWSIrsaRoleArn and leave awsCredentials.create: false
-# Option 2: Use Kubernetes secret
-#   Set awsCredentials.create: true and provide credentials
-# Option 3: Use IAM instance profile (for EC2 nodes)
-#   Leave both false and ensure nodes have IAM role with S3 permissions
-
-# AWS IRSA Role ARN (for EKS with IAM Roles for Service Accounts)
-serviceAccountAWSIrsaRoleArn: ""
-
-# AWS Credentials (alternative to IRSA)
-awsCredentials:
-  create: false
-  accessKeyId: ""
-  secretAccessKey: ""
-  region: "us-east-1"
+filesystem:
+  sourceDir: "/models"
+  targetDir: "/models-output"
+  pvc:
+    create: true
+    claimName: "arthur-models-pvc"
+    storageSize: "25Gi"
+    accessMode: "ReadWriteOnce"
+    storageClassName: ""
 
 ###################################
 ## Container Image
 ###################################
-# Container repository location
 containerRepository:
   imageLocation: "arthurplatform"
-  imageName: "arthur-model-upload"
+  imageName: "genai-engine-models"
   imageVersion: "latest"
   credentialsRequired: false
   imagePullSecretName: ""
 
 ###################################
+## Service Account
+###################################
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+###################################
 ## Job Configuration
 ###################################
 job:
-  # Number of retries before marking job as failed
+  restartPolicy: Never
   backoffLimit: 3
-  # Maximum time in seconds a job can run
   activeDeadlineSeconds: 3600  # 1 hour
-  # Time to keep completed/failed job pods (0 = keep forever)
   ttlSecondsAfterFinished: 86400  # 24 hours
   priorityClassName: ""
   annotations: {}
@@ -66,7 +55,6 @@ resources:
 ###################################
 ## Advanced - General
 ###################################
-# Name suffix for this Arthur stack resources (e.g. 'dev' or 'prod')
 arthurResourceNameSuffix: ""
 
 ###################################
