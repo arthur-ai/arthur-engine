@@ -2,6 +2,7 @@ import type { EvalVersionsFilters } from "../types";
 
 import { useApiQuery } from "@/hooks/useApiQuery";
 import type { LLMEvalsVersionListResponse } from "@/lib/api-client/api-client";
+import { encodePathParam } from "@/utils/url";
 
 export function useEvalVersions(taskId: string | undefined, evalName: string | undefined, filters: EvalVersionsFilters = {}) {
   const { data, error, isLoading, refetch } = useApiQuery<"getAllLlmEvalVersionsApiV1TasksTaskIdLlmEvalsEvalNameVersionsGet">({
@@ -9,7 +10,7 @@ export function useEvalVersions(taskId: string | undefined, evalName: string | u
     args: [
       {
         taskId: taskId!,
-        evalName: evalName!,
+        evalName: encodePathParam(evalName!),
         page: filters.page ?? 0,
         page_size: filters.pageSize ?? 10,
         sort: filters.sort ?? "desc",

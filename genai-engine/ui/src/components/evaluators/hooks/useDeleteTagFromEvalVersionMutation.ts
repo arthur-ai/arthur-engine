@@ -1,5 +1,6 @@
 import { useApi } from "@/hooks/useApi";
 import { useApiMutation } from "@/hooks/useApiMutation";
+import { encodePathParam } from "@/utils/url";
 
 interface DeleteTagVariables {
   evalName: string;
@@ -15,7 +16,12 @@ export function useDeleteTagFromEvalVersionMutation() {
     mutationFn: async ({ evalName, evalVersion, tag, taskId }: DeleteTagVariables) => {
       if (!api) throw new Error("API not available");
 
-      await api.api.deleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsTagDelete(evalName, evalVersion, tag, taskId);
+      await api.api.deleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsTagDelete(
+        encodePathParam(evalName),
+        evalVersion,
+        encodePathParam(tag),
+        taskId
+      );
     },
     invalidateQueries: [
       { queryKey: ["getLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGet"] },
