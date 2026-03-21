@@ -15,8 +15,9 @@ import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
+import TablePagination from "@mui/material/TablePagination";
 import Typography from "@mui/material/Typography";
-import { useMemo, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 
 import { usePromptVersions } from "../hooks/usePromptVersions";
 import type { PromptVersionDrawerProps } from "../types";
@@ -35,24 +36,33 @@ const PromptVersionDrawer = ({
   onDelete,
 }: PromptVersionDrawerProps) => {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [versionToDelete, setVersionToDelete] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const { timezone, use24Hour } = useDisplaySettings();
-  const { versions, isLoading, error, refetch } = usePromptVersions(taskId, promptName, {
+  const { versions, count, isLoading, error, refetch } = usePromptVersions(taskId, promptName, {
     sort: sortOrder,
     exclude_deleted: false,
+    page,
+    pageSize,
   });
 
-  const sortedAndFilteredVersions = useMemo(() => {
-    // Sort by creation date
-    return [...versions].sort((a, b) => {
-      const aTime = new Date(a.created_at).getTime();
-      const bTime = new Date(b.created_at).getTime();
-      return sortOrder === "asc" ? aTime - bTime : bTime - aTime;
-    });
-  }, [versions, sortOrder]);
+  const handleSortChange = useCallback(() => {
+    setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    setPage(0);
+  }, []);
+
+  const handlePageChange = useCallback((_: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => {
+    setPage(newPage);
+  }, []);
+
+  const handlePageSizeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setPageSize(parseInt(e.target.value, 10));
+    setPage(0);
+  }, []);
 
   const handleVersionClick = useCallback(
     (version: number) => {
@@ -117,7 +127,7 @@ const PromptVersionDrawer = ({
         <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
           <Chip
             label={`Sort: ${sortOrder === "asc" ? "Oldest First" : "Newest First"}`}
-            onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+            onClick={handleSortChange}
             clickable
             size="small"
           />
@@ -141,7 +151,7 @@ const PromptVersionDrawer = ({
           </Box>
         )}
 
-        {!isLoading && !error && sortedAndFilteredVersions.length === 0 && (
+        {!isLoading && !error && versions.length === 0 && (
           <Box sx={{ p: 2, textAlign: "center" }}>
             <Typography variant="body2" color="text.secondary">
               No versions found
@@ -149,9 +159,9 @@ const PromptVersionDrawer = ({
           </Box>
         )}
 
-        {!isLoading && !error && sortedAndFilteredVersions.length > 0 && (
+        {!isLoading && !error && versions.length > 0 && (
           <List sx={{ flex: 1, overflow: "auto" }}>
-            {sortedAndFilteredVersions.map((version) => {
+            {versions.map((version) => {
               const isSelected = selectedVersion === version.version;
               const isDeleted = !!version.deleted_at;
               const isLatest = version.version === latestVersion && !isDeleted;
@@ -285,6 +295,19 @@ const PromptVersionDrawer = ({
               );
             })}
           </List>
+        )}
+
+        {!isLoading && !error && count > 0 && (
+          <TablePagination
+            component="div"
+            count={count}
+            page={page}
+            onPageChange={handlePageChange}
+            rowsPerPage={pageSize}
+            onRowsPerPageChange={handlePageSizeChange}
+            rowsPerPageOptions={[10, 25, 50]}
+            sx={{ borderTop: "1px solid", borderColor: "divider", flexShrink: 0 }}
+          />
         )}
       </Box>
 
