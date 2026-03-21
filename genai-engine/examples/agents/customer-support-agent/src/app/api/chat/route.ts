@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { mastra } from "@/mastra";
 import { getTemplatedPrompt } from "@/mastra/lib/arthur-api-client";
 import { resolveModelFromPrompt } from "@/mastra/lib/model-resolver";
-import { wrapMastra, getAITracing, AISpanType } from "@mastra/core/ai-tracing";
+import { wrapMastra, getAITracing, SpanType } from "@mastra/core/observability";
 import { z } from "zod";
 
 // Define schemas
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     // Create root span for the entire customer support conversation
     // Include sessionId in metadata if provided (will be set on trace via attribute-utils)
     const rootSpan = aiTracing.startSpan({
-      type: AISpanType.AGENT_RUN,
+      type: SpanType.AGENT_RUN,
       name: "customer-support-conversation",
       input: { userQuestion: message },
       metadata: {

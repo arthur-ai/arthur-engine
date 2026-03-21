@@ -63,6 +63,12 @@ class Arthur:
         self._enable_telemetry: bool = enable_telemetry
         self._otlp_endpoint: str = otlp_endpoint or f"{self._base_url}/api/v1/traces"
 
+        if self._api_key is None:
+            raise ValueError(
+                "Arthur requires an API key. Provide api_key or set the ARTHUR_API_KEY "
+                "environment variable."
+            )
+
         if task_id is None and task_name is None and service_name is None:
             raise ValueError(
                 "Arthur requires at least one of: task_id, task_name, or service_name. "

@@ -10,13 +10,12 @@ import type {
   AITracingExporter,
   AITracingEvent,
   AnyExportedAISpan,
-} from "@mastra/core/ai-tracing";
-import { ConsoleLogger } from "@mastra/core/logger";
+} from "./types";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { trace, Context, SpanKind, ROOT_CONTEXT } from "@opentelemetry/api";
-import { resourceFromAttributes } from "@opentelemetry/resources";
+import { Resource } from "@opentelemetry/resources";
 import {
   OITracer,
   OISpan,
@@ -26,19 +25,18 @@ import { setSpanAttributes, setSpanErrorInfo } from "./attribute-utils";
 
 export interface ArthurExporterConfig {
   url: string;
-  headers: Record<string, string>;
+  apiKey: string;
   taskId: string;
   serviceName: string;
 
-  traceConfig?: TraceConfigOptions;
+  /** Additional custom headers to send with OTLP requests */
+  headers?: Record<string, string>;
 
-  /** Logger level for diagnostic messages (default: 'warn') */
-  logLevel?: "debug" | "info" | "warn" | "error";
+  traceConfig?: TraceConfigOptions;
 }
 
 export class ArthurExporter implements AITracingExporter {
   name = "arthur";
-  private logger: ConsoleLogger;
   private provider: NodeTracerProvider;
   private tracer: OITracer;
   private taskId: string;
@@ -46,11 +44,10 @@ export class ArthurExporter implements AITracingExporter {
   private serviceName: string;
 
   constructor(config: ArthurExporterConfig) {
-    this.logger = new ConsoleLogger({ level: config.logLevel ?? "warn" });
     this.taskId = config.taskId;
     this.serviceName = config.serviceName;
 
-    // Ensure URL ends with '/v1/traces' regardless of trailing slash
+    // Ensure URL ends with '/api/v1/traces' regardless of trailing slash
     const baseUrl = config.url.endsWith("/")
       ? config.url.slice(0, -1)
       : config.url;
@@ -58,12 +55,15 @@ export class ArthurExporter implements AITracingExporter {
 
     const exporter = new OTLPTraceExporter({
       url: tracesUrl,
-      headers: config.headers,
+      headers: {
+        ...config.headers,
+        Authorization: `Bearer ${config.apiKey}`,
+      },
     });
 
     // Create a standalone provider (not registered globally)
     this.provider = new NodeTracerProvider({
-      resource: resourceFromAttributes({
+      resource: new Resource({
         "service.name": this.serviceName,
         "arthur.task": this.taskId,
       }),
@@ -74,12 +74,20 @@ export class ArthurExporter implements AITracingExporter {
     // We create an OITracer from our private provider
     const otelTracer = this.provider.getTracer(
       "@mastra/arthur-exporter",
-      "1.0.0"
+      "1.0.0",
     );
     this.tracer = new OITracer({
       tracer: otelTracer,
       traceConfig: config.traceConfig,
     });
+  }
+
+  /**
+   * Export a tracing event (new @mastra/observability 1.x interface).
+   * Delegates to exportEvent for the actual processing.
+   */
+  async exportTracingEvent(event: AITracingEvent): Promise<void> {
+    return this.exportEvent(event);
   }
 
   async exportEvent(event: AITracingEvent): Promise<void> {
@@ -101,7 +109,7 @@ export class ArthurExporter implements AITracingExporter {
           break;
       }
     } catch (error) {
-      this.logger.error("Arthur exporter: Error processing event", {
+      console.error("Arthur exporter: Error processing event", {
         error: error instanceof Error ? error.message : String(error),
         eventType: event.type,
         spanId: event.exportedSpan.id,
@@ -134,12 +142,11 @@ export class ArthurExporter implements AITracingExporter {
   private async handleEventSpan(span: AnyExportedAISpan): Promise<void> {
     const otelSpan = this.createOtelSpan(span);
     this.updateOtelSpan(otelSpan, span);
-    // Event spans end immediately for events
+    // Event spans end immediately
     otelSpan.end();
   }
 
   private createOtelSpan(span: AnyExportedAISpan): OISpan {
-    // Create parent context if parent exists
     // Use root context so we don't pick up any parent
     // spans set from other exporters in the current thread context
     let parentCtx: Context = ROOT_CONTEXT;
@@ -157,7 +164,7 @@ export class ArthurExporter implements AITracingExporter {
         startTime: span.startTime,
         kind: SpanKind.INTERNAL,
       },
-      parentCtx
+      parentCtx,
     );
 
     // Set all attributes and error info
@@ -171,6 +178,10 @@ export class ArthurExporter implements AITracingExporter {
     setSpanErrorInfo(otelSpan, span.errorInfo);
   }
 
+  async flush(): Promise<void> {
+    await this.provider.forceFlush();
+  }
+
   async shutdown(): Promise<void> {
     try {
       // End any remaining spans
@@ -181,10 +192,8 @@ export class ArthurExporter implements AITracingExporter {
 
       // Shutdown the provider
       await this.provider.shutdown();
-
-      this.logger.info("Arthur exporter: Shutdown completed");
     } catch (error) {
-      this.logger.error("Arthur exporter: Error during shutdown", {
+      console.error("Arthur exporter: Error during shutdown", {
         error: error instanceof Error ? error.message : String(error),
       });
     }

@@ -7,7 +7,8 @@ import {
   generateGraphAgent,
 } from "./agents";
 import { ConsoleLogger, LogLevel } from "@mastra/core/logger";
-import { ArthurExporter } from "./observability/arthur";
+import { Observability } from "@mastra/observability";
+import { ArthurExporter } from "@arthur-ai/observability-sdk/mastra";
 
 const LOG_LEVEL = (process.env.LOG_LEVEL as LogLevel) || "info";
 
@@ -19,26 +20,25 @@ export const mastra = new Mastra({
     generateGraphAgent,
   },
   storage: new LibSQLStore({
+    id: "analytics-agent",
     url: ":memory:",
   }),
   logger: new ConsoleLogger({
     level: LOG_LEVEL,
   }),
-  observability: {
+  observability: new Observability({
     configs: {
       arthur: {
-        serviceName: "ai",
+        serviceName: "analytics-agent",
         exporters: [
           new ArthurExporter({
             serviceName: "analytics-agent",
             url: process.env.ARTHUR_BASE_URL!,
-            headers: {
-              Authorization: `Bearer ${process.env.ARTHUR_API_KEY!}`,
-            },
+            apiKey: process.env.ARTHUR_API_KEY!,
             taskId: process.env.ARTHUR_TASK_ID!,
           }),
         ],
       },
     },
-  },
+  }),
 });

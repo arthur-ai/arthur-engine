@@ -43,7 +43,7 @@ arthur = Arthur(
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `api_key` | `str \| None` | `None` | Arthur API key. Falls back to `ARTHUR_API_KEY` env var. |
+| `api_key` | `str \| None` | `None` | **Required.** Arthur API key. Falls back to `ARTHUR_API_KEY` env var. Raises `ValueError` if neither is set. |
 | `base_url` | `str` | `"http://localhost:3030"` | Base URL of the Arthur GenAI Engine. Falls back to `ARTHUR_BASE_URL` env var. |
 | `task_id` | `str \| None` | `None` | Arthur task UUID. Used for prompt fetching. |
 | `task_name` | `str \| None` | `None` | Task name — resolved lazily to a UUID via the API on the first prompt call. |

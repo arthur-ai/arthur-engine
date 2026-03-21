@@ -4,7 +4,7 @@ set -euo pipefail
 if [ "$#" -eq 0 ]; then
     echo "Please provide a purpose and language runtime."
     echo "Usage: ./generate_openapi_client.sh <purpose> [<language>]"
-    echo "Possible values: purpose - 'generate', 'install'; language - 'python' (default)"
+    echo "Possible values: purpose - 'generate', 'install'; language - 'python' (default), 'typescript'"
     echo "No changes made. Exiting!"
     exit 2
 fi
@@ -75,9 +75,39 @@ if [[ "$purpose" == "generate" ]]; then
     rm -rf "$OUTPUT_PATH"
 
     echo "Client generated successfully at $PACKAGE_PATH"
+  elif [[ "$language" == "typescript" ]]; then
+    if [ ! -f "$SPEC_PATH" ]; then
+      echo "ERROR: OpenAPI spec not found at $SPEC_PATH"
+      exit 1
+    fi
+
+    TS_OUTPUT_PATH="$SCRIPT_DIR/../typescript/src/generated"
+
+    echo "Clearing previous generated TypeScript code..."
+    rm -rf "$TS_OUTPUT_PATH"
+    mkdir -p "$TS_OUTPUT_PATH"
+
+    echo "Generating TypeScript client from $SPEC_PATH..."
+    npx swagger-typescript-api@13.0.16 \
+      -p "$SPEC_PATH" \
+      -o "$TS_OUTPUT_PATH" \
+      --name api-client.ts \
+      --axios \
+      --clean-output \
+      --extract-request-params \
+      --extract-request-body \
+      --extract-response-body \
+      --extract-response-error \
+      --extract-enums \
+      --union-enums \
+      --add-readonly \
+      --sort-routes \
+      --sort-types
+
+    echo "TypeScript client generated successfully at $TS_OUTPUT_PATH"
   else
     echo "Unsupported language: $language"
-    echo "Supported languages: python"
+    echo "Supported languages: python, typescript"
     exit 1
   fi
 
@@ -86,15 +116,20 @@ elif [[ "$purpose" == "install" ]]; then
     echo "Installing Python client into Poetry environment..."
     poetry -C "$SCRIPT_DIR/../python" install --no-interaction
     echo "Client installed successfully."
+  elif [[ "$language" == "typescript" ]]; then
+    echo "Installing TypeScript SDK dependencies..."
+    cd "$SCRIPT_DIR/../typescript"
+    npm install --no-fund --no-audit
+    echo "TypeScript dependencies installed successfully."
   else
     echo "Unsupported language: $language"
-    echo "Supported languages: python"
+    echo "Supported languages: python, typescript"
     exit 1
   fi
 
 else
   echo "Unknown purpose: $purpose"
   echo "Usage: ./generate_openapi_client.sh <purpose> [<language>]"
-  echo "Possible values: purpose - 'generate', 'install'; language - 'python' (default)"
+  echo "Possible values: purpose - 'generate', 'install'; language - 'python' (default), 'typescript'"
   exit 1
 fi
