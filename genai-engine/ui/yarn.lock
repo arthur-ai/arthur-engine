@@ -137,15 +137,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@arthur/shared-components@npm:^3.14.1":
-  version: 3.14.1
-  resolution: "@arthur/shared-components@npm:3.14.1::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshared-components%2F-%2F%40arthur%2Fshared-components-3.14.1.tgz"
+"@arthur/shared-components@npm:^3.15.0":
+  version: 3.15.0
+  resolution: "@arthur/shared-components@npm:3.15.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshared-components%2F-%2F%40arthur%2Fshared-components-3.15.0.tgz"
   dependencies:
     "@amplitude/analytics-browser": "npm:^2.33.3"
     "@arizeai/openinference-semantic-conventions": "npm:^2.1.0"
-    "@arthur/shield-types": "npm:^3.14.1"
-    "@arthur/unify-types": "npm:^3.14.1"
-    "@base-ui/react": "npm:^1.2.0"
+    "@arthur/shield-types": "npm:^3.15.0"
+    "@arthur/unify-types": "npm:^3.15.0"
+    "@base-ui/react": "npm:^1.3.0"
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
     "@dnd-kit/utilities": "npm:^3.2.2"
@@ -179,25 +179,25 @@ __metadata:
     react-dom: ^18.0.0 || ^19.1.0
     react-error-boundary: ^4.0.0
     react-i18next: ^16.5.3
-  checksum: 10c0/7ede9a4f906a630d883648c2a3271058bf598a32146d7dc98166470136ddcdd60b077cc882c89f2731f23ac2050af754cb6bd90d37400d8251fb5c70daed7069
+  checksum: 10c0/3232d24812c5ab5d4ffa256556928ba34809c8476e211af9035efbb4ec434cc6de55b84f0898d705d98df8be8feaec925d94e12990aa04fb06fb371270393e5a
   languageName: node
   linkType: hard
 
-"@arthur/shield-types@npm:^3.14.1":
-  version: 3.14.1
-  resolution: "@arthur/shield-types@npm:3.14.1::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshield-types%2F-%2F%40arthur%2Fshield-types-3.14.1.tgz"
+"@arthur/shield-types@npm:^3.15.0":
+  version: 3.15.0
+  resolution: "@arthur/shield-types@npm:3.15.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshield-types%2F-%2F%40arthur%2Fshield-types-3.15.0.tgz"
   dependencies:
     react: "npm:^19.1.1"
-  checksum: 10c0/3880bf933c0bcbf65c7cfaf851376cfb344e7d0421fb189e3bb1cd5e5f5b2163c68c4af6d652fb2cee3192e1683e035af144723ebefdd28baa96b6613a11234d
+  checksum: 10c0/273165b1df2ae9ccd5f5d82936f19c7594c6eaa42b0ef43e38b8915f3800432a2b63f60e98c27b05bc0357cc2dd7fbaa2b1e1e596f7ac7904b51cb72f59d2d8c
   languageName: node
   linkType: hard
 
-"@arthur/unify-types@npm:^3.14.1":
-  version: 3.14.1
-  resolution: "@arthur/unify-types@npm:3.14.1::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Funify-types%2F-%2F%40arthur%2Funify-types-3.14.1.tgz"
+"@arthur/unify-types@npm:^3.15.0":
+  version: 3.15.0
+  resolution: "@arthur/unify-types@npm:3.15.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Funify-types%2F-%2F%40arthur%2Funify-types-3.15.0.tgz"
   dependencies:
     react: "npm:^19.1.1"
-  checksum: 10c0/b3b627fbf639c5806d133b6a65d110f5562ed85f78d63f841a50905876b9c789611f8fbe353b4328edb054ef141d11788ce05556bb7c0ad03be4248b90036dd8
+  checksum: 10c0/4db2452ffd66cbac8674e9c9d7183f4931743025c17ac85fed04c1fe75bfefddabbb8b61f2a8c01235385f6719f95cda8573d550aeefb6f9b3ced9467fbf0083
   languageName: node
   linkType: hard
 
@@ -412,14 +412,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@base-ui/react@npm:^1.2.0":
-  version: 1.2.0
-  resolution: "@base-ui/react@npm:1.2.0"
+"@base-ui/react@npm:^1.3.0":
+  version: 1.3.0
+  resolution: "@base-ui/react@npm:1.3.0"
   dependencies:
     "@babel/runtime": "npm:^7.28.6"
-    "@base-ui/utils": "npm:0.2.5"
-    "@floating-ui/react-dom": "npm:^2.1.6"
-    "@floating-ui/utils": "npm:^0.2.10"
+    "@base-ui/utils": "npm:0.2.6"
+    "@floating-ui/react-dom": "npm:^2.1.8"
+    "@floating-ui/utils": "npm:^0.2.11"
     tabbable: "npm:^6.4.0"
     use-sync-external-store: "npm:^1.6.0"
   peerDependencies:
@@ -429,16 +429,16 @@ __metadata:
   peerDependenciesMeta:
     "@types/react":
       optional: true
-  checksum: 10c0/4571e86c43d05bf2a667f826d35a9e1b2c6a06e33093cf82ecd7380c5691b12c43a236d6be6d099e7507601956d94670f03022f2da7d4b862025f8a43b76c5a3
+  checksum: 10c0/36c9d2d77a82b41cb3783be39340aa0713bbe102fb18213f8f3e2c4f1295beb8359dd97067248bea34925f4a40eab281ddc42f05009179db1d5a7a99e4bfecdc
   languageName: node
   linkType: hard
 
-"@base-ui/utils@npm:0.2.5":
-  version: 0.2.5
-  resolution: "@base-ui/utils@npm:0.2.5"
+"@base-ui/utils@npm:0.2.6":
+  version: 0.2.6
+  resolution: "@base-ui/utils@npm:0.2.6"
   dependencies:
     "@babel/runtime": "npm:^7.28.6"
-    "@floating-ui/utils": "npm:^0.2.10"
+    "@floating-ui/utils": "npm:^0.2.11"
     reselect: "npm:^5.1.1"
     use-sync-external-store: "npm:^1.6.0"
   peerDependencies:
@@ -448,7 +448,7 @@ __metadata:
   peerDependenciesMeta:
     "@types/react":
       optional: true
-  checksum: 10c0/c871763ab132f6373895eef41477ff5a263330bc926317ed625226909ccb230109b1282556913eebd692094342644d7447a6f7bcb61aa8d6b0c60965ad3724a7
+  checksum: 10c0/5611442ac37066774277cd3360d16ebc3f599dc7b8efdfdfbf5b66b6d2eb6e87a18c0f9922b061818850e781d9bbc70aa5fc4ffb1dfd7fb234eefc401e070090
   languageName: node
   linkType: hard
 
@@ -1003,7 +1003,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@floating-ui/react-dom@npm:^2.1.6":
+"@floating-ui/react-dom@npm:^2.1.8":
   version: 2.1.8
   resolution: "@floating-ui/react-dom@npm:2.1.8"
   dependencies:
@@ -1015,7 +1015,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@floating-ui/utils@npm:^0.2.10, @floating-ui/utils@npm:^0.2.11":
+"@floating-ui/utils@npm:^0.2.11":
   version: 0.2.11
   resolution: "@floating-ui/utils@npm:0.2.11"
   checksum: 10c0/f4bcea1559bdbb721ecc8e8ead423ac58d6a5b6e70b602cf0810ba6ad4ed1c77211b207faa88b278a9042f0c743133de08a203ed6741c1b6443423332884d5b3
@@ -8178,8 +8178,8 @@ __metadata:
   dependencies:
     "@amplitude/analytics-browser": "npm:^2.36.0"
     "@arizeai/openinference-semantic-conventions": "npm:^2.1.1"
-    "@arthur/shared-components": "npm:^3.14.1"
-    "@base-ui/react": "npm:^1.2.0"
+    "@arthur/shared-components": "npm:^3.15.0"
+    "@base-ui/react": "npm:^1.3.0"
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
     "@dnd-kit/utilities": "npm:^3.2.2"
