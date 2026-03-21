@@ -2216,15 +2216,15 @@ test = ["dspy (>=2.6.22)", "google-generativeai", "litellm", "opentelemetry-sdk"
 
 [[package]]
 name = "openinference-instrumentation-google-adk"
-version = "0.1.9"
+version = "0.1.10"
 description = "OpenInference Google ADK Instrumentation"
 optional = true
-python-versions = "<3.15,>=3.9"
+python-versions = "<3.15,>=3.10"
 groups = ["main"]
 markers = "extra == \"google-adk\" or extra == \"all\""
 files = [
-    {file = "openinference_instrumentation_google_adk-0.1.9-py3-none-any.whl", hash = "sha256:341032df76f93c603cc0574912015e94341a3ccc82dc5598802b7529bcac0420"},
-    {file = "openinference_instrumentation_google_adk-0.1.9.tar.gz", hash = "sha256:9338c8bd3f0873f3ec0f77f8a696dd198094ea7942b7217ac91674ba030b25b5"},
+    {file = "openinference_instrumentation_google_adk-0.1.10-py3-none-any.whl", hash = "sha256:d97be628ce60b8eeab017f34ffaa2ec6fdaa11c64f3d0a032706ef74659e2a3e"},
+    {file = "openinference_instrumentation_google_adk-0.1.10.tar.gz", hash = "sha256:5ccb61d58532b2d829b71b411a997b573ddc2b03dcd5481fb2f9f67ec7368a97"},
 ]
 
 [package.dependencies]
