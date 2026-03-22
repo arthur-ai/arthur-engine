@@ -2241,15 +2241,15 @@ instruments = ["google-adk (>=1.2.1)"]
 
 [[package]]
 name = "openinference-instrumentation-google-genai"
-version = "0.1.12"
+version = "0.1.13"
 description = "OpenInference Google GenAI Instrumentation"
 optional = true
 python-versions = "<3.15,>=3.10"
 groups = ["main"]
 markers = "extra == \"google-genai\" or extra == \"all\""
 files = [
-    {file = "openinference_instrumentation_google_genai-0.1.12-py3-none-any.whl", hash = "sha256:bbdba004cf9642a2f30035a159f99edd799a11472c94dbb95362ffc09e00a8a7"},
-    {file = "openinference_instrumentation_google_genai-0.1.12.tar.gz", hash = "sha256:ed62375a9a2421f06311beadac348d8fc4c6001bb2483f9f9c07f57f2c74efc8"},
+    {file = "openinference_instrumentation_google_genai-0.1.13-py3-none-any.whl", hash = "sha256:b14485015a4603accba17f77636501b68bc163e95bc9cf65ffb64caf60544cfc"},
+    {file = "openinference_instrumentation_google_genai-0.1.13.tar.gz", hash = "sha256:088a7300264486a41db2ab44b08848aaac788d0b6a3d61ff12d66b9b3b0703fb"},
 ]
 
 [package.dependencies]
