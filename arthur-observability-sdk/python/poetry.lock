@@ -2511,15 +2511,15 @@ wrapt = ">=1.11.2"
 
 [[package]]
 name = "openinference-instrumentation-openai"
-version = "0.1.41"
+version = "0.1.42"
 description = "OpenInference OpenAI Instrumentation"
 optional = true
-python-versions = "<3.14,>=3.9"
+python-versions = "<3.15,>=3.9"
 groups = ["main"]
 markers = "extra == \"openai\" or extra == \"all\""
 files = [
-    {file = "openinference_instrumentation_openai-0.1.41-py3-none-any.whl", hash = "sha256:6fad453446835e51333b660882eacababbf1052689ca53cba444a7d97fa2e910"},
-    {file = "openinference_instrumentation_openai-0.1.41.tar.gz", hash = "sha256:ef4db680986a613b1639720f9beaa315c9e388c20bc985dbbbdf0f4df007c6e9"},
+    {file = "openinference_instrumentation_openai-0.1.42-py3-none-any.whl", hash = "sha256:e7ff7b98612102d4a3e342842d3dd231709ff51abdc4b193e5df09e9afcfac0f"},
+    {file = "openinference_instrumentation_openai-0.1.42.tar.gz", hash = "sha256:6f6b340292ab7dd7dc2e9a944958f7f812108efaafbfbcaa3f7ba205744ad1ce"},
 ]
 
 [package.dependencies]
@@ -2532,7 +2532,7 @@ typing-extensions = "*"
 wrapt = "*"
 
 [package.extras]
-instruments = ["openai (>=1.99.9)"]
+instruments = ["openai (>=2.8.0)"]
 
 [[package]]
 name = "openinference-instrumentation-openai-agents"
