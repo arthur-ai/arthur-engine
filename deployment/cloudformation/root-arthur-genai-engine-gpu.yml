@@ -208,8 +208,8 @@ Parameters:
     Description: 'Memory value for AWS EC2 per GenAI Engine ECS task'
   GenaiEngineServerWorkerCount:
     Type: Number
-    Default: 5
-    Description: 'Number of GenAI Engine server processes to run for adjusting parallelism (5 is recommended)'
+    Default: 2
+    Description: 'Number of GenAI Engine server processes to run for adjusting parallelism (2 is recommended)'
   GenaiEngineECSServiceTaskDesiredCount:
     Type: Number
     Description: 'The desired number of tasks running for GenAI Engine ECS service'
