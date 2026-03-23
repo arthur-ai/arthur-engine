@@ -8,12 +8,19 @@ using both Presidio and GLiNER models.
 import logging
 import re
 import unicodedata
-from typing import Any, Dict, List, Set
+from typing import Any, TypedDict
 
+import spacy
 import torch
-
 from arthur_common.models.enums import PIIEntityTypes, RuleResultEnum
-from schemas.scorer_schemas import RuleScore, ScorerPIIEntitySpan, ScorerRuleDetails
+from date_spacy import find_dates  # noqa: F401 - Import registers the component
+
+from schemas.scorer_schemas import (
+    RuleScore,
+    ScoreRequest,
+    ScorerPIIEntitySpan,
+    ScorerRuleDetails,
+)
 from scorer.checks.pii.presidio_gliner_map import PresidioGlinerMapper
 from scorer.checks.pii.validations import (
     is_bank_account_number,
@@ -37,6 +44,14 @@ from utils.text_chunking import ChunkIterator
 logging.getLogger("presidio-analyzer").setLevel(logging.ERROR)
 
 MAX_TOKENS_PER_CHUNK = 384
+
+
+class DateTimeSpan(TypedDict):
+    entity: str
+    span: str
+    start: int
+    end: int
+    confidence: float
 
 
 class BinaryPIIDataClassifier:
@@ -67,22 +82,31 @@ class BinaryPIIDataClassifier:
         PIIEntityTypes.CREDIT_CARD.value: is_credit_card,
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the PII classifier as a per-process singleton."""
         self.model = get_gliner_model()
         self.tokenizer = get_gliner_tokenizer()
         self.max_tokens_per_chunk = MAX_TOKENS_PER_CHUNK
         self.analyzer = get_presidio_analyzer()
 
+        # Initialize spaCy with date_spacy for datetime detection
+        # Create a minimal pipeline without NER to avoid entity conflicts
+        self.date_nlp = spacy.load("en_core_web_lg", exclude=["ner"])
+        self.date_nlp.add_pipe("find_dates")
+
         # Get all entity values from enum
         entities = PIIEntityTypes.values()
 
-        # Separate entities for Presidio and GLiNER
+        # Separate entities for Presidio, date_spacy, and GLiNER
         self.presidio_entities = [
             entity for entity in entities if entity in self.PRESIDIO_SUPPORTED
         ]
+        # Exclude DATE_TIME from GLiNER - it will be handled by date_spacy
         self.gliner_entities = [
-            entity for entity in entities if entity not in self.PRESIDIO_SUPPORTED
+            entity
+            for entity in entities
+            if entity not in self.PRESIDIO_SUPPORTED
+            and entity != PIIEntityTypes.DATE_TIME.value
         ]
 
         # Convert GLiNER entities to GLiNER format
@@ -93,8 +117,8 @@ class BinaryPIIDataClassifier:
 
     def _remove_overlapping_spans(
         self,
-        spans: List[Dict[str, Any]],
-    ) -> List[Dict[str, Any]]:
+        spans: list[DateTimeSpan],
+    ) -> list[DateTimeSpan]:
         """Remove overlapping spans using a greedy approach with confidence and length prioritization."""
         if not spans:
             return []
@@ -121,18 +145,18 @@ class BinaryPIIDataClassifier:
 
     def _postprocess_spans(
         self,
-        spans: List[Dict[str, Any]],
+        spans: list[DateTimeSpan],
         text: str,
         min_len: int = 2,
         merge_distance: int = 2,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[DateTimeSpan]:
         """Post-process spans by filtering, merging, and validating."""
         # Filter by minimum length
         spans = [s for s in spans if (s["end"] - s["start"]) >= min_len]
         spans.sort(key=lambda s: s["start"])
 
         # Merge adjacent spans of same entity type
-        merged = []
+        merged: list[DateTimeSpan] = []
         for span in spans:
             if (
                 merged
@@ -141,18 +165,18 @@ class BinaryPIIDataClassifier:
             ):
 
                 last = merged[-1]
-                merged[-1] = {
-                    "entity": last["entity"],
-                    "start": last["start"],
-                    "end": span["end"],
-                    "span": text[last["start"] : span["end"]],
-                    "confidence": max(last["confidence"], span["confidence"]),
-                }
+                merged[-1] = DateTimeSpan(
+                    entity=last["entity"],
+                    start=last["start"],
+                    end=span["end"],
+                    span=text[last["start"] : span["end"]],
+                    confidence=max(last["confidence"], span["confidence"]),
+                )
             else:
                 merged.append(span)
 
         # Validate and clean spans
-        validated = []
+        validated: list[DateTimeSpan] = []
         for span in merged:
             clean_value = sanitize_span_text(span["span"])
 
@@ -174,9 +198,9 @@ class BinaryPIIDataClassifier:
 
     def _filter_by_allow_list(
         self,
-        spans: List[Dict[str, Any]],
-        allow_list: List[str],
-    ) -> List[Dict[str, Any]]:
+        spans: list[DateTimeSpan],
+        allow_list: list[str],
+    ) -> list[DateTimeSpan]:
         """Filter spans by allow list - remove spans that match allowed patterns."""
         if not allow_list:
             return spans
@@ -196,9 +220,9 @@ class BinaryPIIDataClassifier:
 
         return filtered_spans
 
-    def score(self, request) -> RuleScore:
-        """Score text for PII detection using both Presidio and GLiNER."""
-        text = sanitize(request.scoring_text)
+    def score(self, request: ScoreRequest) -> RuleScore:
+        """Score text for PII detection using Presidio, GLiNER, and date_spacy."""
+        text = sanitize(request.scoring_text or "")
         disabled_entities = set(request.disabled_pii_entities or [])
         allow_list = request.allow_list or []
         confidence_threshold = (
@@ -208,8 +232,11 @@ class BinaryPIIDataClassifier:
         # Process with Presidio
         all_spans = self._process_presidio(text, disabled_entities, allow_list)
 
-        # Process with GLiNER (all other entities) and combine with presidio spans
+        # Process with GLiNER (all other entities except DATE_TIME)
         all_spans = all_spans + self._process_gliner(text, disabled_entities)
+
+        # Process with date_spacy for DATE_TIME entities
+        all_spans = all_spans + self._process_date_spacy(text, disabled_entities)
 
         # Apply confidence threshold
         if confidence_threshold > 0:
@@ -262,9 +289,9 @@ class BinaryPIIDataClassifier:
     def _process_presidio(
         self,
         text: str,
-        disabled_entities: Set[str],
-        allow_list: List[str],
-    ) -> List[Dict[str, Any]]:
+        disabled_entities: set[str],
+        allow_list: list[str],
+    ) -> list[DateTimeSpan]:
         """Process text using Presidio analyzer."""
         # Only use Presidio for entities it handles well, excluding disabled ones
         presidio_entities = [
@@ -276,6 +303,9 @@ class BinaryPIIDataClassifier:
         if not presidio_entities:
             return []
 
+        if not self.analyzer:
+            return []
+
         presidio_results = self.analyzer.analyze(
             text=text,
             entities=presidio_entities,
@@ -285,22 +315,26 @@ class BinaryPIIDataClassifier:
 
         # Convert to span format
         return [
-            {
-                "entity": r.entity_type,
-                "span": text[r.start : r.end],
-                "start": r.start,
-                "end": r.end,
-                "confidence": round(r.score, 4),
-            }
+            DateTimeSpan(
+                entity=r.entity_type,
+                span=text[r.start : r.end],
+                start=r.start,
+                end=r.end,
+                confidence=round(r.score, 4),
+            )
             for r in presidio_results
         ]
 
     def _process_gliner(
         self,
         text: str,
-        disabled_entities: Set[str],
-    ) -> List[Dict[str, Any]]:
+        disabled_entities: set[str],
+    ) -> list[DateTimeSpan]:
         """Process text using GLiNER model."""
+        if not self.model or not self.tokenizer:
+            # Returning empty list to avoid raising an error
+            return []
+
         # Get GLiNER entities, excluding those that are disabled
         gliner_entities = [
             entity
@@ -311,8 +345,8 @@ class BinaryPIIDataClassifier:
         if not gliner_entities:
             return []
 
-        gliner_preds = []
-        current_offset = 0
+        gliner_preds: list[dict[str, Any]] = []
+        current_offset: int = 0
 
         for chunk in ChunkIterator(text, self.tokenizer, self.max_tokens_per_chunk):
             with torch.no_grad():
@@ -328,15 +362,109 @@ class BinaryPIIDataClassifier:
 
         # Convert to span format
         return [
-            {
-                "entity": PresidioGlinerMapper.gliner_to_presidio(pred["label"]),
-                "span": text[pred["start"] : pred["end"]],
-                "start": pred["start"],
-                "end": pred["end"],
-                "confidence": round(pred.get("score", 1.0), 4),
-            }
+            DateTimeSpan(
+                entity=PresidioGlinerMapper.gliner_to_presidio(pred["label"]),
+                span=text[pred["start"] : pred["end"]],
+                start=pred["start"],
+                end=pred["end"],
+                confidence=round(pred.get("score", 1.0), 4),
+            )
             for pred in gliner_preds
         ]
+
+    def _process_date_spacy(
+        self,
+        text: str,
+        disabled_entities: set[str],
+    ) -> list[DateTimeSpan]:
+        """
+        Process text using date_spacy NER + pattern-based supplementation.
+
+        Strategy:
+        1. Run spaCy NER first (intelligent, context-aware)
+        2. Supplement with pattern matching for specific cases spaCy misses
+        3. Generic filtering happens in postprocessing via is_datetime()
+        """
+        if PIIEntityTypes.DATE_TIME.value in disabled_entities:
+            return []
+
+        datetime_spans: list[DateTimeSpan] = []
+
+        # Phase 1: spaCy NER (intelligent, context-aware detection)
+        doc = self.date_nlp(text)
+        for ent in doc.ents:
+            if ent.label_ == "DATE":
+                # Check if the entity has a parsed date
+                parsed_date = ent._.date if hasattr(ent._, "date") else None
+
+                if parsed_date is not None:
+                    datetime_spans.append(
+                        DateTimeSpan(
+                            entity=PIIEntityTypes.DATE_TIME.value,
+                            span=ent.text,
+                            start=ent.start_char,
+                            end=ent.end_char,
+                            confidence=0.95,  # High confidence for spaCy NER
+                        ),
+                    )
+
+        # Phase 2: Pattern-based supplementation for specific patterns spaCy misses
+        datetime_patterns = [
+            # Day names
+            r"\b(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b",
+            r"\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b",
+            # Month + Year combinations
+            r"\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\b",
+            r"\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}(?:st|nd|rd|th)?,?\s*\d{2,4}\b",
+            # Full date patterns
+            r"\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:st|nd|rd|th)?,?\s*\d{2,4}\b",
+            r"\b\d{1,2}(?:st|nd|rd|th)?\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)(?:,?\s*\d{2,4})?\b",
+            # Year patterns
+            r"\b(19|20)\d{2}\b",
+            # Time patterns
+            r"\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm|AM|PM|a\.m\.|p\.m\.)\b",
+            r"\b\d{1,2}\s*(?:am|pm|AM|PM|a\.m\.|p\.m\.)\b",
+            r"\b\d{1,2}\s*o'?clock\b",
+            r"\b(?:noon|midnight)\b",
+            r"\bquarter\s+past\b",
+            # Date formats
+            r"\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b",
+            r"\b\d{4}[/-]\d{1,2}[/-]\d{1,2}\b",
+            # Quantified time units (specific durations)
+            r"\b\d+\s*(?:seconds?|minutes?|hours?|days?|weeks?|months?|years?)\b",
+            r"\b\d+\s*(?:secs?|mins?|hrs?|wks?|yrs?)\b",
+            # Quarters
+            r"\bQ[1-4]\s*\d{4}\b",
+            # Holidays
+            r"\b(?:Christmas|Xmas|Easter|Halloween|Valentine|Thanksgiving|New\s+Year)\b",
+        ]
+
+        for pattern in datetime_patterns:
+            for match in re.finditer(pattern, text, re.IGNORECASE):
+                span_text = match.group().strip()
+                start_pos = match.start()
+                end_pos = match.end()
+
+                # Avoid duplicates - check if overlaps with spaCy detections
+                overlaps = any(
+                    span["start"] <= start_pos < span["end"]
+                    or span["start"] < end_pos <= span["end"]
+                    or start_pos <= span["start"] < end_pos
+                    for span in datetime_spans
+                )
+
+                if not overlaps and span_text:
+                    datetime_spans.append(
+                        {
+                            "entity": PIIEntityTypes.DATE_TIME.value,
+                            "span": span_text,
+                            "start": start_pos,
+                            "end": end_pos,
+                            "confidence": 0.9,  # Slightly lower for pattern matches
+                        },
+                    )
+
+        return datetime_spans
 
 
 #########################

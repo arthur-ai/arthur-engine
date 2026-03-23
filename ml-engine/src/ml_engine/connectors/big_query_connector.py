@@ -25,10 +25,11 @@ from arthur_common.models.connectors import (
     GOOGLE_CONNECTOR_PROJECT_ID_FIELD,
     ConnectorPaginationOptions,
 )
-from connectors.connector import Connector
 from google.auth import load_credentials_from_dict
 from google.cloud import bigquery
 from google.cloud.bigquery import SchemaField
+
+from connectors.connector import Connector
 from tools.schema_interpreters import primary_timestamp_col_name
 
 
@@ -96,24 +97,31 @@ class BigQueryConnector(Connector):
         full_bq_table_name = f"{self.project_id}.{dataset_id}.{table_name}"
         basic_query = f"SELECT * FROM {self._escape_identifier(full_bq_table_name)}"
 
-        try:
-            timestamp_col = primary_timestamp_col_name(dataset)
-            basic_query += (
-                f" WHERE {self._escape_identifier(timestamp_col)} >= '{start_time}' AND "
-                f"{self._escape_identifier(timestamp_col)} < '{end_time}'"
+        if dataset.is_static:
+            self.logger.info(
+                "Static dataset detected, skipping time range filtering.",
             )
-            basic_query += f" ORDER BY {self._escape_identifier(timestamp_col)} DESC"
-        except ValueError:
-            # timestamp column not found
-            self.logger.warning(
-                f"Primary timestamp column with {ScopeSchemaTag.PRIMARY_TIMESTAMP} tag not found. "
-                f"Defaulting to ignoring specified time range filter and using requested pagination.",
-            )
-            if not pagination_options:
-                raise ValueError(
-                    "Pagination options not provided and timestamp range not set. Cannot fetch all data "
-                    "without providing a limit or time range.",
+        else:
+            try:
+                timestamp_col = primary_timestamp_col_name(dataset)
+                basic_query += (
+                    f" WHERE {self._escape_identifier(timestamp_col)} >= '{start_time}' AND "
+                    f"{self._escape_identifier(timestamp_col)} < '{end_time}'"
                 )
+                basic_query += (
+                    f" ORDER BY {self._escape_identifier(timestamp_col)} DESC"
+                )
+            except ValueError:
+                # timestamp column not found
+                self.logger.warning(
+                    f"Primary timestamp column with {ScopeSchemaTag.PRIMARY_TIMESTAMP} tag not found. "
+                    f"Defaulting to ignoring specified time range filter and using requested pagination.",
+                )
+                if not pagination_options:
+                    raise ValueError(
+                        "Pagination options not provided and timestamp range not set. Cannot fetch all data "
+                        "without providing a limit or time range.",
+                    )
 
         basic_query = self._paginate_query(basic_query, pagination_options)
         return basic_query

@@ -26,7 +26,6 @@ from arthur_common.models.connectors import (
     ODBC_CONNECTOR_USERNAME_FIELD,
     ConnectorPaginationOptions,
 )
-from connectors.connector import Connector
 from dateutil import parser
 from pydantic import SecretStr
 from sqlalchemy import (
@@ -44,6 +43,8 @@ from sqlalchemy import (
 from sqlalchemy.engine import Engine
 from sqlalchemy.sql import Select
 from sqlalchemy.sql.elements import BinaryExpression
+
+from connectors.connector import Connector
 from tools.schema_interpreters import primary_timestamp_col_name
 
 
@@ -73,6 +74,8 @@ class ODBCConnector(Connector):
             engine_url,
             echo=False,
             connect_args=connect_args,
+            pool_timeout=60,
+            pool_pre_ping=True,
         )
         self.metadata = MetaData()
         self.logger = logger
@@ -80,7 +83,7 @@ class ODBCConnector(Connector):
     def _build_engine_url(
         self,
         conn_str: str,
-    ) -> Tuple[Union[str, URL], Dict[str, Any]]:
+    ) -> tuple[Union[str, URL], dict[str, Any]]:
         """
         Build the SQLAlchemy engine URL based on dialect and driver configuration.
         Returns the engine URL and any connect args that need to be passed to the engine.
@@ -93,7 +96,7 @@ class ODBCConnector(Connector):
             "generic odbc (pyodbc)": self._build_odbc_url,
             "postgresql native (psycopg)": self._build_postgresql_native_url,
             "mysql native (pymysql)": self._build_mysql_native_url,
-            "oracle native (cx_oracle)": self._build_oracle_native_url,
+            "oracle native (oracledb)": self._build_oracle_native_url,
         }
 
         # Find matching dialect handler
@@ -105,7 +108,7 @@ class ODBCConnector(Connector):
 
         # Default to generic ODBC (pyodbc) - fallback or explicitly chosen
         # This handles cases where no dialect is specified or an invalid dialect is provided
-        return self._build_odbc_url(conn_str), {}
+        return self._build_odbc_url(conn_str)
 
     def _build_odbc_url(
         self,
@@ -150,8 +153,8 @@ class ODBCConnector(Connector):
         return self._build_native_url("mysql+pymysql", "3306")
 
     def _build_oracle_native_url(self) -> Tuple[Union[str, URL], Dict[str, Any]]:
-        """Build Oracle native URL using cx_oracle."""
-        return self._build_native_url("oracle+cx_oracle", "1521")
+        """Build Oracle native URL using oracledb."""
+        return self._build_native_url("oracle+oracledb", "1521")
 
     def _build_native_url(
         self,
@@ -209,6 +212,9 @@ class ODBCConnector(Connector):
         if self.password:
             parts.append(f"PWD={self.password.get_secret_value()}")
 
+        parts.append("Connection Timeout=60")
+        parts.append("Login Timeout=60")
+
         return ";".join(parts) + ";"
 
     def _get_default_schema(self) -> str | None:
@@ -249,9 +255,14 @@ class ODBCConnector(Connector):
                 "Arthur pagination is 1-indexed. Please provide a page number >= 1.",
             )
 
-        return stmt.offset(
-            (pagination_options.page - 1) * pagination_options.page_size,
-        ).limit(pagination_options.page_size)
+        offset = (pagination_options.page - 1) * pagination_options.page_size
+        driver_lower = self.driver.lower()
+
+        # Not using offset for MSSQL to avoid issues with pagination:
+        if ("mssql" in driver_lower or "sql server" in driver_lower) and offset == 0:
+            return stmt.limit(pagination_options.page_size)
+
+        return stmt.offset(offset).limit(pagination_options.page_size)
 
     def _get_filter_condition(self, col: Column[Any], op: str, val: Any) -> Any | None:
         """Apply a single filter operation to a column."""
@@ -381,17 +392,27 @@ class ODBCConnector(Connector):
         table_name = locator[ODBC_CONNECTOR_TABLE_NAME_FIELD]
         table = Table(table_name, self.metadata, autoload_with=self.engine)
 
+        if dataset.is_static:
+            self.logger.info(
+                "Static dataset detected, skipping time range filtering.",
+            )
+
         try:
             ts_col_name = primary_timestamp_col_name(dataset)
-            # Timestamp column found - use timestamp range filtering
-            stmt = self._build_fetch_stmt(
-                table,
-                ts_col_name,
-                start_time,
-                end_time,
-                filters,
-                pagination_options,
-            )
+            if not dataset.is_static:
+                stmt = self._build_fetch_stmt(
+                    table,
+                    ts_col_name,
+                    start_time,
+                    end_time,
+                    filters,
+                    pagination_options,
+                )
+            else:
+                stmt = select(table)
+                if filters:
+                    stmt = self._apply_filters(table, stmt, filters)
+                stmt = self._paginate_query(stmt, pagination_options)
         except ValueError:
             # No timestamp column found - use fallback logic with pagination
             self.logger.warning(
@@ -406,6 +427,36 @@ class ODBCConnector(Connector):
 
             if filters:
                 stmt = self._apply_filters(table, stmt, filters)
+
+            driver_lower = self.driver.lower()
+            # Add stable ordering for MSSQL
+            if "mssql" in driver_lower or "sql server" in driver_lower:
+                try:
+                    already_ordered = bool(getattr(stmt, "_order_by_clauses", ()))
+                except Exception:
+                    already_ordered = False
+
+                if not already_ordered:
+                    insp = inspect(self.engine)
+                    # Views typically don't have primary keys, so handle gracefully
+                    try:
+                        pk_constraint = insp.get_pk_constraint(
+                            table.name,
+                            schema=table.schema,
+                        )
+                        pk_cols = pk_constraint.get("constrained_columns") or []
+                    except Exception:
+                        # If get_pk_constraint fails (e.g., for views), use empty list
+                        pk_cols = []
+
+                    if pk_cols:
+                        order_col = table.c[pk_cols[0]]
+                    else:
+                        order_col = next(
+                            (c for c in table.c if not c.nullable),
+                            list(table.c)[0],
+                        )
+                    stmt = stmt.order_by(order_col.asc())
             stmt = self._paginate_query(stmt, pagination_options)
 
         df = pd.read_sql(stmt, self.engine)
@@ -417,9 +468,23 @@ class ODBCConnector(Connector):
                 conn.execute(text("SELECT 1"))
         except Exception as e:
             self.logger.error("Connection test failed.", exc_info=e)
+            error_str = str(e)
+            if "timeout" in error_str.lower():
+                failure_reason = (
+                    f"ODBC connection timeout: {e}. "
+                    "This may indicate network connectivity issues, firewall blocking, "
+                    "or the database server is not reachable. "
+                )
+            elif "login" in error_str.lower() and "failed" in error_str.lower():
+                failure_reason = (
+                    f"ODBC login failed: {e}. "
+                    "Please verify username and password are correct."
+                )
+            else:
+                failure_reason = f"ODBC connection failed: {e}"
             return ConnectorCheckResult(
                 connection_check_outcome=ConnectorCheckOutcome.FAILED,
-                failure_reason=f"ODBC connection failed: {e}",
+                failure_reason=failure_reason,
             )
         return ConnectorCheckResult(
             connection_check_outcome=ConnectorCheckOutcome.SUCCEEDED,
@@ -431,6 +496,10 @@ class ODBCConnector(Connector):
         inspector = inspect(self.engine)
         schema = self._get_default_schema()
         tables = inspector.get_table_names(schema=schema)
+        views = inspector.get_view_names(schema=schema)
+
+        # Combine tables and views into a single list
+        all_datasets = tables + views
 
         return PutAvailableDatasets(
             available_datasets=[
@@ -445,6 +514,6 @@ class ODBCConnector(Connector):
                         ],
                     ),
                 )
-                for tbl in tables
+                for tbl in all_datasets
             ],
         )

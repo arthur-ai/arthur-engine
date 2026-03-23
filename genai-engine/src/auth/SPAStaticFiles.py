@@ -1,10 +1,12 @@
 import starlette
 from fastapi import HTTPException
+from starlette.responses import Response
 from starlette.staticfiles import StaticFiles
+from starlette.types import Scope
 
 
 class SPAStaticFiles(StaticFiles):
-    async def get_response(self, path: str, scope):
+    async def get_response(self, path: str, scope: Scope) -> Response:
         # There are various operating system limitations that limit the max file path, the lowest seems to be mac at 255. Throw a 404 so we don't 500.
         if len(path) >= 255:
             raise HTTPException(status_code=404)

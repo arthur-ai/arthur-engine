@@ -1,28 +1,29 @@
 from typing import Annotated
 from uuid import UUID
 
+from arthur_common.models.common_schemas import PaginationParameters
+from arthur_common.models.enums import PaginationSortMethod, RuleScope, RuleType
+from arthur_common.models.request_schemas import NewRuleRequest, SearchRulesRequest
+from arthur_common.models.response_schemas import RuleResponse, SearchRulesResponse
+from fastapi import APIRouter, Body, Depends
+from opentelemetry import trace
+from sqlalchemy.orm import Session
+from starlette import status
+from starlette.responses import Response
+
 from clients.telemetry.telemetry_client import (
     TelemetryEventTypes,
     send_telemetry_event,
     send_telemetry_event_for_default_rule_create_completed,
 )
 from dependencies import get_application_config, get_db_session
-from fastapi import APIRouter, Body, Depends
-from opentelemetry import trace
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
-from arthur_common.models.common_schemas import PaginationParameters
-from arthur_common.models.enums import RuleScope, RuleType
-from schemas.internal_schemas import ApplicationConfiguration, Rule, User
 from schemas.enums import PermissionLevelsEnum
-from arthur_common.models.request_schemas import NewRuleRequest, SearchRulesRequest
-from arthur_common.models.response_schemas import RuleResponse, SearchRulesResponse
-from sqlalchemy.orm import Session
-from starlette import status
-from starlette.responses import Response
+from schemas.internal_schemas import ApplicationConfiguration, Rule, User
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 
@@ -52,25 +53,26 @@ tracer = trace.get_tracer(__name__)
 def create_default_rule(
     request: NewRuleRequest = Body(
         None,
-        openapi_examples=NewRuleRequest.model_config["json_schema_extra"],
+        openapi_examples=NewRuleRequest.model_config["json_schema_extra"],  # type: ignore[arg-type]
     ),
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> RuleResponse:
     try:
         send_telemetry_event(TelemetryEventTypes.DEFAULT_RULE_CREATE_INITIATED)
         rules_repo = RuleRepository(db_session)
         tasks_repo = TaskRepository(
-            db_session, rules_repo, MetricRepository(db_session), application_config
+            db_session,
+            rules_repo,
+            MetricRepository(db_session),
+            application_config,
         )
         rule = Rule._from_request_model(request, scope=RuleScope.DEFAULT)
         rule = rules_repo.create_rule(rule)
         tasks_repo.update_all_tasks_add_default_rule(rule)
         send_telemetry_event_for_default_rule_create_completed(rule.type)
         return rule._to_response_model()
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -86,14 +88,12 @@ def create_default_rule(
 def get_default_rules(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> list[RuleResponse]:
     try:
         rules_repo = RuleRepository(db_session)
         rules, _ = rules_repo.query_rules(rule_scopes=[RuleScope.DEFAULT])
 
         return [rule._to_response_model() for rule in rules]
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -109,18 +109,19 @@ def archive_default_rule(
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> Response:
     try:
         rules_repo = RuleRepository(db_session)
         task_repo = TaskRepository(
-            db_session, rules_repo, MetricRepository(db_session), application_config
+            db_session,
+            rules_repo,
+            MetricRepository(db_session),
+            application_config,
         )
         rules_repo.archive_rule(rule_id=str(rule_id))
         task_repo.update_all_tasks_remove_default_rule(str(rule_id))
 
         return Response(status_code=status.HTTP_200_OK)
-    except:
-        raise
     finally:
         db_session.close()
 
@@ -142,7 +143,7 @@ def search_rules(
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> SearchRulesResponse:
     try:
         rules_repo = RuleRepository(db_session)
         rules, count = rules_repo.query_rules(
@@ -151,7 +152,7 @@ def search_rules(
             response_enabled=request.response_enabled,
             rule_scopes=request.rule_scopes,
             rule_types=request.rule_types,
-            sort=pagination_parameters.sort,
+            sort=pagination_parameters.sort or PaginationSortMethod.DESCENDING,
             page_size=pagination_parameters.page_size,
             page=pagination_parameters.page,
         )
@@ -160,7 +161,5 @@ def search_rules(
             count=count,
             rules=[r._to_response_model() for r in rules],
         )
-    except:
-        raise
     finally:
         db_session.close()

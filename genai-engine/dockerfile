@@ -20,6 +20,7 @@ RUN pip3 install poetry==1.8.5
 WORKDIR /app
 
 ENV PYTHONPATH="$PYTHONPATH:/app/src"
+ENV PYTHONUNBUFFERED=1
 RUN poetry config virtualenvs.create false && poetry install --without dev,performance --no-ansi --no-root
 
 # install lsof for healthchecks
@@ -38,15 +39,24 @@ FROM preinstall AS cpu-install
 # UI Build Stage: Build the React SPA
 FROM node:20-alpine AS ui-build
 
+# Accept Meticulous tokens as build arguments
+ARG METICULOUS_RECORDING_TOKEN
+ARG METICULOUS_API_TOKEN
+
+# Accept GitLab Unify Frontend token as build argument
+ARG GITLAB_UNIFY_FRONTEND_TOKEN
+
 WORKDIR /app/ui
 
 # Copy UI source code
 COPY ui/ ./
 
-# Install UI dependencies
-RUN corepack enable && yarn install --immutable
+# Install UI dependencies (token only in this RUN, not persisted in image)
+RUN export GITLAB_UNIFY_FRONTEND_TOKEN="$GITLAB_UNIFY_FRONTEND_TOKEN" && corepack enable && yarn install --immutable
 
 # Build the UI as static files
+ENV METICULOUS_RECORDING_TOKEN=${METICULOUS_RECORDING_TOKEN}
+ENV METICULOUS_API_TOKEN=${METICULOUS_API_TOKEN}
 RUN yarn build
 
 # Copy the built static files
@@ -78,6 +88,9 @@ COPY alembic.ini /app/
 # Copy built UI from ui-build stage
 COPY --from=ui-build /app/ui-dist /app/static
 
+# Create models directory for model downloads
+RUN mkdir -p /home/nonroot/models
+
 
 #####################################################################################
 #                                                                                   #
@@ -104,11 +117,15 @@ COPY --from=install /etc/ld.so.cache /etc/ld.so.cache
 COPY --from=install --chown=nonroot:nonroot /app/ /home/nonroot/app/
 COPY --from=install --chown=nonroot:nonroot /root/.cache/pypoetry/ /home/nonroot/.cache/pypoetry/
 COPY --from=install --chown=nonroot:nonroot /root/.config/pypoetry/ /home/nonroot/.config/pypoetry/
+# Copy models directory (created in install stage, owned by nonroot)
+COPY --from=install --chown=nonroot:nonroot /home/nonroot/models /home/nonroot/models
 
 ENV PATH="/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 ENV PYTHONPATH="$PYTHONPATH:/home/nonroot/app/src"
 ENV POETRY_VIRTUALENVS_PATH="/home/nonroot/.cache/pypoetry/virtualenvs"
 ENV POETRY_CACHE_DIR="/home/nonroot/.cache/pypoetry"
+# Default model storage path for nonroot user
+ENV MODEL_STORAGE_PATH="/home/nonroot/models"
 
 # Set working directory (this is where the entrypoint will be run)
 WORKDIR /home/nonroot/app
@@ -116,4 +133,4 @@ WORKDIR /home/nonroot/app
 # Expose the necessary ports
 EXPOSE 3030
 
-ENTRYPOINT ["bash", "-c", "src/docker-entrypoint.sh"]
+ENTRYPOINT ["bash", "src/docker-entrypoint.sh"]

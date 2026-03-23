@@ -1,9 +1,14 @@
 import random
 
 import pytest
+from arthur_common.models.enums import RegisteredAgentProvider, RuleScope, RuleType
+from arthur_common.models.request_schemas import AgentMetadata, GCPAgentMetadata
 
-from arthur_common.models.enums import RuleScope, RuleType
-from tests.clients.base_test_client import GenaiEngineTestClientBase
+from db_models import DatabaseTask
+from tests.clients.base_test_client import (
+    GenaiEngineTestClientBase,
+    override_get_db_session,
+)
 
 
 @pytest.mark.unit_tests
@@ -142,3 +147,49 @@ def test_search_tasks_by_agentic_status(client: GenaiEngineTestClientBase):
         if task.id in agentic_task_ids + non_agentic_task_ids
     ]
     assert len(all_test_tasks) == 6
+
+
+@pytest.mark.unit_tests
+def test_create_task_with_agent_metadata_stores_creation_source(
+    client: GenaiEngineTestClientBase,
+):
+    """Test that creating a task with agent metadata stores GCP creation_source in task_metadata."""
+    task_name = str(random.random())
+    status_code, task_response = client.create_task(
+        task_name,
+        is_agentic=True,
+        agent_metadata=AgentMetadata(
+            provider=RegisteredAgentProvider.GCP,
+            gcp_metadata=GCPAgentMetadata(
+                project_id="test-project",
+                region="test-region",
+                resource_id="test-resource",
+            ),
+        ),
+    )
+    assert status_code == 200
+
+    # Verify the response has agent_metadata (backward-compatible format)
+    assert task_response.agent_metadata.provider == RegisteredAgentProvider.GCP.value
+    assert task_response.agent_metadata.gcp_metadata.project_id == "test-project"
+    assert task_response.agent_metadata.gcp_metadata.region == "test-region"
+    assert task_response.agent_metadata.gcp_metadata.resource_id == "test-resource"
+
+    # Verify task_metadata in DB has new creation_source format
+    db_session = override_get_db_session()
+    db_task = (
+        db_session.query(DatabaseTask)
+        .filter(DatabaseTask.id == task_response.id)
+        .first()
+    )
+    assert db_task is not None
+    assert db_task.task_metadata is not None
+    creation_source = db_task.task_metadata.get("creation_source", {})
+    assert creation_source.get("type") == "GCP"
+    assert creation_source.get("gcp_project_id") == "test-project"
+    assert creation_source.get("gcp_region") == "test-region"
+    assert creation_source.get("gcp_reasoning_engine_id") == "test-resource"
+
+    # Clean up
+    status_code = client.delete_task(task_response.id)
+    assert status_code == 204

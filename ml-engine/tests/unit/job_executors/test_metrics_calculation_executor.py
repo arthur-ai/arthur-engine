@@ -1,3 +1,4 @@
+import copy
 import logging
 import time
 from datetime import datetime, timedelta
@@ -21,7 +22,6 @@ from arthur_client.api_bindings import (
     JobKind,
     MetricsArgSpec,
     MetricsCalculationJobSpec,
-    MetricsVersion,
     ObjectValue,
     PostJob,
     PostJobBatch,
@@ -35,16 +35,17 @@ from arthur_common.models.metrics import (
 )
 from arthur_common.tools.aggregation_loader import AggregationLoader
 from arthur_common.tools.functions import uuid_to_base26
+from mock_data.connector_helpers import (
+    MOCK_BQ_DATASET,
+)
+from mock_data.mock_data_generator import random_model
+
 from dataset_loader import DatasetLoader
 from job_executors.metrics_calculation_executor import (
     MetricsCalculationExecutor,
     _create_alert_check_job,
 )
 from metric_calculators.default_metric_calculator import DefaultMetricCalculator
-from mock_data.connector_helpers import (
-    MOCK_BQ_DATASET,
-)
-from mock_data.mock_data_generator import random_model
 
 logger = logging.getLogger("job_logger")
 
@@ -73,14 +74,6 @@ def test_create_alert_check_job():
     model_id = str(uuid4())
     model.id = model_id
 
-    mv = MetricsVersion(
-        created_at=datetime.now(),
-        updated_at=datetime.now(),
-        version_num=1,
-        scope_model_id=model_id,
-        range_start=datetime.now(),
-        range_end=datetime.now(),
-    )
     metrics_start_time = datetime.now() - timedelta(hours=2)
     metrics_end_time = datetime.now() - timedelta(hours=1)
     metrics_job_spec = MetricsCalculationJobSpec(
@@ -88,7 +81,7 @@ def test_create_alert_check_job():
         start_timestamp=metrics_start_time,
         end_timestamp=metrics_end_time,
     )
-    alert_job_batch = _create_alert_check_job(model, metrics_job_spec, mv)
+    alert_job_batch = _create_alert_check_job(model, metrics_job_spec)
 
     assert isinstance(alert_job_batch, PostJobBatch)
     assert len(alert_job_batch.jobs) == 1
@@ -112,6 +105,12 @@ def test_create_alert_check_job():
 @pytest.mark.parametrize(
     "segmentation_col_names,error_str",
     [
+        # happy path - single valid segmentation column
+        (["name"], None),
+        # happy path - multiple valid segmentation columns
+        (["name", "description"], None),
+        # happy path - three valid segmentation columns (max allowed)
+        (["name", "description", "desc2"], None),
         # column with bad dtype
         (["timestamp"], "data type mismatch"),
         # column with too many possibilities
@@ -148,22 +147,62 @@ def test_process_agg_args(
     # configure dataset mocks
     datasets_client = Mock()
     dataset = Dataset.model_validate(MOCK_BQ_DATASET)
-    datasets_client.get_dataset.return_value = dataset
+    dataset.id = str(uuid4())
+    dataset.name = "dataset1"
 
-    # configure connector mocks
+    # Create a second dataset with duplicate column names but different IDs
+    # This tests that columns are correctly identified from the specified dataset
+    dataset2_dict = copy.deepcopy(MOCK_BQ_DATASET)
+    dataset2_dict["id"] = str(uuid4())
+    dataset2_dict["name"] = "dataset2"
+
+    # Update all column IDs in dataset2 to be different from dataset1
+    for col in dataset2_dict["dataset_schema"].columns:
+        col.id = str(uuid4())
+        col.definition.actual_instance.id = str(uuid4())
+
+    # Update column_names mapping with new IDs
+    new_column_names = {}
+    for col in dataset2_dict["dataset_schema"].columns:
+        new_column_names[col.id] = col.source_name
+    dataset2_dict["dataset_schema"].column_names = new_column_names
+
+    dataset2 = Dataset.model_validate(dataset2_dict)
+
+    # Configure datasets_client to return the correct dataset
+    def get_dataset_side_effect(dataset_id: str):
+        if dataset_id == dataset.id:
+            return dataset
+        elif dataset_id == dataset2.id:
+            return dataset2
+        else:
+            raise ValueError(f"Unknown dataset ID: {dataset_id}")
+
+    datasets_client.get_dataset.side_effect = get_dataset_side_effect
+
+    # Configure connector mocks to return data for both datasets
+    def read_side_effect(
+        dataset,
+        start_time,
+        end_time,
+        filters=None,
+        pagination_options=None,
+    ):
+        return expected_data
+
     mock_connector = Mock()
-    mock_connector.read.return_value = expected_data
+    mock_connector.read.side_effect = read_side_effect
     connector_constructor = Mock()
     connector_constructor.get_connector_from_spec.return_value = mock_connector
 
-    # load mocked data into duckdb
+    # load both datasets into duckdb to test duplicate column name handling
     dataset_loader = DatasetLoader(
         connector_constructor=connector_constructor,
         datasets_client=datasets_client,
         logger=logger,
     )
     conn, unloaded_datasets = dataset_loader.load_datasets(
-        dataset_ids=[dataset.id],
+        dataset_ids=[dataset.id, dataset2.id],
         start_time=first_timestamp - timedelta(seconds=5),
         end_time=second_timestamp + timedelta(seconds=5),
         filters=None,
@@ -177,7 +216,7 @@ def test_process_agg_args(
         aggregation_args=[
             MetricsArgSpec(
                 arg_key="dataset",
-                arg_value=dataset.id,
+                arg_value=dataset.id,  # Use dataset1
             ),
             MetricsArgSpec(
                 arg_key="segmentation_cols",
@@ -204,12 +243,15 @@ def test_process_agg_args(
         agg_function_type,
     )
 
+    # Pass both datasets to process_agg_args to test duplicate column name handling
+    # The aggregation should correctly identify columns from dataset1 even though
+    # dataset2 has columns with the same names
     if error_str:
         with pytest.raises(ValueError) as exc:
-            metrics_calculator.process_agg_args([dataset])
+            metrics_calculator.process_agg_args([dataset, dataset2])
         assert error_str in str(exc.value)
     else:
-        metrics_calculator.process_agg_args([dataset])
+        metrics_calculator.process_agg_args([dataset, dataset2])
 
 
 @patch("job_executors.metrics_calculation_executor.ML_ENGINE_AGGREGATION_TIMEOUT", 1)
@@ -281,6 +323,7 @@ def test_metrics_calculation_timeout(mock_bigquery_client, caplog):
         mock_calculator.aggregate.side_effect = slow_aggregate
         mock_calculator.process_agg_args.return_value = ([], [])
         mock_calculator.agg_schema.name = "test_aggregation"
+        mock_calculator.agg_name = "test_aggregation"
 
         # mock the model andother dependencies
         mock_models_client = Mock()
@@ -289,6 +332,7 @@ def test_metrics_calculation_timeout(mock_bigquery_client, caplog):
         mock_jobs_client = Mock()
         mock_custom_aggs_client = Mock()
         mock_model = Mock()
+        mock_custom_aggs_test_client = Mock()
 
         # create a dataset reference with dataset_id attribute
         mock_dataset_ref = Mock()
@@ -315,6 +359,7 @@ def test_metrics_calculation_timeout(mock_bigquery_client, caplog):
             metrics_client=mock_metrics_client,
             jobs_client=mock_jobs_client,
             custom_aggregations_client=mock_custom_aggs_client,
+            custom_aggregation_tests_client=mock_custom_aggs_test_client,
             connector_constructor=connector_constructor,
             logger=logger,
         )
@@ -348,7 +393,7 @@ def test_metrics_calculation_timeout(mock_bigquery_client, caplog):
 
             # test the timeout error message is logged
             assert any(
-                f"Aggregation calculation timed out for {agg_spec.aggregation_id} - {mock_calculator.agg_schema.name}"
+                f"Aggregation calculation timed out for {agg_spec.aggregation_id} - {mock_calculator.agg_name}"
                 in rec.message
                 for rec in caplog.records
             )
@@ -364,6 +409,7 @@ def test_add_dimensions_to_metrics():
         jobs_client=Mock(),
         connector_constructor=Mock(),
         custom_aggregations_client=Mock(),
+        custom_aggregation_tests_client=Mock(),
         logger=Mock(),
     )
 

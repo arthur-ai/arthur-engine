@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 import numpy as np
 import torch
@@ -7,12 +8,12 @@ from sentence_transformers import SentenceTransformer
 logger = logging.getLogger()
 
 
-def get_device(cuda_index: int = 0):
+def get_device(cuda_index: int = 0) -> str:
     return f"cuda:{cuda_index}" if torch.cuda.is_available() else "cpu"
 
 
 class LogisticRegressionModel(torch.nn.Module):
-    def __init__(self, input_size, num_classes=2):
+    def __init__(self, input_size: int, num_classes: int = 2) -> None:
         """
         Logistic Regression model for both binary and multi-class classification.
 
@@ -24,7 +25,7 @@ class LogisticRegressionModel(torch.nn.Module):
         self.num_classes = num_classes
         self.linear = torch.nn.Linear(input_size, num_classes if num_classes > 2 else 1)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass for the model.
 
@@ -54,8 +55,8 @@ class Classifier(torch.nn.Module):
         self,
         transformer_model: SentenceTransformer,
         classifier: LogisticRegressionModel,
-        label_map=None,
-    ):
+        label_map: dict[str, int] | None = None,
+    ) -> None:
         super(Classifier, self).__init__()
         self.transformer = transformer_model
         self.classifier = classifier.to(get_device()).to(torch.float64)
@@ -68,9 +69,9 @@ class Classifier(torch.nn.Module):
         cls,
         embedding_model_name_or_path: str,
         classifier: LogisticRegressionModel,
-        use_local_files=True,
-        label_map=None,
-    ):
+        use_local_files: bool = True,
+        label_map: dict[str, int] | None = None,
+    ) -> "Classifier":
         if use_local_files:
             logger.info(
                 f"Loading model from local files @ {embedding_model_name_or_path}",
@@ -82,12 +83,12 @@ class Classifier(torch.nn.Module):
 
         t = SentenceTransformer(
             embedding_model_name_or_path,
-            device=torch.device(get_device()),
+            device=get_device(),
         )
 
         return cls(t, classifier=classifier, label_map=label_map)
 
-    def forward(self, texts):
+    def forward(self, texts: str) -> dict[str, Any]:
         with torch.no_grad():
             embeddings: torch.Tensor = torch.tensor(
                 self.transformer.encode(

@@ -1,12 +1,23 @@
-
-
+import {
+  TrendingUpOutlined,
+  DescriptionOutlined,
+  ScienceOutlined,
+  BalanceOutlined,
+  TableChartOutlined,
+  StorageOutlined,
+  ArrowBackOutlined,
+  InsightsOutlined,
+  ChevronRightOutlined,
+} from "@mui/icons-material";
+import { Link, Typography } from "@mui/material";
 import React from "react";
+import { useParams } from "react-router-dom";
 
 interface SidebarNavigationProps {
   onBackToDashboard: () => void;
   onNavigate: (sectionId: string) => void;
-  onLogout?: () => void;
   activeSection?: string;
+  taskName?: string;
 }
 
 interface NavigationSection {
@@ -18,111 +29,115 @@ interface NavigationSection {
 interface NavigationItem {
   id: string;
   label: string;
+  icon: React.ReactNode;
   onClick?: () => void;
 }
 
-export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
-  onBackToDashboard,
-  onNavigate,
-  onLogout,
-  activeSection = "task-details",
-}) => {
-  const navigationSections: NavigationSection[] = [
-    {
-      id: "observability",
-      label: "Observability",
-      items: [
-        { id: "traces", label: "Traces" },
-        { id: "retrievals", label: "Retrievals" },
-      ],
-    },
-    {
-      id: "evaluations",
-      label: "Evaluations",
-      items: [
-        { id: "evaluators", label: "Evaluators" },
-        { id: "datasets", label: "Datasets" },
-      ],
-    },
-    {
-      id: "experiments",
-      label: "Experiments",
-      items: [
-        { id: "prompt-experiments", label: "Prompt Experiments" },
-        { id: "rag-experiments", label: "Retrieval Experiments" },
-        { id: "agent-experiments", label: "Agent Experiments" },
-      ],
-    },
-    {
-      id: "playgrounds",
-      label: "Playgrounds",
-      items: [
-        { id: "playgrounds/prompts", label: "Prompts" },
-        { id: "playgrounds/retrievals", label: "Retrievals" },
-      ],
-    },
-    {
-      id: "settings",
-      label: "Settings",
-      items: [{ id: "task-details", label: "Task Details" }],
-    },
-  ];
+const navigationSections: NavigationSection[] = [
+  {
+    id: "observability",
+    label: "Observability",
+    items: [{ id: "traces", label: "Observe", icon: <TrendingUpOutlined /> }],
+  },
+  {
+    id: "prompts",
+    label: "Prompts",
+    items: [{ id: "prompts", label: "Prompt", icon: <DescriptionOutlined /> }],
+  },
+  {
+    id: "rag",
+    label: "RAG",
+    items: [{ id: "rag", label: "RAG", icon: <StorageOutlined /> }],
+  },
+  {
+    id: "evals",
+    label: "Evals",
+    items: [
+      { id: "evaluate", label: "Evaluate", icon: <BalanceOutlined /> },
+      { id: "datasets", label: "Dataset", icon: <TableChartOutlined /> },
+      { id: "transforms", label: "Transform", icon: <StorageOutlined /> },
+    ],
+  },
+  {
+    id: "agents",
+    label: "Agents",
+    items: [{ id: "test", label: "Test", icon: <ScienceOutlined /> }],
+  },
+];
+
+export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDashboard, onNavigate, activeSection = "overview", taskName }) => {
+  const { id } = useParams<{ id: string }>();
 
   return (
-    <nav className="w-64 bg-white shadow-sm border-r border-gray-200 h-full flex flex-col overflow-hidden">
-      <div className="p-4 flex-1 overflow-y-auto">
+    <nav className="w-64 bg-white dark:bg-gray-900 shadow-sm border-r border-gray-200 dark:border-gray-700 flex flex-col h-full">
+      <div className="p-4 overflow-y-auto flex-1 min-h-0">
         <div className="mb-4">
           <button
             onClick={onBackToDashboard}
-            className="w-full text-left px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200"
+            className="w-full text-left px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 transition-colors duration-200 flex items-center gap-2"
           >
-            ← All Tasks
+            <ArrowBackOutlined fontSize="small" />
+            <span>Back to All Tasks</span>
           </button>
+          {taskName && (
+            <Typography variant="subtitle1" sx={{ fontWeight: "bold", px: 1.5, pt: 2, pb: 1, color: "text.primary" }}>
+              {taskName}
+            </Typography>
+          )}
         </div>
 
-        <div className="space-y-1">
-          {navigationSections.map((section) => (
-            <div key={section.id} className="mb-4">
-              <div className="px-3 py-2 text-sm font-semibold text-gray-900">
-                {section.label}
-              </div>
+        <ul className="space-y-3">
+          {/* Overview / Analyze */}
+          <li>
+            <Link
+              href={`/tasks/${id}/overview`}
+              underline="none"
+              onClick={(e) => {
+                e.preventDefault();
+                onNavigate("overview");
+              }}
+              className={`w-full text-left px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 flex items-center gap-3 ${
+                activeSection === "overview"
+                  ? "text-blue-700 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/30"
+                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+              }`}
+            >
+              <span className="shrink-0">
+                <InsightsOutlined />
+              </span>
+              <span>Analyze</span>
+              {activeSection === "overview" && <ChevronRightOutlined sx={{ ml: "auto", fontSize: 16 }} />}
+            </Link>
+          </li>
 
-              <ul className="ml-4 mt-1 space-y-1">
-                {section.items.map((item) => {
-                  const isActive = item.id === activeSection;
-
-                  return (
-                    <li key={item.id}>
-                      <button
-                        onClick={() => onNavigate(item.id)}
-                        className={`w-full text-left px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 ${
-                          isActive
-                            ? "text-blue-700 bg-blue-50"
-                            : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                        }`}
-                      >
-                        {item.label}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
-        </div>
+          {navigationSections.flatMap((section) =>
+            section.items.map((item) => {
+              const isActive = item.id === activeSection;
+              return (
+                <li key={item.id}>
+                  <Link
+                    href={`/tasks/${id}/${item.id}`}
+                    underline="none"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onNavigate(item.id);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 flex items-center gap-3 ${
+                      isActive
+                        ? "text-blue-700 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/30"
+                        : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+                    }`}
+                  >
+                    <span className="shrink-0">{item.icon}</span>
+                    <span>{item.label}</span>
+                    {isActive && <ChevronRightOutlined sx={{ ml: "auto", fontSize: 16 }} />}
+                  </Link>
+                </li>
+              );
+            })
+          )}
+        </ul>
       </div>
-
-      {/* Logout button at the bottom */}
-      {onLogout && (
-        <div className="p-4 border-t border-gray-200">
-          <button
-            onClick={onLogout}
-            className="w-full text-left px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200"
-          >
-            Logout
-          </button>
-        </div>
-      )}
     </nav>
   );
 };

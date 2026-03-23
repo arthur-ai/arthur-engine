@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from logging import Logger
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 from uuid import UUID
 
 import duckdb
@@ -19,11 +19,10 @@ from arthur_common.models.metrics import (
     SketchMetric,
 )
 from arthur_common.models.schema_definitions import ScopeSchemaTag
-from arthur_common.tools.duckdb_data_loader import (
-    escape_identifier,
-)
+from arthur_common.tools.duckdb_data_loader import escape_identifier
 from arthur_common.tools.duckdb_utils import is_column_possible_segmentation
 from arthur_common.tools.functions import uuid_to_base26
+
 from config import Config
 from tools.schema_interpreters import (
     column_scalar_dtype_from_dataset_schema,
@@ -38,11 +37,13 @@ class MetricCalculator(ABC):
         conn: duckdb.DuckDBPyConnection,
         logger: Logger,
         agg_spec: AggregationSpec,
+        agg_name: str,
     ) -> None:
         # TODO: Make conn read only for aggregations? Would have to manually manage table existence across different connections (write for transform, read for aggregate)
         self.conn = conn
         self.agg_spec = agg_spec
         self.logger = logger
+        self.agg_name = agg_name
 
     def transform(self) -> None:
         # TODO: One day
@@ -88,6 +89,37 @@ class MetricCalculator(ABC):
                 f"{all_dataset_columns}",
             )
 
+    def _find_col_id_by_name_in_dataset(
+        self,
+        col_name: str,
+        dataset: Dataset,
+    ) -> str | None:
+        """Finds the column ID for a given escaped column name within a specific dataset.
+
+        col_name: escaped column name to search for
+        dataset: dataset to search within
+
+        Returns: column ID if found, None otherwise
+        """
+        # Check top-level columns
+        for col_id, schema_col_name in dataset.dataset_schema.column_names.items():
+            escaped_col_name = escape_identifier(schema_col_name)
+            if escaped_col_name == col_name:
+                return str(col_id)
+
+        # Check nested columns within DatasetObjectType columns
+        for column in dataset.dataset_schema.columns:
+            if isinstance(column.definition.actual_instance, DatasetObjectType):
+                nested_fields = self._field_names_from_object_type_column(
+                    column.definition.actual_instance,
+                    escape_identifier(column.source_name),
+                )
+                for field_id, field_name in nested_fields.items():
+                    if field_name == col_name:
+                        return str(field_id)
+
+        return None
+
     def _validate_segmentation_single_column(
         self,
         col_id: str,
@@ -131,7 +163,6 @@ class MetricCalculator(ABC):
 
     def _validate_segmentation_args(
         self,
-        col_names_to_id: dict[str, str],
         aggregate_args: dict[str, Any],
         ds_map: dict[str, Dataset],
     ) -> None:
@@ -153,6 +184,11 @@ class MetricCalculator(ABC):
                 # arg does not have possible_segmentation tag hint
                 continue
 
+            # Get the dataset reference for this argument to look up column IDs correctly
+            dataset_key = arg_schema.source_dataset_parameter_key
+            dataset_ref = aggregate_args[dataset_key]
+            dataset = ds_map[str(dataset_ref.dataset_id)]
+
             # validate segmentation requirements for multiple column list parameters or single column parameters
             arg_val = aggregate_args[arg_key]
             if isinstance(arg_val, list):
@@ -163,8 +199,15 @@ class MetricCalculator(ABC):
                         f"{ScopeSchemaTag.POSSIBLE_SEGMENTATION.value} tag hint. Found {len(arg_val)} columns.",
                     )
                 for column_name in arg_val:
+                    # Look up column ID from the specific dataset, not the global mapping
+                    col_id = self._find_col_id_by_name_in_dataset(column_name, dataset)
+                    if col_id is None:
+                        raise ValueError(
+                            f"Could not find column {column_name} in dataset {dataset_ref.dataset_id} "
+                            f"for aggregation argument {arg_key}.",
+                        )
                     self._validate_segmentation_single_column(
-                        col_names_to_id.get(column_name, ""),
+                        col_id,
                         column_name,
                         arg_key,
                         arg_schema,
@@ -172,8 +215,15 @@ class MetricCalculator(ABC):
                         ds_map,
                     )
             else:
+                # Look up column ID from the specific dataset, not the global mapping
+                col_id = self._find_col_id_by_name_in_dataset(arg_val, dataset)
+                if col_id is None:
+                    raise ValueError(
+                        f"Could not find column {arg_val} in dataset {dataset_ref.dataset_id} "
+                        f"for aggregation argument {arg_key}.",
+                    )
                 self._validate_segmentation_single_column(
-                    col_names_to_id.get(column_name, ""),
+                    col_id,
                     arg_val,
                     arg_key,
                     arg_schema,
@@ -240,10 +290,10 @@ class MetricCalculator(ABC):
     def _all_dataset_columns(
         self,
         datasets: List[Dataset],
-    ) -> Tuple[Dict[str, str], Dict[str, str]]:
+    ) -> Dict[str, str]:
         """
-        This function is used to create two dictionaries, one from column ID to column name
-        for every column in the list of datasets, and one from column name back to column ID.
+        This function is used to create a dictionary from column ID to column name
+        for every column in the list of datasets.
 
         Notes:
           - This includes nested column names using dot syntax ("parent_column_name"."nested_column_name").
@@ -255,10 +305,8 @@ class MetricCalculator(ABC):
 
         Returns:
             all_dataset_columns (Dict[str, str]): dict from column ID to column name for every column in the list of datasets.
-            col_names_to_id (Dict[str, str]): dict from column name to column ID for every column in the list of datasets.
         """
         all_dataset_columns = {}
-        col_names_to_id = {}
 
         for ds in datasets:
             # first, use the column_names property. We need to do this instead of iterating over the parent-level
@@ -269,7 +317,6 @@ class MetricCalculator(ABC):
                 # add escape identifier to column name
                 escaped_col_name = escape_identifier(col_name)
                 top_level_col_names[col_id] = escaped_col_name
-                col_names_to_id[escaped_col_name] = col_id
 
             all_dataset_columns.update(top_level_col_names)
 
@@ -281,10 +328,8 @@ class MetricCalculator(ABC):
                         escape_identifier(column.source_name),
                     )
                     all_dataset_columns.update(nested_fields)
-                    for field_id, field_name in nested_fields.items():
-                        col_names_to_id[field_name] = field_id
 
-        return all_dataset_columns, col_names_to_id
+        return all_dataset_columns
 
     def process_agg_args(
         self,
@@ -319,7 +364,7 @@ class MetricCalculator(ABC):
         )
 
         ds_map = {ds.id: ds for ds in datasets}
-        all_dataset_columns, col_names_to_id = self._all_dataset_columns(
+        all_dataset_columns = self._all_dataset_columns(
             datasets,
         )  # column id: escaped column name
 
@@ -348,5 +393,5 @@ class MetricCalculator(ABC):
             else:
                 aggregate_args[arg.arg_key] = arg.arg_value
 
-        self._validate_segmentation_args(col_names_to_id, aggregate_args, ds_map)
+        self._validate_segmentation_args(aggregate_args, ds_map)
         return init_args, aggregate_args

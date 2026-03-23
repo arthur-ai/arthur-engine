@@ -2,11 +2,6 @@ import os
 from typing import Generator
 
 import pytest
-from dependencies import get_application_config
-from repositories.inference_repository import InferenceRepository
-from repositories.metrics_repository import MetricRepository
-from repositories.rules_repository import RuleRepository
-from repositories.tasks_repository import TaskRepository
 from arthur_common.models.common_schemas import (
     ExamplesConfig,
     KeywordsConfig,
@@ -15,8 +10,14 @@ from arthur_common.models.common_schemas import (
     ToxicityConfig,
 )
 from arthur_common.models.enums import PIIEntityTypes, RuleScope
-from schemas.internal_schemas import InferencePrompt, Rule, Task
 from arthur_common.models.request_schemas import NewRuleRequest, NewTaskRequest
+
+from dependencies import get_application_config
+from repositories.inference_repository import InferenceRepository
+from repositories.metrics_repository import MetricRepository
+from repositories.rules_repository import RuleRepository
+from repositories.tasks_repository import TaskRepository
+from schemas.internal_schemas import InferencePrompt, Rule, Task
 from scorer.llm_client import LLMExecutor
 from tests.clients.base_test_client import override_get_db_session
 
@@ -52,6 +53,7 @@ def pytest_configure(config):
 @pytest.fixture(autouse=True)
 def set_env_vars():
     os.environ["NEW_RELIC_ENABLED"] = "false"
+    os.environ["GENAI_ENGINE_THREAD_POOL_MAX_WORKERS"] = "1"
 
 
 def create_rule_for_task(create_task: Task, rule_request: NewRuleRequest) -> Rule:

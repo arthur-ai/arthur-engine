@@ -19,6 +19,7 @@ from arthur_client.api_bindings import (
 )
 from arthur_client.api_bindings.exceptions import NotFoundException
 from arthur_common.tools.functions import hash_nonce
+
 from tools.validators import validate_schedule
 
 

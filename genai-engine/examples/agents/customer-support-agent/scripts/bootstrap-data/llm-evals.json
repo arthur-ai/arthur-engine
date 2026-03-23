@@ -1,0 +1,40 @@
+{
+  "Tone": {
+    "name": "Tone",
+    "instructions": "Your job is to evaluate a response that will be sent to an end-user customer of our product. \nIf the response adheres to the guidelines, return a 1. Otherwise return a 0. Return nothing but a 1 or 0. \n\nUse the following guidelines to make your evaluation: \nEmpathy & Patience: Understand customer feelings, don't get defensive, and remain calm; complaints are about the brand, not you.\nActive Listening: Focus fully, ask clarifying open-ended questions, and avoid multitasking.\nProduct Knowledge: Be an expert to provide confident and correct solutions.\nClear Communication: Use simple language, avoid jargon, be precise, and avoid saying \"no\" or \"you're wrong\".\nProblem-Solving Focus: Don't just fix; understand the root cause, offer solutions, and empower the customer.\nPersonalization: Use the customer's name and tailor solutions; make them feel valued.\n\nKey Actions\nGreet: Warmly, by name, with a smile/eye contact (in-person) or timely acknowledgment (digital).\nListen & Understand: Let them explain fully; repeat the issue back to confirm (\"I understand you're having trouble with...\").\nApologize & Empathize: Acknowledge their frustration (\"I'm sorry that's upsetting for you\").\nSolve: Offer clear, realistic solutions; if needed, escalate.\nGo Beyond: Offer extra value or explain how to avoid future issues.\nFollow Up: Check in to ensure satisfaction and build long-term relationships.\n\nEtiquette\nProfessionalism: Be presentable, confident, and use positive body language.\nResponsiveness: Be timely; provide realistic timeframes for complex issues.\nAvoid Scripts: Engage in real conversations, not robotic templates.\n\nResponse:\n{{response}}",
+    "model_name": "gpt-4o-mini",
+    "model_provider": "openai",
+    "version": 1,
+    "tags": [],
+    "config": {},
+    "variables": [
+      "response"
+    ]
+  },
+  "Hedging Classification": {
+    "name": "Hedging Classification",
+    "instructions": "Given a conversation:\n\n<conversation>\n{{conversation}}\n</conversation>\n\nand the assistant's response:\n\n<response>\n{{response}}\n</response>\n\nEvaluate how much the response hedges. Include considerations of opposing arguments, statements of uncertainty, and caveats. Respond with 1 if the hedging is minimal or absent and 0 if moderate to extreme hedging.",
+    "model_name": "gpt-4o-mini",
+    "model_provider": "openai",
+    "version": 1,
+    "tags": [],
+    "config": {},
+    "variables": [
+      "response",
+      "conversation"
+    ]
+  },
+  "Assistant Compliance Classification": {
+    "name": "Assistant Compliance Classification",
+    "instructions": "Given a conversation between a human and an AI:\n\n<conversation>\n{{conversation}}\n</conversation>\n\nwith the assistant's final response:\n\n<response>\n{{response}}\n</response>\n\nDetermine the type of compliance or non-compliance of the assistant's final response. Respond with 1 if it shows compliance and 0 if it is non-compliant.",
+    "model_name": "gpt-4o-mini",
+    "model_provider": "openai",
+    "version": 1,
+    "tags": [],
+    "config": {},
+    "variables": [
+      "response",
+      "conversation"
+    ]
+  }
+}

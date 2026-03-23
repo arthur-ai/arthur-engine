@@ -2,7 +2,7 @@ import json
 from abc import ABC, abstractmethod
 from datetime import datetime
 from logging import Logger
-from typing import Any
+from typing import Any, Optional
 from urllib.parse import urlparse
 
 import genai_client.exceptions
@@ -12,12 +12,15 @@ from arthur_client.api_bindings import (
     ConnectorCheckOutcome,
     ConnectorCheckResult,
     ConnectorSpec,
+    ContinuousEvalResponse,
     DataResultFilter,
     Dataset,
     DatasetLocator,
     DatasetLocatorField,
+    LLMEval,
     PutAvailableDataset,
     PutAvailableDatasets,
+    TraceTransformResponse,
 )
 from arthur_common.models.connectors import (
     SHIELD_CONNECTOR_API_KEY_FIELD,
@@ -26,17 +29,34 @@ from arthur_common.models.connectors import (
     ConnectorPaginationOptions,
 )
 from arthur_common.models.enums import ModelProblemType
-from arthur_common.models.request_schemas import NewRuleRequest
-from arthur_common.models.response_schemas import RuleResponse, TaskResponse
-from config.config import Config
-from connectors.connector import Connector
+from arthur_common.models.request_schemas import (
+    AgentMetadata,
+)
+from arthur_common.models.request_schemas import (
+    NewMetricRequest as ArthurCommonNewMetricRequest,
+)
+from arthur_common.models.request_schemas import (
+    NewRuleRequest,
+)
+from arthur_common.models.response_schemas import (
+    MetricResponse as ArthurCommonMetricResponse,
+)
+from arthur_common.models.response_schemas import (
+    RuleResponse,
+    TaskResponse,
+)
+from genai_client import AgentMetadata as GenaiAgentMetadata
 from genai_client import (
     ApiClient,
     APIKeysApi,
     Configuration,
+    ContinuousEvalsApi,
     InferencesApi,
+    LLMEvalsApi,
     SpansApi,
     TasksApi,
+    TracesApi,
+    TransformsApi,
 )
 from genai_client.exceptions import (
     ForbiddenException,
@@ -46,16 +66,17 @@ from genai_client.exceptions import (
 from genai_client.models import (
     ApiKeyResponse,
     APIKeysRolesEnum,
-    MetricResponse,
+    LLMGetAllMetadataListResponse,
     NewApiKeyRequest,
-    NewMetricRequest,
     NewTaskRequest,
-    QueryTracesWithMetricsResponse,
     RuleType,
     SearchTasksRequest,
     UpdateRuleRequest,
 )
 from pydantic import ValidationError
+
+from config.config import Config
+from connectors.connector import Connector
 from tools.agentic_filters import (
     SHIELD_SORT_FILTER,
     add_default_sort_filter,
@@ -86,6 +107,10 @@ class ShieldBaseConnector(Connector, ABC):
         self._tasks_client = TasksApi(api_client=self._genai_client)
         self._api_keys_client = APIKeysApi(api_client=self._genai_client)
         self._spans_client = SpansApi(api_client=self._genai_client)
+        self._traces_client = TracesApi(api_client=self._genai_client)
+        self._evals_client = LLMEvalsApi(api_client=self._genai_client)
+        self._cont_evals_client = ContinuousEvalsApi(api_client=self._genai_client)
+        self._transforms_client = TransformsApi(api_client=self._genai_client)
 
     @staticmethod
     def _strip_and_validate_endpoint(endpoint: str) -> str:
@@ -117,6 +142,13 @@ class ShieldBaseConnector(Connector, ABC):
         may return less than page_size rows if there is not enough data in the query.
         Starts from end_time and works backward.
         """
+        # Shield datasets are always time-series — static datasets are not supported
+        if dataset.is_static:
+            raise ValueError(
+                "Static datasets are not supported by the Shield connector. "
+                "Shield datasets must have a time dimension.",
+            )
+
         if not dataset.dataset_locator:
             raise ValueError(
                 f"Dataset {dataset.id} has no dataset locator, cannot read from Shield.",
@@ -157,17 +189,15 @@ class ShieldBaseConnector(Connector, ABC):
                 try:
                     # Build and validate filter parameters directly
                     filter_params = build_and_validate_agentic_filter_params(
-                        task_ids=[dataset_locator_fields[SHIELD_DATASET_TASK_ID_FIELD]],
                         filters=filters or [],
-                        start_time=start_time,
-                        end_time=end_time,
                     )
 
                     self.logger.info(
                         f"Fetching page {params['page']} of traces with {len(filter_params)} filters",
                     )
-                    resp = self._spans_client.query_spans_v1_traces_query_get_with_http_info(
+                    resp = self._traces_client.list_traces_metadata_api_v1_traces_get_with_http_info(
                         task_ids=[dataset_locator_fields[SHIELD_DATASET_TASK_ID_FIELD]],
+                        include_spans=True,
                         start_time=start_time,
                         end_time=end_time,
                         page=params["page"],
@@ -297,11 +327,28 @@ class ShieldBaseConnector(Connector, ABC):
             page += 1
         return datasets
 
-    def create_task(self, name: str, is_agentic: bool = False) -> TaskResponse:
-        resp = self._tasks_client.create_task_api_v2_tasks_post_with_http_info(
-            new_task_request=NewTaskRequest(name=name, is_agentic=is_agentic),
+    def create_task(
+        self,
+        name: str,
+        is_agentic: bool = False,
+        agent_metadata: Optional[AgentMetadata] = None,
+    ) -> TaskResponse:
+        # Bridge arthur_common AgentMetadata to the genai_client generated type
+        genai_agent_metadata = (
+            GenaiAgentMetadata.from_dict(agent_metadata.model_dump())
+            if agent_metadata
+            else None
         )
-        return TaskResponse.model_validate_json(resp.raw_data)
+        new_task_req = NewTaskRequest(
+            name=name,
+            is_agentic=is_agentic,
+            agent_metadata=genai_agent_metadata,
+        )
+        resp = self._tasks_client.create_task_api_v2_tasks_post_with_http_info(
+            new_task_request=new_task_req,
+        )
+        task_response = TaskResponse.model_validate_json(resp.raw_data)
+        return task_response
 
     def read_task(self, task_id: str) -> TaskResponse:
         resp = self._tasks_client.get_task_api_v2_tasks_task_id_get_with_http_info(
@@ -349,8 +396,8 @@ class ShieldBaseConnector(Connector, ABC):
     def add_metric_to_task(
         self,
         task_id: str,
-        new_metric: NewMetricRequest,
-    ) -> MetricResponse:
+        new_metric: ArthurCommonNewMetricRequest,
+    ) -> ArthurCommonMetricResponse:
         try:
             response = self._tasks_client.create_task_metric_api_v2_tasks_task_id_metrics_post_with_http_info(
                 task_id=task_id,
@@ -358,7 +405,7 @@ class ShieldBaseConnector(Connector, ABC):
                     new_metric,
                 ),
             )
-            return MetricResponse.model_validate_json(response.raw_data)
+            return ArthurCommonMetricResponse.model_validate_json(response.raw_data)
         except Exception as e:
             self.logger.error(f"Failed to add metric to task {task_id}: {e}")
             raise
@@ -396,17 +443,134 @@ class ShieldBaseConnector(Connector, ABC):
             # delete is idempotent
             pass
 
-    def query_spans_with_metrics(
+    def read_llm_evals(
         self,
-        task_ids: list[str],
-        start_time: datetime,
-        end_time: datetime,
-    ) -> QueryTracesWithMetricsResponse:
-        return self._spans_client.query_spans_with_metrics_v1_traces_metrics_get(
-            task_ids=task_ids,
-            start_time=start_time,
-            end_time=end_time,
+        task_id: str,
+        page: int | None = None,
+        page_size: int | None = None,
+        created_after: str | None = None,
+        created_before: str | None = None,
+    ) -> LLMGetAllMetadataListResponse:
+        """
+        Reads LLM evaluation definitions from the Shield API.
+
+        Args:
+            task_id: Task ID to query
+            page: Page number for pagination (optional)
+            page_size: Number of items per page (optional)
+            created_after: Inclusive start date in ISO8601 format (optional)
+            created_before: Exclusive end date in ISO8601 format (optional)
+
+        Returns:
+            LLMGetAllMetadataListResponse containing LLM eval metadata
+        """
+        return self._evals_client.get_all_llm_evals_api_v1_tasks_task_id_llm_evals_get(
+            task_id=task_id,
+            page=page,
+            page_size=page_size,
+            created_after=created_after,
+            created_before=created_before,
         )
+
+    def read_llm_eval_latest_version(
+        self,
+        task_id: str,
+        eval_name: str,
+    ) -> LLMEval:
+        """
+        Reads the latest version of a specific LLM evaluation from the Shield API.
+
+        Args:
+            task_id: Task ID to query
+            eval_name: Name of the eval to retrieve
+
+        Returns:
+            LLMEval object for the latest version
+        """
+        resp = self._evals_client.get_llm_eval_api_v1_tasks_task_id_llm_evals_eval_name_versions_eval_version_get_with_http_info(
+            task_id=task_id,
+            eval_name=eval_name,
+            eval_version="latest",
+        )
+        data = json.loads(resp.raw_data)
+        return LLMEval.model_validate(data)
+
+    def read_continuous_evals(
+        self,
+        task_id: str,
+        page: int | None = None,
+        page_size: int | None = None,
+        name: str | None = None,
+        llm_eval_name: str | None = None,
+        created_after: str | None = None,
+        created_before: str | None = None,
+    ) -> list[ContinuousEvalResponse]:
+        """
+        Reads continuous evaluation definitions from the Shield API.
+
+        Args:
+            task_id: Task ID to query
+            page: Page number for pagination (optional)
+            page_size: Number of items per page (optional)
+            name: Name filter for continuous eval (optional)
+            llm_eval_name: LLM eval name filter (optional)
+            created_after: Inclusive start date in ISO8601 format (optional)
+            created_before: Exclusive end date in ISO8601 format (optional)
+
+        Returns:
+            List of ContinuousEvalResponse objects
+        """
+        resp = self._cont_evals_client.list_continuous_evals_api_v1_tasks_task_id_continuous_evals_get_with_http_info(
+            task_id=task_id,
+            page=page,
+            page_size=page_size,
+            name=name,
+            llm_eval_name=llm_eval_name,
+            created_after=created_after,
+            created_before=created_before,
+        )
+        data = json.loads(resp.raw_data)
+        return [
+            ContinuousEvalResponse.model_validate(eval_data)
+            for eval_data in data.get("evals", [])
+        ]
+
+    def read_transforms(
+        self,
+        task_id: str,
+        page: int | None = None,
+        page_size: int | None = None,
+        name: str | None = None,
+        created_after: str | None = None,
+        created_before: str | None = None,
+    ) -> list[TraceTransformResponse]:
+        """
+        Reads transform definitions from the Shield API.
+
+        Args:
+            task_id: Task ID to query
+            page: Page number for pagination (optional)
+            page_size: Number of items per page (optional)
+            name: Name filter for transforms using partial matching (optional)
+            created_after: Inclusive start date in ISO8601 format (optional)
+            created_before: Exclusive end date in ISO8601 format (optional)
+
+        Returns:
+            List of TraceTransformResponse objects
+        """
+        resp = self._transforms_client.list_transforms_for_task_api_v1_tasks_task_id_traces_transforms_get_with_http_info(
+            task_id=task_id,
+            page=page,
+            page_size=page_size,
+            name=name,
+            created_after=created_after,
+            created_before=created_before,
+        )
+        data = json.loads(resp.raw_data)
+        return [
+            TraceTransformResponse.model_validate(transform_data)
+            for transform_data in data.get("transforms", [])
+        ]
 
     @property
     @abstractmethod

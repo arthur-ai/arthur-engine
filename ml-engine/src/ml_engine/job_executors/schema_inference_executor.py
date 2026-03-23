@@ -11,6 +11,7 @@ from arthur_common.models.connectors import ConnectorPaginationOptions
 from arthur_common.models.schema_definitions import SHIELD_SCHEMA
 from arthur_common.models.schema_definitions import DatasetSchema as CommonDatasetSchema
 from arthur_common.tools.schema_inferer import SchemaInferer
+
 from connectors.connector import Connector
 from connectors.shield_connector import ShieldConnector
 from tools.connector_constructor import ConnectorConstructor

@@ -8,6 +8,7 @@ from arthur_common.models.connectors import (
     GOOGLE_CONNECTOR_LOCATION_FIELD,
     GOOGLE_CONNECTOR_PROJECT_ID_FIELD,
 )
+
 from connectors.bucket_based_connector import BucketBasedConnector
 
 

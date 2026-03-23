@@ -1,5 +1,9 @@
 import logging
 
+from fastapi import Depends
+from fastapi.security import HTTPAuthorizationCredentials
+from sqlalchemy.orm import Session
+
 from auth.api_key_validator_client import APIKeyValidatorClient
 from auth.ApiKeyValidator.APIKeyvalidatorCreator import APIKeyValidatorCreator
 from auth.authorization_header_elements import (
@@ -8,10 +12,7 @@ from auth.authorization_header_elements import (
 from auth.jwk_client import JWKClient
 from auth.utils import http_bearer_scheme
 from dependencies import get_api_key_validator_client, get_db_session, get_jwk_client
-from fastapi import Depends
-from fastapi.security import HTTPAuthorizationCredentials
 from schemas.internal_schemas import User
-from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ class MultiMethodValidator:
         ),
         db_session: Session = Depends(get_db_session),
         creds: HTTPAuthorizationCredentials = Depends(http_bearer_scheme),
-    ) -> User:
+    ) -> User | None:
         """Method responsible to check if user has a proper authentication token (header or cookie).
 
         Args:
@@ -66,3 +67,5 @@ class MultiMethodValidator:
                 return user
         except Exception as oauth_error:
             raise oauth_error
+
+        return None

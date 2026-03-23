@@ -1,32 +1,23 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import List, Optional
+from uuid import UUID
 
 from arthur_common.models.enums import (
-    PaginationSortMethod,
     UserPermissionAction,
     UserPermissionResource,
 )
-from pydantic import BaseModel
-
-
-class PaginationParameters(BaseModel):
-    sort: Optional[PaginationSortMethod] = PaginationSortMethod.DESCENDING
-    page_size: int = 10
-    page: int = 0
-
-    def calculate_total_pages(self, total_items_count: int) -> int:
-        return total_items_count // self.page_size + 1
+from pydantic import BaseModel, Field
 
 
 class LLMTokenConsumption(BaseModel):
     prompt_tokens: int
     completion_tokens: int
 
-    def total_tokens(self):
+    def total_tokens(self) -> int:
         return self.prompt_tokens + self.completion_tokens
 
-    def add(self, token_consumption: LLMTokenConsumption):
+    def add(self, token_consumption: LLMTokenConsumption) -> "LLMTokenConsumption":
         self.prompt_tokens += token_consumption.prompt_tokens
         self.completion_tokens += token_consumption.completion_tokens
         return self
@@ -43,8 +34,45 @@ class UserPermission(BaseModel):
     action: UserPermissionAction
     resource: UserPermissionResource
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.action, self.resource))
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, UserPermission) and self.__hash__() == other.__hash__()
+
+
+class NewDatasetVersionRowColumnItemRequest(BaseModel):
+    """Represents a single column-value pair in a dataset row."""
+
+    column_name: str = Field(description="Name of column.")
+    column_value: str = Field(description="Value of column for the row.")
+
+
+class NewDatasetVersionRowRequest(BaseModel):
+    """Represents a row to be added to a dataset version."""
+
+    id: Optional[str] = Field(
+        default=None,
+        description="Optional ID for the row (used for synthetic data generation).",
+    )
+    data: List[NewDatasetVersionRowColumnItemRequest] = Field(
+        description="List of column-value pairs in the new dataset row.",
+    )
+
+
+class NewDatasetVersionUpdateRowRequest(BaseModel):
+    """Represents a row to be updated in a dataset version."""
+
+    id: UUID = Field(description="UUID of row to be updated.")
+    data: List[NewDatasetVersionRowColumnItemRequest] = Field(
+        description="List of column-value pairs in the updated row.",
+    )
+
+
+class BasePaginationResponse(BaseModel):
+    """Mixin for paginated list responses."""
+
+    page: int = Field(description="Current page number (0-indexed)")
+    page_size: int = Field(description="Number of items per page")
+    total_pages: int = Field(description="Total number of pages")
+    total_count: int = Field(description="Total number of records")

@@ -9,7 +9,7 @@ if [ "$#" -eq 0 ]; then
     exit 2
 fi
 
-export OPENAPI_GENERATOR_VERSION=7.11.0
+export OPENAPI_GENERATOR_VERSION=7.12.0
 
 install_or_update_openapi_gen() {
   echo "Installing or updating openapi-generator-cli to version $OPENAPI_GENERATOR_VERSION..."
@@ -19,9 +19,8 @@ install_or_update_openapi_gen() {
     npm install -g @openapitools/openapi-generator-cli
     openapi-generator-cli version-manager set $OPENAPI_GENERATOR_VERSION
   else
-    # use auto-updating linux scripts to install OpenAPI Generator on local CI server
-    curl https://raw.githubusercontent.com/OpenAPITools/openapi-generator/master/bin/utils/openapi-generator-cli.sh > /usr/local/bin/openapi-generator-cli
-    chmod u+x /usr/local/bin/openapi-generator-cli
+    npm install -g @openapitools/openapi-generator-cli
+    openapi-generator-cli version-manager set $OPENAPI_GENERATOR_VERSION
   fi
 }
 
@@ -52,5 +51,5 @@ fi
 
 if [ "$purpose" == "install" ]; then
   echo "Installing the newly generated $runtime client"
-  pip3 install ../src/genai_client -vvv
+  poetry run pip install ../src/genai_client -vvv
 fi

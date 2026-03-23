@@ -92,7 +92,7 @@ ingress:
 ## Advanced - GenAI Engine
 ###################################
 # GenAI Engine version
-genaiEngineVersion: '2.1.93'
+genaiEngineVersion: '2.1.472'
 # Max number of tokens GenAI Engine can process against LLM for hallucination data checks
 genaiEngineHallucinationCheckMaxTokenLimit: 3000
 # Max number of tokens GenAI Engine can process against LLM for sensitive data checks
@@ -125,6 +125,8 @@ arthurGenaiEngineService:
   labels: {}
 # Allow the admin key general API access (Must be enabled for the Arthur Platform. Can be disabled for the guardrails-only standalone deployment.)
 genaiEngineAllowAdminKeyGeneralAccess: "enabled"
+# (Optional) Custom URL for the model repository (e.g. a private Hugging Face mirror). If not specified, the default Hugging Face endpoint will be used.
+# modelRepositoryURL: ""
 
 ###################################
 ## Advanced - Secrets name customization
@@ -139,3 +141,17 @@ genaiEngineSecretAdminKeyName: "genai-engine-secret-admin-key"
 # Name of the secret which stores the connection strings for Azure OpenAI GPT-3.5 model endpoints. Must be in form "DEPLOYMENT_NAME1::OPENAI_ENDPOINT1::SECRET_KEY1,DEPLOYMENT_NAME2::OPENAI_ENDPOINT2::SECRET_KEY2"). Many may be specified.
 # (expecting value for key 'keys')
 genaiEngineSecretOpenAIGPTModelNamesEndpointsKeysName: "genai-engine-secret-open-ai-gpt-model-names-endpoints-keys"
+# GenAI Engine secret store key name (expecting value for key 'key' - should be a base64-encoded 32-byte Fernet key)
+genaiEngineSecretStoreKeyName: "genai-engine-secret-store-key"
+
+###################################
+## Advanced - GCP Service Account
+###################################
+gcpDiscoveryConfig:
+  isEnabled: false
+  # Google Cloud project ID for Vertex AI integration
+  # googleCloudProject: ""
+  # (Optional) Google Cloud region/location
+  # googleCloudLocation: ""
+  # (Optional) Name of the K8s secret containing the GCP service account JSON key
+  # googleCredentialsSecretName: ""

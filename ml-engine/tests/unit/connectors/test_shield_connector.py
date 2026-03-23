@@ -690,10 +690,13 @@ def test_agentic_dataset_validation_error_handling(urllib3_mock: Urllib3Mock):
         )
 
     # Check that the ValidationError provides detailed field-level information
+    # Note: Validation now happens at TracesApi level, so error message comes from pydantic
     error_str = str(exc_info.value)
     assert "query_relevance_gt" in error_str  # Exact field name should be mentioned
-    assert "must be between 0 and 1" in error_str  # Clear constraint explanation
     assert "1.5" in error_str  # Actual failing value should be shown
+    # The error message format comes from pydantic validation in TracesApi
+    assert ("less than or equal to 1" in error_str.lower() or
+            "must be" in error_str.lower())  # Validation constraint
 
 
 @pytest.mark.parametrize(
@@ -743,9 +746,10 @@ def test_agentic_dataset_filter_parameter_mapping(
     spec = ConnectorSpec.model_validate(mock_shield_connector_spec(MOCK_SHIELD_HOST))
     conn = ShieldConnector(spec, logger)
 
-    # Build base parameters
+    # Build base parameters for the list traces metadata API
     base_params = {
         "task_ids": MOCK_SHIELD_TASK_ID,
+        "include_spans": "true",
         "start_time": start_timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f%z"),
         "end_time": end_timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f%z"),
         "page": "0",
@@ -755,7 +759,7 @@ def test_agentic_dataset_filter_parameter_mapping(
 
     # Add expected parameters
     all_params = {**base_params, **expected_params}
-    expected_url = f"{MOCK_SHIELD_HOST}/v1/traces/query?" + parse.urlencode(
+    expected_url = f"{MOCK_SHIELD_HOST}/api/v1/traces?" + parse.urlencode(
         all_params,
         doseq=True,
     )
@@ -783,3 +787,18 @@ def test_agentic_dataset_filter_parameter_mapping(
 
     # Verify the correct URL was called
     urllib3_mock.assert_all_responses_called()
+
+
+def test_shield_read_raises_for_static_dataset():
+    """Shield connector must raise ValueError when dataset.is_static is True."""
+    spec = ConnectorSpec.model_validate(mock_shield_connector_spec(MOCK_SHIELD_HOST))
+    conn = ShieldConnector(spec, logger)
+
+    static_dataset = AvailableDataset.model_validate(
+        {**MOCK_SHIELD_AVAILABLE_DATASET, "is_static": True},
+    )
+    start = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    end = datetime(2024, 1, 2, tzinfo=timezone.utc)
+
+    with pytest.raises(ValueError, match="Static datasets are not supported by the Shield connector"):
+        conn.read(static_dataset, start_time=start, end_time=end)

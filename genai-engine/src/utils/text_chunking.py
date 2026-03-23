@@ -1,3 +1,6 @@
+from transformers import PreTrainedTokenizerBase
+
+
 class ChunkIterator:
     """
     Iterator class for chunking a text at the word level
@@ -8,17 +11,22 @@ class ChunkIterator:
         chunk_size: Maximum number of word tokens per chunk
     """
 
-    def __init__(self, text, tokenizer, chunk_size):
+    def __init__(
+        self,
+        text: str,
+        tokenizer: PreTrainedTokenizerBase,
+        chunk_size: int,
+    ) -> None:
         self.tokenizer = tokenizer
         self.chunk_size = chunk_size
         self.text = text
 
         self.setup_text()
 
-    def __iter__(self):
+    def __iter__(self) -> "ChunkIterator":
         return self
 
-    def setup_text(self):
+    def setup_text(self) -> "ChunkIterator":
         """
         Sets up necessary variables used for chunking by:
          - tokenizing the input text
@@ -45,7 +53,7 @@ class ChunkIterator:
 
         return self
 
-    def __next__(self):
+    def __next__(self) -> str:
         """
         Extracts and returns the next chunk of text
 
@@ -97,7 +105,13 @@ class SlidingWindowChunkIterator:
         stride: Number of words to advance for each new chunk (defaults to chunk_size)
     """
 
-    def __init__(self, text, tokenizer, chunk_size, stride=1):
+    def __init__(
+        self,
+        text: str,
+        tokenizer: PreTrainedTokenizerBase,
+        chunk_size: int,
+        stride: int = 1,
+    ) -> None:
         self.text = text
         self.tokenizer = tokenizer
         self.chunk_size = max(chunk_size, 1)
@@ -108,10 +122,10 @@ class SlidingWindowChunkIterator:
         self.got_tail = False
         self.setup_text()
 
-    def __iter__(self):
+    def __iter__(self) -> "SlidingWindowChunkIterator":
         return self
 
-    def setup_text(self):
+    def setup_text(self) -> "SlidingWindowChunkIterator":
         encoding = self.tokenizer(
             self.text,
             return_offsets_mapping=True,
@@ -135,7 +149,7 @@ class SlidingWindowChunkIterator:
         self.num_words = len(self.word_spans)
         return self
 
-    def __next__(self):
+    def __next__(self) -> str:
         # nothing to chunk
         if self.num_words == 0 or self.chunk_size <= 0:
             raise StopIteration

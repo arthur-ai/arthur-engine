@@ -1,0 +1,66 @@
+# Docker Compose configuration for LOCAL TESTING ONLY
+#
+# This file is for testing the model-upload-gcp container locally on your machine.
+# It overrides the production user (nonroot) to root to avoid permission issues
+# with Docker volume mounts on Mac/Linux.
+#
+# Usage:
+#   # Test download only (no GCS needed):
+#   docker compose -f docker-compose.local.yml up download-test
+#
+#   # Test upload to GCS (requires credentials):
+#   export GOOGLE_APPLICATION_CREDENTIALS=/path/to/your-service-account.json
+#   export GCS_BUCKET=your-test-bucket
+#   export GCS_PREFIX=test-models
+#   docker compose -f docker-compose.local.yml up upload-test
+#
+# For production deployment, use Cloud Run Jobs (see README.md).
+
+services:
+  # Service to test model downloading
+  download-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: downloader
+    container_name: arthur-genai-engine-models-gcp-download
+    # Override user to root for local testing to avoid permission issues
+    # In production (Cloud Run), the container runs as nonroot (uid 65532)
+    user: root
+    volumes:
+      # Mount local directory for downloaded models
+      - ./models:/models
+    command: >
+      sh -c "
+        python download_models.py --output-dir /models --workers 4 &&
+        echo '✅ Download test complete - models saved to ./models'
+      "
+    # Remove after completion (since this is a one-time download job)
+    restart: "no"
+    profiles:
+      - download-test
+
+  # Service to test uploading to GCS
+  # Requires: GOOGLE_APPLICATION_CREDENTIALS and GCS_BUCKET environment variables
+  upload-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    #image: arthurplatform/genai-engine-models-gcp:latest
+    container_name: arthur-genai-engine-models-gcp-upload
+    # Override user to root for local testing to avoid permission issues
+    # In production (Cloud Run), the container runs as nonroot (uid 65532)
+    user: root
+    volumes:
+      # Mount service account credentials if using file-based auth
+      - ${GOOGLE_APPLICATION_CREDENTIALS:-/dev/null}:/tmp/gcp-credentials.json:ro
+    environment:
+      - LOG_LEVEL=INFO
+      # GCS configuration (required for upload)
+      - GCS_BUCKET=${GCS_BUCKET:-}
+      - GCS_PREFIX=${GCS_PREFIX:-gcs/model-storage}
+      # Use mounted credentials if provided, otherwise use default credentials
+      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-/tmp/gcp-credentials.json}
+      - CONTAINER_MODELS_DIR=${CONTAINER_MODELS_DIR:-/home/nonroot/model-storage}
+    # Remove after completion (since this is a one-time upload job)
+    restart: "no"

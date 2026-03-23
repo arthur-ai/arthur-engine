@@ -7,13 +7,13 @@ from schemas.request_schemas import ApplicationConfigurationUpdateRequest
 
 
 class ConfigurationRepository:
-    def __init__(self, db_session: Session):
+    def __init__(self, db_session: Session) -> None:
         self.db_session = db_session
 
     def update_configurations(
         self,
         request: ApplicationConfigurationUpdateRequest,
-    ):
+    ) -> ApplicationConfiguration:
         existing_configurations = self.get_database_configurations()
         if request.chat_task_id:
             chat_config = update_or_create_config(
@@ -22,6 +22,14 @@ class ConfigurationRepository:
                 existing_configurations,
             )
             self.db_session.add(chat_config)
+
+        if request.default_currency is not None:
+            default_currency_row = update_or_create_config(
+                ApplicationConfigurations.DEFAULT_CURRENCY,
+                request.default_currency.strip().upper(),
+                existing_configurations,
+            )
+            self.db_session.add(default_currency_row)
 
         if request.document_storage_configuration:
             rows = []
@@ -79,11 +87,11 @@ class ConfigurationRepository:
         self.db_session.commit()
         return self.get_configurations()
 
-    def get_database_configurations(self):
+    def get_database_configurations(self) -> list[DatabaseApplicationConfiguration]:
         query = self.db_session.query(DatabaseApplicationConfiguration)
         return query.all()
 
-    def get_configurations(self):
+    def get_configurations(self) -> ApplicationConfiguration:
         configs = self.get_database_configurations()
         config = ApplicationConfiguration._from_database_model(configs)
         return config
@@ -93,7 +101,7 @@ def update_or_create_config(
     key: str,
     value: str,
     existing_configs: list[DatabaseApplicationConfiguration],
-):
+) -> DatabaseApplicationConfiguration:
     configs = {config.name: config for config in existing_configs}
     if key in configs:
         config = configs[key]

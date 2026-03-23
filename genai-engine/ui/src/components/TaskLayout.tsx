@@ -1,23 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { useApi } from "@/hooks/useApi";
-import { useAuth } from "@/contexts/AuthContext";
-import { TaskResponse } from "@/lib/api";
+import { useParams, useNavigate, useLocation, Outlet } from "react-router-dom";
+
 import { SidebarNavigation } from "@/components/SidebarNavigation";
-import { TaskLoadingState } from "@/components/TaskLoadingState";
 import { TaskErrorState } from "@/components/TaskErrorState";
+import { TaskLoadingState } from "@/components/TaskLoadingState";
 import { TaskNotFoundState } from "@/components/TaskNotFoundState";
 import { TaskProvider } from "@/contexts/TaskContext";
+import { useApi } from "@/hooks/useApi";
+import { TaskResponse } from "@/lib/api";
 
-interface TaskLayoutProps {
-  children: React.ReactNode;
-}
-
-export const TaskLayout: React.FC<TaskLayoutProps> = ({ children }) => {
+export const TaskLayout: React.FC = () => {
   const params = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth();
   const api = useApi();
   const [task, setTask] = useState<TaskResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26,7 +21,7 @@ export const TaskLayout: React.FC<TaskLayoutProps> = ({ children }) => {
   const taskId = params.id as string;
 
   // Map the current route to the active section
-  let activeSection = "task-details";
+  let activeSection = "overview";
 
   // Extract the active section from the current path
   const pathSegments = location.pathname.split("/");
@@ -35,27 +30,19 @@ export const TaskLayout: React.FC<TaskLayoutProps> = ({ children }) => {
     const section = pathSegments[taskIndex + 1];
     if (section === "playgrounds" && pathSegments[taskIndex + 2]) {
       activeSection = `playgrounds/${pathSegments[taskIndex + 2]}`;
+    } else if (section === "prompts" && pathSegments[taskIndex + 2]) {
+      // Map /tasks/:id/prompts/:promptName to prompts-management (legacy routes)
+      activeSection = "prompts-management";
+    } else if (section === "evaluators" || section === "continuous-evals") {
+      // Map legacy evaluator/continuous-evals paths to the combined Evaluate nav item
+      activeSection = "evaluate";
+    } else if (section === "rag-notebooks" || section === "rag-experiments" || section === "rag-configurations") {
+      // Legacy RAG sub-page routes highlight the unified "rag" sidebar item
+      activeSection = "rag";
     } else {
       activeSection = section;
     }
   }
-
-  // Map section IDs to display titles
-  const getPageTitle = (section: string): string => {
-    const titleMap: Record<string, string> = {
-      "task-details": "Task Details",
-      traces: "Traces",
-      retrievals: "Retrievals",
-      evaluators: "Evaluators",
-      datasets: "Datasets",
-      "prompt-experiments": "Prompt Experiments",
-      "rag-experiments": "RAG Experiments",
-      "agent-experiments": "Agent Experiments",
-      "playgrounds/prompts": "Prompts Playground",
-      "playgrounds/retrievals": "Retrievals Playground",
-    };
-    return titleMap[section] || "Task Details";
-  };
 
   useEffect(() => {
     const fetchTask = async () => {
@@ -83,10 +70,6 @@ export const TaskLayout: React.FC<TaskLayoutProps> = ({ children }) => {
     fetchTask();
   }, [api, taskId]);
 
-  const handleLogout = () => {
-    logout();
-  };
-
   const handleBack = () => {
     navigate("/");
   };
@@ -95,65 +78,34 @@ export const TaskLayout: React.FC<TaskLayoutProps> = ({ children }) => {
     navigate(`/tasks/${taskId}/${sectionId}`);
   };
 
-  if (loading) {
-    return (
-      <TaskLoadingState
-        onBackToDashboard={handleBack}
-        onLogout={handleLogout}
-        onNavigate={handleNavigate}
-        activeSection={activeSection}
-      />
-    );
-  }
-
-  if (error) {
-    return (
-      <TaskErrorState
-        error={error}
-        onBackToDashboard={handleBack}
-        onLogout={handleLogout}
-        onNavigate={handleNavigate}
-        activeSection={activeSection}
-      />
-    );
-  }
-
-  if (!task) {
-    return (
-      <TaskNotFoundState
-        onBackToDashboard={handleBack}
-        onLogout={handleLogout}
-        onNavigate={handleNavigate}
-        activeSection={activeSection}
-      />
-    );
-  }
-
   return (
-    <TaskProvider task={task}>
-      <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
-        <header className="bg-white shadow-sm border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="py-4">
-              <h1 className="text-2xl font-semibold text-gray-900">
-                {getPageTitle(activeSection)}
-              </h1>
-              <p className="text-gray-600">{task.name}</p>
+    <div className="h-screen bg-gray-50 dark:bg-gray-950 flex flex-col overflow-hidden">
+      <div className="flex flex-1 overflow-hidden">
+        <SidebarNavigation onBackToDashboard={handleBack} onNavigate={handleNavigate} activeSection={activeSection} taskName={task?.name} />
+
+        <main className="flex-1 overflow-auto">
+          {loading && (
+            <div className="py-6 px-6">
+              <TaskLoadingState />
             </div>
-          </div>
-        </header>
-
-        <div className="flex flex-1">
-          <SidebarNavigation
-            onBackToDashboard={handleBack}
-            onNavigate={handleNavigate}
-            onLogout={handleLogout}
-            activeSection={activeSection}
-          />
-
-          <main className="flex-1 overflow-auto">{children}</main>
-        </div>
+          )}
+          {error && !loading && (
+            <div className="py-6 px-6">
+              <TaskErrorState error={error} onBackToDashboard={handleBack} />
+            </div>
+          )}
+          {!task && !loading && !error && (
+            <div className="py-6 px-6">
+              <TaskNotFoundState onBackToDashboard={handleBack} />
+            </div>
+          )}
+          {task && (
+            <TaskProvider task={task}>
+              <Outlet />
+            </TaskProvider>
+          )}
+        </main>
       </div>
-    </TaskProvider>
+    </div>
   );
 };

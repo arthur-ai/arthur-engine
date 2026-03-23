@@ -46,7 +46,7 @@ class OpenAISettings(BaseSettings):
                 value,
                 "GENAI_ENGINE_OPENAI_EMBEDDINGS_NAMES_ENDPOINTS_KEYS",
             )
-        return None
+        return ""
 
 
 def _check_url(value: str | None, field_name: str) -> str:

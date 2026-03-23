@@ -1,8 +1,49 @@
-import React, { useState, useEffect } from "react";
+import AddIcon from "@mui/icons-material/Add";
+import AppsOutlined from "@mui/icons-material/AppsOutlined";
+import CloseIcon from "@mui/icons-material/Close";
+import InventoryIcon from "@mui/icons-material/Inventory";
+import KeyOutlined from "@mui/icons-material/KeyOutlined";
+import LogoutOutlined from "@mui/icons-material/LogoutOutlined";
+import SettingsIcon from "@mui/icons-material/Settings";
+import ShowChartIcon from "@mui/icons-material/ShowChart";
+import SortIcon from "@mui/icons-material/Sort";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  FormControl,
+  IconButton,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
+  Select,
+  Stack,
+  Tooltip,
+  Typography,
+} from "@mui/material";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+
+import { ArthurLogo } from "./common/ArthurLogo";
+import { ThemeToggle } from "./common/ThemeToggle";
+import { CreateTaskForm } from "./CreateTaskForm";
+import { TaskCard } from "./TaskCard";
+
+import { UserSettingsModal } from "@/components/UserSettingsModal";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { TaskResponse } from "@/lib/api";
+import { type InactiveDays, type SortBy, useTaskListStore } from "@/stores/task-list.store";
 
 export const AllTasks: React.FC = () => {
   const navigate = useNavigate();
@@ -11,189 +52,426 @@ export const AllTasks: React.FC = () => {
   const [tasks, setTasks] = useState<TaskResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [archivedTasks, setArchivedTasks] = useState<TaskResponse[]>([]);
+  const [isLoadingArchived, setIsLoadingArchived] = useState(false);
+  const [archivedError, setArchivedError] = useState<string | null>(null);
+  const [archivedLoaded, setArchivedLoaded] = useState(false);
+  const [archivedDialogOpen, setArchivedDialogOpen] = useState(false);
+  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const isMenuOpen = Boolean(menuAnchorEl);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [userSettingsModalOpen, setUserSettingsModalOpen] = useState(false);
+  const { hideSystemTasks, sortBy, inactiveDays, setHideSystemTasks, setSortBy, setInactiveDays } = useTaskListStore();
+  const { timezone, setTimezone, use24Hour, setUse24Hour } = useDisplaySettings();
 
-  useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
+  const filteredTasks = useMemo(() => {
+    let result = [...tasks];
 
-        if (!api) {
-          throw new Error("API client not available");
-        }
+    if (hideSystemTasks) {
+      result = result.filter((t) => !t.is_system_task);
+    }
 
-        const response = await api.api.searchTasksApiV2TasksSearchPost(
-          {
-            page_size: 50,
-            page: 0,
-          },
-          {}
-        );
+    if (inactiveDays !== "archived" && inactiveDays > 0) {
+      const cutoff = Date.now() - inactiveDays * 24 * 60 * 60 * 1000;
+      result = result.filter((t) => t.updated_at >= cutoff);
+    }
 
-        setTasks(response.data.tasks || []);
-      } catch (err) {
-        console.error("Failed to fetch tasks:", err);
-        setError("Failed to load tasks. Please check your authentication.");
-      } finally {
-        setIsLoading(false);
+    result.sort((a, b) => {
+      const field = sortBy === "updated" ? "updated_at" : "created_at";
+      return b[field] - a[field];
+    });
+
+    return result;
+  }, [tasks, hideSystemTasks, sortBy, inactiveDays]);
+
+  const filteredArchivedTasks = useMemo(() => {
+    let result = [...archivedTasks];
+
+    if (hideSystemTasks) {
+      result = result.filter((t) => !t.is_system_task);
+    }
+
+    result.sort((a, b) => {
+      const field = sortBy === "updated" ? "updated_at" : "created_at";
+      return b[field] - a[field];
+    });
+
+    return result;
+  }, [archivedTasks, hideSystemTasks, sortBy]);
+
+  const fetchActiveTasks = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      if (!api) {
+        throw new Error("API client not available");
       }
-    };
 
-    if (api) {
-      fetchTasks();
+      const response = await api.api.searchTasksApiV2TasksSearchPost(
+        {
+          page_size: 50,
+          page: 0,
+        },
+        {}
+      );
+
+      setTasks(response.data.tasks || []);
+    } catch (err) {
+      console.error("Failed to fetch tasks:", err);
+      setError("Failed to load tasks. Please check your authentication.");
+    } finally {
+      setIsLoading(false);
     }
   }, [api]);
 
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (isMenuOpen) {
-        const target = event.target as Element;
-        if (!target.closest(".relative")) {
-          setIsMenuOpen(false);
-        }
-      }
-    };
+  const fetchArchivedTasks = useCallback(async () => {
+    try {
+      setIsLoadingArchived(true);
+      setArchivedError(null);
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isMenuOpen]);
+      if (!api) {
+        throw new Error("API client not available");
+      }
+
+      const response = await api.api.searchTasksApiV2TasksSearchPost(
+        {
+          page_size: 50,
+          page: 0,
+        },
+        {
+          only_archived: true,
+        }
+      );
+
+      setArchivedTasks(response.data.tasks || []);
+      setArchivedLoaded(true);
+    } catch (err) {
+      console.error("Failed to fetch archived tasks:", err);
+      setArchivedError("Failed to load archived tasks. Please check your authentication.");
+    } finally {
+      setIsLoadingArchived(false);
+    }
+  }, [api]);
+
+  const handleArchiveToggle = useCallback(async () => {
+    await fetchActiveTasks();
+    if (archivedDialogOpen || archivedLoaded) {
+      await fetchArchivedTasks();
+    }
+  }, [fetchActiveTasks, fetchArchivedTasks, archivedDialogOpen, archivedLoaded]);
+
+  useEffect(() => {
+    if (api) {
+      fetchActiveTasks();
+    }
+  }, [api, fetchActiveTasks]);
+
+  // Lazy-load archived tasks the first time the dialog is opened
+  useEffect(() => {
+    if (api && archivedDialogOpen && !archivedLoaded) {
+      fetchArchivedTasks();
+    }
+  }, [api, archivedDialogOpen, archivedLoaded, fetchArchivedTasks]);
+
+  const handleMenuClose = () => {
+    setMenuAnchorEl(null);
+  };
 
   const handleLogout = () => {
     logout();
   };
 
-  const handleTaskClick = (taskId: string) => {
-    navigate(`/tasks/${taskId}/traces`);
+  const handleTaskCreated = async (taskId: string) => {
+    await fetchActiveTasks();
+    navigate(`/tasks/${taskId}/overview`);
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Arthur GenAI Engine
-              </h1>
-              <p className="text-gray-600">All Tasks</p>
-            </div>
-            <div className="relative">
-              <button
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="inline-flex items-center p-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
-              >
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 6h16M4 12h16M4 18h16"
-                  />
-                </svg>
-              </button>
+  const filterToolbar = (
+    <Stack direction="row" spacing={1.5} alignItems="center">
+      <Stack direction="row" spacing={0.5} alignItems="center">
+        <SortIcon sx={{ fontSize: 18, color: "text.disabled" }} />
+        <FormControl size="small" variant="standard">
+          <Select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortBy)}
+            disableUnderline
+            sx={{ fontSize: "0.875rem", color: "text.secondary" }}
+          >
+            <MenuItem value="updated">Recently updated</MenuItem>
+            <MenuItem value="created">Recently created</MenuItem>
+          </Select>
+        </FormControl>
 
-              {/* Dropdown menu */}
-              {isMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
-                  <button
+        <FormControl size="small" variant="standard">
+          <Select
+            value={inactiveDays}
+            onChange={(e) => setInactiveDays(e.target.value as InactiveDays)}
+            disableUnderline
+            sx={{ fontSize: "0.875rem", color: "text.secondary" }}
+          >
+            <MenuItem value={0}>All time</MenuItem>
+            <MenuItem value={7}>Active in last 7 days</MenuItem>
+            <MenuItem value={14}>Active in last 14 days</MenuItem>
+            <MenuItem value={30}>Active in last 30 days</MenuItem>
+          </Select>
+        </FormControl>
+      </Stack>
+
+      <Tooltip title={hideSystemTasks ? "Show system tasks" : "Hide system tasks"}>
+        <Stack
+          direction="row"
+          spacing={0.5}
+          alignItems="center"
+          onClick={() => setHideSystemTasks(!hideSystemTasks)}
+          sx={{ cursor: "pointer", "&:hover": { opacity: 0.7 } }}
+        >
+          {hideSystemTasks ? (
+            <VisibilityOffIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+          ) : (
+            <VisibilityIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+          )}
+          <Typography variant="body2" color="text.secondary">
+            {hideSystemTasks ? "System tasks hidden" : "System tasks visible"}
+          </Typography>
+        </Stack>
+      </Tooltip>
+    </Stack>
+  );
+
+  return (
+    <>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+        {/* Header */}
+        <header className="bg-white dark:bg-gray-900 shadow">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center py-3">
+              <div className="flex flex-col items-start">
+                <ArthurLogo className="h-20 -ml-5 text-black dark:text-white" />
+              </div>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                <IconButton
+                  aria-label="settings"
+                  onClick={(e) => setMenuAnchorEl(e.currentTarget)}
+                  sx={{
+                    bgcolor: "background.paper",
+                    border: 1,
+                    borderColor: "divider",
+                    borderRadius: "4px",
+                    padding: "8px",
+                    width: "40px",
+                    height: "40px",
+                  }}
+                >
+                  <SettingsIcon />
+                </IconButton>
+                <Menu
+                  anchorEl={menuAnchorEl}
+                  open={isMenuOpen}
+                  onClose={handleMenuClose}
+                  anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                  transformOrigin={{ vertical: "top", horizontal: "right" }}
+                >
+                  <MenuItem
                     onClick={() => {
-                      handleLogout();
-                      setIsMenuOpen(false);
+                      handleMenuClose();
+                      setUserSettingsModalOpen(true);
                     }}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200"
                   >
-                    Logout
-                  </button>
-                </div>
-              )}
+                    <ListItemIcon>
+                      <SettingsIcon />
+                    </ListItemIcon>
+                    <ListItemText>User settings</ListItemText>
+                  </MenuItem>
+                  <MenuItem
+                    onClick={() => {
+                      handleMenuClose();
+                      navigate("/settings/model-providers");
+                    }}
+                  >
+                    <ListItemIcon>
+                      <AppsOutlined />
+                    </ListItemIcon>
+                    <ListItemText>Model Providers</ListItemText>
+                  </MenuItem>
+                  <MenuItem
+                    onClick={() => {
+                      handleMenuClose();
+                      navigate("/settings/api-keys");
+                    }}
+                  >
+                    <ListItemIcon>
+                      <KeyOutlined />
+                    </ListItemIcon>
+                    <ListItemText>API Keys</ListItemText>
+                  </MenuItem>
+                  <Divider />
+                  <Box sx={{ px: 2, py: 1 }}>
+                    <ThemeToggle />
+                  </Box>
+                  <Divider />
+                  <MenuItem onClick={handleLogout}>
+                    <ListItemIcon>
+                      <LogoutOutlined />
+                    </ListItemIcon>
+                    <ListItemText>Logout</ListItemText>
+                  </MenuItem>
+                </Menu>
+              </Box>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-          ) : error ? (
-            <div className="bg-red-50 border border-red-200 rounded-md p-4">
-              <div className="flex">
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">
-                    Error loading tasks
-                  </h3>
-                  <div className="mt-2 text-sm text-red-700">
-                    <p>{error}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : tasks.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-gray-500 text-lg font-medium mb-2">
-                No tasks found
-              </div>
-              <p className="text-gray-400">
-                There are no tasks available at the moment.
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="mb-6">
-                <h2 className="text-lg font-medium text-gray-900">
-                  Tasks ({tasks.length})
-                </h2>
-                <p className="text-sm text-gray-500">
-                  Click on any task to view details
-                </p>
-              </div>
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {tasks.map((task) => (
-                  <div
-                    key={task.id}
-                    onClick={() => handleTaskClick(task.id)}
-                    className="bg-white overflow-hidden shadow rounded-lg cursor-pointer hover:shadow-md transition-shadow duration-200 hover:bg-gray-50"
-                  >
-                    <div className="px-4 py-5 sm:p-6">
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">
-                        {task.name}
-                      </h3>
-                      <p className="text-sm text-gray-500 mb-4">
-                        Created:{" "}
-                        {new Date(task.created_at).toLocaleDateString()}
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                          ID: {task.id}
-                        </span>
-                        {task.is_agentic && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            Agentic
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+        {/* Main Content */}
+        <main className="max-w-7xl mx-auto py-3 sm:px-6 lg:px-8">
+          <div className="px-4 py-3 sm:px-0">
+            {isLoading ? (
+              <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>
+                <CircularProgress />
+              </Box>
+            ) : error ? (
+              <Alert severity="error">{error}</Alert>
+            ) : tasks.length === 0 ? (
+              <Box sx={{ textAlign: "center", py: 6 }}>
+                <Typography variant="h6" color="text.secondary">
+                  No tasks found
+                </Typography>
+                <Typography variant="body2" color="text.disabled" sx={{ mb: 4 }}>
+                  Get started by creating your first agent task.
+                </Typography>
+                <CreateTaskForm embedded={true} onTaskCreated={handleTaskCreated} onCancel={() => {}} />
+              </Box>
+            ) : (
+              <>
+                {/* Title + CTA */}
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
+                  <Box>
+                    <Typography variant="h6">Tasks ({tasks.length})</Typography>
+                    <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
+                      {filteredTasks.length < tasks.length
+                        ? `Showing ${filteredTasks.length} of ${tasks.length} tasks`
+                        : "Click on any task to open the toolkit"}
+                    </Typography>
+                  </Box>
+                  <Button variant="contained" onClick={() => setShowCreateForm(true)} startIcon={<AddIcon />}>
+                    Task
+                  </Button>
+                </Box>
+
+                {/* Filter toolbar */}
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
+                  {filterToolbar}
+                  <Stack direction="row" spacing={1.5} alignItems="center">
+                    <Stack direction="row" spacing={0.5} alignItems="center">
+                      <ShowChartIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+                      <Typography variant="body2" color="text.secondary">
+                        Metrics from last 7 days
+                      </Typography>
+                    </Stack>
+                    <Tooltip title="View archived tasks">
+                      <IconButton size="small" onClick={() => setArchivedDialogOpen(true)} sx={{ color: "text.disabled" }}>
+                        <InventoryIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
+                </Box>
+
+                {/* Active task grid */}
+                {filteredTasks.length === 0 ? (
+                  <Box sx={{ textAlign: "center", py: 6 }}>
+                    <Typography variant="h6" color="text.secondary">
+                      {inactiveDays === 0
+                        ? "No tasks found"
+                        : inactiveDays === "archived"
+                          ? "No archived tasks found"
+                          : `No tasks active in the last ${inactiveDays} days`}
+                    </Typography>
+                    {inactiveDays !== 0 && inactiveDays !== "archived" && (
+                      <Typography variant="body2" color="text.disabled">
+                        Try expanding the time range or selecting &quot;All time&quot;.
+                      </Typography>
+                    )}
+                  </Box>
+                ) : (
+                  <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" } }}>
+                    {filteredTasks.map((task) => (
+                      <TaskCard key={task.id} task={task} onArchiveToggle={handleArchiveToggle} />
+                    ))}
+                  </Box>
+                )}
+              </>
+            )}
+          </div>
+        </main>
+
+        {/* Archived Tasks Dialog */}
+        <Dialog open={archivedDialogOpen} onClose={() => setArchivedDialogOpen(false)} maxWidth="lg" fullWidth>
+          <DialogTitle sx={{ pb: 1 }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+              <Box>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <InventoryIcon sx={{ fontSize: 20, color: "text.secondary" }} />
+                  <Typography variant="h6">Archived Tasks</Typography>
+                  {!isLoadingArchived && archivedTasks.length > 0 && <Chip label={filteredArchivedTasks.length} size="small" variant="outlined" />}
+                </Stack>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  Unarchive a task to restore it to your active list
+                </Typography>
+              </Box>
+              <IconButton onClick={() => setArchivedDialogOpen(false)} size="small" sx={{ mt: -0.5 }}>
+                <CloseIcon />
+              </IconButton>
+            </Stack>
+          </DialogTitle>
+          <DialogContent dividers>
+            {isLoadingArchived ? (
+              <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 200 }}>
+                <CircularProgress />
+              </Box>
+            ) : archivedError ? (
+              <Alert severity="error">{archivedError}</Alert>
+            ) : filteredArchivedTasks.length === 0 ? (
+              <Box sx={{ textAlign: "center", py: 6 }}>
+                <InventoryIcon sx={{ fontSize: 40, color: "text.disabled", mb: 1 }} />
+                <Typography variant="h6" color="text.secondary">
+                  No archived tasks
+                </Typography>
+                <Typography variant="body2" color="text.disabled">
+                  Tasks you archive will appear here. Unarchive any task to restore it.
+                </Typography>
+              </Box>
+            ) : (
+              <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" }, pb: 1 }}>
+                {filteredArchivedTasks.map((task) => (
+                  <TaskCard key={task.id} task={task} onArchiveToggle={handleArchiveToggle} />
                 ))}
-              </div>
-            </>
-          )}
-        </div>
-      </main>
-    </div>
+              </Box>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Create Task Modal */}
+        <CreateTaskForm
+          open={showCreateForm}
+          onTaskCreated={(taskId) => {
+            setShowCreateForm(false);
+            handleTaskCreated(taskId);
+          }}
+          onCancel={() => setShowCreateForm(false)}
+        />
+
+        {/* User Settings Modal */}
+        <UserSettingsModal
+          open={userSettingsModalOpen}
+          onClose={() => setUserSettingsModalOpen(false)}
+          initialSettings={{ timezone, use24Hour }}
+          onSave={(settings) => {
+            setTimezone(settings.timezone ?? timezone);
+            if (settings.use24Hour !== undefined) setUse24Hour(settings.use24Hour);
+            setUserSettingsModalOpen(false);
+          }}
+        />
+      </div>
+    </>
   );
 };

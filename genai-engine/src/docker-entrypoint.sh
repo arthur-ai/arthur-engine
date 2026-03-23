@@ -5,7 +5,7 @@ if [[ $GENAI_ENGINE_ENVIRONMENT == "local" ]]; then
 fi
 
 echo "==> Validating environment variables"
-for var in POSTGRES_USER POSTGRES_PASSWORD POSTGRES_URL POSTGRES_PORT POSTGRES_DB GENAI_ENGINE_ADMIN_KEY; do
+for var in POSTGRES_USER POSTGRES_PASSWORD POSTGRES_URL POSTGRES_PORT POSTGRES_DB GENAI_ENGINE_ADMIN_KEY GENAI_ENGINE_SECRET_STORE_KEY; do
 if [[ -z "${!var}" ]]; then
 missing_vars+=" $var"
 fi
@@ -46,5 +46,5 @@ export PYTHONPATH="src"
 echo "==> Running database migration"
 poetry run alembic upgrade head || exit 1
 
-echo "==> Starting the GenAI Engine server with ${WORKER:-1} worker"
-poetry run gunicorn src.server:get_app -c src/gunicorn.conf.py
+echo "==> Starting the GenAI Engine server with ${WORKERS:-1} worker(s)"
+exec poetry run gunicorn src.server:get_app -c src/gunicorn.conf.py

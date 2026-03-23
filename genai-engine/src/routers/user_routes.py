@@ -1,24 +1,25 @@
 import logging
 from typing import Annotated
 
+from arthur_common.models.common_schemas import PaginationParameters, UserPermission
+from arthur_common.models.enums import (
+    UserPermissionAction,
+    UserPermissionResource,
+)
+from arthur_common.models.request_schemas import CreateUserRequest, PasswordResetRequest
+from arthur_common.models.response_schemas import UserResponse
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
+from starlette import status
+
 from auth.ApiKeyValidator.APIKeyvalidatorCreator import APIKeyValidatorCreator
 from auth.ApiKeyValidator.enums import APIKeyValidatorType
 from auth.multi_validator import MultiMethodValidator
 from auth.oauth_validator import validate_token
 from clients.auth.abc_keycloak_client import ABCAuthClient
 from dependencies import get_keycloak_client
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
 from routers.route_handler import GenaiEngineRoute
-from arthur_common.models.common_schemas import PaginationParameters, UserPermission
-from arthur_common.models.enums import (
-    UserPermissionAction,
-    UserPermissionResource,
-)
-from schemas.internal_schemas import User
 from schemas.enums import PermissionLevelsEnum
-from arthur_common.models.request_schemas import CreateUserRequest, PasswordResetRequest
-from arthur_common.models.response_schemas import UserResponse
-from starlette import status
+from schemas.internal_schemas import User
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters, constants, public_endpoint
 
@@ -45,8 +46,8 @@ def create_user(
     request: CreateUserRequest,
     kc_client: ABCAuthClient = Depends(get_keycloak_client),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
-    kc_client.create_user(request)
+) -> Response:
+    kc_client.create_user(request)  # type: ignore[arg-type]
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -69,9 +70,9 @@ def search_users(
     ] = None,
     kc_client: ABCAuthClient = Depends(get_keycloak_client),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> list[UserResponse]:
     users = kc_client.search_users(
-        search_string=search_string,
+        search_string=search_string or "",
         page=pagination_parameters.page,
         page_size=pagination_parameters.page_size,
     )
@@ -94,7 +95,7 @@ def check_user_permission(
         description="Resource to check permissions of.",
     ),
     kc_client: ABCAuthClient = Depends(get_keycloak_client),
-):
+) -> Response:
     if not current_user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -124,7 +125,7 @@ def delete_user(
     ],
     kc_client: ABCAuthClient = Depends(get_keycloak_client),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> Response:
     kc_client.delete_user(user_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -139,7 +140,7 @@ def reset_user_password(
     request_body: PasswordResetRequest,
     current_user: Annotated[User, Depends(validate_token)],
     kc_client: ABCAuthClient = Depends(get_keycloak_client),
-):
+) -> None:
     if (
         constants.ORG_ADMIN in [role.name for role in current_user.roles]
         or user_id == current_user.id

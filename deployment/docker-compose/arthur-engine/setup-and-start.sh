@@ -207,6 +207,7 @@ GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$genai_engine_openai_gpt_name::$gen
         else
             echo ""
             echo "Skipping OpenAI configuration..."
+            all_env_vars+="GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=model_name::https://model_service.com/::my_api_key"
         fi
     else
         echo ""
@@ -215,6 +216,21 @@ GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$genai_engine_openai_gpt_name::$gen
         all_env_vars+="GENAI_ENGINE_OPENAI_PROVIDER=$GENAI_ENGINE_OPENAI_PROVIDER
 GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS"
     fi
+fi
+
+# Prompt for secret store key if not already set
+if [[ -z "$GENAI_ENGINE_SECRET_STORE_KEY" ]]; then
+    # Generate a secure random key using /dev/urandom
+    genai_engine_secret_store_key=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32)
+    echo "Generated random secret key since none was found"
+
+    all_env_vars+="
+GENAI_ENGINE_SECRET_STORE_KEY=$genai_engine_secret_store_key"
+else
+    echo ""
+    echo "Using existing GENAI_ENGINE_SECRET_STORE_KEY from config file..."
+    all_env_vars+="
+GENAI_ENGINE_SECRET_STORE_KEY=$GENAI_ENGINE_SECRET_STORE_KEY"
 fi
 
 echo "$all_env_vars" > "$engine_subdir/$env_file"

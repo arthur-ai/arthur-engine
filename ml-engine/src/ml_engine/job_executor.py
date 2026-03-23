@@ -4,6 +4,7 @@ from typing import Any
 from uuid import uuid4
 
 from arthur_client.api_bindings import (
+    AgentsV1Api,
     AlertCheckJobSpec,
     AlertRulesV1Api,
     AlertsV1Api,
@@ -12,8 +13,11 @@ from arthur_client.api_bindings import (
     ConnectorsV1Api,
     CreateModelLinkTaskJobSpec,
     CustomAggregationsV1Api,
+    CustomAggregationTestsV1Api,
+    DataPlanesV1Api,
     DataRetrievalV1Api,
     DatasetsV1Api,
+    DiscoverAgentsJobSpec,
     JobKind,
     JobRun,
     JobState,
@@ -25,6 +29,7 @@ from arthur_client.api_bindings import (
     ScheduleJobsJobSpec,
     SchemaInspectionJobSpec,
     TasksV1Api,
+    TestCustomAggregationJobSpec,
 )
 from arthur_client.auth import (
     ArthurClientCredentialsAPISession,
@@ -37,12 +42,18 @@ from arthur_common.models.task_job_specs import (
     FetchModelTaskJobSpec,
     UpdateModelTaskRulesJobSpec,
 )
+from pydantic import StrictBytes
+
 from config import Config
 from job_executors.alert_check_executor import AlertCheckExecutor
 from job_executors.connector_test_executor import ConnectorTestExecutor
+from job_executors.discover_agents_executor import DiscoverAgentsExecutor
 from job_executors.fetch_data_executor import FetchDataExecutor
 from job_executors.list_datasets_executor import ListDatasetsExecutor
-from job_executors.metrics_calculation_executor import MetricsCalculationExecutor
+from job_executors.metrics_calculation_executor import (
+    CustomAggregationTestExecutor,
+    MetricsCalculationExecutor,
+)
 from job_executors.schedule_jobs_executor import ScheduleJobsExecutor
 from job_executors.schema_inference_executor import SchemaInferenceExecutor
 from job_executors.task_management_job_executors import (
@@ -54,7 +65,6 @@ from job_executors.task_management_job_executors import (
     UpdateTaskJobExecutor,
 )
 from job_log_exporter import ExportContextedLogger, ScopeJobLogExporter
-from pydantic import StrictBytes
 from tools.connector_constructor import ConnectorConstructor
 
 logging.basicConfig()
@@ -78,7 +88,9 @@ class JobSpecRawParser:
         return job_dict[self.JOB_SPEC_KEY]
 
     def to_create_model_task_spec(self) -> CreateModelTaskJobSpec:
-        return CreateModelTaskJobSpec.model_validate(self._parse_job_spec_field())
+        job_spec_dict = self._parse_job_spec_field()
+        spec = CreateModelTaskJobSpec.model_validate(job_spec_dict)
+        return spec
 
     def to_update_model_task_spec(self) -> UpdateModelTaskRulesJobSpec:
         return UpdateModelTaskRulesJobSpec.model_validate(self._parse_job_spec_field())
@@ -118,6 +130,9 @@ class JobExecutor:
         self.metrics_client = MetricsV1Api(client)
         self.datasets_client = DatasetsV1Api(client)
         self.tasks_client = TasksV1Api(client)
+        self.custom_aggregation_tests_client = CustomAggregationTestsV1Api(client)
+        self.agents_client = AgentsV1Api(client)
+        self.data_planes_client = DataPlanesV1Api(client)
 
         self.logger: logging.Logger = logging.getLogger(str(uuid4()))
         self.logger.setLevel(logging.INFO)
@@ -159,6 +174,25 @@ class JobExecutor:
                             self.metrics_client,
                             self.jobs_client,
                             self.custom_aggregations_client,
+                            self.custom_aggregation_tests_client,
+                            self.connector_constructor,
+                            self.logger,
+                        ).execute(job, job.job_spec.actual_instance)
+                    case JobKind.TEST_CUSTOM_AGGREGATION:
+                        if not isinstance(
+                            job.job_spec.actual_instance,
+                            TestCustomAggregationJobSpec,
+                        ):
+                            raise ValueError(
+                                f"Expected TestCustomAggregationJobSpec type, got {type(job.job_spec.actual_instance)}.",
+                            )
+                        CustomAggregationTestExecutor(
+                            self.models_client,
+                            self.datasets_client,
+                            self.metrics_client,
+                            self.jobs_client,
+                            self.custom_aggregations_client,
+                            self.custom_aggregation_tests_client,
                             self.connector_constructor,
                             self.logger,
                         ).execute(job, job.job_spec.actual_instance)
@@ -314,6 +348,34 @@ class JobExecutor:
                             self.connector_constructor,
                             self.logger,
                         ).execute(job.job_spec.actual_instance)
+                    case JobKind.DISCOVER_AGENTS:
+                        if not isinstance(
+                            job.job_spec.actual_instance,
+                            DiscoverAgentsJobSpec,
+                        ):
+                            raise ValueError(
+                                f"Expected DiscoverAgentsJobSpec type, got {type(job.job_spec.actual_instance)}.",
+                            )
+
+                        # Get GenAI Engine configuration
+                        genai_engine_url = Config.settings.GENAI_ENGINE_INTERNAL_HOST
+                        genai_engine_api_key = (
+                            Config.settings.GENAI_ENGINE_INTERNAL_API_KEY
+                        )
+
+                        if not genai_engine_url or not genai_engine_api_key:
+                            self.logger.error(
+                                "GenAI Engine configuration missing. "
+                                "GENAI_ENGINE_INTERNAL_HOST and GENAI_ENGINE_INTERNAL_API_KEY must be set."
+                            )
+                            raise ValueError("GenAI Engine configuration missing")
+
+                        DiscoverAgentsExecutor(
+                            self.agents_client,
+                            self.logger,
+                            genai_engine_url,
+                            genai_engine_api_key,
+                        ).execute(job, job.job_spec.actual_instance)
                     case _:
                         raise NotImplementedError(f"Job type {job.kind} not supported.")
                 self.logger.info(f"Job {job.id} - {job.kind} completed")

@@ -1,6 +1,6 @@
 import json
 import math
-from datetime import datetime
+from datetime import date, datetime
 from logging import Logger
 from typing import Any, Dict, Optional
 from uuid import UUID
@@ -17,6 +17,7 @@ from arthur_client.api_bindings import (
 )
 from arthur_common.models.connectors import ConnectorPaginationOptions
 from arthur_common.tools.functions import uuid_to_base26
+
 from dataset_loader import DatasetLoader
 from tools.connector_constructor import ConnectorConstructor
 
@@ -33,6 +34,8 @@ def preprocess_data(obj: Any) -> Any:
     elif isinstance(obj, pd.Timestamp):
         return _preprocess_timestamp(obj)
     elif isinstance(obj, datetime):
+        return obj.isoformat()
+    elif isinstance(obj, date):
         return obj.isoformat()
     elif isinstance(obj, UUID):
         return str(obj)

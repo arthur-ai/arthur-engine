@@ -1,15 +1,14 @@
 name: genai-engine-dev
 services:
   db:
-    image: postgres
+    image: postgres:18
     ports:
       - "5432:5432"
     environment:
       POSTGRES_PASSWORD: changeme_pg_password
       POSTGRES_DB: arthur_genai_engine
-      PGDATA: /var/lib/postgresql/data
     volumes:
-      - /var/lib/postgresql
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -20,6 +19,8 @@ services:
     build:
       context: .
       dockerfile: ./dockerfile
+      args:
+        GITLAB_UNIFY_FRONTEND_TOKEN: ${GITLAB_UNIFY_FRONTEND_TOKEN}
     ports:
       - "3030:3030"
     environment:
@@ -32,11 +33,40 @@ services:
       - GENAI_ENGINE_ENABLE_PERSISTENCE=enabled
       - GENAI_ENGINE_ENVIRONMENT=local
       - GENAI_ENGINE_ADMIN_KEY=changeme123
+      - GENAI_ENGINE_SECRET_STORE_KEY=changeme123
       - GENAI_ENGINE_INGRESS_URI=http://localhost:8000
       - GENAI_ENGINE_OPENAI_PROVIDER=Azure
       - OPENAI_API_VERSION=2023-07-01-preview
       - GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=model_name::https://my_service.openai.azure.com/::my_api_key
       - ALLOW_ADMIN_KEY_GENERAL_ACCESS=enabled
+      - GENAI_ENGINE_USE_PII_MODEL_V2=true
+      - CURRENCY_DEFAULT_CURRENCY=USD
+      # Uncomment MODEL_STORAGE_PATH and HF_HUB_OFFLINE to use local models
+      # MODEL_STORAGE_PATH must be set to /home/nonroot/{TARGET_DIR specified to model-upload container}
+      #- MODEL_STORAGE_PATH=/home/nonroot/model-storage
+      #- HF_HUB_OFFLINE=1
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      # Mount source code so devs don't have to rebuild when they make changes, just restart the app
+      - ./src:/home/nonroot/app/src
+      - ./version:/home/nonroot/app/src/version
+      # Mount models directory to persist pre-downloaded models across container restarts
+      # Uncomment this to use local models
+      #- ../deployment/k8s/model-upload-oc/model-storage:/home/nonroot/model-storage
+  changelog-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile_changelog
+    environment:
+      - GENAI_ENGINE_SECRET_STORE_KEY=changeme123
+    volumes:
+      # Mount changelog output files to local machine
+      - ./staging.openapi.json:/app/genai-engine/staging.openapi.json
+      - ./src/api_changelog.md:/app/genai-engine/src/api_changelog.md
+      - ./src:/app/genai-engine/src
+    profiles:
+      - changelog
+volumes:
+  postgres_data:

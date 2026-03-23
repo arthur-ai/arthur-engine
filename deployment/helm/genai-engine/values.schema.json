@@ -433,6 +433,10 @@
             "type": "string",
             "description": "Name of the secret for Azure OpenAI GPT-3.5 model endpoints"
         },
+        "genaiEngineSecretStoreKeyName": {
+            "type": "string",
+            "description": "GenAI Engine secret store key name"
+        },
         "genaiEngineAllowAdminKeyGeneralAccess": {
             "type": "string",
             "enum": [
@@ -440,6 +444,32 @@
                 "disabled"
             ],
             "description": "Allow the admin key general API access (Must be enabled for the Arthur Platform. Can be disabled for the guardrails-only standalone deployment.)"
+        },
+        "modelRepositoryURL": {
+            "type": "string",
+            "description": "(Optional) Custom URL for the model repository (e.g. a private Hugging Face mirror). If not specified, the default Hugging Face endpoint will be used."
+        },
+        "gcpDiscoveryConfig": {
+            "type": "object",
+            "properties": {
+                "isEnabled": {
+                    "type": "boolean",
+                    "description": "Enable GCP Vertex AI discovery configuration"
+                },
+                "googleCloudProject": {
+                    "type": "string",
+                    "description": "Google Cloud project ID for Vertex AI integration"
+                },
+                "googleCloudLocation": {
+                    "type": "string",
+                    "description": "Google Cloud region/location"
+                },
+                "googleCredentialsSecretName": {
+                    "type": "string",
+                    "description": "Name of the K8s secret containing the GCP service account JSON key"
+                }
+            },
+            "required": ["isEnabled"]
         }
     },
     "required": [
@@ -472,6 +502,7 @@
         "imagePullSecretName",
         "genaiEngineSecretPostgresName",
         "genaiEngineSecretAdminKeyName",
-        "genaiEngineSecretOpenAIGPTModelNamesEndpointsKeysName"
+        "genaiEngineSecretOpenAIGPTModelNamesEndpointsKeysName",
+        "genaiEngineSecretStoreKeyName"
     ]
 }

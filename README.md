@@ -7,7 +7,7 @@
 [![GenAI Engine CI](https://github.com/arthur-ai/arthur-engine/actions/workflows/arthur-engine-workflow.yml/badge.svg)](actions?query=workflow%3A%22%22GenAI+Engine+Workflow%22%22++)
 [![Discord](https://img.shields.io/badge/Discord-Arthur-blue?logo=discord&logoColor=white)](https://discord.gg/tdfUAtaVHz)
 
-[Website](https://arthur.ai) - [Documentation](https://shield.docs.arthur.ai/docs) - [Talk to someone at Arthur](https://www.arthur.ai/arthur-book-a-demo)
+[Website](https://arthur.ai) - [Documentation](https://shield.docs.arthur.ai/docs) - [Talk to someone at Arthur](https://www.arthur.ai/book-demo)
 
 </div>
 
@@ -49,7 +49,7 @@ Key features:
 - Optional on-premises deployment of the entire Arthur Platform
 - Support from the world-class engineering teams at Arthur
 
-To learn more about the enterprise version of the Arthur Platform, [reach out!](https://www.arthur.ai/arthur-book-a-demo)
+To learn more about the enterprise version of the Arthur Platform, [reach out!](https://www.arthur.ai/book-demo)
 
 Performance Comparison between Free vs Enterprise version of Arthur Engine :
 
@@ -90,8 +90,32 @@ The Arthur Engine can prevent data-security and compliance risks from creating n
 
 _NB: We have provided open-source models for Prompt Injection and Toxicity evaluation as default in the free version of Arthur. In the case that you already have custom solutions for these evaluations and would like to use them, the models used for Prompt Injection and Toxicity are fully customizable and can be substituted out here ([PI Code Pointer](genai-engine/src/scorer/checks/prompt_injection/classifier.py#L20), [Toxicity Code Pointer](genai-engine/src/scorer/checks/toxicity/toxicity.py#L29)). If you are interested in higher performing and/or lower latency evaluations out of the box, please enquire about the enterprise version of Arthur Engine._
 
+## Broad Integration Support Through the OpenInference Specification
+
+Arthur Engine fully supports the OpenInference specification, which allows you to connect the Engine to a wide range of AI frameworks, libraries, and agent stacks without custom instrumentation.
+
+OpenInference provides a shared trace and data schema for AI systems. Since Arthur Engine follows this standard, you can immediately use any integration already built for the OpenInference ecosystem, including the large collection maintained by Arize Phoenix.
+
+This includes support for many popular frameworks such as:
+
+- LangChain
+- LangGraph
+- LlamaIndex
+- Vercel AI SDK
+- FastAPI and Flask apps instrumented with OpenInference
+- OpenAI, Anthropic, Google, and other model providers aligned with the spec
+- Agent frameworks, orchestration tools, and custom pipelines supported by Phoenix integrations
+- And many others
+
+You can view the full and continuously updated list of supported integrations here:
+https://github.com/Arize-ai/phoenix?tab=readme-ov-file#tracing-integrations
+
+By adopting OpenInference, Arthur Engine provides a flexible and future proof way to bring traces, spans, metrics, inputs, outputs, and evaluation signals into the Arthur platform. This makes it easy to collect data from diverse Gen AI apps, agents, and services with a single unified integration path.
+
+
 ## Contributing
 
 - Join the Arthur community on [Discord](https://discord.gg/tdfUAtaVHz) to get help and share your feedback.
 - To make a request for a bug fix or a new feature, please file a [Github issue](https://github.com/arthur-ai/arthur-engine/issues).
 - For making code contributions, please review the [contributing guidelines](CONTRIBUTE.md).
+- Thank you!
