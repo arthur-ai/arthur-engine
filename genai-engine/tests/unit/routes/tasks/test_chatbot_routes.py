@@ -38,7 +38,10 @@ def final_response_events(content: str) -> list[str]:
 @pytest.mark.unit_tests
 @patch(
     "repositories.model_provider_repository.ModelProviderRepository.get_model_provider_client",
-    side_effect=HTTPException(status_code=400, detail="model provider anthropic is not configured"),
+    side_effect=HTTPException(
+        status_code=400,
+        detail="model provider anthropic is not configured",
+    ),
 )
 def test_chatbot_no_provider_configured(_, client: GenaiEngineTestClientBase):
     task_name = "chatbot_task_no_provider"
