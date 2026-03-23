@@ -17,7 +17,7 @@ import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import TablePagination from "@mui/material/TablePagination";
 import Typography from "@mui/material/Typography";
-import { useMemo, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 
 import { usePromptVersions } from "../hooks/usePromptVersions";
 import type { PromptVersionDrawerProps } from "../types";
@@ -37,7 +37,7 @@ const PromptVersionDrawer = ({
   onDelete,
 }: PromptVersionDrawerProps) => {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const { page, rowsPerPage, handlePageChange, handleRowsPerPageChange } = usePagination(10);
+  const { page, rowsPerPage, handlePageChange, handleRowsPerPageChange, resetPage } = usePagination(10);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [versionToDelete, setVersionToDelete] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -49,15 +49,6 @@ const PromptVersionDrawer = ({
     page,
     pageSize: rowsPerPage,
   });
-
-  const sortedAndFilteredVersions = useMemo(() => {
-    // Sort by creation date
-    return [...versions].sort((a, b) => {
-      const aTime = new Date(a.created_at).getTime();
-      const bTime = new Date(b.created_at).getTime();
-      return sortOrder === "asc" ? aTime - bTime : bTime - aTime;
-    });
-  }, [versions, sortOrder]);
 
   const handleVersionClick = useCallback(
     (version: number) => {
@@ -122,7 +113,11 @@ const PromptVersionDrawer = ({
         <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
           <Chip
             label={`Sort: ${sortOrder === "asc" ? "Oldest First" : "Newest First"}`}
-            onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+            onClick={() => {
+              setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+
+              resetPage();
+            }}
             clickable
             size="small"
           />
@@ -146,7 +141,7 @@ const PromptVersionDrawer = ({
           </Box>
         )}
 
-        {!isLoading && !error && sortedAndFilteredVersions.length === 0 && (
+        {!isLoading && !error && versions.length === 0 && (
           <Box sx={{ p: 2, textAlign: "center" }}>
             <Typography variant="body2" color="text.secondary">
               No versions found
@@ -154,9 +149,9 @@ const PromptVersionDrawer = ({
           </Box>
         )}
 
-        {!isLoading && !error && sortedAndFilteredVersions.length > 0 && (
+        {!isLoading && !error && versions.length > 0 && (
           <List sx={{ flex: 1, overflow: "auto" }}>
-            {sortedAndFilteredVersions.map((version) => {
+            {versions.map((version) => {
               const isSelected = selectedVersion === version.version;
               const isDeleted = !!version.deleted_at;
               const isLatest = version.version === latestVersion && !isDeleted;
