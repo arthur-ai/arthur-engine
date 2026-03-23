@@ -23,12 +23,22 @@ logger = logging.getLogger()
 
 
 load_dotenv()
-MAX_SENSITIVE_DATA_TOKEN_LIMIT = int(
-    get_env_var(constants.GENAI_ENGINE_SENSITIVE_DATA_CHECK_MAX_TOKEN_LIMIT_ENV_VAR),
+max_sensitive_data_token_limit = get_env_var(
+    constants.GENAI_ENGINE_SENSITIVE_DATA_CHECK_MAX_TOKEN_LIMIT_ENV_VAR,
 )
-MAX_HALLUCINATION_TOKEN_LIMIT = int(
-    get_env_var(constants.GENAI_ENGINE_HALLUCINATION_CHECK_MAX_TOKEN_LIMIT_ENV_VAR),
+if max_sensitive_data_token_limit is None:
+    raise ValueError(
+        f"Environment variable {constants.GENAI_ENGINE_SENSITIVE_DATA_CHECK_MAX_TOKEN_LIMIT_ENV_VAR} is not set",
+    )
+MAX_SENSITIVE_DATA_TOKEN_LIMIT = int(max_sensitive_data_token_limit)
+max_hallucination_token_limit = get_env_var(
+    constants.GENAI_ENGINE_HALLUCINATION_CHECK_MAX_TOKEN_LIMIT_ENV_VAR,
 )
+if max_hallucination_token_limit is None:
+    raise ValueError(
+        f"Environment variable {constants.GENAI_ENGINE_HALLUCINATION_CHECK_MAX_TOKEN_LIMIT_ENV_VAR} is not set",
+    )
+MAX_HALLUCINATION_TOKEN_LIMIT = int(max_hallucination_token_limit)
 MAX_TOXICITY_TOKEN_LIMIT = int(
     get_env_var(constants.GENAI_ENGINE_TOXICITY_CHECK_MAX_TOKEN_LIMIT_ENV_VAR, True)
     or 1200,
@@ -45,7 +55,7 @@ class RuleEngine:
         self.token_counter = TokenCounter()
         self.hallucination_token_limit = self.set_hallucination_token_limit()
 
-    def set_hallucination_token_limit(self):
+    def set_hallucination_token_limit(self) -> int:
         token_limit = get_llm_executor().get_gpt_model_token_limit()
 
         if token_limit == -1:
@@ -70,12 +80,14 @@ class RuleEngine:
         rules: List[Rule],
     ) -> List[RuleEngineResult]:
         # Values: (Rule, run_rule_thread)
-        thread_futures: list[tuple[Rule, concurrent.futures.Future]] = []
+        thread_futures: list[
+            tuple[Rule, concurrent.futures.Future[RuleEngineResult]]
+        ] = []
         num_threads = int(
             get_env_var(
                 constants.GENAI_ENGINE_THREAD_POOL_MAX_WORKERS_ENV_VAR,
                 default=str(constants.DEFAULT_THREAD_POOL_MAX_WORKERS),
-            ),
+            )
         )
         with TracedThreadPoolExecutor(tracer, max_workers=num_threads) as executor:
             for rule in rules:
@@ -108,8 +120,8 @@ class RuleEngine:
                 rule_results.append(future.result())
         return rule_results
 
-    def run_rule(self, request: ValidationRequest, rule: Rule):
-        score: RuleScore = None
+    def run_rule(self, request: ValidationRequest, rule: Rule) -> RuleEngineResult:
+        score: RuleScore | None = None
         start_time = time.time()
         match rule.type:
             case RuleType.REGEX:
@@ -236,7 +248,7 @@ class RuleEngine:
         with tracer.start_as_current_span(f"run {rule_type} rule"):
             # check hallucination token limit
             total_tokens = self.token_counter.count(
-                request.response + " " + (request.context or ""),
+                (request.response or "") + " " + (request.context or ""),
             )
             if total_tokens > self.hallucination_token_limit:
                 return RuleScore(

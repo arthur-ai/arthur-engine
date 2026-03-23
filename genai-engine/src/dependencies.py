@@ -1,18 +1,25 @@
 import logging
 import os
-from typing import Generator
+from contextlib import contextmanager
+from datetime import datetime
+from typing import Any, Generator, Optional
+from uuid import UUID
+
+from arthur_common.models.llm_model_providers import ModelProvider
 
 # Disable tokenizers parallelism to avoid fork warnings in threaded environments
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
+from arthur_common.models.enums import MetricType, RuleType
 from authlib.integrations.starlette_client import OAuth
 from cachetools import TTLCache
 from dotenv import load_dotenv
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Query
 from psycopg2 import OperationalError as Psycopg2OperationalError
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from auth.api_key_validator_client import APIKeyValidatorClient
 from auth.auth_constants import OAUTH_CLIENT_NAME
@@ -25,14 +32,22 @@ from clients.s3.S3Client import S3Client
 from config.config import Config
 from config.database_config import DatabaseConfig
 from config.keycloak_config import KeyCloakSettings
-from db_models.db_models import Base
+from db_models import Base
 from metrics_engine import MetricsEngine
 from repositories.configuration_repository import ConfigurationRepository
-from arthur_common.models.enums import MetricType, RuleType
+from repositories.metrics_repository import MetricRepository
+from repositories.rules_repository import RuleRepository
+from repositories.tasks_repository import TaskRepository
 from schemas.enums import DocumentStorageEnvironment
 from schemas.internal_schemas import (
     ApplicationConfiguration,
     DocumentStorageConfiguration,
+    Task,
+)
+from schemas.request_schemas import (
+    LLMGetAllFilterRequest,
+    LLMGetVersionsFilterRequest,
+    TransformListFilterRequest,
 )
 from scorer import (
     BinaryPIIDataClassifier,
@@ -67,18 +82,18 @@ from utils.utils import (
 SINGLETON_GRADER_LLM = None
 SINGLETON_INFERENCE_REPOSITORY = None
 SINGLETON_DB_ENGINE = None
-SINGLETON_SCORER_CLIENT = None
+SINGLETON_SCORER_CLIENT: ScorerClient | None = None
 SINGLETON_METRICS_ENGINE = None
 SINGLETON_JWK_CLIENT = None
-SINGLETON_OAUTH_CLIENT = None
-API_KEY_CACHE = None
+SINGLETON_OAUTH_CLIENT: OAuth | None = None
+API_KEY_CACHE: TTLCache[str, Any] | None = None
 API_KEY_VALIDATOR_CLIENT = None
-KEYCLOAK_CLIENT = None
+KEYCLOAK_CLIENT: ABCAuthClient | None = None
 
 load_dotenv()
 
 
-def load_env_vars():
+def load_env_vars() -> None:
     # Any rewriting / assertions should go in here
     pass
 
@@ -89,14 +104,14 @@ logger = logging.getLogger(__name__)
 
 
 def get_keycloak_settings() -> KeyCloakSettings:
-    return KeyCloakSettings(_env_file=os.environ.get("KEYCLOAK_CONFIG_PATH", ".env"))
+    return KeyCloakSettings(_env_file=os.environ.get("KEYCLOAK_CONFIG_PATH", ".env"))  # type: ignore[call-arg]
 
 
 def get_db_config() -> DatabaseConfig:
-    return DatabaseConfig(_env_file=os.environ.get("DATABASE_CONFIG_PATH", ".env"))
+    return DatabaseConfig(_env_file=os.environ.get("DATABASE_CONFIG_PATH", ".env"))  # type: ignore[call-arg]
 
 
-def get_db_engine(db_config: DatabaseConfig | None = None):
+def get_db_engine(db_config: DatabaseConfig | None = None) -> Engine:
     if db_config is None:
         db_config = get_db_config()
     global SINGLETON_DB_ENGINE
@@ -117,30 +132,35 @@ def get_db_engine(db_config: DatabaseConfig | None = None):
 
 
 # Access singletons via these functions so test framework can override these via DI
-def get_db_session():
+def get_db_session() -> Generator[Session, None, None]:
     db_config = get_db_config()
     # Make unique session for each request thread
     session_maker = sessionmaker(get_db_engine(db_config))
     try:
         session = session_maker()
-        session.execute(text("SELECT 1"))
-        return session
+        yield session
     except (OperationalError, Psycopg2OperationalError) as e:
         logger.error(f"Error connecting to database: {db_config.url}")
         raise HTTPException(
             status_code=500,
             detail=f"Error connecting to database: {db_config.url}",
         ) from None
+    finally:
+        if session:
+            session.close()
 
 
-def get_application_config(session=Depends(get_db_session)) -> ApplicationConfiguration:
+def get_application_config(
+    session: Session = Depends(get_db_session),
+) -> ApplicationConfiguration:
     config_repo = ConfigurationRepository(session)
     application_config = config_repo.get_configurations()
 
     return application_config
 
 
-def get_scorer_client():
+def get_scorer_client() -> ScorerClient:
+    pii_data_classifier: BinaryPIIDataClassifier | BinaryPIIDataClassifierV1
     global SINGLETON_SCORER_CLIENT
     if not SINGLETON_SCORER_CLIENT:
         if USE_PII_MODEL_V2:
@@ -175,7 +195,7 @@ def get_scorer_client():
     return SINGLETON_SCORER_CLIENT
 
 
-def get_metrics_engine():
+def get_metrics_engine() -> MetricsEngine:
     global SINGLETON_METRICS_ENGINE
     if not SINGLETON_METRICS_ENGINE:
         scorer_client = get_scorer_client()
@@ -183,7 +203,7 @@ def get_metrics_engine():
     return SINGLETON_METRICS_ENGINE
 
 
-def get_jwk_client():
+def get_jwk_client() -> JWKClient | None:
     global SINGLETON_JWK_CLIENT
     if not SINGLETON_JWK_CLIENT:
         ingress_uri = get_env_var(
@@ -197,7 +217,7 @@ def get_jwk_client():
     return SINGLETON_JWK_CLIENT
 
 
-def get_oauth_client():
+def get_oauth_client() -> OAuth:
     global SINGLETON_OAUTH_CLIENT
     if not SINGLETON_OAUTH_CLIENT:
         oauth = OAuth()
@@ -214,7 +234,7 @@ def get_oauth_client():
     return SINGLETON_OAUTH_CLIENT
 
 
-def get_api_key_cache():
+def get_api_key_cache() -> TTLCache[str, Any]:
     # Creating a 10-second cache, the elements will expire after 10 seconds. As this cache is not centralized for all
     # genai-engine instances, every instance will have it's own cache. We don't need to kick elements out of the cache when
     # someone deactivates a key, as in worst case it will only be in cache for 10 seconds, after that it will grab
@@ -226,7 +246,7 @@ def get_api_key_cache():
 
 
 def get_api_key_validator_client(
-    api_key_cache=Depends(get_api_key_cache),
+    api_key_cache: TTLCache[str, Any] = Depends(get_api_key_cache),
 ) -> APIKeyValidatorClient:
     global API_KEY_VALIDATOR_CLIENT
     if not API_KEY_VALIDATOR_CLIENT:
@@ -236,7 +256,7 @@ def get_api_key_validator_client(
 
 def get_keycloak_client() -> Generator[ABCAuthClient, None, None]:
     keycloak_settings = KeyCloakSettings(
-        _env_file=os.environ.get("GENAI_ENGINE_CONFIG_FILE", ".env"),
+        _env_file=os.environ.get("GENAI_ENGINE_CONFIG_FILE", ".env"),  # type: ignore[call-arg]
     )
     keycloak_client = KeycloakClient(keycloak_settings)
     keycloak_client.get_genai_engine_realm_admin_connection()
@@ -245,7 +265,7 @@ def get_keycloak_client() -> Generator[ABCAuthClient, None, None]:
 
 def get_s3_client(
     application_config: ApplicationConfiguration = Depends(get_application_config),
-):
+) -> S3Client | AzureBlobStorageClient | InMemoryClient:
     client = s3_client_from_config(application_config.document_storage_configuration)
     if not is_local_environment() and type(client) == InMemoryClient:
         raise HTTPException(
@@ -255,13 +275,23 @@ def get_s3_client(
     return client
 
 
-def s3_client_from_config(doc_storage_config: DocumentStorageConfiguration):
+def s3_client_from_config(
+    doc_storage_config: DocumentStorageConfiguration | None,
+) -> S3Client | AzureBlobStorageClient | InMemoryClient:
     if doc_storage_config is None:
         return InMemoryClient()
     elif (
         doc_storage_config.document_storage_environment
         == DocumentStorageEnvironment.AWS
     ):
+        if (
+            doc_storage_config.bucket_name is None
+            or doc_storage_config.assumable_role_arn is None
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Bucket name and assumable role ARN are required for AWS document storage configuration",
+            )
         return S3Client(
             doc_storage_config.bucket_name,
             doc_storage_config.assumable_role_arn,
@@ -270,9 +300,165 @@ def s3_client_from_config(doc_storage_config: DocumentStorageConfiguration):
         doc_storage_config.document_storage_environment
         == DocumentStorageEnvironment.AZURE
     ):
+        if (
+            doc_storage_config.connection_string is None
+            or doc_storage_config.container_name is None
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Connection string and container name are required for Azure document storage configuration",
+            )
         return AzureBlobStorageClient(
             doc_storage_config.connection_string,
             doc_storage_config.container_name,
         )
     else:
         raise NotImplementedError(doc_storage_config.document_storage_environment)
+
+
+def get_task_repository(
+    db_session: Session,
+    application_config: ApplicationConfiguration,
+) -> TaskRepository:
+    return TaskRepository(
+        db_session,
+        RuleRepository(db_session),
+        MetricRepository(db_session),
+        application_config,
+    )
+
+
+def get_validated_task(
+    task_id: UUID,
+    db_session: Session = Depends(get_db_session),
+    application_config: ApplicationConfiguration = Depends(get_application_config),
+) -> Task:
+    """Dependency that validates task exists"""
+    task_repo = get_task_repository(db_session, application_config)
+    task = task_repo.get_task_by_id(str(task_id))
+
+    return task
+
+
+def llm_get_versions_filter_parameters(
+    model_provider: Optional[str] = Query(
+        None,
+        description="Filter by model provider (e.g., 'openai', 'anthropic', 'azure').",
+    ),
+    model_name: Optional[str] = Query(
+        None,
+        description="Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').",
+    ),
+    created_after: Optional[str] = Query(
+        None,
+        description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    ),
+    created_before: Optional[str] = Query(
+        None,
+        description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    ),
+    exclude_deleted: bool = Query(
+        False,
+        description="Whether to exclude deleted prompt versions from the results. Default is False.",
+    ),
+    min_version: Optional[int] = Query(
+        None,
+        ge=1,
+        description="Minimum version number to filter on (inclusive).",
+    ),
+    max_version: Optional[int] = Query(
+        None,
+        ge=1,
+        description="Maximum version number to filter on (inclusive).",
+    ),
+) -> LLMGetVersionsFilterRequest:
+    """Create an LLMGetVersionsFilterRequest from query parameters."""
+    return LLMGetVersionsFilterRequest(
+        model_provider=ModelProvider(model_provider) if model_provider else None,
+        model_name=model_name,
+        created_after=datetime.fromisoformat(created_after) if created_after else None,
+        created_before=(
+            datetime.fromisoformat(created_before) if created_before else None
+        ),
+        exclude_deleted=exclude_deleted,
+        min_version=min_version,
+        max_version=max_version,
+    )
+
+
+def llm_get_all_filter_parameters(
+    llm_asset_names: Optional[list[str]] = Query(
+        None,
+        description="LLM asset names to filter on using partial matching. If provided, llm assets matching any of these name patterns will be returned",
+    ),
+    model_provider: Optional[str] = Query(
+        None,
+        description="Filter by model provider (e.g., 'openai', 'anthropic', 'azure').",
+    ),
+    model_name: Optional[str] = Query(
+        None,
+        description="Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').",
+    ),
+    created_after: Optional[str] = Query(
+        None,
+        description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    ),
+    created_before: Optional[str] = Query(
+        None,
+        description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    ),
+) -> LLMGetAllFilterRequest:
+    """Create a LLMGetAllFilterRequest from query parameters."""
+    return LLMGetAllFilterRequest(
+        llm_asset_names=llm_asset_names,
+        model_provider=ModelProvider(model_provider) if model_provider else None,
+        model_name=model_name,
+        created_after=datetime.fromisoformat(created_after) if created_after else None,
+        created_before=(
+            datetime.fromisoformat(created_before) if created_before else None
+        ),
+    )
+
+
+def transform_list_filter_parameters(
+    name: Optional[str] = Query(
+        None,
+        description="Name of the transform to filter on using partial matching.",
+    ),
+    created_after: Optional[str] = Query(
+        None,
+        description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    ),
+    created_before: Optional[str] = Query(
+        None,
+        description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    ),
+) -> TransformListFilterRequest:
+    """Create a LLMGetAllFilterRequest from query parameters."""
+    return TransformListFilterRequest(
+        name=name,
+        created_after=datetime.fromisoformat(created_after) if created_after else None,
+        created_before=(
+            datetime.fromisoformat(created_before) if created_before else None
+        ),
+    )
+
+
+@contextmanager
+def db_session_context() -> Generator[Session, None, None]:
+    """
+    Context manager for database sessions using the FastAPI dependency.
+
+    Usage:
+        with db_session_context() as session:
+            # use session
+    """
+    session_gen = get_db_session()
+    session = next(session_gen)
+    try:
+        yield session
+    finally:
+        try:
+            next(session_gen)
+        except StopIteration:
+            pass

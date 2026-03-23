@@ -1,0 +1,216 @@
+[
+  {
+    "name": "Final Answer Evaluation Dataset",
+    "description": "For experimenting with new prompts and how they impact the final answer of the question",
+    "metadata": null,
+    "version": {
+      "version_number": 1,
+      "column_names": [
+        "first draft",
+        "question",
+        "answer",
+        "plan"
+      ],
+      "rows": [
+        {
+          "id": "4d864d7e-e4bc-4e26-a50b-5ccb59ec9049",
+          "data": [
+            {
+              "column_name": "question",
+              "column_value": "How do I set up a guardrail for my use-case?"
+            },
+            {
+              "column_name": "answer",
+              "column_value": "To set up a guardrail for your use-case in the Arthur AI platform, you can follow these steps:\n\n1. **Access the Guardrails Configuration Guide**: You can find this guide in the Arthur AI documentation [here](https://docs.arthur.ai/docs/guardrails-configuration-guide).\n\n2. **Identify Your Use-Case Needs**: Determine the specific behaviors or outcomes you want to monitor or control, such as hallucination detection or PII redaction.\n\n3. **Configure the Rules**: Follow the step-by-step instructions in the guide to set up the rules. The guide includes examples and expected outcomes to help you tailor the guardrails to your specific needs.\n\n4. **Test and Adjust**: After setting up the guardrails, test them to ensure they are functioning as expected. You may need to adjust the rules based on the results.\n\nIf you have any further questions or need assistance, feel free to reach out to our support team. We're here to help!"
+            },
+            {
+              "column_name": "plan",
+              "column_value": "To answer this question, we need to provide a step-by-step guide on setting up a guardrail in the Arthur AI platform. This involves understanding the specific use-case requirements and the configuration options available in the platform."
+            },
+            {
+              "column_name": "first draft",
+              "column_value": "To set up a guardrail for your use-case in the Arthur AI platform, you can follow the detailed instructions provided in the Guardrails Configuration Guide. This guide will walk you through the process of configuring rules to monitor and control the behavior of your AI models. \n\nHere are the steps you can follow:\n\n1. **Access the Guardrails Configuration Guide**: You can find this guide in the Arthur AI documentation [here](https://docs.arthur.ai/docs/guardrails-configuration-guide).\n\n2. **Identify Your Use-Case Needs**: Determine what specific behaviors or outcomes you want to monitor or control, such as hallucination detection or PII redaction.\n\n3. **Configure the Rules**: Follow the step-by-step instructions in the guide to set up the rules. The guide includes examples and expected outcomes to help you tailor the guardrails to your specific needs.\n\n4. **Test and Adjust**: After setting up the guardrails, test them to ensure they are functioning as expected. You may need to adjust the rules based on the results.\n\nIf you have any further questions or need assistance, feel free to reach out to our support team."
+            }
+          ],
+          "created_at": 1765659021291
+        },
+        {
+          "id": "6cc45a62-8d93-452a-bff6-b48803b31f30",
+          "data": [
+            {
+              "column_name": "question",
+              "column_value": "How does the Arthur Platform check for Hallucinations?"
+            },
+            {
+              "column_name": "answer",
+              "column_value": "The Arthur Platform checks for hallucinations using its Arthur Shield tool, which provides both response-level and claim-level detection.\n\n- **Response-level detection** classifies an entire response as a hallucination if any part of it contains unsupported claims.\n- **Claim-level detection** identifies specific sentences within a response that are hallucinations.\n\nArthur Shield uses configurable rules for real-time detection, leveraging optimized language models to improve accuracy and efficiency. The platform also evaluates the performance of hallucination detection using metrics like precision, recall, and F1 score.\n\nFor more detailed technical insights, you might want to explore the genai-engine component, which is related to generative AI observability and may include further details on hallucination detection methodologies.\n\nIf you have any more questions or need further assistance, feel free to reach out!"
+            },
+            {
+              "column_name": "plan",
+              "column_value": "To answer this question, we need to gather information on how the Arthur Platform detects hallucinations in AI models. This involves understanding the specific features or tools within the platform that are designed for this purpose. We should look for documentation or code that describes the hallucination detection process, including any algorithms or methodologies used."
+            },
+            {
+              "column_name": "first draft",
+              "column_value": "The Arthur Platform checks for hallucinations using its Arthur Shield tool, which provides both response-level and claim-level detection. \n\n- **Response-level detection** classifies an entire response as a hallucination if any part of it contains unsupported claims.\n- **Claim-level detection** identifies specific sentences within a response that are hallucinations.\n\nArthur Shield uses configurable rules for real-time detection, leveraging optimized language models to improve accuracy and efficiency. The platform also evaluates the performance of hallucination detection using metrics like precision, recall, and F1 score.\n\nFor more detailed technical insights, you might want to explore the genai-engine component, which is related to generative AI observability and may include further details on hallucination detection methodologies."
+            }
+          ],
+          "created_at": 1765659021291
+        },
+        {
+          "id": "75828103-3372-4863-bb97-2ec99a392bc4",
+          "data": [
+            {
+              "column_name": "question",
+              "column_value": "What are the latencies for the Guardrails provided by the Arthur Platform?"
+            },
+            {
+              "column_name": "answer",
+              "column_value": "Hello!\n\nThe Arthur Platform provides detailed metrics on the performance of its Guardrails feature, including latency metrics. The platform tracks the distribution of latency in milliseconds for checks to complete, which is part of the rule latency distribution. These metrics are reported on a 5-minute cadence and are essential for monitoring the performance and efficiency of the Guardrails feature in real-time applications.\n\nFor more detailed information, please refer to the [Arthur AI documentation](https://docs.arthur.ai/docs/metrics-querying-overview-1).\n\nIf you have any more questions or need further assistance, feel free to reach out!\n\nBest regards,\n\nThe Arthur AI Support Team"
+            },
+            {
+              "column_name": "plan",
+              "column_value": "To answer this question, we need to gather information on the performance metrics, specifically the latencies, of the Guardrails feature in the Arthur Platform. This information is likely documented in the product documentation or could be found in the source code or release notes on GitHub."
+            },
+            {
+              "column_name": "first draft",
+              "column_value": "The Arthur Platform provides detailed metrics on the performance of its Guardrails feature, including latency metrics. The platform tracks the distribution of latency in milliseconds for checks to complete, which is part of the rule latency distribution. These metrics are reported on a 5-minute cadence and are essential for monitoring the performance and efficiency of the Guardrails feature in real-time applications.\n\nFor more detailed information, you can refer to the [Arthur AI documentation](https://docs.arthur.ai/docs/metrics-querying-overview-1)."
+            }
+          ],
+          "created_at": 1765659021291
+        },
+        {
+          "id": "7ac2f4a2-ed32-48e7-8ce1-b66db55e4b1f",
+          "data": [
+            {
+              "column_name": "question",
+              "column_value": "How do I integrate my agent with the Arthur Platform?"
+            },
+            {
+              "column_name": "answer",
+              "column_value": "To integrate your agent with the Arthur Platform, follow these steps:\n\n1. **Create an Arthur Account**: Sign up at [platform.arthur.ai](https://platform.arthur.ai) and create a new account.\n\n2. **Install Arthur Engine**: Use the provided curl command to pull the necessary Docker images and set up the Arthur engine using Docker Compose on your local machine.\n\n3. **Connect Your Use Case**: Once the engine is running, connect your first use case by following the setup instructions.\n\n4. **API Key and SDK**: Obtain an API key from the Arthur platform's settings. Use the Arthur Python SDK to interact with the platform, which allows for automated model onboarding and integration.\n\n5. **Model Registration**: Use the API or SDK to register your model with Arthur. This involves setting up a reference dataset and configuring model attributes.\n\n6. **Integration with Other Services**: Arthur supports integration with various third-party services and platforms, allowing for flexible deployment and management of AI models.\n\nFor more detailed instructions, please refer to the [Arthur documentation](https://docs.arthur.ai/docs/welcome-to-arthur-quick-start) and [API references](https://legacy.docs.arthur.ai/reference/getting-started-with-your-api).\n\nAdditionally, you can explore examples and code snippets in the [Arthur Engine GitHub repository](https://github.com/arthur-ai/arthur-engine) to guide you through the integration process.\n\nIf you have any further questions, feel free to reach out! We're here to help."
+            },
+            {
+              "column_name": "plan",
+              "column_value": "To answer this question, we need to provide a step-by-step guide on integrating an agent with the Arthur Platform. This involves understanding the integration process, any prerequisites, and specific configuration steps. We should check the product documentation for integration guides and any relevant code examples or API references in the GitHub repository."
+            },
+            {
+              "column_name": "first draft",
+              "column_value": "To integrate your agent with the Arthur Platform, follow these steps:\n\n1. **Create an Arthur Account**: Sign up at [platform.arthur.ai](https://platform.arthur.ai) and create a new account.\n\n2. **Install Arthur Engine**: Use the provided curl command to pull the necessary Docker images and set up the Arthur engine using Docker Compose on your local machine.\n\n3. **Connect Your Use Case**: Once the engine is running, connect your first use case by following the setup instructions.\n\n4. **API Key and SDK**: Obtain an API key from the Arthur platform's settings. Use the Arthur Python SDK to interact with the platform, which allows for automated model onboarding and integration.\n\n5. **Model Registration**: Use the API or SDK to register your model with Arthur. This involves setting up a reference dataset and configuring model attributes.\n\n6. **Integration with Other Services**: Arthur supports integration with various third-party services and platforms, allowing for flexible deployment and management of AI models.\n\nFor more detailed instructions, you can refer to the [Arthur documentation](https://docs.arthur.ai/docs/welcome-to-arthur-quick-start) and [API references](https://legacy.docs.arthur.ai/reference/getting-started-with-your-api).\n\nAdditionally, you can explore examples and code snippets in the [Arthur Engine GitHub repository](https://github.com/arthur-ai/arthur-engine) to guide you through the integration process.\n\nIf you have any further questions, feel free to reach out!"
+            }
+          ],
+          "created_at": 1765659021291
+        },
+        {
+          "id": "da8a3be6-7966-404c-9b9f-079fac0caca3",
+          "data": [
+            {
+              "column_name": "question",
+              "column_value": "How do I get started with the Arthur Platform?"
+            },
+            {
+              "column_name": "answer",
+              "column_value": "To get started with the Arthur Platform, follow these steps:\n\n1. **Create an Account**: Go to [platform.arthur.ai/signup](https://platform.arthur.ai/signup) and sign up for a new account. During the onboarding process, select options like 'Generative AI Agent or Chatbot' and 'Install Arthur Engine'.\n\n2. **Check System Requirements**: Ensure your system meets the necessary requirements before proceeding with the installation.\n\n3. **Install Arthur Engine**: Use the provided curl command to download the required Docker images and set up the Arthur Engine using Docker Compose on your local machine.\n\n4. **Connect Your First Use Case**: After setting up the engine, you can connect your first use case.\n\n5. **Access and Configuration**: Use API keys to access the platform and configure your settings through the organizational dashboard.\n\n6. **Explore Resources**: Visit the [Arthur Platform Developer Hub](https://docs.arthur.ai/) for comprehensive guides and documentation on features like Evals Engine, Agent Development, and Metrics.\n\nFor more detailed instructions, refer to the [Arthur Quick Start Guide](https://docs.arthur.ai/docs/welcome-to-arthur-quick-start).\n\nIf you have any questions or need further assistance, feel free to reach out to our support team. We're here to help!"
+            },
+            {
+              "column_name": "plan",
+              "column_value": "To help the user get started with the Arthur Platform, we need to provide them with a step-by-step guide or overview. This should include information on setting up an account, accessing the platform, and any initial configuration or tutorials available. We should also include links to relevant documentation or resources that can assist them in their onboarding process."
+            },
+            {
+              "column_name": "first draft",
+              "column_value": "To get started with the Arthur Platform, follow these steps:\n\n1. **Create an Account**: Go to [platform.arthur.ai/signup](https://platform.arthur.ai/signup) and sign up for a new account. During the onboarding process, select options like 'Generative AI Agent or Chatbot' and 'Install Arthur Engine'.\n\n2. **Check System Requirements**: Make sure your system meets the necessary requirements before proceeding with the installation.\n\n3. **Install Arthur Engine**: Use the provided curl command to download the required Docker images and set up the Arthur Engine using Docker Compose on your local machine.\n\n4. **Connect Your First Use Case**: After setting up the engine, you can connect your first use case.\n\n5. **Access and Configuration**: Use API keys to access the platform and configure your settings through the organizational dashboard.\n\n6. **Explore Resources**: Visit the [Arthur Platform Developer Hub](https://docs.arthur.ai/) for comprehensive guides and documentation on features like Evals Engine, Agent Development, and Metrics.\n\nFor more detailed instructions, refer to the [Arthur Quick Start Guide](https://docs.arthur.ai/docs/welcome-to-arthur-quick-start)."
+            }
+          ],
+          "created_at": 1765659021291
+        },
+        {
+          "id": "d231bd4a-68e6-416d-aca6-d1c922a3436a",
+          "data": [
+            {
+              "column_name": "question",
+              "column_value": "Does the Arthur Platform provide Guardrails? If so, what types?"
+            },
+            {
+              "column_name": "answer",
+              "column_value": "Yes, the Arthur Platform provides a feature called \"Guardrails.\" These are designed to support various metrics for GenAI models, including:\n\n1. **Hallucination Detection**: Identifying when a model generates information that is not based on its training data.\n2. **PII Redaction**: Automatically removing personally identifiable information from outputs.\n3. **Toxicity Detection**: Monitoring and flagging potentially harmful or offensive content.\n\nYou can configure additional metrics under the Model Management settings to customize and manage model behavior according to your needs.\n\nFor more detailed guidance on setting up these guardrails, please refer to the [Guardrails Configuration Guide](https://docs.arthur.ai/docs/guardrails-configuration-guide). If you have any more questions or need further assistance, feel free to reach out!"
+            },
+            {
+              "column_name": "plan",
+              "column_value": "To answer this question, we need to determine if the Arthur Platform offers a feature called \"Guardrails\" and, if it does, identify the types of Guardrails available. This will involve searching both the product documentation and the GitHub repository for relevant information."
+            },
+            {
+              "column_name": "first draft",
+              "column_value": "Yes, the Arthur Platform provides a feature called \"Guardrails.\" These are designed to support various metrics for GenAI models, including:\n\n1. **Hallucination Detection**: Identifying when a model generates information that is not based on its training data.\n2. **PII Redaction**: Automatically removing personally identifiable information from outputs.\n3. **Toxicity Detection**: Monitoring and flagging potentially harmful or offensive content.\n\nYou can configure additional metrics under the Model Management settings to customize and manage model behavior according to your needs.\n\nFor more detailed guidance on setting up these guardrails, you can refer to the [Guardrails Configuration Guide](https://docs.arthur.ai/docs/guardrails-configuration-guide)."
+            }
+          ],
+          "created_at": 1765659021291
+        },
+        {
+          "id": "ddceed41-c6ae-4ef5-9d5a-d06fef08b571",
+          "data": [
+            {
+              "column_name": "question",
+              "column_value": "What types of environments can I deploy the Arthur Platform in?"
+            },
+            {
+              "column_name": "answer",
+              "column_value": "You can deploy the Arthur Platform in various environments, including Kubernetes and AWS. It's ideal for cloud-agnostic, orchestrated, and advanced use-cases, especially if you're using Kubernetes (like EKS). Additionally, Arthur Shield can be deployed in an Arthur-managed single tenant SaaS environment. The platform also supports connectors for Google Cloud and AWS, making it versatile for different deployment needs. If you need more detailed guidance, please refer to our [deployment documentation](https://docs.arthur.ai/docs/deployment-with-kubernetes) or reach out to our support team for assistance."
+            },
+            {
+              "column_name": "plan",
+              "column_value": "To answer this question, we need to gather information on the deployment environments supported by the Arthur Platform. This information is likely available in the product documentation, which typically includes details on system requirements and supported environments."
+            },
+            {
+              "column_name": "first draft",
+              "column_value": "You can deploy the Arthur Platform in various environments, including Kubernetes and AWS. It's ideal for cloud-agnostic, orchestrated, and advanced use-cases, especially if you're using Kubernetes (like EKS). Additionally, Arthur Shield can be deployed in an Arthur-managed single tenant SaaS environment. The platform also supports connectors for Google Cloud and AWS, making it versatile for different deployment needs."
+            }
+          ],
+          "created_at": 1765659021291
+        },
+        {
+          "id": "f0ef30dd-b83f-47d2-8409-9a79458db2cd",
+          "data": [
+            {
+              "column_name": "question",
+              "column_value": "What specific performance metrics does the Arthur Platform provide?"
+            },
+            {
+              "column_name": "answer",
+              "column_value": "The Arthur Platform offers a comprehensive suite of performance metrics to evaluate and monitor machine learning models. These include:\n\n1. **Classification Metrics**:\n   - F1 Score\n   - Precision\n   - Recall\n   - Area Under the Curve (AUC)\n\n2. **Regression Metrics**:\n   - Mean Absolute Error (MAE)\n\n3. **Custom Metrics**:\n   - User-defined metrics for specific stakeholder needs\n\nAdditionally, the platform supports analysis across different data slices and subgroups, which is essential for fairness and bias detection. The extensible APIs allow for the integration of custom metrics and models, enhancing flexibility across various AI workflows.\n\nFor more detailed information, please refer to the [Arthur AI documentation](https://legacy.docs.arthur.ai/docs/performance-metrics). If you have any further questions, feel free to reach out!"
+            },
+            {
+              "column_name": "plan",
+              "column_value": "To answer this question, we need to gather detailed information on the performance metrics provided by the Arthur Platform. This involves checking both the product documentation and the GitHub repository for relevant details.\n\n1. **Documentation Search**: Look for sections in the Arthur Platform documentation that describe performance metrics. This might include user guides, feature descriptions, or FAQs.\n\n2. **Code Repository Search**: Explore the GitHub repository for any code or comments related to performance metrics. This could include modules or functions that calculate or display these metrics.\n\n3. **Compile Information**: Summarize the findings to provide a comprehensive list of performance metrics offered by the platform."
+            },
+            {
+              "column_name": "first draft",
+              "column_value": "The Arthur Platform offers a comprehensive suite of performance metrics to evaluate and monitor machine learning models. These include:\n\n1. **Classification Metrics**:\n   - F1 Score\n   - Precision\n   - Recall\n   - Area Under the Curve (AUC)\n\n2. **Regression Metrics**:\n   - Mean Average Error (MAE)\n\n3. **Custom Metrics**:\n   - User-defined metrics for specific stakeholder needs\n\nAdditionally, the platform supports analysis across different data slices and subgroups, which is essential for fairness and bias detection. The extensible APIs allow for the integration of custom metrics and models, enhancing flexibility across various AI workflows.\n\nFor more detailed information, you can refer to the [Arthur AI documentation](https://legacy.docs.arthur.ai/docs/performance-metrics)."
+            }
+          ],
+          "created_at": 1765659021291
+        },
+        {
+          "id": "25536429-8336-41d8-9c9c-e921044b9fe1",
+          "data": [
+            {
+              "column_name": "question",
+              "column_value": "What metrics does the Arthur Platform provide?"
+            },
+            {
+              "column_name": "answer",
+              "column_value": "The Arthur Platform offers a comprehensive suite of metrics to evaluate and monitor machine learning models:\n\n1. **Performance Metrics**: These metrics require ground truth labels and are used to assess model performance. Alerts can be set to notify teams of any issues.\n\n2. **Data Drift Metrics**: These include multivariate drift metrics and feature drift metrics such as PSI, KLDivergence, JSDivergence, HellingerDistance, and HypothesisTest, which help identify changes in data distribution over time.\n\n3. **Explainability and Fairness Metrics**: Tools are available to surface explainability trends and evaluate model fairness.\n\n4. **Custom Metrics**: Users can define custom metrics using Arthur’s Query API, providing flexibility in measuring model performance.\n\n5. **Real-time Detection Metrics**: Arthur Shield offers metrics for detecting PII or sensitive data leakage, hallucination, prompt injection attempts, and toxic language in real-time.\n\nThese metrics are essential for evaluating, exploring, and ensuring the safe deployment of models using the Arthur Platform. If you need further assistance or have specific questions about any of these metrics, feel free to reach out!"
+            },
+            {
+              "column_name": "plan",
+              "column_value": "To answer this question, we need to gather information on the specific metrics that the Arthur Platform provides. This will likely be detailed in the product documentation, which should outline the various metrics available to users. Additionally, the GitHub repository may contain code or README files that describe the metrics in technical detail.\n\n1. **Search the Documentation**: Look for sections related to metrics, analytics, or reporting features.\n2. **Search the GitHub Repository**: Check for any code or documentation that mentions metrics, such as configuration files or README sections.\n\nBy combining insights from both resources, we can provide a comprehensive list of metrics offered by the Arthur Platform."
+            },
+            {
+              "column_name": "first draft",
+              "column_value": "The Arthur Platform offers a comprehensive suite of metrics to evaluate and monitor machine learning models:\n\n1. **Performance Metrics**: These metrics require ground truth labels and are used to assess model performance. Alerts can be set to notify teams of any issues.\n\n2. **Data Drift Metrics**: These include multivariate drift metrics and feature drift metrics such as PSI, KLDivergence, JSDivergence, HellingerDistance, and HypothesisTest, which help identify changes in data distribution over time.\n\n3. **Explainability and Fairness Metrics**: Tools are available to surface explainability trends and evaluate model fairness.\n\n4. **Custom Metrics**: Users can define custom metrics using Arthur’s Query API, providing flexibility in measuring model performance.\n\n5. **Real-time Detection Metrics**: Arthur Shield offers metrics for detecting PII or sensitive data leakage, hallucination, prompt injection attempts, and toxic language in real-time.\n\nThese metrics are essential for evaluating, exploring, and ensuring the safe deployment of models using the Arthur Platform."
+            }
+          ],
+          "created_at": 1765659021291
+        }
+      ]
+    }
+  }
+]

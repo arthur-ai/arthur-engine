@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 from amplitude import BaseEvent
+from arthur_common.models.enums import RuleType
 from requests import RequestException
 
 from clients.telemetry.telemetry_client import (
@@ -12,7 +13,6 @@ from clients.telemetry.telemetry_client import (
     send_telemetry_event_for_default_rule_create_completed,
     send_telemetry_event_for_task_rule_create_completed,
 )
-from arthur_common.models.enums import RuleType
 
 
 @pytest.fixture
@@ -93,9 +93,15 @@ def test_send_telemetry_event_disabled(mock_amplitude_client, mock_telemetry_con
 
 @pytest.mark.unit_tests
 def test_get_public_ip():
-    ip = get_public_ip()
-    assert ip is not None
-    assert bool(re.match(r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$", ip))
+    with patch("requests.get") as mock_get:
+        mock_response = mock_get.return_value
+        mock_response.json.return_value = {"ip": "203.0.113.42"}
+        mock_response.raise_for_status.return_value = None
+
+        ip = get_public_ip()
+        assert ip is not None
+        assert bool(re.match(r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$", ip))
+        assert ip == "203.0.113.42"
 
 
 @pytest.mark.unit_tests

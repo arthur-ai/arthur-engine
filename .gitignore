@@ -13,6 +13,10 @@ __pycache__
 *.egg-info
 build/
 
+# Node.js
+node_modules/
+package-lock.json
+
 .html_cov*
 .coverage*
 coverage.xml
@@ -23,7 +27,8 @@ local.env
 .env.local
 .env
 
-.vscode/
+# Ignore .vscode contents but allow settings.json (per-folder Python interpreters)
+**/.vscode/*
 
 .pre-commit-config-no-pytest-check.yaml
 oasdiff*
@@ -33,4 +38,10 @@ Chart.lock
 values.yaml
 
 ml-engine/src/genai_client/**
-openapitools.json
+.vagrant
+
+.cursor/
+
+models/
+arthur-engine.code-workspace
+

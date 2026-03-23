@@ -183,12 +183,29 @@ if ($DEFAULT_GENAI_CONFIG -eq "true") {
             $envLines += "GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$gptName::$gptEndpoint::$gptKey"
         } else {
             Write-Host "Skipping OpenAI configuration..."
+            $envLines += "GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=model_name::https://model_service.com/::my_api_key"
         }
     } else {
         Write-Host "Using existing OpenAI configuration from .env..."
         $envLines += "GENAI_ENGINE_OPENAI_PROVIDER=$GENAI_ENGINE_OPENAI_PROVIDER"
         $envLines += "GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS"
     }
+}
+
+# Prompt for secret store key if not already set
+if (-not $GENAI_ENGINE_SECRET_STORE_KEY) {
+    # Generate a secure random key using .NET
+    $randomBytes = New-Object byte[] 32
+    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    $rng.GetBytes($randomBytes)
+    $secretKey = [System.BitConverter]::ToString($randomBytes) -replace '-', ''
+    Write-Host "Generated random secret key since none was found"
+
+    $envLines += "GENAI_ENGINE_SECRET_STORE_KEY=$secretKey"
+} else {
+    Write-Host ""
+    Write-Host "Using existing GENAI_ENGINE_SECRET_STORE_KEY from config file..."
+    $envLines += "GENAI_ENGINE_SECRET_STORE_KEY=$GENAI_ENGINE_SECRET_STORE_KEY"
 }
 
 $envLines | Set-Content -Path $envFilePath

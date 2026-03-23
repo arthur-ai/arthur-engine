@@ -13,7 +13,7 @@ from arthur_common.models.enums import RuleType
 from fastapi import HTTPException
 from pydantic import BaseModel
 
-from db_models.db_models import DatabaseRuleData
+from db_models import DatabaseRuleData
 from schemas.enums import RuleDataType
 from utils.utils import constants
 
@@ -23,12 +23,12 @@ class RuleData(BaseModel):
     data_type: RuleDataType
     data: str
 
-    def _to_database_model(self):
+    def _to_database_model(self) -> DatabaseRuleData:
         return DatabaseRuleData(id=self.id, data_type=self.data_type, data=self.data)
 
     @staticmethod
-    def _from_database_model(x: DatabaseRuleData):
-        return RuleData(id=x.id, data_type=x.data_type, data=x.data)
+    def _from_database_model(x: DatabaseRuleData) -> "RuleData":
+        return RuleData(id=x.id, data_type=RuleDataType(x.data_type), data=x.data)
 
 
 def get_regex_config(config: RegexConfig) -> list[RuleData]:
@@ -158,13 +158,7 @@ def get_toxicity_config(config: ToxicityConfig) -> list[RuleData]:
     ]
 
 
-CONFIG_CHECKERS: dict[
-    str
-    | Callable[
-        [RegexConfig | KeywordsConfig | ToxicityConfig | PIIConfig | ExamplesConfig],
-        list[RuleData],
-    ]
-] = {
+CONFIG_CHECKERS: dict[str, Callable[..., list[RuleData]]] = {
     RuleType.REGEX.value: get_regex_config,
     RuleType.KEYWORD.value: get_keyword_config,
     RuleType.MODEL_SENSITIVE_DATA.value: get_model_sensitive_data_config,

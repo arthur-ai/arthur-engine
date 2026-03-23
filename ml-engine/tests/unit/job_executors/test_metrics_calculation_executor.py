@@ -1,3 +1,4 @@
+import copy
 import logging
 import time
 from datetime import datetime, timedelta
@@ -13,32 +14,38 @@ from arthur_client.api_bindings import (
     AggregationSpecSchema,
     AlertCheckJobSpec,
     Dataset,
+    DatasetColumn,
+    DatasetObjectType,
+    DatasetScalarType,
     DatasetSchema,
+    Definition,
     JobKind,
     MetricsArgSpec,
     MetricsCalculationJobSpec,
-    MetricsVersion,
+    ObjectValue,
     PostJob,
     PostJobBatch,
 )
 from arthur_common.aggregations import AggregationFunction
 from arthur_common.models.metrics import (
-    Dimension,
     DatasetReference,
     NumericMetric,
-    NumericTimeSeries,
     NumericPoint,
+    NumericTimeSeries,
 )
 from arthur_common.tools.aggregation_loader import AggregationLoader
 from arthur_common.tools.functions import uuid_to_base26
+from mock_data.connector_helpers import (
+    MOCK_BQ_DATASET,
+)
+from mock_data.mock_data_generator import random_model
+
 from dataset_loader import DatasetLoader
 from job_executors.metrics_calculation_executor import (
     MetricsCalculationExecutor,
     _create_alert_check_job,
 )
 from metric_calculators.default_metric_calculator import DefaultMetricCalculator
-from mock_data.connector_helpers import MOCK_BQ_DATASET
-from mock_data.mock_data_generator import random_model
 
 logger = logging.getLogger("job_logger")
 
@@ -67,14 +74,6 @@ def test_create_alert_check_job():
     model_id = str(uuid4())
     model.id = model_id
 
-    mv = MetricsVersion(
-        created_at=datetime.now(),
-        updated_at=datetime.now(),
-        version_num=1,
-        scope_model_id=model_id,
-        range_start=datetime.now(),
-        range_end=datetime.now(),
-    )
     metrics_start_time = datetime.now() - timedelta(hours=2)
     metrics_end_time = datetime.now() - timedelta(hours=1)
     metrics_job_spec = MetricsCalculationJobSpec(
@@ -82,7 +81,7 @@ def test_create_alert_check_job():
         start_timestamp=metrics_start_time,
         end_timestamp=metrics_end_time,
     )
-    alert_job_batch = _create_alert_check_job(model, metrics_job_spec, mv)
+    alert_job_batch = _create_alert_check_job(model, metrics_job_spec)
 
     assert isinstance(alert_job_batch, PostJobBatch)
     assert len(alert_job_batch.jobs) == 1
@@ -106,6 +105,12 @@ def test_create_alert_check_job():
 @pytest.mark.parametrize(
     "segmentation_col_names,error_str",
     [
+        # happy path - single valid segmentation column
+        (["name"], None),
+        # happy path - multiple valid segmentation columns
+        (["name", "description"], None),
+        # happy path - three valid segmentation columns (max allowed)
+        (["name", "description", "desc2"], None),
         # column with bad dtype
         (["timestamp"], "data type mismatch"),
         # column with too many possibilities
@@ -142,22 +147,62 @@ def test_process_agg_args(
     # configure dataset mocks
     datasets_client = Mock()
     dataset = Dataset.model_validate(MOCK_BQ_DATASET)
-    datasets_client.get_dataset.return_value = dataset
+    dataset.id = str(uuid4())
+    dataset.name = "dataset1"
 
-    # configure connector mocks
+    # Create a second dataset with duplicate column names but different IDs
+    # This tests that columns are correctly identified from the specified dataset
+    dataset2_dict = copy.deepcopy(MOCK_BQ_DATASET)
+    dataset2_dict["id"] = str(uuid4())
+    dataset2_dict["name"] = "dataset2"
+
+    # Update all column IDs in dataset2 to be different from dataset1
+    for col in dataset2_dict["dataset_schema"].columns:
+        col.id = str(uuid4())
+        col.definition.actual_instance.id = str(uuid4())
+
+    # Update column_names mapping with new IDs
+    new_column_names = {}
+    for col in dataset2_dict["dataset_schema"].columns:
+        new_column_names[col.id] = col.source_name
+    dataset2_dict["dataset_schema"].column_names = new_column_names
+
+    dataset2 = Dataset.model_validate(dataset2_dict)
+
+    # Configure datasets_client to return the correct dataset
+    def get_dataset_side_effect(dataset_id: str):
+        if dataset_id == dataset.id:
+            return dataset
+        elif dataset_id == dataset2.id:
+            return dataset2
+        else:
+            raise ValueError(f"Unknown dataset ID: {dataset_id}")
+
+    datasets_client.get_dataset.side_effect = get_dataset_side_effect
+
+    # Configure connector mocks to return data for both datasets
+    def read_side_effect(
+        dataset,
+        start_time,
+        end_time,
+        filters=None,
+        pagination_options=None,
+    ):
+        return expected_data
+
     mock_connector = Mock()
-    mock_connector.read.return_value = expected_data
+    mock_connector.read.side_effect = read_side_effect
     connector_constructor = Mock()
     connector_constructor.get_connector_from_spec.return_value = mock_connector
 
-    # load mocked data into duckdb
+    # load both datasets into duckdb to test duplicate column name handling
     dataset_loader = DatasetLoader(
         connector_constructor=connector_constructor,
         datasets_client=datasets_client,
         logger=logger,
     )
     conn, unloaded_datasets = dataset_loader.load_datasets(
-        dataset_ids=[dataset.id],
+        dataset_ids=[dataset.id, dataset2.id],
         start_time=first_timestamp - timedelta(seconds=5),
         end_time=second_timestamp + timedelta(seconds=5),
         filters=None,
@@ -171,7 +216,7 @@ def test_process_agg_args(
         aggregation_args=[
             MetricsArgSpec(
                 arg_key="dataset",
-                arg_value=dataset.id,
+                arg_value=dataset.id,  # Use dataset1
             ),
             MetricsArgSpec(
                 arg_key="segmentation_cols",
@@ -198,12 +243,15 @@ def test_process_agg_args(
         agg_function_type,
     )
 
+    # Pass both datasets to process_agg_args to test duplicate column name handling
+    # The aggregation should correctly identify columns from dataset1 even though
+    # dataset2 has columns with the same names
     if error_str:
         with pytest.raises(ValueError) as exc:
-            metrics_calculator.process_agg_args([dataset])
+            metrics_calculator.process_agg_args([dataset, dataset2])
         assert error_str in str(exc.value)
     else:
-        metrics_calculator.process_agg_args([dataset])
+        metrics_calculator.process_agg_args([dataset, dataset2])
 
 
 @patch("job_executors.metrics_calculation_executor.ML_ENGINE_AGGREGATION_TIMEOUT", 1)
@@ -275,6 +323,7 @@ def test_metrics_calculation_timeout(mock_bigquery_client, caplog):
         mock_calculator.aggregate.side_effect = slow_aggregate
         mock_calculator.process_agg_args.return_value = ([], [])
         mock_calculator.agg_schema.name = "test_aggregation"
+        mock_calculator.agg_name = "test_aggregation"
 
         # mock the model andother dependencies
         mock_models_client = Mock()
@@ -283,6 +332,7 @@ def test_metrics_calculation_timeout(mock_bigquery_client, caplog):
         mock_jobs_client = Mock()
         mock_custom_aggs_client = Mock()
         mock_model = Mock()
+        mock_custom_aggs_test_client = Mock()
 
         # create a dataset reference with dataset_id attribute
         mock_dataset_ref = Mock()
@@ -309,6 +359,7 @@ def test_metrics_calculation_timeout(mock_bigquery_client, caplog):
             metrics_client=mock_metrics_client,
             jobs_client=mock_jobs_client,
             custom_aggregations_client=mock_custom_aggs_client,
+            custom_aggregation_tests_client=mock_custom_aggs_test_client,
             connector_constructor=connector_constructor,
             logger=logger,
         )
@@ -342,47 +393,54 @@ def test_metrics_calculation_timeout(mock_bigquery_client, caplog):
 
             # test the timeout error message is logged
             assert any(
-                f"Aggregation calculation timed out for {agg_spec.aggregation_id} - {mock_calculator.agg_schema.name}"
+                f"Aggregation calculation timed out for {agg_spec.aggregation_id} - {mock_calculator.agg_name}"
                 in rec.message
                 for rec in caplog.records
             )
 
 
 def test_add_dimensions_to_metrics():
-    """Test that dimensions are correctly added to metrics."""    
+    """Test that dimensions are correctly added to metrics."""
     # create an executor with mocked dependencies
     executor = MetricsCalculationExecutor(
         models_client=Mock(),
-        datasets_client=Mock(), 
+        datasets_client=Mock(),
         metrics_client=Mock(),
         jobs_client=Mock(),
         connector_constructor=Mock(),
         custom_aggregations_client=Mock(),
+        custom_aggregation_tests_client=Mock(),
         logger=Mock(),
     )
-    
+
     # test the data
-    dataset_ref = DatasetReference(dataset_id=uuid4(), dataset_name="test_dataset", dataset_table_name=uuid_to_base26(uuid4()))
+    dataset_ref = DatasetReference(
+        dataset_id=uuid4(),
+        dataset_name="test_dataset",
+        dataset_table_name=uuid_to_base26(uuid4()),
+    )
     aggregate_args = {"dataset": dataset_ref}
     agg_spec = AggregationSpec(
         aggregation_id="00000000-0000-0000-0000-00000000000a",
         aggregation_version=1,
         aggregation_init_args=[],
-        aggregation_args=[]
+        aggregation_args=[],
     )
-    
+
     # create a metric
     metric = NumericMetric(
         name="test_metric",
-        numeric_series=[NumericTimeSeries(
-            dimensions=[],
-            values=[NumericPoint(timestamp=datetime.now(), value=10.0)]
-        )]
+        numeric_series=[
+            NumericTimeSeries(
+                dimensions=[],
+                values=[NumericPoint(timestamp=datetime.now(), value=10.0)],
+            ),
+        ],
     )
-    
+
     # test the method
     executor._add_dimensions_to_metrics([metric], aggregate_args, agg_spec)
-    
+
     # check the dimensions were added including the version
     dimensions = {d.name: d.value for d in metric.numeric_series[0].dimensions}
     assert dimensions["dataset_name"] == dataset_ref.dataset_name
@@ -393,24 +451,237 @@ def test_add_dimensions_to_metrics():
     agg_spec = AggregationSpec(
         aggregation_id="00000000-0000-0000-0000-00000000000a",
         aggregation_init_args=[],
-        aggregation_args=[]
+        aggregation_args=[],
     )
 
     # reset the metric
     metric = NumericMetric(
         name="test_metric",
-        numeric_series=[NumericTimeSeries(
-            dimensions=[],
-            values=[NumericPoint(timestamp=datetime.now(), value=10.0)]
-        )]
+        numeric_series=[
+            NumericTimeSeries(
+                dimensions=[],
+                values=[NumericPoint(timestamp=datetime.now(), value=10.0)],
+            ),
+        ],
     )
-    
+
     # test the method
     executor._add_dimensions_to_metrics([metric], aggregate_args, agg_spec)
-    
+
     # check the dimensions were added apart from the version
     dimensions = {d.name: d.value for d in metric.numeric_series[0].dimensions}
     assert dimensions["dataset_name"] == dataset_ref.dataset_name
     assert dimensions["dataset_id"] == str(dataset_ref.dataset_id)
     assert dimensions["aggregation_id"] == agg_spec.aggregation_id
     assert "aggregation_version" not in dimensions
+
+
+def test_process_agg_args_nested_columns(mock_bigquery_client) -> None:
+    """Test that _validate_segmentation_single_column works correctly with nested columns"""
+    # configure data mocks - need to include nested field data
+    first_timestamp = datetime(2024, 1, 1).astimezone(pytz.timezone("UTC"))
+    first_timestamp_str = first_timestamp.isoformat()
+    second_timestamp = datetime(2024, 1, 1, hour=2).astimezone(pytz.timezone("UTC"))
+
+    # Create expected data with nested structure
+    expected_data = [
+        {
+            "id": str(uuid4()),
+            "name": "Test1",
+            "timestamp": first_timestamp_str,
+            "description": "test inference 1",
+            "desc2": "another string col",
+            "numeric_col": i,
+            'numeric"col': i * 2,
+            "nested_features": {
+                "feature.1": f"value_{i}",
+                "feature2": i * 2,
+                '"feature3': i * 3,
+            },
+        }
+        for i in range(10)  # smaller dataset
+    ]
+
+    # Create a modified dataset with nested columns
+    # Start with the existing MOCK_BQ_DATASET and add a nested column
+    mock_dataset_dict = MOCK_BQ_DATASET.copy()
+
+    # Generate proper UUIDs for the nested column
+    nested_column_id = str(uuid4())
+    nested_object_type_id = str(uuid4())
+    feature1_scalar_id = str(uuid4())
+    feature2_scalar_id = str(uuid4())
+    feature3_scalar_id = str(uuid4())
+    numeric_quote_col_id = str(uuid4())
+
+    # Add a column with a quote in the name to test special character handling
+    numeric_quote_column = DatasetColumn(
+        id=numeric_quote_col_id,
+        source_name='numeric"col',
+        definition=Definition(
+            DatasetScalarType(
+                tag_hints=[],
+                nullable=False,
+                id=str(uuid4()),
+                dtype="int",
+            ),
+        ),
+    )
+
+    # Add a nested column to the schema
+    nested_column = DatasetColumn(
+        id=nested_column_id,
+        source_name="nested.features",
+        definition=Definition(
+            DatasetObjectType(
+                tag_hints=[],
+                nullable=False,
+                id=nested_object_type_id,
+                object={
+                    "feature.1": ObjectValue(
+                        DatasetScalarType(
+                            tag_hints=[],
+                            nullable=False,
+                            id=feature1_scalar_id,
+                            dtype="str",
+                        ),
+                    ),
+                    "feature2": ObjectValue(
+                        DatasetScalarType(
+                            tag_hints=[],
+                            nullable=False,
+                            id=feature2_scalar_id,
+                            dtype="int",
+                        ),
+                    ),
+                    '"feature3': ObjectValue(
+                        DatasetScalarType(
+                            tag_hints=[],
+                            nullable=False,
+                            id=feature3_scalar_id,
+                            dtype="int",
+                        ),
+                    ),
+                },
+            ),
+        ),
+    )
+
+    # Add the nested column to the dataset schema properly
+    mock_dataset_dict["dataset_schema"].columns.append(nested_column)
+    mock_dataset_dict["dataset_schema"].columns.append(numeric_quote_column)
+
+    # Also add to column_names mapping
+    mock_dataset_dict["dataset_schema"].column_names[
+        numeric_quote_col_id
+    ] = 'numeric"col'
+
+    # configure dataset mocks
+    datasets_client = Mock()
+    dataset = Dataset.model_validate(mock_dataset_dict)
+    datasets_client.get_dataset.return_value = dataset
+
+    # configure connector mocks
+    mock_connector = Mock()
+    mock_connector.read.return_value = expected_data
+    connector_constructor = Mock()
+    connector_constructor.get_connector_from_spec.return_value = mock_connector
+
+    # load mocked data into duckdb
+    dataset_loader = DatasetLoader(
+        connector_constructor=connector_constructor,
+        datasets_client=datasets_client,
+        logger=logger,
+    )
+    conn, unloaded_datasets = dataset_loader.load_datasets(
+        dataset_ids=[dataset.id],
+        start_time=first_timestamp - timedelta(seconds=5),
+        end_time=second_timestamp + timedelta(seconds=5),
+        filters=None,
+        pagination_options=None,
+    )
+    assert len(unloaded_datasets) == 0
+
+    timestamp_col_id = None
+    numeric_col_id = None
+    for column in dataset.dataset_schema.columns:
+        if column.source_name == "timestamp":
+            timestamp_col_id = column.id
+        elif column.source_name == "numeric_col":
+            numeric_col_id = column.id
+
+    # Test with a nested column
+    # This test verifies segmentation works for nested columns, including those with '.' in the name and top level columns used for segmentation
+    agg_spec = AggregationSpec(
+        aggregation_id="00000000-0000-0000-0000-00000000000a",
+        aggregation_init_args=[],
+        aggregation_args=[
+            MetricsArgSpec(
+                arg_key="dataset",
+                arg_value=dataset.id,
+            ),
+            MetricsArgSpec(
+                arg_key="timestamp_col",
+                arg_value=timestamp_col_id,
+            ),
+            MetricsArgSpec(
+                arg_key="segmentation_cols",
+                arg_value=[feature1_scalar_id, feature2_scalar_id, numeric_col_id],
+            ),
+        ],
+    )
+    agg_function_schema, agg_function_type = _get_aggregation_schema_by_id(
+        "00000000-0000-0000-0000-00000000000a",
+    )
+
+    metrics_calculator = DefaultMetricCalculator(
+        conn,
+        logger,
+        agg_spec,
+        agg_function_schema,
+        agg_function_type,
+    )
+
+    # This should not raise an error
+    init_args, aggregate_args = metrics_calculator.process_agg_args([dataset])
+    result = metrics_calculator.aggregate(init_args, aggregate_args)
+
+    # Test both nested and top-level columns with a " in the name
+    # This also tests an aggregation that adds extra dimensions to segmentation columns
+    agg_spec = AggregationSpec(
+        aggregation_id="00000000-0000-0000-0000-00000000000c",
+        aggregation_init_args=[],
+        aggregation_args=[
+            MetricsArgSpec(
+                arg_key="dataset",
+                arg_value=dataset.id,
+            ),
+            MetricsArgSpec(
+                arg_key="timestamp_col",
+                arg_value=timestamp_col_id,
+            ),
+            MetricsArgSpec(
+                arg_key="categorical_col",
+                arg_value=feature1_scalar_id,
+            ),
+            MetricsArgSpec(
+                arg_key="segmentation_cols",
+                arg_value=[numeric_quote_col_id, feature3_scalar_id],
+            ),
+        ],
+    )
+    agg_function_schema, agg_function_type = _get_aggregation_schema_by_id(
+        "00000000-0000-0000-0000-00000000000c",
+    )
+
+    metrics_calculator = DefaultMetricCalculator(
+        conn,
+        logger,
+        agg_spec,
+        agg_function_schema,
+        agg_function_type,
+    )
+
+    # This should not raise an error
+    init_args, aggregate_args = metrics_calculator.process_agg_args([dataset])
+    result = metrics_calculator.aggregate(init_args, aggregate_args)

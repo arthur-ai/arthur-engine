@@ -1,0 +1,729 @@
+import json
+import logging
+from datetime import datetime
+from enum import Enum
+from typing import Annotated, Optional
+
+from arthur_common.models.common_schemas import PaginationParameters
+from arthur_common.models.enums import (
+    AgenticAnnotationType,
+    ContinuousEvalRunStatus,
+    PaginationSortMethod,
+    StatusCodeEnum,
+    ToolClassEnum,
+)
+from arthur_common.models.request_schemas import SpanQueryRequest, TraceQueryRequest
+from arthur_common.models.response_schemas import (
+    QuerySpansResponse,
+    QueryTracesWithMetricsResponse,
+    SpanWithMetricsResponse,
+)
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
+from google.protobuf.message import DecodeError
+from openinference.semconv.trace import OpenInferenceSpanKindValues
+from pydantic import ValidationError
+from sqlalchemy.orm import Session
+
+from dependencies import get_db_session
+from repositories.metrics_repository import MetricRepository
+from repositories.span_repository import SpanRepository
+from repositories.tasks_metrics_repository import TasksMetricsRepository
+from routers.route_handler import GenaiEngineRoute
+from routers.v2 import multi_validator
+from schemas.enums import PermissionLevelsEnum
+from schemas.internal_schemas import User
+from utils.users import permission_checker
+from utils.utils import common_pagination_parameters
+
+logger = logging.getLogger(__name__)
+
+
+class TraceSortBy(str, Enum):
+    START_TIME = "start_time"
+    TOTAL_TOKEN_COUNT = "total_token_count"
+    TOTAL_TOKEN_COST = "total_token_cost"
+    SPAN_COUNT = "span_count"
+
+
+span_routes = APIRouter(
+    prefix="/v1",
+    route_class=GenaiEngineRoute,
+)
+
+
+def _get_span_repository(db_session: Session) -> SpanRepository:
+    """Create and return a SpanRepository instance with required dependencies."""
+    tasks_metrics_repo = TasksMetricsRepository(db_session)
+    metrics_repo = MetricRepository(db_session)
+    return SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
+
+
+def _create_response(
+    total_spans: int,
+    accepted_spans: int,
+    rejected_spans: int,
+    rejected_reasons: list[str],
+) -> Response:
+    """Create standardized response for trace processing results."""
+    content = {
+        "total_spans": total_spans,
+        "accepted_spans": accepted_spans,
+        "rejected_spans": rejected_spans,
+        "rejection_reasons": rejected_reasons,
+    }
+
+    if rejected_spans == 0:
+        content["status"] = "success"
+        status_code = status.HTTP_200_OK
+    elif accepted_spans > 0:
+        content["status"] = "partial_success"
+        status_code = status.HTTP_206_PARTIAL_CONTENT
+    else:
+        content["status"] = "failure"
+        status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    return Response(
+        content=json.dumps(content),
+        status_code=status_code,
+        media_type="application/json",
+    )
+
+
+class ExtendedTraceQueryRequest(TraceQueryRequest):
+    """Extends TraceQueryRequest with token count and span count filter support."""
+
+    total_token_count_eq: Optional[int] = None
+    total_token_count_gt: Optional[int] = None
+    total_token_count_gte: Optional[int] = None
+    total_token_count_lt: Optional[int] = None
+    total_token_count_lte: Optional[int] = None
+    prompt_token_count_eq: Optional[int] = None
+    prompt_token_count_gt: Optional[int] = None
+    prompt_token_count_gte: Optional[int] = None
+    prompt_token_count_lt: Optional[int] = None
+    prompt_token_count_lte: Optional[int] = None
+    completion_token_count_eq: Optional[int] = None
+    completion_token_count_gt: Optional[int] = None
+    completion_token_count_gte: Optional[int] = None
+    completion_token_count_lt: Optional[int] = None
+    completion_token_count_lte: Optional[int] = None
+    span_count_eq: Optional[int] = None
+    span_count_gt: Optional[int] = None
+    span_count_gte: Optional[int] = None
+    span_count_lt: Optional[int] = None
+    span_count_lte: Optional[int] = None
+
+
+def trace_query_parameters(
+    # Required parameters
+    task_ids: list[str] = Query(
+        ...,
+        description="Task IDs to filter on. At least one is required.",
+        min_length=1,
+    ),
+    # Optional parameters
+    trace_ids: list[str] = Query(
+        None,
+        description="Trace IDs to filter on. Optional.",
+    ),
+    start_time: datetime = Query(
+        None,
+        description="Inclusive start date in ISO8601 string format. Use local time (not UTC).",
+    ),
+    end_time: datetime = Query(
+        None,
+        description="Exclusive end date in ISO8601 string format. Use local time (not UTC).",
+    ),
+    tool_name: str = Query(
+        None,
+        description="Return only results with this tool name.",
+    ),
+    span_types: list[str] = Query(
+        None,
+        description=f"Span types to filter on. Optional. Valid values: {', '.join(sorted([k.value for k in OpenInferenceSpanKindValues]))}",  # type: ignore[name-defined]
+    ),
+    annotation_score: int = Query(
+        None,
+        ge=0,
+        le=1,
+        description="Filter by trace annotation score (0 or 1).",
+    ),
+    annotation_type: AgenticAnnotationType = Query(
+        None,
+        description="Filter by trace annotation type (i.e. 'human' or 'continuous_eval').",
+    ),
+    continuous_eval_run_status: ContinuousEvalRunStatus = Query(
+        None,
+        description="Filter by trace annotation run status (e.g. 'passed', 'failed', etc.).",
+    ),
+    continuous_eval_name: str = Query(
+        None,
+        description="Filter by continuous eval name.",
+    ),
+    span_ids: list[str] = Query(
+        None,
+        description="Span IDs to filter on. Optional.",
+    ),
+    session_ids: list[str] = Query(
+        None,
+        description="Session IDs to filter on. Optional.",
+    ),
+    user_ids: list[str] = Query(
+        None,
+        description="User IDs to filter on. Optional.",
+    ),
+    span_name: str = Query(
+        None,
+        description="Return only results with this span name.",
+    ),
+    span_name_contains: str = Query(
+        None,
+        description="Return only results where span name contains this substring.",
+    ),
+    status_code: list[StatusCodeEnum] | None = Query(
+        None,
+        description="Status codes to filter on. Optional. Valid values: Ok, Error, Unset.",
+    ),
+    # Query relevance filters
+    query_relevance_eq: float = Query(
+        None,
+        ge=0,
+        le=1,
+        description="Equal to this value.",
+    ),
+    query_relevance_gt: float = Query(
+        None,
+        ge=0,
+        le=1,
+        description="Greater than this value.",
+    ),
+    query_relevance_gte: float = Query(
+        None,
+        ge=0,
+        le=1,
+        description="Greater than or equal to this value.",
+    ),
+    query_relevance_lt: float = Query(
+        None,
+        ge=0,
+        le=1,
+        description="Less than this value.",
+    ),
+    query_relevance_lte: float = Query(
+        None,
+        ge=0,
+        le=1,
+        description="Less than or equal to this value.",
+    ),
+    # Response relevance filters
+    response_relevance_eq: float = Query(
+        None,
+        ge=0,
+        le=1,
+        description="Equal to this value.",
+    ),
+    response_relevance_gt: float = Query(
+        None,
+        ge=0,
+        le=1,
+        description="Greater than this value.",
+    ),
+    response_relevance_gte: float = Query(
+        None,
+        ge=0,
+        le=1,
+        description="Greater than or equal to this value.",
+    ),
+    response_relevance_lt: float = Query(
+        None,
+        ge=0,
+        le=1,
+        description="Less than this value.",
+    ),
+    response_relevance_lte: float = Query(
+        None,
+        ge=0,
+        le=1,
+        description="Less than or equal to this value.",
+    ),
+    # Tool classification filters
+    tool_selection: ToolClassEnum = Query(
+        None,
+        description="Tool selection evaluation result.",
+    ),
+    tool_usage: ToolClassEnum = Query(
+        None,
+        description="Tool usage evaluation result.",
+    ),
+    # Trace duration filters
+    trace_duration_eq: float = Query(
+        None,
+        ge=0,
+        description="Duration exactly equal to this value (seconds).",
+    ),
+    trace_duration_gt: float = Query(
+        None,
+        ge=0,
+        description="Duration greater than this value (seconds).",
+    ),
+    trace_duration_gte: float = Query(
+        None,
+        ge=0,
+        description="Duration greater than or equal to this value (seconds).",
+    ),
+    trace_duration_lt: float = Query(
+        None,
+        ge=0,
+        description="Duration less than this value (seconds).",
+    ),
+    trace_duration_lte: float = Query(
+        None,
+        ge=0,
+        description="Duration less than or equal to this value (seconds).",
+    ),
+    # Token count filters
+    total_token_count_eq: int = Query(
+        None,
+        ge=0,
+        description="Total token count exactly equal to this value.",
+    ),
+    total_token_count_gt: int = Query(
+        None,
+        ge=0,
+        description="Total token count greater than this value.",
+    ),
+    total_token_count_gte: int = Query(
+        None,
+        ge=0,
+        description="Total token count greater than or equal to this value.",
+    ),
+    total_token_count_lt: int = Query(
+        None,
+        ge=0,
+        description="Total token count less than this value.",
+    ),
+    total_token_count_lte: int = Query(
+        None,
+        ge=0,
+        description="Total token count less than or equal to this value.",
+    ),
+    prompt_token_count_eq: int = Query(
+        None,
+        ge=0,
+        description="Prompt token count exactly equal to this value.",
+    ),
+    prompt_token_count_gt: int = Query(
+        None,
+        ge=0,
+        description="Prompt token count greater than this value.",
+    ),
+    prompt_token_count_gte: int = Query(
+        None,
+        ge=0,
+        description="Prompt token count greater than or equal to this value.",
+    ),
+    prompt_token_count_lt: int = Query(
+        None,
+        ge=0,
+        description="Prompt token count less than this value.",
+    ),
+    prompt_token_count_lte: int = Query(
+        None,
+        ge=0,
+        description="Prompt token count less than or equal to this value.",
+    ),
+    completion_token_count_eq: int = Query(
+        None,
+        ge=0,
+        description="Completion token count exactly equal to this value.",
+    ),
+    completion_token_count_gt: int = Query(
+        None,
+        ge=0,
+        description="Completion token count greater than this value.",
+    ),
+    completion_token_count_gte: int = Query(
+        None,
+        ge=0,
+        description="Completion token count greater than or equal to this value.",
+    ),
+    completion_token_count_lt: int = Query(
+        None,
+        ge=0,
+        description="Completion token count less than this value.",
+    ),
+    completion_token_count_lte: int = Query(
+        None,
+        ge=0,
+        description="Completion token count less than or equal to this value.",
+    ),
+    # Span count filters
+    span_count_eq: int = Query(
+        None,
+        ge=1,
+        description="Span count exactly equal to this value.",
+    ),
+    span_count_gt: int = Query(
+        None,
+        ge=1,
+        description="Span count greater than this value.",
+    ),
+    span_count_gte: int = Query(
+        None,
+        ge=1,
+        description="Span count greater than or equal to this value.",
+    ),
+    span_count_lt: int = Query(
+        None,
+        ge=1,
+        description="Span count less than this value.",
+    ),
+    span_count_lte: int = Query(
+        None,
+        ge=1,
+        description="Span count less than or equal to this value.",
+    ),
+    include_experiment_traces: bool = Query(
+        default=True,
+        description="Include traces originating from Arthur experiments. Defaults to true.",
+    ),
+) -> ExtendedTraceQueryRequest:
+    """Create an ExtendedTraceQueryRequest from query parameters."""
+    return ExtendedTraceQueryRequest(
+        task_ids=task_ids,
+        trace_ids=trace_ids,
+        start_time=start_time,
+        end_time=end_time,
+        tool_name=tool_name,
+        span_types=span_types,
+        annotation_score=annotation_score,
+        annotation_type=annotation_type,
+        continuous_eval_run_status=continuous_eval_run_status,
+        continuous_eval_name=continuous_eval_name,
+        span_ids=span_ids,
+        session_ids=session_ids,
+        user_ids=user_ids,
+        span_name=span_name,
+        span_name_contains=span_name_contains,
+        status_code=status_code,
+        query_relevance_eq=query_relevance_eq,
+        query_relevance_gt=query_relevance_gt,
+        query_relevance_gte=query_relevance_gte,
+        query_relevance_lt=query_relevance_lt,
+        query_relevance_lte=query_relevance_lte,
+        response_relevance_eq=response_relevance_eq,
+        response_relevance_gt=response_relevance_gt,
+        response_relevance_gte=response_relevance_gte,
+        response_relevance_lt=response_relevance_lt,
+        response_relevance_lte=response_relevance_lte,
+        tool_selection=tool_selection,
+        tool_usage=tool_usage,
+        trace_duration_eq=trace_duration_eq,
+        trace_duration_gt=trace_duration_gt,
+        trace_duration_gte=trace_duration_gte,
+        trace_duration_lt=trace_duration_lt,
+        trace_duration_lte=trace_duration_lte,
+        total_token_count_eq=total_token_count_eq,
+        total_token_count_gt=total_token_count_gt,
+        total_token_count_gte=total_token_count_gte,
+        total_token_count_lt=total_token_count_lt,
+        total_token_count_lte=total_token_count_lte,
+        prompt_token_count_eq=prompt_token_count_eq,
+        prompt_token_count_gt=prompt_token_count_gt,
+        prompt_token_count_gte=prompt_token_count_gte,
+        prompt_token_count_lt=prompt_token_count_lt,
+        prompt_token_count_lte=prompt_token_count_lte,
+        completion_token_count_eq=completion_token_count_eq,
+        completion_token_count_gt=completion_token_count_gt,
+        completion_token_count_gte=completion_token_count_gte,
+        completion_token_count_lt=completion_token_count_lt,
+        completion_token_count_lte=completion_token_count_lte,
+        span_count_eq=span_count_eq,
+        span_count_gt=span_count_gt,
+        span_count_gte=span_count_gte,
+        span_count_lt=span_count_lt,
+        span_count_lte=span_count_lte,
+        include_experiment_traces=include_experiment_traces,
+    )
+
+
+@span_routes.post(
+    "/traces",
+    summary="Receive Traces",
+    description="Receiver for OpenInference trace standard.",
+    response_model=None,
+    response_model_exclude_none=True,
+    deprecated=True,
+    tags=["Traces"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_WRITE.value)
+def receive_traces(
+    body: bytes = Body(...),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> Response:
+    """Receive and process OpenInference trace data."""
+    try:
+        span_repo = _get_span_repository(db_session)
+        _, span_results = span_repo.create_traces(body)
+        return _create_response(*span_results)
+    except DecodeError as e:
+        logger.error(f"Failed to decode protobuf message: {e}")
+        raise HTTPException(status_code=400, detail="Invalid protobuf message format")
+    except Exception as e:
+        logger.error(f"Error processing traces: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db_session.close()
+
+
+@span_routes.get(
+    "/traces/query",
+    summary="Query Traces",
+    description="Query traces with comprehensive filtering. Returns traces containing spans that match the filters, not just the spans themselves.",
+    response_model=QueryTracesWithMetricsResponse,
+    response_model_exclude_none=True,
+    deprecated=True,
+    tags=["Spans"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+def query_spans(
+    pagination_parameters: Annotated[
+        PaginationParameters,
+        Depends(common_pagination_parameters),
+    ],
+    trace_query: Annotated[
+        TraceQueryRequest,
+        Depends(trace_query_parameters),
+    ],
+    sort_by: TraceSortBy = Query(
+        TraceSortBy.START_TIME,
+        description="Column to sort results by.",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> QueryTracesWithMetricsResponse:
+    """Query traces with comprehensive filtering. Returns traces containing spans that match the filters, not just the spans themselves."""
+    try:
+        span_repo = _get_span_repository(db_session)
+        span_count, traces = span_repo.query_traces_with_filters(
+            filters=trace_query,
+            pagination_parameters=pagination_parameters,
+            include_metrics=True,
+            compute_new_metrics=False,
+            sort_by=sort_by.value,
+        )
+        return QueryTracesWithMetricsResponse(count=span_count, traces=traces)
+    except ValidationError as e:
+        logger.error(f"Validation error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except ValueError as e:
+        logger.error(f"Validation error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error querying spans: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db_session.close()
+
+
+@span_routes.get(
+    "/traces/metrics/",
+    summary="Compute Missing Metrics and Query Traces",
+    description="Query traces with comprehensive filtering and compute metrics. Returns traces containing spans that match the filters with computed metrics.",
+    response_model=QueryTracesWithMetricsResponse,
+    response_model_exclude_none=True,
+    deprecated=True,
+    tags=["Spans"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+def query_spans_with_metrics(
+    pagination_parameters: Annotated[
+        PaginationParameters,
+        Depends(common_pagination_parameters),
+    ],
+    trace_query: Annotated[
+        TraceQueryRequest,
+        Depends(trace_query_parameters),
+    ],
+    sort_by: TraceSortBy = Query(
+        TraceSortBy.START_TIME,
+        description="Column to sort results by.",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> QueryTracesWithMetricsResponse:
+    """Query traces with comprehensive filtering and compute metrics. Returns traces containing spans that match the filters with computed metrics."""
+    try:
+        span_repo = _get_span_repository(db_session)
+        span_count, traces = span_repo.query_traces_with_filters(
+            filters=trace_query,
+            pagination_parameters=pagination_parameters,
+            include_metrics=True,
+            compute_new_metrics=True,
+            sort_by=sort_by.value,
+        )
+        return QueryTracesWithMetricsResponse(count=span_count, traces=traces)
+    except ValidationError as e:
+        logger.error(f"Validation error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except ValueError as e:
+        logger.error(f"Validation error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error querying spans with metrics: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db_session.close()
+
+
+@span_routes.get(
+    "/spans/query",
+    summary="Query Spans By Type",
+    description="Query spans filtered by span type. Task IDs are required. Returns spans with any existing metrics but does not compute new ones.",
+    response_model=QuerySpansResponse,
+    response_model_exclude_none=True,
+    tags=["Spans"],
+    deprecated=True,
+    responses={
+        400: {"description": "Invalid span types, parameters, or validation error"},
+        404: {"description": "No spans found"},
+    },
+)
+@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+def query_spans_by_type(
+    pagination_parameters: Annotated[
+        PaginationParameters,
+        Depends(common_pagination_parameters),
+    ],
+    task_ids: list[str] = Query(
+        ...,
+        description="Task IDs to filter on. At least one is required.",
+        min_length=1,
+    ),
+    span_types: list[str] = Query(
+        None,
+        description=f"Span types to filter on. Optional. Valid values: {', '.join(sorted([k.value for k in OpenInferenceSpanKindValues]))}",
+    ),
+    start_time: datetime = Query(
+        None,
+        description="Inclusive start date in ISO8601 string format. Use local time (not UTC).",
+    ),
+    end_time: datetime = Query(
+        None,
+        description="Exclusive end date in ISO8601 string format. Use local time (not UTC).",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> QuerySpansResponse:
+    """Query spans filtered by span type. Task IDs are required. Returns spans with any existing metrics but does not compute new ones."""
+    try:
+        # Validate span_types using our Pydantic model
+        query_request = SpanQueryRequest(
+            task_ids=task_ids,
+            span_types=span_types,
+            start_time=start_time,
+            end_time=end_time,
+            session_ids=None,
+            span_ids=None,
+            user_ids=None,
+            span_name=None,
+            span_name_contains=None,
+            status_code=None,
+        )
+
+        # Create minimal TraceQueryRequest for legacy filtering
+        trace_query_filter = TraceQueryRequest(
+            task_ids=query_request.task_ids,
+            span_types=query_request.span_types,
+            start_time=query_request.start_time,
+            end_time=query_request.end_time,
+            trace_ids=None,
+            tool_name=None,
+            span_ids=None,
+            session_ids=None,
+            user_ids=None,
+            span_name=None,
+            span_name_contains=None,
+            status_code=None,
+            annotation_score=None,
+            annotation_type=None,
+            continuous_eval_run_status=None,
+            continuous_eval_name=None,
+            query_relevance_eq=None,
+            query_relevance_gt=None,
+            query_relevance_gte=None,
+            query_relevance_lt=None,
+            query_relevance_lte=None,
+            response_relevance_eq=None,
+            response_relevance_gt=None,
+            response_relevance_gte=None,
+            response_relevance_lt=None,
+            response_relevance_lte=None,
+            tool_selection=None,
+            tool_usage=None,
+            trace_duration_eq=None,
+            trace_duration_gt=None,
+            trace_duration_gte=None,
+            trace_duration_lt=None,
+            trace_duration_lte=None,
+        )
+
+        span_repo = _get_span_repository(db_session)
+        spans, total_count = span_repo.query_spans(
+            sort=pagination_parameters.sort or PaginationSortMethod.DESCENDING,
+            page=pagination_parameters.page,
+            page_size=pagination_parameters.page_size,
+            include_metrics=True,  # Include existing metrics
+            compute_new_metrics=False,  # Don't compute new metrics
+            filters=trace_query_filter,  # Use comprehensive filtering with minimal filter
+        )
+        return QuerySpansResponse(
+            count=total_count,
+            spans=[span._to_response_model() for span in spans],
+        )
+    except ValidationError as e:
+        # Pydantic validation errors (including our field validators)
+        logger.error(f"Validation error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except ValueError as e:
+
+        logger.error(f"Value Error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error querying spans: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db_session.close()
+
+
+@span_routes.get(
+    "/span/{span_id}/metrics",
+    summary="Compute Metrics for Span",
+    description="Compute metrics for a single span. Validates that the span is an LLM span.",
+    response_model=SpanWithMetricsResponse,
+    response_model_exclude_none=True,
+    deprecated=True,
+    tags=["Spans"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+def compute_span_metrics(
+    span_id: str,
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> SpanWithMetricsResponse:
+    """Compute metrics for a single span. Validates that the span is an LLM span."""
+    try:
+        span_repo = _get_span_repository(db_session)
+        span = span_repo.query_span_by_span_id_with_metrics(span_id)
+
+        # Return the single span with metrics
+        return span._to_response_model()
+    except ValueError as e:
+        logger.error(f"Validation error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error computing span metrics: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db_session.close()

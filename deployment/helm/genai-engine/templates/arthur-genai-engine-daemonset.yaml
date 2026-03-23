@@ -7,10 +7,10 @@ metadata:
   {{- else }}
   name: arthur-genai-engine
   {{- end }}
+  {{- with .Values.arthurGenaiEngineDeployment.annotations }}
   annotations:
-    {{- with .Values.arthurGenaiEngineDeployment.annotations }}
     {{- toYaml . | nindent 4 }}
-    {{- end }}
+  {{- end }}
   labels:
     app: arthur-genai-engine
     {{- include "arthur-genai-engine.labels" . | nindent 4 }}
@@ -23,10 +23,10 @@ spec:
       app: arthur-genai-engine
   template:
     metadata:
+      {{- with .Values.arthurGenaiEngineDeployment.genaiEnginePodAnnotations }}
       annotations:
-        {{- with .Values.arthurGenaiEngineDeployment.genaiEnginePodAnnotations }}
         {{- toYaml . | nindent 8 }}
-        {{- end }}
+      {{- end }}
       labels:
         app: arthur-genai-engine
         {{- include "arthur-genai-engine.labels" . | nindent 8 }}
@@ -112,6 +112,11 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.genaiEngineSecretOpenAIGPTModelNamesEndpointsKeysName }}
                   key: keys
+            - name: GENAI_ENGINE_SECRET_STORE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.genaiEngineSecretStoreKeyName }}
+                  key: key
             - name: NVIDIA_DRIVER_CAPABILITIES
               value: "compute,utility"
             - name: NVIDIA_VISIBLE_DEVICES
@@ -120,6 +125,46 @@ spec:
               value: {{ .Values.genaiEngineWorkers | default "1" | quote }}
             - name: ALLOW_ADMIN_KEY_GENERAL_ACCESS
               value: {{ .Values.genaiEngineAllowAdminKeyGeneralAccess }}
+            {{- if .Values.modelRepositoryURL }}
+            - name: MODEL_REPOSITORY_URL
+              value: {{ .Values.modelRepositoryURL | quote }}
+            {{- end }}
+            {{- if .Values.gcpDiscoveryConfig.isEnabled }}
+            - name: GOOGLE_CLOUD_PROJECT
+              value: {{ .Values.gcpDiscoveryConfig.googleCloudProject | quote }}
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: "/var/secrets/google/credentials.json"
+            - name: GOOGLE_CLOUD_LOCATION
+              value: {{ .Values.gcpDiscoveryConfig.googleCloudLocation | quote }}
+            {{- end }}
+            {{- if .Values.genaiEngineInternalHost }}
+            - name: GENAI_ENGINE_INTERNAL_HOST
+              value: {{ .Values.genaiEngineInternalHost | quote }}
+            {{- end }}
+            {{- if .Values.genaiEngineInternalIngressHost }}
+            - name: GENAI_ENGINE_INTERNAL_INGRESS_HOST
+              value: {{ .Values.genaiEngineInternalIngressHost | quote }}
+            {{- end }}
+            {{- if .Values.genaiEngineSecretInternalApiKeyName }}
+            - name: GENAI_ENGINE_INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.genaiEngineSecretInternalApiKeyName }}
+                  key: key
+            {{- end }}
+          {{- if .Values.gcpDiscoveryConfig.isEnabled }}
+          volumeMounts:
+            - name: gcp-credentials
+              mountPath: /var/secrets/google
+              readOnly: true
+          {{- end }}
+      {{- if .Values.gcpDiscoveryConfig.isEnabled }}
+      volumes:
+        - name: gcp-credentials
+          secret:
+            secretName: {{ .Values.gcpDiscoveryConfig.googleCredentialsSecretName }}
+            defaultMode: 420
+      {{- end }}    
       {{- with .Values.arthurGenaiEngineDeployment.genaiEnginePodAffinity }}
       affinity:
         {{- toYaml . | nindent 8 }}

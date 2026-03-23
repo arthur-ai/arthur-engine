@@ -4,7 +4,7 @@ import os
 import random
 import time
 from contextlib import asynccontextmanager
-from typing import Callable
+from typing import AsyncGenerator
 
 import torch
 import uvicorn
@@ -21,9 +21,12 @@ from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.responses import Response
+from starlette.types import Lifespan
 
+from auth.SPAStaticFiles import SPAStaticFiles
 from clients.telemetry.telemetry_client import TelemetryEventTypes, send_telemetry_event
 from config.config import Config
 from config.extra_features import extra_feature_config
@@ -40,8 +43,25 @@ from routers.auth_routes import auth_routes
 from routers.chat_routes import app_chat_routes
 from routers.health_routes import health_router
 from routers.user_routes import user_management_routes
-from routers.v1.span_routes import span_routes
+from routers.v1.agent_polling_routes import agent_polling_routes
+from routers.v1.agentic_experiment_routes import agentic_experiment_routes
+from routers.v1.agentic_notebook_routes import agentic_notebook_routes
+from routers.v1.agentic_prompt_routes import agentic_prompt_routes
+from routers.v1.continuous_eval_routes import continuous_eval_routes
+from routers.v1.legacy_span_routes import span_routes
+from routers.v1.llm_eval_routes import llm_eval_routes
+from routers.v1.model_provider_routes import model_provider_routes
+from routers.v1.notebook_routes import notebook_routes
+from routers.v1.prompt_experiment_routes import prompt_experiment_routes
+from routers.v1.rag_experiment_routes import rag_experiment_routes
+from routers.v1.rag_notebook_routes import rag_notebook_routes
+from routers.v1.rag_routes import rag_routes
+from routers.v1.rag_setting_routes import rag_setting_routes
+from routers.v1.secrets_routes import secrets_routes
+from routers.v1.trace_api_routes import trace_api_routes
+from routers.v1.transform_routes import transform_routes
 from routers.v2.routers import (
+    dataset_management_routes,
     feedback_routes,
     query_routes,
     rule_management_routes,
@@ -49,35 +69,33 @@ from routers.v2.routers import (
     task_management_routes,
     validate_routes,
 )
-from utils import constants as constants
-from utils.classifiers import get_device
-from utils.model_load import (
-    get_bert_scorer,
-    get_claim_classifier_embedding_model,
-    get_prompt_injection_model,
-    get_prompt_injection_tokenizer,
-    get_relevance_reranker,
-    get_toxicity_model,
-    get_toxicity_tokenizer,
+from services.continuous_eval import (
+    initialize_continuous_eval_queue_service,
+    shutdown_continuous_eval_queue_service,
 )
+from services.currency import (
+    initialize_currency_conversion_service,
+    shutdown_currency_conversion_service,
+)
+from services.task import (
+    initialize_global_agent_polling_service,
+    shutdown_global_agent_polling_service,
+)
+from utils import constants as constants
+from utils import model_load
+from utils.classifiers import get_device
 from utils.utils import (
     get_env_var,
     get_genai_engine_version,
+    get_logger,
+    is_agentic_ui_enabled,
     is_api_only_mode_enabled,
     is_local_environment,
     new_relic_enabled,
     relevance_models_enabled,
 )
 
-logger = logging.getLogger()
-logger.setLevel(Config.get_log_level())
-stream_handler = logging.StreamHandler()
-log_formatter = logging.Formatter(
-    fmt=os.environ.get("GENAI_ENGINE_LOG_FORMAT", logging.BASIC_FORMAT),
-    datefmt="%Y-%m-%d %H:%M:%S %z",
-)
-stream_handler.setFormatter(log_formatter)
-logger.addHandler(stream_handler)
+logger = get_logger(log_level=Config.get_log_level())
 logger.info(f"GenAI Engine log level set to: {logging._levelToName[logger.level]}")
 
 tags_metadata = [
@@ -113,10 +131,38 @@ tags_metadata = [
         "name": "API Keys",
         "description": "Endpoints for API keys management",
     },
+    {
+        "name": "Secrets",
+        "description": "Endpoints for secrets management",
+    },
+    {
+        "name": "Model Providers",
+        "description": "Endpoints for model provider management",
+    },
+    {
+        "name": "RAG Settings",
+        "description": "Endpoints for RAG setting management",
+    },
+    {
+        "name": "RAG Providers",
+        "description": "Endpoints for RAG provider management",
+    },
+    {
+        "name": "Prompt Experiments",
+        "description": "Endpoints for managing prompt experiments",
+    },
+    {
+        "name": "RAG Experiments",
+        "description": "Endpoints for managing RAG experiments",
+    },
+    {
+        "name": "Notebooks",
+        "description": "Endpoints for managing experiment notebooks",
+    },
 ]
 
 
-def bootstrap_genai_engine_keycloak():
+def bootstrap_genai_engine_keycloak() -> None:
     lock_file = "/tmp/bootstrap.lock"
     with open(lock_file, "w") as f:
         # Acquire an exclusive lock (blocking)
@@ -132,8 +178,15 @@ def bootstrap_genai_engine_keycloak():
             fcntl.flock(f, fcntl.LOCK_UN)
 
 
+def cleanup_cuda_cache() -> None:
+    """Clean up PyTorch CUDA cache when the server is stopped."""
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        logger.info("Cleared PyTorch CUDA cache")
+
+
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     send_telemetry_event(TelemetryEventTypes.SERVER_START_INITIATED)
 
     device = torch.device(get_device())
@@ -152,16 +205,42 @@ async def lifespan(app: FastAPI):
         get_oauth_client()
         time.sleep(random.randint(0, 3))
 
-    get_claim_classifier_embedding_model()
-    get_prompt_injection_model()
-    get_prompt_injection_tokenizer()
-    get_toxicity_model()
-    get_toxicity_tokenizer()
+    # Download models in worker process
+    logger.info("Downloading models...")
+    try:
+        model_load.download_models(1)  # Use single process in worker
+    except Exception as e:
+        logger.error(f"Error downloading models: {e}")
+        raise e
+    logger.info("Models downloaded.")
+
+    model_load.get_claim_classifier_embedding_model()
+    model_load.get_prompt_injection_model()
+    model_load.get_prompt_injection_tokenizer()
+    model_load.get_toxicity_model()
+    model_load.get_toxicity_tokenizer()
+
+    # Initialize continuous eval queue service
+    try:
+        initialize_continuous_eval_queue_service(num_workers=4)
+    except Exception as e:
+        logger.error(f"Error initializing continuous eval queue service: {e}")
+
+    # Initialize currency conversion service (exchange rates, 6-hour refresh at 00/06/12/18 UTC)
+    try:
+        initialize_currency_conversion_service()
+    except Exception as e:
+        logger.error(f"Error initializing currency conversion service: {e}")
+    # Initialize global agent polling service
+    try:
+        initialize_global_agent_polling_service(num_workers=4)
+    except Exception as e:
+        logger.error(f"Error initializing global agent polling service: {e}")
 
     # Conditionally load relevance models
     if relevance_models_enabled():
-        get_bert_scorer()
-        get_relevance_reranker()
+        model_load.get_bert_scorer()
+        model_load.get_relevance_reranker()
     else:
         logger.info(
             "Skipping relevance models loading - ENABLE_RELEVANCE_MODELS is False",
@@ -172,6 +251,11 @@ async def lifespan(app: FastAPI):
     send_telemetry_event(TelemetryEventTypes.SERVER_START_COMPLETED)
 
     yield
+
+    cleanup_cuda_cache()
+    shutdown_currency_conversion_service()
+    shutdown_continuous_eval_queue_service()
+    shutdown_global_agent_polling_service()
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -203,7 +287,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             headers.append("connect-src 'self'")
         return headers
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: RequestResponseEndpoint,
+    ) -> Response:
         response = await call_next(request)
         # Tell browsers to trust the content type header instead of trying to sniff the MIME type
         response.headers[constants.X_CONTENT_TYPE_OPTIONS_HEADER] = "nosniff"
@@ -230,9 +318,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
-async def add_opentelemetry_custom_attributes(request: Request, call_next):
+async def add_opentelemetry_custom_attributes(
+    request: Request,
+    call_next: RequestResponseEndpoint,
+) -> Response:
     s = trace.get_current_span()
-    s.set_attribute("http.client_ip", request.client.host)
+    if request.client is not None:
+        s.set_attribute("http.client_ip", request.client.host)
     if "X-Forwarded-For" in request.headers:
         s.set_attribute("http.x_forwarded_for", request.headers["X-Forwarded-For"])
     response = await call_next(request)
@@ -243,32 +335,33 @@ async def add_opentelemetry_custom_attributes(request: Request, call_next):
     return response
 
 
-def setup_newrelic(app: FastAPI):
+def setup_newrelic(app: FastAPI) -> None:
     app.add_middleware(BaseHTTPMiddleware, dispatch=add_opentelemetry_custom_attributes)
+    service_name = get_env_var(
+        constants.NEWRELIC_APP_NAME_ENV_VAR,
+        none_on_missing=False,
+    )
+    if service_name is None:
+        service_name = "genai-engine"
 
-    OTEL_RESOURCE_ATTRIBUTES = {
-        "service.name": get_env_var(constants.NEWRELIC_APP_NAME_ENV_VAR),
-    }
+    OTEL_RESOURCE_ATTRIBUTES: dict[str, str] = {"service.name": service_name}
 
     t = TracerProvider(resource=Resource.create(OTEL_RESOURCE_ATTRIBUTES))
     trace.set_tracer_provider(t)
-
-    trace.get_tracer_provider().add_span_processor(
-        BatchSpanProcessor(OTLPSpanExporter()),
-    )
+    t.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
 
     SQLAlchemyInstrumentor().instrument(tracer_provider=t, engine=get_db_engine())
 
     FastAPIInstrumentor.instrument_app(app)
 
-    _logs.set_logger_provider(
-        LoggerProvider(resource=Resource.create(OTEL_RESOURCE_ATTRIBUTES)),
+    logger_provider = LoggerProvider(
+        resource=Resource.create(attributes=OTEL_RESOURCE_ATTRIBUTES),
     )
-    h = LoggingHandler(
-        logger_provider=_logs.get_logger_provider().add_log_record_processor(
-            BatchLogRecordProcessor(OTLPLogExporter()),
-        ),
+    _logs.set_logger_provider(logger_provider)
+    logger_provider.add_log_record_processor(
+        BatchLogRecordProcessor(OTLPLogExporter()),
     )
+    h = LoggingHandler(logger_provider=logger_provider)
 
     logger.addHandler(h)
     logging.getLogger("uvicorn.access").addHandler(h)
@@ -276,7 +369,7 @@ def setup_newrelic(app: FastAPI):
 
 def get_base_app(
     version: str = get_genai_engine_version(),
-    lifespan: Callable | None = lifespan,
+    lifespan: Lifespan[FastAPI] | None = lifespan,
 ) -> FastAPI:
     logger.info(f"Booting up Arthur GenAI Engine: {version}")
     kwargs = {}
@@ -286,7 +379,7 @@ def get_base_app(
         title="Arthur GenAI Engine",
         version=version,
         openapi_tags=tags_metadata,
-        **kwargs,
+        **kwargs,  # type: ignore
     )
     origins = [
         "http://localhost",
@@ -295,6 +388,8 @@ def get_base_app(
         "http://localhost:3030",
         "http://localhost:8080",
         "http://localhost:3023",
+        "http://localhost:3001",
+        "http://localhost:3000",
     ]
     if ingress_url := get_env_var(
         constants.GENAI_ENGINE_INGRESS_URI_ENV_VAR,
@@ -315,7 +410,7 @@ def get_base_app(
     return app
 
 
-def add_routers(app: FastAPI, routers: list[APIRouter]):
+def add_routers(app: FastAPI, routers: list[APIRouter]) -> None:
     for router in routers:
         app.include_router(router)
 
@@ -334,6 +429,23 @@ def get_app_with_routes() -> FastAPI:
             validate_routes,
             api_keys_routes,
             span_routes,
+            trace_api_routes,
+            agentic_prompt_routes,
+            dataset_management_routes,
+            model_provider_routes,
+            secrets_routes,
+            rag_routes,
+            rag_setting_routes,
+            llm_eval_routes,
+            notebook_routes,
+            rag_notebook_routes,
+            agentic_notebook_routes,
+            prompt_experiment_routes,
+            rag_experiment_routes,
+            agentic_experiment_routes,
+            transform_routes,
+            continuous_eval_routes,
+            agent_polling_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -343,7 +455,7 @@ def get_app_with_routes() -> FastAPI:
 
 def get_test_app() -> FastAPI:
     app = get_base_app()
-    app.add_middleware(SecurityHeadersMiddleware)
+    # app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(SessionMiddleware, secret_key=Config.app_secret_key())
     add_routers(
         app,
@@ -357,6 +469,23 @@ def get_test_app() -> FastAPI:
             validate_routes,
             api_keys_routes,
             span_routes,
+            trace_api_routes,
+            agentic_prompt_routes,
+            dataset_management_routes,
+            model_provider_routes,
+            secrets_routes,
+            rag_routes,
+            rag_setting_routes,
+            llm_eval_routes,
+            notebook_routes,
+            rag_notebook_routes,
+            agentic_notebook_routes,
+            prompt_experiment_routes,
+            rag_experiment_routes,
+            agentic_experiment_routes,
+            transform_routes,
+            continuous_eval_routes,
+            agent_polling_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -365,7 +494,7 @@ def get_test_app() -> FastAPI:
     if is_api_only_mode_enabled():
 
         @app.get("/", include_in_schema=False)
-        async def redirect_to_docs():
+        async def redirect_to_docs() -> RedirectResponse:
             return RedirectResponse("/docs")
 
     return app
@@ -373,7 +502,7 @@ def get_test_app() -> FastAPI:
 
 def get_app() -> FastAPI:
     app = get_base_app()
-    app.add_middleware(SecurityHeadersMiddleware)
+    # app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(SessionMiddleware, secret_key=Config.app_secret_key())
     if new_relic_enabled():
         setup_newrelic(app)
@@ -390,6 +519,23 @@ def get_app() -> FastAPI:
             validate_routes,
             api_keys_routes,
             span_routes,
+            trace_api_routes,
+            agentic_prompt_routes,
+            dataset_management_routes,
+            model_provider_routes,
+            secrets_routes,
+            rag_routes,
+            rag_setting_routes,
+            llm_eval_routes,
+            notebook_routes,
+            rag_notebook_routes,
+            agentic_notebook_routes,
+            prompt_experiment_routes,
+            rag_experiment_routes,
+            agentic_experiment_routes,
+            transform_routes,
+            continuous_eval_routes,
+            agent_polling_routes,
         ],
     )
     if extra_feature_config.CHAT_ENABLED:
@@ -397,16 +543,20 @@ def get_app() -> FastAPI:
     if not is_api_only_mode_enabled():
         add_routers(app, [auth_routes, user_management_routes])
 
-    if is_api_only_mode_enabled():
-
-        @app.get("/", include_in_schema=False)
-        async def redirect_to_docs():
-            return RedirectResponse("/docs")
+    if is_agentic_ui_enabled():
+        # Serve the React SPA
+        static_dir = "/home/nonroot/app/static"
+        if os.path.exists(static_dir):
+            app.mount(
+                "/",
+                SPAStaticFiles(directory=static_dir, html=True),
+                name="static",
+            )
 
     return app
 
 
-def start():
+def start() -> None:
     send_telemetry_event(TelemetryEventTypes.SERVER_START_INITIATED)
     app = get_app()
     uvicorn.run(app, host="0.0.0.0", port=3030)

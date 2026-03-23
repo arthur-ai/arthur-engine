@@ -279,8 +279,8 @@ class TestODBCConnectorInitialization:
         # Verify custom driver is used in connection string
         mock_create_engine.assert_called_once()
         call_args = mock_create_engine.call_args[0][0]
-        assert "ODBC Driver 18 for SQL Server" in call_args[0]
-        assert "mssql+pyodbc:///?odbc_connect=" in call_args[0]
+        assert "ODBC Driver 18 for SQL Server" in call_args
+        assert "mssql+pyodbc:///?odbc_connect=" in call_args
 
     @patch("ml_engine.connectors.odbc_connector.create_engine")
     def test_connector_initialization_driver_default(self, mock_create_engine):
@@ -325,9 +325,9 @@ class TestODBCConnectorInitialization:
         # Verify default driver is used
         mock_create_engine.assert_called_once()
         call_args = mock_create_engine.call_args[0][0]
-        assert "mssql+pyodbc:///?odbc_connect=" in call_args[0]
+        assert "mssql+pyodbc:///?odbc_connect=" in call_args
         # Should not contain driver in connection string when not specified
-        assert "DRIVER=" not in call_args[0]
+        assert "DRIVER=" not in call_args
 
     @pytest.mark.parametrize(
         "dialect_config",
@@ -354,13 +354,13 @@ class TestODBCConnectorInitialization:
             },
             {
                 "name": "Oracle Native",
-                "dialect": "Oracle Native (cx_oracle)",
+                "dialect": "Oracle Native (oracledb)",
                 "host": "oracle.example.com",
                 "port": "1521",
                 "database": "XE",
                 "username": "system",
                 "password": "secret",
-                "expected_url": "oracle+cx_oracle://system:secret@oracle.example.com:1521/XE",
+                "expected_url": "oracle+oracledb://system:secret@oracle.example.com:1521/XE",
             },
             {
                 "name": "Generic ODBC",
@@ -487,6 +487,7 @@ class TestODBCConnectorDatasetListing:
 
         mock_inspector = Mock()
         mock_inspector.get_table_names.return_value = ["table1", "table2", "table3"]
+        mock_inspector.get_view_names.return_value = ["view1", "view2"]
         mock_inspect.return_value = mock_inspector
 
         spec = ConnectorSpec.model_validate(MOCK_ODBC_CONNECTOR_SPEC)
@@ -494,7 +495,7 @@ class TestODBCConnectorDatasetListing:
 
         result = connector.list_datasets()
 
-        assert len(result.available_datasets) == 3
+        assert len(result.available_datasets) == 5
         assert result.available_datasets[0].name == "table1"
         assert (
             result.available_datasets[0].dataset_locator.fields[0].key
@@ -513,6 +514,7 @@ class TestODBCConnectorDatasetListing:
 
         mock_inspector = Mock()
         mock_inspector.get_table_names.return_value = []
+        mock_inspector.get_view_names.return_value = []
         mock_inspect.return_value = mock_inspector
 
         spec = ConnectorSpec.model_validate(MOCK_ODBC_CONNECTOR_SPEC)
@@ -569,9 +571,44 @@ class TestODBCConnectorDataReading:
 
     @patch("ml_engine.connectors.odbc_connector.create_engine")
     @patch("ml_engine.connectors.odbc_connector.pd.read_sql")
+    def test_read_static_dataset_skips_timestamp_filter(
+        self,
+        mock_read_sql,
+        mock_create_engine,
+    ):
+        """Static datasets must not apply a timestamp WHERE clause and must not raise even
+        when no pagination options are provided."""
+        from ml_engine.connectors.odbc_connector import ODBCConnector
+
+        mock_engine = Mock()
+        mock_create_engine.return_value = mock_engine
+        mock_read_sql.return_value = pd.DataFrame({"id": [1, 2]})
+
+        metadata = MetaData()
+        table = SQLATable("test_table", metadata, Column("id", Integer))
+
+        static_dataset = Dataset.model_validate({**BASE_DATASET, "is_static": True})
+
+        spec = ConnectorSpec.model_validate(MOCK_ODBC_CONNECTOR_SPEC)
+        connector = ODBCConnector(spec, logger)
+        connector.metadata = metadata
+
+        with patch("ml_engine.connectors.odbc_connector.Table", return_value=table):
+            with patch.object(connector, "_build_fetch_stmt") as mock_build_fetch_stmt:
+                result = connector.read(static_dataset, start_timestamp, end_timestamp)
+
+        assert isinstance(result, pd.DataFrame)
+        mock_read_sql.assert_called_once()
+        # Timestamp-based fetch statement must not be built for static datasets
+        mock_build_fetch_stmt.assert_not_called()
+
+    @patch("ml_engine.connectors.odbc_connector.create_engine")
+    @patch("ml_engine.connectors.odbc_connector.pd.read_sql")
     @patch("ml_engine.connectors.odbc_connector.primary_timestamp_col_name")
+    @patch("ml_engine.connectors.odbc_connector.inspect")
     def test_read_without_timestamp_column(
         self,
+        mock_inspect,
         mock_primary_timestamp,
         mock_read_sql,
         mock_create_engine,
@@ -581,6 +618,11 @@ class TestODBCConnectorDataReading:
 
         mock_engine = Mock()
         mock_create_engine.return_value = mock_engine
+
+        # Mock the inspector for MSSQL ordering logic
+        mock_inspector = Mock()
+        mock_inspector.get_pk_constraint.return_value = {"constrained_columns": ["id"]}
+        mock_inspect.return_value = mock_inspector
 
         mock_primary_timestamp.side_effect = ValueError("No timestamp column")
         mock_read_sql.return_value = pd.DataFrame({"id": [1, 2]})

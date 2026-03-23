@@ -1,15 +1,33 @@
 import os
+from typing import TypedDict
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
 from utils import constants
+
+
+class BaseKeyCloakParameters(TypedDict):
+    server_url: str
+    realm_name: str
+    verify: bool | str
+
+
+class UserCredentialsKeyCloakParameters(BaseKeyCloakParameters):
+    username: str
+    password: str
+
+
+class TokenCredentialsCloakParameters(BaseKeyCloakParameters):
+    client_id: str
+    client_secret_key: str
 
 
 class KeyCloakSettings(BaseSettings):
     ENABLED: bool = True
     SERVER_URL: str | None = Field(alias="KEYCLOAK_HOST_URI", default=None)
-    ADMIN_REALM: str | None = "master"
-    GENAI_ENGINE_REALM: str | None = "genai_engine"
+    ADMIN_REALM: str = "master"
+    GENAI_ENGINE_REALM: str = "genai_engine"
     REALM: str | None = None
     ADMIN_USERNAME: str | None = Field(
         alias="AUTH_ADMIN_CONSOLE_USERNAME",
@@ -43,32 +61,30 @@ class KeyCloakSettings(BaseSettings):
 
     @property
     def genai_engine_realm_admin_client_id(self) -> str:
-        return self.GENAI_ENGINE_REALM_CLIENT_ID + "-admin"
+        return str(self.GENAI_ENGINE_REALM_CLIENT_ID) + "-admin"
 
-    def get_master_admin_parameters(self) -> dict[str, str | bool]:
-        return {
-            "server_url": self.SERVER_URL,
-            "realm_name": self.ADMIN_REALM,
-            "username": self.ADMIN_USERNAME,
-            "password": self.ADMIN_PASSWORD,
-            "verify": (
-                self.PRIVATE_CERT_PATH if self.USE_PRIVATE_CERT else self.VERIFY_SSL
-            ),
-        }
+    def get_master_admin_parameters(self) -> UserCredentialsKeyCloakParameters:
+        verify = self.PRIVATE_CERT_PATH if self.USE_PRIVATE_CERT else self.VERIFY_SSL
+        return UserCredentialsKeyCloakParameters(
+            server_url=self.SERVER_URL or "",
+            realm_name=self.ADMIN_REALM or "",
+            username=self.ADMIN_USERNAME or "",
+            password=self.ADMIN_PASSWORD or "",
+            verify=verify,
+        )
 
-    def get_genai_engine_admin_parameters(self) -> dict[str, str | bool]:
-        return {
-            "server_url": self.SERVER_URL,
-            "realm_name": self.GENAI_ENGINE_REALM,
-            "client_id": self.genai_engine_realm_admin_client_id,
-            "client_secret_key": self.GENAI_ENGINE_REALM_CLIENT_SECRET,
-            "verify": (
-                self.PRIVATE_CERT_PATH if self.USE_PRIVATE_CERT else self.VERIFY_SSL
-            ),
-        }
+    def get_genai_engine_admin_parameters(self) -> TokenCredentialsCloakParameters:
+        verify = self.PRIVATE_CERT_PATH if self.USE_PRIVATE_CERT else self.VERIFY_SSL
+        return TokenCredentialsCloakParameters(
+            server_url=self.SERVER_URL or "",
+            realm_name=self.GENAI_ENGINE_REALM or "",
+            client_id=self.genai_engine_realm_admin_client_id or "",
+            client_secret_key=self.GENAI_ENGINE_REALM_CLIENT_SECRET or "",
+            verify=verify,
+        )
 
     @model_validator(mode="after")
-    def validate_parameters(self):
+    def validate_parameters(self) -> "KeyCloakSettings":
         if self.ENABLED:
             if not all(
                 [

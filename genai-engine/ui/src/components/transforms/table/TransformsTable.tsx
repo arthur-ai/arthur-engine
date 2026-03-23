@@ -1,0 +1,103 @@
+import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Box, Tooltip, TableSortLabel, Paper } from "@mui/material";
+
+import { TransformsTableProps } from "../types";
+
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { formatDateInTimezone } from "@/utils/formatters";
+
+export const TransformsTable: React.FC<TransformsTableProps> = ({ transforms, sortColumn, sortDirection, onSort, onView, onEdit, onDelete }) => {
+  const { timezone, use24Hour } = useDisplaySettings();
+
+  const handleSort = (column: string) => {
+    onSort(column);
+  };
+
+  return (
+    <TableContainer component={Paper} elevation={1} sx={{ overflow: "auto", height: "100%" }}>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell>
+              <TableSortLabel
+                active={sortColumn === "name"}
+                direction={sortColumn === "name" ? sortDirection : "asc"}
+                onClick={() => handleSort("name")}
+              >
+                Name
+              </TableSortLabel>
+            </TableCell>
+            <TableCell>Description</TableCell>
+            <TableCell>
+              <TableSortLabel
+                active={sortColumn === "created_at"}
+                direction={sortColumn === "created_at" ? sortDirection : "asc"}
+                onClick={() => handleSort("created_at")}
+              >
+                Created At
+              </TableSortLabel>
+            </TableCell>
+            <TableCell>
+              <TableSortLabel
+                active={sortColumn === "updated_at"}
+                direction={sortColumn === "updated_at" ? sortDirection : "asc"}
+                onClick={() => handleSort("updated_at")}
+              >
+                Updated At
+              </TableSortLabel>
+            </TableCell>
+            <TableCell align="center">Actions</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {transforms.map((transform) => (
+            <TableRow
+              key={transform.id}
+              hover
+              onClick={() => onView(transform)}
+              sx={{
+                cursor: "pointer",
+                "& .action-buttons": {
+                  visibility: "visible",
+                },
+              }}
+            >
+              <TableCell>{transform.name}</TableCell>
+              <TableCell>
+                <Box
+                  sx={{
+                    maxWidth: 300,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {transform.description || <em style={{ color: "inherit", opacity: 0.5 }}>No description</em>}
+                </Box>
+              </TableCell>
+              <TableCell>{formatDateInTimezone(transform.created_at, timezone, { hour12: !use24Hour })}</TableCell>
+              <TableCell>{formatDateInTimezone(transform.updated_at, timezone, { hour12: !use24Hour })}</TableCell>
+              <TableCell align="center">
+                <Box className="action-buttons" sx={{ display: "flex", gap: 0.5, justifyContent: "center" }} onClick={(e) => e.stopPropagation()}>
+                  <Tooltip title="Edit">
+                    <IconButton size="small" onClick={() => onEdit(transform)}>
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Delete">
+                    <IconButton size="small" onClick={() => onDelete(transform.id)} color="error">
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+};
+
+export default TransformsTable;

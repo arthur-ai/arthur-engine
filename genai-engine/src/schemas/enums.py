@@ -5,12 +5,12 @@ from utils import constants
 
 class BaseEnum(str, Enum):
     @classmethod
-    def values(self):
+    def values(self) -> list[str]:
         values: list[str] = [e for e in self]
         return values
 
-    def __str__(self):
-        return self.value
+    def __str__(self) -> str:
+        return str(self.value)
 
 
 class RuleDataType(str, Enum):
@@ -29,15 +29,6 @@ class RuleScoringMethod(str, Enum):
     BINARY = "binary"
 
 
-class ToolClassEnum(int, Enum):
-    INCORRECT = 0
-    CORRECT = 1
-    NA = 2
-
-    def __str__(self):
-        return str(self.value)
-
-
 class DocumentType(str, Enum):
     PDF = "pdf"
     CSV = "csv"
@@ -52,6 +43,7 @@ class DocumentStorageEnvironment(str, Enum):
 # These are keys in config key : value pairs
 class ApplicationConfigurations(str, Enum):
     CHAT_TASK_ID = "chat_task_id"
+    DEFAULT_CURRENCY = "default_currency"
     DOCUMENT_STORAGE_ENV = "document_storage_environment"
     DOCUMENT_STORAGE_BUCKET_NAME = "document_storage_bucket_name"
     DOCUMENT_STORAGE_ROLE_ARN = "document_storage_assumable_role_arn"
@@ -150,10 +142,51 @@ class PermissionLevelsEnum(Enum):
     USAGE_READ = frozenset([constants.ORG_ADMIN, constants.ORG_AUDITOR])
     USER_READ = frozenset([constants.ORG_ADMIN, constants.ORG_AUDITOR])
     USER_WRITE = frozenset([constants.ORG_ADMIN])
+    DATASET_WRITE = frozenset(
+        [constants.ORG_ADMIN, constants.TASK_ADMIN],
+    )
+    DATASET_READ = frozenset(
+        [constants.ORG_ADMIN, constants.ORG_AUDITOR, constants.TASK_ADMIN],
+    )
+    ROTATE_SECRETS = frozenset(
+        [constants.ORG_ADMIN],
+    )
+    MODEL_PROVIDER_WRITE = frozenset(
+        [constants.ORG_ADMIN, constants.TASK_ADMIN],
+    )
+    MODEL_PROVIDER_READ = frozenset(
+        [constants.ORG_ADMIN, constants.ORG_AUDITOR, constants.TASK_ADMIN],
+    )
 
-class ComparisonOperatorEnum(str, Enum):
-    EQUAL = "eq"
-    GREATER_THAN = "gt"
-    GREATER_THAN_OR_EQUAL = "gte"
-    LESS_THAN = "lt"
-    LESS_THAN_OR_EQUAL = "lte"
+
+class SecretType(str, Enum):
+    MODEL_PROVIDER = "model_provider"
+    RAG_PROVIDER = "rag_provider"
+
+
+class RagProviderAuthenticationMethodEnum(str, Enum):
+    API_KEY_AUTHENTICATION = "api_key"
+
+
+class RagAPIKeyAuthenticationProviderEnum(str, Enum):
+    WEAVIATE = "weaviate"
+
+
+class ConnectionCheckOutcome(str, Enum):
+    PASSED = "passed"
+    FAILED = "failed"
+
+
+class RagProviderEnum(str, Enum):
+    WEAVIATE = "weaviate"
+
+
+class RagSearchKind(str, Enum):
+    VECTOR_SIMILARITY_TEXT_SEARCH = "vector_similarity_text_search"
+    KEYWORD_SEARCH = "keyword_search"
+    HYBRID_SEARCH = "hybrid_search"
+
+
+class AgenticExperimentGeneratorType(str, Enum):
+    UUID = "uuid"
+    SESSION_ID = "session_id"

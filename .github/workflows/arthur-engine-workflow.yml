@@ -9,6 +9,13 @@ on:
     branches:
       - main
       - dev
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: "Commit SHA for testing"
+        required: false
+        default: ""
+        type: string
 
 jobs:
   run-genai-engine-linter:
@@ -16,7 +23,9 @@ jobs:
       (
         github.event_name == 'pull_request' ||
         (github.event_name == 'push' && github.ref_type == 'branch')
-      )
+      ) &&
+      github.ref != 'refs/heads/main' &&
+      github.ref != 'refs/heads/dev'
     runs-on: ubuntu-latest
     container: python:3.12.9-bullseye
     env:
@@ -32,19 +41,41 @@ jobs:
       - uses: ./.github/workflows/composite-actions/setup-poetry
         with:
           working-directory: genai-engine
-      - name: Run pre-commit
+          with-groups: dev,linters
+      - name: Run isort
+        id: isort
+        continue-on-error: true
         run: |
-          poetry -C genai-engine run pre-commit install
-          CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r ${{ github.sha }})
-          echo "$CHANGED_FILES" | xargs poetry -C genai-engine run pre-commit run --color always --verbose --files
-
+          poetry -C genai-engine run isort src --profile black --check
+      - name: Run autoflake
+        id: autoflake
+        continue-on-error: true
+        run: |
+          poetry -C genai-engine run autoflake --remove-all-unused-imports --in-place --check --recursive --quiet src
+      - name: Run black
+        id: black
+        continue-on-error: true
+        run: |
+          poetry -C genai-engine run black --check src
+      - name: Run mypy
+        id: mypy
+        continue-on-error: true
+        run: |
+          poetry -C genai-engine run mypy src
+      - name: Check linter results
+        if: steps.isort.outcome == 'failure' || steps.autoflake.outcome == 'failure' || steps.black.outcome == 'failure' || steps.mypy.outcome == 'failure'
+        run: |
+          echo "One or more linters failed"
+          exit 1
 
   run-ml-engine-linter:
     if: |
       (
         github.event_name == 'pull_request' ||
         (github.event_name == 'push' && github.ref_type == 'branch')
-      )
+      ) &&
+      github.ref != 'refs/heads/main' &&
+      github.ref != 'refs/heads/dev'
     runs-on: ubuntu-latest
     container: python:3.13-bullseye
     env:
@@ -60,20 +91,38 @@ jobs:
       - uses: ./.github/workflows/composite-actions/setup-poetry
         with:
           working-directory: ml-engine
+          with-groups: linters
       - name: Generate GenAI Client
         run: |
-          pip install openapi-generator-cli[jdk4py]
-          openapi-generator-cli generate -g python \
-            -i ./genai-engine/staging.openapi.json \
-            -o ./ml-engine/src/genai_client \
-            --skip-validate-spec --package-name genai_client
-      - name: Run linters
+          pip install 'openapi-generator-cli[jdk4py]==7.12'
+          openapi-generator-cli generate -c ml-engine/scripts/openapitools.json
+          sed -i 's/license = "NoLicense"/license = "Unlicense"/g' ./ml-engine/src/genai_client/pyproject.toml
+          pip install ./ml-engine/src/genai_client
+      - name: Run isort
+        id: isort
+        continue-on-error: true
         run: |
-          poetry -C ml-engine install --with linters
-          poetry -C ml-engine run autoflake --remove-all-unused-imports --in-place --recursive src/ml_engine
-          poetry -C ml-engine run isort src/ml_engine --profile black
-          poetry -C ml-engine run black src/ml_engine
-
+          poetry -C ml-engine run isort src/ml_engine --profile black --check
+      - name: Run autoflake
+        id: autoflake
+        continue-on-error: true
+        run: |
+          poetry -C ml-engine run autoflake --remove-all-unused-imports --in-place --check --recursive --quiet src/ml_engine
+      - name: Run black
+        id: black
+        continue-on-error: true
+        run: |
+          poetry -C ml-engine run black --check src/ml_engine
+      - name: Run mypy
+        id: mypy
+        continue-on-error: true
+        run: |
+          poetry -C ml-engine run mypy src/ml_engine
+      - name: Check linter results
+        if: steps.isort.outcome == 'failure' || steps.autoflake.outcome == 'failure' || steps.black.outcome == 'failure' || steps.mypy.outcome == 'failure'
+        run: |
+          echo "One or more linters failed"
+          exit 1
 
   run-genai-engine-changelog-cop:
     if: |
@@ -98,6 +147,8 @@ jobs:
           curl -L -o "oasdiff.deb" https://github.com/Tufin/oasdiff/releases/download/v1.11.7/oasdiff_1.11.7_linux_amd64.deb
           dpkg -i oasdiff.deb
       - name: Generate changelog
+        env:
+          GENAI_ENGINE_SECRET_STORE_KEY: changeme_secret_store_key
         run: |
           export PYTHONPATH=src
           poetry -C genai-engine run generate_changelog
@@ -107,16 +158,91 @@ jobs:
         with:
           name: changelog-artifacts
           path: |
-            new.openapi.json
-            staging.openapi.json
-            src/api_changelog.md
+            genai-engine/new.openapi.json
+            genai-engine/staging.openapi.json
+            genai-engine/src/api_changelog.md
 
-  run-genai-engine-unit-tests:
+  check-genai-engine-changes:
     if: |
       (
         github.event_name == 'pull_request' ||
         (github.event_name == 'push' && github.ref_type == 'branch')
-      )
+      ) &&
+      github.ref != 'refs/heads/main' &&
+      github.ref != 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.changes.outputs.backend }}
+      ui: ${{ steps.changes.outputs.ui }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            ui:
+              - 'genai-engine/ui/**'
+            backend:
+              - 'genai-engine/**'
+              - '!genai-engine/ui/**'
+
+  run-genai-engine-ui-lint:
+    needs: check-genai-engine-changes
+    if: |
+      (
+        github.event_name == 'pull_request' ||
+        (github.event_name == 'push' && github.ref_type == 'branch')
+      ) &&
+      github.ref != 'refs/heads/main' &&
+      github.ref != 'refs/heads/dev' &&
+      needs.check-genai-engine-changes.outputs.ui == 'true'
+    runs-on: ubuntu-latest
+    env:
+      GITLAB_UNIFY_FRONTEND_TOKEN: ${{ secrets.GITLAB_UNIFY_FRONTEND_TOKEN }}
+    defaults:
+      run:
+        working-directory: genai-engine/ui
+    steps:
+      - uses: actions/checkout@v5
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Install dependencies
+        run: yarn install --immutable
+      - name: Run type-check
+        id: type-check
+        continue-on-error: true
+        run: yarn type-check
+      - name: Run lint
+        id: lint
+        continue-on-error: true
+        run: yarn lint
+      - name: Run format check
+        id: format-check
+        continue-on-error: true
+        run: yarn format:check
+      - name: Check results
+        if: steps.type-check.outcome == 'failure' || steps.lint.outcome == 'failure' || steps.format-check.outcome == 'failure'
+        run: |
+          echo "One or more checks failed:"
+          echo "  type-check: ${{ steps.type-check.outcome }}"
+          echo "  lint: ${{ steps.lint.outcome }}"
+          echo "  format-check: ${{ steps.format-check.outcome }}"
+          exit 1
+
+  run-genai-engine-unit-tests:
+    needs: check-genai-engine-changes
+    if: |
+      (
+        github.event_name == 'pull_request' ||
+        (github.event_name == 'push' && github.ref_type == 'branch')
+      ) &&
+      github.ref != 'refs/heads/main' &&
+      github.ref != 'refs/heads/dev' &&
+      needs.check-genai-engine-changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     container: python:3.12.9-bullseye
     steps:
@@ -129,6 +255,8 @@ jobs:
           working-directory: genai-engine
       - name: Run unit tests
         shell: bash
+        env:
+          GENAI_ENGINE_SECRET_STORE_KEY: changeme_secret_store_key
         run: |
           set -o pipefail
           poetry -C genai-engine run pytest --cov --cov=genai-engine/src \
@@ -151,12 +279,56 @@ jobs:
             genai-engine/report.xml
             pytest-coverage.txt
 
-  run-ml-engine-unit-tests:
+  run-genai-engine-alembic-migration-check:
     if: |
       (
         github.event_name == 'pull_request' ||
         (github.event_name == 'push' && github.ref_type == 'branch')
       )
+    runs-on: ubuntu-latest
+    container: python:3.12.9-bullseye
+    services:
+      postgres:
+        image: postgres:15
+        ports:
+          - "5432:5432"
+        env:
+          POSTGRES_PASSWORD: changeme_pg_password
+          POSTGRES_DB: arthur_genai_engine
+        volumes:
+          - postgres_data:/var/lib/postgresql/data
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: ${{ env.GIT_DEPTH }}
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: ./.github/workflows/composite-actions/setup-poetry
+        with:
+          working-directory: genai-engine
+      - name: Run alembic migration check
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: changeme_pg_password
+          POSTGRES_URL: postgres
+          POSTGRES_PORT: 5432
+          POSTGRES_DB: arthur_genai_engine
+          POSTGRES_USE_SSL: false
+          GENAI_ENGINE_SECRET_STORE_KEY: changeme_secret_store_key
+          PYTHONPATH: "src:$PYTHONPATH"
+        run: |
+          cd genai-engine
+          poetry run alembic upgrade head
+
+  run-ml-engine-unit-tests:
+    if: |
+      (
+        github.event_name == 'pull_request' ||
+        (github.event_name == 'push' && github.ref_type == 'branch')
+      ) &&
+      github.ref != 'refs/heads/main' &&
+      github.ref != 'refs/heads/dev'
     runs-on: ubuntu-latest
     container: python:3.13-bullseye
     env:
@@ -174,7 +346,7 @@ jobs:
           working-directory: ml-engine
       - name: Generate GenAI Client
         run: |
-          pip install openapi-generator-cli[jdk4py]
+          pip install 'openapi-generator-cli[jdk4py]==7.12'
           openapi-generator-cli generate -g python \
             -i ./genai-engine/staging.openapi.json \
             -o ./ml-engine/src/genai_client \
@@ -183,18 +355,20 @@ jobs:
         run: |
           poetry -C ml-engine run pytest
 
-
   build-genai-engine-docker-images:
-    needs: [run-genai-engine-linter, run-genai-engine-changelog-cop, run-genai-engine-unit-tests]
     environment: shared-protected-branch-secrets
     if: |
-      contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
+      contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
     strategy:
       matrix:
         torch_device: [cpu, gpu]
     steps:
+      - uses: mathio/gha-cleanup@v1
+        with:
+          remove-browsers: true
+          verbose: true
       - uses: actions/checkout@v5
       - uses: ./.github/workflows/composite-actions/setup-git
         with:
@@ -202,10 +376,13 @@ jobs:
       - uses: ./.github/workflows/composite-actions/set-version
         with:
           version-prefix: "genai-engine-"
+      - name: Set up QEMU
+        if: matrix.torch_device == 'cpu'
+        uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.11.1
       - name: Log in to Docker Hub
-        uses: docker/login-action@v3.5.0
+        uses: docker/login-action@v3.6.0
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
@@ -217,22 +394,27 @@ jobs:
           build-args: |
             TORCH_DEVICE=${{ matrix.torch_device }}
             ENABLE_TELEMETRY=${{ github.ref == 'refs/heads/main' && 'true' || 'false' }}
+            METICULOUS_RECORDING_TOKEN=${{ secrets.METICULOUS_RECORDING_TOKEN }}
+            METICULOUS_API_TOKEN=${{ secrets.METICULOUS_API_TOKEN }}
+            GITLAB_UNIFY_FRONTEND_TOKEN=${{ secrets.GITLAB_UNIFY_FRONTEND_TOKEN }}
           tags: |
             arthurplatform/genai-engine-${{ matrix.torch_device }}:${{ env.VERSION }}
             ${{ github.ref == 'refs/heads/main' && format('arthurplatform/genai-engine-{0}:latest', matrix.torch_device) || '' }}
             ${{ github.ref == 'refs/heads/dev' && format('arthurplatform/genai-engine-{0}:latest-dev', matrix.torch_device) || '' }}
           push: true
-          platforms: linux/amd64
-
+          platforms: ${{ matrix.torch_device == 'cpu' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
 
   build-ml-engine-docker-images:
-    needs: [run-ml-engine-linter, run-ml-engine-unit-tests]
     environment: shared-protected-branch-secrets
     if: |
-      contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
+      contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
     steps:
+      - uses: mathio/gha-cleanup@v1
+        with:
+          remove-browsers: true
+          verbose: true
       - uses: actions/checkout@v5
       - uses: ./.github/workflows/composite-actions/setup-git
         with:
@@ -241,13 +423,10 @@ jobs:
       - name: Generate GenAI Client
         run: |
           pip install 'openapi-generator-cli[jdk4py]==7.12'
-          openapi-generator-cli generate -g python \
-            -i ./genai-engine/staging.openapi.json \
-            -o ./ml-engine/src/genai_client \
-            --skip-validate-spec --package-name genai_client
+          openapi-generator-cli generate -c ml-engine/scripts/openapitools.json
           sed -i 's/license = "NoLicense"/license = "Unlicense"/g' ./ml-engine/src/genai_client/pyproject.toml
       - name: Log in to Docker Hub
-        uses: docker/login-action@v3.5.0
+        uses: docker/login-action@v3.6.0
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
@@ -281,12 +460,252 @@ jobs:
             docker push docker.arthur.ai/arthur/scope/ml-engine:latest-dev
           fi
 
+  check-models-updates:
+    environment: shared-protected-branch-secrets
+    if: |
+      contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    runs-on: ubuntu-latest
+    outputs:
+      has_updates: ${{ steps.check-updates.outputs.has_updates }}
+      current_hash: ${{ steps.check-updates.outputs.current_hash }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install huggingface_hub
+      - name: Check for model updates on HuggingFace
+        id: check-updates
+        run: |
+          cd deployment/ecs/model-upload
+          python check_model_updates.py --output github >> $GITHUB_OUTPUT
+
+  build-genai-engine-models-docker-image:
+    needs: [check-models-updates]
+    environment: shared-protected-branch-secrets
+    if: |
+      needs.check-models-updates.outputs.has_updates == 'true' &&
+      contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Arthur GitHub Automator App Token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_ID }}
+          private-key: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_PRIVATE_KEY }}
+      - uses: mathio/gha-cleanup@v1
+        with:
+          remove-browsers: true
+          verbose: true
+      - uses: actions/checkout@v5
+        with:
+          token: ${{ steps.generate-token.outputs.token }}
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: ./.github/workflows/composite-actions/set-version
+        with:
+          version-prefix: "genai-engine-"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install huggingface_hub
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.11.1
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3.6.0
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: Build and push docker image
+        uses: docker/build-push-action@v6.18.0
+        with:
+          context: "{{defaultContext}}:deployment/ecs/model-upload"
+          file: Dockerfile
+          tags: |
+            arthurplatform/genai-engine-models:${{ env.VERSION }}
+            ${{ github.ref == 'refs/heads/main' && 'arthurplatform/genai-engine-models:latest' || '' }}
+            ${{ github.ref == 'refs/heads/dev' && 'arthurplatform/genai-engine-models:latest-dev' || '' }}
+          push: true
+          platforms: linux/amd64
+      - name: Update models manifest
+        run: |
+          cd deployment/ecs/model-upload
+          python check_model_updates.py --update
+      - name: Commit updated manifest
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add deployment/ecs/model-upload/models-manifest.json
+          git diff --staged --quiet || git commit --no-verify -m "Update models manifest [skip ci]"
+          # Set GH_TOKEN to use the automator app token
+          export GH_TOKEN=${{ steps.generate-token.outputs.token }}
+          git push origin ${{ github.ref_name }}
+
+  tag-genai-engine-models-docker-image:
+    needs: [check-models-updates]
+    environment: shared-protected-branch-secrets
+    if: |
+      needs.check-models-updates.outputs.has_updates == 'false' &&
+      contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: ./.github/workflows/composite-actions/set-version
+        with:
+          version-prefix: "genai-engine-"
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3.6.0
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: Retag previous models image with new version
+        run: |
+          SOURCE_TAG=${{ github.ref == 'refs/heads/main' && 'latest' || 'latest-dev' }}
+          echo "No model updates detected - retagging ${SOURCE_TAG} as ${{ env.VERSION }}"
+          docker pull arthurplatform/genai-engine-models:${SOURCE_TAG}
+          docker tag arthurplatform/genai-engine-models:${SOURCE_TAG} arthurplatform/genai-engine-models:${{ env.VERSION }}
+          docker push arthurplatform/genai-engine-models:${{ env.VERSION }}
+          # Update latest tag for main branch
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            docker tag arthurplatform/genai-engine-models:${SOURCE_TAG} arthurplatform/genai-engine-models:latest
+            docker push arthurplatform/genai-engine-models:latest
+          fi
+
+  build-genai-engine-models-k8s-docker-image:
+    needs: [check-models-updates]
+    environment: shared-protected-branch-secrets
+    if: |
+      needs.check-models-updates.outputs.has_updates == 'true' &&
+      contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Arthur GitHub Automator App Token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_ID }}
+          private-key: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_PRIVATE_KEY }}
+      - uses: mathio/gha-cleanup@v1
+        with:
+          remove-browsers: true
+          verbose: true
+      - uses: actions/checkout@v5
+        with:
+          token: ${{ steps.generate-token.outputs.token }}
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: ./.github/workflows/composite-actions/set-version
+        with:
+          version-prefix: "genai-engine-"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install huggingface_hub
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.11.1
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3.6.0
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: Build and push docker image
+        uses: docker/build-push-action@v6.18.0
+        with:
+          context: "{{defaultContext}}:deployment/k8s/model-upload-oc"
+          file: Dockerfile
+          tags: |
+            arthurplatform/genai-engine-models-k8s:${{ env.VERSION }}
+            ${{ github.ref == 'refs/heads/main' && 'arthurplatform/genai-engine-models-k8s:latest' || '' }}
+            ${{ github.ref == 'refs/heads/dev' && 'arthurplatform/genai-engine-models-k8s:latest-dev' || '' }}
+          push: true
+          platforms: linux/amd64
+      - name: Update models manifest
+        run: |
+          cd deployment/ecs/model-upload
+          python check_model_updates.py --update
+      - name: Commit updated manifest
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          # Pull latest changes in case ECS job already committed
+          export GH_TOKEN=${{ steps.generate-token.outputs.token }}
+          git pull --rebase origin ${{ github.ref_name }} || true
+          git add deployment/ecs/model-upload/models-manifest.json
+          # Commit only if there are changes (handles case where ECS job already committed)
+          if ! git diff --staged --quiet; then
+            git commit --no-verify -m "Update models manifest [skip ci]"
+            git push origin ${{ github.ref_name }}
+          fi
+
+  tag-genai-engine-models-k8s-docker-image:
+    needs: [check-models-updates]
+    environment: shared-protected-branch-secrets
+    if: |
+      needs.check-models-updates.outputs.has_updates == 'false' &&
+      contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: ./.github/workflows/composite-actions/set-version
+        with:
+          version-prefix: "genai-engine-"
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3.6.0
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: Retag previous models k8s image with new version
+        run: |
+          SOURCE_TAG=${{ github.ref == 'refs/heads/main' && 'latest' || 'latest-dev' }}
+          echo "No model updates detected - retagging ${SOURCE_TAG} as ${{ env.VERSION }}"
+          docker pull arthurplatform/genai-engine-models-k8s:${SOURCE_TAG}
+          docker tag arthurplatform/genai-engine-models-k8s:${SOURCE_TAG} arthurplatform/genai-engine-models-k8s:${{ env.VERSION }}
+          docker push arthurplatform/genai-engine-models-k8s:${{ env.VERSION }}
+          # Update latest tag for main branch
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            docker tag arthurplatform/genai-engine-models-k8s:${SOURCE_TAG} arthurplatform/genai-engine-models-k8s:latest
+            docker push arthurplatform/genai-engine-models-k8s:latest
+          fi
+
+  build-gcp-model-upload-docker-image:
+    uses: ./.github/workflows/build-gcp-model-upload.yml
+    needs: [check-models-updates]
+    if: |
+      contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    with:
+      push: true
+      image: arthurplatform/arthur-model-upload
+    secrets: inherit
 
   push-all-cfts:
     needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
     environment: shared-protected-branch-secrets
     if: |
-      contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
+      contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
     permissions:
@@ -320,7 +739,7 @@ jobs:
     needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
     environment: shared-protected-branch-secrets
     if: |
-      contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
+      contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
     permissions:
@@ -349,7 +768,7 @@ jobs:
   push-tag:
     needs: [push-all-cfts, push-all-helm-charts-to-github]
     if: |
-      contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
+      contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
     permissions:
@@ -364,3 +783,20 @@ jobs:
         run: |
           git tag -a "${{ env.VERSION }}" -m "Create tag for Arthur Engine ${{ env.VERSION }}"
           git push origin "${{ env.VERSION }}"
+
+  deploy-genai-engine-cloudformation:
+    needs: [push-tag]
+    if: |
+      contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    runs-on: ubuntu-latest
+    container: node:20-alpine
+    environment: shared-protected-branch-secrets
+    steps:
+      - name: Trigger GitLab Pipeline
+        uses: fjogeleit/http-request-action@v1.16.5
+        with:
+          url: "https://gitlab.com/api/v4/projects/${{ secrets.GITLAB_PROJECT_ID }}/trigger/pipeline"
+          method: POST
+          contentType: application/x-www-form-urlencoded
+          data: "token=${{ secrets.DEPLOY_TRIGGER_TOKEN }}&ref=main&variables[TRIGGER_JOB]=deploy_arthur_engine&variables[ARTHUR_ENGINE_COMMIT_SHA]=${{ inputs.commit_sha || github.sha }}"

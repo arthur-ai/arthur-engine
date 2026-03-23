@@ -94,6 +94,7 @@ Resources:
             - CredentialsParameter: !Ref ContainerRepositoryCredentialsSecretARN
             - !Ref AWS::NoValue
           Essential: true
+          User: '65532:65532'
           Environment:
             - Name: 'ARTHUR_API_HOST'
               Value: !Ref MLEngineArthurApiHost

@@ -1,0 +1,574 @@
+import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
+import ClearOutlinedIcon from "@mui/icons-material/ClearOutlined";
+import CloseIcon from "@mui/icons-material/Close";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import SaveAltIcon from "@mui/icons-material/SaveAlt";
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Chip from "@mui/material/Chip";
+import CircularProgress from "@mui/material/CircularProgress";
+import IconButton from "@mui/material/IconButton";
+import Modal from "@mui/material/Modal";
+import Paper from "@mui/material/Paper";
+import Snackbar from "@mui/material/Snackbar";
+import { alpha, useTheme } from "@mui/material/styles";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
+import Typography from "@mui/material/Typography";
+import React, { useState, useEffect } from "react";
+
+import { usePromptContext } from "../PromptsPlaygroundContext";
+
+import { UpdateDatasetRowModal } from "@/components/common/UpdateDatasetRowModal";
+import { EvalInputsDialog } from "@/components/prompt-experiments/PromptResultDetailModal";
+import { useExperimentTestCases } from "@/hooks/usePromptExperiments";
+import useSnackbar from "@/hooks/useSnackbar";
+import type { EvalExecution, EvalRefOutput, PromptResult, TestCase } from "@/lib/api-client/api-client";
+import { getStatusChipSx } from "@/utils/statusChipStyles";
+
+interface ResultsTableProps {
+  promptId: string;
+}
+
+interface Message {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
+const MessageDisplay: React.FC<{ message: Message }> = ({ message }) => {
+  const theme = useTheme();
+
+  const getRoleStyles = (role: string) => {
+    const styleMap: Record<string, { bgColor: string; borderColor: string }> = {
+      system: {
+        bgColor: alpha(theme.palette.secondary.main, 0.12),
+        borderColor: theme.palette.secondary.main,
+      },
+      user: {
+        bgColor: alpha(theme.palette.info.main, 0.12),
+        borderColor: theme.palette.info.main,
+      },
+      assistant: {
+        bgColor: alpha(theme.palette.success.main, 0.12),
+        borderColor: theme.palette.success.main,
+      },
+    };
+    return (
+      styleMap[role] || {
+        bgColor: theme.palette.action.hover,
+        borderColor: theme.palette.divider,
+      }
+    );
+  };
+
+  const styles = getRoleStyles(message.role);
+
+  return (
+    <Box
+      sx={{
+        p: 1.5,
+        border: 1,
+        borderColor: styles.borderColor,
+        borderRadius: 1,
+        mb: 1,
+        backgroundColor: styles.bgColor,
+      }}
+    >
+      <Typography variant="caption" sx={{ fontWeight: 500, textTransform: "uppercase", color: "text.secondary", mb: 0.5, display: "block" }}>
+        {message.role}
+      </Typography>
+      <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", color: "text.primary" }}>
+        {message.content}
+      </Typography>
+    </Box>
+  );
+};
+
+interface TestCaseDetailModalProps {
+  testCase: TestCase | null;
+  testCaseIndex: number;
+  open: boolean;
+  onClose: () => void;
+  onViewEvalInputs?: (evalExecution: EvalExecution) => void;
+  promptKey?: string;
+  datasetId?: string;
+  datasetVersion?: number;
+}
+
+const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
+  testCase,
+  testCaseIndex,
+  open,
+  onClose,
+  onViewEvalInputs,
+  promptKey,
+  datasetId,
+  datasetVersion,
+}) => {
+  const [updateModalOpen, setUpdateModalOpen] = useState(false);
+  const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
+
+  if (!testCase) return null;
+
+  const promptResult = promptKey ? testCase.prompt_results?.find((pr: PromptResult) => pr.prompt_key === promptKey) : testCase.prompt_results?.[0];
+
+  const canUpdateDataset = !!(datasetId && datasetVersion !== undefined && testCase.dataset_row_id && promptResult?.output?.content);
+
+  const handleUpdateSuccess = () => {
+    showSnackbar("Dataset updated successfully. New version created.", "success");
+  };
+
+  const getEvalChipSx = (isPass: boolean) => {
+    const color = isPass ? "success.main" : "error.main";
+    return {
+      backgroundColor: "transparent",
+      color: color,
+      borderColor: color,
+      borderWidth: 1,
+      borderStyle: "solid",
+    };
+  };
+
+  const getPendingChipSx = () => ({
+    backgroundColor: "transparent",
+    color: "text.secondary",
+    borderColor: "text.secondary",
+    borderWidth: 1,
+    borderStyle: "solid",
+  });
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      aria-labelledby="test-case-modal"
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <Box
+        sx={{
+          width: "90%",
+          maxWidth: "1200px",
+          maxHeight: "90vh",
+          bgcolor: "background.paper",
+          borderRadius: 1,
+          boxShadow: 24,
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {/* Modal Header */}
+        <Box className="flex items-center justify-between p-4 border-b" sx={{ backgroundColor: "background.default" }}>
+          <Typography variant="h6" className="font-semibold text-gray-900 dark:text-gray-100">
+            Test Case {testCaseIndex + 1}
+          </Typography>
+          <IconButton onClick={onClose} size="small">
+            <CloseIcon />
+          </IconButton>
+        </Box>
+
+        {/* Modal Content */}
+        <Box sx={{ overflow: "auto", p: 4 }}>
+          <Box>
+            <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", mb: 3 }}>
+              <CardContent>
+                {/* Messages: Rendered Prompt and Output */}
+                <Box className="grid grid-cols-2 gap-4 mb-4">
+                  {/* Rendered Prompt Messages */}
+                  <Box>
+                    <Typography variant="subtitle2" className="font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Input Messages:
+                    </Typography>
+                    <Box className="max-h-96 overflow-auto">
+                      {promptResult?.rendered_prompt ? (
+                        (() => {
+                          try {
+                            const messages = JSON.parse(promptResult.rendered_prompt) as Message[];
+                            return messages.map((message, msgIndex) => <MessageDisplay key={msgIndex} message={message} />);
+                          } catch {
+                            return (
+                              <Box
+                                sx={{
+                                  p: 1.5,
+                                  backgroundColor: "action.hover",
+                                  border: 1,
+                                  borderColor: "divider",
+                                  borderRadius: 1,
+                                }}
+                              >
+                                <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", color: "text.primary" }}>
+                                  {promptResult.rendered_prompt}
+                                </Typography>
+                              </Box>
+                            );
+                          }
+                        })()
+                      ) : (
+                        <Box
+                          sx={{
+                            p: 1.5,
+                            backgroundColor: "action.hover",
+                            border: 1,
+                            borderColor: "divider",
+                            borderRadius: 1,
+                          }}
+                        >
+                          <Typography variant="body2" sx={{ color: "text.secondary", fontStyle: "italic" }}>
+                            No input messages available
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  </Box>
+
+                  {/* Output */}
+                  <Box>
+                    <Box className="flex items-center justify-between mb-2">
+                      <Typography variant="subtitle2" className="font-medium text-gray-700 dark:text-gray-300">
+                        Output Message:
+                      </Typography>
+                      {canUpdateDataset && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<SaveAltIcon />}
+                          onClick={() => setUpdateModalOpen(true)}
+                          title="Update dataset row with this output"
+                        >
+                          Update Dataset
+                        </Button>
+                      )}
+                    </Box>
+                    <Box className="max-h-96 overflow-auto">
+                      {promptResult?.output?.content ? (
+                        <MessageDisplay message={{ role: "assistant", content: promptResult.output.content }} />
+                      ) : (
+                        <Box
+                          sx={{
+                            p: 1.5,
+                            backgroundColor: "action.hover",
+                            border: 1,
+                            borderColor: "divider",
+                            borderRadius: 1,
+                          }}
+                        >
+                          <Typography variant="body2" sx={{ color: "text.secondary", fontStyle: "italic" }}>
+                            No output available
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  </Box>
+                </Box>
+
+                {/* Evals */}
+                {promptResult?.evals && promptResult.evals.length > 0 && (
+                  <Box>
+                    <Typography variant="subtitle2" className="font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Evaluations:
+                    </Typography>
+                    <Box className="space-y-2">
+                      {promptResult.evals.map((evalData: EvalExecution, evalIndex: number) => {
+                        const evalResult = evalData.eval_results;
+                        return (
+                          <Box key={evalIndex} className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+                            <Box className="flex items-center justify-between mb-2">
+                              <Box className="flex items-center gap-2">
+                                <Typography variant="body2" className="font-medium text-gray-900 dark:text-gray-100">
+                                  {evalData.eval_name} v{evalData.eval_version}
+                                </Typography>
+                                {evalResult?.score !== undefined ? (
+                                  <>
+                                    <Chip label={evalResult.score === 1 ? "Pass" : "Fail"} size="small" sx={getEvalChipSx(evalResult.score === 1)} />
+                                  </>
+                                ) : (
+                                  <Chip label="Pending" size="small" sx={getPendingChipSx()} />
+                                )}
+                              </Box>
+                              {onViewEvalInputs && (
+                                <Button size="small" variant="outlined" startIcon={<InfoOutlinedIcon />} onClick={() => onViewEvalInputs(evalData)}>
+                                  View Inputs
+                                </Button>
+                              )}
+                            </Box>
+                            {evalResult?.explanation && (
+                              <Typography variant="body2" className="text-gray-700 dark:text-gray-300 mt-1">
+                                {evalResult.explanation}
+                              </Typography>
+                            )}
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  </Box>
+                )}
+              </CardContent>
+            </Card>
+          </Box>
+        </Box>
+
+        {canUpdateDataset && (
+          <UpdateDatasetRowModal
+            open={updateModalOpen}
+            onClose={() => setUpdateModalOpen(false)}
+            datasetId={datasetId!}
+            datasetVersion={datasetVersion!}
+            rowId={testCase.dataset_row_id}
+            outputValue={promptResult!.output!.content}
+            onSuccess={handleUpdateSuccess}
+          />
+        )}
+
+        <Snackbar {...snackbarProps}>
+          <Alert {...alertProps} />
+        </Snackbar>
+      </Box>
+    </Modal>
+  );
+};
+
+const ResultsTable: React.FC<ResultsTableProps> = ({ promptId }) => {
+  const { experimentConfig, runningExperimentId, lastCompletedExperimentId, state } = usePromptContext();
+  const [selectedTestCase, setSelectedTestCase] = useState<TestCase | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedTestCaseIndex, setSelectedTestCaseIndex] = useState<number>(0);
+  const [evalInputsDialogOpen, setEvalInputsDialogOpen] = useState(false);
+  const [selectedEvalExecution, setSelectedEvalExecution] = useState<EvalExecution | null>(null);
+
+  const prompt = state.prompts.find((p) => p.id === promptId);
+
+  const promptKey = prompt
+    ? prompt.name && prompt.version !== null && prompt.version !== undefined && !prompt.isDirty
+      ? `saved:${prompt.name}:${prompt.version}`
+      : `unsaved:${prompt.name || prompt.id}`
+    : undefined;
+
+  const experimentIdToShow = runningExperimentId || lastCompletedExperimentId;
+
+  const { testCases, isLoading, refetch } = useExperimentTestCases(experimentIdToShow || undefined, 0, 100);
+
+  useEffect(() => {
+    if (runningExperimentId || lastCompletedExperimentId) {
+      refetch();
+    }
+  }, [runningExperimentId, lastCompletedExperimentId, refetch]);
+
+  useEffect(() => {
+    if (!runningExperimentId) return;
+
+    const pollInterval = setInterval(() => {
+      refetch();
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [runningExperimentId, refetch]);
+
+  const evals = experimentConfig?.eval_list || [];
+
+  const handleRowClick = (testCase: TestCase, index: number) => {
+    setSelectedTestCase(testCase);
+    setSelectedTestCaseIndex(index);
+    setModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setSelectedTestCase(null);
+  };
+
+  const handleViewEvalInputs = (evalExecution: EvalExecution) => {
+    setSelectedEvalExecution(evalExecution);
+    setEvalInputsDialogOpen(true);
+  };
+
+  const handleCloseEvalInputsDialog = () => {
+    setEvalInputsDialogOpen(false);
+    setSelectedEvalExecution(null);
+  };
+
+  return (
+    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", p: 1 }}>
+      <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+        Results
+      </Typography>
+      {isLoading ? (
+        <Box
+          sx={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "background.default",
+            borderRadius: 1,
+            border: "1px solid",
+            borderColor: "divider",
+          }}
+        >
+          <CircularProgress size={40} />
+        </Box>
+      ) : testCases.length === 0 ? (
+        <Box
+          sx={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "background.default",
+            borderRadius: 1,
+            border: "1px solid",
+            borderColor: "divider",
+          }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            {runningExperimentId
+              ? "Experiment is running. Results will appear here..."
+              : experimentIdToShow
+                ? "No test cases found for this experiment."
+                : "Click 'Run' or 'Run All Prompts' to execute the experiment and see results."}
+          </Typography>
+        </Box>
+      ) : (
+        <TableContainer
+          component={Paper}
+          elevation={1}
+          sx={{
+            flex: 1,
+            overflow: "auto",
+          }}
+        >
+          <Table stickyHeader size="small" sx={{ tableLayout: "fixed", width: "100%" }}>
+            <TableHead>
+              <TableRow>
+                <TableCell
+                  sx={{
+                    fontWeight: 600,
+                    width: `${100 / (2 + evals.length)}%`,
+                    borderBottom: "2px solid",
+                    borderColor: "divider",
+                  }}
+                >
+                  Dataset Row
+                </TableCell>
+                <TableCell
+                  sx={{
+                    fontWeight: 600,
+                    width: `${100 / (2 + evals.length)}%`,
+                    borderBottom: "2px solid",
+                    borderColor: "divider",
+                  }}
+                >
+                  Status
+                </TableCell>
+                {evals.map((evalRef: EvalRefOutput) => (
+                  <TableCell
+                    key={`${evalRef.name}-${evalRef.version}`}
+                    align="center"
+                    sx={{
+                      fontWeight: 600,
+                      width: `${100 / (2 + evals.length)}%`,
+                      padding: "6px 8px",
+                      borderBottom: "2px solid",
+                      borderColor: "divider",
+                    }}
+                  >
+                    {evalRef.name} (v{evalRef.version})
+                  </TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {testCases.map((testCase, index) => (
+                <TableRow
+                  key={testCase.dataset_row_id || index}
+                  hover
+                  onClick={() => handleRowClick(testCase, index)}
+                  sx={{
+                    cursor: "pointer",
+                    backgroundColor: "background.paper",
+                    "&:hover": {
+                      backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.100"),
+                    },
+                  }}
+                >
+                  <TableCell sx={{ borderBottom: "1px solid", borderColor: "divider" }}>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      {index + 1}
+                    </Typography>
+                  </TableCell>
+                  <TableCell sx={{ borderBottom: "1px solid", borderColor: "divider" }}>
+                    <Chip label={testCase.status} size="small" sx={getStatusChipSx(testCase.status)} />
+                  </TableCell>
+                  {evals.map((evalRef: EvalRefOutput) => {
+                    const promptResult = testCase.prompt_results?.find((pr: PromptResult) => pr.prompt_key === promptKey);
+                    const evalResult = promptResult?.evals?.find(
+                      (e: EvalExecution) => e.eval_name === evalRef.name && String(e.eval_version) === String(evalRef.version)
+                    );
+                    const score = evalResult?.eval_results?.score;
+
+                    return (
+                      <TableCell
+                        key={`${evalRef.name}-${evalRef.version}`}
+                        align="center"
+                        sx={{ padding: "6px 8px", borderBottom: "1px solid", borderColor: "divider" }}
+                      >
+                        {score === 1 ? (
+                          <CheckCircleOutlinedIcon
+                            sx={{
+                              color: "success.main",
+                              fontSize: "1.25rem",
+                            }}
+                          />
+                        ) : score === 0 ? (
+                          <ClearOutlinedIcon
+                            sx={{
+                              color: "error.main",
+                              fontSize: "1.25rem",
+                            }}
+                          />
+                        ) : score === null || score === undefined ? (
+                          <Typography variant="caption" color="text.secondary">
+                            -
+                          </Typography>
+                        ) : (
+                          <Typography variant="caption" color="text.secondary">
+                            ?
+                          </Typography>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+
+      <TestCaseDetailModal
+        onViewEvalInputs={handleViewEvalInputs}
+        testCase={selectedTestCase}
+        testCaseIndex={selectedTestCaseIndex}
+        open={modalOpen}
+        onClose={handleCloseModal}
+        promptKey={promptKey}
+        datasetId={experimentConfig?.dataset_ref?.id}
+        datasetVersion={experimentConfig?.dataset_ref?.version}
+      />
+
+      <EvalInputsDialog open={evalInputsDialogOpen} onClose={handleCloseEvalInputsDialog} evalExecution={selectedEvalExecution} />
+    </Box>
+  );
+};
+
+export default ResultsTable;

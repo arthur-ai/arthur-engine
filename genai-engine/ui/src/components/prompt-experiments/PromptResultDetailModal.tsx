@@ -1,0 +1,349 @@
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import CloseIcon from "@mui/icons-material/Close";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import SaveAltIcon from "@mui/icons-material/SaveAlt";
+import { Alert, Box, IconButton, Snackbar, Typography, Chip, Modal, Button, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import React, { useState } from "react";
+
+import { MessageDisplay, VariableTile } from "./PromptResultComponents";
+
+import { UpdateDatasetRowModal } from "@/components/common/UpdateDatasetRowModal";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import useSnackbar from "@/hooks/useSnackbar";
+import type { InputVariable, EvalExecution, PromptOutput } from "@/lib/api-client/api-client";
+import { formatCurrency } from "@/utils/formatters";
+
+interface Message {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
+interface PromptResultDetailModalProps {
+  open: boolean;
+  onClose: () => void;
+  promptName?: string;
+  promptVersion?: string | number;
+  inputVariables: InputVariable[];
+  renderedPrompt: string;
+  output: PromptOutput | null | undefined;
+  evals: EvalExecution[];
+  currentIndex: number;
+  totalCount: number;
+  onPrevious?: () => void;
+  onNext?: () => void;
+  onViewEvalInputs?: (evalExecution: EvalExecution) => void;
+  // Dataset update props (optional - only show button when all are provided)
+  datasetId?: string;
+  datasetVersion?: number;
+  datasetRowId?: string;
+}
+
+export const PromptResultDetailModal: React.FC<PromptResultDetailModalProps> = ({
+  open,
+  onClose,
+  promptName,
+  promptVersion,
+  inputVariables,
+  renderedPrompt,
+  output,
+  evals,
+  currentIndex,
+  totalCount,
+  onPrevious,
+  onNext,
+  onViewEvalInputs,
+  datasetId,
+  datasetVersion,
+  datasetRowId,
+}) => {
+  const { defaultCurrency } = useDisplaySettings();
+  const [updateModalOpen, setUpdateModalOpen] = useState(false);
+  const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
+
+  const canUpdateDataset = !!(datasetId && datasetVersion !== undefined && datasetRowId && output?.content);
+
+  const handleUpdateSuccess = () => {
+    showSnackbar("Dataset updated successfully. New version created.", "success");
+  };
+
+  const getEvalChipSx = (isPass: boolean) => {
+    const color = isPass ? "success.main" : "error.main";
+    return {
+      backgroundColor: "transparent",
+      color: color,
+      borderColor: color,
+      borderWidth: 1,
+      borderStyle: "solid",
+    };
+  };
+
+  const getPendingChipSx = () => ({
+    backgroundColor: "transparent",
+    color: "text.secondary",
+    borderColor: "text.secondary",
+    borderWidth: 1,
+    borderStyle: "solid",
+  });
+
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!open) return;
+
+      if (e.key === "ArrowLeft" && onPrevious) {
+        e.preventDefault();
+        onPrevious();
+      } else if (e.key === "ArrowRight" && onNext) {
+        e.preventDefault();
+        onNext();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, onPrevious, onNext, onClose]);
+
+  return (
+    <Modal open={open} onClose={onClose} aria-labelledby="prompt-result-detail-modal">
+      <Box className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-6xl max-h-[90vh] bg-white dark:bg-gray-900 rounded-lg shadow-xl overflow-auto">
+        {/* Modal Header */}
+        <Box className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center z-10">
+          <Box className="flex items-center gap-3">
+            {onPrevious && (
+              <IconButton onClick={onPrevious} size="small" disabled={currentIndex <= 0} className="hover:bg-gray-100 dark:hover:bg-gray-800">
+                <ArrowBackIcon />
+              </IconButton>
+            )}
+            <Typography variant="h6" className="font-semibold text-gray-900 dark:text-gray-100">
+              Result {currentIndex + 1} of {totalCount} - {promptName} (v{promptVersion})
+            </Typography>
+            {onNext && (
+              <IconButton
+                onClick={onNext}
+                size="small"
+                disabled={currentIndex >= totalCount - 1}
+                className="hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                <ArrowForwardIcon />
+              </IconButton>
+            )}
+          </Box>
+          <IconButton onClick={onClose} size="small">
+            <CloseIcon />
+          </IconButton>
+        </Box>
+
+        {/* Modal Content */}
+        <Box className="p-6">
+          {/* Input Variables Section */}
+          <Box className="mb-6">
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, pb: 1, borderBottom: 2, borderColor: "divider", color: "text.primary" }}>
+              Input Variables
+            </Typography>
+            <Box className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {inputVariables.map((variable) => (
+                <VariableTile key={variable.variable_name} variableName={variable.variable_name} value={variable.value} />
+              ))}
+            </Box>
+          </Box>
+
+          {/* Messages: Rendered Prompt and Output */}
+          <Box className="mb-6">
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, pb: 1, borderBottom: 2, borderColor: "divider", color: "text.primary" }}>
+              Messages
+            </Typography>
+            <Box className="grid grid-cols-2 gap-4">
+              {/* Rendered Prompt Messages */}
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 500, color: "text.secondary", mb: 1 }}>
+                  Input Messages:
+                </Typography>
+                <Box className="max-h-96 overflow-auto">
+                  {(() => {
+                    try {
+                      const messages = JSON.parse(renderedPrompt) as Message[];
+                      return messages.map((message, msgIndex) => <MessageDisplay key={msgIndex} message={message} />);
+                    } catch {
+                      return (
+                        <Box
+                          sx={{
+                            p: 1.5,
+                            backgroundColor: "action.hover",
+                            border: 1,
+                            borderColor: "divider",
+                            borderRadius: 1,
+                          }}
+                        >
+                          <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", color: "text.primary" }}>
+                            {renderedPrompt}
+                          </Typography>
+                        </Box>
+                      );
+                    }
+                  })()}
+                </Box>
+              </Box>
+
+              {/* Output */}
+              <Box>
+                <Box className="flex items-center justify-between mb-2">
+                  <Typography variant="subtitle2" sx={{ fontWeight: 500, color: "text.secondary" }}>
+                    Output Message:
+                  </Typography>
+                  {canUpdateDataset && (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<SaveAltIcon />}
+                      onClick={() => setUpdateModalOpen(true)}
+                      title="Update dataset row with this output"
+                    >
+                      Update Dataset
+                    </Button>
+                  )}
+                </Box>
+                <Box className="max-h-96 overflow-auto">
+                  {output ? (
+                    <>
+                      {output.content && <MessageDisplay message={{ role: "assistant", content: output.content }} />}
+                      {output.tool_calls && output.tool_calls.length > 0 && (
+                        <Box className="mt-2 p-2 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded">
+                          <Typography variant="caption" className="font-medium text-purple-700 dark:text-purple-400">
+                            Tool Calls: {output.tool_calls.length}
+                          </Typography>
+                        </Box>
+                      )}
+                    </>
+                  ) : (
+                    <Box
+                      sx={{
+                        p: 1.5,
+                        backgroundColor: "action.hover",
+                        border: 1,
+                        borderColor: "divider",
+                        borderRadius: 1,
+                      }}
+                    >
+                      <Typography variant="body2" sx={{ color: "text.secondary", fontStyle: "italic" }}>
+                        No output available
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+
+          {/* Evals */}
+          {evals.length > 0 && (
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, pb: 1, borderBottom: 2, borderColor: "divider", color: "text.primary" }}>
+                Evaluations
+              </Typography>
+              <Box className="space-y-2">
+                {evals.map((evalItem, evalIndex) => (
+                  <Box key={evalIndex} className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+                    <Box className="flex items-center justify-between mb-2">
+                      <Box className="flex items-center gap-2">
+                        <Typography variant="body2" className="font-medium text-gray-900 dark:text-gray-100">
+                          {evalItem.eval_name} v{evalItem.eval_version}
+                        </Typography>
+                        {evalItem.eval_results ? (
+                          <>
+                            <Chip
+                              label={evalItem.eval_results.score === 1 ? "Pass" : "Fail"}
+                              size="small"
+                              sx={getEvalChipSx(evalItem.eval_results.score === 1)}
+                            />
+                            <Chip
+                              label={`Cost: ${formatCurrency(parseFloat(String(evalItem.eval_results.cost)), defaultCurrency)}`}
+                              size="small"
+                              variant="outlined"
+                            />
+                          </>
+                        ) : (
+                          <Chip label="Pending" size="small" sx={getPendingChipSx()} />
+                        )}
+                      </Box>
+                      {onViewEvalInputs && (
+                        <Button size="small" variant="outlined" startIcon={<InfoOutlinedIcon />} onClick={() => onViewEvalInputs(evalItem)}>
+                          View Inputs
+                        </Button>
+                      )}
+                    </Box>
+                    {evalItem.eval_results?.explanation && (
+                      <Typography variant="body2" className="text-gray-700 dark:text-gray-300 mt-1">
+                        {evalItem.eval_results.explanation}
+                      </Typography>
+                    )}
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          )}
+        </Box>
+
+        {canUpdateDataset && (
+          <UpdateDatasetRowModal
+            open={updateModalOpen}
+            onClose={() => setUpdateModalOpen(false)}
+            datasetId={datasetId!}
+            datasetVersion={datasetVersion!}
+            rowId={datasetRowId!}
+            outputValue={output!.content}
+            onSuccess={handleUpdateSuccess}
+          />
+        )}
+
+        <Snackbar {...snackbarProps}>
+          <Alert {...alertProps} />
+        </Snackbar>
+      </Box>
+    </Modal>
+  );
+};
+
+// Separate component for eval inputs dialog - must be rendered as a sibling to Modal, not nested
+interface EvalInputsDialogProps {
+  open: boolean;
+  onClose: () => void;
+  evalExecution: EvalExecution | null;
+}
+
+export const EvalInputsDialog: React.FC<EvalInputsDialogProps> = ({ open, onClose, evalExecution }) => {
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle>
+        <Box className="flex justify-between items-center">
+          <Typography variant="h6">
+            Evaluation Inputs: {evalExecution?.eval_name} v{evalExecution?.eval_version}
+          </Typography>
+          <IconButton size="small" onClick={onClose} sx={{ color: "text.secondary" }}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+      </DialogTitle>
+      <DialogContent dividers>
+        {evalExecution && evalExecution.eval_input_variables.length > 0 ? (
+          <Box className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {evalExecution.eval_input_variables.map((variable) => (
+              <VariableTile key={variable.variable_name} variableName={variable.variable_name} value={variable.value} />
+            ))}
+          </Box>
+        ) : (
+          <Typography variant="body2" className="text-gray-600 dark:text-gray-400 italic">
+            No input variables for this evaluation.
+          </Typography>
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} variant="contained">
+          Close
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};

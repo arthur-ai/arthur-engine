@@ -3,36 +3,28 @@ import logging
 from cachetools import TTLCache
 from sqlalchemy.orm import Session
 
-from db_models.db_models import DatabaseMetric
+from db_models import DatabaseMetric
 from schemas.internal_schemas import Metric
-from arthur_common.models.request_schemas import UpdateMetricRequest
 
 logger = logging.getLogger(__name__)
 
 # Simple TTL cache for metrics - 5 minute TTL, 500 item max
-METRICS_CACHE = TTLCache(maxsize=500, ttl=300)
+METRICS_CACHE: TTLCache[str, Metric] = TTLCache(maxsize=500, ttl=300)
 
 
 class MetricRepository:
     def __init__(self, db_session: Session):
         self.db_session = db_session
 
-    def create_metric(self, metric: Metric):
+    def create_metric(self, metric: Metric) -> Metric:
         database_metric = metric._to_database_model()
         self.db_session.add(database_metric)
         self.db_session.commit()
         # Clear cache entry if it exists
         METRICS_CACHE.pop(metric.id, None)
-
-    def get_metric(self, metric_id: str) -> Metric:
-        database_metric = (
-            self.db_session.query(DatabaseMetric)
-            .filter(DatabaseMetric.id == metric_id)
-            .first()
-        )
         return Metric._from_database_model(database_metric)
 
-    def update_metric(self, metric_id: str, metric: UpdateMetricRequest):
+    def get_metric_by_id(self, metric_id: str) -> DatabaseMetric:
         database_metric = (
             self.db_session.query(DatabaseMetric)
             .filter(DatabaseMetric.id == metric_id)
@@ -40,16 +32,13 @@ class MetricRepository:
         )
         if not database_metric:
             raise ValueError(f"Metric with id {metric_id} not found")
+        return database_metric
 
-        database_metric.name = metric.name
-        database_metric.metadata = metric.metadata
+    def get_metric(self, metric_id: str) -> Metric:
+        metric_obj_db = self.get_metric_by_id(metric_id)
+        return Metric._from_database_model(metric_obj_db)
 
-        self.db_session.commit()
-        # Clear cache entry after update
-        METRICS_CACHE.pop(metric_id, None)
-        return Metric._from_database_model(database_metric)
-
-    def archive_metric(self, metric_id: str):
+    def archive_metric(self, metric_id: str, commit: bool = True) -> None:
         database_metric = (
             self.db_session.query(DatabaseMetric)
             .filter(DatabaseMetric.id == metric_id)
@@ -59,8 +48,21 @@ class MetricRepository:
             raise ValueError(f"Metric with id {metric_id} not found")
 
         database_metric.archived = True
-        self.db_session.commit()
-        # Clear cache entry after archive
+        if commit:
+            self.db_session.commit()
+        METRICS_CACHE.pop(metric_id, None)
+
+    def unarchive_metric(self, metric_id: str, commit: bool = True) -> None:
+        database_metric = (
+            self.db_session.query(DatabaseMetric)
+            .filter(DatabaseMetric.id == metric_id)
+            .first()
+        )
+        if not database_metric:
+            raise ValueError(f"Metric with id {metric_id} not found")
+        database_metric.archived = False
+        if commit:
+            self.db_session.commit()
         METRICS_CACHE.pop(metric_id, None)
 
     def get_metrics_by_metric_id(self, metric_ids: list[str]) -> list[Metric]:

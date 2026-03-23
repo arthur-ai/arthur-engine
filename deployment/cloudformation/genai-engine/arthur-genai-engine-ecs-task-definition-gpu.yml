@@ -104,6 +104,10 @@ Parameters:
     Type: String
     Description: 'GenAI Engine secret app secret ARN'
     NoEcho: true
+  GenaiEngineSecretStoreKeyARN:
+    Type: String
+    Description: 'GenAI Engine secret store key ARN'
+    NoEcho: true
   GenaiEngineAPIOnlyModeEnabled:
     Type: String
     Description: 'Enable GenAI Engine API-only mode without the UI components'
@@ -184,6 +188,10 @@ Parameters:
       - 'enabled'
       - 'disabled'
     Default: 'enabled'
+  GenaiEngineModelRepositoryURL:
+    Type: String
+    Description: '(Optional) URL for internal model repository (S3 bucket). When set, GenAI Engine will download models from this location instead of the internet.'
+    Default: ''
 
 Conditions:
   EnableAuthService: !Equals [ !Ref GenaiEngineAPIOnlyModeEnabled, 'disabled' ]
@@ -191,6 +199,7 @@ Conditions:
   IsContainerRepositoryCredentialRequired: !Equals [ !Ref ContainerRepositoryCredentialRequired, 'true' ]
   ImportAuthServiceCertificate: !Not [ !Equals [ !Ref AuthLoadBalancerCertificateURL, '' ] ]
   ImportGenaiEngineSecretOpenAIEmbeddingModelNamesEndpointsKeysARN: !Not [ !Equals [ !Ref GenaiEngineSecretOpenAIEmbeddingModelNamesEndpointsKeysARN, '' ] ]
+  UseInternalModelRepository: !Not [ !Equals [ !Ref GenaiEngineModelRepositoryURL, '' ] ]
 
 Resources:
   GenaiEngineECSLogGroup:
@@ -314,6 +323,11 @@ Resources:
               - Name: 'KEYCLOAK_USE_PRIVATE_CERT'
                 Value: 'true'
               - !Ref AWS::NoValue
+            - !If
+              - UseInternalModelRepository
+              - Name: 'MODEL_REPOSITORY_URL'
+                Value: !Ref GenaiEngineModelRepositoryURL
+              - !Ref AWS::NoValue
           Secrets:
             - Name: 'GENAI_ENGINE_ADMIN_KEY'
               ValueFrom: !Ref GenaiEngineSecretAPIKeyARN
@@ -330,6 +344,8 @@ Resources:
               ValueFrom: !Sub "${GenaiEngineSecretPostgresARN}:password::"
             - Name: 'APP_SECRET_KEY'
               ValueFrom: !Ref GenaiEngineAppSecretKeyARN
+            - Name: 'GENAI_ENGINE_SECRET_STORE_KEY'
+              ValueFrom: !Ref GenaiEngineSecretStoreKeyARN
             - !If
               - EnableAuthService
               - Name: 'AUTH_ADMIN_CONSOLE_PASSWORD'
@@ -353,7 +369,7 @@ Resources:
             Interval: 30
             Timeout: 5
             Retries: 3
-            StartPeriod: 60
+            StartPeriod: 300
 Outputs:
   GenaiEngineECSGPUTaskDefinitionOutput:
     Description: 'The task definition for Arthur GenAI Engine with GPUs'

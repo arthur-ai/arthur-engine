@@ -20,7 +20,8 @@ RUN pip3 install poetry==1.8.5
 WORKDIR /app
 
 ENV PYTHONPATH="$PYTHONPATH:/app/src"
-RUN poetry install --without dev,performance --no-ansi
+ENV PYTHONUNBUFFERED=1
+RUN poetry config virtualenvs.create false && poetry install --without dev,performance --no-ansi --no-root
 
 # install lsof for healthchecks
 RUN apt-get update && apt-get install -y lsof && apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -34,6 +35,32 @@ RUN poetry run pip install --no-cache-dir --upgrade --force-reinstall -r /tmp/re
 
 # CPU Install: no-op for now
 FROM preinstall AS cpu-install
+
+# UI Build Stage: Build the React SPA
+FROM node:20-alpine AS ui-build
+
+# Accept Meticulous tokens as build arguments
+ARG METICULOUS_RECORDING_TOKEN
+ARG METICULOUS_API_TOKEN
+
+# Accept GitLab Unify Frontend token as build argument
+ARG GITLAB_UNIFY_FRONTEND_TOKEN
+
+WORKDIR /app/ui
+
+# Copy UI source code
+COPY ui/ ./
+
+# Install UI dependencies (token only in this RUN, not persisted in image)
+RUN export GITLAB_UNIFY_FRONTEND_TOKEN="$GITLAB_UNIFY_FRONTEND_TOKEN" && corepack enable && yarn install --immutable
+
+# Build the UI as static files
+ENV METICULOUS_RECORDING_TOKEN=${METICULOUS_RECORDING_TOKEN}
+ENV METICULOUS_API_TOKEN=${METICULOUS_API_TOKEN}
+RUN yarn build
+
+# Copy the built static files
+RUN cp -r dist /app/ui-dist
 
 # Install Stage: Install GenAI Engine on either CPU Install or GPU Install depending on the TORCH_DEVICE variable
 FROM ${TORCH_DEVICE}-install AS install
@@ -58,6 +85,12 @@ RUN apt-get update && apt-get install -y curl && \
 COPY alembic /app/alembic
 COPY alembic.ini /app/
 
+# Copy built UI from ui-build stage
+COPY --from=ui-build /app/ui-dist /app/static
+
+# Create models directory for model downloads
+RUN mkdir -p /home/nonroot/models
+
 
 #####################################################################################
 #                                                                                   #
@@ -66,7 +99,7 @@ COPY alembic.ini /app/
 #####################################################################################
 
 # Final Stage(s): Create genai-engine image
-FROM gcr.io/distroless/python3-debian12:latest AS genai_engine_distroless_base
+FROM gcr.io/distroless/python3-debian12:nonroot AS genai_engine_distroless_base
 
 COPY --from=install /bin/sh /bin/sh
 COPY --from=install /bin/bash /bin/bash
@@ -81,16 +114,23 @@ COPY --from=install /usr/lib /usr/lib
 COPY --from=install /usr/local/lib/ /usr/local/lib/
 COPY --from=install /usr/local/bin/ /usr/local/bin/
 COPY --from=install /etc/ld.so.cache /etc/ld.so.cache
-COPY --from=install /root/.cache/pypoetry/virtualenvs/ /root/.cache/pypoetry/virtualenvs/
-COPY --from=install /app/ /app/
+COPY --from=install --chown=nonroot:nonroot /app/ /home/nonroot/app/
+COPY --from=install --chown=nonroot:nonroot /root/.cache/pypoetry/ /home/nonroot/.cache/pypoetry/
+COPY --from=install --chown=nonroot:nonroot /root/.config/pypoetry/ /home/nonroot/.config/pypoetry/
+# Copy models directory (created in install stage, owned by nonroot)
+COPY --from=install --chown=nonroot:nonroot /home/nonroot/models /home/nonroot/models
 
 ENV PATH="/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
-ENV PYTHONPATH="$PYTHONPATH:/app/src"
+ENV PYTHONPATH="$PYTHONPATH:/home/nonroot/app/src"
+ENV POETRY_VIRTUALENVS_PATH="/home/nonroot/.cache/pypoetry/virtualenvs"
+ENV POETRY_CACHE_DIR="/home/nonroot/.cache/pypoetry"
+# Default model storage path for nonroot user
+ENV MODEL_STORAGE_PATH="/home/nonroot/models"
 
 # Set working directory (this is where the entrypoint will be run)
-WORKDIR /app
+WORKDIR /home/nonroot/app
 
 # Expose the necessary ports
 EXPOSE 3030
 
-ENTRYPOINT ["bash", "-c", "/app/src/docker-entrypoint.sh"]
+ENTRYPOINT ["bash", "src/docker-entrypoint.sh"]

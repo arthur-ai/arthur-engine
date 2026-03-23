@@ -1,0 +1,68 @@
+from __future__ import annotations
+
+from datetime import datetime
+from typing import TYPE_CHECKING, Any, Optional
+
+from sqlalchemy import JSON, TIMESTAMP, Boolean, ForeignKey, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from db_models.base import Base, IsArchivable
+
+if TYPE_CHECKING:
+    from db_models.agent_polling_models import DatabaseTaskPollingState
+    from db_models.agentic_prompt_models import DatabaseAgenticPrompt
+    from db_models.llm_eval_models import DatabaseLLMEval
+    from db_models.rule_models import DatabaseRule
+    from db_models.telemetry_models import DatabaseTaskToMetrics
+
+
+class DatabaseTask(Base, IsArchivable):
+    __tablename__ = "tasks"
+    id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP)
+    updated_at: Mapped[datetime] = mapped_column(TIMESTAMP)
+    is_agentic: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_autocreated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_system_task: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    task_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    rule_links: Mapped[list["DatabaseTaskToRules"]] = relationship(
+        back_populates="task",
+        lazy="joined",
+    )
+    metric_links: Mapped[list["DatabaseTaskToMetrics"]] = relationship(
+        back_populates="task",
+        lazy="joined",
+    )
+    agentic_prompts: Mapped[list["DatabaseAgenticPrompt"]] = relationship(
+        back_populates="task",
+        lazy="select",
+    )
+    llm_evals: Mapped[list["DatabaseLLMEval"]] = relationship(
+        back_populates="task",
+        lazy="select",
+    )
+    task_polling_state: Mapped[Optional["DatabaseTaskPollingState"]] = relationship(
+        back_populates="task",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
+
+
+class DatabaseTaskToRules(Base):
+    __tablename__ = "tasks_to_rules"
+    task_id: Mapped[str] = mapped_column(
+        String,
+        ForeignKey("tasks.id"),
+        index=True,
+        primary_key=True,
+    )
+    rule_id: Mapped[str] = mapped_column(
+        String,
+        ForeignKey("rules.id"),
+        index=True,
+        primary_key=True,
+    )
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    task: Mapped["DatabaseTask"] = relationship(back_populates="rule_links")
+    rule: Mapped["DatabaseRule"] = relationship(lazy="joined")

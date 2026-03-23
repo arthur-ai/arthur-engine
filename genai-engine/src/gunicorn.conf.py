@@ -1,8 +1,7 @@
 from os import environ
 
 from gunicorn.arbiter import Arbiter
-
-from utils.model_load import download_models
+from gunicorn.workers.base import Worker
 
 bind = "0.0.0.0:" + environ.get("PORT", "3030")
 workers = environ.get("WORKERS", 1)
@@ -12,12 +11,40 @@ errorlog = "-"  # stdout
 timeout = environ.get("TIMEOUT", 120)
 worker_class = "uvicorn.workers.UvicornWorker"
 
+# Graceful shutdown configuration
+# Timeout for graceful workers restart.
+graceful_timeout = int(environ.get("GRACEFUL_TIMEOUT", 30))
+# Following parameters relates to multiworkers rotation (GPU)
+# The maximum number of requests a worker will process before restarting.
+max_requests = int(environ.get("MAX_REQUESTS", 0))  # 0 = disabled
+# The maximum jitter to add to the max_requests setting.
+max_requests_jitter = int(environ.get("MAX_REQUESTS_JITTER", 0))
+
 
 def on_starting(server: Arbiter) -> None:
-    server.log.info("Downloading models...")
-    try:
-        download_models(int(workers))
-    except Exception as e:
-        server.log.error(f"Error downloading models: {e}")
-        raise e
-    server.log.info("Models downloaded.")
+    """Called just before the master process is initialized."""
+    server.log.info("Gunicorn master process starting")
+
+
+def when_ready(server: Arbiter) -> None:
+    """Called just after the server is started."""
+    server.log.info("Gunicorn server is ready. Accepting connections.")
+
+
+def on_exit(server: Arbiter) -> None:
+    """Called just before exiting Gunicorn."""
+    server.log.info("Gunicorn master process exiting")
+
+
+def worker_exit(server: Arbiter, worker: Worker) -> None:
+    """Called just after a worker has been exited."""
+    server.log.info(f"Worker {worker.pid} exited")
+
+
+def pre_fork(server: Arbiter, worker: Worker) -> None:
+    """Called just before a worker is forked."""
+
+
+def post_fork(server: Arbiter, worker: Worker) -> None:
+    """Called just after a worker has been forked."""
+    server.log.info(f"Worker spawned (pid: {worker.pid})")

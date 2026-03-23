@@ -1,6 +1,9 @@
 import logging
 import os
+from datetime import datetime
 
+import fsspec
+import pandas as pd
 import pytz
 from arthur_client.api_bindings import (
     AvailableDataset,
@@ -14,10 +17,23 @@ from arthur_common.models.connectors import (
     S3_CONNECTOR_ENDPOINT_FIELD,
     ConnectorPaginationOptions,
 )
+from arthur_common.models.datasets import DatasetFileType
+from connectors.bucket_based_connector import BucketBasedConnector, CSVConfig, read_file
 from connectors.s3_connector import S3Connector
 from mock_data.connector_helpers import *
 
 logger = logging.getLogger("job_logger")
+
+
+def assert_column_names_are_strings(rows: list[dict]) -> None:
+    """Assert that all column names in the returned rows are strings, not integers."""
+    if not rows:
+        return  # Empty results are OK
+    for row in rows:
+        for key in row.keys():
+            assert isinstance(
+                key, str
+            ), f"Column name {key} is type {type(key)}, expected str. Row: {row}"
 
 
 MOCK_S3_CONNECTOR_SPEC = mock_bucket_based_connector_spec(
@@ -254,6 +270,8 @@ def test_s3_read_data(
             pagination_options=pagination_options,
         )
         assert len(rows) == expected_rows
+        # Verify all column names are strings, not integers
+        assert_column_names_are_strings(rows)
 
 
 MOCK_AXIOS_S3_CONNECTOR_SPEC = mock_bucket_based_connector_spec(
@@ -322,6 +340,8 @@ def test_s3_read_parquet_data(mock_s3fs_walk, mock_s3fs_open, mock_s3fs_is_file)
     )
 
     assert len(rows) == 50
+    # Verify all column names are strings, not integers
+    assert_column_names_are_strings(rows)
 
 
 @patch("s3fs.S3FileSystem.open", side_effect=open)
@@ -345,6 +365,8 @@ def test_s3_read_data_deterministic(mock_s3fs_walk, mock_s3fs_open, mock_s3fs_is
         pagination_options=ConnectorPaginationOptions(page=2, page_size=4),
     )
     assert len(rows) == 4
+    # Verify all column names are strings, not integers
+    assert_column_names_are_strings(rows)
     # data will be sorted in descending order by default
     ordered_expected_alerts = [
         "49129fe9-8955-4ee2-8725-8b84c2c0e153",
@@ -385,6 +407,8 @@ def test_s3_read_data_time_range_inclusive(
         pagination_options=ConnectorPaginationOptions(page_size=50),
     )
     assert len(rows) == 10
+    # Verify all column names are strings, not integers
+    assert_column_names_are_strings(rows)
 
 
 @patch("s3fs.S3FileSystem.open", side_effect=open)
@@ -450,3 +474,287 @@ def test_s3_read_filters(
     )
 
     assert len(rows) == expected_rows
+    # Verify all column names are strings, not integers
+    assert_column_names_are_strings(rows)
+
+
+@patch("s3fs.S3FileSystem.open", side_effect=open)
+@patch("s3fs.S3FileSystem.walk", side_effect=os.walk)
+@patch("s3fs.S3FileSystem.isfile", side_effect=os.path.isfile)
+def test_s3_read_static_dataset(mock_s3fs_walk, mock_s3fs_open, mock_s3fs_is_file):
+    """Static datasets must bypass time-range filtering and read all files under the prefix."""
+    static_locator = DatasetLocator(
+        fields=[
+            DatasetLocatorField(
+                key=BUCKET_BASED_DATASET_FILE_PREFIX_FIELD,
+                value="7461c078-cc90-4cad-a590-25c534458dfd/b2f420b8-92ed-425e-9d35-bab014af965e/",
+            ),
+            DatasetLocatorField(
+                key=BUCKET_BASED_DATASET_FILE_SUFFIX_FIELD,
+                value=".json",
+            ),
+            DatasetLocatorField(
+                key=BUCKET_BASED_DATASET_FILE_TYPE_FIELD,
+                value=DatasetFileType.JSON,
+            ),
+        ],
+    )
+    dataset_dict = mock_expel_tabular_dataset(static_locator)
+    dataset_dict["is_static"] = True
+    dataset = Dataset.model_validate(dataset_dict)
+
+    spec = ConnectorSpec.model_validate(MOCK_S3_CONNECTOR_SPEC)
+    conn = S3Connector(spec, logger)
+
+    # time range is irrelevant for static datasets — all files should be returned
+    rows = conn.read(
+        dataset,
+        start_time=datetime(2099, 1, 1).astimezone(pytz.timezone("UTC")),
+        end_time=datetime(2099, 1, 2).astimezone(pytz.timezone("UTC")),
+        filters=None,
+        pagination_options=None,
+    )
+
+    assert len(rows) > 0
+    assert_column_names_are_strings(rows)
+
+
+def test_secondary_filter_primary_timestamp_with_different_types():
+    """Test that _secondary_filter_primary_timestamp handles both string and datetime/pd.Timestamp types.
+
+    This tests the fix for the issue where parquet files return timestamps as pd.Timestamp objects
+    rather than strings, which caused parser.parse() to fail with:
+    TypeError: Parser must be a string or character stream, not Timestamp
+    """
+    tz = pytz.timezone("UTC")
+    start_time = datetime(2024, 1, 1, hour=0).astimezone(tz)
+    end_time = datetime(2024, 1, 2, hour=0).astimezone(tz)
+
+    # Test with string timestamps (original behavior from JSON files)
+    inferences_with_strings = [
+        {"id": 1, "timestamp": "2024-01-01 12:00:00"},
+        {"id": 2, "timestamp": "2024-01-01 18:00:00"},
+        {"id": 3, "timestamp": "2024-01-02 12:00:00"},  # outside range
+    ]
+
+    filtered = BucketBasedConnector._secondary_filter_primary_timestamp(
+        "timestamp",
+        inferences_with_strings,
+        start_time,
+        end_time,
+        tz,
+    )
+    assert len(filtered) == 2
+    assert filtered[0]["id"] == 1
+    assert filtered[1]["id"] == 2
+
+    # Test with datetime objects (from parquet files with datetime columns)
+    inferences_with_datetime = [
+        {"id": 4, "timestamp": datetime(2024, 1, 1, hour=12).astimezone(tz)},
+        {"id": 5, "timestamp": datetime(2024, 1, 1, hour=18).astimezone(tz)},
+        {"id": 6, "timestamp": datetime(2024, 1, 2, hour=12).astimezone(tz)},  # outside range
+    ]
+
+    filtered = BucketBasedConnector._secondary_filter_primary_timestamp(
+        "timestamp",
+        inferences_with_datetime,
+        start_time,
+        end_time,
+        tz,
+    )
+    assert len(filtered) == 2
+    assert filtered[0]["id"] == 4
+    assert filtered[1]["id"] == 5
+
+    # Test with pd.Timestamp objects (from parquet files)
+    inferences_with_pd_timestamp = [
+        {"id": 7, "timestamp": pd.Timestamp("2024-01-01 12:00:00", tz=tz)},
+        {"id": 8, "timestamp": pd.Timestamp("2024-01-01 18:00:00", tz=tz)},
+        {"id": 9, "timestamp": pd.Timestamp("2024-01-02 12:00:00", tz=tz)},  # outside range
+    ]
+
+    filtered = BucketBasedConnector._secondary_filter_primary_timestamp(
+        "timestamp",
+        inferences_with_pd_timestamp,
+        start_time,
+        end_time,
+        tz,
+    )
+    assert len(filtered) == 2
+    assert filtered[0]["id"] == 7
+    assert filtered[1]["id"] == 8
+
+    # Test with naive pd.Timestamp objects (need tz_localize, not astimezone)
+    inferences_with_naive_pd_timestamp = [
+        {"id": 13, "timestamp": pd.Timestamp("2024-01-01 12:00:00")},  # naive
+        {"id": 14, "timestamp": pd.Timestamp("2024-01-01 18:00:00")},  # naive
+        {"id": 15, "timestamp": pd.Timestamp("2024-01-02 12:00:00")},  # outside range
+    ]
+
+    filtered = BucketBasedConnector._secondary_filter_primary_timestamp(
+        "timestamp",
+        inferences_with_naive_pd_timestamp,
+        start_time,
+        end_time,
+        tz,
+    )
+    assert len(filtered) == 2
+    assert filtered[0]["id"] == 13
+    assert filtered[1]["id"] == 14
+
+    # Test mixed types (edge case, but should work)
+    inferences_mixed = [
+        {"id": 10, "timestamp": "2024-01-01 06:00:00"},
+        {"id": 11, "timestamp": datetime(2024, 1, 1, hour=12).astimezone(tz)},
+        {"id": 12, "timestamp": pd.Timestamp("2024-01-01 18:00:00", tz=tz)},
+    ]
+
+    filtered = BucketBasedConnector._secondary_filter_primary_timestamp(
+        "timestamp",
+        inferences_mixed,
+        start_time,
+        end_time,
+        tz,
+    )
+    assert len(filtered) == 3
+
+
+@patch("s3fs.S3FileSystem.open", side_effect=open)
+@patch("s3fs.S3FileSystem.walk", side_effect=os.walk)
+@patch("s3fs.S3FileSystem.isfile", side_effect=os.path.isfile)
+@pytest.mark.parametrize(
+    "file_name,csv_config,expected_count,validation_checks",
+    [
+        # Pipe-separated with complex quotes and newlines (RFC 4180)
+        (
+            "test_quotes.csv",
+            CSVConfig(
+                delimiter="|",
+                quote_char='"',
+                escape_char='"',  # Same as quote_char = use double-quote convention
+                encoding="utf-8",
+            ),
+            3,
+            {
+                "has_embedded_newlines": lambda r: "Johnson\nIII" in r[0]["last_name"],
+                "preserves_escaped_quotes": lambda r: '"Highly recommended"'
+                in r[0]["customer_notes"],
+                "handles_empty_fields": lambda r: pd.isna(r[1]["last_name"]),
+            },
+        ),
+        # Standard comma-separated with double-quote escaping (RFC 4180)
+        (
+            "standard_comma.csv",
+            CSVConfig(
+                delimiter=",",
+                quote_char='"',
+                escape_char='"',  # Same as quote = double-quote convention
+                encoding="utf-8",
+            ),
+            3,
+            {
+                "has_embedded_quotes": lambda r: '"Jay"' in r[1]["name"],
+                "has_embedded_newlines": lambda r: "\n" in r[2]["name"],
+                "preserves_quotes_in_notes": lambda r: '"quotes"' in r[1]["notes"],
+            },
+        ),
+        # Tab-separated with single quotes
+        (
+            "tab_separated.csv",
+            CSVConfig(
+                delimiter="\t",
+                quote_char="'",
+                escape_char="'",  # Double single-quote convention
+                encoding="utf-8",
+            ),
+            3,
+            {
+                "has_embedded_single_quotes": lambda r: "O'Brien" in r[1]["name"],
+                "has_embedded_tabs": lambda r: "\t" in r[2]["name"],
+            },
+        ),
+        # Semicolon-separated with backslash escaping
+        (
+            "semicolon_backslash.csv",
+            CSVConfig(
+                delimiter=";",
+                quote_char='"',
+                escape_char="\\",  # Backslash escape
+                encoding="utf-8",
+            ),
+            3,
+            {
+                "has_escaped_quotes": lambda r: '"Jay"' in r[1]["name"],
+                "has_embedded_semicolon": lambda r: "Bob;Wilson" in r[2]["name"],
+            },
+        ),
+        # No header file
+        (
+            "no_header.csv",
+            CSVConfig(
+                delimiter=",",
+                quote_char='"',
+                escape_char='"',
+                has_header=False,
+                encoding="utf-8",
+            ),
+            3,
+            {
+                "has_expected_column_names": lambda r: "0" in r[0]
+                and "1" in r[0]
+                and "2" in r[0]
+                and "3" in r[0]
+                and "4" in r[0],  # Should have string column names "0", "1", "2", "3", "4"
+            },
+        ),
+        # Simple CSV without quotes
+        (
+            "no_quotes_needed.csv",
+            CSVConfig(
+                delimiter=",",
+                encoding="utf-8",
+            ),
+            3,
+            {
+                "reads_simple_values": lambda r: r[0]["name"] == "John"
+                and r[1]["name"] == "Jane",
+            },
+        ),
+    ],
+)
+def test_csv_various_formats(
+    mock_s3fs_walk,
+    mock_s3fs_open,
+    mock_s3fs_is_file,
+    file_name,
+    csv_config,
+    expected_count,
+    validation_checks,
+):
+    """Test CSV reading with various delimiter, quote, and escape configurations.
+
+    This ensures robust handling of different customer CSV formats:
+    - Standard comma-separated (RFC 4180)
+    - Tab-separated with single quotes
+    - Semicolon-separated with backslash escaping
+    - Files without headers
+    - Simple files without special characters
+    """
+    fs = fsspec.filesystem("file")
+
+    records = read_file(
+        fs,
+        f"tests/unit/mock_data/csv_test_bucket/data/{file_name}",
+        DatasetFileType.CSV,
+        csv_config,
+    )
+
+    # Verify correct number of records
+    assert len(records) == expected_count, f"Expected {expected_count} records, got {len(records)}"
+
+    # Verify all column names are strings, not integers
+    assert_column_names_are_strings(records)
+
+    # Run format-specific validation checks
+    for check_name, check_func in validation_checks.items():
+        assert check_func(records), f"Validation failed: {check_name}"

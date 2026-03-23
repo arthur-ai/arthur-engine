@@ -1,19 +1,20 @@
-from typing import Callable
+from typing import Any, Callable, Coroutine
 
-from dependencies import logger
 from fastapi import HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.routing import APIRoute
 from pydantic import ValidationError as PydanticValidationError
-from schemas.custom_exceptions import GenaiEngineLLMException
 from starlette import status
 from starlette.requests import Request
 from starlette.responses import Response
+
+from dependencies import logger
+from schemas.custom_exceptions import GenaiEngineLLMException
 from utils import constants as constants
 
 
 class GenaiEngineRoute(APIRoute):
-    def get_route_handler(self) -> Callable:
+    def get_route_handler(self) -> Callable[[Request], Coroutine[Any, Any, Response]]:
         original_route_handler = super().get_route_handler()
 
         async def custom_route_handler(request: Request) -> Response:

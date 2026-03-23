@@ -1,6 +1,13 @@
 import math
 import os
 
+from openinference.semconv.trace import (
+    OpenInferenceSpanKindValues,
+    SpanAttributes,
+)
+
+cpu_count = os.cpu_count()
+
 ##################################################################
 # Application Server
 GENAI_ENGINE_INGRESS_URI_ENV_VAR = "GENAI_ENGINE_INGRESS_URI"
@@ -10,11 +17,17 @@ GENAI_ENGINE_LOG_LEVEL_ENV_VAR = "GENAI_ENGINE_LOG_LEVEL"
 ALLOW_ADMIN_KEY_GENERAL_ACCESS_ENV_VAR = "ALLOW_ADMIN_KEY_GENERAL_ACCESS"
 MAX_API_KEYS_ENV_VAR = "MAX_API_KEYS"
 GENAI_ENGINE_API_ONLY_MODE_ENABLED_ENV_VAR = "GENAI_ENGINE_API_ONLY_MODE_ENABLED"
+GENAI_ENGINE_AGENTIC_UI_ENABLED_ENV_VAR = "GENAI_ENGINE_AGENTIC_UI_ENABLED"
 GENAI_ENGINE_ENABLE_PERSISTENCE_ENV_VAR = "GENAI_ENGINE_ENABLE_PERSISTENCE"
 GENAI_ENGINE_THREAD_POOL_MAX_WORKERS_ENV_VAR = "GENAI_ENGINE_THREAD_POOL_MAX_WORKERS"
-DEFAULT_THREAD_POOL_MAX_WORKERS = math.floor(os.cpu_count() / 2) + 1
+DEFAULT_THREAD_POOL_MAX_WORKERS = (
+    1 if cpu_count is None else math.floor(cpu_count / 2) + 1
+)
 DEFAULT_PAGE_SIZE = 5  # Reduced for trace-level pagination
 MAX_PAGE_SIZE = 5000
+MODEL_REPOSITORY_URL_ENV_VAR = "MODEL_REPOSITORY_URL"
+MODEL_STORAGE_PATH_ENV_VAR = "MODEL_STORAGE_PATH"
+GENAI_ENGINE_SKIP_MODEL_LOADING_ENV_VAR = "GENAI_ENGINE_SKIP_MODEL_LOADING"
 
 ##################################################################
 # Postgres
@@ -187,6 +200,14 @@ LEGACY_KEYCLOAK_ROLES: dict[str, str] = {
 ##################################################################
 # Telemetry
 TELEMETRY_ENABLED_ENV_VAR = "TELEMETRY_ENABLED"
+
+##################################################################
+
+##################################################################
+# Agentic Platform
+GENAI_ENGINE_AGENTIC_POLLING_INTERVAL_SECONDS_ENV_VAR = (
+    "GENAI_ENGINE_AGENTIC_POLLING_INTERVAL_SECONDS"
+)
 
 ##################################################################
 # CONTEXT WINDOW LENGTHS
@@ -369,12 +390,28 @@ AZURE_OPENAI_STRUCTURED_OUTPUT_MODELS = set(
 ##################################################################
 
 # Span-related constants
-SPAN_KIND_LLM = "LLM"
-SPAN_KIND_TOOL = "TOOL"
+SPAN_KIND_LLM = OpenInferenceSpanKindValues.LLM.value
+SPAN_KIND_TOOL = OpenInferenceSpanKindValues.TOOL.value
 SPAN_VERSION_KEY = "arthur_span_version"
 EXPECTED_SPAN_VERSION = "arthur_span_v1"
 TASK_ID_KEY = "arthur.task"
-METADATA_KEY = "metadata"
-SPAN_KIND_KEY = "openinference.span.kind"
+SERVICE_NAME_KEY = "service.name"  # OpenTelemetry resource attribute for service name
+METADATA_KEY = SpanAttributes.METADATA
+SPAN_KIND_KEY = SpanAttributes.OPENINFERENCE_SPAN_KIND
+USER_ID_KEY = SpanAttributes.USER_ID
+
+# Service name mapping constants
+DEFAULT_SERVICE_NAME = "__unmapped__"
+UNMAPPED_TASK_ID = "539b1da6-ebf8-4fe2-91e5-db2dc8ff626d"
+
+##################################################################
+
+# Dataset constants
+MAX_DATASET_ROWS = 250
+
+##################################################################
+
+# Agent Experiment constants
+AGENT_EXPERIMENT_SESSION_PREFIX = "arthur-exp"
 
 ##################################################################

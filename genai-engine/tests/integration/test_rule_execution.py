@@ -5,6 +5,7 @@ from arthur_common.models.response_schemas import (
     KeywordDetailsResponse,
     RegexDetailsResponse,
 )
+
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 
@@ -313,3 +314,98 @@ def test_rule_result_skipped(client: GenaiEngineTestClientBase):
     assert status_code == 200
 
     assert response.rule_results[0].result == RuleResultEnum.SKIPPED
+
+
+@pytest.mark.parametrize(
+    ("text", "expected_result", "expected_entities"),
+    [
+        ["This string has no PII data", RuleResultEnum.PASS, set()],
+        [
+            "My IP Address is 2001:0000:130F:0000:0000:09C0:876A:130B because I talked trash on Xbox Live",
+            RuleResultEnum.FAIL,
+            set([PIIEntityTypes.IP_ADDRESS]),
+        ],
+    ],
+)
+@pytest.mark.integration_tests
+def test_pii_results_with_model_name(
+    text: str,
+    expected_result: RuleResultEnum,
+    expected_entities: set[PIIEntityTypes],
+    client: GenaiEngineTestClientBase,
+):
+    _, task = client.create_task(empty_rules=True)
+    task_id = task.id
+
+    status_code, rule = client.create_rule(
+        "",
+        rule_type=RuleType.PII_DATA,
+        task_id=task_id,
+    )
+    assert status_code == 200
+    _, prompt = client.create_prompt(
+        text,
+        task_id=task_id,
+    )
+
+    _, response = client.create_response(
+        inference_id=prompt.inference_id,
+        response=text,
+        task_id=task_id,
+        model_name="gpt-4o-mini",
+    )
+
+    assert prompt.rule_results[0].result == expected_result
+    assert response.rule_results[0].result == expected_result
+
+    if expected_result == RuleResultEnum.FAIL:
+        assert (
+            prompt.rule_results[0].details.pii_entities[0].entity in expected_entities
+        )
+        assert (
+            prompt.rule_results[0].details.pii_entities[0].span
+            == "2001:0000:130F:0000:0000:09C0:876A:130B"
+        )
+        assert (
+            response.rule_results[0].details.pii_entities[0].entity in expected_entities
+        )
+        assert response.model_name == "gpt-4o-mini"
+        assert (
+            response.rule_results[0].details.pii_entities[0].span
+            == "2001:0000:130F:0000:0000:09C0:876A:130B"
+        )
+        assert response.rule_results[0].details.pii_entities[0].confidence > 0
+
+
+@pytest.mark.integration_tests
+def test_response_validation_with_model_name(client: GenaiEngineTestClientBase):
+    """Test that model_name is properly handled in response validation."""
+    _, task = client.create_task(empty_rules=True)
+    task_id = task.id
+
+    status_code, rule = client.create_rule(
+        "",
+        rule_type=RuleType.REGEX,
+        task_id=task_id,
+    )
+    assert status_code == 200
+
+    # Create prompt
+    status_code, prompt = client.create_prompt(
+        "Tell me about AI",
+        task_id=task_id,
+    )
+    assert status_code == 200
+
+    # Create response with model_name
+    status_code, response = client.create_response(
+        inference_id=prompt.inference_id,
+        response="AI is a fascinating field of computer science.",
+        task_id=task_id,
+        model_name="gpt-4o-mini",
+    )
+    assert status_code == 200
+
+    # Verify model_name is returned in the response validation result
+    assert response.model_name == "gpt-4o-mini"
+    assert len(response.rule_results) == 1

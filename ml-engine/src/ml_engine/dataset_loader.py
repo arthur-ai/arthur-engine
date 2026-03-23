@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from logging import Logger
 from typing import Set, Tuple
 
@@ -12,9 +12,11 @@ from arthur_client.api_bindings import (
 from arthur_client.api_bindings.exceptions import NotFoundException
 from arthur_common.models.connectors import ConnectorPaginationOptions
 from arthur_common.models.datasets import DatasetJoinKind
+from arthur_common.models.schema_definitions import STATIC_DATASET_TIMESTAMP_COL
 from arthur_common.tools.duckdb_data_loader import DuckDBOperator
 from arthur_common.tools.functions import uuid_to_base26
 from duckdb import DuckDBPyConnection
+
 from tools.connector_constructor import ConnectorConstructor
 from tools.converters import client_to_common_dataset_schema
 
@@ -102,12 +104,49 @@ class DatasetLoader:
         )
         table_name = uuid_to_base26(dataset.id)
 
+        # For static datasets, the synthetic timestamp column must be excluded from the
+        # schema before loading because the source data doesn't contain it — DuckDB will
+        # fail on column count mismatch (INSERT INTO table SELECT * FROM data).
+        # We add and populate it after loading instead.
+        static_ts_col = None
+        if dataset.is_static and schema:
+            static_ts_col = next(
+                (
+                    col
+                    for col in schema.columns
+                    if col.source_name == STATIC_DATASET_TIMESTAMP_COL
+                ),
+                None,
+            )
+            schema.columns = [
+                col
+                for col in schema.columns
+                if col.source_name != STATIC_DATASET_TIMESTAMP_COL
+            ]
+
         DuckDBOperator.load_data_to_duckdb(
             data,
             table_name=table_name,
             conn=conn,
             schema=schema,
         )
+
+        if dataset.is_static:
+            now_utc = datetime.now(timezone.utc).isoformat()
+            # load_data_to_duckdb renames columns from source_name to column UUID.
+            # We must use the column UUID here so apply_alias_mask can find it later.
+            col_id = (
+                str(static_ts_col.id) if static_ts_col else STATIC_DATASET_TIMESTAMP_COL
+            )
+            conn.execute(
+                f'ALTER TABLE "{table_name}" ADD COLUMN "{col_id}" TIMESTAMP',
+            )
+            conn.execute(
+                f'UPDATE "{table_name}" SET "{col_id}" = \'{now_utc}\'',
+            )
+            self.logger.info(
+                f"Injected synthetic timestamp column {STATIC_DATASET_TIMESTAMP_COL} for static dataset {dataset.id}",
+            )
 
         return table_name
 
