@@ -14,6 +14,7 @@ import { useDeletePromptMutation } from "./hooks/useDeletePromptMutation";
 import { usePrompts } from "./hooks/usePrompts";
 import PromptsManagementHeader from "./PromptsManagementHeader";
 import PromptsTable from "./table/PromptsTable";
+import TagFilterControls from "./table/TagFilterControls";
 
 import { getContentHeight } from "@/constants/layout";
 import { useTask } from "@/hooks/useTask";
@@ -33,6 +34,7 @@ const PromptsManagement: React.FC<PromptsManagementProps> = ({ onRegisterCreate 
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   // Sync fullScreenPrompt with URL parameter (one-way: URL -> state only)
   useEffect(() => {
@@ -54,6 +56,33 @@ const PromptsManagement: React.FC<PromptsManagementProps> = ({ onRegisterCreate 
   );
 
   const { prompts, count, error, isLoading, refetch } = usePrompts(task?.id, filters);
+
+  const { availableProductionTag, availableCustomTags } = useMemo(() => {
+    const allTags = new Set<string>();
+    prompts.forEach((p) => (p.tags ?? []).forEach((t) => allTags.add(t.toLowerCase())));
+    const hasProduction = allTags.has("production");
+    const customTags = Array.from(allTags)
+      .filter((t) => t !== "production")
+      .sort();
+    return { availableProductionTag: hasProduction, availableCustomTags: customTags };
+  }, [prompts]);
+
+  const filteredPrompts = useMemo(() => {
+    if (selectedTags.length === 0) return prompts;
+    return prompts.filter((p) => {
+      const promptTags = (p.tags ?? []).map((t) => t.toLowerCase());
+      return selectedTags.some((tag) => promptTags.includes(tag));
+    });
+  }, [prompts, selectedTags]);
+
+  const handleTagToggle = useCallback((tag: string) => {
+    setSelectedTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
+    setPage(0);
+  }, []);
+
+  const handleClearTagFilters = useCallback(() => {
+    setSelectedTags([]);
+  }, []);
 
   const deleteMutation = useDeletePromptMutation(task?.id, () => {
     refetch();
@@ -149,7 +178,16 @@ const PromptsManagement: React.FC<PromptsManagementProps> = ({ onRegisterCreate 
         overflow: "hidden",
       }}
     >
-      {!onRegisterCreate && <PromptsManagementHeader onCreatePrompt={handleCreatePrompt} />}
+      <Box>
+        {!onRegisterCreate && <PromptsManagementHeader onCreatePrompt={handleCreatePrompt} />}
+        <TagFilterControls
+          availableProductionTag={availableProductionTag}
+          availableCustomTags={availableCustomTags}
+          selectedTags={selectedTags}
+          onTagToggle={handleTagToggle}
+          onClearAll={handleClearTagFilters}
+        />
+      </Box>
 
       {error && prompts.length > 0 && (
         <Box sx={{ px: 3, pt: 2 }}>
@@ -188,7 +226,7 @@ const PromptsManagement: React.FC<PromptsManagementProps> = ({ onRegisterCreate 
           </Box>
         ) : (
           <PromptsTable
-            prompts={prompts}
+            prompts={filteredPrompts}
             sortColumn={sortColumn}
             sortDirection={sortDirection}
             onSort={handleSort}
@@ -210,7 +248,7 @@ const PromptsManagement: React.FC<PromptsManagementProps> = ({ onRegisterCreate 
         >
           <TablePagination
             component="div"
-            count={count}
+            count={selectedTags.length > 0 ? filteredPrompts.length : count}
             page={page}
             onPageChange={handlePageChange}
             rowsPerPage={pageSize}
