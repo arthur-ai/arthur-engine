@@ -853,6 +853,27 @@ class AgenticAnnotationAnalyticsResponse(BaseModel):
     count: int = Field(description="Number of days with data")
 
 
+class TraceTransformVersionResponse(BaseModel):
+    id: UUID = Field(description="ID of the version.")
+    transform_id: UUID = Field(description="ID of the parent transform.")
+    task_id: str = Field(description="ID of the parent task.")
+    version_number: int = Field(description="Monotonically increasing version number.")
+    config_snapshot: dict = Field(
+        description="Snapshot of the transform definition at the time of this version."
+    )
+    author: Optional[str] = Field(
+        default=None, description="Author who created this version."
+    )
+    created_at: datetime = Field(description="Timestamp when this version was created.")
+
+
+class ListTraceTransformVersionsResponse(BaseModel):
+    versions: List[TraceTransformVersionResponse] = Field(
+        description="List of versions for the transform, ordered by version_number descending.",
+    )
+    count: int = Field(description="Total number of versions.")
+
+
 class TransformDependentRef(BaseModel):
     id: str = Field(description="ID of the dependent resource.")
     name: str = Field(description="Name of the dependent resource.")

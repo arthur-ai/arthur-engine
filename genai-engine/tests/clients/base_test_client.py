@@ -128,6 +128,8 @@ from schemas.response_schemas import (
     TraceListResponse,
     TraceUserListResponse,
     TraceUserMetadataResponse,
+    ListTraceTransformVersionsResponse,
+    TraceTransformVersionResponse,
     TransformExtractionResponseList,
 )
 from tests.constants import (
@@ -1215,6 +1217,62 @@ class GenaiEngineTestClientBase(httpx.Client):
         if resp.status_code == 200:
             return resp.status_code, TransformExtractionResponseList(**resp.json())
         return resp.status_code, resp.json() if resp.content else None
+
+    def list_transform_versions(
+        self,
+        transform_id: str,
+    ) -> tuple[int, Any]:
+        resp = self.base_client.get(
+            f"/api/v1/traces/transforms/{transform_id}/versions",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+        return (
+            resp.status_code,
+            (
+                ListTraceTransformVersionsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def get_transform_version(
+        self,
+        transform_id: str,
+        version_id: str,
+    ) -> tuple[int, Any]:
+        resp = self.base_client.get(
+            f"/api/v1/traces/transforms/{transform_id}/versions/{version_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+        return (
+            resp.status_code,
+            (
+                TraceTransformVersionResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def restore_transform_version(
+        self,
+        transform_id: str,
+        version_id: str,
+    ) -> tuple[int, Any]:
+        resp = self.base_client.post(
+            f"/api/v1/traces/transforms/{transform_id}/versions/{version_id}/restore",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+        return (
+            resp.status_code,
+            (
+                TraceTransformResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
 
     def search_datasets(
         self,
