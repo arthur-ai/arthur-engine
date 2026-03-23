@@ -1668,6 +1668,78 @@ class TestFindTranscriptPath:
         result = tracer._find_transcript_path({}, "nosuchsession")
         assert result is None
 
+    def test_skips_shadow_transcript_in_favour_of_real_one(
+        self, tmp_path, monkeypatch
+    ):
+        """When gh pr create writes a pr-link shadow file in a worktree dir,
+        _find_transcript_path must skip it and return the real transcript."""
+        session_id = "shadow-test-sess"
+
+        # Shadow file: only a pr-link entry (written by gh pr create in worktree)
+        shadow_dir = tmp_path / ".claude" / "projects" / "-worktree-shadow"
+        shadow_dir.mkdir(parents=True)
+        shadow = shadow_dir / f"{session_id}.jsonl"
+        shadow.write_text(
+            json.dumps({"type": "pr-link", "prNumber": 1234, "prUrl": "https://x"})
+            + "\n"
+        )
+
+        # Real transcript: has user + assistant messages
+        real_dir = tmp_path / ".claude" / "projects" / "-real-project"
+        real_dir.mkdir(parents=True)
+        real = real_dir / f"{session_id}.jsonl"
+        real.write_text(
+            "\n".join(
+                [
+                    json.dumps({"type": "user", "message": {"role": "user", "content": "hello"}}),
+                    json.dumps({"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "hi"}]}}),
+                ]
+            )
+            + "\n"
+        )
+
+        monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+        # Provide the shadow as the explicit transcript_path (as hooks do after gh pr create)
+        result = tracer._find_transcript_path(
+            {"transcript_path": str(shadow)}, session_id
+        )
+        assert result == str(real)
+
+    def test_prefers_larger_content_transcript_among_multiple(
+        self, tmp_path, monkeypatch
+    ):
+        """When two transcripts both have conversation content, prefer the larger one."""
+        session_id = "multi-content-sess"
+
+        projects_dir = tmp_path / ".claude" / "projects"
+
+        small_dir = projects_dir / "small-project"
+        small_dir.mkdir(parents=True)
+        small = small_dir / f"{session_id}.jsonl"
+        small.write_text(
+            json.dumps({"type": "user", "message": {"role": "user", "content": "hi"}}) + "\n"
+        )
+
+        large_dir = projects_dir / "large-project"
+        large_dir.mkdir(parents=True)
+        large = large_dir / f"{session_id}.jsonl"
+        # Write many entries so it's definitively larger
+        large.write_text(
+            "\n".join(
+                json.dumps({"type": "user", "message": {"role": "user", "content": f"turn {i}"}})
+                for i in range(50)
+            )
+            + "\n"
+        )
+
+        monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+        result = tracer._find_transcript_path({}, session_id)
+        assert result == str(large)
+
 
 # ---------------------------------------------------------------------------
 # discover_config — global config fallback
