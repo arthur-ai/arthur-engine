@@ -1518,14 +1518,14 @@ xai = ["tensorflow (>=2.3.0,<3.0.0) ; python_version < \"3.13\""]
 
 [[package]]
 name = "google-cloud-bigquery"
-version = "3.39.0"
+version = "3.40.1"
 description = "Google BigQuery API client library"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "google_cloud_bigquery-3.39.0-py3-none-any.whl", hash = "sha256:dc7a64921465859105461b43c42562e38e797d7a73feb72b3cfc4865b7b1c5ef"},
-    {file = "google_cloud_bigquery-3.39.0.tar.gz", hash = "sha256:cb375e1d63dea9bd5bf735e66024338f294159d43afdf63e1d023f5fcbbf55ea"},
+    {file = "google_cloud_bigquery-3.40.1-py3-none-any.whl", hash = "sha256:9082a6b8193aba87bed6a2c79cf1152b524c99bb7e7ac33a785e333c09eac868"},
+    {file = "google_cloud_bigquery-3.40.1.tar.gz", hash = "sha256:75afcfb6e007238fe1deefb2182105249321145ff921784fe7b1de2b4ba24506"},
 ]
 
 [package.dependencies]
@@ -5646,4 +5646,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "3.13.*"
-content-hash = "24893219e44bf97af374508a4683893c7dfc382a9e533f3c9f8feaee0b5b49b6"
+content-hash = "c4ce38be3ea5385ecb9db726c1da7552430e612da9e4e2a6f3dc7762bf852123"
