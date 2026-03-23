@@ -378,6 +378,29 @@ def _extract_llm_spans_for_turn(
 
     Output is the assistant's text response when present; otherwise the
     tool_use blocks serialised as JSON so the span always has an output value.
+
+    **Grouping by message.id**
+
+    Claude Code (with extended thinking enabled) splits a single API response
+    across multiple consecutive transcript entries that share the same
+    ``message.id`` — one entry per block type (thinking / text / tool_use).
+    Each entry duplicates the input-side token counts.  We MUST group these
+    entries and emit exactly one LLM span per API response, otherwise:
+
+      * Prompt tokens are reported N× too high (once per entry).
+      * "Thinking-only" entries produce empty, noisy spans.
+      * Intermediate text (the entry with ``type=text`` that precedes a tool
+        call) becomes its own orphaned 8-token span instead of being part of
+        the single span for that API call.
+
+    Grouping strategy:
+      - Input tokens  → first entry in the group (avoids duplication).
+      - Output tokens → sum across all entries (each entry captures the tokens
+                        for its own block).
+      - Text output   → concatenate all ``text`` blocks from any entry.
+      - Tool output   → JSON of tool_use blocks from the last entry (fall-back
+                        when no text is present).
+      - Timestamp     → first entry.
     """
     spans = []
     try:
@@ -391,6 +414,91 @@ def _extract_llm_spans_for_turn(
         last_input_role = "user"
         last_input_content = ""
 
+        # Accumulator for the current message.id group
+        current_group_id: Optional[str] = None
+        group_first_usage: dict = {}
+        group_total_output_tokens: int = 0
+        group_text_parts: list = []
+        group_tool_use_parts: list = []
+        group_model: str = "claude"
+        group_ts: str = ""
+        group_input_snapshot: dict = {}  # last_input* captured at group start
+
+        def _flush_group() -> None:
+            """Emit one LLM span for the accumulated group, if non-empty."""
+            nonlocal current_group_id, group_first_usage, group_total_output_tokens
+            nonlocal group_text_parts, group_tool_use_parts, group_model, group_ts
+            nonlocal group_input_snapshot
+
+            if not current_group_id:
+                return
+
+            usage = group_first_usage
+            input_tokens = usage.get("input_tokens", 0)
+            cache_read = usage.get("cache_read_input_tokens", 0)
+            cache_create = usage.get("cache_creation_input_tokens", 0)
+            output_tokens = group_total_output_tokens
+
+            if group_text_parts:
+                output_value = _truncate("".join(group_text_parts))
+                output_mime = "text/plain"
+            elif group_tool_use_parts:
+                output_value = _truncate(json.dumps(group_tool_use_parts))
+                output_mime = "application/json"
+            else:
+                output_value = ""
+                output_mime = "text/plain"
+
+            start_ns = _iso_to_ns(group_ts)
+            end_ns = start_ns + max(output_tokens * 10_000_000, 1_000_000)
+
+            snap = group_input_snapshot
+            attrs: dict[str, Any] = {
+                "openinference.span.kind": "LLM",
+                "llm.system": "anthropic",
+                "llm.model_name": group_model,
+                "llm.token_count.prompt": input_tokens + cache_read + cache_create,
+                "llm.token_count.completion": output_tokens,
+                "llm.token_count.total": input_tokens
+                + cache_read
+                + cache_create
+                + output_tokens,
+                "llm.token_count.prompt_details.cache_read": cache_read,
+                "llm.token_count.prompt_details.cache_write": cache_create,
+                "llm.input_messages.0.message.role": snap.get("role", "user"),
+                "llm.input_messages.0.message.content": snap.get("content", ""),
+                "input.value": snap.get("value", ""),
+                "input.mime_type": snap.get("mime", "text/plain"),
+                "llm.output_messages.0.message.role": "assistant",
+                "llm.output_messages.0.message.content": output_value,
+                "output.value": output_value,
+                "output.mime_type": output_mime,
+            }
+
+            spans.append(
+                {
+                    "trace_id_hex": trace_id_hex,
+                    "span_id_hex": _new_span_id(),
+                    "parent_span_id_hex": root_span_id_hex,
+                    "name": f"claude/{group_model}",
+                    "kind": None,
+                    "start_ns": start_ns,
+                    "end_ns": end_ns,
+                    "attributes": attrs,
+                    "force_span_id": False,
+                },
+            )
+
+            # Reset accumulator
+            current_group_id = None
+            group_first_usage = {}
+            group_total_output_tokens = 0
+            group_text_parts = []
+            group_tool_use_parts = []
+            group_model = "claude"
+            group_ts = ""
+            group_input_snapshot = {}
+
         for line in lines:
             if not line.strip():
                 continue
@@ -403,12 +511,9 @@ def _extract_llm_spans_for_turn(
 
             # ── Human message: marks the start of this turn ──────────────────
             if _is_human_message(entry):
+                _flush_group()
                 human_count += 1
                 if in_turn:
-                    # A second human message within the same trace can happen when
-                    # the Claude Code context is compressed and the session continues
-                    # without firing a new UserPromptSubmit hook.  Keep scanning so
-                    # the LLM spans from the continuation are also captured.
                     human_text = entry.get("message", {}).get("content", "")
                     last_input_value = json.dumps(
                         {"role": "user", "content": human_text[:500]},
@@ -433,6 +538,7 @@ def _extract_llm_spans_for_turn(
 
             # ── Tool result (user message with list content) ──────────────────
             if entry_type == "user":
+                _flush_group()
                 content = entry.get("message", {}).get("content", "")
                 if isinstance(content, list):
                     text = _tool_result_text(content)
@@ -445,7 +551,7 @@ def _extract_llm_spans_for_turn(
                     last_input_content = _truncate(payload)
                 continue
 
-            # ── Assistant LLM response ────────────────────────────────────────
+            # ── Non-assistant entries (progress, system, …) ───────────────────
             if entry_type != "assistant":
                 continue
 
@@ -454,86 +560,45 @@ def _extract_llm_spans_for_turn(
             if not usage:
                 continue
 
+            msg_id = msg.get("id", "") or id(entry)  # fall back to object id
             model = msg.get("model", "claude")
             content_blocks = msg.get("content", [])
             ts = entry.get("timestamp", "")
 
-            # Output: prefer text; fall back to serialised tool_use blocks
-            text_parts = []
-            tool_use_parts = []
+            # ── Start a new group or extend the current one ───────────────────
+            if msg_id != current_group_id:
+                _flush_group()
+                current_group_id = msg_id
+                group_first_usage = usage
+                group_total_output_tokens = 0
+                group_text_parts = []
+                group_tool_use_parts = []
+                group_model = model
+                group_ts = ts
+                # Snapshot the input context at the start of this API call
+                group_input_snapshot = {
+                    "role": last_input_role,
+                    "content": last_input_content,
+                    "value": last_input_value,
+                    "mime": last_input_mime,
+                }
+
+            # Accumulate output tokens and content blocks for this group
+            group_total_output_tokens += usage.get("output_tokens", 0)
             for block in content_blocks:
                 if not isinstance(block, dict):
                     continue
                 if block.get("type") == "text":
-                    text_parts.append(block.get("text", ""))
+                    group_text_parts.append(block.get("text", ""))
                 elif block.get("type") == "tool_use":
-                    tool_use_parts.append(
+                    group_tool_use_parts.append(
                         {
                             "name": block.get("name", ""),
                             "input": block.get("input", {}),
                         },
                     )
 
-            if text_parts:
-                output_value = _truncate("".join(text_parts))
-                output_mime = "text/plain"
-            elif tool_use_parts:
-                output_value = _truncate(json.dumps(tool_use_parts))
-                output_mime = "application/json"
-            else:
-                output_value = ""
-                output_mime = "text/plain"
-
-            input_tokens = usage.get("input_tokens", 0)
-            cache_read = usage.get("cache_read_input_tokens", 0)
-            cache_create = usage.get("cache_creation_input_tokens", 0)
-            output_tokens = usage.get("output_tokens", 0)
-
-            start_ns = _iso_to_ns(ts)
-            end_ns = start_ns + max(output_tokens * 10_000_000, 1_000_000)
-
-            attrs: dict[str, Any] = {
-                "openinference.span.kind": "LLM",
-                "llm.system": "anthropic",
-                "llm.model_name": model,
-                "llm.token_count.prompt": input_tokens + cache_read + cache_create,
-                "llm.token_count.completion": output_tokens,
-                "llm.token_count.total": input_tokens
-                + cache_read
-                + cache_create
-                + output_tokens,
-                "llm.token_count.prompt_details.cache_read": cache_read,
-                "llm.token_count.prompt_details.cache_write": cache_create,
-                # Input: the message that immediately preceded this LLM call
-                "llm.input_messages.0.message.role": last_input_role,
-                "llm.input_messages.0.message.content": last_input_content,
-                "input.value": last_input_value,
-                "input.mime_type": last_input_mime,
-                # Output: text response or serialised tool_use blocks
-                "llm.output_messages.0.message.role": "assistant",
-                "llm.output_messages.0.message.content": output_value,
-                "output.value": output_value,
-                "output.mime_type": output_mime,
-            }
-
-            spans.append(
-                {
-                    "trace_id_hex": trace_id_hex,
-                    "span_id_hex": _new_span_id(),
-                    "parent_span_id_hex": root_span_id_hex,
-                    "name": f"claude/{model}",
-                    "kind": None,  # Caller sets SpanKind
-                    "start_ns": start_ns,
-                    "end_ns": end_ns,
-                    "attributes": attrs,
-                    "force_span_id": False,
-                },
-            )
-
-            # Update last_input for the next LLM call: the assistant's output
-            # becomes part of what the model was shown next (via tool results).
-            # We leave last_input* unchanged here — the tool result user message
-            # that follows will overwrite it when we see that entry.
+        _flush_group()
 
     except Exception as e:
         log.warning("Failed to extract LLM spans: %s", e)

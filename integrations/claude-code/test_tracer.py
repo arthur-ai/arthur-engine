@@ -2303,3 +2303,152 @@ class TestMain:
         with pytest.raises(SystemExit) as exc:
             tracer.main()
         assert exc.value.code == 0
+
+
+# ---------------------------------------------------------------------------
+# _extract_llm_spans_for_turn — message.id grouping
+# ---------------------------------------------------------------------------
+
+
+def llm_entry_with_id(
+    msg_id: str,
+    text: str = "",
+    tool_use_blocks: list | None = None,
+    model: str = "claude-sonnet-4-6",
+    input_tokens: int = 10,
+    output_tokens: int = 20,
+    cache_read: int = 0,
+    cache_create: int = 0,
+    ts: str = "2026-01-01T00:00:02.000000+00:00",
+) -> dict:
+    """LLM transcript entry with an explicit message.id (for grouping tests)."""
+    content = []
+    if text:
+        content.append({"type": "text", "text": text})
+    for b in tool_use_blocks or []:
+        content.append(b)
+    return {
+        "type": "assistant",
+        "message": {
+            "id": msg_id,
+            "role": "assistant",
+            "model": model,
+            "content": content,
+            "usage": {
+                "input_tokens": input_tokens,
+                "cache_read_input_tokens": cache_read,
+                "cache_creation_input_tokens": cache_create,
+                "output_tokens": output_tokens,
+            },
+        },
+        "timestamp": ts,
+    }
+
+
+class TestExtractLlmSpansMessageIdGrouping:
+    """
+    Verify that consecutive assistant entries sharing a message.id are collapsed
+    into a single LLM span (Fix 3: multi-entry API response grouping).
+    """
+
+    TRACE_ID = "e" * 32
+    ROOT_ID = "f" * 16
+
+    def _extract(self, p, human_count_at_start=0):
+        return tracer._extract_llm_spans_for_turn(
+            str(p),
+            human_count_at_start,
+            self.TRACE_ID,
+            self.ROOT_ID,
+        )
+
+    def test_two_entries_same_id_produce_one_span(self, tmp_transcript):
+        # Extended-thinking: first entry = thinking block (no text/tool_use),
+        # second entry = text block. Both share message id "msg_abc".
+        p = tmp_transcript(
+            [
+                human_entry("Hello"),
+                llm_entry_with_id("msg_abc", text="", output_tokens=5),
+                llm_entry_with_id("msg_abc", text="Hi there", output_tokens=15),
+            ]
+        )
+        spans = self._extract(p)
+        assert len(spans) == 1
+        attrs = spans[0]["attributes"]
+        assert attrs["output.value"] == "Hi there"
+        assert attrs["output.mime_type"] == "text/plain"
+
+    def test_output_tokens_summed_across_entries(self, tmp_transcript):
+        # The thinking entry contributes 5 tokens, text entry contributes 15.
+        # Total completion must be 20, not 15 (last entry only) or 5 (first only).
+        p = tmp_transcript(
+            [
+                human_entry("Hello"),
+                llm_entry_with_id("msg_abc", text="", output_tokens=5),
+                llm_entry_with_id("msg_abc", text="Answer", output_tokens=15),
+            ]
+        )
+        spans = self._extract(p)
+        assert len(spans) == 1
+        assert spans[0]["attributes"]["llm.token_count.completion"] == 20
+
+    def test_prompt_tokens_taken_from_first_entry_only(self, tmp_transcript):
+        # input_tokens=100 appears on both entries (duplicated by Claude Code).
+        # The span must report 100, not 200.
+        p = tmp_transcript(
+            [
+                human_entry("Hello"),
+                llm_entry_with_id("msg_abc", text="", input_tokens=100, output_tokens=5),
+                llm_entry_with_id("msg_abc", text="Answer", input_tokens=100, output_tokens=15),
+            ]
+        )
+        spans = self._extract(p)
+        assert len(spans) == 1
+        assert spans[0]["attributes"]["llm.token_count.prompt"] == 100
+
+    def test_different_ids_produce_separate_spans(self, tmp_transcript):
+        # Two API calls, each with a distinct message.id → two spans.
+        p = tmp_transcript(
+            [
+                human_entry("Hello"),
+                llm_entry_with_id("msg_aaa", text="First response"),
+                tool_result_entry("t1", "tool output"),
+                llm_entry_with_id("msg_bbb", text="Second response"),
+            ]
+        )
+        spans = self._extract(p)
+        assert len(spans) == 2
+        assert spans[0]["attributes"]["output.value"] == "First response"
+        assert spans[1]["attributes"]["output.value"] == "Second response"
+
+    def test_three_entries_same_id_text_concatenated(self, tmp_transcript):
+        # Three entries with same id: thinking + text_part_1 + text_part_2
+        p = tmp_transcript(
+            [
+                human_entry("Hello"),
+                llm_entry_with_id("msg_xyz", text="", output_tokens=3),
+                llm_entry_with_id("msg_xyz", text="Hello ", output_tokens=4),
+                llm_entry_with_id("msg_xyz", text="world", output_tokens=5),
+            ]
+        )
+        spans = self._extract(p)
+        assert len(spans) == 1
+        assert spans[0]["attributes"]["output.value"] == "Hello world"
+        assert spans[0]["attributes"]["llm.token_count.completion"] == 12
+
+    def test_tool_use_entry_followed_by_text_entry_same_id(self, tmp_transcript):
+        # text entry takes precedence over tool_use when both present in group
+        tb = tool_use_block("Read", "/tmp/foo")
+        p = tmp_transcript(
+            [
+                human_entry("Hello"),
+                llm_entry_with_id("msg_mix", tool_use_blocks=[tb], output_tokens=8),
+                llm_entry_with_id("msg_mix", text="Here is the file", output_tokens=10),
+            ]
+        )
+        spans = self._extract(p)
+        assert len(spans) == 1
+        attrs = spans[0]["attributes"]
+        assert attrs["output.mime_type"] == "text/plain"
+        assert attrs["output.value"] == "Here is the file"
+        assert attrs["llm.token_count.completion"] == 18
