@@ -180,7 +180,16 @@ def _session_lock(session_id: str):
 
 
 def _find_transcript_path(data: dict, session_id: str) -> Optional[str]:
-    """Locate the session's transcript JSONL file."""
+    """Locate the session's transcript JSONL file.
+
+    Searches three locations in priority order and returns the first match.
+    Callers that need a stable path across the lifetime of a session should
+    cache the result in session state via ``_get_cached_transcript_path``
+    rather than calling this function repeatedly — the ``transcript_path``
+    value in hook ``data`` can change mid-session when Claude Code writes
+    entries to a *different* project directory (e.g. after ``gh pr create``
+    in a worktree context).
+    """
     # 1. Provided directly in hook data
     tp = data.get("transcript_path", "")
     if tp and Path(tp).exists():
@@ -202,6 +211,29 @@ def _find_transcript_path(data: dict, session_id: str) -> Optional[str]:
             return str(matches[0])
 
     return None
+
+
+def _get_cached_transcript_path(
+    data: dict,
+    state: dict,
+    session_id: str,
+) -> Optional[str]:
+    """Return the transcript path for this session, caching it in *state*.
+
+    Once resolved, the path is stored under ``state["transcript_path"]`` so
+    that all subsequent hook calls use the same file even if Claude Code later
+    writes a new entry to a different project directory (e.g. a worktree dir
+    after ``gh pr create``).  The cache is only accepted when the file still
+    exists; if it has been deleted the function re-resolves.
+    """
+    cached = state.get("transcript_path", "")
+    if cached and Path(cached).exists():
+        return cached
+
+    resolved = _find_transcript_path(data, session_id)
+    if resolved:
+        state["transcript_path"] = resolved
+    return resolved
 
 
 def _is_human_message(entry: dict) -> bool:
@@ -996,17 +1028,23 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
         state["human_msg_count"] = 0
         state["turn_number"] = 0
 
-    # Complete the previous turn's trace if one is in progress
+    # Complete the previous turn's trace if one is in progress.
+    # Use the cached transcript path from state so that any mid-session
+    # project-dir changes (e.g. gh pr create writing to a worktree dir) do
+    # not silently redirect us to a shadow transcript file.
     if state.get("current_trace"):
-        transcript_path = _find_transcript_path(data, session_id)
+        transcript_path = _get_cached_transcript_path(data, state, session_id)
         _emit_pending_llm_spans(state, transcript_path, config)
         _complete_turn(state, config, transcript_path, now_ns)
+        # Clear the cached path so the new turn resolves it fresh below
+        state.pop("transcript_path", None)
 
     # Count human messages for LLM span extraction.
     # UserPromptSubmit fires before Claude processes the prompt, so the new
     # message is not yet in the transcript — human_count_at_start equals the
     # current count (the new prompt will become count+1 in the transcript).
-    transcript_path = _find_transcript_path(data, session_id)
+    # Resolve and immediately cache the transcript path for this new turn.
+    transcript_path = _get_cached_transcript_path(data, state, session_id)
     current_human_count = (
         _count_human_messages(transcript_path) if transcript_path else 0
     )
@@ -1049,7 +1087,7 @@ def handle_pre_tool(data: dict, config: dict) -> None:
     # This handles cases where the hook isn't registered or fires before the
     # UserPromptSubmit event is available.
     if not state.get("current_trace"):
-        transcript_path = _find_transcript_path(data, session_id)
+        transcript_path = _get_cached_transcript_path(data, state, session_id)
         current_human_count = (
             _count_human_messages(transcript_path) if transcript_path else 0
         )
@@ -1144,10 +1182,13 @@ def handle_post_tool(data: dict, config: dict) -> None:
     # Acquire an exclusive per-session lock before emitting LLM spans.
     # Parallel PostToolUse processes race on emitted_llm_span_count; the lock
     # ensures each process re-reads the latest count and never double-emits.
-    transcript_path = _find_transcript_path(data, session_id)
+    # Resolve the transcript path *inside* the lock so we always use the path
+    # that was cached in state at UserPromptSubmit time — not the (potentially
+    # stale or redirected) path carried in the current hook payload.
     with _session_lock(session_id):
         state = _load_state(session_id)
         state.get("pending_tools", {}).pop(tool_name, None)
+        transcript_path = _get_cached_transcript_path(data, state, session_id)
         _emit_pending_llm_spans(state, transcript_path, config)
         _save_state(session_id, state)
 
@@ -1201,10 +1242,10 @@ def handle_post_tool_failure(data: dict, config: dict) -> None:
         span_records=[span_record],
     )
 
-    transcript_path = _find_transcript_path(data, session_id)
     with _session_lock(session_id):
         state = _load_state(session_id)
         state.get("pending_tools", {}).pop(tool_name, None)
+        transcript_path = _get_cached_transcript_path(data, state, session_id)
         _emit_pending_llm_spans(state, transcript_path, config)
         _save_state(session_id, state)
 
@@ -1212,13 +1253,14 @@ def handle_post_tool_failure(data: dict, config: dict) -> None:
 def handle_stop(data: dict, config: dict) -> None:
     session_id = data.get("session_id", "unknown")
     end_ns = time.time_ns()
-    transcript_path = _find_transcript_path(data, session_id)
 
     with _session_lock(session_id):
         state = _load_state(session_id)
         if not state.get("current_trace"):
             log.debug("No active trace for session %s at stop", session_id)
             return
+
+        transcript_path = _get_cached_transcript_path(data, state, session_id)
 
         # Emit the final LLM span(s) — the last response has no tool call after it,
         # so handle_post_tool never got the chance to emit it.

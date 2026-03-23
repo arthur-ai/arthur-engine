@@ -1670,6 +1670,86 @@ class TestFindTranscriptPath:
 
 
 # ---------------------------------------------------------------------------
+# _get_cached_transcript_path
+# ---------------------------------------------------------------------------
+
+
+class TestGetCachedTranscriptPath:
+    def test_uses_cached_path_from_state(self, tmp_path):
+        """If state already has a transcript_path that exists, return it without
+        calling _find_transcript_path again — even if the hook data points elsewhere."""
+        real = tmp_path / "real.jsonl"
+        real.write_text("")
+        decoy = tmp_path / "decoy.jsonl"
+        decoy.write_text("")
+
+        state = {"transcript_path": str(real)}
+        result = tracer._get_cached_transcript_path(
+            {"transcript_path": str(decoy)}, state, "any"
+        )
+        assert result == str(real)
+
+    def test_resolves_and_caches_when_state_has_no_path(self, tmp_path):
+        """When state has no cached path, resolve via hook data and cache it."""
+        p = tmp_path / "t.jsonl"
+        p.write_text("")
+        state = {}
+        result = tracer._get_cached_transcript_path(
+            {"transcript_path": str(p)}, state, "any"
+        )
+        assert result == str(p)
+        assert state["transcript_path"] == str(p)
+
+    def test_re_resolves_if_cached_path_deleted(self, tmp_path):
+        """If the cached file no longer exists, fall through to _find_transcript_path."""
+        gone = tmp_path / "gone.jsonl"
+        gone.write_text("")
+        state = {"transcript_path": str(gone)}
+        gone.unlink()  # delete it
+
+        new = tmp_path / "new.jsonl"
+        new.write_text("")
+        result = tracer._get_cached_transcript_path(
+            {"transcript_path": str(new)}, state, "any"
+        )
+        assert result == str(new)
+        assert state["transcript_path"] == str(new)
+
+    def test_cached_path_survives_shadow_file_creation(self, tmp_path, monkeypatch):
+        """Simulate gh pr create writing a shadow file mid-session.
+
+        The cached path from UserPromptSubmit should be used even after
+        the hook payload starts pointing to the shadow file.
+        """
+        session_id = "stable-sess"
+        real_dir = tmp_path / ".claude" / "projects" / "real-project"
+        real_dir.mkdir(parents=True)
+        real = real_dir / f"{session_id}.jsonl"
+        real.write_text(
+            "\n".join([
+                json.dumps({"type": "user", "message": {"role": "user", "content": "hi"}}),
+                json.dumps({"type": "assistant", "message": {"role": "assistant", "content": []}}),
+            ]) + "\n"
+        )
+
+        # State cached at UserPromptSubmit time, pointing to the real transcript
+        state = {"transcript_path": str(real)}
+
+        # Mid-session, gh pr create writes a shadow file; hook data now points there
+        shadow_dir = tmp_path / ".claude" / "projects" / "worktree-dir"
+        shadow_dir.mkdir(parents=True)
+        shadow = shadow_dir / f"{session_id}.jsonl"
+        shadow.write_text(json.dumps({"type": "pr-link", "prNumber": 99}) + "\n")
+
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        result = tracer._get_cached_transcript_path(
+            {"transcript_path": str(shadow)}, state, session_id
+        )
+        # Must return the cached real transcript, not the shadow
+        assert result == str(real)
+
+
+# ---------------------------------------------------------------------------
 # discover_config — global config fallback
 # ---------------------------------------------------------------------------
 
