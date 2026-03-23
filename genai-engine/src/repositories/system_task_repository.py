@@ -17,9 +17,9 @@ from services.chatbot.chatbot_prompts import (
     SYSTEM_PROMPT,
 )
 from utils.constants import (
+    ARTHUR_SYSTEM_TASK_ID,
+    ARTHUR_SYSTEM_TASK_NAME,
     CHATBOT_PROMPT_NAME,
-    CHATBOT_TASK_ID,
-    CHATBOT_TASK_NAME,
 )
 
 logger = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ class SystemTaskRepository:
         """
         try:
             self.agentic_prompt_repo.delete_llm_item(
-                CHATBOT_TASK_ID,
+                ARTHUR_SYSTEM_TASK_ID,
                 CHATBOT_PROMPT_NAME,
             )
             logger.info("Deleting old chatbot prompt.")
@@ -46,7 +46,7 @@ class SystemTaskRepository:
             pass
 
         prompt = self.agentic_prompt_repo.save_llm_item(
-            task_id=CHATBOT_TASK_ID,
+            task_id=ARTHUR_SYSTEM_TASK_ID,
             item_name=CHATBOT_PROMPT_NAME,
             item=CreateAgenticPromptRequest(
                 model_name="claude-sonnet-4-6",
@@ -59,7 +59,7 @@ class SystemTaskRepository:
             ),
         )
         self.agentic_prompt_repo.add_tag_to_llm_item_version(
-            task_id=CHATBOT_TASK_ID,
+            task_id=ARTHUR_SYSTEM_TASK_ID,
             item_name=CHATBOT_PROMPT_NAME,
             item_version=str(prompt.version),
             tag="production",
@@ -67,13 +67,13 @@ class SystemTaskRepository:
         logger.info("Chatbot prompt created.")
 
     def _create_chatbot_task(self) -> None:
-        existing = self.db_session.get(DatabaseTask, CHATBOT_TASK_ID)
+        existing = self.db_session.get(DatabaseTask, ARTHUR_SYSTEM_TASK_ID)
         if existing is None:
             now = datetime.now(timezone.utc)
             self.db_session.add(
                 DatabaseTask(
-                    id=CHATBOT_TASK_ID,
-                    name=CHATBOT_TASK_NAME,
+                    id=ARTHUR_SYSTEM_TASK_ID,
+                    name=ARTHUR_SYSTEM_TASK_NAME,
                     created_at=now,
                     updated_at=now,
                     is_agentic=True,

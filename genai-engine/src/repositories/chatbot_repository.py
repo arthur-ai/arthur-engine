@@ -18,11 +18,11 @@ from services.chatbot.chatbot_service import (
     get_conversation_history,
 )
 from services.prompt.chat_completion_service import ChatCompletionService
-from utils.constants import CHATBOT_PROMPT_NAME, CHATBOT_TASK_ID
+from utils.constants import ARTHUR_SYSTEM_TASK_ID, CHATBOT_PROMPT_NAME
 
 PROVIDER_PRIORITY = [
     (ModelProvider.ANTHROPIC, "claude-sonnet-4-6"),
-    (ModelProvider.OPENAI, "gpt-4.1"),
+    (ModelProvider.OPENAI, "gpt-5.4"),
     (ModelProvider.GEMINI, "gemini-3-flash-preview"),
 ]
 
@@ -66,7 +66,7 @@ class ChatbotRepository:
         chatbot_prompt = cast(
             AgenticPrompt,
             self.agentic_prompt_repo.get_llm_item_by_tag(
-                task_id=CHATBOT_TASK_ID,
+                task_id=ARTHUR_SYSTEM_TASK_ID,
                 item_name=CHATBOT_PROMPT_NAME,
                 tag="production",
             ),
@@ -77,6 +77,7 @@ class ChatbotRepository:
             chat_completion_service=self.chat_completion_service,
             api_call_service=api_call_service,
             api_index=get_api_index(app),
+            db_session=self.db_session,
         )
 
         history = get_conversation_history(user_id, request.conversation_id)

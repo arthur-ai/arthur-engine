@@ -10,6 +10,7 @@ from arthur_common.models.llm_model_providers import (
     ToolCallFunction,
 )
 from cachetools import TTLCache
+from sqlalchemy.orm import Session
 
 from clients.llm.llm_client import LLMClient
 from schemas.agentic_prompt_schemas import AgenticPrompt
@@ -22,6 +23,7 @@ from schemas.request_schemas import PromptCompletionRequest
 from schemas.response_schemas import AgenticPromptRunResponse
 from services.chatbot.api_call_service import ApiCallService
 from services.chatbot.chatbot_prompts import search_api_index
+from services.chatbot.chatbot_tracing_service import ChatbotTracingService
 from services.prompt.chat_completion_service import ChatCompletionService
 from utils import constants
 from utils.utils import get_env_var
@@ -53,10 +55,12 @@ class ChatbotService:
         chat_completion_service: ChatCompletionService,
         api_call_service: ApiCallService,
         api_index: List[str],
+        db_session: Session,
     ):
         self.chat_completion_service = chat_completion_service
         self.api_call_service = api_call_service
         self.api_index = api_index
+        self.tracing = ChatbotTracingService(db_session)
 
     def build_prompt(
         self,
@@ -88,9 +92,19 @@ class ChatbotService:
     ) -> AsyncGenerator[str, None]:
         api_calls_made: List[ApiCallSummary] = []
         current_prompt = prompt
+        agent_span = self.tracing.start_agent_span(user_id, conversation_id)
+
+        self.tracing.set_agent_input(agent_span, current_prompt.messages)
 
         for _ in range(MAX_ITERATIONS):
             final_response: AgenticPromptRunResponse | None = None
+
+            llm_span = self.tracing.start_llm_span(
+                agent_span,
+                current_prompt.model_name,
+                current_prompt.model_provider,
+            )
+            self.tracing.set_llm_input_messages(llm_span, current_prompt.messages)
 
             async for event in self.chat_completion_service.stream_chat_completion(
                 current_prompt,
@@ -101,13 +115,29 @@ class ChatbotService:
                     data = event.split("data: ", 1)[1].strip()
                     final_response = AgenticPromptRunResponse.model_validate_json(data)
                 elif event.startswith("event: error"):
+                    self.tracing.end_span_with_error(llm_span, event)
+                    self.tracing.end_span_with_error(agent_span, event)
+                    self.tracing.flush()
                     yield event
                     return
                 else:
                     yield event
 
             if final_response is None:
+                self.tracing.end_span(llm_span)
+                self.tracing.end_span(agent_span)
+                self.tracing.flush()
                 return
+
+            self.tracing.set_llm_response(
+                llm_span,
+                content=final_response.content,
+                tool_calls=final_response.tool_calls,
+                input_tokens=final_response.input_tokens,
+                output_tokens=final_response.output_tokens,
+                total_tokens=final_response.total_tokens,
+            )
+            self.tracing.end_span(llm_span)
 
             if not final_response.tool_calls:
                 history = [
@@ -117,6 +147,9 @@ class ChatbotService:
                     OpenAIMessage(role=MessageRole.AI, content=final_response.content),
                 )
                 CONVERSATION_HISTORIES[(user_id, conversation_id)] = history[-15:]
+                self.tracing.set_agent_output(agent_span, final_response.content or "")
+                self.tracing.end_span(agent_span)
+                self.tracing.flush()
                 yield f"event: final_response\ndata: {final_response.model_dump_json()}\n\n"
                 return
 
@@ -144,10 +177,18 @@ class ChatbotService:
 
                 if tool_call.function.name == "search_arthur_api":
                     search_args = SearchArthurApiArgs.model_validate_json(args_str)
+                    tool_span = self.tracing.start_tool_span(
+                        agent_span,
+                        "search_arthur_api",
+                    )
+                    self.tracing.set_tool_input(tool_span, search_args.query)
+                    search_result = search_api_index(self.api_index, search_args.query)
+                    self.tracing.set_tool_output(tool_span, search_result)
+                    self.tracing.end_span(tool_span)
                     new_messages.append(
                         OpenAIMessage(
                             role=MessageRole.TOOL,
-                            content=search_api_index(self.api_index, search_args.query),
+                            content=search_result,
                             tool_call_id=tool_call_id,
                         ),
                     )
@@ -157,6 +198,21 @@ class ChatbotService:
                     continue
                 elif tool_call.function.name == "call_arthur_api":
                     call_args = CallArthurApiArgs.model_validate_json(args_str)
+                    tool_span = self.tracing.start_tool_span(
+                        agent_span,
+                        "call_arthur_api",
+                    )
+                    self.tracing.set_tool_input(
+                        tool_span,
+                        json.dumps(
+                            {
+                                "method": call_args.method,
+                                "path": call_args.path,
+                                "query_params": call_args.query_params,
+                                "body": call_args.body,
+                            },
+                        ),
+                    )
 
                     yield f"event: tool_call\ndata: {json.dumps({'method': call_args.method, 'path': call_args.path})}\n\n"
 
@@ -173,6 +229,12 @@ class ChatbotService:
                             status_code=result.status_code,
                         ),
                     )
+
+                    self.tracing.set_tool_output(
+                        tool_span,
+                        result.to_tool_result_content(),
+                    )
+                    self.tracing.end_span(tool_span)
 
                     yield f"event: tool_result\ndata: {json.dumps({'method': call_args.method, 'path': call_args.path, 'status_code': result.status_code})}\n\n"
 
@@ -201,3 +263,7 @@ class ChatbotService:
                 config=current_prompt.config,
                 created_at=current_prompt.created_at,
             )
+
+        # Hit MAX_ITERATIONS without returning
+        self.tracing.end_span(agent_span)
+        self.tracing.flush()
