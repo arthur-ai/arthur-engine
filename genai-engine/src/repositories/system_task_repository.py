@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timezone
+from typing import cast
 
 from arthur_common.models.llm_model_providers import (
     MessageRole,
@@ -10,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from db_models.task_models import DatabaseTask
 from repositories.agentic_prompts_repository import AgenticPromptRepository
+from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.request_schemas import CreateAgenticPromptRequest
 from services.chatbot.chatbot_prompts import (
     CALL_ARTHUR_API_TOOL,
@@ -32,11 +34,26 @@ class SystemTaskRepository:
 
     def _create_chatbot_prompt(self) -> None:
         """
-        Create (or replace) the chatbot system prompt as an agentic prompt on the chatbot system task,
-        tagged as 'production'. Always overwrites so code changes to SYSTEM_PROMPT and tools are
-        picked up on restart.
+        Create the chatbot system prompt if it doesn't already exist.
+        If a production-tagged prompt already exists, leave it as-is to preserve
+        user-configured model provider and model name.
         """
+        model_provider = ModelProvider.ANTHROPIC
+        model_name = "claude-sonnet-4-6"
+
         try:
+            existing = cast(
+                AgenticPrompt,
+                self.agentic_prompt_repo.get_llm_item_by_tag(
+                    task_id=ARTHUR_SYSTEM_TASK_ID,
+                    item_name=CHATBOT_PROMPT_NAME,
+                    tag="production",
+                ),
+            )
+
+            model_provider = existing.model_provider
+            model_name = existing.model_name
+
             self.agentic_prompt_repo.delete_llm_item(
                 ARTHUR_SYSTEM_TASK_ID,
                 CHATBOT_PROMPT_NAME,
@@ -49,8 +66,8 @@ class SystemTaskRepository:
             task_id=ARTHUR_SYSTEM_TASK_ID,
             item_name=CHATBOT_PROMPT_NAME,
             item=CreateAgenticPromptRequest(
-                model_name="claude-sonnet-4-6",
-                model_provider=ModelProvider.ANTHROPIC,
+                model_name=model_name,
+                model_provider=model_provider,
                 messages=[
                     OpenAIMessage(role=MessageRole.SYSTEM, content=SYSTEM_PROMPT),
                 ],

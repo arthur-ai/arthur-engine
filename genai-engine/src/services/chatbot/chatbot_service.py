@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import AsyncGenerator, List, MutableMapping, Tuple
+from typing import AsyncGenerator, List, MutableMapping, Optional, Tuple
 
 from arthur_common.models.llm_model_providers import (
     MessageRole,
@@ -70,11 +70,13 @@ class ChatbotService:
         task_id: str,
         history: List[OpenAIMessage],
         user_message: str,
+        blacklist: Optional[List[str]] = None,
     ) -> AgenticPrompt:
         chatbot_prompt.model_provider = model_provider
         chatbot_prompt.model_name = model_name
+        blacklist_str = "\n".join(blacklist) if blacklist else "None"
         self.chat_completion_service.replace_variables(
-            {"task_id": task_id},
+            {"task_id": task_id, "endpoint_blacklist": blacklist_str},
             chatbot_prompt.messages,
         )
         messages = list(chatbot_prompt.messages)

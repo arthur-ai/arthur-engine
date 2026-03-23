@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { ChatMessage, ThinkingIndicator, ToolCallIndicator } from "./ChatMessage";
 
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useChatbot } from "@/hooks/useChatbot";
 
 interface ChatbotDrawerProps {
@@ -14,6 +15,7 @@ interface ChatbotDrawerProps {
 }
 
 export function ChatbotDrawer({ taskId }: ChatbotDrawerProps) {
+  const { chatbotEnabled } = useDisplaySettings();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -22,6 +24,8 @@ export function ChatbotDrawer({ taskId }: ChatbotDrawerProps) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, activeToolCall]);
+
+  if (!chatbotEnabled) return null;
 
   const handleSend = () => {
     const trimmed = input.trim();

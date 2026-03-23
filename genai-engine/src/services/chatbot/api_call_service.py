@@ -1,11 +1,11 @@
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 import httpx
 from pydantic import BaseModel
 
-from services.chatbot.chatbot_prompts import is_allowed_delete_path
+from services.chatbot.chatbot_prompts import is_allowed_delete_path, is_blacklisted
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +21,15 @@ class ApiCallResult(BaseModel):
 
 
 class ApiCallService:
-    def __init__(self, token: str, base_url: str):
+    def __init__(
+        self,
+        token: str,
+        base_url: str,
+        blacklist: Optional[List[str]] = None,
+    ):
         self.token = token
         self.base_url = base_url
+        self.blacklist = blacklist or []
 
     async def call(
         self,
@@ -55,6 +61,14 @@ class ApiCallService:
                 path=path,
                 status_code=403,
                 body="DELETE is only permitted for tag endpoints",
+            )
+
+        if self.blacklist and is_blacklisted(parsed.path, self.blacklist):
+            return ApiCallResult(
+                method=method,
+                path=path,
+                status_code=403,
+                body="This endpoint has been blocked by the administrator",
             )
 
         headers = {
