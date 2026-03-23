@@ -30,6 +30,8 @@ from schemas.request_schemas import (
     TransformListFilterRequest,
 )
 from schemas.response_schemas import (
+    ListTraceTransformVersionsResponse,
+    TraceTransformVersionResponse,
     TransformDependents,
     TransformExtractionResponseList,
 )
@@ -147,8 +149,9 @@ def create_transform_for_task(
     task: Task = Depends(get_validated_task),
 ) -> TraceTransformResponse:
     try:
+        author = current_user.email if current_user else None
         trace_transform_repo = TraceTransformRepository(db_session)
-        trace_transform = trace_transform_repo.create_transform(task.id, request)
+        trace_transform = trace_transform_repo.create_transform(task.id, request, author=author)
         return trace_transform.to_response_model()
     except HTTPException:
         raise
@@ -170,11 +173,90 @@ def update_transform(
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> TraceTransformResponse:
     try:
+        author = current_user.email if current_user else None
         trace_transform_repo = TraceTransformRepository(db_session)
         trace_transform = trace_transform_repo.update_transform(
             transform_id,
             request,
+            author=author,
         )
+        return trace_transform.to_response_model()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@transform_routes.get(
+    "/traces/transforms/{transform_id}/versions",
+    description="List all version snapshots for a transform, ordered by version number descending.",
+    response_model=ListTraceTransformVersionsResponse,
+    tags=["Transforms"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def list_transform_versions(
+    transform_id: UUID = Path(description="ID of the transform."),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> ListTraceTransformVersionsResponse:
+    try:
+        repo = TraceTransformRepository(db_session)
+        if not repo.get_transform_by_id(transform_id):
+            raise HTTPException(
+                status_code=404,
+                detail=f"Transform {transform_id} not found",
+            )
+        return repo.list_versions(transform_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@transform_routes.get(
+    "/traces/transforms/{transform_id}/versions/{version_id}",
+    description="Get a specific version snapshot of a transform.",
+    response_model=TraceTransformVersionResponse,
+    tags=["Transforms"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def get_transform_version(
+    transform_id: UUID = Path(description="ID of the transform."),
+    version_id: UUID = Path(description="ID of the version to fetch."),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> TraceTransformVersionResponse:
+    try:
+        repo = TraceTransformRepository(db_session)
+        if not repo.get_transform_by_id(transform_id):
+            raise HTTPException(
+                status_code=404,
+                detail=f"Transform {transform_id} not found",
+            )
+        return repo.get_version_by_id(transform_id, version_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@transform_routes.post(
+    "/traces/transforms/{transform_id}/versions/{version_id}/restore",
+    description="Restore a transform to a previous version snapshot. Creates a new version entry rather than overwriting history.",
+    response_model=TraceTransformResponse,
+    tags=["Transforms"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+def restore_transform_version(
+    transform_id: UUID = Path(description="ID of the transform."),
+    version_id: UUID = Path(description="ID of the version to restore."),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> TraceTransformResponse:
+    try:
+        author = current_user.email if current_user else None
+        repo = TraceTransformRepository(db_session)
+        trace_transform = repo.restore_version(transform_id, version_id, author=author)
         return trace_transform.to_response_model()
     except HTTPException:
         raise

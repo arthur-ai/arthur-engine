@@ -1,11 +1,12 @@
+import uuid
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
 from fastapi import HTTPException
-from sqlalchemy import String, asc, cast, desc
+from sqlalchemy import String, asc, cast, desc, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -13,14 +14,19 @@ from custom_types import QueryT
 from db_models.agentic_experiment_models import DatabaseAgenticExperiment
 from db_models.agentic_notebook_models import DatabaseAgenticNotebook
 from db_models.llm_eval_models import DatabaseContinuousEval
-from db_models.transform_models import DatabaseTraceTransform
+from db_models.transform_models import DatabaseTraceTransform, DatabaseTraceTransformVersion
 from schemas.internal_schemas import TraceTransform
 from schemas.request_schemas import (
     NewTraceTransformRequest,
     TraceTransformUpdateRequest,
     TransformListFilterRequest,
 )
-from schemas.response_schemas import TransformDependentRef, TransformDependents
+from schemas.response_schemas import (
+    ListTraceTransformVersionsResponse,
+    TraceTransformVersionResponse,
+    TransformDependentRef,
+    TransformDependents,
+)
 
 
 class TraceTransformRepository:
@@ -116,16 +122,43 @@ class TraceTransformRepository:
 
         return transforms
 
+    def _create_version(
+        self,
+        db_transform: DatabaseTraceTransform,
+        author: Optional[str] = None,
+    ) -> DatabaseTraceTransformVersion:
+        """Create an immutable version snapshot for the given transform."""
+        next_version_number = (
+            self.db_session.query(func.coalesce(func.max(DatabaseTraceTransformVersion.version_number), 0))
+            .filter(DatabaseTraceTransformVersion.transform_id == db_transform.id)
+            .scalar()
+        ) + 1
+
+        version = DatabaseTraceTransformVersion(
+            id=uuid.uuid4(),
+            transform_id=db_transform.id,
+            task_id=db_transform.task_id,
+            version_number=next_version_number,
+            config_snapshot=db_transform.definition,
+            author=author,
+            created_at=datetime.now(),
+        )
+        self.db_session.add(version)
+        return version
+
     def create_transform(
         self,
         task_id: str,
         transform: NewTraceTransformRequest,
+        author: Optional[str] = None,
     ) -> TraceTransform:
         trace_transform = TraceTransform.from_request_model(task_id, transform)
         db_transform = trace_transform.to_db_model()
 
         try:
             self.db_session.add(db_transform)
+            self.db_session.flush()
+            self._create_version(db_transform, author=author)
             self.db_session.commit()
             self.db_session.refresh(db_transform)
         except IntegrityError:
@@ -142,6 +175,7 @@ class TraceTransformRepository:
         self,
         transform_id: UUID,
         transform: TraceTransformUpdateRequest,
+        author: Optional[str] = None,
     ) -> TraceTransform:
         db_transform = self._get_db_transform_by_id(transform_id)
 
@@ -164,8 +198,96 @@ class TraceTransformRepository:
 
         if updated_transform:
             db_transform.updated_at = datetime.now()
+            self._create_version(db_transform, author=author)
             self.db_session.commit()
             self.db_session.refresh(db_transform)
+
+        return TraceTransform.from_db_model(db_transform)
+
+    def list_versions(self, transform_id: UUID) -> ListTraceTransformVersionsResponse:
+        """List all versions for a transform ordered by version_number descending."""
+        db_versions = (
+            self.db_session.query(DatabaseTraceTransformVersion)
+            .filter(DatabaseTraceTransformVersion.transform_id == transform_id)
+            .order_by(desc(DatabaseTraceTransformVersion.version_number))
+            .all()
+        )
+        versions = [
+            TraceTransformVersionResponse(
+                id=v.id,
+                transform_id=v.transform_id,
+                task_id=v.task_id,
+                version_number=v.version_number,
+                config_snapshot=v.config_snapshot,
+                author=v.author,
+                created_at=v.created_at,
+            )
+            for v in db_versions
+        ]
+        return ListTraceTransformVersionsResponse(versions=versions, count=len(versions))
+
+    def get_version_by_id(
+        self,
+        transform_id: UUID,
+        version_id: UUID,
+    ) -> TraceTransformVersionResponse:
+        """Get a specific version snapshot by ID."""
+        db_version = (
+            self.db_session.query(DatabaseTraceTransformVersion)
+            .filter(
+                DatabaseTraceTransformVersion.id == version_id,
+                DatabaseTraceTransformVersion.transform_id == transform_id,
+            )
+            .one_or_none()
+        )
+        if not db_version:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Version {version_id} not found for transform {transform_id}",
+            )
+        return TraceTransformVersionResponse(
+            id=db_version.id,
+            transform_id=db_version.transform_id,
+            task_id=db_version.task_id,
+            version_number=db_version.version_number,
+            config_snapshot=db_version.config_snapshot,
+            author=db_version.author,
+            created_at=db_version.created_at,
+        )
+
+    def restore_version(
+        self,
+        transform_id: UUID,
+        version_id: UUID,
+        author: Optional[str] = None,
+    ) -> TraceTransform:
+        """Apply a version snapshot to the transform and create a new version entry."""
+        db_version = (
+            self.db_session.query(DatabaseTraceTransformVersion)
+            .filter(
+                DatabaseTraceTransformVersion.id == version_id,
+                DatabaseTraceTransformVersion.transform_id == transform_id,
+            )
+            .one_or_none()
+        )
+        if not db_version:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Version {version_id} not found for transform {transform_id}",
+            )
+
+        db_transform = self._get_db_transform_by_id(transform_id)
+        if not db_transform:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Transform {transform_id} not found",
+            )
+
+        db_transform.definition = db_version.config_snapshot
+        db_transform.updated_at = datetime.now()
+        self._create_version(db_transform, author=author)
+        self.db_session.commit()
+        self.db_session.refresh(db_transform)
 
         return TraceTransform.from_db_model(db_transform)
 
