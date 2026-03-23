@@ -84,7 +84,7 @@ from db_models.agentic_experiment_models import (
     DatabaseAgenticExperimentTestCaseAgenticResult,
     DatabaseAgenticExperimentTestCaseAgenticResultEvalScore,
 )
-from db_models.transform_models import DatabaseTraceTransform
+from db_models.transform_models import DatabaseTraceTransform, DatabaseTraceTransformVersion
 
 __all__ = [
     # Base classes
@@ -172,6 +172,7 @@ __all__ = [
     "DatabaseAgenticExperimentTestCaseAgenticResultEvalScore",
     # Transform models
     "DatabaseTraceTransform",
+    "DatabaseTraceTransformVersion",
     # Agent Polling models
     "DatabaseTaskPollingState",
 ]
