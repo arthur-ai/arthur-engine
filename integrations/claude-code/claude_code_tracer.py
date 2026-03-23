@@ -179,29 +179,69 @@ def _session_lock(session_id: str):
 # ---------------------------------------------------------------------------
 
 
+def _transcript_has_conversation(path: Path) -> bool:
+    """Return True if the transcript contains at least one user or assistant message.
+
+    Shadow transcripts (e.g. files created by ``gh pr create`` in a worktree
+    context) contain only ``pr-link`` entries and must be skipped.
+    """
+    try:
+        for line in path.read_text().splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                if json.loads(line).get("type") in ("user", "assistant"):
+                    return True
+            except (json.JSONDecodeError, ValueError):
+                continue
+    except Exception:
+        pass
+    return False
+
+
 def _find_transcript_path(data: dict, session_id: str) -> Optional[str]:
-    """Locate the session's transcript JSONL file."""
+    """Locate the session's transcript JSONL file.
+
+    Collects all candidate paths, then prefers the one(s) that contain actual
+    conversation content (user/assistant messages).  Among those, the largest
+    file wins — this reliably selects the real transcript over shadow files
+    created by ``gh pr create`` inside git worktrees.
+    """
+    seen: set = set()
+    candidates: list = []
+
+    def _add(p: Path) -> None:
+        resolved = p.resolve()
+        if resolved not in seen and p.exists():
+            seen.add(resolved)
+            candidates.append(p)
+
     # 1. Provided directly in hook data
     tp = data.get("transcript_path", "")
-    if tp and Path(tp).exists():
-        return tp
+    if tp:
+        _add(Path(tp))
 
     # 2. Construct from CLAUDE_PROJECT_DIR (path with / → -)
     project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
     if project_dir:
         sanitized = project_dir.replace("/", "-")
-        path = Path.home() / ".claude" / "projects" / sanitized / f"{session_id}.jsonl"
-        if path.exists():
-            return str(path)
+        _add(Path.home() / ".claude" / "projects" / sanitized / f"{session_id}.jsonl")
 
     # 3. Glob fallback across all project dirs
     projects_dir = Path.home() / ".claude" / "projects"
     if projects_dir.exists():
-        matches = list(projects_dir.glob(f"*/{session_id}.jsonl"))
-        if matches:
-            return str(matches[0])
+        for match in projects_dir.glob(f"*/{session_id}.jsonl"):
+            _add(match)
 
-    return None
+    if not candidates:
+        return None
+
+    # Prefer candidates that contain real conversation content; if several do,
+    # pick the largest (the real transcript is always the biggest).
+    content_candidates = [p for p in candidates if _transcript_has_conversation(p)]
+    pool = content_candidates if content_candidates else candidates
+    return str(max(pool, key=lambda p: p.stat().st_size))
 
 
 def _is_human_message(entry: dict) -> bool:
