@@ -149,6 +149,11 @@ const PromptsTable = ({ prompts, sortColumn, sortDirection, onSort, onExpandToFu
               </TableCell>
               <TableCell>
                 <Box component="span" sx={{ fontWeight: 600 }}>
+                  Tags
+                </Box>
+              </TableCell>
+              <TableCell>
+                <Box component="span" sx={{ fontWeight: 600 }}>
                   Actions
                 </Box>
               </TableCell>
@@ -156,6 +161,15 @@ const PromptsTable = ({ prompts, sortColumn, sortDirection, onSort, onExpandToFu
           </TableHead>
           <TableBody>
             {sortedPrompts.map((promptMetadata) => {
+              const tags = promptMetadata.tags ?? [];
+              const hasProduction = tags.some((tag) => tag.toLowerCase() === "production");
+              const otherTags = tags.filter((tag) => tag.toLowerCase() !== "production");
+              const displayTags: Array<{ label: string; isProduction: boolean }> = [];
+              if (hasProduction) displayTags.push({ label: "production", isProduction: true });
+              otherTags.slice(0, 3 - displayTags.length).forEach((tag) => {
+                displayTags.push({ label: tag, isProduction: false });
+              });
+
               return (
                 <TableRow
                   key={promptMetadata.name}
@@ -187,6 +201,20 @@ const PromptsTable = ({ prompts, sortColumn, sortDirection, onSort, onExpandToFu
                   <TableCell>{formatDateInTimezone(promptMetadata.created_at, timezone, { hour12: !use24Hour })}</TableCell>
                   <TableCell>{formatDateInTimezone(promptMetadata.latest_version_created_at, timezone, { hour12: !use24Hour })}</TableCell>
                   <TableCell>{promptMetadata.versions}</TableCell>
+                  <TableCell>
+                    <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+                      {displayTags.map((tag) => (
+                        <Chip
+                          key={tag.label}
+                          label={tag.label}
+                          size="small"
+                          color={tag.isProduction ? "success" : "primary"}
+                          variant={tag.isProduction ? "filled" : "outlined"}
+                          sx={{ height: 20, fontSize: "0.75rem" }}
+                        />
+                      ))}
+                    </Box>
+                  </TableCell>
                   <TableCell>
                     <IconButton
                       size="small"
