@@ -2755,14 +2755,14 @@ test = ["opentelemetry-sdk", "vertexai (==1.49.0)"]
 
 [[package]]
 name = "openinference-semantic-conventions"
-version = "0.1.27"
+version = "0.1.28"
 description = "OpenInference Semantic Conventions"
 optional = false
 python-versions = "<3.15,>=3.9"
 groups = ["main"]
 files = [
-    {file = "openinference_semantic_conventions-0.1.27-py3-none-any.whl", hash = "sha256:3871fd2cc9d203bdb444ab66ff2ba9bdbf1013dc48c64c5700dd449d47b338c5"},
-    {file = "openinference_semantic_conventions-0.1.27.tar.gz", hash = "sha256:db0b1bbc1cd66f8108b17f972976fa1833413a01967ff930e2707a77e0f66bd3"},
+    {file = "openinference_semantic_conventions-0.1.28-py3-none-any.whl", hash = "sha256:a2fed5bb167aa56c1c7448cdb7a8d775f989339ba1f8b04a7b45d4f8388cccfb"},
+    {file = "openinference_semantic_conventions-0.1.28.tar.gz", hash = "sha256:6388465174e8ab3f27ebc6a9e9bb2e1b804d30caefb57234e16db874da1c6a7b"},
 ]
 
 [[package]]
