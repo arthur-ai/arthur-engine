@@ -37,8 +37,8 @@ def final_response_events(content: str) -> list[str]:
 
 @pytest.mark.unit_tests
 @patch(
-    "repositories.chatbot_repository.ChatbotRepository.get_provider_and_client",
-    side_effect=HTTPException(status_code=503, detail="No provider configured"),
+    "repositories.model_provider_repository.ModelProviderRepository.get_model_provider_client",
+    side_effect=HTTPException(status_code=400, detail="model provider anthropic is not configured"),
 )
 def test_chatbot_no_provider_configured(_, client: GenaiEngineTestClientBase):
     task_name = "chatbot_task_no_provider"
@@ -49,7 +49,7 @@ def test_chatbot_no_provider_configured(_, client: GenaiEngineTestClientBase):
         json={"message": "hello", "conversation_id": "test-conv-1"},
         headers=client.authorized_user_api_key_headers,
     )
-    assert response.status_code == 503
+    assert response.status_code == 400
 
 
 @pytest.mark.unit_tests
@@ -61,7 +61,7 @@ def test_chatbot_simple_response(mock_stream, client: GenaiEngineTestClientBase)
     _, task = client.create_task(task_name, is_agentic=True)
 
     client.base_client.put(
-        "/api/v1/model_providers/openai",
+        "/api/v1/model_providers/anthropic",
         json={"api_key": "test-key"},
         headers=client.authorized_user_api_key_headers,
     )
@@ -94,7 +94,7 @@ def test_chatbot_search_tool_emits_search_complete(
     _, task = client.create_task(task_name, is_agentic=True)
 
     client.base_client.put(
-        "/api/v1/model_providers/openai",
+        "/api/v1/model_providers/anthropic",
         json={"api_key": "test-key"},
         headers=client.authorized_user_api_key_headers,
     )
@@ -136,7 +136,7 @@ def test_chatbot_api_tool_emits_tool_call_and_result(
     _, task = client.create_task(task_name, is_agentic=True)
 
     client.base_client.put(
-        "/api/v1/model_providers/openai",
+        "/api/v1/model_providers/anthropic",
         json={"api_key": "test-key"},
         headers=client.authorized_user_api_key_headers,
     )
@@ -189,7 +189,7 @@ def test_chatbot_conversation_history_persisted(
     _, task = client.create_task(task_name, is_agentic=True)
 
     client.base_client.put(
-        "/api/v1/model_providers/openai",
+        "/api/v1/model_providers/anthropic",
         json={"api_key": "test-key"},
         headers=client.authorized_user_api_key_headers,
     )
@@ -216,7 +216,7 @@ def test_clear_chatbot_history(mock_stream, client: GenaiEngineTestClientBase):
     _, task = client.create_task(task_name, is_agentic=True)
 
     client.base_client.put(
-        "/api/v1/model_providers/openai",
+        "/api/v1/model_providers/anthropic",
         json={"api_key": "test-key"},
         headers=client.authorized_user_api_key_headers,
     )
