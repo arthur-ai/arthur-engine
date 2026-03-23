@@ -3,10 +3,9 @@ import EditIcon from "@mui/icons-material/Edit";
 import { Box, IconButton, TableCell, TableRow } from "@mui/material";
 import React from "react";
 
-import { CopyableChip } from "@/components/common/CopyableChip";
-
 import { DatasetTableCell } from "./DatasetTableCell";
 
+import { CopyableChip } from "@/components/common/CopyableChip";
 import { DatasetVersionRowResponse } from "@/lib/api-client/api-client";
 
 interface DatasetTableRowProps {
