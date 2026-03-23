@@ -2681,15 +2681,15 @@ test = ["opentelemetry-exporter-otlp-proto-http", "opentelemetry-sdk (>=1.20.0)"
 
 [[package]]
 name = "openinference-instrumentation-smolagents"
-version = "0.1.23"
+version = "0.1.24"
 description = "OpenInference smolagents Instrumentation"
 optional = true
 python-versions = "<3.15,>=3.10"
 groups = ["main"]
 markers = "extra == \"smolagents\" or extra == \"all\""
 files = [
-    {file = "openinference_instrumentation_smolagents-0.1.23-py3-none-any.whl", hash = "sha256:0ee84c4f081cbe954e25836b2365e51c012dca0b70a8c6ec3d7c7aa91f596ecf"},
-    {file = "openinference_instrumentation_smolagents-0.1.23.tar.gz", hash = "sha256:14f22dd7800be98d76ea9595ae76ae3705e751fbebc74010a0cd9f5928b85770"},
+    {file = "openinference_instrumentation_smolagents-0.1.24-py3-none-any.whl", hash = "sha256:6343d02a0ac8a7247f46af7fbaf2f380ba752e443f3f9dab302ac58dba3c9f5b"},
+    {file = "openinference_instrumentation_smolagents-0.1.24.tar.gz", hash = "sha256:684a3ba4cabc80f728386aa8c4277265834381966b221115af138cfde687f261"},
 ]
 
 [package.dependencies]
@@ -2702,8 +2702,7 @@ typing-extensions = "*"
 wrapt = "*"
 
 [package.extras]
-instruments = ["smolagents (>=1.21.2)"]
-test = ["openai", "opentelemetry-sdk", "pytest-recording", "smolagents[litellm] (==1.21.2)"]
+instruments = ["smolagents (>=1.24.0)"]
 
 [[package]]
 name = "openinference-instrumentation-strands-agents"
