@@ -244,6 +244,8 @@ const RagExperimentsContent: React.FC = () => {
         onRunExperiment={handleOpenExperimentModal}
         onToggleHistory={() => setHistorySidebarOpen((prev) => !prev)}
         notebookName={notebook?.name}
+        notebookId={notebookId}
+        notebookDescription={notebook?.description}
         hasNotebook={!!notebookId}
         historyOpen={historySidebarOpen}
       />

@@ -1,5 +1,8 @@
 import { useAppForm } from "@arthur/shared-components";
 import AddIcon from "@mui/icons-material/Add";
+import DeleteIcon from "@mui/icons-material/Delete";
+import HistoryIcon from "@mui/icons-material/History";
+import LaunchIcon from "@mui/icons-material/Launch";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import {
   Box,
@@ -9,23 +12,25 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
-  MenuItem,
+  IconButton,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { MaterialReactTable, useMaterialReactTable } from "material-react-table";
-import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import z from "zod";
 
-import { columns } from "./data/columns";
+import AgentNotebookDetailModal from "./AgentNotebookDetailModal";
+import { createColumns } from "./data/columns";
 import { useAgentNotebooks } from "./hooks/useAgentNotebooks";
 import { useCreateAgenticNotebook } from "./hooks/useCreateAgenticNotebook";
 import { useDeleteAgenticNotebook } from "./hooks/useDeleteAgenticNotebook";
 
 import { getContentHeight } from "@/constants/layout";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { AgenticNotebookSummary } from "@/lib/api-client/api-client";
 import { EVENT_NAMES, track } from "@/services/amplitude";
@@ -43,6 +48,8 @@ export const AgentNotebook = ({ embedded = false, isCreateModalOpen, onCreateMod
   const { id: taskId } = useParams<{ id: string }>();
   const { pagination, props } = useMRTPagination();
   const navigate = useNavigate();
+  const { timezone, use24Hour } = useDisplaySettings();
+  const columns = useMemo(() => createColumns(timezone, use24Hour), [timezone, use24Hour]);
 
   const form = useAppForm({
     defaultValues: {
@@ -54,6 +61,7 @@ export const AgentNotebook = ({ embedded = false, isCreateModalOpen, onCreateMod
     },
   });
   const [internalDialogOpen, setInternalDialogOpen] = useState(false);
+  const [selectedNotebookId, setSelectedNotebookId] = useState<string | null>(null);
   const dialogOpen = isCreateModalOpen !== undefined ? isCreateModalOpen : internalDialogOpen;
   const { data, isLoading, isRefetching } = useAgentNotebooks({ page: pagination.pageIndex, page_size: pagination.pageSize });
 
@@ -113,7 +121,7 @@ export const AgentNotebook = ({ embedded = false, isCreateModalOpen, onCreateMod
     },
     muiTableBodyRowProps: ({ row }) => ({
       onClick: () => {
-        navigate(`/tasks/${taskId}/agentic-notebooks/${row.original.id}`);
+        setSelectedNotebookId(row.original.id);
       },
       sx: {
         cursor: "pointer",
@@ -121,22 +129,54 @@ export const AgentNotebook = ({ embedded = false, isCreateModalOpen, onCreateMod
     }),
     enableColumnPinning: true,
     initialState: { columnPinning: { right: ["mrt-row-actions"] } },
+    displayColumnDefOptions: {
+      "mrt-row-actions": { size: 180 },
+    },
     enableRowActions: true,
     positionActionsColumn: "last",
-    renderRowActionMenuItems: ({ row }) => [
-      <MenuItem
-        disabled={!row.original.latest_run_id}
-        key="view_run"
-        component={Link}
-        to={`/tasks/${row.original.task_id}/agent-experiments/${row.original.latest_run_id}`}
-      >
-        View Latest Run
-      </MenuItem>,
-      <Divider />,
-      <MenuItem key="delete" onClick={() => deleteAgenticNotebook.mutate(row.original.id)}>
-        Delete
-      </MenuItem>,
-    ],
+    renderRowActions: ({ row }) => (
+      <Box sx={{ display: "flex", gap: 1 }}>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<LaunchIcon />}
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/tasks/${taskId}/agentic-notebooks/${row.original.id}`);
+          }}
+        >
+          Launch
+        </Button>
+        <Tooltip title={row.original.latest_run_id ? "View last run" : "No runs yet"}>
+          <span>
+            <IconButton
+              size="small"
+              disabled={!row.original.latest_run_id}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (row.original.latest_run_id) {
+                  navigate(`/tasks/${taskId}/agent-experiments/${row.original.latest_run_id}`);
+                }
+              }}
+            >
+              <HistoryIcon fontSize="small" />
+            </IconButton>
+          </span>
+        </Tooltip>
+        <Tooltip title="Delete Notebook">
+          <IconButton
+            size="small"
+            color="error"
+            onClick={(e) => {
+              e.stopPropagation();
+              deleteAgenticNotebook.mutate(row.original.id);
+            }}
+          >
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Box>
+    ),
   });
 
   return (
@@ -200,6 +240,8 @@ export const AgentNotebook = ({ embedded = false, isCreateModalOpen, onCreateMod
           <MaterialReactTable table={table} />
         )}
       </Stack>
+
+      <AgentNotebookDetailModal open={selectedNotebookId !== null} notebookId={selectedNotebookId} onClose={() => setSelectedNotebookId(null)} />
 
       <Dialog open={dialogOpen} onClose={handleCloseCreateNotebook} fullWidth>
         <DialogTitle>New Notebook</DialogTitle>

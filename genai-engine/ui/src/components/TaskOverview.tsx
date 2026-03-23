@@ -30,7 +30,7 @@ import { MetricCard } from "./task-overview/MetricCard";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useTask } from "@/hooks/useTask";
 import { useTaskOverviewMetrics } from "@/hooks/useTaskOverviewMetrics";
-import { formatCurrency } from "@/utils/formatters";
+import { formatCurrency, formatDateInTimezone } from "@/utils/formatters";
 import { TimeInterval } from "@/utils/timeWindows";
 
 type TimeRangeButton = "Day" | "Last 7 Days" | "MTD" | "YTD";
@@ -56,7 +56,7 @@ const getTimeRangeLabel = (button: TimeRangeButton): string => {
 
 export const TaskOverview: React.FC = () => {
   const { task } = useTask();
-  const { defaultCurrency } = useDisplaySettings();
+  const { defaultCurrency, timezone, use24Hour } = useDisplaySettings();
   const [selectedTimeRangeButton, setSelectedTimeRangeButton] = useState<TimeRangeButton>("Last 7 Days");
   const [taskDetailsOpen, setTaskDetailsOpen] = useState(false);
 
@@ -84,7 +84,7 @@ export const TaskOverview: React.FC = () => {
   const tickStep = metrics?.tickStep || 1;
 
   const timeSeriesData = metrics?.timeSeriesData || [];
-  const xAxisLabels = timeSeriesData.map((d) => formatXLabel(new Date(d.timestamp), xLabelFormat));
+  const xAxisLabels = timeSeriesData.map((d) => formatXLabel(new Date(d.timestamp), xLabelFormat, timezone));
 
   const tracesValues = timeSeriesData.map((d) => d.tracesCount);
   const tokensValues = timeSeriesData.map((d) => d.tokens);
@@ -191,7 +191,7 @@ export const TaskOverview: React.FC = () => {
                   Created At
                 </Typography>
                 <Typography variant="body2" color="text.primary" sx={{ mt: 0.5 }}>
-                  {task?.created_at ? new Date(task.created_at).toLocaleString() : "Not available"}
+                  {task?.created_at ? formatDateInTimezone(task.created_at, timezone, { hour12: !use24Hour }) : "Not available"}
                 </Typography>
               </Box>
 
@@ -200,7 +200,7 @@ export const TaskOverview: React.FC = () => {
                   Updated At
                 </Typography>
                 <Typography variant="body2" color="text.primary" sx={{ mt: 0.5 }}>
-                  {task?.updated_at ? new Date(task.updated_at).toLocaleString() : "Not available"}
+                  {task?.updated_at ? formatDateInTimezone(task.updated_at, timezone, { hour12: !use24Hour }) : "Not available"}
                 </Typography>
               </Box>
             </Box>

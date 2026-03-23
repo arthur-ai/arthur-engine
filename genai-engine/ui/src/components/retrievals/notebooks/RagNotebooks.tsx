@@ -90,6 +90,15 @@ const RagNotebooks: React.FC<RagNotebooksProps> = ({ onRegisterCreate }) => {
     [taskId, navigate]
   );
 
+  const handleViewLastRun = useCallback(
+    (experimentId: string) => {
+      if (taskId) {
+        navigate(`/tasks/${taskId}/rag-experiments/${experimentId}`);
+      }
+    },
+    [taskId, navigate]
+  );
+
   const handleSort = useCallback(
     (column: string) => {
       if (sortColumn === column) {
@@ -199,6 +208,7 @@ const RagNotebooks: React.FC<RagNotebooksProps> = ({ onRegisterCreate }) => {
             onSort={handleSort}
             onRowClick={handleRowClick}
             onLaunchNotebook={handleLaunchNotebook}
+            onViewLastRun={handleViewLastRun}
             onDelete={deleteMutation.mutateAsync}
           />
         )}

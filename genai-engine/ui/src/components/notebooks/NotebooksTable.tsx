@@ -1,4 +1,5 @@
 import DeleteIcon from "@mui/icons-material/Delete";
+import HistoryIcon from "@mui/icons-material/History";
 import LaunchIcon from "@mui/icons-material/Launch";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -27,7 +28,16 @@ import type { NotebooksTableProps } from "./types";
 import { NotebookSummary } from "@/lib/api-client/api-client";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
-const NotebooksTable: React.FC<NotebooksTableProps> = ({ notebooks, sortColumn, sortDirection, onSort, onRowClick, onLaunchNotebook, onDelete }) => {
+const NotebooksTable: React.FC<NotebooksTableProps> = ({
+  notebooks,
+  sortColumn,
+  sortDirection,
+  onSort,
+  onRowClick,
+  onLaunchNotebook,
+  onViewLastRun,
+  onDelete,
+}) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [notebookToDelete, setNotebookToDelete] = useState<NotebookSummary | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -107,7 +117,7 @@ const NotebooksTable: React.FC<NotebooksTableProps> = ({ notebooks, sortColumn, 
                   </Typography>
                 </TableSortLabel>
               </TableCell>
-              <TableCell align="right">
+              <TableCell>
                 <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                   Actions
                 </Typography>
@@ -144,8 +154,8 @@ const NotebooksTable: React.FC<NotebooksTableProps> = ({ notebooks, sortColumn, 
                     {new Date(notebook.updated_at).toLocaleString()}
                   </Typography>
                 </TableCell>
-                <TableCell align="right">
-                  <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+                <TableCell>
+                  <Box sx={{ display: "flex", gap: 1 }}>
                     <Tooltip title="Launch Notebook">
                       <Button
                         variant="outlined"
@@ -158,6 +168,20 @@ const NotebooksTable: React.FC<NotebooksTableProps> = ({ notebooks, sortColumn, 
                       >
                         Launch
                       </Button>
+                    </Tooltip>
+                    <Tooltip title={notebook.latest_run_id ? "View last run" : "No runs yet"}>
+                      <span>
+                        <IconButton
+                          size="small"
+                          disabled={!notebook.latest_run_id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (notebook.latest_run_id) onViewLastRun(notebook.latest_run_id);
+                          }}
+                        >
+                          <HistoryIcon fontSize="small" />
+                        </IconButton>
+                      </span>
                     </Tooltip>
                     <Tooltip title="Delete Notebook">
                       <IconButton size="small" onClick={(e) => handleDeleteClick(notebook, e)} color="error">
