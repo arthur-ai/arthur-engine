@@ -404,10 +404,10 @@ def _extract_llm_spans_for_turn(
     """
     Extract LLM spans from transcript entries that belong to this turn.
 
-    A turn starts after the `human_count_at_start`-th human message and continues
-    until the end of the transcript (or until the trace is completed by _complete_turn).
-    If additional human messages appear (e.g. context-compression continuations that
-    don't fire UserPromptSubmit), scanning continues so no LLM spans are dropped.
+    A turn starts after the `human_count_at_start`-th human message and ends
+    at the next human message (or end of transcript).  Scanning stops as soon
+    as a second human message is seen while in_turn is True — those subsequent
+    turns belong to their own traces.
     Uses actual timestamps from the transcript.
 
     For each LLM call we use the immediately-preceding message as the input:
@@ -552,14 +552,9 @@ def _extract_llm_spans_for_turn(
                 _flush_group()
                 human_count += 1
                 if in_turn:
-                    human_text = entry.get("message", {}).get("content", "")
-                    last_input_value = json.dumps(
-                        {"role": "user", "content": human_text[:500]},
-                    )
-                    last_input_mime = "application/json"
-                    last_input_role = "user"
-                    last_input_content = _truncate(human_text)
-                    continue
+                    # Next user turn has started — stop here.  Its spans belong
+                    # to a different trace.
+                    break
                 if human_count > human_count_at_start:
                     in_turn = True
                     human_text = entry.get("message", {}).get("content", "")

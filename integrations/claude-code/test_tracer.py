@@ -450,23 +450,22 @@ class TestExtractLlmSpansForTurn:
 
     # -- turn boundary detection --
 
-    def test_continues_past_additional_human_messages(self, tmp_transcript):
-        # When a context-compression continuation arrives without a UserPromptSubmit,
-        # the transcript gains a second human message mid-trace. The extractor must
-        # continue scanning so that LLM spans from the continuation are not dropped.
+    def test_stops_at_next_human_message(self, tmp_transcript):
+        # Each user prompt is its own trace. When the extractor sees a second
+        # human message while in_turn=True, it must stop — those spans belong
+        # to the next trace, not this one.
         p = tmp_transcript(
             [
                 human_entry("Turn 1"),
                 llm_entry("Reply 1", ts="2026-01-01T00:00:01.000000+00:00"),
-                human_entry("Continuation (compressed context)"),
+                human_entry("Turn 2"),
                 llm_entry("Reply 2", ts="2026-01-01T00:00:03.000000+00:00"),
             ],
         )
         spans = self._extract(p, human_count_at_start=0)
-        # Both replies must be captured in the same trace
-        assert len(spans) == 2
+        # Only the first reply; second human message terminates extraction
+        assert len(spans) == 1
         assert spans[0]["attributes"]["output.value"] == "Reply 1"
-        assert spans[1]["attributes"]["output.value"] == "Reply 2"
 
     def test_human_count_at_start_selects_correct_turn(self, tmp_transcript):
         p = tmp_transcript(
@@ -482,25 +481,23 @@ class TestExtractLlmSpansForTurn:
         assert len(spans) == 1
         assert spans[0]["attributes"]["output.value"] == "Reply 2"
 
-    def test_context_compression_input_updated_for_continuation(self, tmp_transcript):
-        # After a continuation human message the input.value for subsequent
-        # LLM calls should reflect the continuation prompt, not the original.
+    def test_second_turn_starts_its_own_trace(self, tmp_transcript):
+        # Each user prompt is a separate trace. The second turn's LLM reply
+        # should NOT appear when extracting for turn 1.
         p = tmp_transcript(
             [
                 human_entry("Original prompt"),
                 llm_entry("Reply 1", ts="2026-01-01T00:00:01.000000+00:00"),
-                human_entry("Continuation prompt"),
+                human_entry("Next prompt"),
                 llm_entry("Reply 2", ts="2026-01-01T00:00:03.000000+00:00"),
             ],
         )
+        # Extracting for turn 1 (human_count_at_start=0) must only return Reply 1
         spans = self._extract(p, human_count_at_start=0)
-        assert len(spans) == 2
-        # First span input = original prompt
-        inp1 = json.loads(spans[0]["attributes"]["input.value"])
-        assert "Original prompt" in inp1["content"]
-        # Second span input = continuation prompt
-        inp2 = json.loads(spans[1]["attributes"]["input.value"])
-        assert "Continuation prompt" in inp2["content"]
+        assert len(spans) == 1
+        inp = json.loads(spans[0]["attributes"]["input.value"])
+        assert "Original prompt" in inp["content"]
+        assert spans[0]["attributes"]["output.value"] == "Reply 1"
 
     # -- Fix 1: tool_use-only output --
 
