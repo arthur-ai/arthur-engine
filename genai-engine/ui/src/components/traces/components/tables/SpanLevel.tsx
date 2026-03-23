@@ -32,7 +32,7 @@ import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
-import { SpanMetadataResponse } from "@/lib/api-client/api-client";
+import type { SpanMetadataResponse, TraceSortBy } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { EVENT_NAMES, track } from "@/services/amplitude";
@@ -40,6 +40,12 @@ import { getFilteredSpans } from "@/services/tracing";
 import { formatDateInTimezone } from "@/utils/formatters";
 
 const DEFAULT_DATA: SpanMetadataResponse[] = [];
+
+const SORTABLE_COLUMN_MAP: Record<string, TraceSortBy> = {
+  start_time: "start_time",
+  "token-count": "total_token_count",
+  "token-cost": "total_token_cost",
+};
 
 interface SpanLevelProps {
   welcomeDismissed: boolean;
@@ -64,6 +70,7 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
   const [sorting, setSorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
 
   const sort: "asc" | "desc" = sorting[0]?.desc === false ? "asc" : "desc";
+  const sortBy = SORTABLE_COLUMN_MAP[sorting[0]?.id] ?? "start_time";
 
   const params = useMemo(
     () => ({
@@ -73,8 +80,9 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
       filters,
       timeRange,
       sort,
+      sortBy,
     }),
-    [task?.id, pagination.pageIndex, pagination.pageSize, filters, timeRange, sort]
+    [task?.id, pagination.pageIndex, pagination.pageSize, filters, timeRange, sort, sortBy]
   );
 
   const { data, isLoading, error } = useQuery({
@@ -118,7 +126,11 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
       TokenCostTooltip,
       isValidStatusCode,
     };
-    return createSpanLevelColumns(deps) as MRT_ColumnDef<SpanMetadataResponse, unknown>[];
+    const raw = createSpanLevelColumns(deps) as MRT_ColumnDef<SpanMetadataResponse, unknown>[];
+    return raw.map((col) => {
+      const colId = (col as { id?: string }).id ?? (col as { accessorKey?: string }).accessorKey ?? "";
+      return { ...col, enableSorting: colId in SORTABLE_COLUMN_MAP };
+    });
   }, [timezone, use24Hour]);
 
   const setFilters = useFilterStore((state) => state.setFilters);

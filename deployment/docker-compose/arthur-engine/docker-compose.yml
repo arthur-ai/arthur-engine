@@ -21,7 +21,6 @@ services:
   genai-engine:
     # If you have GPUs, use `genai-engine-gpu` image instead
     image: arthurplatform/genai-engine-cpu:${GENAI_ENGINE_VERSION-latest}
-    platform: linux/amd64
     depends_on:
       db:
         condition: service_healthy
