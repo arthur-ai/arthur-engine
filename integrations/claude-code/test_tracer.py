@@ -1750,6 +1750,106 @@ class TestGetCachedTranscriptPath:
 
 
 # ---------------------------------------------------------------------------
+# Subagent trace context propagation
+# ---------------------------------------------------------------------------
+
+
+class TestSubagentContextPropagation:
+    """Tests for _write_pending_agent_context / _claim_pending_agent_context."""
+
+    def test_write_and_claim_round_trip(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(tracer, "STATE_DIR", tmp_path / "tracer")
+        monkeypatch.setattr(tracer, "_PENDING_AGENT_DIR", tmp_path / "tracer" / "pending_agent")
+        tracer._write_pending_agent_context("parent-sess", "traceid-abc", "spanid-xyz")
+        ctx = tracer._claim_pending_agent_context()
+        assert ctx is not None
+        assert ctx["parent_trace_id"] == "traceid-abc"
+        assert ctx["parent_span_id"] == "spanid-xyz"
+        assert ctx["parent_session_id"] == "parent-sess"
+        # File is deleted after claiming
+        assert not any((tmp_path / "tracer" / "pending_agent").iterdir())
+
+    def test_claim_returns_none_when_no_file(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(tracer, "_PENDING_AGENT_DIR", tmp_path / "pending_agent")
+        assert tracer._claim_pending_agent_context() is None
+
+    def test_claim_ignores_stale_context(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(tracer, "_PENDING_AGENT_DIR", tmp_path / "pending_agent")
+        monkeypatch.setattr(tracer, "_PENDING_AGENT_TIMEOUT_S", 0)
+        tracer._write_pending_agent_context("s", "t", "p")
+        # With 0s timeout, the file is immediately considered stale
+        assert tracer._claim_pending_agent_context() is None
+
+    def test_subagent_inherits_trace_id(self, tmp_path, monkeypatch):
+        """UserPromptSubmit for a new session should inherit the parent trace ID."""
+        monkeypatch.setattr(tracer, "STATE_DIR", tmp_path / "tracer")
+        monkeypatch.setattr(tracer, "_PENDING_AGENT_DIR", tmp_path / "tracer" / "pending_agent")
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
+
+        parent_trace_id = "aabbccddeeff00112233445566778899"
+        parent_span_id = "0011223344556677"
+        tracer._write_pending_agent_context("parent-sess", parent_trace_id, parent_span_id)
+
+        exported: list[dict] = []
+
+        def fake_export(config, session_id, username, span_records):
+            exported.extend(span_records)
+
+        monkeypatch.setattr(tracer, "_build_and_export_spans", fake_export)
+        monkeypatch.setattr(tracer, "discover_config", lambda: {"api_key": "k", "task_id": "t", "endpoint": "https://x"})
+
+        data = {"session_id": "child-sess", "prompt": "do the task"}
+        state = {}
+        monkeypatch.setattr(tracer, "_load_state", lambda sid: state)
+        monkeypatch.setattr(tracer, "_save_state", lambda sid, s: state.update(s))
+
+        tracer.handle_user_prompt_submit(data, {"api_key": "k", "task_id": "t", "endpoint": "https://x"})
+
+        # The new trace should use the parent's trace ID
+        assert state["current_trace"]["trace_id"] == parent_trace_id
+        # And record the parent agent span for use in _complete_turn
+        assert state["current_trace"]["parent_agent_span_id"] == parent_span_id
+
+    def test_handle_pre_tool_writes_context_for_agent(self, tmp_path, monkeypatch):
+        """PreToolUse for the Agent tool should write a pending context file."""
+        monkeypatch.setattr(tracer, "STATE_DIR", tmp_path / "tracer")
+        monkeypatch.setattr(tracer, "_PENDING_AGENT_DIR", tmp_path / "tracer" / "pending_agent")
+
+        trace_id = "deadbeef" * 4
+        root_span_id = "cafebabe" * 2
+        state = {
+            "session_id": "parent-sess",
+            "current_trace": {
+                "trace_id": trace_id,
+                "root_span_id": root_span_id,
+                "turn_start_ns": 0,
+                "turn_number": 1,
+                "human_count_at_start": 0,
+            },
+            "pending_tools": {},
+        }
+        monkeypatch.setattr(tracer, "_load_state", lambda sid: state)
+        monkeypatch.setattr(tracer, "_save_state", lambda sid, s: state.update(s))
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
+
+        data = {
+            "session_id": "parent-sess",
+            "tool_name": "Agent",
+            "tool_input": {"prompt": "go do stuff"},
+        }
+        tracer.handle_pre_tool(data, {"api_key": "k", "task_id": "t", "endpoint": "https://x"})
+
+        # A pending context file should now exist
+        ctx = tracer._claim_pending_agent_context()
+        assert ctx is not None
+        assert ctx["parent_trace_id"] == trace_id
+        # The pre-allocated span ID should be stored in pending_tools
+        assert "pre_allocated_span_id" in state["pending_tools"]["Agent"]
+
+
+# ---------------------------------------------------------------------------
 # discover_config — global config fallback
 # ---------------------------------------------------------------------------
 

@@ -151,6 +151,75 @@ def _new_span_id() -> str:
     return secrets.token_hex(8)
 
 
+# ---------------------------------------------------------------------------
+# Subagent trace-context propagation
+# ---------------------------------------------------------------------------
+
+# How long to wait for a subagent to claim the context file before giving up.
+_PENDING_AGENT_TIMEOUT_S = 30
+_PENDING_AGENT_DIR = STATE_DIR / "pending_agent"
+
+
+def _write_pending_agent_context(
+    parent_session_id: str,
+    parent_trace_id: str,
+    parent_span_id: str,
+) -> None:
+    """Write a side-channel file so the next subagent can inherit this trace.
+
+    Called from handle_pre_tool when an Agent tool invocation is detected.
+    The file is keyed by session+span so parallel agent invocations in the
+    same session each get their own file.
+    """
+    _PENDING_AGENT_DIR.mkdir(parents=True, exist_ok=True)
+    path = _PENDING_AGENT_DIR / f"{parent_session_id}_{parent_span_id}.json"
+    path.write_text(
+        json.dumps(
+            {
+                "parent_session_id": parent_session_id,
+                "parent_trace_id": parent_trace_id,
+                "parent_span_id": parent_span_id,
+                "created_ns": time.time_ns(),
+            }
+        )
+    )
+
+
+def _claim_pending_agent_context() -> Optional[dict]:
+    """Claim the most recent unclaimed subagent context, if any.
+
+    Called from handle_user_prompt_submit when a new session is initialised.
+    Returns the context dict (with ``parent_trace_id`` and ``parent_span_id``)
+    or None.  Claiming removes the file so no other session can use it.
+    """
+    if not _PENDING_AGENT_DIR.exists():
+        return None
+
+    deadline_ns = time.time_ns() - _PENDING_AGENT_TIMEOUT_S * 1_000_000_000
+    candidates: list[tuple[int, Path, dict]] = []
+    for p in _PENDING_AGENT_DIR.glob("*.json"):
+        try:
+            ctx = json.loads(p.read_text())
+            if ctx.get("created_ns", 0) >= deadline_ns:
+                candidates.append((ctx["created_ns"], p, ctx))
+        except Exception:
+            continue
+
+    if not candidates:
+        return None
+
+    # Newest first — grab the most recently written unclaimed context.
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    for _, path, ctx in candidates:
+        try:
+            path.unlink()
+            return ctx
+        except FileNotFoundError:
+            # Another process claimed it first; try the next one.
+            continue
+    return None
+
+
 @contextlib.contextmanager
 def _session_lock(session_id: str):
     """Exclusive per-session file lock.
@@ -871,6 +940,9 @@ def _complete_turn(
     turn_number = current_trace.get("turn_number", 1)
     prompt_preview = current_trace.get("prompt_preview", "")
     final_output = current_trace.get("last_llm_output", "")
+    # For the first turn of a subagent the CHAIN span is a child of the parent's
+    # Agent tool span, making all subagent work visible inside the parent trace.
+    parent_agent_span_id = current_trace.get("parent_agent_span_id")
 
     # Root CHAIN span
     username = state.get("username", "unknown")
@@ -895,7 +967,7 @@ def _complete_turn(
             {
                 "trace_id_hex": trace_id,
                 "span_id_hex": root_span_id,
-                "parent_span_id_hex": None,
+                "parent_span_id_hex": parent_agent_span_id,
                 "name": "claude-code-turn",
                 "kind": SpanKind.INTERNAL,
                 "start_ns": turn_start_ns,
@@ -922,6 +994,7 @@ def _build_tool_span_record(
     root_span_id: str,
     is_failure: bool = False,
     error_msg: str = "",
+    span_id: Optional[str] = None,
 ) -> dict:
     """Build a span record dict for a tool call (success or failure).
 
@@ -983,14 +1056,14 @@ def _build_tool_span_record(
 
     rec: dict[str, Any] = {
         "trace_id_hex": trace_id,
-        "span_id_hex": _new_span_id(),
+        "span_id_hex": span_id or _new_span_id(),
         "parent_span_id_hex": root_span_id,
         "name": tool_name,
         "kind": None,  # defaults to SpanKind.CLIENT in _build_and_export_spans
         "start_ns": start_ns,
         "end_ns": end_ns,
         "attributes": attrs,
-        "force_span_id": False,
+        "force_span_id": span_id is not None,
     }
 
     if is_failure:
@@ -1028,6 +1101,13 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
         state["human_msg_count"] = 0
         state["turn_number"] = 0
 
+        # If a parent session pre-registered an Agent invocation, inherit its
+        # trace context so this subagent's spans are nested inside the parent trace.
+        parent_ctx = _claim_pending_agent_context()
+        if parent_ctx:
+            state["inherited_trace_id"] = parent_ctx["parent_trace_id"]
+            state["parent_agent_span_id"] = parent_ctx["parent_span_id"]
+
     # Complete the previous turn's trace if one is in progress.
     # Use the cached transcript path from state so that any mid-session
     # project-dir changes (e.g. gh pr create writing to a worktree dir) do
@@ -1052,13 +1132,23 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
     turn_number = state.get("turn_number", 0) + 1
     state["turn_number"] = turn_number
     state["human_msg_count"] = current_human_count
+
+    # Use the inherited trace ID if this session was spawned as a subagent, so
+    # all spans land in the parent's trace.  Also consume the parent agent span
+    # ID (used only for the first CHAIN span so it becomes a child of the Agent
+    # tool span in the parent trace).
+    trace_id = state.pop("inherited_trace_id", None) or _new_trace_id()
+    parent_agent_span_id = state.pop("parent_agent_span_id", None)
+
     state["current_trace"] = {
-        "trace_id": _new_trace_id(),
+        "trace_id": trace_id,
         "root_span_id": _new_span_id(),
         "turn_start_ns": now_ns,
         "turn_number": turn_number,
         "human_count_at_start": current_human_count,
         "prompt_preview": _truncate(prompt) if prompt else "",
+        # Non-None only for the first turn of a subagent; cleared after _complete_turn
+        "parent_agent_span_id": parent_agent_span_id,
     }
 
     _save_state(session_id, state)
@@ -1111,11 +1201,25 @@ def handle_pre_tool(data: dict, config: dict) -> None:
             "prompt_preview": _truncate(prompt_preview) if prompt_preview else "",
         }
 
-    state.setdefault("pending_tools", {})[tool_name] = {
+    pending_entry: dict[str, Any] = {
         "tool_name": tool_name,
         "tool_input": tool_input,
         "start_ns": now_ns,
     }
+
+    # For Agent tool calls, pre-allocate the span ID and write a side-channel
+    # file so the spawned subagent can inherit this trace.
+    current_trace = state.get("current_trace")
+    if tool_name == "Agent" and current_trace:
+        agent_span_id = _new_span_id()
+        pending_entry["pre_allocated_span_id"] = agent_span_id
+        _write_pending_agent_context(
+            parent_session_id=session_id,
+            parent_trace_id=current_trace["trace_id"],
+            parent_span_id=agent_span_id,
+        )
+
+    state.setdefault("pending_tools", {})[tool_name] = pending_entry
     _save_state(session_id, state)
 
 
@@ -1159,6 +1263,9 @@ def handle_post_tool(data: dict, config: dict) -> None:
     tool_input = data.get("tool_input") or current_tool.get("tool_input", {})
     tool_response = data.get("tool_response", {})
     start_ns = current_tool.get("start_ns", end_ns - 1_000_000)
+    # For Agent tool calls the span ID was pre-allocated at PreToolUse time so
+    # the subagent could reference it as its parent span.
+    pre_allocated_span_id = current_tool.get("pre_allocated_span_id")
 
     span_record = _build_tool_span_record(
         tool_name=tool_name,
@@ -1168,6 +1275,7 @@ def handle_post_tool(data: dict, config: dict) -> None:
         end_ns=end_ns,
         trace_id=current_trace["trace_id"],
         root_span_id=current_trace["root_span_id"],
+        span_id=pre_allocated_span_id,
     )
 
     # Export the tool span before acquiring the lock — this is the slow network
