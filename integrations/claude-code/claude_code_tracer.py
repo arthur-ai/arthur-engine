@@ -248,10 +248,36 @@ def _session_lock(session_id: str):
 # ---------------------------------------------------------------------------
 
 
+def _is_real_transcript(path: str) -> bool:
+    """Return True if the transcript has at least one human or assistant entry.
+
+    Shadow transcripts created by ``gh pr create`` in a worktree contain only
+    ``pr-link`` metadata entries and no actual conversation content.  Accepting
+    one of these as the authoritative transcript would leave the tracer with
+    nothing to extract LLM spans from.
+    """
+    try:
+        with open(path) as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if entry.get("type") in ("user", "assistant"):
+                    return True
+        return False
+    except OSError:
+        return False
+
+
 def _find_transcript_path(data: dict, session_id: str) -> Optional[str]:
     """Locate the session's transcript JSONL file.
 
-    Searches three locations in priority order and returns the first match.
+    Searches three locations in priority order and returns the first match
+    that contains real conversation content (at least one user/assistant entry).
     Callers that need a stable path across the lifetime of a session should
     cache the result in session state via ``_get_cached_transcript_path``
     rather than calling this function repeatedly — the ``transcript_path``
@@ -259,10 +285,12 @@ def _find_transcript_path(data: dict, session_id: str) -> Optional[str]:
     entries to a *different* project directory (e.g. after ``gh pr create``
     in a worktree context).
     """
+    candidates: list[str] = []
+
     # 1. Provided directly in hook data
     tp = data.get("transcript_path", "")
     if tp and Path(tp).exists():
-        return tp
+        candidates.append(tp)
 
     # 2. Construct from CLAUDE_PROJECT_DIR (path with / → -)
     project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
@@ -270,14 +298,24 @@ def _find_transcript_path(data: dict, session_id: str) -> Optional[str]:
         sanitized = project_dir.replace("/", "-")
         path = Path.home() / ".claude" / "projects" / sanitized / f"{session_id}.jsonl"
         if path.exists():
-            return str(path)
+            candidates.append(str(path))
 
-    # 3. Glob fallback across all project dirs
+    # 3. Glob fallback across all project dirs (sorted largest-first so the
+    #    real transcript wins over tiny shadow files)
     projects_dir = Path.home() / ".claude" / "projects"
     if projects_dir.exists():
         matches = list(projects_dir.glob(f"*/{session_id}.jsonl"))
-        if matches:
-            return str(matches[0])
+        matches.sort(key=lambda p: p.stat().st_size, reverse=True)
+        candidates.extend(str(m) for m in matches)
+
+    # Return the first candidate that contains actual conversation entries
+    seen: set[str] = set()
+    for candidate in candidates:
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        if _is_real_transcript(candidate):
+            return candidate
 
     return None
 

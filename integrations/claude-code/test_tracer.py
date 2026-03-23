@@ -1626,10 +1626,20 @@ class TestStateHelperErrorPaths:
 # ---------------------------------------------------------------------------
 
 
+def _real_transcript_content() -> str:
+    """Minimal transcript content with one human message — passes _is_real_transcript."""
+    return json.dumps({"type": "user", "message": {"role": "user", "content": "hi"}}) + "\n"
+
+
+def _shadow_transcript_content() -> str:
+    """Shadow transcript with only pr-link entries — rejected by _is_real_transcript."""
+    return json.dumps({"type": "pr-link", "sessionId": "s", "prNumber": 1}) + "\n"
+
+
 class TestFindTranscriptPath:
     def test_uses_transcript_path_from_data(self, tmp_path):
         p = tmp_path / "t.jsonl"
-        p.write_text("")
+        p.write_text(_real_transcript_content())
         result = tracer._find_transcript_path({"transcript_path": str(p)}, "any")
         assert result == str(p)
 
@@ -1640,13 +1650,55 @@ class TestFindTranscriptPath:
         )
         assert result is None
 
+    def test_skips_shadow_transcript_in_data(self, tmp_path):
+        """A transcript with only pr-link entries should be rejected."""
+        shadow = tmp_path / "shadow.jsonl"
+        shadow.write_text(_shadow_transcript_content())
+        result = tracer._find_transcript_path({"transcript_path": str(shadow)}, "any")
+        assert result is None
+
+    def test_shadow_in_data_falls_back_to_real_glob(self, tmp_path, monkeypatch):
+        """When hook data points to a shadow transcript, glob fallback finds the real one."""
+        session_id = "sess-fallback"
+        shadow = tmp_path / "shadow.jsonl"
+        shadow.write_text(_shadow_transcript_content())
+
+        real_dir = tmp_path / ".claude" / "projects" / "real-project"
+        real_dir.mkdir(parents=True)
+        real = real_dir / f"{session_id}.jsonl"
+        real.write_text(_real_transcript_content())
+
+        monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        result = tracer._find_transcript_path({"transcript_path": str(shadow)}, session_id)
+        assert result == str(real)
+
+    def test_glob_prefers_largest_file(self, tmp_path, monkeypatch):
+        """When multiple candidates exist, the largest (most content) is preferred."""
+        session_id = "sess-multi"
+        small_dir = tmp_path / ".claude" / "projects" / "small-proj"
+        small_dir.mkdir(parents=True)
+        small = small_dir / f"{session_id}.jsonl"
+        small.write_text(_real_transcript_content())
+
+        big_dir = tmp_path / ".claude" / "projects" / "big-proj"
+        big_dir.mkdir(parents=True)
+        big = big_dir / f"{session_id}.jsonl"
+        # Make it larger with more entries
+        big.write_text(_real_transcript_content() * 10)
+
+        monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        result = tracer._find_transcript_path({}, session_id)
+        assert result == str(big)
+
     def test_env_var_path(self, tmp_path, monkeypatch):
         # Create <home>/.claude/projects/<sanitized>/sess.jsonl via CLAUDE_PROJECT_DIR
         project_dir = "/my/project"
         sanitized = project_dir.replace("/", "-")
         transcript = tmp_path / ".claude" / "projects" / sanitized / "myses.jsonl"
         transcript.parent.mkdir(parents=True)
-        transcript.write_text("")
+        transcript.write_text(_real_transcript_content())
         monkeypatch.setenv("CLAUDE_PROJECT_DIR", project_dir)
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         result = tracer._find_transcript_path({}, "myses")
@@ -1656,7 +1708,7 @@ class TestFindTranscriptPath:
         # No env var, but transcript exists somewhere under projects/
         transcript = tmp_path / ".claude" / "projects" / "some-dir" / "globsess.jsonl"
         transcript.parent.mkdir(parents=True)
-        transcript.write_text("")
+        transcript.write_text(_real_transcript_content())
         monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         result = tracer._find_transcript_path({}, "globsess")
@@ -1692,7 +1744,7 @@ class TestGetCachedTranscriptPath:
     def test_resolves_and_caches_when_state_has_no_path(self, tmp_path):
         """When state has no cached path, resolve via hook data and cache it."""
         p = tmp_path / "t.jsonl"
-        p.write_text("")
+        p.write_text(_real_transcript_content())
         state = {}
         result = tracer._get_cached_transcript_path(
             {"transcript_path": str(p)}, state, "any"
@@ -1703,12 +1755,12 @@ class TestGetCachedTranscriptPath:
     def test_re_resolves_if_cached_path_deleted(self, tmp_path):
         """If the cached file no longer exists, fall through to _find_transcript_path."""
         gone = tmp_path / "gone.jsonl"
-        gone.write_text("")
+        gone.write_text(_real_transcript_content())
         state = {"transcript_path": str(gone)}
         gone.unlink()  # delete it
 
         new = tmp_path / "new.jsonl"
-        new.write_text("")
+        new.write_text(_real_transcript_content())
         result = tracer._get_cached_transcript_path(
             {"transcript_path": str(new)}, state, "any"
         )
