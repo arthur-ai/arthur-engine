@@ -35,7 +35,7 @@ arthur-genai-engine:
   # GPU deployment - Uncomment the below 4 lines
   #gpuEnabled: true
   #genaiEngineDeploymentType: "daemonset"
-  #genaiEngineWorkers: 5
+  #genaiEngineWorkers: 2
   #genaiEngineContainerImageLocation: "arthurplatform/genai-engine-gpu"
   arthurGenaiEngineHPA:
     # Set it to 'false' for GPU deployment
@@ -96,7 +96,7 @@ arthur-genai-engine:
   ## Advanced - GenAI Engine
   ###################################
   # GenAI Engine version
-  genaiEngineVersion: 2.1.473
+  genaiEngineVersion: 2.1.474
   # Max number of tokens GenAI Engine can process against LLM for hallucination data checks
   genaiEngineHallucinationCheckMaxTokenLimit: 3000
   # Max number of tokens GenAI Engine can process against LLM for sensitive data checks
