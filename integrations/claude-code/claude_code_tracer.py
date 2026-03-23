@@ -993,6 +993,15 @@ def _emit_pending_llm_spans(
 
     emitted = current_trace.get("emitted_llm_span_count", 0)
     new_spans = all_llm_spans[emitted:]
+
+    # Always keep last_llm_output in sync with the last known assistant message,
+    # even if there are no new spans to emit (e.g. all were emitted by post_tool
+    # and the final text response was already the last one processed).
+    if all_llm_spans:
+        current_trace["last_llm_output"] = all_llm_spans[-1]["attributes"].get(
+            "output.value", ""
+        )
+
     if not new_spans:
         return
 
@@ -1007,10 +1016,6 @@ def _emit_pending_llm_spans(
     )
 
     current_trace["emitted_llm_span_count"] = emitted + len(new_spans)
-    current_trace["last_llm_output"] = new_spans[-1]["attributes"].get(
-        "output.value",
-        "",
-    )
 
 
 def _complete_turn(
@@ -1270,6 +1275,24 @@ def handle_pre_tool(data: dict, config: dict) -> None:
         )
         state["human_msg_count"] = 0
         state["turn_number"] = 0
+
+    # Detect context continuation: Claude Code compresses context and continues
+    # without firing UserPromptSubmit for the resumption message. The symptom is
+    # current_trace still set from the previous turn, but the transcript has grown
+    # by more than one human message since that trace started.
+    if state.get("current_trace"):
+        ct = state["current_trace"]
+        _tp = _get_cached_transcript_path(data, state, session_id)
+        if _tp:
+            _cur_human = _count_human_messages(_tp)
+            _start = ct.get("human_count_at_start", 0)
+            if _cur_human > _start + 1:
+                # A new turn started without UserPromptSubmit. Complete the old
+                # trace and fall through to the fallback that creates a new one.
+                _emit_pending_llm_spans(state, _tp, config)
+                _complete_turn(state, config, _tp, now_ns)
+                state.pop("current_trace", None)
+                state.pop("pending_tools", None)
 
     # Fallback: create a trace if UserPromptSubmit has not set one yet.
     # This handles cases where the hook isn't registered or fires before the

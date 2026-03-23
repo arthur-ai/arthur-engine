@@ -789,6 +789,101 @@ class TestHandlePreTool:
         trace_id_after_second = tracer._load_state(sid)["current_trace"]["trace_id"]
         assert trace_id_after_first == trace_id_after_second
 
+    def test_context_continuation_creates_new_trace(
+        self, tmp_path, tmp_transcript, monkeypatch
+    ):
+        """When the transcript has 2+ more human messages than human_count_at_start,
+        a context continuation happened without UserPromptSubmit.  The old trace must
+        be completed and a new one started.
+        """
+        monkeypatch.setattr(tracer, "STATE_DIR", tmp_path / "tracer")
+        (tmp_path / "tracer").mkdir()
+        exported = []
+        monkeypatch.setattr(
+            tracer, "_build_and_export_spans", lambda **kw: exported.extend(kw["span_records"])
+        )
+
+        sid = "cont-sess"
+        # Build a transcript with 3 human messages (simulating continuation).
+        p = tmp_transcript([
+            human_entry("Turn 1"),
+            human_entry("Turn 2 (continuation trigger)"),
+            human_entry("Turn 3 (continuation itself)"),
+        ])
+
+        # Seed state as if turn 1 was in-progress (human_count_at_start=0,
+        # which means the trace started after the 1st human message).
+        old_trace_id = "a" * 32
+        tracer._save_state(sid, {
+            "session_id": sid,
+            "session_start_ns": 1,
+            "username": "u",
+            "human_msg_count": 1,
+            "turn_number": 1,
+            "current_trace": {
+                "trace_id": old_trace_id,
+                "root_span_id": "b" * 16,
+                "turn_start_ns": 1,
+                "turn_number": 1,
+                "human_count_at_start": 0,
+            },
+        })
+
+        data = {
+            "session_id": sid,
+            "tool_name": "Bash",
+            "tool_input": {},
+            "transcript_path": str(p),
+        }
+        tracer.handle_pre_tool(data, self.CONFIG)
+
+        state = tracer._load_state(sid)
+        new_trace_id = state["current_trace"]["trace_id"]
+        # A new trace must have been created.
+        assert new_trace_id != old_trace_id
+        # The old CHAIN span must have been exported.
+        chain_spans = [s for s in exported if s.get("attributes", {}).get("openinference.span.kind") == "CHAIN"]
+        assert len(chain_spans) == 1
+
+    def test_emit_pending_llm_always_updates_last_output(
+        self, tmp_path, tmp_transcript, monkeypatch
+    ):
+        """last_llm_output is updated to the last known span's output even when all
+        spans were already emitted (no new_spans), so the CHAIN span gets the correct
+        final text response rather than a stale value from an earlier PostToolUse.
+        """
+        monkeypatch.setattr(tracer, "STATE_DIR", tmp_path / "tracer")
+        (tmp_path / "tracer").mkdir()
+        monkeypatch.setattr(tracer, "_build_and_export_spans", MagicMock())
+
+        sid = "last-out-sess"
+        p = tmp_transcript([
+            human_entry("Hello"),
+            llm_entry("First response with tool call", tool_use_blocks=[{"id": "t1", "name": "Bash", "input": {}}]),
+            llm_entry("Final text response — the summary"),
+        ])
+
+        state = {
+            "session_id": sid,
+            "username": "u",
+            "current_trace": {
+                "trace_id": "c" * 32,
+                "root_span_id": "d" * 16,
+                "turn_start_ns": 1,
+                "turn_number": 1,
+                "human_count_at_start": 0,
+                # Both spans already emitted by prior PostToolUse calls.
+                "emitted_llm_span_count": 2,
+                "last_llm_output": "[{tool call json from earlier}]",
+            },
+        }
+        tracer._save_state(sid, state)
+
+        tracer._emit_pending_llm_spans(state, str(p), self.CONFIG)
+
+        # last_llm_output must now reflect the FINAL text response.
+        assert "Final text response" in state["current_trace"]["last_llm_output"]
+
 
 # ---------------------------------------------------------------------------
 # handle_post_tool — TOOL span emission
