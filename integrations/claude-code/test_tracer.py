@@ -636,7 +636,8 @@ class TestExtractLlmSpansForTurn:
         )
         spans = self._extract(p)
         attrs = spans[0]["attributes"]
-        assert attrs["llm.token_count.prompt"] == 5
+        # prompt = input_tokens + cache_read + cache_create = 5+100+5 = 110
+        assert attrs["llm.token_count.prompt"] == 110
         assert attrs["llm.token_count.completion"] == 10
         # total = input + cache_read + cache_create + output = 5+100+5+10 = 120
         assert attrs["llm.token_count.total"] == 120
