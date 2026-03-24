@@ -148,6 +148,7 @@ class ChatbotRepository:
     def update_chatbot_config(
         self,
         update: ChatbotConfigUpdateRequest,
+        app: FastAPI,
     ) -> ChatbotConfigResponse:
         chatbot_prompt = cast(
             AgenticPrompt,
@@ -195,6 +196,7 @@ class ChatbotRepository:
             model_provider=model_provider,
             model_name=model_name,
             blacklist_endpoints=self.get_blacklist_endpoints(),
+            available_endpoints=get_api_index(app),
         )
 
     def clear_conversation_history(

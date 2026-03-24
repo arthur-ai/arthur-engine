@@ -98,6 +98,7 @@ def get_chatbot_config(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def update_chatbot_config(
+    request: Request,
     body: ChatbotConfigUpdateRequest,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
@@ -106,7 +107,7 @@ def update_chatbot_config(
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     repo = ChatbotRepository(db_session)
-    return repo.update_chatbot_config(body)
+    return repo.update_chatbot_config(body, request.app)
 
 
 @chatbot_routes.delete(

@@ -1,10 +1,12 @@
 import json
 import logging
+import os
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, List, Optional
 
+from arthur_common.models.llm_model_providers import OpenAIMessage, ToolCall
 from openinference.semconv.trace import (
     MessageAttributes,
     SpanAttributes,
@@ -32,7 +34,7 @@ logger = logging.getLogger(__name__)
 class ChatbotSpanBuilder:
     def __init__(self, trace_id: bytes, parent_span_id: Optional[bytes] = None) -> None:
         self.trace_id = trace_id
-        self.span_id = uuid.uuid4().bytes
+        self.span_id = os.urandom(8)
         self.parent_span_id = parent_span_id or b""
         self.name = ""
         self.start_time = datetime.now(timezone.utc)
@@ -125,22 +127,18 @@ class ChatbotTracingService:
     def set_llm_input_messages(
         self,
         span: ChatbotSpanBuilder,
-        messages: List[Any],
+        messages: List[OpenAIMessage],
     ) -> None:
         input_parts = []
         for i, msg in enumerate(messages):
-            role = msg.role if hasattr(msg, "role") else str(msg.get("role", ""))
-            content = (
-                msg.content if hasattr(msg, "content") else str(msg.get("content", ""))
-            )
             prefix = f"{SpanAttributes.LLM_INPUT_MESSAGES}.{i}"
-            span.set_attribute(f"{prefix}.{MessageAttributes.MESSAGE_ROLE}", role)
-            if content:
+            span.set_attribute(f"{prefix}.{MessageAttributes.MESSAGE_ROLE}", msg.role)
+            if msg.content:
                 span.set_attribute(
                     f"{prefix}.{MessageAttributes.MESSAGE_CONTENT}",
-                    content,
+                    msg.content,
                 )
-                input_parts.append({"role": role, "content": content})
+                input_parts.append({"role": msg.role, "content": msg.content})
         span.set_attribute(
             SpanAttributes.INPUT_VALUE,
             json.dumps({"messages": input_parts}),
@@ -151,7 +149,7 @@ class ChatbotTracingService:
         self,
         span: ChatbotSpanBuilder,
         content: Optional[str] = None,
-        tool_calls: Optional[List[Any]] = None,
+        tool_calls: Optional[List[ToolCall]] = None,
         input_tokens: Optional[int] = None,
         output_tokens: Optional[int] = None,
         total_tokens: Optional[int] = None,
@@ -169,16 +167,8 @@ class ChatbotTracingService:
 
         if tool_calls:
             for j, tc in enumerate(tool_calls):
-                name = (
-                    tc.function.name
-                    if hasattr(tc, "function")
-                    else tc.get("function", {}).get("name", "")
-                )
-                args = (
-                    tc.function.arguments
-                    if hasattr(tc, "function")
-                    else tc.get("function", {}).get("arguments", "")
-                )
+                name = tc.function.name
+                args = tc.function.arguments
                 tc_prefix = (
                     f"{output_prefix}.{MessageAttributes.MESSAGE_TOOL_CALLS}.{j}"
                 )
@@ -210,17 +200,13 @@ class ChatbotTracingService:
     def set_tool_output(self, span: ChatbotSpanBuilder, tool_output: str) -> None:
         span.set_attribute(SpanAttributes.OUTPUT_VALUE, tool_output)
 
-    def set_agent_input(self, span: ChatbotSpanBuilder, messages: List[Any]) -> None:
+    def set_agent_input(
+        self,
+        span: ChatbotSpanBuilder,
+        messages: List[OpenAIMessage],
+    ) -> None:
         value = json.dumps(
-            [
-                {
-                    "role": m.role if hasattr(m, "role") else m.get("role", ""),
-                    "content": (
-                        m.content if hasattr(m, "content") else m.get("content", "")
-                    ),
-                }
-                for m in messages
-            ],
+            [{"role": m.role, "content": m.content or ""} for m in messages],
         )
         span.set_attribute(SpanAttributes.INPUT_VALUE, value)
         span.set_attribute(SpanAttributes.INPUT_MIME_TYPE, "application/json")

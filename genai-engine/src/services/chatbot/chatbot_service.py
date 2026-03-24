@@ -131,17 +131,33 @@ class ChatbotService:
                 self.tracing.flush()
                 return
 
+            tool_calls = (
+                [
+                    ToolCall(
+                        id=tc.id,
+                        type="function",
+                        function=ToolCallFunction(
+                            name=tc.function.name or "",
+                            arguments=tc.function.arguments or "{}",
+                        ),
+                    )
+                    for tc in final_response.tool_calls
+                ]
+                if final_response.tool_calls
+                else []
+            )
+
             self.tracing.set_llm_response(
                 llm_span,
                 content=final_response.content,
-                tool_calls=final_response.tool_calls,
+                tool_calls=tool_calls or None,
                 input_tokens=final_response.input_tokens,
                 output_tokens=final_response.output_tokens,
                 total_tokens=final_response.total_tokens,
             )
             self.tracing.end_span(llm_span)
 
-            if not final_response.tool_calls:
+            if not tool_calls:
                 history = [
                     m for m in current_prompt.messages if m.role != MessageRole.SYSTEM
                 ]
@@ -154,18 +170,6 @@ class ChatbotService:
                 self.tracing.flush()
                 yield f"event: final_response\ndata: {final_response.model_dump_json()}\n\n"
                 return
-
-            tool_calls = [
-                ToolCall(
-                    id=tc.id,
-                    type="function",
-                    function=ToolCallFunction(
-                        name=tc.function.name or "",
-                        arguments=tc.function.arguments or "{}",
-                    ),
-                )
-                for tc in final_response.tool_calls
-            ]
             assistant_msg = OpenAIMessage(
                 role=MessageRole.AI,
                 content=final_response.content,

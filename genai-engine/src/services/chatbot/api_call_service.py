@@ -1,4 +1,5 @@
 import logging
+import posixpath
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
@@ -55,7 +56,9 @@ class ApiCallService:
                 body="Invalid path: absolute URLs are not permitted",
             )
 
-        if method == "DELETE" and not is_allowed_delete_path(parsed.path):
+        normalized_path = posixpath.normpath(parsed.path)
+
+        if method == "DELETE" and not is_allowed_delete_path(normalized_path):
             return ApiCallResult(
                 method=method,
                 path=path,
@@ -63,7 +66,7 @@ class ApiCallService:
                 body="DELETE is only permitted for tag endpoints",
             )
 
-        if self.blacklist and is_blacklisted(parsed.path, self.blacklist):
+        if self.blacklist and is_blacklisted(normalized_path, self.blacklist):
             return ApiCallResult(
                 method=method,
                 path=path,
@@ -83,7 +86,7 @@ class ApiCallService:
             ) as client:
                 response = await client.request(
                     method=method,
-                    url=path,
+                    url=normalized_path,
                     params=query_params,
                     json=body,
                     headers=headers,
