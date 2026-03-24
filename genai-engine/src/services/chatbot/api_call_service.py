@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 import httpx
 from pydantic import BaseModel
 
-from services.chatbot.chatbot_prompts import is_allowed_delete_path, is_blacklisted
+from utils.llm_tool_functions import is_allowed_delete_path, is_blacklisted
 
 logger = logging.getLogger(__name__)
 

@@ -22,10 +22,10 @@ from schemas.chatbot_schemas import (
 from schemas.request_schemas import PromptCompletionRequest
 from schemas.response_schemas import AgenticPromptRunResponse
 from services.chatbot.api_call_service import ApiCallService
-from services.chatbot.chatbot_prompts import search_api_index
 from services.chatbot.chatbot_tracing_service import ChatbotTracingService
 from services.prompt.chat_completion_service import ChatCompletionService
 from utils import constants
+from utils.llm_tool_functions import search_api_index
 from utils.utils import get_env_var
 
 logger = logging.getLogger(__name__)
