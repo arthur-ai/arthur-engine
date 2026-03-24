@@ -227,9 +227,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@arthur/shared-components@npm:^3.15.0":
-  version: 3.15.0
-  resolution: "@arthur/shared-components@npm:3.15.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshared-components%2F-%2F%40arthur%2Fshared-components-3.15.0.tgz"
+"@arthur/shared-components@npm:^3.15.1":
+  version: 3.15.1
+  resolution: "@arthur/shared-components@npm:3.15.1::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Fshared-components%2F-%2F%40arthur%2Fshared-components-3.15.1.tgz"
   dependencies:
     "@amplitude/analytics-browser": "npm:^2.33.3"
     "@arizeai/openinference-semantic-conventions": "npm:^2.1.0"
@@ -269,7 +269,7 @@ __metadata:
     react-dom: ^18.0.0 || ^19.1.0
     react-error-boundary: ^4.0.0
     react-i18next: ^16.5.3
-  checksum: 10c0/3232d24812c5ab5d4ffa256556928ba34809c8476e211af9035efbb4ec434cc6de55b84f0898d705d98df8be8feaec925d94e12990aa04fb06fb371270393e5a
+  checksum: 10c0/ba640a6f2f9234dfb31c13550f7667da62d8ced07f6c4cc7f2782f41435c1e7c3c2202964826ac5f5c644b0f911f72babf0b0f2214d51c2ac02296856baaebd9
   languageName: node
   linkType: hard
 
@@ -8397,7 +8397,7 @@ __metadata:
   dependencies:
     "@amplitude/analytics-browser": "npm:^2.36.0"
     "@arizeai/openinference-semantic-conventions": "npm:^2.1.1"
-    "@arthur/shared-components": "npm:^3.15.0"
+    "@arthur/shared-components": "npm:^3.15.1"
     "@base-ui/react": "npm:^1.2.0"
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
