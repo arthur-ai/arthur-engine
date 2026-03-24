@@ -1,17 +1,19 @@
 import CheckIcon from "@mui/icons-material/Check";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography, IconButton, Tooltip } from "@mui/material";
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography, IconButton, Tooltip, Divider } from "@mui/material";
 import { useState } from "react";
 
+import TransformEditHistoryPanel from "./TransformEditHistoryPanel";
 import { TraceTransform } from "./types";
 
 interface TransformDetailsModalProps {
   open: boolean;
   onClose: () => void;
+  onRestoreSuccess?: () => void;
   transform: TraceTransform | null;
 }
 
-export const TransformDetailsModal: React.FC<TransformDetailsModalProps> = ({ open, onClose, transform }) => {
+export const TransformDetailsModal: React.FC<TransformDetailsModalProps> = ({ open, onClose, onRestoreSuccess, transform }) => {
   const [copied, setCopied] = useState(false);
 
   if (!transform) return null;
@@ -136,6 +138,15 @@ export const TransformDetailsModal: React.FC<TransformDetailsModalProps> = ({ op
             >
               {JSON.stringify(transform.definition, null, 2)}
             </Box>
+          </Box>
+
+          <Divider sx={{ my: 3 }} />
+
+          <Box>
+            <Typography variant="subtitle2" fontWeight="medium" gutterBottom>
+              Edit History
+            </Typography>
+            <TransformEditHistoryPanel transformId={transform.id} onRestoreSuccess={onRestoreSuccess} />
           </Box>
         </Box>
       </DialogContent>

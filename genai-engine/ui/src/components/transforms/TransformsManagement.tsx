@@ -263,7 +263,12 @@ const TransformsManagement: React.FC = () => {
         initialTransform={editingTransform || undefined}
       />
 
-      <TransformDetailsModal open={!!viewingTransform} onClose={() => setTransformId(null)} transform={viewingTransform ?? null} />
+      <TransformDetailsModal
+        open={!!viewingTransform}
+        onClose={() => setTransformId(null)}
+        onRestoreSuccess={refetch}
+        transform={viewingTransform ?? null}
+      />
 
       <DeleteTransformDialog
         transformId={deleteConfirmId}
