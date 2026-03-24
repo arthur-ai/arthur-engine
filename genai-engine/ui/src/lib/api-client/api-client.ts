@@ -2239,14 +2239,6 @@ export type DeleteTransformApiV1TracesTransformsTransformIdDeleteData = any;
 
 export type DeleteTransformApiV1TracesTransformsTransformIdDeleteError = HTTPValidationError;
 
-export type ListTransformVersionsApiV1TracesTransformsTransformIdVersionsGetData = ListTraceTransformVersionsResponse;
-
-export type ListTransformVersionsApiV1TracesTransformsTransformIdVersionsGetError = HTTPValidationError;
-
-export type RestoreTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdRestorePostData = TraceTransformResponse;
-
-export type RestoreTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdRestorePostError = HTTPValidationError;
-
 export type DeleteUserUsersUserIdDeleteData = any;
 
 export type DeleteUserUsersUserIdDeleteError = HTTPValidationError;
@@ -11148,32 +11140,11 @@ export interface TraceTransformResponse {
 /** TraceTransformVersionResponse */
 export interface TraceTransformVersionResponse {
   /**
-   * Author
-   * Author who created this version.
-   */
-  author?: string | null;
-  /**
-   * Config Snapshot
-   * Snapshot of the transform definition at the time of this version.
-   */
-  config_snapshot: Record<string, unknown>;
-  /**
-   * Created At
-   * Timestamp when this version was created.
-   * @format date-time
-   */
-  created_at: string;
-  /**
    * Id
    * ID of the version.
    * @format uuid
    */
   id: string;
-  /**
-   * Task Id
-   * ID of the parent task.
-   */
-  task_id: string;
   /**
    * Transform Id
    * ID of the parent transform.
@@ -11181,25 +11152,55 @@ export interface TraceTransformVersionResponse {
    */
   transform_id: string;
   /**
+   * Task Id
+   * ID of the parent task.
+   */
+  task_id: string;
+  /**
    * Version Number
    * Monotonically increasing version number.
    */
   version_number: number;
+  /**
+   * Config Snapshot
+   * Snapshot of the transform definition at the time of this version.
+   */
+  config_snapshot: Record<string, unknown>;
+  /**
+   * Author
+   * Author who created this version.
+   */
+  author?: string | null;
+  /**
+   * Created At
+   * Timestamp when this version was created.
+   * @format date-time
+   */
+  created_at: string;
 }
 
 /** ListTraceTransformVersionsResponse */
 export interface ListTraceTransformVersionsResponse {
   /**
-   * Count
-   * Total number of versions.
-   */
-  count: number;
-  /**
    * Versions
    * List of versions for the transform, ordered by version_number descending.
    */
   versions: TraceTransformVersionResponse[];
+  /**
+   * Count
+   * Total number of versions.
+   */
+  count: number;
 }
+
+export type ListTransformVersionsApiV1TracesTransformsTransformIdVersionsGetData = ListTraceTransformVersionsResponse;
+export type ListTransformVersionsApiV1TracesTransformsTransformIdVersionsGetError = HTTPValidationError;
+
+export type GetTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdGetData = TraceTransformVersionResponse;
+export type GetTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdGetError = HTTPValidationError;
+
+export type RestoreTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdRestorePostData = TraceTransformResponse;
+export type RestoreTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdRestorePostError = HTTPValidationError;
 
 /** TraceTransformUpdateRequest */
 export interface TraceTransformUpdateRequest {
@@ -15265,7 +15266,32 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Restore a transform to a previous version snapshot. Creates a new version entry rather than overwriting history.
+     * @description Get a specific version snapshot of a transform.
+     *
+     * @tags Transforms
+     * @name GetTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdGet
+     * @summary Get Transform Version
+     * @request GET:/api/v1/traces/transforms/{transform_id}/versions/{version_id}
+     * @secure
+     */
+    getTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdGet: (
+      transformId: string,
+      versionId: string,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdGetData,
+        GetTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdGetError
+      >({
+        path: `/api/v1/traces/transforms/${transformId}/versions/${versionId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Restore a transform to a previous version snapshot (creates a new version).
      *
      * @tags Transforms
      * @name RestoreTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdRestorePost
@@ -15276,7 +15302,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     restoreTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdRestorePost: (
       transformId: string,
       versionId: string,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
       this.request<
         RestoreTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdRestorePostData,
