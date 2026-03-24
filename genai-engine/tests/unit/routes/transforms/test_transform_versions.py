@@ -60,7 +60,7 @@ def test_create_transform_creates_initial_version(
         assert versions.versions[0].version_number == 1
         assert versions.versions[0].transform_id == transform.id
         assert versions.versions[0].task_id == task.id
-        assert versions.versions[0].config_snapshot == transform_definition
+        assert versions.versions[0].config_snapshot.model_dump() == transform_definition
     finally:
         client.delete_task(task.id)
 
@@ -97,9 +97,9 @@ def test_update_transform_creates_new_version(
         assert versions.count == 2
         # Ordered descending by version_number
         assert versions.versions[0].version_number == 2
-        assert versions.versions[0].config_snapshot == updated_definition
+        assert versions.versions[0].config_snapshot.model_dump() == updated_definition
         assert versions.versions[1].version_number == 1
-        assert versions.versions[1].config_snapshot == transform_definition
+        assert versions.versions[1].config_snapshot.model_dump() == transform_definition
     finally:
         client.delete_task(task.id)
 
@@ -148,7 +148,7 @@ def test_get_transform_version_success(
         assert status_code == 200
         assert str(version.id) == version_id
         assert version.version_number == 1
-        assert version.config_snapshot == transform_definition
+        assert version.config_snapshot.model_dump() == transform_definition
         assert version.transform_id == transform.id
         assert version.task_id == task.id
     finally:
@@ -276,7 +276,7 @@ def test_restore_transform_version(
         assert status_code == 200
         assert versions.count == 3
         assert versions.versions[0].version_number == 3
-        assert versions.versions[0].config_snapshot == transform_definition
+        assert versions.versions[0].config_snapshot.model_dump() == transform_definition
     finally:
         client.delete_task(task.id)
 
@@ -341,7 +341,7 @@ def test_update_name_only_creates_new_version(
         assert status_code == 200
         assert versions.count == 2
         # Both versions should have same config_snapshot (definition unchanged)
-        assert versions.versions[0].config_snapshot == transform_definition
-        assert versions.versions[1].config_snapshot == transform_definition
+        assert versions.versions[0].config_snapshot.model_dump() == transform_definition
+        assert versions.versions[1].config_snapshot.model_dump() == transform_definition
     finally:
         client.delete_task(task.id)

@@ -1,7 +1,7 @@
 import HistoryIcon from "@mui/icons-material/History";
 import PersonIcon from "@mui/icons-material/Person";
 import RestoreIcon from "@mui/icons-material/Restore";
-import { Box, Button, CircularProgress, Divider, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, CircularProgress, Divider, Stack, Typography } from "@mui/material";
 import React, { useState } from "react";
 
 import { useRestoreTransformVersionMutation } from "./hooks/useRestoreTransformVersionMutation";
@@ -71,11 +71,7 @@ export const TransformEditHistoryPanel: React.FC<TransformEditHistoryPanelProps>
   }
 
   if (isError) {
-    return (
-      <Typography variant="body2" color="error">
-        Failed to load version history.
-      </Typography>
-    );
+    return <Alert severity="error">Failed to load version history.</Alert>;
   }
 
   if (!versions || versions.length === 0) {
