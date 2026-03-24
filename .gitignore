@@ -51,3 +51,4 @@ arthur-engine.code-workspace
 **/.claude/hooks/claude_code_tracer.py
 .beads/
 .runtime/
+.claude/commands/
