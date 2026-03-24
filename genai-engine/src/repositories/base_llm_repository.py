@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy import asc, delete, desc, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from sqlalchemy.sql import or_
+from sqlalchemy.sql import exists, or_
 
 from custom_types import QueryT
 from schemas.request_schemas import LLMGetAllFilterRequest, LLMGetVersionsFilterRequest
@@ -357,6 +357,18 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         if filter_request.created_before:
             query = query.filter(
                 self.db_model.created_at < filter_request.created_before,
+            )
+
+        # Filter by tags - keep items that have at least one matching tag across any version
+        if filter_request.tags:
+            query = query.filter(
+                exists().where(
+                    sa.and_(
+                        self.tag_db_model.name == self.db_model.name,
+                        self.tag_db_model.task_id == self.db_model.task_id,
+                        self.tag_db_model.tag.in_(filter_request.tags),
+                    ),
+                ),
             )
 
         return query

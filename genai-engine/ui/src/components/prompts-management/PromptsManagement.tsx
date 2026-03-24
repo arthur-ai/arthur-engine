@@ -36,6 +36,11 @@ const PromptsManagement: React.FC<PromptsManagementProps> = ({ onRegisterCreate 
   const [pageSize, setPageSize] = useState(10);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
+  // Reset tag filters when navigating to a different task
+  useEffect(() => {
+    setSelectedTags([]);
+  }, [task?.id]);
+
   // Sync fullScreenPrompt with URL parameter (one-way: URL -> state only)
   useEffect(() => {
     if (urlPromptName) {
@@ -51,29 +56,26 @@ const PromptsManagement: React.FC<PromptsManagementProps> = ({ onRegisterCreate 
       page,
       pageSize,
       sort: sortDirection,
+      tags: selectedTags.length > 0 ? selectedTags : null,
     }),
-    [page, pageSize, sortDirection]
+    [page, pageSize, sortDirection, selectedTags]
   );
 
   const { prompts, count, error, isLoading, refetch } = usePrompts(task?.id, filters);
 
+  // Separate query with no tag filter to collect all available tags for the filter chips.
+  // Uses a large page_size so tags from all prompts are discoverable regardless of pagination.
+  const { prompts: allPromptsForTags } = usePrompts(task?.id, { pageSize: 5000, page: 0 });
+
   const { availableProductionTag, availableCustomTags } = useMemo(() => {
     const allTags = new Set<string>();
-    prompts.forEach((p) => (p.tags ?? []).forEach((t) => allTags.add(t.toLowerCase())));
+    allPromptsForTags.forEach((p) => (p.tags ?? []).forEach((t) => allTags.add(t.toLowerCase())));
     const hasProduction = allTags.has("production");
     const customTags = Array.from(allTags)
       .filter((t) => t !== "production")
       .sort();
     return { availableProductionTag: hasProduction, availableCustomTags: customTags };
-  }, [prompts]);
-
-  const filteredPrompts = useMemo(() => {
-    if (selectedTags.length === 0) return prompts;
-    return prompts.filter((p) => {
-      const promptTags = (p.tags ?? []).map((t) => t.toLowerCase());
-      return selectedTags.some((tag) => promptTags.includes(tag));
-    });
-  }, [prompts, selectedTags]);
+  }, [allPromptsForTags]);
 
   const handleTagToggle = useCallback((tag: string) => {
     setSelectedTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
@@ -226,7 +228,7 @@ const PromptsManagement: React.FC<PromptsManagementProps> = ({ onRegisterCreate 
           </Box>
         ) : (
           <PromptsTable
-            prompts={filteredPrompts}
+            prompts={prompts}
             sortColumn={sortColumn}
             sortDirection={sortDirection}
             onSort={handleSort}
@@ -248,7 +250,7 @@ const PromptsManagement: React.FC<PromptsManagementProps> = ({ onRegisterCreate 
         >
           <TablePagination
             component="div"
-            count={selectedTags.length > 0 ? filteredPrompts.length : count}
+            count={count}
             page={page}
             onPageChange={handlePageChange}
             rowsPerPage={pageSize}

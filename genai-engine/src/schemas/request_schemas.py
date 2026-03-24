@@ -723,6 +723,10 @@ class LLMGetAllFilterRequest(BaseModel):
         None,
         description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
     )
+    tags: Optional[list[str]] = Field(
+        None,
+        description="List of tags to filter for items that have any matching tag across any version.",
+    )
 
 
 class LLMRequestConfigSettings(BaseModel):

@@ -12,6 +12,7 @@ __pycache__
 .python-version
 *.egg-info
 build/
+.mypy_cache/
 
 # Node.js
 node_modules/
