@@ -791,6 +791,58 @@ class ContinuousEvalRerunResponse(BaseModel):
     trace_id: str = Field(description="ID of the trace that was rerun.")
 
 
+class ContinuousEvalResponse(BaseModel):
+    """Response schema for a continuous eval (supports both LLM and rule-based evaluators)."""
+
+    id: UUID = Field(description="ID of the continuous eval.")
+    name: str = Field(description="Name of the continuous eval.")
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of the continuous eval.",
+    )
+    task_id: str = Field(description="ID of the parent task.")
+    evaluator_type: str = Field(
+        default="llm",
+        description="Type of evaluator: 'llm' for LLM-based evals, 'rule' for rule-based evals.",
+    )
+    rule_type: Optional[str] = Field(
+        default=None,
+        description="Rule type for rule-based evaluators (e.g. 'PIIDataRule'). Only present when evaluator_type='rule'.",
+    )
+    llm_eval_name: Optional[str] = Field(
+        default=None,
+        description="Name of the LLM eval. Only present when evaluator_type='llm'.",
+    )
+    llm_eval_version: Optional[int] = Field(
+        default=None,
+        description="Version of the LLM eval. Only present when evaluator_type='llm'.",
+    )
+    transform_id: UUID = Field(description="ID of the transform.")
+    transform_variable_mapping: List[ContinuousEvalTransformVariableMappingResponse] = (
+        Field(
+            default_factory=list,
+            description="Mapping of transform variables to eval variables.",
+        )
+    )
+    enabled: bool = Field(
+        default=True,
+        description="Whether the continuous eval is enabled.",
+    )
+    created_at: datetime = Field(
+        description="Timestamp when the continuous eval was created.",
+    )
+    updated_at: datetime = Field(
+        description="Timestamp when the continuous eval was last updated.",
+    )
+
+
+class ListContinuousEvalsResponse(BaseModel):
+    evals: List[ContinuousEvalResponse] = Field(
+        description="List of continuous evals.",
+    )
+    count: int = Field(description="Total number of evals")
+
+
 # ============================================================================
 # Synthetic Data Generation Response Schemas
 # ============================================================================

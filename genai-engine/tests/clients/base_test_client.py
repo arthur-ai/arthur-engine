@@ -55,13 +55,12 @@ from arthur_common.models.response_schemas import (
     ValidationResult,
 )
 from arthur_common.models.task_eval_schemas import (
-    ContinuousEvalResponse,
     ContinuousEvalVariableMappingResponse,
-    ListContinuousEvalsResponse,
     ListTraceTransformsResponse,
     LLMEval,
     TraceTransformResponse,
 )
+from schemas.response_schemas import ContinuousEvalResponse, ListContinuousEvalsResponse
 from pydantic import TypeAdapter
 from sqlalchemy.orm import sessionmaker
 from weaviate.collections.classes.grpc import HybridFusion, TargetVectorJoinType

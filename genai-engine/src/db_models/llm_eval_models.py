@@ -120,10 +120,18 @@ class DatabaseContinuousEval(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
-    # llm eval composite primary key
+    # Discriminator: 'llm' for LLM-based evals, 'rule' for rule-based evals
+    evaluator_type: Mapped[str] = mapped_column(
+        String, nullable=False, default="llm", server_default="llm"
+    )
+
+    # Rule type — only set when evaluator_type='rule' (e.g. 'PIIDataRule', 'PromptInjectionRule', 'ToxicityRule')
+    rule_type: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+
+    # llm eval reference — only set when evaluator_type='llm'
     task_id: Mapped[str] = mapped_column(String, nullable=False)
-    llm_eval_name: Mapped[str] = mapped_column(String, nullable=False)
-    llm_eval_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    llm_eval_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    llm_eval_version: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     transform_id: Mapped[uuid.UUID] = mapped_column(
         UUID,

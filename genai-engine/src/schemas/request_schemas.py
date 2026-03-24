@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
 from arthur_common.models.common_schemas import VariableTemplateValue
-from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
+from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus, RuleType
 from arthur_common.models.llm_model_providers import (
     LLMResponseFormat,
     LLMTool,
@@ -933,6 +933,11 @@ class ContinuousEvalTransformVariableMappingRequest(BaseModel):
     eval_variable: str = Field(description="Name of the eval variable")
 
 
+RULE_BASED_CE_RULE_TYPES = frozenset(
+    [RuleType.PII_DATA, RuleType.PROMPT_INJECTION, RuleType.TOXICITY]
+)
+
+
 class ContinuousEvalCreateRequest(BaseModel):
     """Request schema for creating a continuous eval"""
 
@@ -941,11 +946,21 @@ class ContinuousEvalCreateRequest(BaseModel):
         default=None,
         description="Description of the continuous eval",
     )
-    llm_eval_name: str = Field(
-        description="Name of the llm eval to create the continuous eval for",
+    evaluator_type: Literal["llm", "rule"] = Field(
+        default="llm",
+        description="Type of evaluator: 'llm' for LLM-based evals, 'rule' for rule-based evals (PII, prompt injection, toxicity).",
     )
-    llm_eval_version: Union[str, int] = Field(
-        description="Version of the llm eval to create the continuous eval for. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
+    rule_type: Optional[RuleType] = Field(
+        default=None,
+        description="Rule type for rule-based evaluators. Required when evaluator_type='rule'. One of: 'PIIDataRule', 'PromptInjectionRule', 'ToxicityRule'.",
+    )
+    llm_eval_name: Optional[str] = Field(
+        default=None,
+        description="Name of the llm eval to create the continuous eval for. Required when evaluator_type='llm'.",
+    )
+    llm_eval_version: Optional[Union[str, int]] = Field(
+        default=None,
+        description="Version of the llm eval to create the continuous eval for. Required when evaluator_type='llm'. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
     )
     transform_id: UUID = Field(
         description="ID of the transform to create the continuous eval for",
@@ -959,6 +974,34 @@ class ContinuousEvalCreateRequest(BaseModel):
         default=True,
         description="Whether to enable or disable a continuous eval. Defaults to True.",
     )
+
+    @model_validator(mode="after")
+    def validate_evaluator_fields(self) -> "ContinuousEvalCreateRequest":
+        if self.evaluator_type == "llm":
+            if self.llm_eval_name is None:
+                raise ValueError("llm_eval_name is required when evaluator_type is 'llm'")
+            if self.llm_eval_version is None:
+                raise ValueError(
+                    "llm_eval_version is required when evaluator_type is 'llm'"
+                )
+            if self.rule_type is not None:
+                raise ValueError("rule_type must not be set when evaluator_type is 'llm'")
+        elif self.evaluator_type == "rule":
+            if self.rule_type is None:
+                raise ValueError("rule_type is required when evaluator_type is 'rule'")
+            if self.rule_type not in RULE_BASED_CE_RULE_TYPES:
+                raise ValueError(
+                    f"rule_type must be one of {[r.value for r in RULE_BASED_CE_RULE_TYPES]} for rule-based continuous evals"
+                )
+            if self.llm_eval_name is not None:
+                raise ValueError(
+                    "llm_eval_name must not be set when evaluator_type is 'rule'"
+                )
+            if self.llm_eval_version is not None:
+                raise ValueError(
+                    "llm_eval_version must not be set when evaluator_type is 'rule'"
+                )
+        return self
 
 
 class UpdateContinuousEvalRequest(BaseModel):

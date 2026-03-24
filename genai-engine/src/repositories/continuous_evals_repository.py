@@ -138,11 +138,19 @@ class ContinuousEvalsRepository:
             for mapping in continuous_eval_request.transform_variable_mapping
         ]
 
+        rule_type_value = (
+            continuous_eval_request.rule_type.value
+            if continuous_eval_request.rule_type is not None
+            else None
+        )
+
         db_continuous_eval = DatabaseContinuousEval(
             id=uuid.uuid4(),
             name=continuous_eval_request.name,
             description=continuous_eval_request.description,
             task_id=task_id,
+            evaluator_type=continuous_eval_request.evaluator_type,
+            rule_type=rule_type_value,
             llm_eval_name=continuous_eval_request.llm_eval_name,
             llm_eval_version=continuous_eval_request.llm_eval_version,
             transform_id=continuous_eval_request.transform_id,

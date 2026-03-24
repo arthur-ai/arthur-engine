@@ -73,10 +73,12 @@ from arthur_common.models.response_schemas import (
     UserResponse,
 )
 from arthur_common.models.task_eval_schemas import (
-    ContinuousEvalResponse,
-    ContinuousEvalTransformVariableMappingResponse,
     TraceTransformDefinition,
     TraceTransformResponse,
+)
+from schemas.response_schemas import (
+    ContinuousEvalResponse,
+    ContinuousEvalTransformVariableMappingResponse,
 )
 from fastapi import HTTPException
 from openinference.semconv.trace import SpanAttributes
@@ -3828,8 +3830,10 @@ class ContinuousEval(BaseModel):
     name: str
     description: Optional[str]
     task_id: str
-    llm_eval_name: str
-    llm_eval_version: int
+    evaluator_type: str = "llm"
+    rule_type: Optional[str] = None
+    llm_eval_name: Optional[str] = None
+    llm_eval_version: Optional[int] = None
     transform_id: uuid.UUID
     created_at: datetime
     updated_at: datetime
@@ -3853,6 +3857,8 @@ class ContinuousEval(BaseModel):
             name=self.name,
             description=self.description,
             task_id=self.task_id,
+            evaluator_type=self.evaluator_type,
+            rule_type=self.rule_type,
             llm_eval_name=self.llm_eval_name,
             llm_eval_version=self.llm_eval_version,
             transform_id=self.transform_id,
@@ -3877,6 +3883,8 @@ class ContinuousEval(BaseModel):
             name=db_eval.name,
             description=db_eval.description,
             task_id=db_eval.task_id,
+            evaluator_type=getattr(db_eval, "evaluator_type", "llm") or "llm",
+            rule_type=getattr(db_eval, "rule_type", None),
             llm_eval_name=db_eval.llm_eval_name,
             llm_eval_version=db_eval.llm_eval_version,
             transform_id=db_eval.transform_id,
@@ -3900,6 +3908,8 @@ class ContinuousEval(BaseModel):
             name=self.name,
             description=self.description,
             task_id=self.task_id,
+            evaluator_type=self.evaluator_type,
+            rule_type=self.rule_type,
             llm_eval_name=self.llm_eval_name,
             llm_eval_version=self.llm_eval_version,
             transform_id=self.transform_id,

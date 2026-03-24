@@ -5,9 +5,7 @@ from uuid import UUID
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.response_schemas import ListAgenticAnnotationsResponse
 from arthur_common.models.task_eval_schemas import (
-    ContinuousEvalResponse,
     ContinuousEvalVariableMappingResponse,
-    ListContinuousEvalsResponse,
 )
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
@@ -31,7 +29,9 @@ from schemas.request_schemas import (
 )
 from schemas.response_schemas import (
     AgenticAnnotationAnalyticsResponse,
+    ContinuousEvalResponse,
     ContinuousEvalRerunResponse,
+    ListContinuousEvalsResponse,
 )
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
@@ -240,44 +240,61 @@ def create_continuous_eval(
     task: Task = Depends(get_validated_task),
 ) -> ContinuousEvalResponse:
     try:
-        # Validate the llm eval exists and hasn't been deleted
-        llm_eval_repo = LLMEvalsRepository(db_session)
-        llm_eval_version = (
-            str(create_request.llm_eval_version)
-            if isinstance(create_request.llm_eval_version, int)
-            else create_request.llm_eval_version
-        )
-        llm_eval = llm_eval_repo.get_llm_item(
-            task.id,
-            create_request.llm_eval_name,
-            llm_eval_version,
-        )
-
-        if llm_eval.deleted_at is not None:
-            raise HTTPException(
-                status_code=400,
-                detail=f"LLM Eval {llm_eval.name} (version {llm_eval.version}) has been deleted.",
-            )
-
-        # set the version to the integer version of the llm eval
-        create_request.llm_eval_version = llm_eval.version
-
-        # Validate the transform variable mapping
         transform_repo = TraceTransformRepository(db_session)
-        transform = transform_repo.get_transform_by_id(create_request.transform_id)
-        if not transform:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Transform {create_request.transform_id} not found.",
-            )
-
         continuous_eval_repo = ContinuousEvalsRepository(db_session)
 
-        continuous_eval_repo.validate_transform_variable_mapping(
-            transform,
-            llm_eval,
-            create_request.transform_variable_mapping,
-        )
+        if create_request.evaluator_type == "rule":
+            # Rule-based evals are only supported on agentic tasks
+            if not task.is_agentic:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Rule-based continuous evaluators are only supported on agentic tasks.",
+                )
+
+            # Validate the transform exists
+            transform = transform_repo.get_transform_by_id(create_request.transform_id)
+            if not transform:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Transform {create_request.transform_id} not found.",
+                )
+
+        else:
+            # LLM-based eval: validate the llm eval exists and hasn't been deleted
+            llm_eval_repo = LLMEvalsRepository(db_session)
+            llm_eval_version = (
+                str(create_request.llm_eval_version)
+                if isinstance(create_request.llm_eval_version, int)
+                else create_request.llm_eval_version
+            )
+            llm_eval = llm_eval_repo.get_llm_item(
+                task.id,
+                create_request.llm_eval_name,
+                llm_eval_version,
+            )
+
+            if llm_eval.deleted_at is not None:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"LLM Eval {llm_eval.name} (version {llm_eval.version}) has been deleted.",
+                )
+
+            # set the version to the integer version of the llm eval
+            create_request.llm_eval_version = llm_eval.version
+
+            # Validate the transform exists
+            transform = transform_repo.get_transform_by_id(create_request.transform_id)
+            if not transform:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Transform {create_request.transform_id} not found.",
+                )
+
+            continuous_eval_repo.validate_transform_variable_mapping(
+                transform,
+                llm_eval,
+                create_request.transform_variable_mapping,
+            )
 
         continuous_eval = continuous_eval_repo.create_continuous_eval(
             task.id,

@@ -2359,3 +2359,133 @@ def test_get_daily_annotation_analytics_default_time_range(
     finally:
         # Cleanup base test data (task, trace, spans)
         cleanup_test_data(test_data)
+
+
+@pytest.mark.unit_tests
+def test_create_rule_based_continuous_eval_success(client: GenaiEngineTestClientBase):
+    """Test creating a rule-based continuous eval successfully on an agentic task."""
+
+    status_code, agentic_task = client.create_task(
+        name="test_create_rule_based_ce_success",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    try:
+        status_code, transform = create_test_transform(client, agentic_task.id)
+        assert status_code == 200
+
+        status_code, continuous_eval = client.save_continuous_eval(
+            task_id=agentic_task.id,
+            continuous_eval_data={
+                "name": "test_pii_rule_eval",
+                "description": "Test PII rule continuous eval",
+                "evaluator_type": "rule",
+                "rule_type": "PIIDataRule",
+                "transform_id": str(transform.id),
+                "transform_variable_mapping": [],
+            },
+        )
+        assert status_code == 200
+        assert continuous_eval.id is not None
+        assert continuous_eval.name == "test_pii_rule_eval"
+        assert continuous_eval.task_id == agentic_task.id
+        assert continuous_eval.evaluator_type == "rule"
+        assert continuous_eval.rule_type == "PIIDataRule"
+        assert continuous_eval.llm_eval_name is None
+        assert continuous_eval.llm_eval_version is None
+    finally:
+        client.delete_task(agentic_task.id)
+
+
+@pytest.mark.unit_tests
+def test_create_rule_based_continuous_eval_non_agentic_task_fails(
+    client: GenaiEngineTestClientBase,
+):
+    """Test that creating a rule-based continuous eval on a non-agentic task fails."""
+
+    status_code, non_agentic_task = client.create_task(
+        name="test_create_rule_based_ce_non_agentic",
+        is_agentic=False,
+    )
+    assert status_code == 200
+
+    try:
+        status_code, transform = create_test_transform(client, non_agentic_task.id)
+        assert status_code == 200
+
+        status_code, error = client.save_continuous_eval(
+            task_id=non_agentic_task.id,
+            continuous_eval_data={
+                "name": "test_pii_rule_eval",
+                "evaluator_type": "rule",
+                "rule_type": "PIIDataRule",
+                "transform_id": str(transform.id),
+                "transform_variable_mapping": [],
+            },
+        )
+        assert status_code == 400
+        assert "agentic" in error.get("detail", "").lower()
+    finally:
+        client.delete_task(non_agentic_task.id)
+
+
+@pytest.mark.unit_tests
+def test_create_rule_based_continuous_eval_invalid_rule_type_fails(
+    client: GenaiEngineTestClientBase,
+):
+    """Test that creating a rule-based CE with an unsupported rule type fails."""
+
+    status_code, agentic_task = client.create_task(
+        name="test_create_rule_based_ce_invalid_rule_type",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    try:
+        status_code, transform = create_test_transform(client, agentic_task.id)
+        assert status_code == 200
+
+        # MODEL_HALLUCINATION_V2 is not a supported Phase 1 rule type
+        status_code, error = client.save_continuous_eval(
+            task_id=agentic_task.id,
+            continuous_eval_data={
+                "name": "test_invalid_rule_eval",
+                "evaluator_type": "rule",
+                "rule_type": "ModelHallucinationRuleV2",
+                "transform_id": str(transform.id),
+                "transform_variable_mapping": [],
+            },
+        )
+        assert status_code == 422
+    finally:
+        client.delete_task(agentic_task.id)
+
+
+@pytest.mark.unit_tests
+def test_create_llm_eval_missing_fields_fails(client: GenaiEngineTestClientBase):
+    """Test that creating an LLM-type CE without llm_eval_name/version fails."""
+
+    status_code, agentic_task = client.create_task(
+        name="test_create_llm_ce_missing_fields",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    try:
+        status_code, transform = create_test_transform(client, agentic_task.id)
+        assert status_code == 200
+
+        # evaluator_type='llm' but no llm_eval_name or llm_eval_version
+        status_code, error = client.save_continuous_eval(
+            task_id=agentic_task.id,
+            continuous_eval_data={
+                "name": "test_llm_eval_missing_fields",
+                "evaluator_type": "llm",
+                "transform_id": str(transform.id),
+                "transform_variable_mapping": [],
+            },
+        )
+        assert status_code == 422
+    finally:
+        client.delete_task(agentic_task.id)

@@ -2,6 +2,12 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 03/24/2026
+- **CHANGE** for **URL**: POST /api/v1/tasks/{task_id}/continuous_evals — added optional `evaluator_type` request field ('llm' | 'rule', default 'llm'); when 'llm', existing `llm_eval_name` and `llm_eval_version` fields are required as before; when 'rule', `rule_type` field is required ('PIIDataRule' | 'PromptInjectionRule' | 'ToxicityRule') and `llm_eval_name`/`llm_eval_version` must be omitted; rule-based evaluators are only supported on agentic tasks
+- **CHANGE** for **URL**: POST /api/v1/tasks/{task_id}/continuous_evals — response now includes `evaluator_type` field; for rule-based evals, `rule_type` is included and `llm_eval_name`/`llm_eval_version` are omitted; for LLM-based evals, response is unchanged
+- **CHANGE** for **URL**: GET /api/v1/tasks/{task_id}/continuous_evals — response now includes `evaluator_type` field per eval; rule-based evals include `rule_type` and omit `llm_eval_name`/`llm_eval_version`
+- **CHANGE** for **URL**: GET /api/v1/continuous_evals/{eval_id} — response now includes `evaluator_type` field; rule-based evals include `rule_type` and omit `llm_eval_name`/`llm_eval_version`
+
 # 03/16/2026
 - **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_count_eq'
 - **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_count_gt'
