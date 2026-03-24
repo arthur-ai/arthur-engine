@@ -20,11 +20,7 @@ interface VariableDefinition {
 }
 
 interface ConfigSnapshot {
-  name?: string;
-  description?: string;
-  definition?: {
-    variables?: VariableDefinition[];
-  };
+  variables?: VariableDefinition[];
 }
 
 export const TransformVersionSnapshotModal: React.FC<TransformVersionSnapshotModalProps> = ({ open, onClose, transformId, versionId }) => {
@@ -50,13 +46,7 @@ export const TransformVersionSnapshotModal: React.FC<TransformVersionSnapshotMod
             Transform Version Snapshot
           </Typography>
           {version && (
-            <Chip
-              icon={<TagIcon sx={{ fontSize: 14 }} />}
-              label={`v${version.version_number}`}
-              size="small"
-              color="primary"
-              variant="outlined"
-            />
+            <Chip icon={<TagIcon sx={{ fontSize: 14 }} />} label={`v${version.version_number}`} size="small" color="primary" variant="outlined" />
           )}
         </Box>
       </DialogTitle>
@@ -98,36 +88,14 @@ export const TransformVersionSnapshotModal: React.FC<TransformVersionSnapshotMod
 
             <Divider sx={{ mb: 3 }} />
 
-            {/* Name */}
-            {snapshot.name && (
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle2" fontWeight="medium" gutterBottom>
-                  Name
-                </Typography>
-                <Typography variant="body2">{snapshot.name}</Typography>
-              </Box>
-            )}
-
-            {/* Description */}
-            {snapshot.description && (
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle2" fontWeight="medium" gutterBottom>
-                  Description
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {snapshot.description}
-                </Typography>
-              </Box>
-            )}
-
             {/* Variable Mappings */}
-            {snapshot.definition?.variables && snapshot.definition.variables.length > 0 && (
+            {snapshot.variables && snapshot.variables.length > 0 && (
               <Box sx={{ mb: 3 }}>
                 <Typography variant="subtitle2" fontWeight="medium" gutterBottom>
-                  Variable Mappings ({snapshot.definition.variables.length})
+                  Variable Mappings ({snapshot.variables.length})
                 </Typography>
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 1 }}>
-                  {snapshot.definition.variables.map((variable, idx) => (
+                  {snapshot.variables.map((variable, idx) => (
                     <Box
                       key={idx}
                       sx={{
@@ -182,7 +150,7 @@ export const TransformVersionSnapshotModal: React.FC<TransformVersionSnapshotMod
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose} variant="contained">
+        <Button onClick={onClose} variant="outlined">
           Close
         </Button>
       </DialogActions>

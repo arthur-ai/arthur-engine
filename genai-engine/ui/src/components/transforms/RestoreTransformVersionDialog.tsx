@@ -17,13 +17,7 @@ interface RestoreTransformVersionDialogProps {
   isRestoring: boolean;
 }
 
-const RestoreTransformVersionDialog: React.FC<RestoreTransformVersionDialogProps> = ({
-  open,
-  versionNumber,
-  onClose,
-  onConfirm,
-  isRestoring,
-}) => {
+const RestoreTransformVersionDialog: React.FC<RestoreTransformVersionDialogProps> = ({ open, versionNumber, onClose, onConfirm, isRestoring }) => {
   return (
     <Dialog open={open} onClose={isRestoring ? undefined : onClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ textAlign: "center", pb: 1 }}>
@@ -47,8 +41,8 @@ const RestoreTransformVersionDialog: React.FC<RestoreTransformVersionDialogProps
 
       <DialogContent>
         <Typography variant="body2" color="text.secondary" sx={{ textAlign: "center" }}>
-          This will create a new version with the configuration from Version {versionNumber}. The current
-          configuration will be preserved in the version history.
+          This will create a new version with the configuration from Version {versionNumber}. The current configuration will be preserved in the
+          version history.
         </Typography>
       </DialogContent>
 

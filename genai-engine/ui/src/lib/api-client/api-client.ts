@@ -11214,7 +11214,14 @@ export interface TraceTransformVersionResponse {
    * Config Snapshot
    * Snapshot of the transform definition at the time of this version.
    */
-  config_snapshot: Record<string, unknown>;
+  config_snapshot: {
+    variables: Array<{
+      variable_name: string;
+      span_name: string;
+      attribute_path: string;
+      fallback?: string | null;
+    }>;
+  };
   /**
    * Created At
    * Timestamp when this version was created.

@@ -4,6 +4,7 @@ from uuid import UUID, uuid4
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
+from arthur_common.models.task_eval_schemas import TraceTransformDefinition
 from fastapi import HTTPException
 from sqlalchemy import String, asc, cast, desc, func
 from sqlalchemy.exc import IntegrityError
@@ -13,7 +14,10 @@ from custom_types import QueryT
 from db_models.agentic_experiment_models import DatabaseAgenticExperiment
 from db_models.agentic_notebook_models import DatabaseAgenticNotebook
 from db_models.llm_eval_models import DatabaseContinuousEval
-from db_models.transform_models import DatabaseTraceTransform, DatabaseTraceTransformVersion
+from db_models.transform_models import (
+    DatabaseTraceTransform,
+    DatabaseTraceTransformVersion,
+)
 from schemas.internal_schemas import TraceTransform
 from schemas.request_schemas import (
     NewTraceTransformRequest,
@@ -126,24 +130,44 @@ class TraceTransformRepository:
         db_transform: DatabaseTraceTransform,
         author: Optional[str] = None,
     ) -> DatabaseTraceTransformVersion:
-        """Create an immutable version snapshot for the given transform."""
-        next_version_number = (
-            self.db_session.query(func.coalesce(func.max(DatabaseTraceTransformVersion.version_number), 0))
-            .filter(DatabaseTraceTransformVersion.transform_id == db_transform.id)
-            .scalar()
-        ) + 1
+        """Create an immutable version snapshot for the given transform.
 
-        version = DatabaseTraceTransformVersion(
-            id=uuid4(),
-            transform_id=db_transform.id,
-            task_id=db_transform.task_id,
-            version_number=next_version_number,
-            config_snapshot=db_transform.definition,
-            author=author,
-            created_at=datetime.now(),
+        Retries once on IntegrityError to handle concurrent version number assignment.
+        """
+        for attempt in range(2):
+            next_version_number = (
+                self.db_session.query(
+                    func.coalesce(
+                        func.max(DatabaseTraceTransformVersion.version_number), 0
+                    )
+                )
+                .filter(DatabaseTraceTransformVersion.transform_id == db_transform.id)
+                .scalar()
+            ) + 1
+
+            version = DatabaseTraceTransformVersion(
+                id=uuid4(),
+                transform_id=db_transform.id,
+                task_id=db_transform.task_id,
+                version_number=next_version_number,
+                config_snapshot=db_transform.definition,
+                author=author,
+                created_at=datetime.now(),
+            )
+            try:
+                with self.db_session.begin_nested():
+                    self.db_session.add(version)
+                    self.db_session.flush()
+                return version
+            except IntegrityError:
+                if attempt == 1:
+                    raise HTTPException(
+                        status_code=409,
+                        detail="Version creation conflict due to concurrent request, please retry.",
+                    )
+        raise HTTPException(
+            status_code=500, detail="Unexpected error creating version."
         )
-        self.db_session.add(version)
-        return version
 
     def create_transform(
         self,
@@ -217,13 +241,17 @@ class TraceTransformRepository:
                 transform_id=v.transform_id,
                 task_id=v.task_id,
                 version_number=v.version_number,
-                config_snapshot=v.config_snapshot,
+                config_snapshot=TraceTransformDefinition.model_validate(
+                    v.config_snapshot
+                ),
                 author=v.author,
                 created_at=v.created_at,
             )
             for v in db_versions
         ]
-        return ListTraceTransformVersionsResponse(versions=versions, count=len(versions))
+        return ListTraceTransformVersionsResponse(
+            versions=versions, count=len(versions)
+        )
 
     def get_version_by_id(
         self,
@@ -249,7 +277,9 @@ class TraceTransformRepository:
             transform_id=db_version.transform_id,
             task_id=db_version.task_id,
             version_number=db_version.version_number,
-            config_snapshot=db_version.config_snapshot,
+            config_snapshot=TraceTransformDefinition.model_validate(
+                db_version.config_snapshot
+            ),
             author=db_version.author,
             created_at=db_version.created_at,
         )

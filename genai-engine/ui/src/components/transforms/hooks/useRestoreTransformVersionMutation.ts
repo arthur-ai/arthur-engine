@@ -12,11 +12,7 @@ export function useRestoreTransformVersionMutation(transformId: string, onSucces
         throw new Error("API client not available");
       }
 
-      const response =
-        await api.api.restoreTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdRestorePost(
-          transformId,
-          versionId,
-        );
+      const response = await api.api.restoreTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdRestorePost(transformId, versionId);
 
       return response.data;
     },

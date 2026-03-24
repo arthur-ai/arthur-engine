@@ -12,6 +12,7 @@ from arthur_common.models.response_schemas import (
     TokenCountCostSchema,
     TraceResponse,
 )
+from arthur_common.models.task_eval_schemas import TraceTransformDefinition
 from litellm.types.utils import ChatCompletionMessageToolCall
 from pydantic import BaseModel, Field
 from pydantic_core import Url
@@ -858,7 +859,7 @@ class TraceTransformVersionResponse(BaseModel):
     transform_id: UUID = Field(description="ID of the parent transform.")
     task_id: str = Field(description="ID of the parent task.")
     version_number: int = Field(description="Monotonically increasing version number.")
-    config_snapshot: dict[str, Any] = Field(
+    config_snapshot: TraceTransformDefinition = Field(
         description="Snapshot of the transform definition at the time of this version."
     )
     author: Optional[str] = Field(

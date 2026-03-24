@@ -65,8 +65,7 @@ export const queryKeys = {
   transforms: {
     list: (taskId: string) => ["listTransformsApiV1TasksTaskIdTracesTransformsGet", { taskId }] as const,
     byId: (transformId: string) => ["getTransformApiV1TracesTransformsTransformIdGet", { transformId }] as const,
-    versions: (transformId: string) =>
-      ["listTransformVersionsApiV1TracesTransformsTransformIdVersionsGet", { transformId }] as const,
+    versions: (transformId: string) => ["listTransformVersionsApiV1TracesTransformsTransformIdVersionsGet", { transformId }] as const,
     version: (transformId: string, versionId: string) =>
       ["getTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdGet", { transformId, versionId }] as const,
   },

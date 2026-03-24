@@ -5,9 +5,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
 
-import { TraceTransformVersionResponse } from "@/lib/api-client/api-client";
-
-import { useTransformVersions } from "./hooks/useTransformVersions";
+import { TraceTransformVersionResponse, useTransformVersions } from "./hooks/useTransformVersions";
 
 interface TransformEditHistoryProps {
   transformId: string;
@@ -102,11 +100,7 @@ export const TransformEditHistory: React.FC<TransformEditHistoryProps> = ({ tran
                 )}
               </Box>
             </Box>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ whiteSpace: "nowrap", ml: 2, flexShrink: 0 }}
-            >
+            <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: "nowrap", ml: 2, flexShrink: 0 }}>
               {formatTimestamp(version.created_at)}
             </Typography>
           </Box>

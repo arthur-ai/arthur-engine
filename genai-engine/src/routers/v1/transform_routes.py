@@ -151,7 +151,9 @@ def create_transform_for_task(
     try:
         author = current_user.email if current_user else None
         trace_transform_repo = TraceTransformRepository(db_session)
-        trace_transform = trace_transform_repo.create_transform(task.id, request, author=author)
+        trace_transform = trace_transform_repo.create_transform(
+            task.id, request, author=author
+        )
         return trace_transform.to_response_model()
     except HTTPException:
         raise
