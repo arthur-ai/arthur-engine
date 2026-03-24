@@ -1,5 +1,7 @@
 from typing import Any, Dict, List
 
+from services.chatbot.chatbot_prompts import is_allowed_delete_path
+
 ALLOWED_TAGS = {
     "Transforms",
     "Continuous Evals",
@@ -49,7 +51,7 @@ def build_condensed_index(openapi_spec: Dict[str, Any]) -> List[str]:
             method = method.upper()
             if method not in {"GET", "POST", "PUT", "PATCH", "DELETE"}:
                 continue
-            if method == "DELETE" and "/tags" not in path:
+            if method == "DELETE" and not is_allowed_delete_path(path):
                 continue
             tags = operation.get("tags", [])
             if not any(t in ALLOWED_TAGS for t in tags):
