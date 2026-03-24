@@ -41,7 +41,7 @@ function MethodChip({ method, compact = false }: { method: string; compact?: boo
       size="small"
       sx={{
         bgcolor: color,
-        color: "white",
+        color: "common.white",
         fontWeight: 700,
         fontSize: compact ? "0.55rem" : "0.65rem",
         height: compact ? 16 : 20,
@@ -242,7 +242,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                   renderInput={(params) => <TextField {...params} placeholder="Search endpoints..." size="small" />}
                   slotProps={{
                     popper: { placement: "bottom-start", modifiers: [{ name: "flip", enabled: false }] },
-                    listbox: { style: { maxHeight: 350 } },
+                    listbox: { sx: { maxHeight: 350 } },
                   }}
                   size="small"
                 />
@@ -256,7 +256,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                         label={
                           <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                             <MethodChip method={method} compact />
-                            <span>{path}</span>
+                            <Typography variant="body2">{path}</Typography>
                           </Box>
                         }
                         size="small"

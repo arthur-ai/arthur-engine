@@ -267,5 +267,19 @@ class ChatbotService:
             )
 
         # Hit MAX_ITERATIONS without returning
+        logger.warning(
+            "Chatbot hit MAX_ITERATIONS (%d) for user=%s conversation=%s",
+            MAX_ITERATIONS,
+            user_id,
+            conversation_id,
+        )
+        error_msg = "I'm sorry, I wasn't able to complete your request within the allowed number of steps. Please try simplifying your question."
+        history = [m for m in current_prompt.messages if m.role != MessageRole.SYSTEM]
+        history.append(
+            OpenAIMessage(role=MessageRole.AI, content=error_msg),
+        )
+        CONVERSATION_HISTORIES[(user_id, conversation_id)] = history[-15:]
+        self.tracing.set_agent_output(agent_span, error_msg)
         self.tracing.end_span(agent_span)
         self.tracing.flush()
+        yield f"event: error\ndata: {json.dumps({'error': error_msg})}\n\n"
