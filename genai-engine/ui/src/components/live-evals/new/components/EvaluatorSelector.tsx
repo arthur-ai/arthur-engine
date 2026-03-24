@@ -40,7 +40,7 @@ export const EvaluatorSelector = withFieldGroup({
 
     const evaluators = useEvals(taskId, {
       page: 0,
-      pageSize: 25,
+      pageSize: 30,
       sort: "desc",
       llm_asset_names: debouncedSearch ? [debouncedSearch] : null,
     });
@@ -58,7 +58,7 @@ export const EvaluatorSelector = withFieldGroup({
 
     const versions = useEvalVersions(taskId, name ?? undefined, {
       page: 0,
-      pageSize: 10,
+      pageSize: 100,
       sort: "desc",
     });
 
