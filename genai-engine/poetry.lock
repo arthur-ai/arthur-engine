@@ -268,15 +268,15 @@ trio = ["trio (>=0.32.0)"]
 
 [[package]]
 name = "arthur-common"
-version = "2.4.52"
+version = "2.4.53"
 description = "Utility code common to Arthur platform components."
 optional = false
 python-versions = "<4.0,>=3.12"
 groups = ["main"]
 markers = "sys_platform != \"linux\" and sys_platform != \"win32\" or sys_platform == \"linux\" or sys_platform == \"win32\""
 files = [
-    {file = "arthur_common-2.4.52-py3-none-any.whl", hash = "sha256:b68404f64273461b066b24d2a1829d610974e295796165b40353f544ae62d2c6"},
-    {file = "arthur_common-2.4.52.tar.gz", hash = "sha256:b430eeb49a26fcbc201b4a867654d7c9e9cf2301c467eaee021a54bb924e2d35"},
+    {file = "arthur_common-2.4.53-py3-none-any.whl", hash = "sha256:74e948644c137db560f53a1dee2fc642dc2eef6fb54ef2c24f2d5e3d94147c50"},
+    {file = "arthur_common-2.4.53.tar.gz", hash = "sha256:953064ab0d7b09649565d5412b6d7bb235a893c6c56616ef00a8484153e5f27d"},
 ]
 
 [package.dependencies]
@@ -284,7 +284,7 @@ datasketches = ">=5.1.0"
 duckdb = ">=1.1.3"
 fastapi = ">=0.115.8"
 fsspec = ">=2024.10.0"
-litellm = ">=1.77.7,<2.0.0"
+litellm = "1.80.0"
 openinference-semantic-conventions = ">=0.1.12,<0.2.0"
 pandas = ">=2.2.2,<3.0.0"
 pydantic = ">=2"
@@ -10228,4 +10228,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.13.dev0"
-content-hash = "22dd8b2ecdf07a3f74d769799c401aa7f54a2bbf45dead697918780559e756c1"
+content-hash = "ebdfe31917b273faf5a71763559c82eba9157c84f5ecf3c71c6227f5df532953"
