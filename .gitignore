@@ -49,3 +49,6 @@ arthur-engine.code-workspace
 # Claude Code integration (any directory)
 **/.claude/arthur_config.json
 **/.claude/hooks/claude_code_tracer.py
+.beads/
+.runtime/
+.claude/commands/
