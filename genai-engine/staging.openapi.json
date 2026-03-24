@@ -14651,6 +14651,183 @@
                 }
             }
         },
+        "/api/v1/traces/transforms/{transform_id}/versions": {
+            "get": {
+                "tags": [
+                    "Transforms"
+                ],
+                "summary": "List Transform Versions",
+                "description": "List all version snapshots for a transform, ordered by version number descending.",
+                "operationId": "list_transform_versions_api_v1_traces_transforms__transform_id__versions_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "transform_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the transform.",
+                            "title": "Transform Id"
+                        },
+                        "description": "ID of the transform."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListTraceTransformVersionsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/traces/transforms/{transform_id}/versions/{version_id}": {
+            "get": {
+                "tags": [
+                    "Transforms"
+                ],
+                "summary": "Get Transform Version",
+                "description": "Get a specific version snapshot of a transform.",
+                "operationId": "get_transform_version_api_v1_traces_transforms__transform_id__versions__version_id__get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "transform_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the transform.",
+                            "title": "Transform Id"
+                        },
+                        "description": "ID of the transform."
+                    },
+                    {
+                        "name": "version_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the version to fetch.",
+                            "title": "Version Id"
+                        },
+                        "description": "ID of the version to fetch."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TraceTransformVersionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/traces/transforms/{transform_id}/versions/{version_id}/restore": {
+            "post": {
+                "tags": [
+                    "Transforms"
+                ],
+                "summary": "Restore Transform Version",
+                "description": "Restore a transform to a previous version snapshot. Creates a new version entry rather than overwriting history.",
+                "operationId": "restore_transform_version_api_v1_traces_transforms__transform_id__versions__version_id__restore_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "transform_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the transform.",
+                            "title": "Transform Id"
+                        },
+                        "description": "ID of the transform."
+                    },
+                    {
+                        "name": "version_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the version to restore.",
+                            "title": "Version Id"
+                        },
+                        "description": "ID of the version to restore."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TraceTransformResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/traces/{trace_id}/transforms/{transform_id}/extractions": {
             "post": {
                 "tags": [
@@ -16403,183 +16580,6 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ChatDefaultTaskResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/traces/transforms/{transform_id}/versions": {
-            "get": {
-                "tags": [
-                    "Transforms"
-                ],
-                "summary": "List Transform Versions",
-                "description": "List all version snapshots for a transform, ordered by version number descending.",
-                "operationId": "list_transform_versions_api_v1_traces_transforms__transform_id__versions_get",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "transform_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "description": "ID of the transform.",
-                            "title": "Transform Id"
-                        },
-                        "description": "ID of the transform."
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ListTraceTransformVersionsResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/traces/transforms/{transform_id}/versions/{version_id}": {
-            "get": {
-                "tags": [
-                    "Transforms"
-                ],
-                "summary": "Get Transform Version",
-                "description": "Get a specific version snapshot of a transform.",
-                "operationId": "get_transform_version_api_v1_traces_transforms__transform_id__versions__version_id__get",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "transform_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "description": "ID of the transform.",
-                            "title": "Transform Id"
-                        },
-                        "description": "ID of the transform."
-                    },
-                    {
-                        "name": "version_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "description": "ID of the version.",
-                            "title": "Version Id"
-                        },
-                        "description": "ID of the version."
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/TraceTransformVersionResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/traces/transforms/{transform_id}/versions/{version_id}/restore": {
-            "post": {
-                "tags": [
-                    "Transforms"
-                ],
-                "summary": "Restore Transform Version",
-                "description": "Restore a transform to a previous version snapshot. Creates a new version entry rather than overwriting history.",
-                "operationId": "restore_transform_version_api_v1_traces_transforms__transform_id__versions__version_id__restore_post",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "transform_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "description": "ID of the transform.",
-                            "title": "Transform Id"
-                        },
-                        "description": "ID of the transform."
-                    },
-                    {
-                        "name": "version_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "description": "ID of the version.",
-                            "title": "Version Id"
-                        },
-                        "description": "ID of the version."
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/TraceTransformResponse"
                                 }
                             }
                         }
@@ -23027,6 +23027,29 @@
                     "rag_provider_setting_configurations"
                 ],
                 "title": "ListRagSearchSettingConfigurationsResponse"
+            },
+            "ListTraceTransformVersionsResponse": {
+                "properties": {
+                    "versions": {
+                        "items": {
+                            "$ref": "#/components/schemas/TraceTransformVersionResponse"
+                        },
+                        "type": "array",
+                        "title": "Versions",
+                        "description": "List of versions for the transform, ordered by version_number descending."
+                    },
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "Total number of versions."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "versions",
+                    "count"
+                ],
+                "title": "ListTraceTransformVersionsResponse"
             },
             "ListTraceTransformsResponse": {
                 "properties": {
@@ -30597,6 +30620,64 @@
                 ],
                 "title": "TraceTransformVariableDefinition"
             },
+            "TraceTransformVersionResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id",
+                        "description": "ID of the version."
+                    },
+                    "transform_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Transform Id",
+                        "description": "ID of the parent transform."
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "ID of the parent task."
+                    },
+                    "version_number": {
+                        "type": "integer",
+                        "title": "Version Number",
+                        "description": "Monotonically increasing version number."
+                    },
+                    "config_snapshot": {
+                        "$ref": "#/components/schemas/TraceTransformDefinition",
+                        "description": "Snapshot of the transform definition at the time of this version."
+                    },
+                    "author": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Author",
+                        "description": "Author who created this version."
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "Timestamp when this version was created."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "transform_id",
+                    "task_id",
+                    "version_number",
+                    "config_snapshot",
+                    "created_at"
+                ],
+                "title": "TraceTransformVersionResponse"
+            },
             "TraceUserListResponse": {
                 "properties": {
                     "count": {
@@ -33495,88 +33576,6 @@
                 ],
                 "title": "_MultiTargetVectorJoinEnum",
                 "description": "Define how multi target vector searches should be combined."
-            },
-            "TraceTransformVersionResponse": {
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "ID of the version.",
-                        "title": "Id"
-                    },
-                    "transform_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "ID of the parent transform.",
-                        "title": "Transform Id"
-                    },
-                    "task_id": {
-                        "type": "string",
-                        "description": "ID of the parent task.",
-                        "title": "Task Id"
-                    },
-                    "version_number": {
-                        "type": "integer",
-                        "description": "Monotonically increasing version number.",
-                        "title": "Version Number"
-                    },
-                    "config_snapshot": {
-                        "type": "object",
-                        "description": "Snapshot of the transform definition at the time of this version.",
-                        "title": "Config Snapshot"
-                    },
-                    "author": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "Author who created this version.",
-                        "title": "Author"
-                    },
-                    "created_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "description": "Timestamp when this version was created.",
-                        "title": "Created At"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "id",
-                    "transform_id",
-                    "task_id",
-                    "version_number",
-                    "config_snapshot",
-                    "created_at"
-                ],
-                "title": "TraceTransformVersionResponse"
-            },
-            "ListTraceTransformVersionsResponse": {
-                "properties": {
-                    "versions": {
-                        "items": {
-                            "$ref": "#/components/schemas/TraceTransformVersionResponse"
-                        },
-                        "type": "array",
-                        "description": "List of versions for the transform, ordered by version_number descending.",
-                        "title": "Versions"
-                    },
-                    "count": {
-                        "type": "integer",
-                        "description": "Total number of versions.",
-                        "title": "Count"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "versions",
-                    "count"
-                ],
-                "title": "ListTraceTransformVersionsResponse"
             }
         },
         "securitySchemes": {
