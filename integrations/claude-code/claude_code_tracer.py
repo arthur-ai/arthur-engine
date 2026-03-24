@@ -1491,6 +1491,35 @@ def handle_stop(data: dict, config: dict) -> None:
 
         transcript_path = _get_cached_transcript_path(data, state, session_id)
 
+        # Detect context continuation: same check as handle_pre_tool.
+        # When no tool calls happen during a continuation turn, handle_pre_tool
+        # never fires, so the stale trace would otherwise be completed with the
+        # wrong LLM spans.  Complete the old trace here and start a new one so
+        # the normal stop logic below runs against the correct turn.
+        if transcript_path:
+            ct = state["current_trace"]
+            _cur_human = _count_human_messages(transcript_path)
+            _start = ct.get("human_count_at_start", 0)
+            if _cur_human > _start + 1:
+                _emit_pending_llm_spans(state, transcript_path, config)
+                _complete_turn(state, config, transcript_path, end_ns)
+                state.pop("current_trace", None)
+                state.pop("pending_tools", None)
+
+                current_human_count = _cur_human
+                prompt_preview = _get_latest_human_message(transcript_path)
+                turn_number = state.get("turn_number", 0) + 1
+                state["turn_number"] = turn_number
+                state["human_msg_count"] = current_human_count
+                state["current_trace"] = {
+                    "trace_id": _new_trace_id(),
+                    "root_span_id": _new_span_id(),
+                    "turn_start_ns": end_ns,
+                    "turn_number": turn_number,
+                    "human_count_at_start": max(0, current_human_count - 1),
+                    "prompt_preview": _truncate(prompt_preview) if prompt_preview else "",
+                }
+
         # Emit the final LLM span(s) — the last response has no tool call after it,
         # so handle_post_tool never got the chance to emit it.
         _emit_pending_llm_spans(state, transcript_path, config)
