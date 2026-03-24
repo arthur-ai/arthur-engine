@@ -120,10 +120,22 @@ class DatabaseContinuousEval(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
-    # llm eval composite primary key
+    # Discriminates between 'llm' (default) and 'rule' evaluator types
+    evaluator_type: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        default="llm",
+        server_default="llm",
+    )
+
+    # llm eval composite key — nullable to support rule-based evaluator type
     task_id: Mapped[str] = mapped_column(String, nullable=False)
-    llm_eval_name: Mapped[str] = mapped_column(String, nullable=False)
-    llm_eval_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    llm_eval_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    llm_eval_version: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    # Rule-based evaluator fields (null for llm evaluator type)
+    rule_type: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    rule_config: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
     transform_id: Mapped[uuid.UUID] = mapped_column(
         UUID,
@@ -149,12 +161,3 @@ class DatabaseContinuousEval(Base):
         nullable=False,
     )
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-
-    __table_args__ = (
-        ForeignKeyConstraint(
-            ["task_id", "llm_eval_name", "llm_eval_version"],
-            ["llm_evals.task_id", "llm_evals.name", "llm_evals.version"],
-            ondelete="CASCADE",
-            name="fk_llm_eval_transforms_eval",
-        ),
-    )

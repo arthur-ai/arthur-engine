@@ -3828,8 +3828,16 @@ class ContinuousEval(BaseModel):
     name: str
     description: Optional[str]
     task_id: str
-    llm_eval_name: str
-    llm_eval_version: int
+    evaluator_type: str = Field(
+        default="llm",
+        description="Discriminator: 'llm' for LLM-based evals, 'rule' for rule-based evals.",
+    )
+    # LLM evaluator fields (populated when evaluator_type='llm')
+    llm_eval_name: Optional[str] = None
+    llm_eval_version: Optional[int] = None
+    # Rule evaluator fields (populated when evaluator_type='rule')
+    rule_type: Optional[str] = None
+    rule_config: Optional[dict] = None
     transform_id: uuid.UUID
     created_at: datetime
     updated_at: datetime
@@ -3853,8 +3861,11 @@ class ContinuousEval(BaseModel):
             name=self.name,
             description=self.description,
             task_id=self.task_id,
+            evaluator_type=self.evaluator_type,
             llm_eval_name=self.llm_eval_name,
             llm_eval_version=self.llm_eval_version,
+            rule_type=self.rule_type,
+            rule_config=self.rule_config,
             transform_id=self.transform_id,
             created_at=self.created_at,
             updated_at=self.updated_at,
@@ -3877,8 +3888,11 @@ class ContinuousEval(BaseModel):
             name=db_eval.name,
             description=db_eval.description,
             task_id=db_eval.task_id,
+            evaluator_type=getattr(db_eval, "evaluator_type", "llm") or "llm",
             llm_eval_name=db_eval.llm_eval_name,
             llm_eval_version=db_eval.llm_eval_version,
+            rule_type=getattr(db_eval, "rule_type", None),
+            rule_config=getattr(db_eval, "rule_config", None),
             transform_id=db_eval.transform_id,
             created_at=db_eval.created_at,
             updated_at=db_eval.updated_at,
