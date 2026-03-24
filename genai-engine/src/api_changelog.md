@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 03/24/2026
+- **INFO** for **TraceTransformVersionResponse**: `config_snapshot` field now returns a typed `TraceTransformDefinition` object `{"variables": [...]}` instead of a generic object. The structure contains a `variables` array of extraction rules (`variable_name`, `span_name`, `attribute_path`, `fallback`). This is a backward-compatible refinement.
+
 # 03/16/2026
 - **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_count_eq'
 - **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_count_gt'
