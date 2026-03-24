@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from arthur_common.models.common_schemas import VariableTemplateValue
-from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
+from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus, RuleType
 from sqlalchemy.orm import Session
 
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
@@ -17,6 +17,7 @@ from repositories.tasks_metrics_repository import TasksMetricsRepository
 from repositories.trace_transform_repository import TraceTransformRepository
 from schemas.internal_schemas import ContinuousEval
 from schemas.request_schemas import BaseCompletionRequest
+from scorer.ce_rule_evaluator import RuleCEEvaluator
 from services.base_queue_service import BaseQueueJob, BaseQueueService
 from utils.transform_executor import execute_transform
 
@@ -213,97 +214,160 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                 )
                 return
 
-            # Get the mapping from transform var to eval var
             continuous_eval = ContinuousEval.from_db_model(db_continuous_eval)
-            mapping_dict: dict[str, str] = {}
-            for mapping in continuous_eval.transform_variable_mapping:
-                mapping_dict[mapping.transform_variable] = mapping.eval_variable
 
-            # Build the completion request variables
-            completion_request_variables = []
-            mapped_eval_vars = set()
-            for variable in transform_results.variables:
-                if variable.name in mapping_dict:
-                    completion_request_variables.append(
-                        VariableTemplateValue(
-                            name=mapping_dict[variable.name],
-                            value=variable.value,
-                        ),
+            if continuous_eval.evaluator_type == "rule":
+                # Rule-based evaluator path: skip LLM variable mapping, evaluate
+                # the root span directly using the rule evaluator.
+
+                # Atomically update status from pending to running
+                # NOTE: Using raw update (not _update_annotation_status) to ensure
+                # only one worker across all nodes can execute this job.
+                updated_rows = (
+                    db_session.query(DatabaseAgenticAnnotation)
+                    .filter(
+                        DatabaseAgenticAnnotation.id == job.annotation_id,
+                        DatabaseAgenticAnnotation.run_status
+                        == ContinuousEvalRunStatus.PENDING.value,
                     )
-                    mapped_eval_vars.add(mapping_dict[variable.name])
+                    .update(
+                        {
+                            "run_status": ContinuousEvalRunStatus.RUNNING.value,
+                            "updated_at": datetime.now(),
+                        },
+                        synchronize_session=False,
+                    )
+                )
+                db_session.commit()
 
-            llm_eval_repository = LLMEvalsRepository(db_session)
-            llm_eval = llm_eval_repository.get_llm_item(
-                continuous_eval.task_id,
-                continuous_eval.llm_eval_name,
-                str(continuous_eval.llm_eval_version),
-            )
+                if updated_rows == 0:
+                    logger.info(
+                        f"Annotation {job.annotation_id} was already picked up by another worker, skipping",
+                    )
+                    return
 
-            # Validate that the mapped eval vars match the llm eval vars
-            if mapped_eval_vars != set(llm_eval.variables):
+                db_session.expire_all()
+
+                assert continuous_eval.rule_type is not None, (
+                    f"Continuous eval {job.continuous_eval_id} has evaluator_type='rule' but no rule_type"
+                )
+                rule_type = RuleType(continuous_eval.rule_type)
+                root_span = trace.root_spans[0]
+                rule_evaluator = _get_rule_evaluator()
+                eval_result = rule_evaluator.evaluate(rule_type, root_span)
+                run_status = (
+                    ContinuousEvalRunStatus.PASSED.value
+                    if eval_result.annotation_score == 1
+                    else ContinuousEvalRunStatus.FAILED.value
+                )
                 self._update_annotation_status(
                     db_session,
                     job.annotation_id,
-                    ContinuousEvalRunStatus.SKIPPED.value,
-                    annotation_description=f"Mapped eval variables: {', '.join(mapped_eval_vars)} do not match LLM eval variables: {', '.join(llm_eval.variables)}",
+                    run_status,
+                    annotation_score=eval_result.annotation_score,
+                    annotation_description=eval_result.annotation_description,
                 )
-                return
 
-            completion_request = BaseCompletionRequest(
-                variables=completion_request_variables,
-            )
+            else:
+                # LLM-based evaluator path: map transform variables to eval variables
+                # and call the LLM eval.
 
-            # Update annotation status to running
-            # NOTE: We are not using _update_annotation_status here so we can atomically update the status from pending to running
-            # and ensure only one worker across all nodes can execute this job
-            updated_rows = (
-                db_session.query(DatabaseAgenticAnnotation)
-                .filter(
-                    DatabaseAgenticAnnotation.id == job.annotation_id,
-                    DatabaseAgenticAnnotation.run_status
-                    == ContinuousEvalRunStatus.PENDING.value,
+                # Get the mapping from transform var to eval var
+                mapping_dict: dict[str, str] = {}
+                for mapping in continuous_eval.transform_variable_mapping:
+                    mapping_dict[mapping.transform_variable] = mapping.eval_variable
+
+                # Build the completion request variables
+                completion_request_variables = []
+                mapped_eval_vars = set()
+                for variable in transform_results.variables:
+                    if variable.name in mapping_dict:
+                        completion_request_variables.append(
+                            VariableTemplateValue(
+                                name=mapping_dict[variable.name],
+                                value=variable.value,
+                            ),
+                        )
+                        mapped_eval_vars.add(mapping_dict[variable.name])
+
+                assert continuous_eval.llm_eval_name is not None, (
+                    f"Continuous eval {job.continuous_eval_id} has no llm_eval_name"
                 )
-                .update(
-                    {
-                        "run_status": ContinuousEvalRunStatus.RUNNING.value,
-                        "updated_at": datetime.now(),
-                    },
-                    synchronize_session=False,
+                assert continuous_eval.llm_eval_version is not None, (
+                    f"Continuous eval {job.continuous_eval_id} has no llm_eval_version"
                 )
-            )
-            db_session.commit()
-
-            if updated_rows == 0:
-                logger.info(
-                    f"Annotation {job.annotation_id} was already picked up by another worker, skipping",
+                llm_eval_repository = LLMEvalsRepository(db_session)
+                llm_eval = llm_eval_repository.get_llm_item(
+                    continuous_eval.task_id,
+                    continuous_eval.llm_eval_name,
+                    str(continuous_eval.llm_eval_version),
                 )
-                return
 
-            db_session.expire_all()
+                # Validate that the mapped eval vars match the llm eval vars
+                if mapped_eval_vars != set(llm_eval.variables):
+                    self._update_annotation_status(
+                        db_session,
+                        job.annotation_id,
+                        ContinuousEvalRunStatus.SKIPPED.value,
+                        annotation_description=f"Mapped eval variables: {', '.join(mapped_eval_vars)} do not match LLM eval variables: {', '.join(llm_eval.variables)}",
+                    )
+                    return
 
-            llm_eval_run_result = llm_eval_repository.run_llm_eval(
-                job.task_id,
-                continuous_eval.llm_eval_name,
-                str(continuous_eval.llm_eval_version),
-                completion_request,
-            )
-            run_status = (
-                ContinuousEvalRunStatus.PASSED.value
-                if llm_eval_run_result.score == 1
-                else ContinuousEvalRunStatus.FAILED.value
-            )
-            llm_eval_run_result_cost = (
-                float(llm_eval_run_result.cost) if llm_eval_run_result.cost else None
-            )
-            self._update_annotation_status(
-                db_session,
-                job.annotation_id,
-                run_status,
-                input_variables=completion_request_variables,
-                annotation_score=llm_eval_run_result.score,
-                annotation_description=llm_eval_run_result.reason,
-                cost=llm_eval_run_result_cost,
-            )
+                completion_request = BaseCompletionRequest(
+                    variables=completion_request_variables,
+                )
+
+                # Atomically update status from pending to running
+                # NOTE: Using raw update (not _update_annotation_status) to ensure
+                # only one worker across all nodes can execute this job.
+                updated_rows = (
+                    db_session.query(DatabaseAgenticAnnotation)
+                    .filter(
+                        DatabaseAgenticAnnotation.id == job.annotation_id,
+                        DatabaseAgenticAnnotation.run_status
+                        == ContinuousEvalRunStatus.PENDING.value,
+                    )
+                    .update(
+                        {
+                            "run_status": ContinuousEvalRunStatus.RUNNING.value,
+                            "updated_at": datetime.now(),
+                        },
+                        synchronize_session=False,
+                    )
+                )
+                db_session.commit()
+
+                if updated_rows == 0:
+                    logger.info(
+                        f"Annotation {job.annotation_id} was already picked up by another worker, skipping",
+                    )
+                    return
+
+                db_session.expire_all()
+
+                llm_eval_run_result = llm_eval_repository.run_llm_eval(
+                    job.task_id,
+                    continuous_eval.llm_eval_name,
+                    str(continuous_eval.llm_eval_version),
+                    completion_request,
+                )
+                run_status = (
+                    ContinuousEvalRunStatus.PASSED.value
+                    if llm_eval_run_result.score == 1
+                    else ContinuousEvalRunStatus.FAILED.value
+                )
+                llm_eval_run_result_cost = (
+                    float(llm_eval_run_result.cost) if llm_eval_run_result.cost else None
+                )
+                self._update_annotation_status(
+                    db_session,
+                    job.annotation_id,
+                    run_status,
+                    input_variables=completion_request_variables,
+                    annotation_score=llm_eval_run_result.score,
+                    annotation_description=llm_eval_run_result.reason,
+                    cost=llm_eval_run_result_cost,
+                )
 
         except Exception as e:
             logger.error(
@@ -360,6 +424,15 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
 
 
 CONTINUOUS_EVAL_QUEUE_SERVICE: ContinuousEvalQueueService | None = None
+_RULE_EVALUATOR: RuleCEEvaluator | None = None
+
+
+def _get_rule_evaluator() -> RuleCEEvaluator:
+    """Return the module-level RuleCEEvaluator singleton, creating it on first use."""
+    global _RULE_EVALUATOR
+    if _RULE_EVALUATOR is None:
+        _RULE_EVALUATOR = RuleCEEvaluator()
+    return _RULE_EVALUATOR
 
 
 def get_continuous_eval_queue_service() -> ContinuousEvalQueueService | None:
