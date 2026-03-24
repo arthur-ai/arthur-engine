@@ -1,6 +1,7 @@
 import { useApi } from "@/hooks/useApi";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import type { LLMEval } from "@/lib/api-client/api-client";
+import { encodePathParam } from "@/utils/url";
 
 interface AddTagVariables {
   evalName: string;
@@ -17,7 +18,7 @@ export function useAddTagToEvalVersionMutation() {
       if (!api) throw new Error("API not available");
 
       const response = await api.api.addTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPut(
-        evalName,
+        encodePathParam(evalName),
         evalVersion,
         taskId,
         data
