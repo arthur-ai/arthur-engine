@@ -3828,8 +3828,16 @@ class ContinuousEval(BaseModel):
     name: str
     description: Optional[str]
     task_id: str
-    llm_eval_name: str
-    llm_eval_version: int
+    evaluator_type: str = Field(
+        default="llm_eval",
+        description="Discriminator between LLM eval and rule-based evaluators.",
+    )
+    rule_type: Optional[str] = Field(
+        default=None,
+        description="Rule type for rule-based evaluators (e.g. PII_DATA, PROMPT_INJECTION, TOXICITY).",
+    )
+    llm_eval_name: Optional[str] = None
+    llm_eval_version: Optional[int] = None
     transform_id: uuid.UUID
     created_at: datetime
     updated_at: datetime
@@ -3853,6 +3861,8 @@ class ContinuousEval(BaseModel):
             name=self.name,
             description=self.description,
             task_id=self.task_id,
+            evaluator_type=self.evaluator_type,
+            rule_type=self.rule_type,
             llm_eval_name=self.llm_eval_name,
             llm_eval_version=self.llm_eval_version,
             transform_id=self.transform_id,
@@ -3877,6 +3887,8 @@ class ContinuousEval(BaseModel):
             name=db_eval.name,
             description=db_eval.description,
             task_id=db_eval.task_id,
+            evaluator_type=db_eval.evaluator_type,
+            rule_type=db_eval.rule_type,
             llm_eval_name=db_eval.llm_eval_name,
             llm_eval_version=db_eval.llm_eval_version,
             transform_id=db_eval.transform_id,

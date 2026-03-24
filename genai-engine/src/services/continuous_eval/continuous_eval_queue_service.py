@@ -232,6 +232,12 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                     )
                     mapped_eval_vars.add(mapping_dict[variable.name])
 
+            assert continuous_eval.llm_eval_name is not None, (
+                f"Continuous eval {job.continuous_eval_id} has no llm_eval_name"
+            )
+            assert continuous_eval.llm_eval_version is not None, (
+                f"Continuous eval {job.continuous_eval_id} has no llm_eval_version"
+            )
             llm_eval_repository = LLMEvalsRepository(db_session)
             llm_eval = llm_eval_repository.get_llm_item(
                 continuous_eval.task_id,
