@@ -4,6 +4,7 @@ import { useApi } from "./useApi";
 import { useTask } from "./useTask";
 
 import type { RenderedPromptResponse, VariableTemplateValue } from "@/lib/api-client/api-client";
+import { encodePathParam } from "@/utils/url";
 
 interface RenderPromptParams {
   promptName: string;
@@ -29,7 +30,7 @@ export const useRenderPrompt = () => {
       // Use the API client to call the render endpoint
       // Structure matches the new SavedPromptRenderingRequest with nested completion_request
       const response = await apiClient.api.renderSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionRendersPost(
-        promptName,
+        encodePathParam(promptName),
         promptVersion,
         task.id,
         {
