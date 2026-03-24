@@ -1,8 +1,10 @@
 import CheckIcon from "@mui/icons-material/Check";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import HistoryIcon from "@mui/icons-material/History";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography, IconButton, Tooltip, Divider } from "@mui/material";
 import { useState } from "react";
 
+import TransformEditHistory from "./TransformEditHistory";
 import TransformEditHistoryPanel from "./TransformEditHistoryPanel";
 import { TraceTransform } from "./types";
 
@@ -116,6 +118,16 @@ export const TransformDetailsModal: React.FC<TransformDetailsModalProps> = ({ op
                 </Box>
               ))}
             </Box>
+          </Box>
+
+          <Box sx={{ mb: 3 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 1 }}>
+              <HistoryIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+              <Typography variant="subtitle2" fontWeight="medium">
+                Edit History
+              </Typography>
+            </Box>
+            <TransformEditHistory transformId={transform.id} />
           </Box>
 
           <Box>
