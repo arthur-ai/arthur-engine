@@ -858,7 +858,7 @@ class TraceTransformVersionResponse(BaseModel):
     transform_id: UUID = Field(description="ID of the parent transform.")
     task_id: str = Field(description="ID of the parent task.")
     version_number: int = Field(description="Monotonically increasing version number.")
-    config_snapshot: dict = Field(
+    config_snapshot: dict[str, Any] = Field(
         description="Snapshot of the transform definition at the time of this version."
     )
     author: Optional[str] = Field(

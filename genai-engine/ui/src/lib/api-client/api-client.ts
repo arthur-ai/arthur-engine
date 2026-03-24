@@ -11214,7 +11214,7 @@ export interface TraceTransformVersionResponse {
    * Config Snapshot
    * Snapshot of the transform definition at the time of this version.
    */
-  config_snapshot: object;
+  config_snapshot: Record<string, unknown>;
   /**
    * Created At
    * Timestamp when this version was created.

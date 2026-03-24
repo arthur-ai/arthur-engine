@@ -7,7 +7,7 @@ export function useTransformVersion(transformId: string | null | undefined, vers
   const api = useApi();
 
   return useQuery({
-    queryKey: queryKeys.transforms.version(transformId ?? "", versionId ?? ""),
+    queryKey: [...queryKeys.transforms.version(transformId ?? "", versionId ?? ""), api],
     queryFn: async () => {
       const response = await api!.api.getTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdGet(
         transformId!,

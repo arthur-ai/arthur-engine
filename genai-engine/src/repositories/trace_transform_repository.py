@@ -1,7 +1,6 @@
-import uuid
 from datetime import datetime
 from typing import List, Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
@@ -135,7 +134,7 @@ class TraceTransformRepository:
         ) + 1
 
         version = DatabaseTraceTransformVersion(
-            id=uuid.uuid4(),
+            id=uuid4(),
             transform_id=db_transform.id,
             task_id=db_transform.task_id,
             version_number=next_version_number,

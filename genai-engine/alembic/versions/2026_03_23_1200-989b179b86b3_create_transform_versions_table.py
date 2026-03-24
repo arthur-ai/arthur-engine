@@ -1,6 +1,6 @@
 """create transform_versions table
 
-Revision ID: a1b2c3d4e5f6
+Revision ID: 989b179b86b3
 Revises: 04c5e8528072
 Create Date: 2026-03-23 12:00:00.000000
 
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "a1b2c3d4e5f6"
+revision = "989b179b86b3"
 down_revision = "04c5e8528072"
 branch_labels = None
 depends_on = None

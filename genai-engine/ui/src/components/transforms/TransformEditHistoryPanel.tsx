@@ -4,9 +4,9 @@ import RestoreIcon from "@mui/icons-material/Restore";
 import { Box, Button, CircularProgress, Divider, Stack, Typography } from "@mui/material";
 import React, { useState } from "react";
 
-import RestoreTransformVersionDialog from "./RestoreTransformVersionDialog";
 import { useRestoreTransformVersionMutation } from "./hooks/useRestoreTransformVersionMutation";
 import { useTransformVersions } from "./hooks/useTransformVersions";
+import RestoreTransformVersionDialog from "./RestoreTransformVersionDialog";
 
 interface TransformEditHistoryPanelProps {
   transformId: string;

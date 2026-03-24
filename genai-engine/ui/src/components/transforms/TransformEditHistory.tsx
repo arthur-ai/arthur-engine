@@ -5,6 +5,8 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
 
+import { TraceTransformVersionResponse } from "@/lib/api-client/api-client";
+
 import { useTransformVersions } from "./hooks/useTransformVersions";
 
 interface TransformEditHistoryProps {
@@ -31,7 +33,7 @@ function summarizeChange(version: { config_snapshot: object; version_number: num
 }
 
 export const TransformEditHistory: React.FC<TransformEditHistoryProps> = ({ transformId }) => {
-  const { versions, isLoading, error } = useTransformVersions(transformId);
+  const { data: versions = [], isLoading, error } = useTransformVersions(transformId);
 
   if (isLoading) {
     return (
@@ -60,7 +62,7 @@ export const TransformEditHistory: React.FC<TransformEditHistoryProps> = ({ tran
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 0 }}>
-      {versions.map((version, idx) => (
+      {versions.map((version: TraceTransformVersionResponse, idx: number) => (
         <Box key={version.id}>
           <Box
             sx={{
