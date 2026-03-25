@@ -19,6 +19,7 @@ from schemas.chatbot_schemas import (
     CallArthurApiArgs,
     SearchArthurApiArgs,
 )
+from schemas.enums import SSEEventType
 from schemas.request_schemas import PromptCompletionRequest
 from schemas.response_schemas import AgenticPromptRunResponse
 from services.chatbot.api_call_service import ApiCallService
@@ -26,6 +27,7 @@ from services.chatbot.chatbot_tracing_service import ChatbotTracingService
 from services.prompt.chat_completion_service import ChatCompletionService
 from utils import constants
 from utils.llm_tool_functions import search_api_index
+from utils.sse_events import format_sse, format_sse_error, format_sse_json
 from utils.utils import get_env_var
 
 logger = logging.getLogger(__name__)
@@ -113,10 +115,10 @@ class ChatbotService:
                 llm_client,
                 PromptCompletionRequest(stream=True, strict=False),
             ):
-                if event.startswith("event: final_response"):
+                if event.startswith(f"event: {SSEEventType.FINAL_RESPONSE.value}"):
                     data = event.split("data: ", 1)[1].strip()
                     final_response = AgenticPromptRunResponse.model_validate_json(data)
-                elif event.startswith("event: error"):
+                elif event.startswith(f"event: {SSEEventType.ERROR.value}"):
                     self.tracing.end_span_with_error(llm_span, event)
                     self.tracing.end_span_with_error(agent_span, event)
                     self.tracing.flush()
@@ -168,7 +170,10 @@ class ChatbotService:
                 self.tracing.set_agent_output(agent_span, final_response.content or "")
                 self.tracing.end_span(agent_span)
                 self.tracing.flush()
-                yield f"event: final_response\ndata: {final_response.model_dump_json()}\n\n"
+                yield format_sse(
+                    SSEEventType.FINAL_RESPONSE,
+                    final_response.model_dump_json(),
+                )
                 return
             assistant_msg = OpenAIMessage(
                 role=MessageRole.AI,
@@ -200,7 +205,7 @@ class ChatbotService:
                     )
                     # Signal the frontend to start a new message bubble — search is internal
                     # but the LLM's next response should be in a fresh bubble
-                    yield "event: search_complete\ndata: {}\n\n"
+                    yield format_sse_json(SSEEventType.SEARCH_COMPLETE, {})
                     continue
                 elif tool_call.function.name == "call_arthur_api":
                     call_args = CallArthurApiArgs.model_validate_json(args_str)
@@ -220,7 +225,10 @@ class ChatbotService:
                         ),
                     )
 
-                    yield f"event: tool_call\ndata: {json.dumps({'method': call_args.method, 'path': call_args.path})}\n\n"
+                    yield format_sse_json(
+                        SSEEventType.TOOL_CALL,
+                        {"method": call_args.method, "path": call_args.path},
+                    )
 
                     result = await self.api_call_service.call(
                         call_args.method,
@@ -242,7 +250,14 @@ class ChatbotService:
                     )
                     self.tracing.end_span(tool_span)
 
-                    yield f"event: tool_result\ndata: {json.dumps({'method': call_args.method, 'path': call_args.path, 'status_code': result.status_code})}\n\n"
+                    yield format_sse_json(
+                        SSEEventType.TOOL_RESULT,
+                        {
+                            "method": call_args.method,
+                            "path": call_args.path,
+                            "status_code": result.status_code,
+                        },
+                    )
 
                     new_messages.append(
                         OpenAIMessage(
@@ -286,4 +301,4 @@ class ChatbotService:
         self.tracing.set_agent_output(agent_span, error_msg)
         self.tracing.end_span(agent_span)
         self.tracing.flush()
-        yield f"event: error\ndata: {json.dumps({'error': error_msg})}\n\n"
+        yield format_sse_error(error_msg)

@@ -23,8 +23,10 @@ from litellm.types.utils import ModelResponse
 
 from clients.llm.llm_client import LLMClient, LLMModelResponse
 from schemas.agentic_prompt_schemas import AgenticPrompt
+from schemas.enums import SSEEventType
 from schemas.request_schemas import CompletionRequest, PromptCompletionRequest
 from schemas.response_schemas import AgenticPromptRunResponse
+from utils.sse_events import format_sse, format_sse_error
 
 # litellm's Anthropic streaming handler sets Choices instead of StreamingChoices on chunks,
 # causing pydantic serialization warnings on model_dump_json() and completion_cost().
@@ -377,9 +379,9 @@ class ChatCompletionService:
                 logger.warning("Cost calculation is not supported for this provider")
 
             if not complete_response:
-                yield f"event: error\ndata: No response from model\n\n"
+                yield format_sse_error("No response from model", wrap=False)
             elif not complete_response.choices:
-                yield f"event: error\ndata: No choices from model\n\n"
+                yield format_sse_error("No choices from model", wrap=False)
             elif hasattr(complete_response.choices[0], "message"):
                 msg: Message = cast(
                     Message,
@@ -399,9 +401,9 @@ class ChatCompletionService:
                     total_tokens=total_tokens,
                 ).model_dump_json()
 
-                yield f"event: final_response\ndata: {data}\n\n"
+                yield format_sse(SSEEventType.FINAL_RESPONSE, data)
         except Exception as e:
-            yield f"event: error\ndata: {str(e)}\n\n"
+            yield format_sse_error(str(e), wrap=False)
 
     async def execute_prompt_completion(
         self,

@@ -191,3 +191,13 @@ class RagSearchKind(str, Enum):
 class AgenticExperimentGeneratorType(str, Enum):
     UUID = "uuid"
     SESSION_ID = "session_id"
+
+
+class SSEEventType(str, Enum):
+    """Server-Sent Event types"""
+
+    FINAL_RESPONSE = "final_response"
+    ERROR = "error"
+    SEARCH_COMPLETE = "search_complete"
+    TOOL_CALL = "tool_call"
+    TOOL_RESULT = "tool_result"
