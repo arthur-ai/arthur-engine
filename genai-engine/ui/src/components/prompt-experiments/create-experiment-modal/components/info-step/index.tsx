@@ -3,7 +3,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { Autocomplete, Box, Button, Chip, DialogActions, DialogContent, IconButton, Stack, TextField, Tooltip, Typography } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { createExperimentModalFormOpts, CreateExperimentModalFormValues } from "../../form";
 import { useGetEvalVariables } from "../../hooks/useGetEvalVariables";
@@ -141,6 +141,7 @@ const PromptSelector = withForm({
     const { task } = useTask();
 
     const promptName = useStore(form.store, (state) => state.values.info.prompt.name);
+    const selectedVersions = useStore(form.store, (state) => state.values.info.prompt.versions);
 
     const { prompts } = usePrompts(task!.id, {});
 
@@ -149,6 +150,12 @@ const PromptSelector = withForm({
       exclude_deleted: true,
       pageSize: 100,
     });
+
+    useEffect(() => {
+      if (versionsQuery.versions.length === 1 && selectedVersions.length === 0) {
+        form.setFieldValue("info.prompt.versions", [versionsQuery.versions[0].version]);
+      }
+    }, [versionsQuery.versions, selectedVersions, form]);
 
     return (
       <Stack sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 2 }} gap={2}>
