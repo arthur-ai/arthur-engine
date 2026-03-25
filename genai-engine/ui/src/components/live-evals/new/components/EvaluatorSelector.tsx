@@ -1,7 +1,7 @@
 import { EvaluatorSelectorUI } from "@arthur/shared-components";
 import { withFieldGroup } from "@arthur/shared-components";
 import { useStore } from "@tanstack/react-form";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import EvalFormModal from "@/components/evaluators/EvalFormModal";
 import { useCreateEvalMutation } from "@/components/evaluators/hooks/useCreateEvalMutation";
@@ -18,6 +18,15 @@ type EvaluatorSelectorProps = {
   onSelectionChange?: () => void;
 };
 
+function useDebouncedValue(value: string, delayMs: number) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+  return debounced;
+}
+
 export const EvaluatorSelector = withFieldGroup({
   defaultValues: {
     name: null,
@@ -26,11 +35,14 @@ export const EvaluatorSelector = withFieldGroup({
   props: {} as EvaluatorSelectorProps,
   render: function Render({ group, taskId, onSelectionChange }) {
     const [openCreateEvalModal, setOpenCreateEvalModal] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
+    const debouncedSearch = useDebouncedValue(searchTerm, 300);
 
     const evaluators = useEvals(taskId, {
       page: 0,
-      pageSize: 10,
+      pageSize: 30,
       sort: "desc",
+      llm_asset_names: debouncedSearch ? [debouncedSearch] : null,
     });
 
     const createEval = useCreateEvalMutation(taskId, async (evalData) => {
@@ -46,7 +58,7 @@ export const EvaluatorSelector = withFieldGroup({
 
     const versions = useEvalVersions(taskId, name ?? undefined, {
       page: 0,
-      pageSize: 10,
+      pageSize: 100,
       sort: "desc",
     });
 
@@ -74,8 +86,10 @@ export const EvaluatorSelector = withFieldGroup({
           onNameChange={handleNameChange}
           onVersionChange={handleVersionChange}
           isVersionsLoading={versions.isLoading}
+          isEvaluatorsLoading={evaluators.isLoading}
           onCreateNew={() => setOpenCreateEvalModal(true)}
           isCreateLoading={createEval.isPending}
+          onSearchChange={setSearchTerm}
         />
         <EvalFormModal
           open={openCreateEvalModal}

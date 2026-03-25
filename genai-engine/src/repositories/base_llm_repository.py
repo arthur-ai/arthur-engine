@@ -330,7 +330,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         # Filter by llm asset names using LIKE for partial matching
         if filter_request.llm_asset_names:
             name_conditions = [
-                self.db_model.name.like(f"%{name}%")
+                self.db_model.name.ilike(f"%{name}%")
                 for name in filter_request.llm_asset_names
             ]
             query = query.filter(or_(*name_conditions))
