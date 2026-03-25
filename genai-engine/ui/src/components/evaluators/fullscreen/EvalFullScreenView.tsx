@@ -41,7 +41,7 @@ const EvalFullScreenView = ({ evalName, initialVersion, onClose }: EvalFullScree
   const handleSelectVersion = (version: number) => {
     setSelectedVersion(version);
     // Update URL to reflect the selected version
-    navigate(`/tasks/${taskId}/evaluators/${evalName}/versions/${version}`);
+    navigate(`/tasks/${taskId}/evaluators/${encodeURIComponent(evalName)}/versions/${version}`);
   };
 
   const handleDeleteVersion = async (version: number) => {

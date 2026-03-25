@@ -264,7 +264,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   promptDetails.prompt_version && (
                     <Link
                       component={RouterLink}
-                      to={`/tasks/${taskId}/prompts/${promptDetails.prompt_name}/versions/${promptDetails.prompt_version}`}
+                      to={`/tasks/${taskId}/prompts/${encodeURIComponent(promptDetails.prompt_name)}/versions/${promptDetails.prompt_version}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-1 text-sm"
@@ -351,7 +351,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   <Box className="flex justify-between items-center mb-2">
                     <Link
                       component={RouterLink}
-                      to={`/tasks/${taskId}/evaluators/${evalResult.eval_name}/versions/${evalResult.eval_version}`}
+                      to={`/tasks/${taskId}/evaluators/${encodeURIComponent(evalResult.eval_name)}/versions/${evalResult.eval_version}`}
                       sx={{ textDecoration: "none", "&:hover": { textDecoration: "underline" } }}
                     >
                       <Typography variant="subtitle2" className="font-medium text-gray-800 dark:text-gray-200">

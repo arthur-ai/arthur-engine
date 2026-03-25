@@ -190,7 +190,7 @@ export const LiveEvalDetail = () => {
                     variant="body1"
                     fontWeight={500}
                     component={Link}
-                    to={`/tasks/${liveEval.task_id}/evaluators/${liveEval.llm_eval_name}/versions/${liveEval.llm_eval_version}`}
+                    to={`/tasks/${liveEval.task_id}/evaluators/${encodeURIComponent(liveEval.llm_eval_name)}/versions/${liveEval.llm_eval_version}`}
                   >
                     {liveEval.llm_eval_name}
                   </MuiLink>
