@@ -1,6 +1,12 @@
+import type { ModelProvider } from "@/lib/api-client/api-client";
+
 export interface UserSettings {
   timezone?: string;
   use24Hour?: boolean;
+  enableChatbot?: boolean;
+  chatbotModelProvider?: ModelProvider | "";
+  chatbotModelName?: string;
+  blacklistEndpoints?: string[];
 }
 
 export interface TimezoneOption {
@@ -19,6 +25,14 @@ export interface UserSettingsModalProps {
   isSaving?: boolean;
   /** Override default timezone options. If not provided, built-in list is used. */
   timezoneOptions?: TimezoneOption[];
+  /** Whether the server has chatbot enabled. Controls visibility of the AI Assistant section. */
+  chatbotEnabled?: boolean;
+  /** Available model providers for chatbot config. */
+  enabledProviders?: ModelProvider[];
+  /** Map of provider to available model names. */
+  availableModelsMap?: Map<ModelProvider, string[]>;
+  /** All available chatbot endpoints for the blacklist selector. */
+  availableEndpoints?: string[];
   title?: string;
   saveLabel?: string;
   /** Shown on Save button when isSaving is true. */

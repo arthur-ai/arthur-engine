@@ -51,6 +51,7 @@ class DisplaySettingsResponse(BaseModel):
     """Public display settings (e.g. default currency for cost formatting)."""
 
     default_currency: str = "USD"
+    chatbot_enabled: bool = True
 
 
 class ConversationBaseResponse(BaseModel):
@@ -232,7 +233,8 @@ class TraceListResponse(BaseModel):
 
     count: int = Field(description="Total number of traces matching filters")
     display_currency: Optional[str] = Field(
-        None, description="Currency code for cost fields"
+        None,
+        description="Currency code for cost fields",
     )
     traces: list[TraceMetadataResponse] = Field(description="List of trace metadata")
 
@@ -260,7 +262,8 @@ class SpanListResponse(BaseModel):
 
     count: int = Field(description="Total number of spans matching filters")
     display_currency: Optional[str] = Field(
-        None, description="Currency code for cost fields"
+        None,
+        description="Currency code for cost fields",
     )
     spans: list[SpanMetadataResponse] = Field(description="List of span metadata")
 
@@ -270,7 +273,8 @@ class SessionListResponse(BaseModel):
 
     count: int = Field(description="Total number of sessions matching filters")
     display_currency: Optional[str] = Field(
-        None, description="Currency code for cost fields"
+        None,
+        description="Currency code for cost fields",
     )
     sessions: list[SessionMetadataResponse] = Field(
         description="List of session metadata",
@@ -283,7 +287,8 @@ class SessionTracesResponse(BaseModel):
     session_id: str = Field(description="Session identifier")
     count: int = Field(description="Number of traces in this session")
     display_currency: Optional[str] = Field(
-        None, description="Currency code for cost fields"
+        None,
+        description="Currency code for cost fields",
     )
     traces: list[TraceResponse] = Field(description="List of full trace trees")
 
@@ -307,7 +312,8 @@ class TraceUserListResponse(BaseModel):
 
     count: int = Field(description="Total number of users matching filters")
     display_currency: Optional[str] = Field(
-        None, description="Currency code for cost fields"
+        None,
+        description="Currency code for cost fields",
     )
     users: list[TraceUserMetadataResponse] = Field(description="List of user metadata")
 
@@ -838,7 +844,7 @@ class DailyAgenticAnnotationStats(BaseModel):
     failed_count: int = Field(description="Count of annotations with score=0")
     error_count: int = Field(description="Count of annotations with run_status='error'")
     skipped_count: int = Field(
-        description="Count of annotations with run_status='skipped'"
+        description="Count of annotations with run_status='skipped'",
     )
     total_cost: float = Field(description="Total cost for the day")
     total_count: int = Field(description="Total annotations for the day")
@@ -848,7 +854,7 @@ class AgenticAnnotationAnalyticsResponse(BaseModel):
     """Response containing daily aggregated statistics."""
 
     stats: List[DailyAgenticAnnotationStats] = Field(
-        description="Daily statistics ordered by date descending"
+        description="Daily statistics ordered by date descending",
     )
     count: int = Field(description="Number of days with data")
 
@@ -875,5 +881,5 @@ class TransformDependents(BaseModel):
     @property
     def has_dependents(self) -> bool:
         return bool(
-            self.continuous_evals or self.agentic_experiments or self.agentic_notebooks
+            self.continuous_evals or self.agentic_experiments or self.agentic_notebooks,
         )
