@@ -2,6 +2,7 @@ import json
 import logging
 from typing import AsyncGenerator, List, MutableMapping, Optional, Tuple
 
+from arthur_common.models.common_schemas import VariableTemplateValue
 from arthur_common.models.llm_model_providers import (
     MessageRole,
     ModelProvider,
@@ -36,6 +37,9 @@ logger = logging.getLogger(__name__)
 MAX_ITERATIONS = int(
     get_env_var(constants.GENAI_ENGINE_CHATBOT_MAX_ITERATIONS_ENV_VAR, True) or 30,
 )
+MAX_HISTORY_SIZE = int(
+    get_env_var(constants.GENAI_ENGINE_CHATBOT_MAX_HISTORY_SIZE_ENV_VAR, True) or 15,
+)
 
 CONVERSATION_HISTORIES: MutableMapping[Tuple[str, str], List[OpenAIMessage]] = TTLCache(
     maxsize=1000,
@@ -58,11 +62,13 @@ class ChatbotService:
         api_call_service: ApiCallService,
         api_index: List[str],
         db_session: Session,
+        summarizer_prompt: AgenticPrompt,
     ):
         self.chat_completion_service = chat_completion_service
         self.api_call_service = api_call_service
         self.api_index = api_index
         self.tracing = ChatbotTracingService(db_session)
+        self.summarizer_prompt = summarizer_prompt
 
     def build_prompt(
         self,
@@ -76,16 +82,63 @@ class ChatbotService:
     ) -> AgenticPrompt:
         chatbot_prompt.model_provider = model_provider
         chatbot_prompt.model_name = model_name
-        blacklist_str = "\n".join(blacklist) if blacklist else "None"
-        self.chat_completion_service.replace_variables(
-            {"task_id": task_id, "endpoint_blacklist": blacklist_str},
-            chatbot_prompt.messages,
-        )
-        messages = list(chatbot_prompt.messages)
-        messages.extend(history)
+
+        if history:
+            # History already contains the rendered system prompt from the first turn
+            messages = list(history)
+        else:
+            # First turn: render variables into the system prompt and use it
+            blacklist_str = "\n".join(blacklist) if blacklist else "None"
+            self.chat_completion_service.replace_variables(
+                {"task_id": task_id, "endpoint_blacklist": blacklist_str},
+                chatbot_prompt.messages,
+            )
+            messages = chatbot_prompt.messages
+
         messages.append(OpenAIMessage(role=MessageRole.USER, content=user_message))
         chatbot_prompt.messages = messages
         return chatbot_prompt
+
+    def _summarize_history(
+        self,
+        messages: List[OpenAIMessage],
+        llm_client: LLMClient,
+    ) -> List[OpenAIMessage]:
+        if len(messages) <= MAX_HISTORY_SIZE:
+            return messages
+
+        system_msg = next(m for m in messages if m.role == MessageRole.SYSTEM.value)  # type: ignore[comparison-overlap]
+        non_system = [m for m in messages if m.role != MessageRole.SYSTEM.value]  # type: ignore[comparison-overlap]
+
+        keep_count = MAX_HISTORY_SIZE // 2
+        to_summarize = non_system[:-keep_count]
+        to_keep = non_system[-keep_count:]
+
+        summary_input = json.dumps(
+            [m.model_dump(exclude_none=True) for m in to_summarize],
+        )
+
+        response = self.chat_completion_service.run_chat_completion(
+            self.summarizer_prompt,
+            llm_client,
+            PromptCompletionRequest(
+                variables=[
+                    VariableTemplateValue(
+                        name="prev_conversation",
+                        value=summary_input,
+                    ),
+                ],
+            ),
+        )
+
+        return [
+            system_msg,
+            OpenAIMessage(
+                role=MessageRole.AI,
+                content=f"Summary of previous conversation:\n{response.content}",
+            ),
+            *to_keep,
+        ]
 
     async def stream(
         self,
@@ -160,19 +213,18 @@ class ChatbotService:
             self.tracing.end_span(llm_span)
 
             if not tool_calls:
-                history = [
-                    m for m in current_prompt.messages if m.role != MessageRole.SYSTEM
-                ]
-                history.append(
+                current_prompt.messages.append(
                     OpenAIMessage(role=MessageRole.AI, content=final_response.content),
                 )
-                CONVERSATION_HISTORIES[(user_id, conversation_id)] = history[-15:]
                 self.tracing.set_agent_output(agent_span, final_response.content or "")
                 self.tracing.end_span(agent_span)
                 self.tracing.flush()
                 yield format_sse(
                     SSEEventType.FINAL_RESPONSE,
                     final_response.model_dump_json(),
+                )
+                CONVERSATION_HISTORIES[(user_id, conversation_id)] = (
+                    self._summarize_history(current_prompt.messages, llm_client)
                 )
                 return
             assistant_msg = OpenAIMessage(
@@ -293,12 +345,14 @@ class ChatbotService:
             conversation_id,
         )
         error_msg = "I'm sorry, I wasn't able to complete your request within the allowed number of steps. Please try simplifying your question."
-        history = [m for m in current_prompt.messages if m.role != MessageRole.SYSTEM]
-        history.append(
+        current_prompt.messages.append(
             OpenAIMessage(role=MessageRole.AI, content=error_msg),
         )
-        CONVERSATION_HISTORIES[(user_id, conversation_id)] = history[-15:]
         self.tracing.set_agent_output(agent_span, error_msg)
         self.tracing.end_span(agent_span)
         self.tracing.flush()
         yield format_sse_error(error_msg)
+        CONVERSATION_HISTORIES[(user_id, conversation_id)] = self._summarize_history(
+            current_prompt.messages,
+            llm_client,
+        )

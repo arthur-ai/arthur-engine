@@ -86,12 +86,21 @@ def build_condensed_index(
             if not any(t in ALLOWED_TAGS for t in tags):
                 continue
             summary = operation.get("summary", "")
-            params = [
-                p["name"]
-                for p in operation.get("parameters", [])
-                if p.get("in") in ("query", "path")
-            ]
-            param_str = f" (params: {', '.join(params)})" if params else ""
+            param_parts = []
+            for p in operation.get("parameters", []):
+                if p.get("in") not in ("query", "path"):
+                    continue
+                schema = p.get("schema", {})
+                if "$ref" in schema:
+                    schema = resolve_ref(openapi_spec, schema["$ref"])
+                enum = schema.get("enum")
+                if enum:
+                    param_parts.append(
+                        f"{p['name']}=[{'|'.join(str(v) for v in enum)}]",
+                    )
+                else:
+                    param_parts.append(p["name"])
+            param_str = f" (params: {', '.join(param_parts)})" if param_parts else ""
             body_str = ""
             if method in {"POST", "PUT", "PATCH"}:
                 required_fields = get_required_body_fields(openapi_spec, operation)

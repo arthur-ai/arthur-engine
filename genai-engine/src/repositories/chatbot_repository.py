@@ -25,7 +25,11 @@ from services.chatbot.chatbot_service import (
     get_conversation_history,
 )
 from services.prompt.chat_completion_service import ChatCompletionService
-from utils.constants import ARTHUR_SYSTEM_TASK_ID, CHATBOT_PROMPT_NAME
+from utils.constants import (
+    ARTHUR_SYSTEM_TASK_ID,
+    CHATBOT_PROMPT_NAME,
+    CHATBOT_SUMMARIZER_PROMPT_NAME,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +92,15 @@ class ChatbotRepository:
             ),
         )
 
+        summarizer_prompt = cast(
+            AgenticPrompt,
+            self.agentic_prompt_repo.get_llm_item_by_tag(
+                task_id=ARTHUR_SYSTEM_TASK_ID,
+                item_name=CHATBOT_SUMMARIZER_PROMPT_NAME,
+                tag="production",
+            ),
+        )
+
         blacklist = self.get_blacklist_endpoints()
         api_call_service = ApiCallService(
             token=token,
@@ -99,6 +112,7 @@ class ChatbotRepository:
             api_call_service=api_call_service,
             api_index=get_api_index(app, blacklist=blacklist),
             db_session=self.db_session,
+            summarizer_prompt=summarizer_prompt,
         )
 
         history = get_conversation_history(user_id, request.conversation_id)
@@ -186,6 +200,32 @@ class ChatbotRepository:
                 task_id=ARTHUR_SYSTEM_TASK_ID,
                 item_name=CHATBOT_PROMPT_NAME,
                 item_version=str(new_version.version),
+                tag="production",
+            )
+
+            summarizer_prompt = cast(
+                AgenticPrompt,
+                self.agentic_prompt_repo.get_llm_item_by_tag(
+                    task_id=ARTHUR_SYSTEM_TASK_ID,
+                    item_name=CHATBOT_SUMMARIZER_PROMPT_NAME,
+                    tag="production",
+                ),
+            )
+            new_summarizer_version = self.agentic_prompt_repo.save_llm_item(
+                task_id=ARTHUR_SYSTEM_TASK_ID,
+                item_name=CHATBOT_SUMMARIZER_PROMPT_NAME,
+                item=CreateAgenticPromptRequest(
+                    messages=summarizer_prompt.messages,
+                    model_name=model_name,
+                    model_provider=model_provider,
+                    tools=summarizer_prompt.tools,
+                    config=summarizer_prompt.config,  # type: ignore[arg-type]
+                ),
+            )
+            self.agentic_prompt_repo.add_tag_to_llm_item_version(
+                task_id=ARTHUR_SYSTEM_TASK_ID,
+                item_name=CHATBOT_SUMMARIZER_PROMPT_NAME,
+                item_version=str(new_summarizer_version.version),
                 tag="production",
             )
 

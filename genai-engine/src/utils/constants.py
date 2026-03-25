@@ -210,6 +210,7 @@ GENAI_ENGINE_AGENTIC_POLLING_INTERVAL_SECONDS_ENV_VAR = (
     "GENAI_ENGINE_AGENTIC_POLLING_INTERVAL_SECONDS"
 )
 GENAI_ENGINE_CHATBOT_MAX_ITERATIONS_ENV_VAR = "GENAI_ENGINE_CHATBOT_MAX_ITERATIONS"
+GENAI_ENGINE_CHATBOT_MAX_HISTORY_SIZE_ENV_VAR = "GENAI_ENGINE_CHATBOT_MAX_HISTORY_SIZE"
 
 ##################################################################
 # CONTEXT WINDOW LENGTHS
@@ -411,6 +412,7 @@ ARTHUR_SYSTEM_TASK_NAME = "__arthur_system_task__"
 
 # Chatbot system prompt name (stored as an agentic prompt on the chatbot system task)
 CHATBOT_PROMPT_NAME = "__chatbot_prompt__"
+CHATBOT_SUMMARIZER_PROMPT_NAME = "__chatbot_summarizer_prompt__"
 
 ##################################################################
 
