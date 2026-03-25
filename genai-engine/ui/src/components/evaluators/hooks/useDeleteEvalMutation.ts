@@ -1,5 +1,6 @@
 import { useApi } from "@/hooks/useApi";
 import { useApiMutation } from "@/hooks/useApiMutation";
+import { encodePathParam } from "@/utils/url";
 
 export const useDeleteEvalMutation = (taskId: string | undefined, onSuccess?: () => void) => {
   const api = useApi();
@@ -8,7 +9,7 @@ export const useDeleteEvalMutation = (taskId: string | undefined, onSuccess?: ()
     mutationFn: async (evalName: string) => {
       if (!api || !taskId) throw new Error("API or task not available");
 
-      await api.api.deleteLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameDelete(evalName, taskId);
+      await api.api.deleteLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameDelete(encodePathParam(evalName), taskId);
     },
     invalidateQueries: [{ queryKey: ["getAllLlmEvalsApiV1TasksTaskIdLlmEvalsGet"] }],
     onSuccess,
