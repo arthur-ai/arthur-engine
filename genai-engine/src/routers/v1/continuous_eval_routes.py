@@ -33,6 +33,7 @@ from schemas.response_schemas import (
     AgenticAnnotationAnalyticsResponse,
     ContinuousEvalRerunResponse,
 )
+from utils.url_encoding import decoded_eval_name
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 
@@ -161,15 +162,11 @@ def list_continuous_eval_run_results(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
 def get_continuous_eval_variables_and_mappings(
+    eval_name: Annotated[str, Depends(decoded_eval_name)],
     transform_id: UUID = Path(
         ...,
         description="The id of the transform to get the continuous eval variables and mappings for.",
         title="Transform ID",
-    ),
-    eval_name: str = Path(
-        ...,
-        description="The name of the llm eval to get the continuous eval variables and mappings for.",
-        title="LLM Eval Name",
     ),
     eval_version: str = Path(
         ...,
