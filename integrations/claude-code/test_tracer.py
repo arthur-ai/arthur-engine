@@ -450,23 +450,22 @@ class TestExtractLlmSpansForTurn:
 
     # -- turn boundary detection --
 
-    def test_continues_past_additional_human_messages(self, tmp_transcript):
-        # When a context-compression continuation arrives without a UserPromptSubmit,
-        # the transcript gains a second human message mid-trace. The extractor must
-        # continue scanning so that LLM spans from the continuation are not dropped.
+    def test_stops_at_next_human_message(self, tmp_transcript):
+        # Each user prompt is its own trace. When the extractor sees a second
+        # human message while in_turn=True, it must stop — those spans belong
+        # to the next trace, not this one.
         p = tmp_transcript(
             [
                 human_entry("Turn 1"),
                 llm_entry("Reply 1", ts="2026-01-01T00:00:01.000000+00:00"),
-                human_entry("Continuation (compressed context)"),
+                human_entry("Turn 2"),
                 llm_entry("Reply 2", ts="2026-01-01T00:00:03.000000+00:00"),
             ],
         )
         spans = self._extract(p, human_count_at_start=0)
-        # Both replies must be captured in the same trace
-        assert len(spans) == 2
+        # Only the first reply; second human message terminates extraction
+        assert len(spans) == 1
         assert spans[0]["attributes"]["output.value"] == "Reply 1"
-        assert spans[1]["attributes"]["output.value"] == "Reply 2"
 
     def test_human_count_at_start_selects_correct_turn(self, tmp_transcript):
         p = tmp_transcript(
@@ -482,25 +481,23 @@ class TestExtractLlmSpansForTurn:
         assert len(spans) == 1
         assert spans[0]["attributes"]["output.value"] == "Reply 2"
 
-    def test_context_compression_input_updated_for_continuation(self, tmp_transcript):
-        # After a continuation human message the input.value for subsequent
-        # LLM calls should reflect the continuation prompt, not the original.
+    def test_second_turn_starts_its_own_trace(self, tmp_transcript):
+        # Each user prompt is a separate trace. The second turn's LLM reply
+        # should NOT appear when extracting for turn 1.
         p = tmp_transcript(
             [
                 human_entry("Original prompt"),
                 llm_entry("Reply 1", ts="2026-01-01T00:00:01.000000+00:00"),
-                human_entry("Continuation prompt"),
+                human_entry("Next prompt"),
                 llm_entry("Reply 2", ts="2026-01-01T00:00:03.000000+00:00"),
             ],
         )
+        # Extracting for turn 1 (human_count_at_start=0) must only return Reply 1
         spans = self._extract(p, human_count_at_start=0)
-        assert len(spans) == 2
-        # First span input = original prompt
-        inp1 = json.loads(spans[0]["attributes"]["input.value"])
-        assert "Original prompt" in inp1["content"]
-        # Second span input = continuation prompt
-        inp2 = json.loads(spans[1]["attributes"]["input.value"])
-        assert "Continuation prompt" in inp2["content"]
+        assert len(spans) == 1
+        inp = json.loads(spans[0]["attributes"]["input.value"])
+        assert "Original prompt" in inp["content"]
+        assert spans[0]["attributes"]["output.value"] == "Reply 1"
 
     # -- Fix 1: tool_use-only output --
 
@@ -791,6 +788,101 @@ class TestHandlePreTool:
         tracer.handle_pre_tool(data, self.CONFIG)
         trace_id_after_second = tracer._load_state(sid)["current_trace"]["trace_id"]
         assert trace_id_after_first == trace_id_after_second
+
+    def test_context_continuation_creates_new_trace(
+        self, tmp_path, tmp_transcript, monkeypatch
+    ):
+        """When the transcript has 2+ more human messages than human_count_at_start,
+        a context continuation happened without UserPromptSubmit.  The old trace must
+        be completed and a new one started.
+        """
+        monkeypatch.setattr(tracer, "STATE_DIR", tmp_path / "tracer")
+        (tmp_path / "tracer").mkdir()
+        exported = []
+        monkeypatch.setattr(
+            tracer, "_build_and_export_spans", lambda **kw: exported.extend(kw["span_records"])
+        )
+
+        sid = "cont-sess"
+        # Build a transcript with 3 human messages (simulating continuation).
+        p = tmp_transcript([
+            human_entry("Turn 1"),
+            human_entry("Turn 2 (continuation trigger)"),
+            human_entry("Turn 3 (continuation itself)"),
+        ])
+
+        # Seed state as if turn 1 was in-progress (human_count_at_start=0,
+        # which means the trace started after the 1st human message).
+        old_trace_id = "a" * 32
+        tracer._save_state(sid, {
+            "session_id": sid,
+            "session_start_ns": 1,
+            "username": "u",
+            "human_msg_count": 1,
+            "turn_number": 1,
+            "current_trace": {
+                "trace_id": old_trace_id,
+                "root_span_id": "b" * 16,
+                "turn_start_ns": 1,
+                "turn_number": 1,
+                "human_count_at_start": 0,
+            },
+        })
+
+        data = {
+            "session_id": sid,
+            "tool_name": "Bash",
+            "tool_input": {},
+            "transcript_path": str(p),
+        }
+        tracer.handle_pre_tool(data, self.CONFIG)
+
+        state = tracer._load_state(sid)
+        new_trace_id = state["current_trace"]["trace_id"]
+        # A new trace must have been created.
+        assert new_trace_id != old_trace_id
+        # The old CHAIN span must have been exported.
+        chain_spans = [s for s in exported if s.get("attributes", {}).get("openinference.span.kind") == "CHAIN"]
+        assert len(chain_spans) == 1
+
+    def test_emit_pending_llm_always_updates_last_output(
+        self, tmp_path, tmp_transcript, monkeypatch
+    ):
+        """last_llm_output is updated to the last known span's output even when all
+        spans were already emitted (no new_spans), so the CHAIN span gets the correct
+        final text response rather than a stale value from an earlier PostToolUse.
+        """
+        monkeypatch.setattr(tracer, "STATE_DIR", tmp_path / "tracer")
+        (tmp_path / "tracer").mkdir()
+        monkeypatch.setattr(tracer, "_build_and_export_spans", MagicMock())
+
+        sid = "last-out-sess"
+        p = tmp_transcript([
+            human_entry("Hello"),
+            llm_entry("First response with tool call", tool_use_blocks=[{"id": "t1", "name": "Bash", "input": {}}]),
+            llm_entry("Final text response — the summary"),
+        ])
+
+        state = {
+            "session_id": sid,
+            "username": "u",
+            "current_trace": {
+                "trace_id": "c" * 32,
+                "root_span_id": "d" * 16,
+                "turn_start_ns": 1,
+                "turn_number": 1,
+                "human_count_at_start": 0,
+                # Both spans already emitted by prior PostToolUse calls.
+                "emitted_llm_span_count": 2,
+                "last_llm_output": "[{tool call json from earlier}]",
+            },
+        }
+        tracer._save_state(sid, state)
+
+        tracer._emit_pending_llm_spans(state, str(p), self.CONFIG)
+
+        # last_llm_output must now reflect the FINAL text response.
+        assert "Final text response" in state["current_trace"]["last_llm_output"]
 
 
 # ---------------------------------------------------------------------------
@@ -1626,10 +1718,20 @@ class TestStateHelperErrorPaths:
 # ---------------------------------------------------------------------------
 
 
+def _real_transcript_content() -> str:
+    """Minimal transcript content with one human message — passes _is_real_transcript."""
+    return json.dumps({"type": "user", "message": {"role": "user", "content": "hi"}}) + "\n"
+
+
+def _shadow_transcript_content() -> str:
+    """Shadow transcript with only pr-link entries — rejected by _is_real_transcript."""
+    return json.dumps({"type": "pr-link", "sessionId": "s", "prNumber": 1}) + "\n"
+
+
 class TestFindTranscriptPath:
     def test_uses_transcript_path_from_data(self, tmp_path):
         p = tmp_path / "t.jsonl"
-        p.write_text("")
+        p.write_text(_real_transcript_content())
         result = tracer._find_transcript_path({"transcript_path": str(p)}, "any")
         assert result == str(p)
 
@@ -1640,13 +1742,55 @@ class TestFindTranscriptPath:
         )
         assert result is None
 
+    def test_skips_shadow_transcript_in_data(self, tmp_path):
+        """A transcript with only pr-link entries should be rejected."""
+        shadow = tmp_path / "shadow.jsonl"
+        shadow.write_text(_shadow_transcript_content())
+        result = tracer._find_transcript_path({"transcript_path": str(shadow)}, "any")
+        assert result is None
+
+    def test_shadow_in_data_falls_back_to_real_glob(self, tmp_path, monkeypatch):
+        """When hook data points to a shadow transcript, glob fallback finds the real one."""
+        session_id = "sess-fallback"
+        shadow = tmp_path / "shadow.jsonl"
+        shadow.write_text(_shadow_transcript_content())
+
+        real_dir = tmp_path / ".claude" / "projects" / "real-project"
+        real_dir.mkdir(parents=True)
+        real = real_dir / f"{session_id}.jsonl"
+        real.write_text(_real_transcript_content())
+
+        monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        result = tracer._find_transcript_path({"transcript_path": str(shadow)}, session_id)
+        assert result == str(real)
+
+    def test_glob_prefers_largest_file(self, tmp_path, monkeypatch):
+        """When multiple candidates exist, the largest (most content) is preferred."""
+        session_id = "sess-multi"
+        small_dir = tmp_path / ".claude" / "projects" / "small-proj"
+        small_dir.mkdir(parents=True)
+        small = small_dir / f"{session_id}.jsonl"
+        small.write_text(_real_transcript_content())
+
+        big_dir = tmp_path / ".claude" / "projects" / "big-proj"
+        big_dir.mkdir(parents=True)
+        big = big_dir / f"{session_id}.jsonl"
+        # Make it larger with more entries
+        big.write_text(_real_transcript_content() * 10)
+
+        monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        result = tracer._find_transcript_path({}, session_id)
+        assert result == str(big)
+
     def test_env_var_path(self, tmp_path, monkeypatch):
         # Create <home>/.claude/projects/<sanitized>/sess.jsonl via CLAUDE_PROJECT_DIR
         project_dir = "/my/project"
         sanitized = project_dir.replace("/", "-")
         transcript = tmp_path / ".claude" / "projects" / sanitized / "myses.jsonl"
         transcript.parent.mkdir(parents=True)
-        transcript.write_text("")
+        transcript.write_text(_real_transcript_content())
         monkeypatch.setenv("CLAUDE_PROJECT_DIR", project_dir)
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         result = tracer._find_transcript_path({}, "myses")
@@ -1656,7 +1800,7 @@ class TestFindTranscriptPath:
         # No env var, but transcript exists somewhere under projects/
         transcript = tmp_path / ".claude" / "projects" / "some-dir" / "globsess.jsonl"
         transcript.parent.mkdir(parents=True)
-        transcript.write_text("")
+        transcript.write_text(_real_transcript_content())
         monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         result = tracer._find_transcript_path({}, "globsess")
@@ -1667,6 +1811,186 @@ class TestFindTranscriptPath:
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         result = tracer._find_transcript_path({}, "nosuchsession")
         assert result is None
+
+
+# ---------------------------------------------------------------------------
+# _get_cached_transcript_path
+# ---------------------------------------------------------------------------
+
+
+class TestGetCachedTranscriptPath:
+    def test_uses_cached_path_from_state(self, tmp_path):
+        """If state already has a transcript_path that exists, return it without
+        calling _find_transcript_path again — even if the hook data points elsewhere."""
+        real = tmp_path / "real.jsonl"
+        real.write_text("")
+        decoy = tmp_path / "decoy.jsonl"
+        decoy.write_text("")
+
+        state = {"transcript_path": str(real)}
+        result = tracer._get_cached_transcript_path(
+            {"transcript_path": str(decoy)}, state, "any"
+        )
+        assert result == str(real)
+
+    def test_resolves_and_caches_when_state_has_no_path(self, tmp_path):
+        """When state has no cached path, resolve via hook data and cache it."""
+        p = tmp_path / "t.jsonl"
+        p.write_text(_real_transcript_content())
+        state = {}
+        result = tracer._get_cached_transcript_path(
+            {"transcript_path": str(p)}, state, "any"
+        )
+        assert result == str(p)
+        assert state["transcript_path"] == str(p)
+
+    def test_re_resolves_if_cached_path_deleted(self, tmp_path):
+        """If the cached file no longer exists, fall through to _find_transcript_path."""
+        gone = tmp_path / "gone.jsonl"
+        gone.write_text(_real_transcript_content())
+        state = {"transcript_path": str(gone)}
+        gone.unlink()  # delete it
+
+        new = tmp_path / "new.jsonl"
+        new.write_text(_real_transcript_content())
+        result = tracer._get_cached_transcript_path(
+            {"transcript_path": str(new)}, state, "any"
+        )
+        assert result == str(new)
+        assert state["transcript_path"] == str(new)
+
+    def test_cached_path_survives_shadow_file_creation(self, tmp_path, monkeypatch):
+        """Simulate gh pr create writing a shadow file mid-session.
+
+        The cached path from UserPromptSubmit should be used even after
+        the hook payload starts pointing to the shadow file.
+        """
+        session_id = "stable-sess"
+        real_dir = tmp_path / ".claude" / "projects" / "real-project"
+        real_dir.mkdir(parents=True)
+        real = real_dir / f"{session_id}.jsonl"
+        real.write_text(
+            "\n".join([
+                json.dumps({"type": "user", "message": {"role": "user", "content": "hi"}}),
+                json.dumps({"type": "assistant", "message": {"role": "assistant", "content": []}}),
+            ]) + "\n"
+        )
+
+        # State cached at UserPromptSubmit time, pointing to the real transcript
+        state = {"transcript_path": str(real)}
+
+        # Mid-session, gh pr create writes a shadow file; hook data now points there
+        shadow_dir = tmp_path / ".claude" / "projects" / "worktree-dir"
+        shadow_dir.mkdir(parents=True)
+        shadow = shadow_dir / f"{session_id}.jsonl"
+        shadow.write_text(json.dumps({"type": "pr-link", "prNumber": 99}) + "\n")
+
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        result = tracer._get_cached_transcript_path(
+            {"transcript_path": str(shadow)}, state, session_id
+        )
+        # Must return the cached real transcript, not the shadow
+        assert result == str(real)
+
+
+# ---------------------------------------------------------------------------
+# Subagent trace context propagation
+# ---------------------------------------------------------------------------
+
+
+class TestSubagentContextPropagation:
+    """Tests for _write_pending_agent_context / _claim_pending_agent_context."""
+
+    def test_write_and_claim_round_trip(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(tracer, "STATE_DIR", tmp_path / "tracer")
+        monkeypatch.setattr(tracer, "_PENDING_AGENT_DIR", tmp_path / "tracer" / "pending_agent")
+        tracer._write_pending_agent_context("parent-sess", "traceid-abc", "spanid-xyz")
+        ctx = tracer._claim_pending_agent_context()
+        assert ctx is not None
+        assert ctx["parent_trace_id"] == "traceid-abc"
+        assert ctx["parent_span_id"] == "spanid-xyz"
+        assert ctx["parent_session_id"] == "parent-sess"
+        # File is deleted after claiming
+        assert not any((tmp_path / "tracer" / "pending_agent").iterdir())
+
+    def test_claim_returns_none_when_no_file(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(tracer, "_PENDING_AGENT_DIR", tmp_path / "pending_agent")
+        assert tracer._claim_pending_agent_context() is None
+
+    def test_claim_ignores_stale_context(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(tracer, "_PENDING_AGENT_DIR", tmp_path / "pending_agent")
+        monkeypatch.setattr(tracer, "_PENDING_AGENT_TIMEOUT_S", 0)
+        tracer._write_pending_agent_context("s", "t", "p")
+        # With 0s timeout, the file is immediately considered stale
+        assert tracer._claim_pending_agent_context() is None
+
+    def test_subagent_inherits_trace_id(self, tmp_path, monkeypatch):
+        """UserPromptSubmit for a new session should inherit the parent trace ID."""
+        monkeypatch.setattr(tracer, "STATE_DIR", tmp_path / "tracer")
+        monkeypatch.setattr(tracer, "_PENDING_AGENT_DIR", tmp_path / "tracer" / "pending_agent")
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
+
+        parent_trace_id = "aabbccddeeff00112233445566778899"
+        parent_span_id = "0011223344556677"
+        tracer._write_pending_agent_context("parent-sess", parent_trace_id, parent_span_id)
+
+        exported: list[dict] = []
+
+        def fake_export(config, session_id, username, span_records):
+            exported.extend(span_records)
+
+        monkeypatch.setattr(tracer, "_build_and_export_spans", fake_export)
+        monkeypatch.setattr(tracer, "discover_config", lambda: {"api_key": "k", "task_id": "t", "endpoint": "https://x"})
+
+        data = {"session_id": "child-sess", "prompt": "do the task"}
+        state = {}
+        monkeypatch.setattr(tracer, "_load_state", lambda sid: state)
+        monkeypatch.setattr(tracer, "_save_state", lambda sid, s: state.update(s))
+
+        tracer.handle_user_prompt_submit(data, {"api_key": "k", "task_id": "t", "endpoint": "https://x"})
+
+        # The new trace should use the parent's trace ID
+        assert state["current_trace"]["trace_id"] == parent_trace_id
+        # And record the parent agent span for use in _complete_turn
+        assert state["current_trace"]["parent_agent_span_id"] == parent_span_id
+
+    def test_handle_pre_tool_writes_context_for_agent(self, tmp_path, monkeypatch):
+        """PreToolUse for the Agent tool should write a pending context file."""
+        monkeypatch.setattr(tracer, "STATE_DIR", tmp_path / "tracer")
+        monkeypatch.setattr(tracer, "_PENDING_AGENT_DIR", tmp_path / "tracer" / "pending_agent")
+
+        trace_id = "deadbeef" * 4
+        root_span_id = "cafebabe" * 2
+        state = {
+            "session_id": "parent-sess",
+            "current_trace": {
+                "trace_id": trace_id,
+                "root_span_id": root_span_id,
+                "turn_start_ns": 0,
+                "turn_number": 1,
+                "human_count_at_start": 0,
+            },
+            "pending_tools": {},
+        }
+        monkeypatch.setattr(tracer, "_load_state", lambda sid: state)
+        monkeypatch.setattr(tracer, "_save_state", lambda sid, s: state.update(s))
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
+
+        data = {
+            "session_id": "parent-sess",
+            "tool_name": "Agent",
+            "tool_input": {"prompt": "go do stuff"},
+        }
+        tracer.handle_pre_tool(data, {"api_key": "k", "task_id": "t", "endpoint": "https://x"})
+
+        # A pending context file should now exist
+        ctx = tracer._claim_pending_agent_context()
+        assert ctx is not None
+        assert ctx["parent_trace_id"] == trace_id
+        # The pre-allocated span ID should be stored in pending_tools
+        assert "pre_allocated_span_id" in state["pending_tools"]["Agent"]
 
 
 # ---------------------------------------------------------------------------
@@ -2123,3 +2447,152 @@ class TestMain:
         with pytest.raises(SystemExit) as exc:
             tracer.main()
         assert exc.value.code == 0
+
+
+# ---------------------------------------------------------------------------
+# _extract_llm_spans_for_turn — message.id grouping
+# ---------------------------------------------------------------------------
+
+
+def llm_entry_with_id(
+    msg_id: str,
+    text: str = "",
+    tool_use_blocks: list | None = None,
+    model: str = "claude-sonnet-4-6",
+    input_tokens: int = 10,
+    output_tokens: int = 20,
+    cache_read: int = 0,
+    cache_create: int = 0,
+    ts: str = "2026-01-01T00:00:02.000000+00:00",
+) -> dict:
+    """LLM transcript entry with an explicit message.id (for grouping tests)."""
+    content = []
+    if text:
+        content.append({"type": "text", "text": text})
+    for b in tool_use_blocks or []:
+        content.append(b)
+    return {
+        "type": "assistant",
+        "message": {
+            "id": msg_id,
+            "role": "assistant",
+            "model": model,
+            "content": content,
+            "usage": {
+                "input_tokens": input_tokens,
+                "cache_read_input_tokens": cache_read,
+                "cache_creation_input_tokens": cache_create,
+                "output_tokens": output_tokens,
+            },
+        },
+        "timestamp": ts,
+    }
+
+
+class TestExtractLlmSpansMessageIdGrouping:
+    """
+    Verify that consecutive assistant entries sharing a message.id are collapsed
+    into a single LLM span (Fix 3: multi-entry API response grouping).
+    """
+
+    TRACE_ID = "e" * 32
+    ROOT_ID = "f" * 16
+
+    def _extract(self, p, human_count_at_start=0):
+        return tracer._extract_llm_spans_for_turn(
+            str(p),
+            human_count_at_start,
+            self.TRACE_ID,
+            self.ROOT_ID,
+        )
+
+    def test_two_entries_same_id_produce_one_span(self, tmp_transcript):
+        # Extended-thinking: first entry = thinking block (no text/tool_use),
+        # second entry = text block. Both share message id "msg_abc".
+        p = tmp_transcript(
+            [
+                human_entry("Hello"),
+                llm_entry_with_id("msg_abc", text="", output_tokens=5),
+                llm_entry_with_id("msg_abc", text="Hi there", output_tokens=15),
+            ]
+        )
+        spans = self._extract(p)
+        assert len(spans) == 1
+        attrs = spans[0]["attributes"]
+        assert attrs["output.value"] == "Hi there"
+        assert attrs["output.mime_type"] == "text/plain"
+
+    def test_output_tokens_summed_across_entries(self, tmp_transcript):
+        # The thinking entry contributes 5 tokens, text entry contributes 15.
+        # Total completion must be 20, not 15 (last entry only) or 5 (first only).
+        p = tmp_transcript(
+            [
+                human_entry("Hello"),
+                llm_entry_with_id("msg_abc", text="", output_tokens=5),
+                llm_entry_with_id("msg_abc", text="Answer", output_tokens=15),
+            ]
+        )
+        spans = self._extract(p)
+        assert len(spans) == 1
+        assert spans[0]["attributes"]["llm.token_count.completion"] == 20
+
+    def test_prompt_tokens_taken_from_first_entry_only(self, tmp_transcript):
+        # input_tokens=100 appears on both entries (duplicated by Claude Code).
+        # The span must report 100, not 200.
+        p = tmp_transcript(
+            [
+                human_entry("Hello"),
+                llm_entry_with_id("msg_abc", text="", input_tokens=100, output_tokens=5),
+                llm_entry_with_id("msg_abc", text="Answer", input_tokens=100, output_tokens=15),
+            ]
+        )
+        spans = self._extract(p)
+        assert len(spans) == 1
+        assert spans[0]["attributes"]["llm.token_count.prompt"] == 100
+
+    def test_different_ids_produce_separate_spans(self, tmp_transcript):
+        # Two API calls, each with a distinct message.id → two spans.
+        p = tmp_transcript(
+            [
+                human_entry("Hello"),
+                llm_entry_with_id("msg_aaa", text="First response"),
+                tool_result_entry("t1", "tool output"),
+                llm_entry_with_id("msg_bbb", text="Second response"),
+            ]
+        )
+        spans = self._extract(p)
+        assert len(spans) == 2
+        assert spans[0]["attributes"]["output.value"] == "First response"
+        assert spans[1]["attributes"]["output.value"] == "Second response"
+
+    def test_three_entries_same_id_text_concatenated(self, tmp_transcript):
+        # Three entries with same id: thinking + text_part_1 + text_part_2
+        p = tmp_transcript(
+            [
+                human_entry("Hello"),
+                llm_entry_with_id("msg_xyz", text="", output_tokens=3),
+                llm_entry_with_id("msg_xyz", text="Hello ", output_tokens=4),
+                llm_entry_with_id("msg_xyz", text="world", output_tokens=5),
+            ]
+        )
+        spans = self._extract(p)
+        assert len(spans) == 1
+        assert spans[0]["attributes"]["output.value"] == "Hello world"
+        assert spans[0]["attributes"]["llm.token_count.completion"] == 12
+
+    def test_tool_use_entry_followed_by_text_entry_same_id(self, tmp_transcript):
+        # text entry takes precedence over tool_use when both present in group
+        tb = tool_use_block("Read", "/tmp/foo")
+        p = tmp_transcript(
+            [
+                human_entry("Hello"),
+                llm_entry_with_id("msg_mix", tool_use_blocks=[tb], output_tokens=8),
+                llm_entry_with_id("msg_mix", text="Here is the file", output_tokens=10),
+            ]
+        )
+        spans = self._extract(p)
+        assert len(spans) == 1
+        attrs = spans[0]["attributes"]
+        assert attrs["output.mime_type"] == "text/plain"
+        assert attrs["output.value"] == "Here is the file"
+        assert attrs["llm.token_count.completion"] == 18

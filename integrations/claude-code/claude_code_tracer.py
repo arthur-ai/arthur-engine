@@ -151,6 +151,75 @@ def _new_span_id() -> str:
     return secrets.token_hex(8)
 
 
+# ---------------------------------------------------------------------------
+# Subagent trace-context propagation
+# ---------------------------------------------------------------------------
+
+# How long to wait for a subagent to claim the context file before giving up.
+_PENDING_AGENT_TIMEOUT_S = 30
+_PENDING_AGENT_DIR = STATE_DIR / "pending_agent"
+
+
+def _write_pending_agent_context(
+    parent_session_id: str,
+    parent_trace_id: str,
+    parent_span_id: str,
+) -> None:
+    """Write a side-channel file so the next subagent can inherit this trace.
+
+    Called from handle_pre_tool when an Agent tool invocation is detected.
+    The file is keyed by session+span so parallel agent invocations in the
+    same session each get their own file.
+    """
+    _PENDING_AGENT_DIR.mkdir(parents=True, exist_ok=True)
+    path = _PENDING_AGENT_DIR / f"{parent_session_id}_{parent_span_id}.json"
+    path.write_text(
+        json.dumps(
+            {
+                "parent_session_id": parent_session_id,
+                "parent_trace_id": parent_trace_id,
+                "parent_span_id": parent_span_id,
+                "created_ns": time.time_ns(),
+            }
+        )
+    )
+
+
+def _claim_pending_agent_context() -> Optional[dict]:
+    """Claim the most recent unclaimed subagent context, if any.
+
+    Called from handle_user_prompt_submit when a new session is initialised.
+    Returns the context dict (with ``parent_trace_id`` and ``parent_span_id``)
+    or None.  Claiming removes the file so no other session can use it.
+    """
+    if not _PENDING_AGENT_DIR.exists():
+        return None
+
+    deadline_ns = time.time_ns() - _PENDING_AGENT_TIMEOUT_S * 1_000_000_000
+    candidates: list[tuple[int, Path, dict]] = []
+    for p in _PENDING_AGENT_DIR.glob("*.json"):
+        try:
+            ctx = json.loads(p.read_text())
+            if ctx.get("created_ns", 0) >= deadline_ns:
+                candidates.append((ctx["created_ns"], p, ctx))
+        except Exception:
+            continue
+
+    if not candidates:
+        return None
+
+    # Newest first — grab the most recently written unclaimed context.
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    for _, path, ctx in candidates:
+        try:
+            path.unlink()
+            return ctx
+        except FileNotFoundError:
+            # Another process claimed it first; try the next one.
+            continue
+    return None
+
+
 @contextlib.contextmanager
 def _session_lock(session_id: str):
     """Exclusive per-session file lock.
@@ -179,12 +248,49 @@ def _session_lock(session_id: str):
 # ---------------------------------------------------------------------------
 
 
+def _is_real_transcript(path: str) -> bool:
+    """Return True if the transcript has at least one human or assistant entry.
+
+    Shadow transcripts created by ``gh pr create`` in a worktree contain only
+    ``pr-link`` metadata entries and no actual conversation content.  Accepting
+    one of these as the authoritative transcript would leave the tracer with
+    nothing to extract LLM spans from.
+    """
+    try:
+        with open(path) as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if entry.get("type") in ("user", "assistant"):
+                    return True
+        return False
+    except OSError:
+        return False
+
+
 def _find_transcript_path(data: dict, session_id: str) -> Optional[str]:
-    """Locate the session's transcript JSONL file."""
+    """Locate the session's transcript JSONL file.
+
+    Searches three locations in priority order and returns the first match
+    that contains real conversation content (at least one user/assistant entry).
+    Callers that need a stable path across the lifetime of a session should
+    cache the result in session state via ``_get_cached_transcript_path``
+    rather than calling this function repeatedly — the ``transcript_path``
+    value in hook ``data`` can change mid-session when Claude Code writes
+    entries to a *different* project directory (e.g. after ``gh pr create``
+    in a worktree context).
+    """
+    candidates: list[str] = []
+
     # 1. Provided directly in hook data
     tp = data.get("transcript_path", "")
     if tp and Path(tp).exists():
-        return tp
+        candidates.append(tp)
 
     # 2. Construct from CLAUDE_PROJECT_DIR (path with / → -)
     project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
@@ -192,16 +298,49 @@ def _find_transcript_path(data: dict, session_id: str) -> Optional[str]:
         sanitized = project_dir.replace("/", "-")
         path = Path.home() / ".claude" / "projects" / sanitized / f"{session_id}.jsonl"
         if path.exists():
-            return str(path)
+            candidates.append(str(path))
 
-    # 3. Glob fallback across all project dirs
+    # 3. Glob fallback across all project dirs (sorted largest-first so the
+    #    real transcript wins over tiny shadow files)
     projects_dir = Path.home() / ".claude" / "projects"
     if projects_dir.exists():
         matches = list(projects_dir.glob(f"*/{session_id}.jsonl"))
-        if matches:
-            return str(matches[0])
+        matches.sort(key=lambda p: p.stat().st_size, reverse=True)
+        candidates.extend(str(m) for m in matches)
+
+    # Return the first candidate that contains actual conversation entries
+    seen: set[str] = set()
+    for candidate in candidates:
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        if _is_real_transcript(candidate):
+            return candidate
 
     return None
+
+
+def _get_cached_transcript_path(
+    data: dict,
+    state: dict,
+    session_id: str,
+) -> Optional[str]:
+    """Return the transcript path for this session, caching it in *state*.
+
+    Once resolved, the path is stored under ``state["transcript_path"]`` so
+    that all subsequent hook calls use the same file even if Claude Code later
+    writes a new entry to a different project directory (e.g. a worktree dir
+    after ``gh pr create``).  The cache is only accepted when the file still
+    exists; if it has been deleted the function re-resolves.
+    """
+    cached = state.get("transcript_path", "")
+    if cached and Path(cached).exists():
+        return cached
+
+    resolved = _find_transcript_path(data, session_id)
+    if resolved:
+        state["transcript_path"] = resolved
+    return resolved
 
 
 def _is_human_message(entry: dict) -> bool:
@@ -265,10 +404,10 @@ def _extract_llm_spans_for_turn(
     """
     Extract LLM spans from transcript entries that belong to this turn.
 
-    A turn starts after the `human_count_at_start`-th human message and continues
-    until the end of the transcript (or until the trace is completed by _complete_turn).
-    If additional human messages appear (e.g. context-compression continuations that
-    don't fire UserPromptSubmit), scanning continues so no LLM spans are dropped.
+    A turn starts after the `human_count_at_start`-th human message and ends
+    at the next human message (or end of transcript).  Scanning stops as soon
+    as a second human message is seen while in_turn is True — those subsequent
+    turns belong to their own traces.
     Uses actual timestamps from the transcript.
 
     For each LLM call we use the immediately-preceding message as the input:
@@ -277,6 +416,29 @@ def _extract_llm_spans_for_turn(
 
     Output is the assistant's text response when present; otherwise the
     tool_use blocks serialised as JSON so the span always has an output value.
+
+    **Grouping by message.id**
+
+    Claude Code (with extended thinking enabled) splits a single API response
+    across multiple consecutive transcript entries that share the same
+    ``message.id`` — one entry per block type (thinking / text / tool_use).
+    Each entry duplicates the input-side token counts.  We MUST group these
+    entries and emit exactly one LLM span per API response, otherwise:
+
+      * Prompt tokens are reported N× too high (once per entry).
+      * "Thinking-only" entries produce empty, noisy spans.
+      * Intermediate text (the entry with ``type=text`` that precedes a tool
+        call) becomes its own orphaned 8-token span instead of being part of
+        the single span for that API call.
+
+    Grouping strategy:
+      - Input tokens  → first entry in the group (avoids duplication).
+      - Output tokens → sum across all entries (each entry captures the tokens
+                        for its own block).
+      - Text output   → concatenate all ``text`` blocks from any entry.
+      - Tool output   → JSON of tool_use blocks from the last entry (fall-back
+                        when no text is present).
+      - Timestamp     → first entry.
     """
     spans = []
     try:
@@ -290,6 +452,91 @@ def _extract_llm_spans_for_turn(
         last_input_role = "user"
         last_input_content = ""
 
+        # Accumulator for the current message.id group
+        current_group_id: Optional[str] = None
+        group_first_usage: dict = {}
+        group_total_output_tokens: int = 0
+        group_text_parts: list = []
+        group_tool_use_parts: list = []
+        group_model: str = "claude"
+        group_ts: str = ""
+        group_input_snapshot: dict = {}  # last_input* captured at group start
+
+        def _flush_group() -> None:
+            """Emit one LLM span for the accumulated group, if non-empty."""
+            nonlocal current_group_id, group_first_usage, group_total_output_tokens
+            nonlocal group_text_parts, group_tool_use_parts, group_model, group_ts
+            nonlocal group_input_snapshot
+
+            if not current_group_id:
+                return
+
+            usage = group_first_usage
+            input_tokens = usage.get("input_tokens", 0)
+            cache_read = usage.get("cache_read_input_tokens", 0)
+            cache_create = usage.get("cache_creation_input_tokens", 0)
+            output_tokens = group_total_output_tokens
+
+            if group_text_parts:
+                output_value = _truncate("".join(group_text_parts))
+                output_mime = "text/plain"
+            elif group_tool_use_parts:
+                output_value = _truncate(json.dumps(group_tool_use_parts))
+                output_mime = "application/json"
+            else:
+                output_value = ""
+                output_mime = "text/plain"
+
+            start_ns = _iso_to_ns(group_ts)
+            end_ns = start_ns + max(output_tokens * 10_000_000, 1_000_000)
+
+            snap = group_input_snapshot
+            attrs: dict[str, Any] = {
+                "openinference.span.kind": "LLM",
+                "llm.system": "anthropic",
+                "llm.model_name": group_model,
+                "llm.token_count.prompt": input_tokens + cache_read + cache_create,
+                "llm.token_count.completion": output_tokens,
+                "llm.token_count.total": input_tokens
+                + cache_read
+                + cache_create
+                + output_tokens,
+                "llm.token_count.prompt_details.cache_read": cache_read,
+                "llm.token_count.prompt_details.cache_write": cache_create,
+                "llm.input_messages.0.message.role": snap.get("role", "user"),
+                "llm.input_messages.0.message.content": snap.get("content", ""),
+                "input.value": snap.get("value", ""),
+                "input.mime_type": snap.get("mime", "text/plain"),
+                "llm.output_messages.0.message.role": "assistant",
+                "llm.output_messages.0.message.content": output_value,
+                "output.value": output_value,
+                "output.mime_type": output_mime,
+            }
+
+            spans.append(
+                {
+                    "trace_id_hex": trace_id_hex,
+                    "span_id_hex": _new_span_id(),
+                    "parent_span_id_hex": root_span_id_hex,
+                    "name": f"claude/{group_model}",
+                    "kind": None,
+                    "start_ns": start_ns,
+                    "end_ns": end_ns,
+                    "attributes": attrs,
+                    "force_span_id": False,
+                },
+            )
+
+            # Reset accumulator
+            current_group_id = None
+            group_first_usage = {}
+            group_total_output_tokens = 0
+            group_text_parts = []
+            group_tool_use_parts = []
+            group_model = "claude"
+            group_ts = ""
+            group_input_snapshot = {}
+
         for line in lines:
             if not line.strip():
                 continue
@@ -302,20 +549,12 @@ def _extract_llm_spans_for_turn(
 
             # ── Human message: marks the start of this turn ──────────────────
             if _is_human_message(entry):
+                _flush_group()
                 human_count += 1
                 if in_turn:
-                    # A second human message within the same trace can happen when
-                    # the Claude Code context is compressed and the session continues
-                    # without firing a new UserPromptSubmit hook.  Keep scanning so
-                    # the LLM spans from the continuation are also captured.
-                    human_text = entry.get("message", {}).get("content", "")
-                    last_input_value = json.dumps(
-                        {"role": "user", "content": human_text[:500]},
-                    )
-                    last_input_mime = "application/json"
-                    last_input_role = "user"
-                    last_input_content = _truncate(human_text)
-                    continue
+                    # Next user turn has started — stop here.  Its spans belong
+                    # to a different trace.
+                    break
                 if human_count > human_count_at_start:
                     in_turn = True
                     human_text = entry.get("message", {}).get("content", "")
@@ -332,6 +571,7 @@ def _extract_llm_spans_for_turn(
 
             # ── Tool result (user message with list content) ──────────────────
             if entry_type == "user":
+                _flush_group()
                 content = entry.get("message", {}).get("content", "")
                 if isinstance(content, list):
                     text = _tool_result_text(content)
@@ -344,7 +584,7 @@ def _extract_llm_spans_for_turn(
                     last_input_content = _truncate(payload)
                 continue
 
-            # ── Assistant LLM response ────────────────────────────────────────
+            # ── Non-assistant entries (progress, system, …) ───────────────────
             if entry_type != "assistant":
                 continue
 
@@ -353,86 +593,45 @@ def _extract_llm_spans_for_turn(
             if not usage:
                 continue
 
+            msg_id = msg.get("id", "") or id(entry)  # fall back to object id
             model = msg.get("model", "claude")
             content_blocks = msg.get("content", [])
             ts = entry.get("timestamp", "")
 
-            # Output: prefer text; fall back to serialised tool_use blocks
-            text_parts = []
-            tool_use_parts = []
+            # ── Start a new group or extend the current one ───────────────────
+            if msg_id != current_group_id:
+                _flush_group()
+                current_group_id = msg_id
+                group_first_usage = usage
+                group_total_output_tokens = 0
+                group_text_parts = []
+                group_tool_use_parts = []
+                group_model = model
+                group_ts = ts
+                # Snapshot the input context at the start of this API call
+                group_input_snapshot = {
+                    "role": last_input_role,
+                    "content": last_input_content,
+                    "value": last_input_value,
+                    "mime": last_input_mime,
+                }
+
+            # Accumulate output tokens and content blocks for this group
+            group_total_output_tokens += usage.get("output_tokens", 0)
             for block in content_blocks:
                 if not isinstance(block, dict):
                     continue
                 if block.get("type") == "text":
-                    text_parts.append(block.get("text", ""))
+                    group_text_parts.append(block.get("text", ""))
                 elif block.get("type") == "tool_use":
-                    tool_use_parts.append(
+                    group_tool_use_parts.append(
                         {
                             "name": block.get("name", ""),
                             "input": block.get("input", {}),
                         },
                     )
 
-            if text_parts:
-                output_value = _truncate("".join(text_parts))
-                output_mime = "text/plain"
-            elif tool_use_parts:
-                output_value = _truncate(json.dumps(tool_use_parts))
-                output_mime = "application/json"
-            else:
-                output_value = ""
-                output_mime = "text/plain"
-
-            input_tokens = usage.get("input_tokens", 0)
-            cache_read = usage.get("cache_read_input_tokens", 0)
-            cache_create = usage.get("cache_creation_input_tokens", 0)
-            output_tokens = usage.get("output_tokens", 0)
-
-            start_ns = _iso_to_ns(ts)
-            end_ns = start_ns + max(output_tokens * 10_000_000, 1_000_000)
-
-            attrs: dict[str, Any] = {
-                "openinference.span.kind": "LLM",
-                "llm.system": "anthropic",
-                "llm.model_name": model,
-                "llm.token_count.prompt": input_tokens + cache_read + cache_create,
-                "llm.token_count.completion": output_tokens,
-                "llm.token_count.total": input_tokens
-                + cache_read
-                + cache_create
-                + output_tokens,
-                "llm.token_count.prompt_details.cache_read": cache_read,
-                "llm.token_count.prompt_details.cache_write": cache_create,
-                # Input: the message that immediately preceded this LLM call
-                "llm.input_messages.0.message.role": last_input_role,
-                "llm.input_messages.0.message.content": last_input_content,
-                "input.value": last_input_value,
-                "input.mime_type": last_input_mime,
-                # Output: text response or serialised tool_use blocks
-                "llm.output_messages.0.message.role": "assistant",
-                "llm.output_messages.0.message.content": output_value,
-                "output.value": output_value,
-                "output.mime_type": output_mime,
-            }
-
-            spans.append(
-                {
-                    "trace_id_hex": trace_id_hex,
-                    "span_id_hex": _new_span_id(),
-                    "parent_span_id_hex": root_span_id_hex,
-                    "name": f"claude/{model}",
-                    "kind": None,  # Caller sets SpanKind
-                    "start_ns": start_ns,
-                    "end_ns": end_ns,
-                    "attributes": attrs,
-                    "force_span_id": False,
-                },
-            )
-
-            # Update last_input for the next LLM call: the assistant's output
-            # becomes part of what the model was shown next (via tool results).
-            # We leave last_input* unchanged here — the tool result user message
-            # that follows will overwrite it when we see that entry.
+        _flush_group()
 
     except Exception as e:
         log.warning("Failed to extract LLM spans: %s", e)
@@ -794,6 +993,15 @@ def _emit_pending_llm_spans(
 
     emitted = current_trace.get("emitted_llm_span_count", 0)
     new_spans = all_llm_spans[emitted:]
+
+    # Always keep last_llm_output in sync with the last known assistant message,
+    # even if there are no new spans to emit (e.g. all were emitted by post_tool
+    # and the final text response was already the last one processed).
+    if all_llm_spans:
+        current_trace["last_llm_output"] = all_llm_spans[-1]["attributes"].get(
+            "output.value", ""
+        )
+
     if not new_spans:
         return
 
@@ -808,10 +1016,6 @@ def _emit_pending_llm_spans(
     )
 
     current_trace["emitted_llm_span_count"] = emitted + len(new_spans)
-    current_trace["last_llm_output"] = new_spans[-1]["attributes"].get(
-        "output.value",
-        "",
-    )
 
 
 def _complete_turn(
@@ -839,6 +1043,9 @@ def _complete_turn(
     turn_number = current_trace.get("turn_number", 1)
     prompt_preview = current_trace.get("prompt_preview", "")
     final_output = current_trace.get("last_llm_output", "")
+    # For the first turn of a subagent the CHAIN span is a child of the parent's
+    # Agent tool span, making all subagent work visible inside the parent trace.
+    parent_agent_span_id = current_trace.get("parent_agent_span_id")
 
     # Root CHAIN span
     username = state.get("username", "unknown")
@@ -863,7 +1070,7 @@ def _complete_turn(
             {
                 "trace_id_hex": trace_id,
                 "span_id_hex": root_span_id,
-                "parent_span_id_hex": None,
+                "parent_span_id_hex": parent_agent_span_id,
                 "name": "claude-code-turn",
                 "kind": SpanKind.INTERNAL,
                 "start_ns": turn_start_ns,
@@ -890,6 +1097,7 @@ def _build_tool_span_record(
     root_span_id: str,
     is_failure: bool = False,
     error_msg: str = "",
+    span_id: Optional[str] = None,
 ) -> dict:
     """Build a span record dict for a tool call (success or failure).
 
@@ -951,14 +1159,14 @@ def _build_tool_span_record(
 
     rec: dict[str, Any] = {
         "trace_id_hex": trace_id,
-        "span_id_hex": _new_span_id(),
+        "span_id_hex": span_id or _new_span_id(),
         "parent_span_id_hex": root_span_id,
         "name": tool_name,
         "kind": None,  # defaults to SpanKind.CLIENT in _build_and_export_spans
         "start_ns": start_ns,
         "end_ns": end_ns,
         "attributes": attrs,
-        "force_span_id": False,
+        "force_span_id": span_id is not None,
     }
 
     if is_failure:
@@ -996,17 +1204,30 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
         state["human_msg_count"] = 0
         state["turn_number"] = 0
 
-    # Complete the previous turn's trace if one is in progress
+        # If a parent session pre-registered an Agent invocation, inherit its
+        # trace context so this subagent's spans are nested inside the parent trace.
+        parent_ctx = _claim_pending_agent_context()
+        if parent_ctx:
+            state["inherited_trace_id"] = parent_ctx["parent_trace_id"]
+            state["parent_agent_span_id"] = parent_ctx["parent_span_id"]
+
+    # Complete the previous turn's trace if one is in progress.
+    # Use the cached transcript path from state so that any mid-session
+    # project-dir changes (e.g. gh pr create writing to a worktree dir) do
+    # not silently redirect us to a shadow transcript file.
     if state.get("current_trace"):
-        transcript_path = _find_transcript_path(data, session_id)
+        transcript_path = _get_cached_transcript_path(data, state, session_id)
         _emit_pending_llm_spans(state, transcript_path, config)
         _complete_turn(state, config, transcript_path, now_ns)
+        # Clear the cached path so the new turn resolves it fresh below
+        state.pop("transcript_path", None)
 
     # Count human messages for LLM span extraction.
     # UserPromptSubmit fires before Claude processes the prompt, so the new
     # message is not yet in the transcript — human_count_at_start equals the
     # current count (the new prompt will become count+1 in the transcript).
-    transcript_path = _find_transcript_path(data, session_id)
+    # Resolve and immediately cache the transcript path for this new turn.
+    transcript_path = _get_cached_transcript_path(data, state, session_id)
     current_human_count = (
         _count_human_messages(transcript_path) if transcript_path else 0
     )
@@ -1014,13 +1235,23 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
     turn_number = state.get("turn_number", 0) + 1
     state["turn_number"] = turn_number
     state["human_msg_count"] = current_human_count
+
+    # Use the inherited trace ID if this session was spawned as a subagent, so
+    # all spans land in the parent's trace.  Also consume the parent agent span
+    # ID (used only for the first CHAIN span so it becomes a child of the Agent
+    # tool span in the parent trace).
+    trace_id = state.pop("inherited_trace_id", None) or _new_trace_id()
+    parent_agent_span_id = state.pop("parent_agent_span_id", None)
+
     state["current_trace"] = {
-        "trace_id": _new_trace_id(),
+        "trace_id": trace_id,
         "root_span_id": _new_span_id(),
         "turn_start_ns": now_ns,
         "turn_number": turn_number,
         "human_count_at_start": current_human_count,
         "prompt_preview": _truncate(prompt) if prompt else "",
+        # Non-None only for the first turn of a subagent; cleared after _complete_turn
+        "parent_agent_span_id": parent_agent_span_id,
     }
 
     _save_state(session_id, state)
@@ -1045,11 +1276,29 @@ def handle_pre_tool(data: dict, config: dict) -> None:
         state["human_msg_count"] = 0
         state["turn_number"] = 0
 
+    # Detect context continuation: Claude Code compresses context and continues
+    # without firing UserPromptSubmit for the resumption message. The symptom is
+    # current_trace still set from the previous turn, but the transcript has grown
+    # by more than one human message since that trace started.
+    if state.get("current_trace"):
+        ct = state["current_trace"]
+        _tp = _get_cached_transcript_path(data, state, session_id)
+        if _tp:
+            _cur_human = _count_human_messages(_tp)
+            _start = ct.get("human_count_at_start", 0)
+            if _cur_human > _start + 1:
+                # A new turn started without UserPromptSubmit. Complete the old
+                # trace and fall through to the fallback that creates a new one.
+                _emit_pending_llm_spans(state, _tp, config)
+                _complete_turn(state, config, _tp, now_ns)
+                state.pop("current_trace", None)
+                state.pop("pending_tools", None)
+
     # Fallback: create a trace if UserPromptSubmit has not set one yet.
     # This handles cases where the hook isn't registered or fires before the
     # UserPromptSubmit event is available.
     if not state.get("current_trace"):
-        transcript_path = _find_transcript_path(data, session_id)
+        transcript_path = _get_cached_transcript_path(data, state, session_id)
         current_human_count = (
             _count_human_messages(transcript_path) if transcript_path else 0
         )
@@ -1073,11 +1322,25 @@ def handle_pre_tool(data: dict, config: dict) -> None:
             "prompt_preview": _truncate(prompt_preview) if prompt_preview else "",
         }
 
-    state.setdefault("pending_tools", {})[tool_name] = {
+    pending_entry: dict[str, Any] = {
         "tool_name": tool_name,
         "tool_input": tool_input,
         "start_ns": now_ns,
     }
+
+    # For Agent tool calls, pre-allocate the span ID and write a side-channel
+    # file so the spawned subagent can inherit this trace.
+    current_trace = state.get("current_trace")
+    if tool_name == "Agent" and current_trace:
+        agent_span_id = _new_span_id()
+        pending_entry["pre_allocated_span_id"] = agent_span_id
+        _write_pending_agent_context(
+            parent_session_id=session_id,
+            parent_trace_id=current_trace["trace_id"],
+            parent_span_id=agent_span_id,
+        )
+
+    state.setdefault("pending_tools", {})[tool_name] = pending_entry
     _save_state(session_id, state)
 
 
@@ -1121,6 +1384,9 @@ def handle_post_tool(data: dict, config: dict) -> None:
     tool_input = data.get("tool_input") or current_tool.get("tool_input", {})
     tool_response = data.get("tool_response", {})
     start_ns = current_tool.get("start_ns", end_ns - 1_000_000)
+    # For Agent tool calls the span ID was pre-allocated at PreToolUse time so
+    # the subagent could reference it as its parent span.
+    pre_allocated_span_id = current_tool.get("pre_allocated_span_id")
 
     span_record = _build_tool_span_record(
         tool_name=tool_name,
@@ -1130,6 +1396,7 @@ def handle_post_tool(data: dict, config: dict) -> None:
         end_ns=end_ns,
         trace_id=current_trace["trace_id"],
         root_span_id=current_trace["root_span_id"],
+        span_id=pre_allocated_span_id,
     )
 
     # Export the tool span before acquiring the lock — this is the slow network
@@ -1144,10 +1411,13 @@ def handle_post_tool(data: dict, config: dict) -> None:
     # Acquire an exclusive per-session lock before emitting LLM spans.
     # Parallel PostToolUse processes race on emitted_llm_span_count; the lock
     # ensures each process re-reads the latest count and never double-emits.
-    transcript_path = _find_transcript_path(data, session_id)
+    # Resolve the transcript path *inside* the lock so we always use the path
+    # that was cached in state at UserPromptSubmit time — not the (potentially
+    # stale or redirected) path carried in the current hook payload.
     with _session_lock(session_id):
         state = _load_state(session_id)
         state.get("pending_tools", {}).pop(tool_name, None)
+        transcript_path = _get_cached_transcript_path(data, state, session_id)
         _emit_pending_llm_spans(state, transcript_path, config)
         _save_state(session_id, state)
 
@@ -1201,10 +1471,10 @@ def handle_post_tool_failure(data: dict, config: dict) -> None:
         span_records=[span_record],
     )
 
-    transcript_path = _find_transcript_path(data, session_id)
     with _session_lock(session_id):
         state = _load_state(session_id)
         state.get("pending_tools", {}).pop(tool_name, None)
+        transcript_path = _get_cached_transcript_path(data, state, session_id)
         _emit_pending_llm_spans(state, transcript_path, config)
         _save_state(session_id, state)
 
@@ -1212,13 +1482,43 @@ def handle_post_tool_failure(data: dict, config: dict) -> None:
 def handle_stop(data: dict, config: dict) -> None:
     session_id = data.get("session_id", "unknown")
     end_ns = time.time_ns()
-    transcript_path = _find_transcript_path(data, session_id)
 
     with _session_lock(session_id):
         state = _load_state(session_id)
         if not state.get("current_trace"):
             log.debug("No active trace for session %s at stop", session_id)
             return
+
+        transcript_path = _get_cached_transcript_path(data, state, session_id)
+
+        # Detect context continuation: same check as handle_pre_tool.
+        # When no tool calls happen during a continuation turn, handle_pre_tool
+        # never fires, so the stale trace would otherwise be completed with the
+        # wrong LLM spans.  Complete the old trace here and start a new one so
+        # the normal stop logic below runs against the correct turn.
+        if transcript_path:
+            ct = state["current_trace"]
+            _cur_human = _count_human_messages(transcript_path)
+            _start = ct.get("human_count_at_start", 0)
+            if _cur_human > _start + 1:
+                _emit_pending_llm_spans(state, transcript_path, config)
+                _complete_turn(state, config, transcript_path, end_ns)
+                state.pop("current_trace", None)
+                state.pop("pending_tools", None)
+
+                current_human_count = _cur_human
+                prompt_preview = _get_latest_human_message(transcript_path)
+                turn_number = state.get("turn_number", 0) + 1
+                state["turn_number"] = turn_number
+                state["human_msg_count"] = current_human_count
+                state["current_trace"] = {
+                    "trace_id": _new_trace_id(),
+                    "root_span_id": _new_span_id(),
+                    "turn_start_ns": end_ns,
+                    "turn_number": turn_number,
+                    "human_count_at_start": max(0, current_human_count - 1),
+                    "prompt_preview": _truncate(prompt_preview) if prompt_preview else "",
+                }
 
         # Emit the final LLM span(s) — the last response has no tool call after it,
         # so handle_post_tool never got the chance to emit it.
