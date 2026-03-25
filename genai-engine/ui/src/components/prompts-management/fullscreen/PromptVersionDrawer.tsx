@@ -37,6 +37,7 @@ const PromptVersionDrawer = ({
   onDelete,
 }: PromptVersionDrawerProps) => {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [excludeDeleted, setExcludeDeleted] = useState(true);
   const { page, rowsPerPage, handlePageChange, handleRowsPerPageChange, resetPage } = usePagination(10);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [versionToDelete, setVersionToDelete] = useState<number | null>(null);
@@ -45,7 +46,7 @@ const PromptVersionDrawer = ({
   const { timezone, use24Hour } = useDisplaySettings();
   const { versions, count, isLoading, error, refetch } = usePromptVersions(taskId, promptName, {
     sort: sortOrder,
-    exclude_deleted: false,
+    exclude_deleted: excludeDeleted,
     page,
     pageSize: rowsPerPage,
   });
@@ -110,7 +111,7 @@ const PromptVersionDrawer = ({
           Versions: {promptName}
         </Typography>
 
-        <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+        <Box sx={{ display: "flex", gap: 1, mb: 2, flexWrap: "wrap" }}>
           <Chip
             label={`Sort: ${sortOrder === "asc" ? "Oldest First" : "Newest First"}`}
             onClick={() => {
@@ -120,6 +121,17 @@ const PromptVersionDrawer = ({
             }}
             clickable
             size="small"
+          />
+          <Chip
+            label={excludeDeleted ? "Hide Deleted" : "Show Deleted"}
+            onClick={() => {
+              setExcludeDeleted((prev) => !prev);
+              resetPage();
+            }}
+            clickable
+            size="small"
+            color={excludeDeleted ? "default" : "warning"}
+            variant={excludeDeleted ? "filled" : "outlined"}
           />
         </Box>
 
