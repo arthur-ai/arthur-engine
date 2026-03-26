@@ -69,7 +69,7 @@ const PromptsManagement: React.FC<PromptsManagementProps> = ({ onRegisterCreate 
 
   const { availableProductionTag, availableCustomTags } = useMemo(() => {
     const allTags = new Set<string>();
-    allPromptsForTags.forEach((p) => (p.tags ?? []).forEach((t) => allTags.add(t.toLowerCase())));
+    allPromptsForTags.forEach((p) => (p.tags ?? []).forEach((t) => allTags.add(t)));
     const hasProduction = allTags.has("production");
     const customTags = Array.from(allTags)
       .filter((t) => t !== "production")

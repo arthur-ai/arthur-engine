@@ -3,6 +3,10 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 03/26/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals  added the new optional 'query' request parameter 'tags'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  added the new optional 'query' request parameter 'tags'
+
+# 03/26/2026
 - **CHANGE** for **URL**: /api/v1/chatbot/config  endpoint added
 - **CHANGE** for **URL**: /api/v1/chatbot/config  endpoint added
 - **CHANGE** for **URL**: /api/v1/chatbot/history/{conversation_id}  endpoint added
