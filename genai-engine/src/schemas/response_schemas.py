@@ -52,6 +52,7 @@ class DisplaySettingsResponse(BaseModel):
 
     default_currency: str = "USD"
     chatbot_enabled: bool = True
+    scope_url: str | None = None
 
 
 class ConversationBaseResponse(BaseModel):

@@ -1,7 +1,9 @@
 import os
 import re
+from unittest.mock import patch
 
 import pytest
+
 from tests.clients.base_test_client import (
     MASTER_KEY_AUTHORIZED_HEADERS,
     GenaiEngineTestClientBase,
@@ -92,3 +94,48 @@ def test_version_read_env_var_not_present():
     assert (
         re.match(semver_regex, version) is not None
     ), "Version is not a valid semantic version"
+
+
+@pytest.mark.unit_tests
+def test_display_settings_scope_url_absent(client: GenaiEngineTestClientBase):
+    """scope_url is None when SCOPE_FE_INGRESS_URI is not set."""
+    with patch.dict(os.environ, {}, clear=False):
+        os.environ.pop("SCOPE_FE_INGRESS_URI", None)
+        response = client.base_client.get("/api/v2/display-settings")
+    assert response.status_code == 200
+    assert response.json()["scope_url"] is None
+
+
+@pytest.mark.unit_tests
+def test_display_settings_scope_url_empty_string(client: GenaiEngineTestClientBase):
+    """scope_url is None when SCOPE_FE_INGRESS_URI is set to empty string."""
+    with patch.dict(os.environ, {"SCOPE_FE_INGRESS_URI": ""}):
+        response = client.base_client.get("/api/v2/display-settings")
+    assert response.status_code == 200
+    assert response.json()["scope_url"] is None
+
+
+@pytest.mark.unit_tests
+def test_display_settings_scope_url_https(client: GenaiEngineTestClientBase):
+    """scope_url is returned when SCOPE_FE_INGRESS_URI is a valid https URL."""
+    with patch.dict(
+        os.environ,
+        {"SCOPE_FE_INGRESS_URI": "https://platform.example.com"},
+    ):
+        response = client.base_client.get("/api/v2/display-settings")
+    assert response.status_code == 200
+    assert response.json()["scope_url"] == "https://platform.example.com"
+
+
+@pytest.mark.unit_tests
+def test_display_settings_scope_url_non_https_rejected(
+    client: GenaiEngineTestClientBase,
+):
+    """scope_url is None when SCOPE_FE_INGRESS_URI is not https."""
+    with patch.dict(
+        os.environ,
+        {"SCOPE_FE_INGRESS_URI": "http://platform.example.com"},
+    ):
+        response = client.base_client.get("/api/v2/display-settings")
+    assert response.status_code == 200
+    assert response.json()["scope_url"] is None
