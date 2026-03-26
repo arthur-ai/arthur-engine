@@ -6245,14 +6245,14 @@ murmurhash = ">=0.28.0,<1.1.0"
 
 [[package]]
 name = "presidio-analyzer"
-version = "2.2.361"
+version = "2.2.362"
 description = "Presidio Analyzer package"
 optional = false
 python-versions = "<3.14,>=3.10"
 groups = ["main"]
 markers = "sys_platform != \"linux\" and sys_platform != \"win32\" or sys_platform == \"linux\" or sys_platform == \"win32\""
 files = [
-    {file = "presidio_analyzer-2.2.361-py3-none-any.whl", hash = "sha256:7054b36303f5f47dd4bb3b00600bc936fb46aa3cc5e6befde3de839f0205f7f2"},
+    {file = "presidio_analyzer-2.2.362-py3-none-any.whl", hash = "sha256:4c36438924b1fcb4df92ea5cf2d8dc57508808e116b10923c983b8732aa07d90"},
 ]
 
 [package.dependencies]
@@ -10228,4 +10228,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.13.dev0"
-content-hash = "cff3b7b557b4587fa10278b85f6c88d2ef31cb936c90331e671bda6304ed4761"
+content-hash = "41bdd5a1af34f1f97ca92bb1a0f9b7dfda8118c9d3fac644fdf2a1c15f642da5"
