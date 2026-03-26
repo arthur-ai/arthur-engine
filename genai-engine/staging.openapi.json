@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.477"
+        "version": "2.1.485"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -15920,6 +15920,179 @@
                 }
             }
         },
+        "/api/v1/tasks/{task_id}/chatbot/stream": {
+            "post": {
+                "tags": [
+                    "Chatbot"
+                ],
+                "summary": "Stream a chatbot response",
+                "description": "Send a message to the Arthur AI chatbot and receive a streaming response. The chatbot can call Arthur Engine API endpoints on your behalf.",
+                "operationId": "stream_chatbot_api_v1_tasks__task_id__chatbot_stream_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChatbotRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/chatbot/config": {
+            "get": {
+                "tags": [
+                    "Chatbot"
+                ],
+                "summary": "Get chatbot model configuration",
+                "description": "Returns the model provider, model name, blacklisted endpoints, and available endpoints.",
+                "operationId": "get_chatbot_config_api_v1_chatbot_config_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatbotConfigResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Chatbot"
+                ],
+                "summary": "Update chatbot model configuration",
+                "description": "Saves a new version of the chatbot prompt with the specified model provider and model name, and tags it as production.",
+                "operationId": "update_chatbot_config_api_v1_chatbot_config_put",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChatbotConfigUpdateRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatbotConfigResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/chatbot/history/{conversation_id}": {
+            "delete": {
+                "tags": [
+                    "Chatbot"
+                ],
+                "summary": "Clear chatbot conversation history",
+                "operationId": "clear_chatbot_history_api_v1_chatbot_history__conversation_id__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "conversation_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Conversation Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "post": {
                 "tags": [
@@ -18698,6 +18871,98 @@
                 ],
                 "title": "ChatResponse"
             },
+            "ChatbotConfigResponse": {
+                "properties": {
+                    "model_provider": {
+                        "$ref": "#/components/schemas/ModelProvider"
+                    },
+                    "model_name": {
+                        "type": "string",
+                        "title": "Model Name"
+                    },
+                    "blacklist_endpoints": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Blacklist Endpoints",
+                        "default": []
+                    },
+                    "available_endpoints": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Available Endpoints",
+                        "default": []
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "model_provider",
+                    "model_name"
+                ],
+                "title": "ChatbotConfigResponse"
+            },
+            "ChatbotConfigUpdateRequest": {
+                "properties": {
+                    "model_provider": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ModelProvider"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "model_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Model Name"
+                    },
+                    "blacklist_endpoints": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Blacklist Endpoints"
+                    }
+                },
+                "type": "object",
+                "title": "ChatbotConfigUpdateRequest"
+            },
+            "ChatbotRequest": {
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "conversation_id": {
+                        "type": "string",
+                        "title": "Conversation Id"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "message",
+                    "conversation_id"
+                ],
+                "title": "ChatbotRequest"
+            },
             "CompletionRequest": {
                 "properties": {
                     "messages": {
@@ -20035,6 +20300,11 @@
                         "type": "string",
                         "title": "Default Currency",
                         "default": "USD"
+                    },
+                    "chatbot_enabled": {
+                        "type": "boolean",
+                        "title": "Chatbot Enabled",
+                        "default": true
                     }
                 },
                 "type": "object",

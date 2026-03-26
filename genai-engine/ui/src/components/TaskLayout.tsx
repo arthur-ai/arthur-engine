@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation, Outlet } from "react-router-dom";
 
+import { ChatbotDrawer } from "@/components/chatbot/ChatbotDrawer";
 import { SidebarNavigation } from "@/components/SidebarNavigation";
 import { TaskErrorState } from "@/components/TaskErrorState";
 import { TaskLoadingState } from "@/components/TaskLoadingState";
@@ -80,6 +81,7 @@ export const TaskLayout: React.FC = () => {
 
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-950 flex flex-col overflow-hidden">
+      <ChatbotDrawer taskId={taskId} />
       <div className="flex flex-1 overflow-hidden">
         <SidebarNavigation onBackToDashboard={handleBack} onNavigate={handleNavigate} activeSection={activeSection} taskName={task?.name} />
 

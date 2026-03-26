@@ -1257,6 +1257,40 @@ export interface ChatResponse {
   timestamp: number;
 }
 
+/** ChatbotConfigResponse */
+export interface ChatbotConfigResponse {
+  /**
+   * Available Endpoints
+   * @default []
+   */
+  available_endpoints?: string[];
+  /**
+   * Blacklist Endpoints
+   * @default []
+   */
+  blacklist_endpoints?: string[];
+  /** Model Name */
+  model_name: string;
+  model_provider: ModelProvider;
+}
+
+/** ChatbotConfigUpdateRequest */
+export interface ChatbotConfigUpdateRequest {
+  /** Blacklist Endpoints */
+  blacklist_endpoints?: string[] | null;
+  /** Model Name */
+  model_name?: string | null;
+  model_provider?: ModelProvider | null;
+}
+
+/** ChatbotRequest */
+export interface ChatbotRequest {
+  /** Conversation Id */
+  conversation_id: string;
+  /** Message */
+  message: string;
+}
+
 export type CheckUserPermissionUsersPermissionsCheckGetData = any;
 
 export type CheckUserPermissionUsersPermissionsCheckGetError = HTTPValidationError;
@@ -1267,6 +1301,10 @@ export interface CheckUserPermissionUsersPermissionsCheckGetParams {
   /** Resource to check permissions of. */
   resource?: UserPermissionResource;
 }
+
+export type ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteData = any;
+
+export type ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteError = HTTPValidationError;
 
 /**
  * CompletionRequest
@@ -2271,6 +2309,11 @@ export interface DiscoverAndPollResponse {
  */
 export interface DisplaySettingsResponse {
   /**
+   * Chatbot Enabled
+   * @default true
+   */
+  chatbot_enabled?: boolean;
+  /**
    * Default Currency
    * @default "USD"
    */
@@ -3271,6 +3314,8 @@ export type GetAnnotationByIdApiV1TracesAnnotationsAnnotationIdGetError = HTTPVa
 export type GetApiKeyAuthApiKeysApiKeyIdGetData = ApiKeyResponse;
 
 export type GetApiKeyAuthApiKeysApiKeyIdGetError = HTTPValidationError;
+
+export type GetChatbotConfigApiV1ChatbotConfigGetData = ChatbotConfigResponse;
 
 export type GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetData = ContinuousEvalResponse;
 
@@ -10351,6 +10396,10 @@ export interface SpanWithMetricsResponse {
 /** StatusCodeEnum */
 export type StatusCodeEnum = "Ok" | "Error" | "Unset";
 
+export type StreamChatbotApiV1TasksTaskIdChatbotStreamPostData = any;
+
+export type StreamChatbotApiV1TasksTaskIdChatbotStreamPostError = HTTPValidationError;
+
 /** StreamOptions */
 export interface StreamOptions {
   /**
@@ -11632,6 +11681,10 @@ export interface UpdateAgenticNotebookRequest {
   name?: string | null;
 }
 
+export type UpdateChatbotConfigApiV1ChatbotConfigPutData = ChatbotConfigResponse;
+
+export type UpdateChatbotConfigApiV1ChatbotConfigPutError = HTTPValidationError;
+
 export type UpdateContinuousEvalApiV1ContinuousEvalsEvalIdPatchData = ContinuousEvalResponse;
 
 export type UpdateContinuousEvalApiV1ContinuousEvalsEvalIdPatchError = HTTPValidationError;
@@ -12799,7 +12852,10 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
+
  * @version 2.1.477
+
+
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -13042,6 +13098,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         method: "POST",
         body: data,
         type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Chatbot
+     * @name ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDelete
+     * @summary Clear chatbot conversation history
+     * @request DELETE:/api/v1/chatbot/history/{conversation_id}
+     * @secure
+     */
+    clearChatbotHistoryApiV1ChatbotHistoryConversationIdDelete: (conversationId: string, params: RequestParams = {}) =>
+      this.request<ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteData, ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteError>({
+        path: `/api/v1/chatbot/history/${conversationId}`,
+        method: "DELETE",
+        secure: true,
         format: "json",
         ...params,
       }),
@@ -14350,6 +14424,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getAnnotationByIdApiV1TracesAnnotationsAnnotationIdGet: (annotationId: string, params: RequestParams = {}) =>
       this.request<GetAnnotationByIdApiV1TracesAnnotationsAnnotationIdGetData, GetAnnotationByIdApiV1TracesAnnotationsAnnotationIdGetError>({
         path: `/api/v1/traces/annotations/${annotationId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Returns the model provider, model name, blacklisted endpoints, and available endpoints.
+     *
+     * @tags Chatbot
+     * @name GetChatbotConfigApiV1ChatbotConfigGet
+     * @summary Get chatbot model configuration
+     * @request GET:/api/v1/chatbot/config
+     * @secure
+     */
+    getChatbotConfigApiV1ChatbotConfigGet: (params: RequestParams = {}) =>
+      this.request<GetChatbotConfigApiV1ChatbotConfigGetData, any>({
+        path: `/api/v1/chatbot/config`,
         method: "GET",
         secure: true,
         format: "json",
@@ -16206,6 +16298,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Send a message to the Arthur AI chatbot and receive a streaming response. The chatbot can call Arthur Engine API endpoints on your behalf.
+     *
+     * @tags Chatbot
+     * @name StreamChatbotApiV1TasksTaskIdChatbotStreamPost
+     * @summary Stream a chatbot response
+     * @request POST:/api/v1/tasks/{task_id}/chatbot/stream
+     * @secure
+     */
+    streamChatbotApiV1TasksTaskIdChatbotStreamPost: (taskId: string, data: ChatbotRequest, params: RequestParams = {}) =>
+      this.request<StreamChatbotApiV1TasksTaskIdChatbotStreamPostData, StreamChatbotApiV1TasksTaskIdChatbotStreamPostError>({
+        path: `/api/v1/tasks/${taskId}/chatbot/stream`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Test a new RAG provider connection configuration.
      *
      * @tags RAG Providers
@@ -16262,6 +16374,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     updateAgenticNotebookApiV1AgenticNotebooksNotebookIdPut: (notebookId: string, data: UpdateAgenticNotebookRequest, params: RequestParams = {}) =>
       this.request<UpdateAgenticNotebookApiV1AgenticNotebooksNotebookIdPutData, UpdateAgenticNotebookApiV1AgenticNotebooksNotebookIdPutError>({
         path: `/api/v1/agentic_notebooks/${notebookId}`,
+        method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Saves a new version of the chatbot prompt with the specified model provider and model name, and tags it as production.
+     *
+     * @tags Chatbot
+     * @name UpdateChatbotConfigApiV1ChatbotConfigPut
+     * @summary Update chatbot model configuration
+     * @request PUT:/api/v1/chatbot/config
+     * @secure
+     */
+    updateChatbotConfigApiV1ChatbotConfigPut: (data: ChatbotConfigUpdateRequest, params: RequestParams = {}) =>
+      this.request<UpdateChatbotConfigApiV1ChatbotConfigPutData, UpdateChatbotConfigApiV1ChatbotConfigPutError>({
+        path: `/api/v1/chatbot/config`,
         method: "PUT",
         body: data,
         secure: true,
