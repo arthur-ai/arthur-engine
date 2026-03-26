@@ -2318,6 +2318,11 @@ export interface DisplaySettingsResponse {
    * @default "USD"
    */
   default_currency?: string;
+  /**
+   * Scope Url
+   * URL of the Arthur Platform (Scope) instance for this deployment. Null if not configured.
+   */
+  scope_url?: string | null;
 }
 
 /**
