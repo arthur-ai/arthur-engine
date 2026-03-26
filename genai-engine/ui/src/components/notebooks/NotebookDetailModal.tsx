@@ -181,7 +181,7 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
                               onClick={
                                 config.type === "saved"
                                   ? () => {
-                                      navigate(`/tasks/${taskId}/prompts/${config.name}/versions/${config.version}`);
+                                      navigate(`/tasks/${taskId}/prompts/${encodeURIComponent(config.name)}/versions/${config.version}`);
                                       onClose();
                                     }
                                   : undefined
@@ -189,7 +189,7 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
                               onDelete={
                                 config.type === "saved"
                                   ? () => {
-                                      navigate(`/tasks/${taskId}/prompts/${config.name}/versions/${config.version}`);
+                                      navigate(`/tasks/${taskId}/prompts/${encodeURIComponent(config.name)}/versions/${config.version}`);
                                       onClose();
                                     }
                                   : undefined
@@ -257,11 +257,11 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
                               borderColor: theme.palette.mode === "dark" ? "rgba(76, 175, 80, 0.5)" : "#4caf50",
                             })}
                             onClick={() => {
-                              navigate(`/tasks/${taskId}/evaluators/${evalRef.name}/versions/${evalRef.version}`);
+                              navigate(`/tasks/${taskId}/evaluators/${encodeURIComponent(evalRef.name)}/versions/${evalRef.version}`);
                               onClose();
                             }}
                             onDelete={() => {
-                              navigate(`/tasks/${taskId}/evaluators/${evalRef.name}/versions/${evalRef.version}`);
+                              navigate(`/tasks/${taskId}/evaluators/${encodeURIComponent(evalRef.name)}/versions/${evalRef.version}`);
                               onClose();
                             }}
                             deleteIcon={<OpenInNewIcon fontSize="small" />}

@@ -42,7 +42,9 @@ import { UserSettingsModal } from "@/components/UserSettingsModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
+import { useAvailableModels, useModelProviders } from "@/hooks/useModelProviders";
 import { TaskResponse } from "@/lib/api";
+import type { ModelProvider } from "@/lib/api-client/api-client";
 import { type InactiveDays, type SortBy, useTaskListStore } from "@/stores/task-list.store";
 
 export const AllTasks: React.FC = () => {
@@ -62,7 +64,14 @@ export const AllTasks: React.FC = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [userSettingsModalOpen, setUserSettingsModalOpen] = useState(false);
   const { hideSystemTasks, sortBy, inactiveDays, setHideSystemTasks, setSortBy, setInactiveDays } = useTaskListStore();
-  const { timezone, setTimezone, use24Hour, setUse24Hour } = useDisplaySettings();
+  const { timezone, setTimezone, use24Hour, setUse24Hour, serverChatbotEnabled, enableChatbot, setEnableChatbot } = useDisplaySettings();
+  const { providers: enabledProviders } = useModelProviders();
+  const { availableModels: availableModelsMap } = useAvailableModels(enabledProviders);
+  const [chatbotModelProvider, setChatbotModelProvider] = useState<ModelProvider | "">("");
+  const [chatbotModelName, setChatbotModelName] = useState<string>("");
+  const [blacklistEndpoints, setBlacklistEndpoints] = useState<string[]>([]);
+  const [availableEndpoints, setAvailableEndpoints] = useState<string[]>([]);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   const filteredTasks = useMemo(() => {
     let result = [...tasks];
@@ -166,6 +175,23 @@ export const AllTasks: React.FC = () => {
       fetchActiveTasks();
     }
   }, [api, fetchActiveTasks]);
+
+  // Fetch chatbot config when settings modal opens
+  useEffect(() => {
+    if (api && userSettingsModalOpen) {
+      api.api
+        .getChatbotConfigApiV1ChatbotConfigGet()
+        .then((res) => {
+          setChatbotModelProvider(res.data.model_provider);
+          setChatbotModelName(res.data.model_name);
+          setBlacklistEndpoints(res.data.blacklist_endpoints ?? []);
+          setAvailableEndpoints(res.data.available_endpoints ?? []);
+        })
+        .catch(() => {
+          // Chatbot config not available (e.g. feature disabled)
+        });
+    }
+  }, [api, userSettingsModalOpen]);
 
   // Lazy-load archived tasks the first time the dialog is opened
   useEffect(() => {
@@ -464,10 +490,45 @@ export const AllTasks: React.FC = () => {
         <UserSettingsModal
           open={userSettingsModalOpen}
           onClose={() => setUserSettingsModalOpen(false)}
-          initialSettings={{ timezone, use24Hour }}
-          onSave={(settings) => {
+          initialSettings={{ timezone, use24Hour, enableChatbot, chatbotModelProvider, chatbotModelName, blacklistEndpoints }}
+          chatbotEnabled={serverChatbotEnabled}
+          enabledProviders={enabledProviders}
+          availableModelsMap={availableModelsMap}
+          availableEndpoints={availableEndpoints}
+          isSaving={isSavingSettings}
+          onSave={async (settings) => {
             setTimezone(settings.timezone ?? timezone);
             if (settings.use24Hour !== undefined) setUse24Hour(settings.use24Hour);
+            if (settings.enableChatbot !== undefined) setEnableChatbot(settings.enableChatbot);
+
+            const providerChanged = settings.chatbotModelProvider && settings.chatbotModelProvider !== chatbotModelProvider;
+            const modelChanged = settings.chatbotModelName && settings.chatbotModelName !== chatbotModelName;
+            const blacklistChanged = JSON.stringify(settings.blacklistEndpoints ?? []) !== JSON.stringify(blacklistEndpoints);
+
+            if (api && (providerChanged || modelChanged || blacklistChanged)) {
+              const prevProvider = chatbotModelProvider;
+              const prevModel = chatbotModelName;
+              const prevBlacklist = blacklistEndpoints;
+              if (settings.chatbotModelProvider) setChatbotModelProvider(settings.chatbotModelProvider as ModelProvider);
+              if (settings.chatbotModelName) setChatbotModelName(settings.chatbotModelName);
+              if (settings.blacklistEndpoints) setBlacklistEndpoints(settings.blacklistEndpoints);
+              setIsSavingSettings(true);
+              try {
+                await api.api.updateChatbotConfigApiV1ChatbotConfigPut({
+                  model_provider: (settings.chatbotModelProvider || chatbotModelProvider) as ModelProvider,
+                  model_name: settings.chatbotModelName || chatbotModelName,
+                  blacklist_endpoints: settings.blacklistEndpoints,
+                });
+              } catch (err) {
+                console.error("Failed to update chatbot config:", err);
+                setChatbotModelProvider(prevProvider);
+                setChatbotModelName(prevModel);
+                setBlacklistEndpoints(prevBlacklist);
+              } finally {
+                setIsSavingSettings(false);
+              }
+            }
+
             setUserSettingsModalOpen(false);
           }}
         />

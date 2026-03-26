@@ -50,6 +50,7 @@ class ApplicationConfigurations(str, Enum):
     DOCUMENT_STORAGE_CONTAINER_NAME = "document_storage_container_name"
     DOCUMENT_STORAGE_CONNECTION_STRING = "document_storage_connection_string"
     MAX_LLM_RULES_PER_TASK_COUNT = "max_llm_rules_per_task_count"
+    CHATBOT_BLACKLIST_ENDPOINTS = "chatbot_blacklist_endpoints"
 
 
 class ClaimClassifierResultEnum(str, Enum):
@@ -190,3 +191,13 @@ class RagSearchKind(str, Enum):
 class AgenticExperimentGeneratorType(str, Enum):
     UUID = "uuid"
     SESSION_ID = "session_id"
+
+
+class SSEEventType(str, Enum):
+    """Server-Sent Event types"""
+
+    FINAL_RESPONSE = "final_response"
+    ERROR = "error"
+    SEARCH_COMPLETE = "search_complete"
+    TOOL_CALL = "tool_call"
+    TOOL_RESULT = "tool_result"

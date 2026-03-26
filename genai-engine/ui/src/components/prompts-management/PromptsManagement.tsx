@@ -104,7 +104,7 @@ const PromptsManagement: React.FC<PromptsManagementProps> = ({ onRegisterCreate 
     (promptName: string) => {
       setFullScreenPrompt(promptName);
       // Update URL to reflect the selected prompt
-      navigate(`/tasks/${taskId}/prompts/${promptName}`);
+      navigate(`/tasks/${taskId}/prompts/${encodeURIComponent(promptName)}`);
     },
     [taskId, navigate]
   );

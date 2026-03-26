@@ -1,6 +1,7 @@
 import { useApi } from "@/hooks/useApi";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import type { AgenticPrompt } from "@/lib/api-client/api-client";
+import { encodePathParam } from "@/utils/url";
 
 interface AddTagVariables {
   promptName: string;
@@ -17,7 +18,7 @@ export function useAddTagToPromptVersionMutation() {
       if (!api) throw new Error("API not available");
 
       const response = await api.api.addTagToAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionTagsPut(
-        promptName,
+        encodePathParam(promptName),
         promptVersion,
         taskId,
         data
