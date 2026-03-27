@@ -5,8 +5,8 @@ from typing import List, Optional, Tuple
 from arthur_client.api_bindings import (
     AlertRulesV1Api,
     AlertsV1Api,
-    ComplianceStatus,
     CompliancePolicyCheckJobSpec,
+    ComplianceStatus,
     Job,
     MetricsUpload,
     MetricsUploadMetricsInner,
@@ -49,9 +49,7 @@ class CompliancePolicyCheckExecutor:
         self.metrics_client = metrics_client
         self.logger = logger
 
-    def execute(
-        self, job: Job, job_spec: CompliancePolicyCheckJobSpec
-    ) -> None:
+    def execute(self, job: Job, job_spec: CompliancePolicyCheckJobSpec) -> None:
         model_id = job_spec.scope_model_id
         now = datetime.now(timezone.utc)
 
@@ -74,16 +72,15 @@ class CompliancePolicyCheckExecutor:
             )
             alert_violations = self._check_alert_rules(assignment)
 
-            has_violations = any(
-                not passed for _, passed, _ in attestation_results
-            ) or len(alert_violations) > 0
+            has_violations = (
+                any(not passed for _, passed, _ in attestation_results)
+                or len(alert_violations) > 0
+            )
 
             status = self._resolve_status(
                 has_violations, assignment.enforcement_starts_at, now
             )
-            self.logger.info(
-                f"Assignment {assignment.id} resolved to {status.value}"
-            )
+            self.logger.info(f"Assignment {assignment.id} resolved to {status.value}")
 
             self._report_status(str(assignment.id), status)
             self._write_compliance_metrics(
@@ -125,9 +122,7 @@ class CompliancePolicyCheckExecutor:
         for rule in attestation_rules:
             attestation = attestation_by_rule.get(rule.id)
             if attestation is None:
-                self.logger.info(
-                    f"Attestation rule {rule.id} ({rule.name}): MISSING"
-                )
+                self.logger.info(f"Attestation rule {rule.id} ({rule.name}): MISSING")
                 results.append((rule, False, "missing"))
             elif attestation.next_attestation_due <= now:
                 self.logger.info(
@@ -183,9 +178,7 @@ class CompliancePolicyCheckExecutor:
             return ComplianceStatus.NEEDS_ATTENTION
         return ComplianceStatus.NON_COMPLIANT
 
-    def _report_status(
-        self, assignment_id: str, status: ComplianceStatus
-    ) -> None:
+    def _report_status(self, assignment_id: str, status: ComplianceStatus) -> None:
         self.policies_client.set_compliance_status(
             assignment_id=assignment_id,
             set_compliance_status_request=SetComplianceStatusRequest(
