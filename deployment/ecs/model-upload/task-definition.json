@@ -13,6 +13,10 @@
       "essential": true,
       "environment": [
         {
+          "name": "STORAGE_BACKEND",
+          "value": "s3"
+        },
+        {
           "name": "S3_BUCKET",
           "value": "${S3_BUCKET}"
         },

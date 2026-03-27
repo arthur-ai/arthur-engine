@@ -1,0 +1,17 @@
+{{- if .Values.filesystem.pvc.create }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.filesystem.pvc.claimName | default "arthur-models-pvc" }}
+  labels:
+    {{- include "arthur-model-upload.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.filesystem.pvc.accessMode | default "ReadWriteOnce" }}
+  {{- if .Values.filesystem.pvc.storageClassName }}
+  storageClassName: {{ .Values.filesystem.pvc.storageClassName | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.filesystem.pvc.storageSize | default "25Gi" }}
+{{- end }}

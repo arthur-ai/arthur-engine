@@ -1,73 +1,111 @@
-# Arthur Model Upload - GCP (Cloud Run + GCS)
+# GCP Cloud Run Model Upload Deployment
 
-A Cloud Run Job that uploads pre-downloaded ML models to a Google Cloud Storage (GCS) bucket. Use this when running Arthur on GCP and you want models stored in GCS instead of S3 or a local PVC.
+This directory contains GCP Cloud Run-specific deployment configuration for the unified model upload job.
 
-> **Note**: For AWS S3, see `../../ecs/model-upload/`. For OpenShift/Kubernetes with PVC, see `../../k8s/model-upload-oc/`.
+## About
 
-## Overview
-This is the **GCS version** that:
-1. Downloads ML models from Hugging Face during Docker build
-2. When run as a Cloud Run job, copies all models to a GCS bucket
-3. Cloud Run services (like genai-engine) can mount the GCS bucket as a storage volume to access models
+The model upload code is located at `/model-upload/` (repository root). This directory only contains GCP deployment configuration.
 
-## Prerequisites
+## Files
 
-- **GCS bucket** for model storage (create in same or different project)
-- **Service account** with:
-  - `roles/storage.objectCreator` (or `roles/storage.admin`) on the bucket
-  - For Cloud Run: used as the job’s service account
+- `cloud-run-job.yaml` - Cloud Run Job definition for GCS model upload
 
-## Build and push image
-First, regenerate the poetry.lock file:
+## Usage
+
+### Prerequisites
+
+1. Build and push the unified GCS image:
+   ```bash
+   cd ../../model-upload
+   ./build.sh --version <VERSION> --push gcs
+   ```
+
+2. Push image to GCP Container Registry or Artifact Registry:
+   ```bash
+   # For Artifact Registry
+   docker tag arthurplatform/genai-engine-models:<VERSION>-gcs \
+     <REGION>-docker.pkg.dev/<PROJECT_ID>/<REPOSITORY>/arthur-model-upload:<VERSION>
+
+   docker push <REGION>-docker.pkg.dev/<PROJECT_ID>/<REPOSITORY>/arthur-model-upload:<VERSION>
+   ```
+
+### Deploy Cloud Run Job
+
+1. Replace placeholders in `cloud-run-job.yaml`:
+   - `PROJECT_NUMBER` - Your GCP project number
+   - `REGION` - GCP region (e.g., `us-central1`)
+   - `VERSION` - Image version tag
+   - `BUCKET_NAME` - Target GCS bucket name
+   - `SERVICE_ACCOUNT_EMAIL` - Service account email with GCS write permissions
+
+2. Deploy the job:
+   ```bash
+   gcloud run jobs replace cloud-run-job.yaml --region=<REGION>
+   ```
+
+### Run Job
+
 ```bash
-rm -rf poetry.lock && poetry lock
+# Execute the job
+gcloud run jobs execute arthur-model-upload --region=<REGION>
+
+# View logs
+gcloud run jobs executions logs <EXECUTION_ID> --region=<REGION>
+
+# List executions
+gcloud run jobs executions list --job arthur-model-upload --region=<REGION>
 ```
 
-Then build and push to Docker Hub:
+## Environment Variables
+
+The job uses the unified `upload_models.py` script with the following environment variables:
+
+- `STORAGE_BACKEND=gcs` - Use GCS backend
+- `GCS_BUCKET` - Target GCS bucket name
+- `GCS_PREFIX=models` - GCS object prefix
+- `MODELS_DIR=/models` - Source directory in container
+- `LOG_LEVEL=INFO` - Logging level
+
+## Image Tags
+
+Images follow the naming convention:
+- `arthurplatform/genai-engine-models:<VERSION>-gcs`
+- Example: `arthurplatform/genai-engine-models:2.1.343-gcs`
+
+## IAM Permissions
+
+The service account needs:
+
+```yaml
+roles/storage.objectAdmin  # On the target bucket
+```
+
+Or specific permissions:
+- `storage.objects.create`
+- `storage.objects.get`
+- `storage.objects.list`
+
+## Configuration
+
+Create the service account and grant permissions:
+
 ```bash
-docker build --platform linux/amd64 -t genai-engine-models-gcp:<genai_engine_models_version> .
+# Create service account
+gcloud iam service-accounts create arthur-model-upload \
+  --display-name "Arthur Model Upload"
 
-# Tag for Docker Hub (arthurplatform organization)
-docker tag genai-engine-models-gcp:<genai_engine_models_version> arthurplatform/genai-engine-models-gcp:<genai_engine_models_version>
+# Grant storage permissions
+gsutil iam ch serviceAccount:arthur-model-upload@PROJECT_ID.iam.gserviceaccount.com:objectAdmin \
+  gs://YOUR_BUCKET_NAME
 
-# Push to Docker Hub (requires: docker login)
-docker push arthurplatform/genai-engine-models-gcp:<genai_engine_models_version>
+# Allow Cloud Run to use the service account
+gcloud projects add-iam-policy-binding PROJECT_ID \
+  --member serviceAccount:arthur-model-upload@PROJECT_ID.iam.gserviceaccount.com \
+  --role roles/run.invoker
 ```
 
-## Create and run the Cloud Run Job
-### Run genai-engine-models-gcp container
-1. Mount the GCS bucket as a storage volume on the Cloud Run service: https://docs.cloud.google.com/run/docs/configuring/services/cloud-storage-volume-mounts
-2. Run the model upload container with the below envars:
-  ```
-    GCS_PREFIX: Prefix for GCS object names (e.g. /gcs/model-storage)
-    GCS_BUCKET: Target GCS bucket name (required)
-    CONTAINER_MODELS_DIR: The location of the file system path the models will be hosted on the consumer container app
-    GOOGLE_APPLICATION_CREDENTIALS: Path to service account JSON (optional, uses Workload Identity if unset)
-  ```
+## Related
 
-### Run genai-engine container
-Adjust the below GenAI envars accordingly:
-  ```
-  # specify the mount location
-  # `MODEL_STORAGE_PATH` must be set to `/home/nonroot{GCS_PREFIX specified to model-upload container}`.
-  MODEL_STORAGE_PATH=/home/nonroot/gcs/model-storage
-  # set HF models to offline mode
-  HF_HUB_OFFLINE=1
-  ```
-
-## Local testing with Docker Compose
-Use `docker-compose.local.yml`: See the comments in the script for the usage deatils.
-```
-docker compose -f docker-compose.local.yml up
-```
-
-## Local testing with direct Python code execution
-```
-gcloud config set project <your GCP project>
-gcloud auth application-default login
-export GCS_BUCKET=<your GCP bucket>
-export GCS_PREFIX=models-storage-test
-poetry shell && poetry env use 3.12
-poetry install
-python upload_models.py
-```
+- [Unified Model Upload Code](/model-upload/) - Source code and Dockerfile
+- [ECS Deployment](../ecs/model-upload/) - AWS ECS deployment
+- [K8s Deployment](../k8s/model-upload-oc/) - Kubernetes deployment

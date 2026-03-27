@@ -1,4 +1,5 @@
 # Job to copy models from container to PVC
+# Uses unified model-upload image built from /model-upload/
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -20,10 +21,11 @@ spec:
       restartPolicy: Never
       containers:
       - name: model-upload
-        image: arthurplatform/arthur-genai-engine-models-k8s:<genai_engine_models_version>  # Use version tag to ensure new image is pulled
+        image: arthurplatform/genai-engine-models:<genai_engine_models_version>
         imagePullPolicy: Always  # Always pull to get the new version
-        command: ["python", "-u", "/app/copy_models.py"]  # Use copy script instead of upload
         env:
+        - name: STORAGE_BACKEND
+          value: filesystem
         - name: SOURCE_DIR
           value: "/models"  # Models are pre-downloaded here in the container
         - name: TARGET_DIR

@@ -1,15 +1,21 @@
 [tool.poetry]
-name = "arthur-model-upload-gcp"
+name = "arthur-genai-engine-models"
 version = "1.0.0"
-description = "Cloud Run job to upload ML models to GCS for airgapped environments"
+description = "Unified model upload task for S3, GCS, and Kubernetes"
 authors = ["Arthur <engineering@arthur.ai>"]
 readme = "README.md"
-package-mode = false
 
 [tool.poetry.dependencies]
 python = ">=3.12,<3.13.dev0"
-google-cloud-storage = ">=2.10.0"
 huggingface-hub = "^0.36.0"
+# Cloud provider dependencies (installed conditionally via build args)
+boto3 = { version = "^1.28.0", optional = true }
+google-cloud-storage = { version = "^2.10.0", optional = true }
+
+[tool.poetry.extras]
+s3 = ["boto3"]
+gcs = ["google-cloud-storage"]
+all = ["boto3", "google-cloud-storage"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"
@@ -18,10 +24,13 @@ black = "^24.0.0"
 mypy = "^1.13.0"
 isort = "^5.13.0"
 autoflake = "^2.3.0"
+boto3-stubs = { version = "^1.28.0", extras = ["s3"] }
+types-google-cloud-storage = "^2.10.0"
 
 [tool.poetry.scripts]
 upload = "upload_models:main"
 download = "download_models:main"
+check-updates = "check_model_updates:main"
 
 [build-system]
 requires = ["poetry-core"]

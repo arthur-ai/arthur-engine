@@ -1,0 +1,87 @@
+###################################
+## Minimum Required Configurations
+###################################
+# S3 bucket name (required)
+s3Bucket: ""
+
+# S3 prefix/path (optional, e.g., "models")
+s3Prefix: ""
+
+###################################
+## AWS Authentication
+###################################
+# Option 1: Use AWS IRSA (recommended for EKS)
+#   Set serviceAccount.awsIrsaRoleArn and leave awsCredentials.create: false
+# Option 2: Use Kubernetes secret
+#   Set awsCredentials.create: true and provide credentials
+# Option 3: Use IAM instance profile (for EC2 nodes)
+#   Leave both false and ensure nodes have IAM role with S3 permissions
+
+# AWS IRSA Role ARN (for EKS with IAM Roles for Service Accounts)
+serviceAccountAWSIrsaRoleArn: ""
+
+awsCredentials:
+  create: false
+  accessKeyId: ""
+  secretAccessKey: ""
+  region: "us-east-1"
+
+###################################
+## Container Image
+###################################
+containerRepository:
+  imageLocation: "arthurplatform"
+  imageName: "genai-engine-models"
+  imageVersion: "latest"
+  credentialsRequired: false
+  imagePullSecretName: ""
+
+###################################
+## Service Account
+###################################
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  awsIrsaRoleArn: ""
+
+###################################
+## Job Configuration
+###################################
+job:
+  restartPolicy: Never
+  backoffLimit: 3
+  activeDeadlineSeconds: 3600  # 1 hour
+  ttlSecondsAfterFinished: 86400  # 24 hours
+  priorityClassName: ""
+  annotations: {}
+  podAnnotations: {}
+
+###################################
+## Resource Configuration
+###################################
+resources:
+  limits:
+    cpu: "1000m"
+    memory: "2Gi"
+  requests:
+    cpu: "500m"
+    memory: "1Gi"
+
+###################################
+## Advanced - General
+###################################
+arthurResourceNameSuffix: ""
+
+###################################
+## Advanced - Node Selection
+###################################
+nodeSelector: {}
+affinity: {}
+tolerations: []
+
+###################################
+## Advanced - Logging
+###################################
+logLevel: "INFO"
+modelsDir: "/models"

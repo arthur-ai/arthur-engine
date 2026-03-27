@@ -45,7 +45,7 @@ spec:
       {{- end }}
       containers:
       - name: model-upload
-        {{- $imageRepo := .Values.image.repository | default (printf "%s/%s" (.Values.containerRepository.imageLocation | default "arthurplatform") (.Values.containerRepository.imageName | default "arthur-model-upload")) }}
+        {{- $imageRepo := .Values.image.repository | default (printf "%s/%s" (.Values.containerRepository.imageLocation | default "arthurplatform") (.Values.containerRepository.imageName | default "genai-engine-models")) }}
         {{- $imageTag := .Values.image.tag | default (.Values.containerRepository.imageVersion | default .Chart.AppVersion) }}
         image: "{{ $imageRepo }}:{{ $imageTag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
@@ -54,47 +54,28 @@ spec:
           {{- toYaml .Values.containerSecurityContext | nindent 10 }}
         {{- end }}
         env:
-        - name: S3_BUCKET
-          value: {{ .Values.s3.bucket | default .Values.s3Bucket | quote }}
-        - name: S3_PREFIX
-          value: {{ .Values.s3.prefix | default .Values.s3Prefix | default "" | quote }}
-        - name: MODELS_DIR
-          value: {{ .Values.modelsDir | default "/models" | quote }}
+        - name: STORAGE_BACKEND
+          value: "filesystem"
         - name: LOG_LEVEL
           value: {{ .Values.logLevel | default "INFO" | quote }}
-        {{- if or .Values.serviceAccount.awsIrsaRoleArn .Values.serviceAccountAWSIrsaRoleArn }}
-        # AWS IRSA - no credentials needed, uses service account annotation
-        {{- else if .Values.awsCredentials.create }}
-        # Use secret for AWS credentials
-        - name: AWS_ACCESS_KEY_ID
-          valueFrom:
-            secretKeyRef:
-              name: {{ include "arthur-model-upload.fullname" . }}{{ if or .Values.arthurResourceNameSuffix .Values.resourceNameSuffix }}-{{ .Values.arthurResourceNameSuffix | default .Values.resourceNameSuffix }}{{ end }}-aws-credentials
-              key: AWS_ACCESS_KEY_ID
-        - name: AWS_SECRET_ACCESS_KEY
-          valueFrom:
-            secretKeyRef:
-              name: {{ include "arthur-model-upload.fullname" . }}{{ if or .Values.arthurResourceNameSuffix .Values.resourceNameSuffix }}-{{ .Values.arthurResourceNameSuffix | default .Values.resourceNameSuffix }}{{ end }}-aws-credentials
-              key: AWS_SECRET_ACCESS_KEY
-        {{- if .Values.awsCredentials.region }}
-        - name: AWS_REGION
-          valueFrom:
-            secretKeyRef:
-              name: {{ include "arthur-model-upload.fullname" . }}{{ if or .Values.arthurResourceNameSuffix .Values.resourceNameSuffix }}-{{ .Values.arthurResourceNameSuffix | default .Values.resourceNameSuffix }}{{ end }}-aws-credentials
-              key: AWS_REGION
-        {{- end }}
-        {{- else }}
-        # Assume credentials are provided via environment or IAM instance profile
-        {{- if .Values.awsCredentials.region }}
-        - name: AWS_REGION
-          value: {{ .Values.awsCredentials.region | quote }}
-        {{- end }}
-        {{- end }}
+        - name: MODELS_DIR
+          value: {{ .Values.modelsDir | default "/models" | quote }}
+        - name: SOURCE_DIR
+          value: {{ .Values.filesystem.sourceDir | default "/models" | quote }}
+        - name: TARGET_DIR
+          value: {{ .Values.filesystem.targetDir | default "/models-output" | quote }}
         {{- with .Values.extraEnv }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
         resources:
           {{- toYaml .Values.resources | nindent 10 }}
+        volumeMounts:
+        - name: models-storage
+          mountPath: {{ .Values.filesystem.targetDir | default "/models-output" }}
+      volumes:
+      - name: models-storage
+        persistentVolumeClaim:
+          claimName: {{ .Values.filesystem.pvc.claimName | default "arthur-models-pvc" }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
