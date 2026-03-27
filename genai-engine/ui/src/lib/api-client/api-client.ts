@@ -3109,10 +3109,7 @@ export interface GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVer
    * @default 10
    */
   page_size?: number;
-  /**
-   * Prompt Name
-   * The name of the prompt (URL-encoded).
-   */
+  /** Prompt Name */
   promptName: string;
   /**
    * Sort the results (asc/desc)
@@ -3200,10 +3197,7 @@ export interface GetAllLlmEvalVersionsApiV1TasksTaskIdLlmEvalsEvalNameVersionsGe
    * Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).
    */
   created_before?: string | null;
-  /**
-   * LLM Eval Name
-   * The name of the llm eval (URL-encoded).
-   */
+  /** Eval Name */
   evalName: string;
   /**
    * Exclude Deleted
@@ -12801,8 +12795,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     addTagToAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionTagsPut: (
-      promptVersion: string,
       promptName: string,
+      promptVersion: string,
       taskId: string,
       data: BodyAddTagToAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionTagsPut,
       params: RequestParams = {}
@@ -12830,8 +12824,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     addTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPut: (
-      evalVersion: string,
       evalName: string,
+      evalVersion: string,
       taskId: string,
       data: BodyAddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPut,
       params: RequestParams = {}
@@ -13573,8 +13567,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     deleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDelete: (
-      promptVersion: string,
       promptName: string,
+      promptVersion: string,
       taskId: string,
       params: RequestParams = {}
     ) =>
@@ -13824,9 +13818,9 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     deleteTagFromAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionTagsTagDelete: (
-      promptVersion: string,
       promptName: string,
       tag: string,
+      promptVersion: string,
       taskId: string,
       params: RequestParams = {}
     ) =>
@@ -13850,9 +13844,9 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     deleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsTagDelete: (
-      evalVersion: string,
       evalName: string,
       tag: string,
+      evalVersion: string,
       taskId: string,
       params: RequestParams = {}
     ) =>
@@ -14174,8 +14168,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet: (
-      promptVersion: string,
       promptName: string,
+      promptVersion: string,
       taskId: string,
       params: RequestParams = {}
     ) =>
@@ -14409,8 +14403,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      */
     getContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvalsTransformsTransformIdLlmEvalsEvalNameVersionsEvalVersionVariablesGet: (
       transformId: string,
-      evalVersion: string,
       evalName: string,
+      evalVersion: string,
       taskId: string,
       params: RequestParams = {}
     ) =>
@@ -14697,8 +14691,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     getLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGet: (
-      evalVersion: string,
       evalName: string,
+      evalVersion: string,
       taskId: string,
       params: RequestParams = {}
     ) =>
@@ -15780,8 +15774,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     renderSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionRendersPost: (
-      promptVersion: string,
       promptName: string,
+      promptVersion: string,
       taskId: string,
       data: SavedPromptRenderingRequest,
       params: RequestParams = {}
@@ -15887,8 +15881,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     runSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPost: (
-      promptVersion: string,
       promptName: string,
+      promptVersion: string,
       taskId: string,
       data: PromptCompletionRequest,
       params: RequestParams = {}
@@ -15916,8 +15910,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     runSavedLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionCompletionsPost: (
-      evalVersion: string,
       evalName: string,
+      evalVersion: string,
       taskId: string,
       data: BaseCompletionRequest,
       params: RequestParams = {}
@@ -16147,8 +16141,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     softDeleteLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionDelete: (
-      evalVersion: string,
       evalName: string,
+      evalVersion: string,
       taskId: string,
       params: RequestParams = {}
     ) =>

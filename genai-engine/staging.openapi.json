@@ -6754,6 +6754,15 @@
                 ],
                 "parameters": [
                     {
+                        "name": "prompt_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Name"
+                        }
+                    },
+                    {
                         "name": "prompt_version",
                         "in": "path",
                         "required": true,
@@ -6763,17 +6772,6 @@
                             "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
                         "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                    },
-                    {
-                        "name": "prompt_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt (URL-encoded)."
-                        },
-                        "description": "The name of the prompt (URL-encoded)."
                     },
                     {
                         "name": "task_id",
@@ -6823,6 +6821,15 @@
                 ],
                 "parameters": [
                     {
+                        "name": "prompt_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Name"
+                        }
+                    },
+                    {
                         "name": "prompt_version",
                         "in": "path",
                         "required": true,
@@ -6832,17 +6839,6 @@
                             "description": "The version of the prompt to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
                         "description": "The version of the prompt to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                    },
-                    {
-                        "name": "prompt_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt (URL-encoded)."
-                        },
-                        "description": "The name of the prompt (URL-encoded)."
                     },
                     {
                         "name": "task_id",
@@ -7090,10 +7086,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt (URL-encoded)."
-                        },
-                        "description": "The name of the prompt (URL-encoded)."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -7449,6 +7443,15 @@
                 ],
                 "parameters": [
                     {
+                        "name": "prompt_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Name"
+                        }
+                    },
+                    {
                         "name": "prompt_version",
                         "in": "path",
                         "required": true,
@@ -7458,17 +7461,6 @@
                             "description": "The version of the prompt to run. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
                         "description": "The version of the prompt to run. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                    },
-                    {
-                        "name": "prompt_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt (URL-encoded)."
-                        },
-                        "description": "The name of the prompt (URL-encoded)."
                     },
                     {
                         "name": "task_id",
@@ -7540,6 +7532,15 @@
                 ],
                 "parameters": [
                     {
+                        "name": "prompt_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Name"
+                        }
+                    },
+                    {
                         "name": "prompt_version",
                         "in": "path",
                         "required": true,
@@ -7549,17 +7550,6 @@
                             "description": "The version of the prompt to render. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
                         "description": "The version of the prompt to render. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                    },
-                    {
-                        "name": "prompt_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt (URL-encoded)."
-                        },
-                        "description": "The name of the prompt (URL-encoded)."
                     },
                     {
                         "name": "task_id",
@@ -7631,10 +7621,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt (URL-encoded)."
-                        },
-                        "description": "The name of the prompt (URL-encoded)."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -7699,10 +7687,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt (URL-encoded)."
-                        },
-                        "description": "The name of the prompt (URL-encoded)."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -7752,10 +7738,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt (URL-encoded)."
-                        },
-                        "description": "The name of the prompt (URL-encoded)."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "tag",
@@ -7763,10 +7747,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Tag",
-                            "description": "The tag name (URL-encoded)."
-                        },
-                        "description": "The tag name (URL-encoded)."
+                            "title": "Tag"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -7818,6 +7800,15 @@
                 ],
                 "parameters": [
                     {
+                        "name": "prompt_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Name"
+                        }
+                    },
+                    {
                         "name": "prompt_version",
                         "in": "path",
                         "required": true,
@@ -7827,17 +7818,6 @@
                             "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
                         "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                    },
-                    {
-                        "name": "prompt_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt (URL-encoded)."
-                        },
-                        "description": "The name of the prompt (URL-encoded)."
                     },
                     {
                         "name": "task_id",
@@ -7899,6 +7879,24 @@
                 ],
                 "parameters": [
                     {
+                        "name": "prompt_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Name"
+                        }
+                    },
+                    {
+                        "name": "tag",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Tag"
+                        }
+                    },
+                    {
                         "name": "prompt_version",
                         "in": "path",
                         "required": true,
@@ -7908,28 +7906,6 @@
                             "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
                         "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                    },
-                    {
-                        "name": "prompt_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt (URL-encoded)."
-                        },
-                        "description": "The name of the prompt (URL-encoded)."
-                    },
-                    {
-                        "name": "tag",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "Tag",
-                            "description": "The tag name (URL-encoded)."
-                        },
-                        "description": "The tag name (URL-encoded)."
                     },
                     {
                         "name": "task_id",
@@ -10355,10 +10331,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Tag",
-                            "description": "The tag name (URL-encoded)."
-                        },
-                        "description": "The tag name (URL-encoded)."
+                            "title": "Tag"
+                        }
                     }
                 ],
                 "responses": {
@@ -10400,6 +10374,15 @@
                 ],
                 "parameters": [
                     {
+                        "name": "eval_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Eval Name"
+                        }
+                    },
+                    {
                         "name": "eval_version",
                         "in": "path",
                         "required": true,
@@ -10409,17 +10392,6 @@
                             "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
                         "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                    },
-                    {
-                        "name": "eval_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval (URL-encoded)."
-                        },
-                        "description": "The name of the llm eval (URL-encoded)."
                     },
                     {
                         "name": "task_id",
@@ -10469,6 +10441,15 @@
                 ],
                 "parameters": [
                     {
+                        "name": "eval_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Eval Name"
+                        }
+                    },
+                    {
                         "name": "eval_version",
                         "in": "path",
                         "required": true,
@@ -10478,17 +10459,6 @@
                             "description": "The version of the llm eval to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
                         "description": "The version of the llm eval to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                    },
-                    {
-                        "name": "eval_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval (URL-encoded)."
-                        },
-                        "description": "The name of the llm eval (URL-encoded)."
                     },
                     {
                         "name": "task_id",
@@ -10538,10 +10508,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval (URL-encoded)."
-                        },
-                        "description": "The name of the llm eval (URL-encoded)."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -10948,6 +10916,15 @@
                 ],
                 "parameters": [
                     {
+                        "name": "eval_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Eval Name"
+                        }
+                    },
+                    {
                         "name": "eval_version",
                         "in": "path",
                         "required": true,
@@ -10957,17 +10934,6 @@
                             "description": "The version of the llm eval to run. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
                         "description": "The version of the llm eval to run. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                    },
-                    {
-                        "name": "eval_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval (URL-encoded)."
-                        },
-                        "description": "The name of the llm eval (URL-encoded)."
                     },
                     {
                         "name": "task_id",
@@ -11034,10 +11000,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval (URL-encoded)."
-                        },
-                        "description": "The name of the llm eval (URL-encoded)."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -11102,10 +11066,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval (URL-encoded)."
-                        },
-                        "description": "The name of the llm eval (URL-encoded)."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -11155,10 +11117,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval (URL-encoded)."
-                        },
-                        "description": "The name of the llm eval (URL-encoded)."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "tag",
@@ -11166,10 +11126,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Tag",
-                            "description": "The tag name (URL-encoded)."
-                        },
-                        "description": "The tag name (URL-encoded)."
+                            "title": "Tag"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -11221,6 +11179,15 @@
                 ],
                 "parameters": [
                     {
+                        "name": "eval_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Eval Name"
+                        }
+                    },
+                    {
                         "name": "eval_version",
                         "in": "path",
                         "required": true,
@@ -11230,17 +11197,6 @@
                             "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
                         "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                    },
-                    {
-                        "name": "eval_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval (URL-encoded)."
-                        },
-                        "description": "The name of the llm eval (URL-encoded)."
                     },
                     {
                         "name": "task_id",
@@ -11302,6 +11258,24 @@
                 ],
                 "parameters": [
                     {
+                        "name": "eval_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Eval Name"
+                        }
+                    },
+                    {
+                        "name": "tag",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Tag"
+                        }
+                    },
+                    {
                         "name": "eval_version",
                         "in": "path",
                         "required": true,
@@ -11311,28 +11285,6 @@
                             "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
                         "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                    },
-                    {
-                        "name": "eval_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval (URL-encoded)."
-                        },
-                        "description": "The name of the llm eval (URL-encoded)."
-                    },
-                    {
-                        "name": "tag",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "Tag",
-                            "description": "The tag name (URL-encoded)."
-                        },
-                        "description": "The tag name (URL-encoded)."
                     },
                     {
                         "name": "task_id",
@@ -15477,6 +15429,15 @@
                         "description": "The id of the transform to get the continuous eval variables and mappings for."
                     },
                     {
+                        "name": "eval_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Eval Name"
+                        }
+                    },
+                    {
                         "name": "eval_version",
                         "in": "path",
                         "required": true,
@@ -15486,17 +15447,6 @@
                             "description": "The version of the llm eval to get the continuous eval variables and mappings for."
                         },
                         "description": "The version of the llm eval to get the continuous eval variables and mappings for."
-                    },
-                    {
-                        "name": "eval_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval (URL-encoded)."
-                        },
-                        "description": "The name of the llm eval (URL-encoded)."
                     },
                     {
                         "name": "task_id",
