@@ -1,4 +1,4 @@
-import { AISpanType, TracingContext } from "@mastra/core/ai-tracing";
+import { SpanType, TracingContext } from "@mastra/core/observability";
 import type { MessageInput } from "@mastra/core/agent/message-list";
 import { getArthurApiClient } from "./client";
 
@@ -110,7 +110,7 @@ export async function getTemplatedPrompt(
 
   // Create a span for prompt templating if tracing context is provided
   const promptSpan = tracingContext?.currentSpan?.createChildSpan({
-    type: AISpanType.GENERIC,
+    type: SpanType.GENERIC,
     name: `template prompt: ${promptName}`,
     input: {
       promptName,

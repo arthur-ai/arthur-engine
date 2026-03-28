@@ -17,8 +17,8 @@ import type {
   WorkflowLoopAttributes,
   WorkflowSleepAttributes,
   WorkflowWaitEventAttributes,
-} from "@mastra/core/ai-tracing";
-import { AISpanType } from "@mastra/core/ai-tracing";
+} from "./types";
+import { AISpanType } from "./types";
 import { AttributeValue, SpanStatusCode } from "@opentelemetry/api";
 import {
   MimeType,
@@ -26,6 +26,14 @@ import {
   SemanticConventions,
 } from "@arizeai/openinference-semantic-conventions";
 import { OISpan } from "@arizeai/openinference-core";
+
+// Constants for semantic conventions not yet in the installed version
+const MESSAGE_TOOL_CALL_ID = "message.tool_call_id";
+const AGENT_NAME = "agent.name";
+const LLM_TOKEN_COUNT_PROMPT_DETAILS_CACHE_READ =
+  "llm.token_count.prompt_details.cache_read";
+const LLM_TOKEN_COUNT_PROMPT_DETAILS_CACHE_WRITE =
+  "llm.token_count.prompt_details.cache_write";
 
 /**
  * Helper function to convert Mastra tool calls to OpenInference format
@@ -67,7 +75,7 @@ function extractToolResultContent(result: any): string {
  */
 function processContentForToolCallsOrResults(
   content: unknown,
-  defaultRole?: string
+  defaultRole?: string,
 ): Partial<Record<string, unknown>> {
   const result: Record<string, unknown> = {};
 
@@ -84,18 +92,29 @@ function processContentForToolCallsOrResults(
 
     if (parsed !== null) {
       // Check if it's a tool call array
-      if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.type === "tool-call") {
-        result[SemanticConventions.MESSAGE_TOOL_CALLS] = convertToolCallsToOpenInference(parsed);
+      if (
+        Array.isArray(parsed) &&
+        parsed.length > 0 &&
+        parsed[0]?.type === "tool-call"
+      ) {
+        result[SemanticConventions.MESSAGE_TOOL_CALLS] =
+          convertToolCallsToOpenInference(parsed);
         return result;
       }
       // Check if it's a tool result array
-      else if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.type === "tool-result") {
+      else if (
+        Array.isArray(parsed) &&
+        parsed.length > 0 &&
+        parsed[0]?.type === "tool-result"
+      ) {
         if (defaultRole) {
           result[SemanticConventions.MESSAGE_ROLE] = "tool";
         }
-        result[SemanticConventions.MESSAGE_CONTENT] = extractToolResultContent(parsed[0]);
+        result[SemanticConventions.MESSAGE_CONTENT] = extractToolResultContent(
+          parsed[0],
+        );
         if (parsed[0].toolCallId) {
-          result[SemanticConventions.MESSAGE_TOOL_CALL_ID] = parsed[0].toolCallId;
+          result[MESSAGE_TOOL_CALL_ID] = parsed[0].toolCallId;
         }
         return result;
       }
@@ -109,12 +128,15 @@ function processContentForToolCallsOrResults(
   // Handle array content
   else if (Array.isArray(content)) {
     if (content.length > 0 && content[0]?.type === "tool-call") {
-      result[SemanticConventions.MESSAGE_TOOL_CALLS] = convertToolCallsToOpenInference(content);
+      result[SemanticConventions.MESSAGE_TOOL_CALLS] =
+        convertToolCallsToOpenInference(content);
       return result;
     } else if (content.length > 0 && content[0]?.type === "tool-result") {
-      result[SemanticConventions.MESSAGE_CONTENT] = extractToolResultContent(content[0]);
+      result[SemanticConventions.MESSAGE_CONTENT] = extractToolResultContent(
+        content[0],
+      );
       if (content[0].toolCallId) {
-        result[SemanticConventions.MESSAGE_TOOL_CALL_ID] = content[0].toolCallId;
+        result[MESSAGE_TOOL_CALL_ID] = content[0].toolCallId;
       }
       return result;
     }
@@ -135,9 +157,8 @@ function processContentForToolCallsOrResults(
   }
   // Handle other types
   else {
-    result[SemanticConventions.MESSAGE_CONTENT] = typeof content === "string" 
-      ? content 
-      : JSON.stringify(content);
+    result[SemanticConventions.MESSAGE_CONTENT] =
+      typeof content === "string" ? content : JSON.stringify(content);
     return result;
   }
 
@@ -146,7 +167,7 @@ function processContentForToolCallsOrResults(
 
 export function setSpanErrorInfo(
   otelSpan: OISpan,
-  errorInfo: AnyExportedAISpan["errorInfo"]
+  errorInfo: AnyExportedAISpan["errorInfo"],
 ): void {
   if (errorInfo) {
     otelSpan.setStatus({
@@ -160,7 +181,7 @@ export function setSpanErrorInfo(
 
 export function setSpanAttributes(
   otelSpan: OISpan,
-  span: AnyExportedAISpan
+  span: AnyExportedAISpan,
 ): void {
   // Set OpenInference span kind
   const openInferenceSpanKind = getOpenInferenceSpanKind(span);
@@ -207,7 +228,7 @@ export function setSpanAttributes(
     case AISpanType.WORKFLOW_CONDITIONAL_EVAL:
       additionalAttributes = setWorkflowConditionalEvalAttributes(
         otelSpan,
-        span
+        span,
       );
       break;
     case AISpanType.WORKFLOW_PARALLEL:
@@ -223,8 +244,6 @@ export function setSpanAttributes(
       additionalAttributes = setWorkflowWaitEventAttributes(otelSpan, span);
       break;
     // Generic spans have no specific attributes
-    // case AISpanType.GENERIC:
-    //   break;
   }
 
   // Merge additional attributes with existing metadata
@@ -251,6 +270,7 @@ export function getOpenInferenceSpanKind(span: AnyExportedAISpan): string {
 
     // all map to LLM in OpenInference
     case AISpanType.MODEL_GENERATION:
+    case AISpanType.MODEL_CHUNK:
       return OpenInferenceSpanKind.LLM;
 
     // all map to TOOL in OpenInference
@@ -275,7 +295,7 @@ export function getOpenInferenceSpanKind(span: AnyExportedAISpan): string {
 
 function setInputOutputAttributes(
   otelSpan: OISpan,
-  span: AnyExportedAISpan
+  span: AnyExportedAISpan,
 ): void {
   // set input
   if (span.input) {
@@ -309,7 +329,7 @@ function setInputOutputAttributes(
 
 function setMetadataAttributes(
   otelSpan: OISpan,
-  metadata: AnyExportedAISpan["metadata"]
+  metadata: AnyExportedAISpan["metadata"],
 ): void {
   // set metadata based attributes
   const { userId, sessionId, ...remainingMetadata } = metadata ?? {};
@@ -317,7 +337,7 @@ function setMetadataAttributes(
   // set sessionId
   if (sessionId) {
     otelSpan.setAttributes({
-      [SemanticConventions.SESSION_ID]: sessionId,
+      [SemanticConventions.SESSION_ID]: String(sessionId),
     });
   }
   // set userId
@@ -406,7 +426,7 @@ function wrapOutputAsMessage(output: unknown): Record<string, unknown> | null {
       message[SemanticConventions.MESSAGE_TOOL_CALLS] = output.tool_calls;
     }
     if (output.tool_call_id) {
-      message[SemanticConventions.MESSAGE_TOOL_CALL_ID] = output.tool_call_id;
+      message[MESSAGE_TOOL_CALL_ID] = output.tool_call_id;
     }
     if (output.function_call && isObject(output.function_call)) {
       const funcCall = output.function_call as Record<string, unknown>;
@@ -430,7 +450,7 @@ function wrapOutputAsMessage(output: unknown): Record<string, unknown> | null {
  * Extracts messages from various input/output data formats
  */
 function extractMessagesFromData(
-  data: unknown
+  data: unknown,
 ): Array<Record<string, unknown>> {
   const messages: Array<Record<string, unknown>> = [];
 
@@ -518,7 +538,7 @@ function extractMessageFromItem(item: unknown): Record<string, unknown> | null {
     message[SemanticConventions.MESSAGE_TOOL_CALLS] = item.tool_calls;
   }
   if (item.tool_call_id) {
-    message[SemanticConventions.MESSAGE_TOOL_CALL_ID] = item.tool_call_id;
+    message[MESSAGE_TOOL_CALL_ID] = item.tool_call_id;
   }
   if (item.function_call && isObject(item.function_call)) {
     const funcCall = item.function_call as Record<string, unknown>;
@@ -542,14 +562,14 @@ function extractMessageFromItem(item: unknown): Record<string, unknown> | null {
 // Attribute handler functions for each AISpanType
 function setAgentRunAttributes(
   otelSpan: OISpan,
-  span: AnyExportedAISpan
+  span: AnyExportedAISpan,
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
   const attr = span.attributes as AgentRunAttributes;
   if (attr) {
     if (attr.agentId) {
       otelSpan.setAttributes({
-        [SemanticConventions.AGENT_NAME]: attr.agentId,
+        [AGENT_NAME]: attr.agentId,
       });
     }
 
@@ -561,7 +581,7 @@ function setAgentRunAttributes(
 
     if (attr.availableTools) {
       additionalAttributes["agent.available_tools"] = JSON.stringify(
-        attr.availableTools
+        attr.availableTools,
       );
     }
     if (attr.maxSteps) {
@@ -575,7 +595,7 @@ function setAgentRunAttributes(
 
 function setModelGenerationAttributes(
   otelSpan: OISpan,
-  span: AnyExportedAISpan
+  span: AnyExportedAISpan,
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
   const llmAttr = span.attributes as ModelGenerationAttributes;
@@ -612,20 +632,20 @@ function setModelGenerationAttributes(
     }
     if (llmAttr.usage?.promptCacheHitTokens) {
       otelSpan.setAttributes({
-        [SemanticConventions.LLM_TOKEN_COUNT_PROMPT_DETAILS_CACHE_READ]:
+        [LLM_TOKEN_COUNT_PROMPT_DETAILS_CACHE_READ]:
           llmAttr.usage.promptCacheHitTokens,
       });
     }
     if (llmAttr.usage?.promptCacheMissTokens) {
       otelSpan.setAttributes({
-        [SemanticConventions.LLM_TOKEN_COUNT_PROMPT_DETAILS_CACHE_WRITE]:
+        [LLM_TOKEN_COUNT_PROMPT_DETAILS_CACHE_WRITE]:
           llmAttr.usage.promptCacheMissTokens,
       });
     }
     if (llmAttr.parameters) {
       otelSpan.setAttributes({
         [SemanticConventions.LLM_INVOCATION_PARAMETERS]: JSON.stringify(
-          llmAttr.parameters
+          llmAttr.parameters,
         ),
       });
     }
@@ -646,7 +666,7 @@ function setModelGenerationAttributes(
 
 function setModelChunkAttributes(
   otelSpan: OISpan,
-  span: AnyExportedAISpan
+  span: AnyExportedAISpan,
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
   const attr = span.attributes as ModelChunkAttributes;
@@ -665,7 +685,7 @@ function setModelChunkAttributes(
 
 function setToolCallAttributes(
   otelSpan: OISpan,
-  span: AnyExportedAISpan
+  span: AnyExportedAISpan,
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
   const attr = span.attributes as ToolCallAttributes;
@@ -694,7 +714,7 @@ function setToolCallAttributes(
 
 function setMCPToolCallAttributes(
   otelSpan: OISpan,
-  span: AnyExportedAISpan
+  span: AnyExportedAISpan,
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
   const attr = span.attributes as MCPToolCallAttributes;
@@ -721,7 +741,7 @@ function setMCPToolCallAttributes(
 
 function setWorkflowRunAttributes(
   otelSpan: OISpan,
-  span: AnyExportedAISpan
+  span: AnyExportedAISpan,
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
   const attr = span.attributes as WorkflowRunAttributes;
@@ -740,7 +760,7 @@ function setWorkflowRunAttributes(
 
 function setWorkflowStepAttributes(
   otelSpan: OISpan,
-  span: AnyExportedAISpan
+  span: AnyExportedAISpan,
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
   const attr = span.attributes as WorkflowStepAttributes;
@@ -759,7 +779,7 @@ function setWorkflowStepAttributes(
 
 function setWorkflowConditionalAttributes(
   otelSpan: OISpan,
-  span: AnyExportedAISpan
+  span: AnyExportedAISpan,
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
   const attr = span.attributes as WorkflowConditionalAttributes;
@@ -769,12 +789,12 @@ function setWorkflowConditionalAttributes(
     }
     if (attr.truthyIndexes) {
       additionalAttributes["workflow.truthy_indexes"] = JSON.stringify(
-        attr.truthyIndexes
+        attr.truthyIndexes,
       );
     }
     if (attr.selectedSteps) {
       additionalAttributes["workflow.selected_steps"] = JSON.stringify(
-        attr.selectedSteps
+        attr.selectedSteps,
       );
     }
   }
@@ -785,7 +805,7 @@ function setWorkflowConditionalAttributes(
 
 function setWorkflowConditionalEvalAttributes(
   otelSpan: OISpan,
-  span: AnyExportedAISpan
+  span: AnyExportedAISpan,
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
   const attr = span.attributes as WorkflowConditionalEvalAttributes;
@@ -804,7 +824,7 @@ function setWorkflowConditionalEvalAttributes(
 
 function setWorkflowParallelAttributes(
   otelSpan: OISpan,
-  span: AnyExportedAISpan
+  span: AnyExportedAISpan,
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
   const attr = span.attributes as WorkflowParallelAttributes;
@@ -814,7 +834,7 @@ function setWorkflowParallelAttributes(
     }
     if (attr.parallelSteps) {
       additionalAttributes["workflow.parallel_steps"] = JSON.stringify(
-        attr.parallelSteps
+        attr.parallelSteps,
       );
     }
   }
@@ -825,7 +845,7 @@ function setWorkflowParallelAttributes(
 
 function setWorkflowLoopAttributes(
   otelSpan: OISpan,
-  span: AnyExportedAISpan
+  span: AnyExportedAISpan,
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
   const attr = span.attributes as WorkflowLoopAttributes;
@@ -850,7 +870,7 @@ function setWorkflowLoopAttributes(
 
 function setWorkflowSleepAttributes(
   otelSpan: OISpan,
-  span: AnyExportedAISpan
+  span: AnyExportedAISpan,
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
   const attr = span.attributes as WorkflowSleepAttributes;
@@ -873,7 +893,7 @@ function setWorkflowSleepAttributes(
 
 function setWorkflowWaitEventAttributes(
   otelSpan: OISpan,
-  span: AnyExportedAISpan
+  span: AnyExportedAISpan,
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
   const attr = span.attributes as WorkflowWaitEventAttributes;
@@ -898,7 +918,7 @@ function setWorkflowWaitEventAttributes(
 
 function setRetrieverAttributes(
   otelSpan: OISpan,
-  span: AnyExportedAISpan
+  span: AnyExportedAISpan,
 ): void {
   // if the span.output is an object and it has the property "results", and results is an array,
   // iterate over each result setting
@@ -908,11 +928,6 @@ function setRetrieverAttributes(
     span.output.results &&
     Array.isArray(span.output.results)
   ) {
-    // for each result, construct a document object with the following properties:
-    // - id
-    // - content
-    // - metadata
-    // - score
     const documents = span.output.results.map(
       (result: Record<string, unknown>) => {
         return {
@@ -927,7 +942,7 @@ function setRetrieverAttributes(
             result.metadata as Record<string, unknown>
           )?.distance,
         };
-      }
+      },
     );
 
     const flattenedDocuments = flattenAttributes({
@@ -943,7 +958,7 @@ function setRetrieverAttributes(
  * A type-guard function for checking if a value is an object
  */
 export function isObject(
-  value: unknown
+  value: unknown,
 ): value is Record<string | number | symbol, unknown> {
   return typeof value === "object" && value != null && !Array.isArray(value);
 }
@@ -957,7 +972,7 @@ export function isObject(
  */
 function flattenAttributes(
   attributes: Record<string, unknown>,
-  baseKey: string = ""
+  baseKey: string = "",
 ): Record<string, AttributeValue> {
   const result: Record<string, AttributeValue> = {};
   for (const key in attributes) {

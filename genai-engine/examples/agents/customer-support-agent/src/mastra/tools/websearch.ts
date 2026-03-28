@@ -1,6 +1,6 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import { AISpanType } from "@mastra/core/ai-tracing";
+import { SpanType } from "@mastra/core/observability";
 import axios from "axios";
 
 export type WebsearchToolResult = z.infer<typeof WebsearchToolResultSchema>;
@@ -27,15 +27,16 @@ export const websearchTool = createTool({
     maxResults: z.number().describe("Maximum number of results to return"),
   }),
   outputSchema: WebsearchToolResultSchema,
-  execute: async ({ context, tracingContext }) => {
+  execute: async (inputData, executionContext) => {
+    const { tracingContext } = executionContext ?? {};
     try {
       // Create a search span for tracing
       const searchSpan = tracingContext?.currentSpan?.createChildSpan({
-        type: AISpanType.GENERIC,
-        name: `websearch: ${context.query}`,
+        type: SpanType.GENERIC,
+        name: `websearch: ${inputData.query}`,
         input: {
-          query: context.query,
-          maxResults: context.maxResults,
+          query: inputData.query,
+          maxResults: inputData.maxResults,
           targetSite: "docs.arthur.ai",
         },
         metadata: {
@@ -51,8 +52,8 @@ export const websearchTool = createTool({
         "https://api.tavily.com/search",
         {
           api_key: process.env.TAVILY_API_KEY!,
-          query: context.query,
-          max_results: context.maxResults || 5,
+          query: inputData.query,
+          max_results: inputData.maxResults || 5,
           include_domains: ["docs.arthur.ai"],
           search_depth: "advanced",
           include_answer: false,
@@ -93,7 +94,7 @@ export const websearchTool = createTool({
 
       return {
         results,
-        query: context.query,
+        query: inputData.query,
         resultsCount: results.length,
       };
     } catch (error) {
@@ -102,7 +103,7 @@ export const websearchTool = createTool({
       // Return empty results on error rather than throwing
       return {
         results: [],
-        query: context.query,
+        query: inputData.query,
         resultsCount: 0,
       };
     }

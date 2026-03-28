@@ -1,6 +1,6 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import { AISpanType } from "@mastra/core/ai-tracing";
+import { SpanType } from "@mastra/core/observability";
 import { Octokit } from "@octokit/rest";
 
 export type GitHubSearchToolResult = z.infer<typeof GitHubSearchToolResultSchema>;
@@ -27,15 +27,16 @@ export const githubSearchTool = createTool({
     maxResults: z.number().describe("Maximum number of results to return"),
   }),
   outputSchema: GitHubSearchToolResultSchema,
-  execute: async ({ context, tracingContext }) => {
+  execute: async (inputData, executionContext) => {
+    const { tracingContext } = executionContext ?? {};
     try {
       // Create a search span for tracing
       const searchSpan = tracingContext?.currentSpan?.createChildSpan({
-        type: AISpanType.GENERIC,
-        name: `github-search: ${context.query}`,
+        type: SpanType.GENERIC,
+        name: `github-search: ${inputData.query}`,
         input: {
-          query: context.query,
-          maxResults: context.maxResults,
+          query: inputData.query,
+          maxResults: inputData.maxResults,
           repository: "arthur-ai/arthur-engine",
         },
         metadata: {
@@ -52,9 +53,9 @@ export const githubSearchTool = createTool({
       });
 
       // Search code in the arthur-ai/arthur-engine repository
-      const searchQuery = `${context.query} repo:arthur-ai/arthur-engine`;
+      const searchQuery = `${inputData.query} repo:arthur-ai/arthur-engine`;
       
-      const maxResults = context.maxResults || 5;
+      const maxResults = inputData.maxResults || 5;
       
       const response = await octokit.rest.search.code({
         q: searchQuery,
@@ -120,7 +121,7 @@ export const githubSearchTool = createTool({
 
       return {
         results,
-        query: context.query,
+        query: inputData.query,
         resultsCount: results.length,
       };
     } catch (error) {
@@ -129,7 +130,7 @@ export const githubSearchTool = createTool({
       // Return empty results on error rather than throwing
       return {
         results: [],
-        query: context.query,
+        query: inputData.query,
         resultsCount: 0,
       };
     }

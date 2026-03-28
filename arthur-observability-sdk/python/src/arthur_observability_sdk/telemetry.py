@@ -37,12 +37,6 @@ def setup_telemetry(
     headers: Dict[str, str] = {}
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
-        if not otlp_endpoint.startswith("https://"):
-            logger.warning(
-                "API key is configured but OTLP endpoint (%s) is not HTTPS. "
-                "Credentials will be sent in plaintext.",
-                otlp_endpoint,
-            )
 
     exporter = OTLPSpanExporter(endpoint=otlp_endpoint, headers=headers)
     provider = TracerProvider(resource=resource)

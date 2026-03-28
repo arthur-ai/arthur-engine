@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "@arizeai/openinference-instrumentation-openai": "^4.0.5",
+    "@arthur-ai/observability-sdk": "file:../typescript/arthur-ai-observability-sdk-1.0.4.tgz",
+    "openai": "^6.32.0",
+    "tsx": "^4.21.0"
+  }
+}

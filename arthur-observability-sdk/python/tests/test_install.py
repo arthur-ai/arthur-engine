@@ -190,6 +190,7 @@ def test_telemetry_reaches_collector(sdk_venv: Path, mock_server: dict) -> None:
         from opentelemetry import trace
 
         arthur = Arthur(
+            api_key="test-key",
             service_name="smoke-test",
             otlp_endpoint="{url}/v1/traces",
         )
@@ -216,6 +217,7 @@ def test_openai_instrumentation_sends_span(sdk_venv: Path, mock_server: dict) ->
         import openai
 
         arthur = Arthur(
+            api_key="test-key",
             service_name="smoke-openai",
             otlp_endpoint="{url}/v1/traces",
         )

@@ -46,6 +46,12 @@ def test_generated_client_response_model_is_accessible(model_name):
 # ---------------------------------------------------------------------------
 
 
+def test_arthur_requires_api_key():
+    """Constructing Arthur without api_key (and no env var) raises ValueError."""
+    with pytest.raises(ValueError, match="Arthur requires an API key"):
+        Arthur(service_name="svc", enable_telemetry=False)
+
+
 def test_arthur_requires_task_or_service_name():
     """Constructing Arthur with neither task_id, task_name, nor service_name raises ValueError."""
     with pytest.raises(ValueError, match="Arthur requires at least one of"):

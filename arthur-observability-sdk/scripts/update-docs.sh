@@ -39,7 +39,12 @@ fi
 
 MERGE_BASE=$(git merge-base HEAD "$BASE_BRANCH")
 
-if git diff --quiet "$MERGE_BASE..HEAD" -- python/src/arthur_observability_sdk/; then
+PY_CHANGED=0
+TS_CHANGED=0
+git diff --quiet "$MERGE_BASE..HEAD" -- python/src/arthur_observability_sdk/ || PY_CHANGED=1
+git diff --quiet "$MERGE_BASE..HEAD" -- typescript/src/ || TS_CHANGED=1
+
+if [ "$PY_CHANGED" -eq 0 ] && [ "$TS_CHANGED" -eq 0 ]; then
   echo "No SDK source changes detected — skipping doc update."
   exit 0
 fi
@@ -47,9 +52,17 @@ fi
 DIFF_FILE=$(mktemp /tmp/arthur-sdk-diff.XXXXXX)
 trap 'rm -f "$DIFF_FILE"' EXIT      # always clean up, success or failure
 
-git diff "$MERGE_BASE..HEAD" -- python/src/arthur_observability_sdk/ > "$DIFF_FILE"
+# Collect diffs from both Python and TypeScript sources
+{
+  if [ "$PY_CHANGED" -eq 1 ]; then
+    git diff "$MERGE_BASE..HEAD" -- python/src/arthur_observability_sdk/
+  fi
+  if [ "$TS_CHANGED" -eq 1 ]; then
+    git diff "$MERGE_BASE..HEAD" -- typescript/src/
+  fi
+} > "$DIFF_FILE"
 
-echo "SDK source changes detected. Invoking Claude to update docs..."
+echo "SDK source changes detected (Python=$PY_CHANGED, TypeScript=$TS_CHANGED). Invoking Claude to update docs..."
 claude -p "/update-docs $DIFF_FILE" --allowedTools "Read,Edit,Write" \
   --model claude-haiku-4-5-20251001
 
