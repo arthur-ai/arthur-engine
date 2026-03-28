@@ -2190,15 +2190,15 @@ instruments = ["crewai (>=1.10.1)"]
 
 [[package]]
 name = "openinference-instrumentation-dspy"
-version = "0.1.33"
+version = "0.1.34"
 description = "OpenInference DSPy Instrumentation"
 optional = true
 python-versions = "<3.15,>=3.10"
 groups = ["main"]
 markers = "extra == \"dspy\" or extra == \"all\""
 files = [
-    {file = "openinference_instrumentation_dspy-0.1.33-py3-none-any.whl", hash = "sha256:a0713d6c49f3f0178ff11acbe36785f2c09fdffa46e6442ca1d1c38b96d97526"},
-    {file = "openinference_instrumentation_dspy-0.1.33.tar.gz", hash = "sha256:b4079a564b2866dfb37c71a9ba36661b8312141959e1110eb13db27e248e2cd8"},
+    {file = "openinference_instrumentation_dspy-0.1.34-py3-none-any.whl", hash = "sha256:dc5d3ae285d33ff7389ab70518296abf569466a8c3634b8e3379fb9640e20a5d"},
+    {file = "openinference_instrumentation_dspy-0.1.34.tar.gz", hash = "sha256:715494538de51ced679869e6a6092e5b8740ea49f5ec00690515ce71dd6ffdbb"},
 ]
 
 [package.dependencies]
@@ -2212,7 +2212,6 @@ wrapt = "*"
 
 [package.extras]
 instruments = ["dspy (>=2.6.22)"]
-test = ["dspy (>=2.6.22)", "google-generativeai", "litellm", "opentelemetry-sdk", "pytest-recording", "urllib3 (<3.0)", "vcrpy (>=5.0.0,<8.0.0)"]
 
 [[package]]
 name = "openinference-instrumentation-google-adk"
