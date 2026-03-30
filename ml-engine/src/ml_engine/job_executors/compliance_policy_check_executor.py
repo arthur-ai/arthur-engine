@@ -6,12 +6,20 @@ from arthur_client.api_bindings import (
     Alert,
     AlertRulesV1Api,
     AlertsV1Api,
+    ComplianceAlertRuleResults,
+    ComplianceAlertSummary,
+    ComplianceAttestationRuleResults,
     CompliancePolicyCheckJobSpec,
     ComplianceStatus,
+    ComplianceStatusDetail,
+    CompliantAlertRuleStatus,
+    CompliantAttestationRuleStatus,
     Job,
     MetricsUpload,
     MetricsUploadMetricsInner,
     MetricsV1Api,
+    NonCompliantAlertRuleStatus,
+    NonCompliantAttestationRuleStatus,
     PoliciesV1Api,
     PolicyAssignment,
     PolicyAttestationRule,
@@ -22,11 +30,10 @@ from arthur_client.api_bindings import AlertRule as ClientAlertRule
 from arthur_common.models.metrics import (
     Dimension,
     NumericMetric,
+    NumericPoint,
     NumericTimeSeries,
 )
 
-COMPLIANCE_STATUS_METRIC = "policy_compliance_status"
-ATTESTATION_STATUS_METRIC = "policy_attestation_status"
 
 # Numeric encoding for compliance status metric
 _STATUS_VALUE = {
@@ -63,39 +70,61 @@ class CompliancePolicyCheckExecutor:
             return
         self.logger.info(f"Found {len(assignments)} policy assignments for model {model_id}.. starting checks")
 
+        errors: list[Exception] = []
         for assignment in assignments:
-            self.logger.info(
-                f"Checking compliance for assignment {assignment.id} "
-                f"(policy={assignment.policy.id}, model={assignment.model.id})"
-            )
-            attestation_rules = self.policies_client.list_policy_attestation_rules(
-                policy_id=assignment.policy.id,
-            ).records
+            try:
+                self._process_assignment(assignment, job_spec, model_id, now)
+            except Exception as e:
+                self.logger.error(
+                    f"Error checking compliance for assignment {assignment.id}",
+                    exc_info=e,
+                )
+                errors.append(e)
 
-            attestation_results = self._check_attestation_rules(
-                assignment, attestation_rules, now
-            )
-            alert_rule_results = self._check_alert_rules(
-                assignment, job_spec.start_timestamp, job_spec.end_timestamp
-            )
-
-            has_violations = any(
-                not passed for _, passed, _ in attestation_results
-            ) or any(not passed for _, passed, _ in alert_rule_results)
-
-            status = self._resolve_status(
-                has_violations, assignment.enforcement_starts_at, now
-            )
-            self.logger.info(
-                f"Assignment {assignment.id} resolved to {status.value}"
+        if errors:
+            raise RuntimeError(
+                f"Compliance check failed for {len(errors)}/{len(assignments)} assignment(s)"
             )
 
-            self._report_status(
-                str(assignment.id), status, alert_rule_results, attestation_results
-            )
-            self._write_compliance_metrics(
-                model_id, assignment, status, attestation_results, now
-            )
+    def _process_assignment(
+        self,
+        assignment: PolicyAssignment,
+        job_spec: CompliancePolicyCheckJobSpec,
+        model_id: str,
+        now: datetime,
+    ) -> None:
+        self.logger.info(
+            f"Checking compliance for assignment {assignment.id} "
+            f"(policy={assignment.policy.id}, model={assignment.model.id})"
+        )
+        attestation_rules = self.policies_client.list_policy_attestation_rules(
+            policy_id=assignment.policy.id,
+        ).records
+
+        attestation_results = self._check_attestation_rules(
+            assignment, attestation_rules, now
+        )
+        alert_rule_results = self._check_alert_rules(
+            assignment, job_spec.start_timestamp, job_spec.end_timestamp
+        )
+
+        has_violations = any(
+            not passed for _, passed, _ in attestation_results
+        ) or any(not passed for _, passed, _ in alert_rule_results)
+
+        status = self._resolve_status(
+            has_violations, assignment.enforcement_starts_at, now
+        )
+        self.logger.info(
+            f"Assignment {assignment.id} resolved to {status.value}"
+        )
+
+        self._report_status(
+            str(assignment.id), status, alert_rule_results, attestation_results
+        )
+        self._write_compliance_metrics(
+            model_id, assignment, status, attestation_results, now
+        )
 
     def _fetch_assignments(
         self,
@@ -215,52 +244,53 @@ class CompliancePolicyCheckExecutor:
         alert_rule_results: List[Tuple[ClientAlertRule, bool, Optional[Alert]]],
         attestation_results: List[Tuple[PolicyAttestationRule, bool, str]],
     ) -> None:
-        # Build the detailed compliance status payload
-        compliant_alert_rules = []
-        non_compliant_alert_rules = []
+        compliant_alert_rules: List[CompliantAlertRuleStatus] = []
+        non_compliant_alert_rules: List[NonCompliantAlertRuleStatus] = []
         for rule, passed, triggering_alert in alert_rule_results:
             if passed:
-                compliant_alert_rules.append({"id": rule.id, "name": rule.name})
+                compliant_alert_rules.append(
+                    CompliantAlertRuleStatus(id=rule.id, name=rule.name)
+                )
             else:
-                non_compliant_alert_rules.append({
-                    "id": rule.id,
-                    "name": rule.name,
-                    "alert": {
-                        "id": triggering_alert.id,
-                        "description": triggering_alert.description or "",
-                    },
-                })
+                non_compliant_alert_rules.append(
+                    NonCompliantAlertRuleStatus(
+                        id=rule.id,
+                        name=rule.name,
+                        alert=ComplianceAlertSummary(
+                            id=triggering_alert.id,
+                            description=triggering_alert.description or "",
+                        ),
+                    )
+                )
 
-        compliant_attestation_rules = []
-        non_compliant_attestation_rules = []
+        compliant_attestation_rules: List[CompliantAttestationRuleStatus] = []
+        non_compliant_attestation_rules: List[NonCompliantAttestationRuleStatus] = []
         for rule, passed, _reason in attestation_results:
             if passed:
-                compliant_attestation_rules.append({
-                    "id": rule.id,
-                    "name": rule.name,
-                })
+                compliant_attestation_rules.append(
+                    CompliantAttestationRuleStatus(id=rule.id, name=rule.name)
+                )
             else:
-                non_compliant_attestation_rules.append({
-                    "id": rule.id,
-                    "name": rule.name,
-                })
+                non_compliant_attestation_rules.append(
+                    NonCompliantAttestationRuleStatus(id=rule.id, name=rule.name)
+                )
 
-        compliance_status_detail = {
-            "status": status.value,
-            "alert_rules": {
-                "compliant": compliant_alert_rules,
-                "non_compliant": non_compliant_alert_rules,
-            },
-            "attestation_rules": {
-                "compliant": compliant_attestation_rules,
-                "non_compliant": non_compliant_attestation_rules,
-            },
-        }
+        detail = ComplianceStatusDetail(
+            status=status,
+            alert_rules=ComplianceAlertRuleResults(
+                compliant=compliant_alert_rules,
+                non_compliant=non_compliant_alert_rules,
+            ),
+            attestation_rules=ComplianceAttestationRuleResults(
+                compliant=compliant_attestation_rules,
+                non_compliant=non_compliant_attestation_rules,
+            ),
+        )
 
         self.policies_client.set_compliance_status(
             assignment_id=assignment_id,
             set_compliance_status_request=SetComplianceStatusRequest(
-                compliance_status=compliance_status_detail,
+                compliance_status=detail,
             ),
         )
 
@@ -277,19 +307,23 @@ class CompliancePolicyCheckExecutor:
         # Overall compliance status metric
         metrics.append(
             NumericMetric(
-                name=COMPLIANCE_STATUS_METRIC,
+                name="policy_compliance_check_count",
                 numeric_series=[
                     NumericTimeSeries(
-                        timestamp=now,
-                        value=_STATUS_VALUE[status],
                         dimensions=[
                             Dimension(
-                                key="policy_id",
+                                name="policy_id",
                                 value=str(assignment.policy.id),
                             ),
                             Dimension(
-                                key="assignment_id",
+                                name="assignment_id",
                                 value=str(assignment.id),
+                            ),
+                        ],
+                        values=[
+                            NumericPoint(
+                                timestamp=now,
+                                value=_STATUS_VALUE[status],
                             ),
                         ],
                     ),
@@ -301,23 +335,27 @@ class CompliancePolicyCheckExecutor:
         for rule, passed, _reason in attestation_results:
             metrics.append(
                 NumericMetric(
-                    name=ATTESTATION_STATUS_METRIC,
+                    name="policy_attestation_check_count",
                     numeric_series=[
                         NumericTimeSeries(
-                            timestamp=now,
-                            value=1.0 if passed else 0.0,
                             dimensions=[
                                 Dimension(
-                                    key="policy_id",
+                                    name="policy_id",
                                     value=str(assignment.policy.id),
                                 ),
                                 Dimension(
-                                    key="assignment_id",
+                                    name="assignment_id",
                                     value=str(assignment.id),
                                 ),
                                 Dimension(
-                                    key="attestation_rule_id",
+                                    name="attestation_rule_id",
                                     value=str(rule.id),
+                                ),
+                            ],
+                            values=[
+                                NumericPoint(
+                                    timestamp=now,
+                                    value=1.0 if passed else 0.0,
                                 ),
                             ],
                         ),
