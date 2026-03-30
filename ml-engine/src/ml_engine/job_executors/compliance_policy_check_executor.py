@@ -17,23 +17,21 @@ from arthur_client.api_bindings import (
     ComplianceStatusDetail,
     CompliantAlertRuleStatus,
     CompliantAttestationRuleStatus,
+    Dimension,
     Job,
     MetricsUpload,
     MetricsUploadMetricsInner,
     MetricsV1Api,
     NonCompliantAlertRuleStatus,
     NonCompliantAttestationRuleStatus,
+    NumericMetric,
+    NumericPoint,
+    NumericTimeSeries,
     PoliciesV1Api,
     PolicyAssignment,
     PolicyAttestationRule,
     PostMetricsVersions,
     SetComplianceStatusRequest,
-)
-from arthur_common.models.metrics import (
-    Dimension,
-    NumericMetric,
-    NumericPoint,
-    NumericTimeSeries,
 )
 
 _PAGE_SIZE = 100
@@ -409,7 +407,7 @@ class CompliancePolicyCheckExecutor:
 
         upload = MetricsUpload(metrics=[])
         for m in metrics:
-            upload.metrics.append(MetricsUploadMetricsInner(m))
+            upload.metrics.append(MetricsUploadMetricsInner(actual_instance=m))
 
         self.metrics_client.post_model_metrics_by_version(
             model_id=model_id,
