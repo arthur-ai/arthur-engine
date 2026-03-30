@@ -57,11 +57,13 @@ class CompliancePolicyCheckExecutor:
         if not assignments:
             self.logger.info("No policy assignments found. Nothing to check.")
             return
+        self.logger.info(f"Found {len(assignments)} policy assignments for model {model_id}.. starting checks")
 
         for assignment in assignments:
             self.logger.info(
                 f"Checking compliance for assignment {assignment.id} "
-                f"(policy={assignment.policy.id}, model={assignment.model.id})"
+                f"(policy={assignment.policy.id}, model={assignment.model.id}, "
+                f"current status={assignment.compliance_status.value})"
             )
             attestation_rules = self.policies_client.list_policy_attestation_rules(
                 policy_id=assignment.policy.id,
