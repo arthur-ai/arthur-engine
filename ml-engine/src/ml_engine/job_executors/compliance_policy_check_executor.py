@@ -35,12 +35,6 @@ from arthur_common.models.metrics import (
 )
 
 
-# Numeric encoding for compliance status metric
-_STATUS_VALUE = {
-    ComplianceStatus.COMPLIANT: 1.0,
-    ComplianceStatus.NEEDS_ATTENTION: 2.0,
-    ComplianceStatus.NON_COMPLIANT: 0.0,
-}
 
 
 class CompliancePolicyCheckExecutor:
@@ -304,7 +298,7 @@ class CompliancePolicyCheckExecutor:
     ) -> None:
         metrics: list[NumericMetric] = []
 
-        # Overall compliance status metric
+        # Overall compliance status metric (value=1 for counting, status in dimensions)
         metrics.append(
             NumericMetric(
                 name="policy_compliance_check_count",
@@ -319,19 +313,20 @@ class CompliancePolicyCheckExecutor:
                                 name="assignment_id",
                                 value=str(assignment.id),
                             ),
+                            Dimension(
+                                name="status",
+                                value=status.value,
+                            ),
                         ],
                         values=[
-                            NumericPoint(
-                                timestamp=now,
-                                value=_STATUS_VALUE[status],
-                            ),
+                            NumericPoint(timestamp=now, value=1.0),
                         ],
                     ),
                 ],
             )
         )
 
-        # Per-attestation-rule status metric
+        # Per-attestation-rule status metric (value=1 for counting, status in dimensions)
         for rule, passed, _reason in attestation_results:
             metrics.append(
                 NumericMetric(
@@ -351,12 +346,13 @@ class CompliancePolicyCheckExecutor:
                                     name="attestation_rule_id",
                                     value=str(rule.id),
                                 ),
+                                Dimension(
+                                    name="status",
+                                    value="compliant" if passed else "non_compliant",
+                                ),
                             ],
                             values=[
-                                NumericPoint(
-                                    timestamp=now,
-                                    value=1.0 if passed else 0.0,
-                                ),
+                                NumericPoint(timestamp=now, value=1.0),
                             ],
                         ),
                     ],
