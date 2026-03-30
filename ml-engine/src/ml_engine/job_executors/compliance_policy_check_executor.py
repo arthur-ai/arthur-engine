@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 
 from arthur_client.api_bindings import (
@@ -54,6 +54,8 @@ class CompliancePolicyCheckExecutor:
 
     def execute(self, job: Job, job_spec: CompliancePolicyCheckJobSpec) -> None:
         model_id = job_spec.scope_model_id
+        self._now = datetime.now(timezone.utc)
+        self._alert_window_start = self._now - timedelta(hours=24)
 
         assignments = self._fetch_assignments(model_id, job_spec.policy_assignment_id)
         if not assignments:
@@ -66,7 +68,7 @@ class CompliancePolicyCheckExecutor:
         errors: list[Exception] = []
         for assignment in assignments:
             try:
-                self._process_assignment(assignment, job_spec, model_id)
+                self._process_assignment(assignment, model_id)
             except Exception as e:
                 self.logger.error(
                     f"Error checking compliance for assignment {assignment.id}",
@@ -82,7 +84,6 @@ class CompliancePolicyCheckExecutor:
     def _process_assignment(
         self,
         assignment: PolicyAssignment,
-        job_spec: CompliancePolicyCheckJobSpec,
         model_id: str,
     ) -> None:
         self.logger.info(
@@ -94,10 +95,10 @@ class CompliancePolicyCheckExecutor:
         ).records
 
         attestation_results = self._check_attestation_rules(
-            assignment, attestation_rules, job_spec.end_timestamp
+            assignment, attestation_rules, self._now
         )
         alert_rule_results = self._check_alert_rules(
-            assignment, job_spec.start_timestamp, job_spec.end_timestamp
+            assignment, self._alert_window_start, self._now
         )
 
         has_violations = any(not passed for _, passed, _ in attestation_results) or any(
@@ -105,7 +106,7 @@ class CompliancePolicyCheckExecutor:
         )
 
         status = self._resolve_status(
-            has_violations, assignment.enforcement_starts_at, job_spec.end_timestamp
+            has_violations, assignment.enforcement_starts_at, self._now
         )
         self.logger.info(f"Assignment {assignment.id} resolved to {status.value}")
 
@@ -113,7 +114,7 @@ class CompliancePolicyCheckExecutor:
             str(assignment.id), status, alert_rule_results, attestation_results
         )
         self._write_compliance_metrics(
-            model_id, assignment, status, attestation_results, job_spec.end_timestamp
+            model_id, assignment, status, attestation_results, self._now
         )
 
     def _fetch_assignments(
