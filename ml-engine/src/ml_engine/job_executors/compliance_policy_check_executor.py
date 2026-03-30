@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 
 from arthur_client.api_bindings import (
+    Alert,
     AlertRulesV1Api,
     AlertsV1Api,
     CompliancePolicyCheckJobSpec,
@@ -17,6 +18,7 @@ from arthur_client.api_bindings import (
     PostMetricsVersions,
     SetComplianceStatusRequest,
 )
+from arthur_client.api_bindings import AlertRule as ClientAlertRule
 from arthur_common.models.metrics import (
     Dimension,
     NumericMetric,
@@ -49,7 +51,9 @@ class CompliancePolicyCheckExecutor:
         self.metrics_client = metrics_client
         self.logger = logger
 
-    def execute(self, job: Job, job_spec: CompliancePolicyCheckJobSpec) -> None:
+    def execute(
+        self, job: Job, job_spec: CompliancePolicyCheckJobSpec
+    ) -> None:
         model_id = job_spec.scope_model_id
         now = datetime.now(timezone.utc)
 
@@ -62,8 +66,7 @@ class CompliancePolicyCheckExecutor:
         for assignment in assignments:
             self.logger.info(
                 f"Checking compliance for assignment {assignment.id} "
-                f"(policy={assignment.policy.id}, model={assignment.model.id}, "
-                f"current status={assignment.compliance_status.value})"
+                f"(policy={assignment.policy.id}, model={assignment.model.id})"
             )
             attestation_rules = self.policies_client.list_policy_attestation_rules(
                 policy_id=assignment.policy.id,
@@ -72,19 +75,24 @@ class CompliancePolicyCheckExecutor:
             attestation_results = self._check_attestation_rules(
                 assignment, attestation_rules, now
             )
-            alert_violations = self._check_alert_rules(assignment)
-
-            has_violations = (
-                any(not passed for _, passed, _ in attestation_results)
-                or len(alert_violations) > 0
+            alert_rule_results = self._check_alert_rules(
+                assignment, job_spec.start_timestamp, job_spec.end_timestamp
             )
+
+            has_violations = any(
+                not passed for _, passed, _ in attestation_results
+            ) or any(not passed for _, passed, _ in alert_rule_results)
 
             status = self._resolve_status(
                 has_violations, assignment.enforcement_starts_at, now
             )
-            self.logger.info(f"Assignment {assignment.id} resolved to {status.value}")
+            self.logger.info(
+                f"Assignment {assignment.id} resolved to {status.value}"
+            )
 
-            self._report_status(str(assignment.id), status)
+            self._report_status(
+                str(assignment.id), status, alert_rule_results, attestation_results
+            )
             self._write_compliance_metrics(
                 model_id, assignment, status, attestation_results, now
             )
@@ -141,32 +149,52 @@ class CompliancePolicyCheckExecutor:
 
         return results
 
-    def _check_alert_rules(self, assignment: PolicyAssignment) -> list:
-        """Returns list of alerts found (any non-empty means violation)."""
+    def _check_alert_rules(
+        self,
+        assignment: PolicyAssignment,
+        start_timestamp: datetime,
+        end_timestamp: datetime,
+    ) -> List[Tuple[ClientAlertRule, bool, Optional[Alert]]]:
+        """Returns list of (alert_rule, passed, triggering_alert) tuples."""
         alert_rules_resp = self.alert_rules_client.get_model_alert_rules(
             model_id=assignment.model.id,
             policy_model_assignment_id=str(assignment.id),
         )
-        alert_rule_ids = [r.id for r in alert_rules_resp.records]
-        if not alert_rule_ids:
+        alert_rules = alert_rules_resp.records
+        if not alert_rules:
             self.logger.info("No policy alert rules for this assignment.")
             return []
 
-        # TODO: scope time_from to last_compliance_checked_at once the field
-        # is exposed on the PolicyAssignment response model.
+        alert_rule_ids = [r.id for r in alert_rules]
+
         alerts_resp = self.alerts_client.get_model_alerts(
             model_id=assignment.model.id,
             alert_rule_ids=alert_rule_ids,
+            time_from=start_timestamp,
+            time_to=end_timestamp,
         )
-        alerts = alerts_resp.records
-        if alerts:
-            self.logger.info(
-                f"Found {len(alerts)} alert violation(s) across "
-                f"{len(alert_rule_ids)} policy alert rules."
-            )
-        else:
-            self.logger.info("No alert violations found.")
-        return alerts
+        # Index first alert per rule (one is enough to prove violation)
+        alert_by_rule_id: dict[str, Alert] = {}
+        for alert in alerts_resp.records:
+            if alert.alert_rule_id not in alert_by_rule_id:
+                alert_by_rule_id[alert.alert_rule_id] = alert
+
+        results: List[Tuple[ClientAlertRule, bool, Optional[Alert]]] = []
+        for rule in alert_rules:
+            triggering_alert = alert_by_rule_id.get(rule.id)
+            if triggering_alert:
+                self.logger.info(
+                    f"Alert rule {rule.id} ({rule.name}): VIOLATION "
+                    f"(alert={triggering_alert.id})"
+                )
+                results.append((rule, False, triggering_alert))
+            else:
+                self.logger.info(
+                    f"Alert rule {rule.id} ({rule.name}): PASSING"
+                )
+                results.append((rule, True, None))
+
+        return results
 
     @staticmethod
     def _resolve_status(
@@ -180,11 +208,59 @@ class CompliancePolicyCheckExecutor:
             return ComplianceStatus.NEEDS_ATTENTION
         return ComplianceStatus.NON_COMPLIANT
 
-    def _report_status(self, assignment_id: str, status: ComplianceStatus) -> None:
+    def _report_status(
+        self,
+        assignment_id: str,
+        status: ComplianceStatus,
+        alert_rule_results: List[Tuple[ClientAlertRule, bool, Optional[Alert]]],
+        attestation_results: List[Tuple[PolicyAttestationRule, bool, str]],
+    ) -> None:
+        # Build the detailed compliance status payload
+        compliant_alert_rules = []
+        non_compliant_alert_rules = []
+        for rule, passed, triggering_alert in alert_rule_results:
+            if passed:
+                compliant_alert_rules.append({"id": rule.id, "name": rule.name})
+            else:
+                non_compliant_alert_rules.append({
+                    "id": rule.id,
+                    "name": rule.name,
+                    "alert": {
+                        "id": triggering_alert.id,
+                        "description": triggering_alert.description or "",
+                    },
+                })
+
+        compliant_attestation_rules = []
+        non_compliant_attestation_rules = []
+        for rule, passed, _reason in attestation_results:
+            if passed:
+                compliant_attestation_rules.append({
+                    "id": rule.id,
+                    "name": rule.name,
+                })
+            else:
+                non_compliant_attestation_rules.append({
+                    "id": rule.id,
+                    "name": rule.name,
+                })
+
+        compliance_status_detail = {
+            "status": status.value,
+            "alert_rules": {
+                "compliant": compliant_alert_rules,
+                "non_compliant": non_compliant_alert_rules,
+            },
+            "attestation_rules": {
+                "compliant": compliant_attestation_rules,
+                "non_compliant": non_compliant_attestation_rules,
+            },
+        }
+
         self.policies_client.set_compliance_status(
             assignment_id=assignment_id,
             set_compliance_status_request=SetComplianceStatusRequest(
-                compliance_status=status,
+                compliance_status=compliance_status_detail,
             ),
         )
 
