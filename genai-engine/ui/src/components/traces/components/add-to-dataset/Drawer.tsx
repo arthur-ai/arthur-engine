@@ -1,5 +1,17 @@
 import AddIcon from "@mui/icons-material/Add";
-import { Autocomplete, Button, Drawer, Stack, TextField, Typography } from "@mui/material";
+import {
+  Autocomplete,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Drawer,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { useControlled } from "@mui/material/utils";
 import { useStore } from "@tanstack/react-form";
@@ -55,6 +67,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
   const [showCreateDatasetDialog, setShowCreateDatasetDialog] = useState(false);
   const [showAddColumnDialog, setShowAddColumnDialog] = useState(false);
   const [pendingColumns, setPendingColumns] = useState<Record<string, string[]>>({});
+  const [showExitConfirmDialog, setShowExitConfirmDialog] = useState(false);
 
   const form = useAppForm({
     ...addToDatasetFormOptions,
@@ -246,12 +259,31 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
     }
   };
 
-  const handleClose = () => {
+  const hasInProgressWork = form.state.isDirty || form.state.values.columns.length > 0 || Object.keys(pendingColumns).length > 0;
+
+  const doClose = () => {
     form.reset();
     setPendingColumns({});
     setSavedTransformId(undefined);
     setOpen(false);
     onClose?.();
+  };
+
+  const handleClose = () => {
+    if (hasInProgressWork) {
+      setShowExitConfirmDialog(true);
+    } else {
+      doClose();
+    }
+  };
+
+  const handleConfirmExit = () => {
+    setShowExitConfirmDialog(false);
+    doClose();
+  };
+
+  const handleCancelExit = () => {
+    setShowExitConfirmDialog(false);
   };
 
   return (
@@ -364,6 +396,21 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
           {selectedDataset && datasetColumns.length > 0 && <PreviewTable form={form} onSaveTransform={() => setShowSaveTransformDialog(true)} />}
         </form>
       </Drawer>
+
+      <Dialog open={showExitConfirmDialog} onClose={handleCancelExit}>
+        <DialogTitle>Discard in-progress work?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>You have unsaved changes in the transform builder. Exiting now will discard all in-progress work.</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelExit} variant="outlined">
+            Continue editing
+          </Button>
+          <Button onClick={handleConfirmExit} variant="contained" color="error">
+            Discard and exit
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <CreateDatasetModal
         open={showCreateDatasetDialog}
