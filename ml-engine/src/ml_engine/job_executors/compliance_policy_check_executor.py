@@ -35,8 +35,6 @@ from arthur_common.models.metrics import (
 )
 
 
-
-
 class CompliancePolicyCheckExecutor:
     def __init__(
         self,
@@ -52,9 +50,7 @@ class CompliancePolicyCheckExecutor:
         self.metrics_client = metrics_client
         self.logger = logger
 
-    def execute(
-        self, job: Job, job_spec: CompliancePolicyCheckJobSpec
-    ) -> None:
+    def execute(self, job: Job, job_spec: CompliancePolicyCheckJobSpec) -> None:
         model_id = job_spec.scope_model_id
         now = datetime.now(timezone.utc)
 
@@ -62,7 +58,9 @@ class CompliancePolicyCheckExecutor:
         if not assignments:
             self.logger.info("No policy assignments found. Nothing to check.")
             return
-        self.logger.info(f"Found {len(assignments)} policy assignments for model {model_id}.. starting checks")
+        self.logger.info(
+            f"Found {len(assignments)} policy assignments for model {model_id}.. starting checks"
+        )
 
         errors: list[Exception] = []
         for assignment in assignments:
@@ -102,16 +100,14 @@ class CompliancePolicyCheckExecutor:
             assignment, job_spec.start_timestamp, job_spec.end_timestamp
         )
 
-        has_violations = any(
-            not passed for _, passed, _ in attestation_results
-        ) or any(not passed for _, passed, _ in alert_rule_results)
+        has_violations = any(not passed for _, passed, _ in attestation_results) or any(
+            not passed for _, passed, _ in alert_rule_results
+        )
 
         status = self._resolve_status(
             has_violations, assignment.enforcement_starts_at, now
         )
-        self.logger.info(
-            f"Assignment {assignment.id} resolved to {status.value}"
-        )
+        self.logger.info(f"Assignment {assignment.id} resolved to {status.value}")
 
         self._report_status(
             str(assignment.id), status, alert_rule_results, attestation_results
@@ -212,9 +208,7 @@ class CompliancePolicyCheckExecutor:
                 )
                 results.append((rule, False, triggering_alert))
             else:
-                self.logger.info(
-                    f"Alert rule {rule.id} ({rule.name}): PASSING"
-                )
+                self.logger.info(f"Alert rule {rule.id} ({rule.name}): PASSING")
                 results.append((rule, True, None))
 
         return results
