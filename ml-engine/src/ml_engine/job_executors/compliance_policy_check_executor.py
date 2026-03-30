@@ -219,6 +219,8 @@ class CompliancePolicyCheckExecutor:
         all_alerts: List[Alert] = []
         page = 1
         while True:
+            # TODO need to update the alert API to support filtering on created_at time
+            #   instead of alert timestamp
             alerts_resp = self.alerts_client.get_model_alerts(
                 model_id=assignment.model.id,
                 alert_rule_ids=alert_rule_ids,
@@ -323,6 +325,11 @@ class CompliancePolicyCheckExecutor:
             ),
         )
 
+    @staticmethod
+    def _align_to_5min(ts: datetime) -> datetime:
+        """Floor a timestamp to the previous 5-minute boundary."""
+        return ts.replace(minute=(ts.minute // 5) * 5, second=0, microsecond=0)
+
     def _write_compliance_metrics(
         self,
         model_id: str,
@@ -331,6 +338,7 @@ class CompliancePolicyCheckExecutor:
         attestation_results: List[Tuple[PolicyAttestationRule, bool, str]],
         now: datetime,
     ) -> None:
+        metric_ts = self._align_to_5min(now)
         metrics: list[NumericMetric] = []
 
         # Overall compliance status metric (value=1 for counting, status in dimensions)
@@ -354,7 +362,7 @@ class CompliancePolicyCheckExecutor:
                             ),
                         ],
                         values=[
-                            NumericPoint(timestamp=now, value=1.0),
+                            NumericPoint(timestamp=metric_ts, value=1.0),
                         ],
                     ),
                 ],
@@ -387,7 +395,7 @@ class CompliancePolicyCheckExecutor:
                                 ),
                             ],
                             values=[
-                                NumericPoint(timestamp=now, value=1.0),
+                                NumericPoint(timestamp=metric_ts, value=1.0),
                             ],
                         ),
                     ],
@@ -400,8 +408,8 @@ class CompliancePolicyCheckExecutor:
         metrics_version = self.metrics_client.post_model_metrics_version(
             model_id=model_id,
             post_metrics_versions=PostMetricsVersions(
-                range_start=now,
-                range_end=now,
+                range_start=metric_ts,
+                range_end=metric_ts,
             ),
         )
 
