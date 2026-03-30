@@ -90,12 +90,10 @@ class CompliancePolicyCheckExecutor:
             f"Checking compliance for assignment {assignment.id} "
             f"(policy={assignment.policy.id}, model={assignment.model.id})"
         )
-        attestation_rules = self.policies_client.list_policy_attestation_rules(
-            policy_id=assignment.policy.id,
-        ).records
+        policy = self.policies_client.get_policy(policy_id=assignment.policy.id)
 
         attestation_results = self._check_attestation_rules(
-            assignment, attestation_rules, self._now
+            assignment, policy.attestation_rules, self._now
         )
         alert_rule_results = self._check_alert_rules(
             assignment, self._alert_window_start, self._now
