@@ -95,9 +95,7 @@ class CompliancePolicyCheckExecutor:
         attestation_results = self._check_attestation_rules(
             assignment, policy.attestation_rules, self._now
         )
-        alert_rule_results = self._check_alert_rules(
-            assignment, self._alert_window_start, self._now
-        )
+        alert_rule_results = self._check_alert_rules(assignment)
 
         has_violations = any(not passed for _, passed, _ in attestation_results) or any(
             not passed for _, passed, _ in alert_rule_results
@@ -191,8 +189,6 @@ class CompliancePolicyCheckExecutor:
     def _check_alert_rules(
         self,
         assignment: PolicyAssignment,
-        start_timestamp: datetime,
-        end_timestamp: datetime,
     ) -> List[Tuple[ClientAlertRule, bool, Optional[Alert]]]:
         """Returns list of (alert_rule, passed, triggering_alert) tuples."""
         alert_rules: List[ClientAlertRule] = []
@@ -218,13 +214,11 @@ class CompliancePolicyCheckExecutor:
         all_alerts: List[Alert] = []
         page = 1
         while True:
-            # TODO need to update the alert API to support filtering on created_at time
-            #   instead of alert timestamp
             alerts_resp = self.alerts_client.get_model_alerts(
                 model_id=assignment.model.id,
                 alert_rule_ids=alert_rule_ids,
-                time_from=start_timestamp,
-                time_to=end_timestamp,
+                created_at_from=self._alert_window_start,
+                created_at_to=self._now,
                 page=page,
                 page_size=_PAGE_SIZE,
             )
