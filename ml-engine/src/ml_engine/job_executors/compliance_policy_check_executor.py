@@ -367,9 +367,7 @@ class CompliancePolicyCheckExecutor:
 
         upload = MetricsUpload(metrics=[])
         for m in metrics:
-            upload.metrics.append(
-                MetricsUploadMetricsInner(m)
-            )
+            upload.metrics.append(MetricsUploadMetricsInner(m))
 
         self.metrics_client.post_model_metrics_by_version(
             model_id=model_id,
