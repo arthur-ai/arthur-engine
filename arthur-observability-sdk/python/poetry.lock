@@ -2677,15 +2677,15 @@ test = ["opentelemetry-exporter-otlp-proto-http", "opentelemetry-sdk (>=1.20.0)"
 
 [[package]]
 name = "openinference-instrumentation-smolagents"
-version = "0.1.24"
+version = "0.1.25"
 description = "OpenInference smolagents Instrumentation"
 optional = true
 python-versions = "<3.15,>=3.10"
 groups = ["main"]
 markers = "extra == \"smolagents\" or extra == \"all\""
 files = [
-    {file = "openinference_instrumentation_smolagents-0.1.24-py3-none-any.whl", hash = "sha256:6343d02a0ac8a7247f46af7fbaf2f380ba752e443f3f9dab302ac58dba3c9f5b"},
-    {file = "openinference_instrumentation_smolagents-0.1.24.tar.gz", hash = "sha256:684a3ba4cabc80f728386aa8c4277265834381966b221115af138cfde687f261"},
+    {file = "openinference_instrumentation_smolagents-0.1.25-py3-none-any.whl", hash = "sha256:c40f9b50c84a2633841dcf2a951389de43afe94166dca9d10296c00424c258ee"},
+    {file = "openinference_instrumentation_smolagents-0.1.25.tar.gz", hash = "sha256:9c22786ba5c3610cee6d6d33bed9c8f26d192ddd600e3efd79817dd128f6c61a"},
 ]
 
 [package.dependencies]
