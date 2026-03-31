@@ -217,12 +217,7 @@ const PromptsTable = ({ prompts, sortColumn, sortDirection, onSort, onExpandToFu
                       ))}
                       {hiddenTagCount > 0 && (
                         <Tooltip title={tags.filter((t) => !displayTags.some((d) => d.label === t)).join(", ")}>
-                          <Chip
-                            label={`+${hiddenTagCount}`}
-                            size="small"
-                            variant="outlined"
-                            sx={{ height: 20, fontSize: "0.75rem" }}
-                          />
+                          <Chip label={`+${hiddenTagCount}`} size="small" variant="outlined" sx={{ height: 20, fontSize: "0.75rem" }} />
                         </Tooltip>
                       )}
                     </Box>
