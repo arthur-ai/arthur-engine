@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "arthur-ai-observability-sdk"
-version = "2.1.488"
+version = "2.1.489"
 description = "Arthur Observability SDK — telemetry, prompt management, and framework instrumentation"
 authors = ["Arthur AI <engineering@arthur.ai>"]
 readme = "../README.md"
