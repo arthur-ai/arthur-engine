@@ -346,8 +346,16 @@ class CompliancePolicyCheckExecutor:
                                 value=str(assignment.policy.id),
                             ),
                             Dimension(
+                                name="policy_name",
+                                value=assignment.policy.name,
+                            ),
+                            Dimension(
                                 name="assignment_id",
                                 value=str(assignment.id),
+                            ),
+                            Dimension(
+                                name="model_name",
+                                value=assignment.model.name,
                             ),
                             Dimension(
                                 name="status",
@@ -375,12 +383,24 @@ class CompliancePolicyCheckExecutor:
                                     value=str(assignment.policy.id),
                                 ),
                                 Dimension(
+                                    name="policy_name",
+                                    value=assignment.policy.name,
+                                ),
+                                Dimension(
                                     name="assignment_id",
                                     value=str(assignment.id),
                                 ),
                                 Dimension(
+                                    name="model_name",
+                                    value=assignment.model.name,
+                                ),
+                                Dimension(
                                     name="attestation_rule_id",
                                     value=str(rule.id),
+                                ),
+                                Dimension(
+                                    name="attestation_rule_name",
+                                    value=rule.name,
                                 ),
                                 Dimension(
                                     name="status",

@@ -72,6 +72,7 @@ def random_model() -> Model:
         updated_at=datetime.now(timezone.utc),
         id="test_model_id",
         project_id="",
+        project_name="test_project",
         name="yeet",
         description="",
         metric_config=ModelMetricSpec(aggregation_specs=[], id=""),
