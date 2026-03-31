@@ -62,7 +62,7 @@ class CompliancePolicyCheckExecutor:
             self.logger.info("No policy assignments found. Nothing to check.")
             return
         self.logger.info(
-            f"Found {len(assignments)} policy assignments for model {model_id}.. starting checks"
+            f"Found {len(assignments)} policy assignments for model {model_id}... starting checks"
         )
 
         errors: list[Exception] = []
