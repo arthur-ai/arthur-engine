@@ -128,6 +128,8 @@ function App() {
                             <Route path="datasets" element={<DatasetsView />} />
                             <Route path="datasets/:datasetId" element={<DatasetDetailView />} />
                             <Route path="transforms" element={<TransformsManagement />} />
+                            <Route path="transforms/:transformId" element={<TransformsManagement />} />
+                            <Route path="transforms/:transformId/versions/:versionId" element={<TransformsManagement />} />
                             <Route path="datasets/:datasetId/experiments" element={<DatasetExperimentsView />} />
 
                             <Route path="evaluate" element={<EvaluateView />} />

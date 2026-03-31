@@ -6,16 +6,15 @@ import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import TablePagination from "@mui/material/TablePagination";
 import Typography from "@mui/material/Typography";
-import { parseAsString, useQueryState } from "nuqs";
-import React, { useCallback, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
 import DeleteTransformDialog from "./DeleteTransformDialog";
+import TransformFullScreenView from "./fullscreen/TransformFullScreenView";
 import { useCreateTransformMutation } from "./hooks/useCreateTransformMutation";
 import { useDeleteTransformMutation } from "./hooks/useDeleteTransformMutation";
 import { useUpdateTransformMutation } from "./hooks/useUpdateTransformMutation";
 import TransformsTable from "./table/TransformsTable";
-import TransformDetailsModal from "./TransformDetailsModal";
 import TransformFormModal from "./TransformFormModal";
 import TransformsHeader from "./TransformsHeader";
 import { TraceTransform } from "./types";
@@ -29,13 +28,25 @@ const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 const TransformsManagement: React.FC = () => {
   const pagination = usePagination();
-  const { id: taskId } = useParams<{ id: string }>();
+  const { id: taskId, transformId: urlTransformId, versionId: urlVersionId } = useParams<{ id: string; transformId?: string; versionId?: string }>();
+  const navigate = useNavigate();
   const [sortColumn, setSortColumn] = useState<string | null>("updated_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingTransform, setEditingTransform] = useState<TraceTransform | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [transformId, setTransformId] = useQueryState("id", parseAsString.withDefault(""));
+  const [fullScreenTransformId, setFullScreenTransformId] = useState<string | null>(urlTransformId ?? null);
+  const [editKey, setEditKey] = useState(0);
+
+  // Sync fullScreenTransformId with URL parameter
+  useEffect(() => {
+    if (urlTransformId) {
+      setFullScreenTransformId(urlTransformId);
+    } else if (!urlTransformId && fullScreenTransformId) {
+      setFullScreenTransformId(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlTransformId]);
 
   const { data, error, isLoading, refetch } = useTransforms({ page: pagination.page, page_size: pagination.rowsPerPage });
 
@@ -48,6 +59,7 @@ const TransformsManagement: React.FC = () => {
 
   const updateMutation = useUpdateTransformMutation(taskId, () => {
     setEditingTransform(null);
+    setEditKey((prev) => prev + 1);
     refetch();
   });
 
@@ -103,14 +115,19 @@ const TransformsManagement: React.FC = () => {
 
   const handleView = useCallback(
     (transform: TraceTransform) => {
-      setTransformId(transform.id);
+      navigate(`/tasks/${taskId}/transforms/${transform.id}`);
     },
-    [setTransformId]
+    [taskId, navigate]
   );
 
   const handleEdit = useCallback((transform: TraceTransform) => {
     setEditingTransform(transform);
   }, []);
+
+  const handleCloseFullScreen = useCallback(() => {
+    setFullScreenTransformId(null);
+    navigate(`/tasks/${taskId}/transforms`);
+  }, [taskId, navigate]);
 
   const handleDelete = useCallback((transformId: string) => {
     setDeleteConfirmId(transformId);
@@ -134,10 +151,27 @@ const TransformsManagement: React.FC = () => {
     [sortColumn]
   );
 
-  const viewingTransform = useMemo(() => {
-    if (!transformId) return null;
-    return transforms?.find((transform) => transform.id === transformId);
-  }, [transforms, transformId]);
+  if (fullScreenTransformId) {
+    return (
+      <Box sx={{ height: getContentHeight(), overflow: "hidden" }}>
+        <TransformFullScreenView
+          transformId={fullScreenTransformId}
+          initialVersionId={urlVersionId ?? null}
+          editKey={editKey}
+          onClose={handleCloseFullScreen}
+          onEdit={handleEdit}
+        />
+        <TransformFormModal
+          open={!!editingTransform}
+          onClose={() => setEditingTransform(null)}
+          onSubmit={handleUpdateTransform}
+          isLoading={updateMutation.isPending}
+          taskId={taskId}
+          initialTransform={editingTransform || undefined}
+        />
+      </Box>
+    );
+  }
 
   if (isLoading && !transforms) {
     return (
@@ -261,13 +295,6 @@ const TransformsManagement: React.FC = () => {
         isLoading={updateMutation.isPending}
         taskId={taskId}
         initialTransform={editingTransform || undefined}
-      />
-
-      <TransformDetailsModal
-        open={!!viewingTransform}
-        onClose={() => setTransformId(null)}
-        onRestoreSuccess={refetch}
-        transform={viewingTransform ?? null}
       />
 
       <DeleteTransformDialog
