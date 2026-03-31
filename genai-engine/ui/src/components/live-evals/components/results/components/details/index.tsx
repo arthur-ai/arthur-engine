@@ -15,7 +15,10 @@ import {
   DialogTitle,
   Divider,
   LinearProgress,
+  List,
+  ListItem,
   Paper,
+  Stack,
   Typography,
 } from "@mui/material";
 
@@ -32,6 +35,28 @@ type Props = {
   onClose: () => void;
   onRerunComplete: () => void;
   rerunOnMount?: boolean;
+};
+
+type PIIEntity = { entity: string; span: string; confidence?: number | null };
+type KeywordMatch = { keyword: string };
+type RegexMatch = { matching_text: string; pattern?: string | null };
+type RuleDetails = {
+  pii_entities?: PIIEntity[];
+  toxicity_score?: number | null;
+  toxicity_violation_type?: string;
+  keyword_matches?: KeywordMatch[];
+  regex_matches?: RegexMatch[];
+  message?: string | null;
+  score?: boolean | null;
+};
+
+const parseRuleDescription = (description: string): RuleDetails | null => {
+  try {
+    const parsed = JSON.parse(description);
+    return typeof parsed === "object" && parsed !== null ? (parsed as RuleDetails) : null;
+  } catch {
+    return null;
+  }
 };
 
 export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunComplete }: Props) => {
@@ -62,6 +87,92 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
     if (score >= 0.8) return "success.main";
     if (score >= 0.5) return "warning.main";
     return "error.main";
+  };
+
+  const renderRuleDetails = (details: RuleDetails) => {
+    return (
+      <Stack spacing={1.5}>
+        {details.message && (
+          <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
+            {details.message}
+          </Typography>
+        )}
+        {details.pii_entities && details.pii_entities.length > 0 && (
+          <Box>
+            <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" gutterBottom>
+              PII Entities Found ({details.pii_entities.length})
+            </Typography>
+            <List dense disablePadding>
+              {details.pii_entities.map((e, i) => (
+                <ListItem key={i} disableGutters sx={{ py: 0.25 }}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Chip label={e.entity} size="small" color="warning" variant="outlined" sx={{ fontWeight: 500 }} />
+                    <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
+                      &ldquo;{e.span}&rdquo;
+                    </Typography>
+                    {e.confidence != null && (
+                      <Typography variant="caption" color="text.secondary">
+                        ({Math.round(e.confidence * 100)}%)
+                      </Typography>
+                    )}
+                  </Stack>
+                </ListItem>
+              ))}
+            </List>
+          </Box>
+        )}
+        {details.toxicity_violation_type && (
+          <Box>
+            <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" gutterBottom>
+              Toxicity
+            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Chip label={details.toxicity_violation_type} size="small" color="error" variant="outlined" sx={{ fontWeight: 500 }} />
+              {details.toxicity_score != null && (
+                <Typography variant="body2" color="text.secondary">
+                  Score: {details.toxicity_score.toFixed(3)}
+                </Typography>
+              )}
+            </Stack>
+          </Box>
+        )}
+        {details.keyword_matches && details.keyword_matches.length > 0 && (
+          <Box>
+            <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" gutterBottom>
+              Keyword Matches ({details.keyword_matches.length})
+            </Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              {details.keyword_matches.map((m, i) => (
+                <Chip key={i} label={m.keyword} size="small" variant="outlined" sx={{ fontFamily: "monospace" }} />
+              ))}
+            </Stack>
+          </Box>
+        )}
+        {details.regex_matches && details.regex_matches.length > 0 && (
+          <Box>
+            <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" gutterBottom>
+              Regex Matches ({details.regex_matches.length})
+            </Typography>
+            <List dense disablePadding>
+              {details.regex_matches.map((m, i) => (
+                <ListItem key={i} disableGutters sx={{ py: 0.25 }}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
+                      &ldquo;{m.matching_text}&rdquo;
+                    </Typography>
+                    {m.pattern && (
+                      <Typography variant="caption" color="text.secondary">
+                        (pattern: {m.pattern})
+                      </Typography>
+                    )}
+                  </Stack>
+                </ListItem>
+              ))}
+            </List>
+          </Box>
+        )}
+      </Stack>
+    );
   };
 
   const isPending = data?.run_status === "pending";
@@ -119,9 +230,15 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
                   <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
                     Score
                   </Typography>
-                  <Typography variant="h5" fontWeight={700} sx={{ color: getScoreColor(data.annotation_score) }}>
-                    {data.annotation_score}
-                  </Typography>
+                  {data.annotation_score === 1 ? (
+                    <Chip icon={<CheckCircleIcon />} label="Pass" color="success" size="small" sx={{ fontWeight: 600 }} />
+                  ) : data.annotation_score === 0 ? (
+                    <Chip icon={<ErrorIcon />} label="Fail" color="error" size="small" sx={{ fontWeight: 600 }} />
+                  ) : (
+                    <Typography variant="h5" fontWeight={700} sx={{ color: getScoreColor(data.annotation_score) }}>
+                      {data.annotation_score}
+                    </Typography>
+                  )}
                 </Paper>
               )}
 
@@ -139,25 +256,32 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
             </Box>
 
             {/* Explanation */}
-            {data.annotation_description && (
-              <Box>
-                <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                  Explanation
-                </Typography>
-                <Paper
-                  variant="outlined"
-                  sx={{
-                    p: 2,
-                    backgroundColor: "action.hover",
-                    borderRadius: 1,
-                  }}
-                >
-                  <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
-                    {data.annotation_description}
+            {data.annotation_description && (() => {
+              const parsedDetails = parseRuleDescription(data.annotation_description);
+              return (
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                    Explanation
                   </Typography>
-                </Paper>
-              </Box>
-            )}
+                  <Paper
+                    variant="outlined"
+                    sx={{
+                      p: 2,
+                      backgroundColor: "action.hover",
+                      borderRadius: 1,
+                    }}
+                  >
+                    {parsedDetails ? (
+                      renderRuleDetails(parsedDetails)
+                    ) : (
+                      <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
+                        {data.annotation_description}
+                      </Typography>
+                    )}
+                  </Paper>
+                </Box>
+              );
+            })()}
 
             {/* Eval Instructions */}
             {isLoadingEval ? (
