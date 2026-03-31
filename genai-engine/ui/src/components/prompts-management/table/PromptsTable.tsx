@@ -17,6 +17,7 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import TableSortLabel from "@mui/material/TableSortLabel";
+import Tooltip from "@mui/material/Tooltip";
 import React, { useCallback, useMemo, useState } from "react";
 
 import type { PromptsTableProps } from "../types";
@@ -169,6 +170,7 @@ const PromptsTable = ({ prompts, sortColumn, sortDirection, onSort, onExpandToFu
               otherTags.slice(0, 3 - displayTags.length).forEach((tag) => {
                 displayTags.push({ label: tag, isProduction: false });
               });
+              const hiddenTagCount = tags.length - displayTags.length;
 
               return (
                 <TableRow
@@ -213,6 +215,16 @@ const PromptsTable = ({ prompts, sortColumn, sortDirection, onSort, onExpandToFu
                           sx={{ height: 20, fontSize: "0.75rem" }}
                         />
                       ))}
+                      {hiddenTagCount > 0 && (
+                        <Tooltip title={tags.filter((t) => !displayTags.some((d) => d.label === t)).join(", ")}>
+                          <Chip
+                            label={`+${hiddenTagCount}`}
+                            size="small"
+                            variant="outlined"
+                            sx={{ height: 20, fontSize: "0.75rem" }}
+                          />
+                        </Tooltip>
+                      )}
                     </Box>
                   </TableCell>
                   <TableCell>
