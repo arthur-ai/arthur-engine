@@ -9,6 +9,7 @@ from arthur_client.api_bindings import (
     AlertRulesV1Api,
     AlertsV1Api,
     ApiClient,
+    CompliancePolicyCheckJobSpec,
     ConnectorCheckJobSpec,
     ConnectorsV1Api,
     CreateModelLinkTaskJobSpec,
@@ -25,6 +26,7 @@ from arthur_client.api_bindings import (
     MetricsCalculationJobSpec,
     MetricsV1Api,
     ModelsV1Api,
+    PoliciesV1Api,
     RegenerateTaskValidationKeyJobSpec,
     ScheduleJobsJobSpec,
     SchemaInspectionJobSpec,
@@ -46,6 +48,7 @@ from pydantic import StrictBytes
 
 from config import Config
 from job_executors.alert_check_executor import AlertCheckExecutor
+from job_executors.compliance_policy_check_executor import CompliancePolicyCheckExecutor
 from job_executors.connector_test_executor import ConnectorTestExecutor
 from job_executors.discover_agents_executor import DiscoverAgentsExecutor
 from job_executors.fetch_data_executor import FetchDataExecutor
@@ -133,6 +136,7 @@ class JobExecutor:
         self.custom_aggregation_tests_client = CustomAggregationTestsV1Api(client)
         self.agents_client = AgentsV1Api(client)
         self.data_planes_client = DataPlanesV1Api(client)
+        self.policies_client = PoliciesV1Api(client)
 
         self.logger: logging.Logger = logging.getLogger(str(uuid4()))
         self.logger.setLevel(logging.INFO)
@@ -375,6 +379,21 @@ class JobExecutor:
                             self.logger,
                             genai_engine_url,
                             genai_engine_api_key,
+                        ).execute(job, job.job_spec.actual_instance)
+                    case JobKind.COMPLIANCE_POLICY_CHECK:
+                        if not isinstance(
+                            job.job_spec.actual_instance,
+                            CompliancePolicyCheckJobSpec,
+                        ):
+                            raise ValueError(
+                                f"Expected CompliancePolicyCheckJobSpec type, got {type(job.job_spec.actual_instance)}.",
+                            )
+                        CompliancePolicyCheckExecutor(
+                            self.policies_client,
+                            self.alert_rules_client,
+                            self.alerts_client,
+                            self.metrics_client,
+                            self.logger,
                         ).execute(job, job.job_spec.actual_instance)
                     case _:
                         raise NotImplementedError(f"Job type {job.kind} not supported.")
