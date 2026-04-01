@@ -1924,6 +1924,40 @@ class TestSubagentContextPropagation:
         # With 0s timeout, the file is immediately considered stale
         assert tracer._claim_pending_agent_context() is None
 
+    def test_claim_matches_by_prompt(self, tmp_path, monkeypatch):
+        """Subagent claiming with a matching prompt should pick the right context."""
+        monkeypatch.setattr(tracer, "_PENDING_AGENT_DIR", tmp_path / "pending_agent")
+        tracer._write_pending_agent_context("s", "trace-A", "span-A", agent_prompt="search the web")
+        tracer._write_pending_agent_context("s", "trace-B", "span-B", agent_prompt="write some code")
+        # Claiming with "write some code" should get span-B, not the newer span-A
+        ctx = tracer._claim_pending_agent_context(prompt="write some code")
+        assert ctx is not None
+        assert ctx["parent_span_id"] == "span-B"
+
+    def test_claim_parallel_agents_no_cross_contamination(self, tmp_path, monkeypatch):
+        """Two parallel agents with distinct prompts each claim their own context."""
+        monkeypatch.setattr(tracer, "_PENDING_AGENT_DIR", tmp_path / "pending_agent")
+        tracer._write_pending_agent_context("s", "trace-1", "span-1", agent_prompt="task one")
+        tracer._write_pending_agent_context("s", "trace-2", "span-2", agent_prompt="task two")
+
+        ctx1 = tracer._claim_pending_agent_context(prompt="task one")
+        ctx2 = tracer._claim_pending_agent_context(prompt="task two")
+
+        assert ctx1 is not None and ctx1["parent_span_id"] == "span-1"
+        assert ctx2 is not None and ctx2["parent_span_id"] == "span-2"
+        assert not any((tmp_path / "pending_agent").iterdir())
+
+    def test_claim_falls_back_to_newest_when_no_prompt_match(self, tmp_path, monkeypatch):
+        """With no prompt match, fall back to newest-first (legacy behaviour)."""
+        monkeypatch.setattr(tracer, "_PENDING_AGENT_DIR", tmp_path / "pending_agent")
+        # Write two contexts without prompts (simulates older tracer versions)
+        tracer._write_pending_agent_context("s", "trace-old", "span-old")
+        tracer._write_pending_agent_context("s", "trace-new", "span-new")
+        ctx = tracer._claim_pending_agent_context(prompt="unrelated prompt")
+        assert ctx is not None
+        # newest-first fallback means span-new is claimed
+        assert ctx["parent_span_id"] == "span-new"
+
     def test_subagent_inherits_trace_id(self, tmp_path, monkeypatch):
         """UserPromptSubmit for a new session should inherit the parent trace ID."""
         monkeypatch.setattr(tracer, "STATE_DIR", tmp_path / "tracer")
@@ -1933,7 +1967,9 @@ class TestSubagentContextPropagation:
 
         parent_trace_id = "aabbccddeeff00112233445566778899"
         parent_span_id = "0011223344556677"
-        tracer._write_pending_agent_context("parent-sess", parent_trace_id, parent_span_id)
+        tracer._write_pending_agent_context(
+            "parent-sess", parent_trace_id, parent_span_id, agent_prompt="do the task"
+        )
 
         exported: list[dict] = []
 
@@ -1985,12 +2021,27 @@ class TestSubagentContextPropagation:
         }
         tracer.handle_pre_tool(data, {"api_key": "k", "task_id": "t", "endpoint": "https://x"})
 
-        # A pending context file should now exist
-        ctx = tracer._claim_pending_agent_context()
+        # A pending context file should now exist, with the prompt stored
+        ctx = tracer._claim_pending_agent_context(prompt="go do stuff")
         assert ctx is not None
         assert ctx["parent_trace_id"] == trace_id
+        assert ctx["agent_prompt"] == "go do stuff"
         # The pre-allocated span ID should be stored in pending_tools
         assert "pre_allocated_span_id" in state["pending_tools"]["Agent"]
+
+    def test_agent_span_kind_is_agent(self, tmp_path, monkeypatch):
+        """Tool spans for the Agent tool should have AGENT span kind."""
+        rec = tracer._build_tool_span_record(
+            tool_name="Agent",
+            tool_input={"prompt": "do something", "description": "helper", "subagent_type": "general-purpose"},
+            tool_response="done",
+            start_ns=1000,
+            end_ns=2000,
+            trace_id="a" * 32,
+            root_span_id="b" * 16,
+        )
+        assert rec["attributes"]["openinference.span.kind"] == "AGENT"
+        assert rec["attributes"]["tool.json_schema"]  # schema should be attached
 
 
 # ---------------------------------------------------------------------------
