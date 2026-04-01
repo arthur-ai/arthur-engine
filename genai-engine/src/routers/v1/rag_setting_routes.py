@@ -3,6 +3,7 @@ from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
 from fastapi import APIRouter, Depends, Path, Query
+from pydantic import AfterValidator
 from sqlalchemy.orm import Session
 from starlette.responses import Response
 from starlette.status import HTTP_204_NO_CONTENT
@@ -35,7 +36,7 @@ from schemas.response_schemas import (
     RagSearchSettingConfigurationResponse,
     RagSearchSettingConfigurationVersionResponse,
 )
-from utils.url_encoding import decoded_tag
+from utils.url_encoding import decode_path_param
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 
@@ -318,7 +319,7 @@ def delete_rag_search_setting_version(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
 def get_rag_search_setting_version_by_tag(
-    tag: Annotated[str, Depends(decoded_tag)],
+    tag: Annotated[str, Path(), AfterValidator(decode_path_param)],
     setting_configuration_id: UUID = Path(
         description="ID of RAG search setting configuration.",
     ),

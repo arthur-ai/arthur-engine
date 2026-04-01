@@ -6759,10 +6759,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to retrieve."
-                        },
-                        "description": "The name of the prompt to retrieve."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "prompt_version",
@@ -6828,10 +6826,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to delete."
-                        },
-                        "description": "The name of the prompt to delete."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "prompt_version",
@@ -7069,10 +7065,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to retrieve."
-                        },
-                        "description": "The name of the prompt to retrieve."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -7433,10 +7427,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to run."
-                        },
-                        "description": "The name of the prompt to run."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "prompt_version",
@@ -7524,10 +7516,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to render."
-                        },
-                        "description": "The name of the prompt to render."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "prompt_version",
@@ -7610,10 +7600,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to save."
-                        },
-                        "description": "The name of the prompt to save."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -7678,10 +7666,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to delete."
-                        },
-                        "description": "The name of the prompt to delete."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -7731,10 +7717,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to retrieve."
-                        },
-                        "description": "The name of the prompt to retrieve."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "tag",
@@ -7742,10 +7726,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Tag",
-                            "description": "The tag of the prompt to retrieve."
-                        },
-                        "description": "The tag of the prompt to retrieve."
+                            "title": "Tag"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -7802,10 +7784,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to retrieve."
-                        },
-                        "description": "The name of the prompt to retrieve."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "prompt_version",
@@ -7883,10 +7863,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to retrieve."
-                        },
-                        "description": "The name of the prompt to retrieve."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "prompt_version",
@@ -7905,10 +7883,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Tag",
-                            "description": "The tag to remove from the prompt version."
-                        },
-                        "description": "The tag to remove from the prompt version."
+                            "title": "Tag"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -10317,6 +10293,15 @@
                 ],
                 "parameters": [
                     {
+                        "name": "tag",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Tag"
+                        }
+                    },
+                    {
                         "name": "setting_configuration_id",
                         "in": "path",
                         "required": true,
@@ -10327,17 +10312,6 @@
                             "title": "Setting Configuration Id"
                         },
                         "description": "ID of RAG search setting configuration."
-                    },
-                    {
-                        "name": "tag",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "description": "Tag to fetch the version by.",
-                            "title": "Tag"
-                        },
-                        "description": "Tag to fetch the version by."
                     }
                 ],
                 "responses": {
@@ -10384,10 +10358,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to retrieve."
-                        },
-                        "description": "The name of the llm eval to retrieve."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "eval_version",
@@ -10453,10 +10425,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to delete."
-                        },
-                        "description": "The name of the llm eval to delete."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "eval_version",
@@ -10517,10 +10487,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to retrieve."
-                        },
-                        "description": "The name of the llm eval to retrieve."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -10911,10 +10879,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to run."
-                        },
-                        "description": "The name of the llm eval to run."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "eval_version",
@@ -10992,10 +10958,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to save."
-                        },
-                        "description": "The name of the llm eval to save."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -11060,10 +11024,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to delete."
-                        },
-                        "description": "The name of the llm eval to delete."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -11113,10 +11075,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to retrieve."
-                        },
-                        "description": "The name of the llm eval to retrieve."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "tag",
@@ -11124,10 +11084,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Tag",
-                            "description": "The tag of the llm eval to retrieve."
-                        },
-                        "description": "The tag of the llm eval to retrieve."
+                            "title": "Tag"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -11184,10 +11142,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to retrieve."
-                        },
-                        "description": "The name of the llm eval to retrieve."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "eval_version",
@@ -11265,10 +11221,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to retrieve."
-                        },
-                        "description": "The name of the llm eval to retrieve."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "eval_version",
@@ -11287,10 +11241,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Tag",
-                            "description": "The tag to remove from the llm eval version."
-                        },
-                        "description": "The tag to remove from the llm eval version."
+                            "title": "Tag"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -15423,6 +15375,15 @@
                 ],
                 "parameters": [
                     {
+                        "name": "eval_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Eval Name"
+                        }
+                    },
+                    {
                         "name": "transform_id",
                         "in": "path",
                         "required": true,
@@ -15433,17 +15394,6 @@
                             "description": "The id of the transform to get the continuous eval variables and mappings for."
                         },
                         "description": "The id of the transform to get the continuous eval variables and mappings for."
-                    },
-                    {
-                        "name": "eval_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to get the continuous eval variables and mappings for."
-                        },
-                        "description": "The name of the llm eval to get the continuous eval variables and mappings for."
                     },
                     {
                         "name": "eval_version",
