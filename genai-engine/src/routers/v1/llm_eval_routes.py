@@ -4,7 +4,6 @@ import jinja2
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.task_eval_schemas import LLMEval
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Response, status
-from pydantic import AfterValidator
 from sqlalchemy.orm import Session
 
 from dependencies import (
@@ -29,7 +28,7 @@ from schemas.response_schemas import (
     LLMEvalsVersionListResponse,
     LLMGetAllMetadataListResponse,
 )
-from utils.url_encoding import decode_path_param
+from utils.url_encoding import decoded_eval_name, decoded_tag
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 
@@ -49,7 +48,7 @@ llm_eval_routes = APIRouter(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
 def get_llm_eval(
-    eval_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
+    eval_name: Annotated[str, Depends(decoded_eval_name)],
     eval_version: str = Path(
         ...,
         description="The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
@@ -94,7 +93,7 @@ def get_all_llm_eval_versions(
         LLMGetVersionsFilterRequest,
         Depends(llm_get_versions_filter_parameters),
     ],
-    eval_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
+    eval_name: Annotated[str, Depends(decoded_eval_name)],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
@@ -162,7 +161,7 @@ def get_all_llm_evals(
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def run_saved_llm_eval(
     completion_request: BaseCompletionRequest,
-    eval_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
+    eval_name: Annotated[str, Depends(decoded_eval_name)],
     eval_version: str = Path(
         ...,
         description="The version of the llm eval to run. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
@@ -197,7 +196,7 @@ def run_saved_llm_eval(
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def save_llm_eval(
     eval_config: CreateEvalRequest,
-    eval_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
+    eval_name: Annotated[str, Depends(decoded_eval_name)],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
@@ -225,7 +224,7 @@ def save_llm_eval(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def delete_llm_eval(
-    eval_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
+    eval_name: Annotated[str, Depends(decoded_eval_name)],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
@@ -255,7 +254,7 @@ def delete_llm_eval(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def soft_delete_llm_eval_version(
-    eval_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
+    eval_name: Annotated[str, Depends(decoded_eval_name)],
     eval_version: str = Path(
         ...,
         description="The version of the llm eval to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
@@ -293,8 +292,8 @@ def soft_delete_llm_eval_version(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
 def get_llm_eval_by_tag(
-    eval_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
-    tag: Annotated[str, Path(), AfterValidator(decode_path_param)],
+    eval_name: Annotated[str, Depends(decoded_eval_name)],
+    tag: Annotated[str, Depends(decoded_tag)],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
@@ -330,7 +329,7 @@ def get_llm_eval_by_tag(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def add_tag_to_llm_eval_version(
-    eval_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
+    eval_name: Annotated[str, Depends(decoded_eval_name)],
     eval_version: str = Path(
         ...,
         description="The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
@@ -374,8 +373,8 @@ def add_tag_to_llm_eval_version(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def delete_tag_from_llm_eval_version(
-    eval_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
-    tag: Annotated[str, Path(), AfterValidator(decode_path_param)],
+    eval_name: Annotated[str, Depends(decoded_eval_name)],
+    tag: Annotated[str, Depends(decoded_tag)],
     eval_version: str = Path(
         ...,
         description="The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
