@@ -6,6 +6,7 @@ from arthur_client.api_bindings import (
     Job,
     JobKind,
     JobsV1Api,
+    Model,
     ModelsV1Api,
     PatchJob,
     PostJob,
@@ -92,7 +93,7 @@ class ScheduleComplianceJobsExecutor:
         if not job.nonce:
             raise ValueError("Nonce expected for this job type.")
 
-    def _validate_new_schedule_job(self, model, new_job: PostJob) -> None:
+    def _validate_new_schedule_job(self, model: Model, new_job: PostJob) -> None:
         """Validates schedule job nonce is unique before submission to protect against race condition."""
         jobs_with_nonce = self.jobs_client.get_jobs(
             project_id=model.project_id,
@@ -138,7 +139,7 @@ def generate_next_compliance_job_series(
             job_spec=PostJobSpec(
                 ScheduleComplianceJobsJobSpec(scope_model_id=model_id),
             ),
-            ready_at=run_at,
+            ready_at=now + COMPLIANCE_CHECK_INTERVAL * k,
             nonce=hash_nonce(nonce),
             schedule_id=schedule_id,
         ),
