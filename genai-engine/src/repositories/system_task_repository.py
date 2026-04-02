@@ -7,6 +7,7 @@ from arthur_common.models.llm_model_providers import (
     ModelProvider,
     OpenAIMessage,
 )
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from db_models.task_models import DatabaseTask
@@ -27,6 +28,10 @@ from utils.constants import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Arbitrary fixed ID used as a PostgreSQL advisory lock key to serialize
+# system task initialization across concurrent workers/replicas.
+_SYSTEM_TASK_INIT_LOCK_ID = 8675309
 
 
 class SystemTaskRepository:
@@ -165,4 +170,26 @@ class SystemTaskRepository:
         self._create_chatbot_summarizer_prompt()
 
     def initialize_system_tasks(self) -> None:
-        self._create_chatbot_task()
+        # Use a non-blocking advisory lock so only the first worker runs the
+        # delete-and-recreate sequence. Other workers skip immediately.
+        logger.info("Acquiring system task initialization lock.")
+        result = self.db_session.execute(
+            text("SELECT pg_try_advisory_lock(:lock_id)"),
+            {"lock_id": _SYSTEM_TASK_INIT_LOCK_ID},
+        )
+        acquired = result.scalar()
+
+        if not acquired:
+            logger.info(
+                "System task initialization already in progress on another worker, skipping."
+            )
+            return
+
+        try:
+            self._create_chatbot_task()
+        finally:
+            self.db_session.execute(
+                text("SELECT pg_advisory_unlock(:lock_id)"),
+                {"lock_id": _SYSTEM_TASK_INIT_LOCK_ID},
+            )
+            logger.info("Released system task initialization lock.")
