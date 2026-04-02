@@ -10,6 +10,7 @@ from arthur_common.models.task_eval_schemas import (
     ListContinuousEvalsResponse,
 )
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from pydantic import AfterValidator
 from sqlalchemy.orm import Session
 
 from dependencies import (
@@ -33,7 +34,7 @@ from schemas.response_schemas import (
     AgenticAnnotationAnalyticsResponse,
     ContinuousEvalRerunResponse,
 )
-from utils.url_encoding import decoded_eval_name
+from utils.url_encoding import decode_path_param
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 
@@ -162,17 +163,21 @@ def list_continuous_eval_run_results(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
 def get_continuous_eval_variables_and_mappings(
-    eval_name: Annotated[str, Depends(decoded_eval_name)],
-    transform_id: UUID = Path(
-        ...,
-        description="The id of the transform to get the continuous eval variables and mappings for.",
-        title="Transform ID",
-    ),
-    eval_version: str = Path(
-        ...,
-        description="The version of the llm eval to get the continuous eval variables and mappings for.",
-        title="LLM Eval Version",
-    ),
+    transform_id: Annotated[
+        UUID,
+        Path(
+            description="The id of the transform to get the continuous eval variables and mappings for.",
+            title="Transform ID",
+        ),
+    ],
+    eval_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
+    eval_version: Annotated[
+        str,
+        Path(
+            description="The version of the llm eval to get the continuous eval variables and mappings for.",
+            title="LLM Eval Version",
+        ),
+    ],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
