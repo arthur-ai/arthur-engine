@@ -163,14 +163,16 @@ const PromptsTable = ({ prompts, sortColumn, sortDirection, onSort, onExpandToFu
           <TableBody>
             {sortedPrompts.map((promptMetadata) => {
               const tags = promptMetadata.tags ?? [];
-              const hasProduction = tags.some((tag) => tag.toLowerCase() === "production");
+              const productionTag = tags.find((tag) => tag.toLowerCase() === "production");
               const otherTags = tags.filter((tag) => tag.toLowerCase() !== "production");
               const displayTags: Array<{ label: string; isProduction: boolean }> = [];
-              if (hasProduction) displayTags.push({ label: "production", isProduction: true });
+              if (productionTag !== undefined) displayTags.push({ label: productionTag, isProduction: true });
               otherTags.slice(0, 3 - displayTags.length).forEach((tag) => {
                 displayTags.push({ label: tag, isProduction: false });
               });
-              const hiddenTagCount = tags.length - displayTags.length;
+              const displayedLabels = new Set(displayTags.map((d) => d.label));
+              const hiddenTags = tags.filter((t) => !displayedLabels.has(t));
+              const hiddenTagCount = hiddenTags.length;
 
               return (
                 <TableRow
@@ -216,7 +218,7 @@ const PromptsTable = ({ prompts, sortColumn, sortDirection, onSort, onExpandToFu
                         />
                       ))}
                       {hiddenTagCount > 0 && (
-                        <Tooltip title={tags.filter((t) => !displayTags.some((d) => d.label === t)).join(", ")}>
+                        <Tooltip title={hiddenTags.join(", ")}>
                           <Chip label={`+${hiddenTagCount}`} size="small" variant="outlined" sx={{ height: 20, fontSize: "0.75rem" }} />
                         </Tooltip>
                       )}

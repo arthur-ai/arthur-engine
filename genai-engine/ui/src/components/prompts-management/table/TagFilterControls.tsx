@@ -5,7 +5,7 @@ import Chip from "@mui/material/Chip";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import React, { useCallback } from "react";
+import React from "react";
 
 interface TagFilterControlsProps {
   availableProductionTag: boolean;
@@ -25,13 +25,6 @@ const TagFilterControls: React.FC<TagFilterControlsProps> = ({
   onClearAll,
 }) => {
   const hasAvailableTags = availableProductionTag || availableCustomTags.length > 0;
-
-  const handleTagClick = useCallback(
-    (tag: string) => {
-      onTagToggle(tag);
-    },
-    [onTagToggle]
-  );
 
   if (!hasAvailableTags) return null;
 
@@ -64,7 +57,7 @@ const TagFilterControls: React.FC<TagFilterControlsProps> = ({
           size="small"
           color="success"
           variant={selectedTags.includes(PRODUCTION_TAG) ? "filled" : "outlined"}
-          onClick={() => handleTagClick(PRODUCTION_TAG)}
+          onClick={() => onTagToggle(PRODUCTION_TAG)}
           sx={{ height: 24, fontSize: "0.75rem", cursor: "pointer" }}
         />
       )}
@@ -76,7 +69,7 @@ const TagFilterControls: React.FC<TagFilterControlsProps> = ({
           size="small"
           color="primary"
           variant={selectedTags.includes(tag) ? "filled" : "outlined"}
-          onClick={() => handleTagClick(tag)}
+          onClick={() => onTagToggle(tag)}
           sx={{ height: 24, fontSize: "0.75rem", cursor: "pointer" }}
         />
       ))}

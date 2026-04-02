@@ -12781,7 +12781,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.491
+ * @version 2.1.493
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -13819,8 +13819,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      */
     deleteTagFromAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionTagsTagDelete: (
       promptName: string,
-      tag: string,
       promptVersion: string,
+      tag: string,
       taskId: string,
       params: RequestParams = {}
     ) =>
@@ -13845,8 +13845,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      */
     deleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsTagDelete: (
       evalName: string,
-      tag: string,
       evalVersion: string,
+      tag: string,
       taskId: string,
       params: RequestParams = {}
     ) =>
