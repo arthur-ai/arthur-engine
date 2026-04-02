@@ -772,7 +772,7 @@ jobs:
           helm push arthur-ml-engine-${{ env.VERSION }}.tgz oci://registry-1.docker.io/arthurplatform
 
   push-tag:
-    needs: [push-all-cfts, push-all-helm-charts-to-github]
+    needs: [push-all-cfts, push-all-helm-charts]
     if: |
       contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
