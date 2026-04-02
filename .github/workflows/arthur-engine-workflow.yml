@@ -736,11 +736,12 @@ jobs:
           aws s3 sync ./deployment/cloudformation/ s3://${{ env.BUCKET_NAME }}/${{ env.TEMPLATES_DIRECTORY }}/templates/latest --acl public-read
 
   push-all-helm-charts:
-    needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
+    # needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]  # temporarily removed for manual testing
     environment: shared-protected-branch-secrets
     if: |
-      contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+      github.event_name == 'workflow_dispatch' ||
+      (contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev'))
     runs-on: ubuntu-latest
     permissions:
       packages: write
