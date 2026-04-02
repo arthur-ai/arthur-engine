@@ -3109,10 +3109,7 @@ export interface GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVer
    * @default 10
    */
   page_size?: number;
-  /**
-   * Prompt Name
-   * The name of the prompt to retrieve.
-   */
+  /** Prompt Name */
   promptName: string;
   /**
    * Sort the results (asc/desc)
@@ -3195,10 +3192,7 @@ export interface GetAllLlmEvalVersionsApiV1TasksTaskIdLlmEvalsEvalNameVersionsGe
    * Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).
    */
   created_before?: string | null;
-  /**
-   * LLM Eval Name
-   * The name of the llm eval to retrieve.
-   */
+  /** Eval Name */
   evalName: string;
   /**
    * Exclude Deleted
@@ -12852,10 +12846,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
-
- * @version 2.1.477
-
-
+ * @version 2.1.491
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
