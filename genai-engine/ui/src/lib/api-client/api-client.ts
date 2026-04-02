@@ -3171,6 +3171,11 @@ export interface GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Tags
+   * List of tags to filter for items that have any matching tag across any version.
+   */
+  tags?: string[] | null;
+  /**
    * Task Id
    * @format uuid
    */
@@ -3291,6 +3296,11 @@ export interface GetAllLlmEvalsApiV1TasksTaskIdLlmEvalsGetParams {
    * @default "desc"
    */
   sort?: PaginationSortMethod;
+  /**
+   * Tags
+   * List of tags to filter for items that have any matching tag across any version.
+   */
+  tags?: string[] | null;
   /**
    * Task Id
    * @format uuid
@@ -12771,7 +12781,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.491
+ * @version 2.1.493
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
