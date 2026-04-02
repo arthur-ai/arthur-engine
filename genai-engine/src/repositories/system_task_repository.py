@@ -169,27 +169,34 @@ class SystemTaskRepository:
         self._create_chatbot_prompt()
         self._create_chatbot_summarizer_prompt()
 
+    def _is_postgresql(self) -> bool:
+        return self.db_session.bind.dialect.name == "postgresql"
+
     def initialize_system_tasks(self) -> None:
         # Use a non-blocking advisory lock so only the first worker runs the
         # delete-and-recreate sequence. Other workers skip immediately.
-        logger.info("Acquiring system task initialization lock.")
-        result = self.db_session.execute(
-            text("SELECT pg_try_advisory_lock(:lock_id)"),
-            {"lock_id": _SYSTEM_TASK_INIT_LOCK_ID},
-        )
-        acquired = result.scalar()
-
-        if not acquired:
-            logger.info(
-                "System task initialization already in progress on another worker, skipping."
+        # Advisory locks are PostgreSQL-specific; skip locking on other backends
+        # (e.g. SQLite in tests).
+        if self._is_postgresql():
+            logger.info("Acquiring system task initialization lock.")
+            result = self.db_session.execute(
+                text("SELECT pg_try_advisory_lock(:lock_id)"),
+                {"lock_id": _SYSTEM_TASK_INIT_LOCK_ID},
             )
-            return
+            acquired = result.scalar()
+
+            if not acquired:
+                logger.info(
+                    "System task initialization already in progress on another worker, skipping."
+                )
+                return
 
         try:
             self._create_chatbot_task()
         finally:
-            self.db_session.execute(
-                text("SELECT pg_advisory_unlock(:lock_id)"),
-                {"lock_id": _SYSTEM_TASK_INIT_LOCK_ID},
-            )
-            logger.info("Released system task initialization lock.")
+            if self._is_postgresql():
+                self.db_session.execute(
+                    text("SELECT pg_advisory_unlock(:lock_id)"),
+                    {"lock_id": _SYSTEM_TASK_INIT_LOCK_ID},
+                )
+                logger.info("Released system task initialization lock.")
