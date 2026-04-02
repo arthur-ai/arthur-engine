@@ -86,15 +86,9 @@ export const EvaluatorSelector = withFieldGroup({
           onNameChange={handleNameChange}
           onVersionChange={handleVersionChange}
           isVersionsLoading={versions.isLoading}
-          // TODO: EvaluatorSelectorUI in @arthur/shared-components does not declare
-          // isEvaluatorsLoading or onSearchChange in EvaluatorSelectorUIProps — these
-          // props cause a TS2322 type error. Remove once the shared-components package
-          // is updated to include them, or remove them if they are no longer needed.
-          // @ts-expect-error isEvaluatorsLoading not yet in EvaluatorSelectorUIProps
           isEvaluatorsLoading={evaluators.isLoading}
           onCreateNew={() => setOpenCreateEvalModal(true)}
           isCreateLoading={createEval.isPending}
-          // @ts-expect-error onSearchChange not yet in EvaluatorSelectorUIProps
           onSearchChange={setSearchTerm}
         />
         <EvalFormModal
