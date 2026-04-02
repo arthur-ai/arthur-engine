@@ -111,6 +111,8 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist
+          verbose: true
+          attestations: false
 
   # ── create git tag (stable releases only) ─────────────────────────────────
   create-git-tag:
