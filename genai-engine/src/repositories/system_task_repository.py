@@ -170,7 +170,10 @@ class SystemTaskRepository:
         self._create_chatbot_summarizer_prompt()
 
     def _is_postgresql(self) -> bool:
-        return self.db_session.bind.dialect.name == "postgresql"
+        return (
+            self.db_session.bind is not None
+            and self.db_session.bind.dialect.name == "postgresql"
+        )
 
     def initialize_system_tasks(self) -> None:
         # Use a non-blocking advisory lock so only the first worker runs the
