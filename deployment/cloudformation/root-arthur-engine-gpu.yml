@@ -189,6 +189,12 @@ Parameters:
     Description: 'GenAI Engine application ingress DNS URL (e.g. https://arthur-genai-engine.mydomain.com)'
     AllowedPattern: 'https://.+'
     ConstraintDescription: 'A valid GenAI Engine service DNS URL must be provided.'
+  ScopeFeIngressURI:
+    Type: String
+    Description: 'Arthur Platform (Scope) frontend URL for this deployment (e.g. https://app.mydomain.arthur.ai)'
+    Default: ''
+    AllowedPattern: '(https://.+)?'
+    ConstraintDescription: 'Must be empty or a valid https URL (e.g. https://app.mydomain.arthur.ai)'
   GenaiEngineRoute53HostedZoneId:
     Type: String
     Description: '(Optional) The ID of the existing Route 53 hosted zone where A record of Arthur GenAI Engine DNS name is to be created'
@@ -478,6 +484,7 @@ Metadata:
           - AlarmSNSTopicArn
           - GenaiEngineLoadBalancerScheme
           - GenaiEngineIngressURL
+          - ScopeFeIngressURI
           - GenaiEngineLoadBalancerCertificateARN
           - GenaiEngineECSClusterGPUInstanceImageID
           - GenaiEngineOpenAIProvider
@@ -690,6 +697,8 @@ Metadata:
         default: 'GenAI Engine Load Balancer Scheme'
       GenaiEngineIngressURL:
         default: 'GenAI Engine Application DNS URL'
+      ScopeFeIngressURI:
+        default: 'Arthur Platform (Scope) Frontend URL'
       GenaiEngineRoute53HostedZoneId:
         default: 'GenAI Engine Route 53 Hosted Zone ID'
       GenaiEngineRoute53RecordName:
@@ -966,6 +975,7 @@ Resources:
         GenaiEnginePostgresClientConnectionPoolSize: !Ref GenaiEnginePostgresClientConnectionPoolSize
         GenaiEnginePostgresClientConnectionPoolMaxOverflow: !Ref GenaiEnginePostgresClientConnectionPoolMaxOverflow
         GenaiEngineIngressURL: !Ref GenaiEngineIngressURL
+        ScopeFeIngressURI: !Ref ScopeFeIngressURI
         GenaiEnginePostgresSSLCertDownloadURL: !Ref PostgresSSLCertDownloadURL
         GenaiEngineContainerImageLocation: !Ref GenaiEngineContainerImageLocation
         ContainerRepositoryCredentialRequired: !If [ ContainerRepositoryCredentialRequired, 'true', 'false' ]

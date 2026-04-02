@@ -5,6 +5,8 @@
 postgresBYOEndpoint: ""
 # GenAI Engine application ingress DNS URL (e.g. arthur-genai-engine.mydomain.com)
 genaiEngineIngressURL: ""
+# Arthur Platform (Scope) frontend URL for this deployment (e.g. https://app.mydomain.arthur.ai)
+scopeFeIngressURI: ""
 # Provider of OpenAI LLMs (must be set to 'Azure' or 'OpenAI')
 genaiEngineOpenAIProvider: "Azure"
 

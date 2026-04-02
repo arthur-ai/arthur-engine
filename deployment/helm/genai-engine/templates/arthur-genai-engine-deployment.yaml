@@ -86,6 +86,10 @@ spec:
               value: kubernetes
             - name: GENAI_ENGINE_INGRESS_URI
               value: "https://{{ .Values.genaiEngineIngressURL }}"
+            {{- if .Values.scopeFeIngressURI }}
+            - name: SCOPE_FE_INGRESS_URI
+              value: "{{ .Values.scopeFeIngressURI }}"
+            {{- end }}
             - name: GENAI_ENGINE_SENSITIVE_DATA_CHECK_MAX_TOKEN_LIMIT
               value: "{{ .Values.genaiEngineSensitiveDataCheckMaxTokenLimit }}"
             - name: GENAI_ENGINE_HALLUCINATION_CHECK_MAX_TOKEN_LIMIT
@@ -164,7 +168,7 @@ spec:
           secret:
             secretName: {{ .Values.gcpDiscoveryConfig.googleCredentialsSecretName }}
             defaultMode: 420
-      {{- end }}      
+      {{- end }}
       {{- with .Values.arthurGenaiEngineDeployment.genaiEnginePodNodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

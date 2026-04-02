@@ -35,6 +35,7 @@ helm upgrade --install -n $K8S_NAMESPACE -f values.yaml arthur-engine . \
 --set arthur-genai-engine.genaiEngineVersion=$ARTHUR_ENGINE_VERSION \
 --set arthur-genai-engine.postgresBYOEndpoint=$POSTGRES_ENDPOINT \
 --set arthur-genai-engine.genaiEngineIngressURL=$GENAI_ENGINE_INGRESS_URL \
+--set arthur-genai-engine.scopeFeIngressURI=$SCOPE_FE_INGRESS_URI \
 --set arthur-genai-engine.genaiEngineOpenAIProvider=$GENAI_ENGINE_OPENAI_PROVIDER \
 --set arthur-genai-engine.gpuEnabled=true \
 --set arthur-genai-engine.genaiEngineDeploymentType=daemonset \

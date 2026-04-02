@@ -60,6 +60,12 @@ Parameters:
   GenaiEngineIngressURL:
     Type: String
     Description: 'GenAI Engine ingress DNS URL'
+  ScopeFeIngressURI:
+    Type: String
+    Description: 'Arthur Platform (Scope) frontend URL for this deployment (e.g. https://app.mydomain.arthur.ai)'
+    Default: ''
+    AllowedPattern: '(https://.+)?'
+    ConstraintDescription: 'Must be empty or a valid https URL (e.g. https://app.mydomain.arthur.ai)'
   GenaiEnginePostgresSSLCertDownloadURL:
     Type: String
     Description: 'GenAI Engine Postgres SSL certificate download URL (must be an HTTPS endpoint)'
@@ -242,6 +248,8 @@ Resources:
               Value: !Ref GenaiEnginePostgresDatabaseName
             - Name: 'GENAI_ENGINE_INGRESS_URI'
               Value: !Ref GenaiEngineIngressURL
+            - Name: 'SCOPE_FE_INGRESS_URI'
+              Value: !Ref ScopeFeIngressURI
             - Name: 'POSTGRES_SSL_CERT_DOWNLOAD_URL'
               Value: !Ref GenaiEnginePostgresSSLCertDownloadURL
             - Name: 'GENAI_ENGINE_API_ONLY_MODE_ENABLED'
