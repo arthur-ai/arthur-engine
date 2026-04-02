@@ -735,7 +735,7 @@ jobs:
           aws s3 sync ./deployment/cloudformation/ s3://${{ env.BUCKET_NAME }}/${{ env.TEMPLATES_DIRECTORY }}/templates/${{ env.VERSION }} --acl public-read
           aws s3 sync ./deployment/cloudformation/ s3://${{ env.BUCKET_NAME }}/${{ env.TEMPLATES_DIRECTORY }}/templates/latest --acl public-read
 
-  push-all-helm-charts-to-github:
+  push-all-helm-charts:
     needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
     environment: shared-protected-branch-secrets
     if: |
@@ -765,10 +765,10 @@ jobs:
         run: |
           helm package ${CHART_PATH_GENAI_ENGINE} --version ${{ env.VERSION }} --app-version ${{ env.VERSION }}
           helm push arthur-genai-engine-${{ env.VERSION }}.tgz oci://ghcr.io/${{ github.repository }}/${{ env.CHART_NAMESPACE }}
-          helm push arthur-genai-engine-${{ env.VERSION }}.tgz oci://registry-1.docker.io/arthuraiplatform
+          helm push arthur-genai-engine-${{ env.VERSION }}.tgz oci://registry-1.docker.io/arthurplatform
           helm package ${CHART_PATH_ML_ENGINE} --version ${{ env.VERSION }} --app-version ${{ env.VERSION }}
           helm push arthur-ml-engine-${{ env.VERSION }}.tgz oci://ghcr.io/${{ github.repository }}/${{ env.CHART_NAMESPACE }}
-          helm push arthur-ml-engine-${{ env.VERSION }}.tgz oci://registry-1.docker.io/arthuraiplatform
+          helm push arthur-ml-engine-${{ env.VERSION }}.tgz oci://registry-1.docker.io/arthurplatform
 
   push-tag:
     needs: [push-all-cfts, push-all-helm-charts-to-github]
