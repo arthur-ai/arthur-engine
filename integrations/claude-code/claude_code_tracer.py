@@ -164,12 +164,15 @@ def _write_pending_agent_context(
     parent_session_id: str,
     parent_trace_id: str,
     parent_span_id: str,
+    agent_prompt: str = "",
 ) -> None:
     """Write a side-channel file so the next subagent can inherit this trace.
 
     Called from handle_pre_tool when an Agent tool invocation is detected.
     The file is keyed by session+span so parallel agent invocations in the
-    same session each get their own file.
+    same session each get their own file.  ``agent_prompt`` is stored so that
+    ``_claim_pending_agent_context`` can match the exact context for a given
+    subagent when multiple agents are running in parallel.
     """
     _PENDING_AGENT_DIR.mkdir(parents=True, exist_ok=True)
     path = _PENDING_AGENT_DIR / f"{parent_session_id}_{parent_span_id}.json"
@@ -180,17 +183,25 @@ def _write_pending_agent_context(
                 "parent_trace_id": parent_trace_id,
                 "parent_span_id": parent_span_id,
                 "created_ns": time.time_ns(),
+                "agent_prompt": agent_prompt,
             }
         )
     )
 
 
-def _claim_pending_agent_context() -> Optional[dict]:
-    """Claim the most recent unclaimed subagent context, if any.
+def _claim_pending_agent_context(prompt: str = "") -> Optional[dict]:
+    """Claim the pending subagent context that matches this session, if any.
 
     Called from handle_user_prompt_submit when a new session is initialised.
     Returns the context dict (with ``parent_trace_id`` and ``parent_span_id``)
     or None.  Claiming removes the file so no other session can use it.
+
+    When ``prompt`` is provided (the subagent's own prompt text) we first try
+    to find an exact match against ``agent_prompt`` stored in each context
+    file.  This prevents parallel agent invocations from claiming each other's
+    contexts.  If no exact match is found we fall back to newest-first so that
+    contexts written by older tracer versions (which lack ``agent_prompt``) are
+    still claimed.
     """
     if not _PENDING_AGENT_DIR.exists():
         return None
@@ -208,14 +219,26 @@ def _claim_pending_agent_context() -> Optional[dict]:
     if not candidates:
         return None
 
-    # Newest first — grab the most recently written unclaimed context.
+    # Sort newest-first once; used by both the prompt-match pass and fallback.
     candidates.sort(key=lambda x: x[0], reverse=True)
+
+    # Pass 1: exact prompt match — eliminates parallel-agent races.
+    if prompt:
+        for _, path, ctx in candidates:
+            if ctx.get("agent_prompt", "") == prompt:
+                try:
+                    path.unlink()
+                    return ctx
+                except FileNotFoundError:
+                    # Another process claimed it first; keep scanning.
+                    continue
+
+    # Pass 2: fallback — newest unclaimed (handles legacy files without agent_prompt).
     for _, path, ctx in candidates:
         try:
             path.unlink()
             return ctx
         except FileNotFoundError:
-            # Another process claimed it first; try the next one.
             continue
     return None
 
@@ -731,6 +754,17 @@ TOOL_SCHEMAS: dict[str, dict] = {
         },
         "required": ["pattern"],
     },
+    "Agent": {
+        "type": "object",
+        "properties": {
+            "description": {"type": "string"},
+            "prompt": {"type": "string"},
+            "subagent_type": {"type": "string"},
+            "run_in_background": {"type": "boolean"},
+            "isolation": {"type": "string"},
+        },
+        "required": ["description", "prompt"],
+    },
     "Task": {
         "type": "object",
         "properties": {
@@ -1107,7 +1141,7 @@ def _build_tool_span_record(
     """
     if tool_name in RETRIEVER_TOOLS:
         span_kind_str = "RETRIEVER"
-    elif tool_name == "Task":
+    elif tool_name in ("Agent", "Task"):
         span_kind_str = "AGENT"
     else:
         span_kind_str = "TOOL"
@@ -1206,7 +1240,8 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
 
         # If a parent session pre-registered an Agent invocation, inherit its
         # trace context so this subagent's spans are nested inside the parent trace.
-        parent_ctx = _claim_pending_agent_context()
+        # Pass the prompt so parallel agents can each claim their own context.
+        parent_ctx = _claim_pending_agent_context(prompt=prompt)
         if parent_ctx:
             state["inherited_trace_id"] = parent_ctx["parent_trace_id"]
             state["parent_agent_span_id"] = parent_ctx["parent_span_id"]
@@ -1334,10 +1369,14 @@ def handle_pre_tool(data: dict, config: dict) -> None:
     if tool_name == "Agent" and current_trace:
         agent_span_id = _new_span_id()
         pending_entry["pre_allocated_span_id"] = agent_span_id
+        agent_prompt = (
+            tool_input.get("prompt", "") if isinstance(tool_input, dict) else ""
+        )
         _write_pending_agent_context(
             parent_session_id=session_id,
             parent_trace_id=current_trace["trace_id"],
             parent_span_id=agent_span_id,
+            agent_prompt=agent_prompt,
         )
 
     state.setdefault("pending_tools", {})[tool_name] = pending_entry
