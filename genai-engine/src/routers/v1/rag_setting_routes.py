@@ -319,10 +319,11 @@ def delete_rag_search_setting_version(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
 def get_rag_search_setting_version_by_tag(
+    setting_configuration_id: Annotated[
+        UUID,
+        Path(description="ID of RAG search setting configuration."),
+    ],
     tag: Annotated[str, Path(), AfterValidator(decode_path_param)],
-    setting_configuration_id: UUID = Path(
-        description="ID of RAG search setting configuration.",
-    ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> RagSearchSettingConfigurationVersionResponse:

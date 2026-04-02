@@ -14392,8 +14392,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     getContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvalsTransformsTransformIdLlmEvalsEvalNameVersionsEvalVersionVariablesGet: (
-      evalName: string,
       transformId: string,
+      evalName: string,
       evalVersion: string,
       taskId: string,
       params: RequestParams = {}
@@ -15094,7 +15094,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/api/v1/rag_search_settings/{setting_configuration_id}/versions/tags/{tag}
      * @secure
      */
-    getRagSearchSettingVersionByTag: (tag: string, settingConfigurationId: string, params: RequestParams = {}) =>
+    getRagSearchSettingVersionByTag: (settingConfigurationId: string, tag: string, params: RequestParams = {}) =>
       this.request<GetRagSearchSettingVersionByTagData, GetRagSearchSettingVersionByTagError>({
         path: `/api/v1/rag_search_settings/${settingConfigurationId}/versions/tags/${tag}`,
         method: "GET",

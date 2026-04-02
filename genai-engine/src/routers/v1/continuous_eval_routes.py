@@ -163,17 +163,21 @@ def list_continuous_eval_run_results(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
 def get_continuous_eval_variables_and_mappings(
+    transform_id: Annotated[
+        UUID,
+        Path(
+            description="The id of the transform to get the continuous eval variables and mappings for.",
+            title="Transform ID",
+        ),
+    ],
     eval_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
-    transform_id: UUID = Path(
-        ...,
-        description="The id of the transform to get the continuous eval variables and mappings for.",
-        title="Transform ID",
-    ),
-    eval_version: str = Path(
-        ...,
-        description="The version of the llm eval to get the continuous eval variables and mappings for.",
-        title="LLM Eval Version",
-    ),
+    eval_version: Annotated[
+        str,
+        Path(
+            description="The version of the llm eval to get the continuous eval variables and mappings for.",
+            title="LLM Eval Version",
+        ),
+    ],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
