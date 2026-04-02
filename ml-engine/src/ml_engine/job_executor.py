@@ -28,6 +28,7 @@ from arthur_client.api_bindings import (
     ModelsV1Api,
     PoliciesV1Api,
     RegenerateTaskValidationKeyJobSpec,
+    ScheduleComplianceJobsJobSpec,
     ScheduleJobsJobSpec,
     SchemaInspectionJobSpec,
     TasksV1Api,
@@ -57,6 +58,7 @@ from job_executors.metrics_calculation_executor import (
     CustomAggregationTestExecutor,
     MetricsCalculationExecutor,
 )
+from job_executors.schedule_compliance_jobs_executor import ScheduleComplianceJobsExecutor
 from job_executors.schedule_jobs_executor import ScheduleJobsExecutor
 from job_executors.schema_inference_executor import SchemaInferenceExecutor
 from job_executors.task_management_job_executors import (
@@ -393,6 +395,19 @@ class JobExecutor:
                             self.alert_rules_client,
                             self.alerts_client,
                             self.metrics_client,
+                            self.logger,
+                        ).execute(job, job.job_spec.actual_instance)
+                    case JobKind.SCHEDULE_COMPLIANCE_JOBS:
+                        if not isinstance(
+                            job.job_spec.actual_instance,
+                            ScheduleComplianceJobsJobSpec,
+                        ):
+                            raise ValueError(
+                                f"Expected ScheduleComplianceJobsJobSpec type, got {type(job.job_spec.actual_instance)}.",
+                            )
+                        ScheduleComplianceJobsExecutor(
+                            self.models_client,
+                            self.jobs_client,
                             self.logger,
                         ).execute(job, job.job_spec.actual_instance)
                     case _:
