@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ml-engine"
-version = "2.1.477"
+version = "2.1.496"
 description = ""
 authors = ["Arthur <engineering@arthur.ai>"]
 license = "MIT"
@@ -30,16 +30,16 @@ datasketches = "5.2.0"
 numpy = "2.3.2"
 types-croniter = "6.0.0.20250809"
 types-psutil = "7.0.0.20251116"
-types-requests = "2.32.4.20250913"
+types-requests = "2.32.4.20260324"
 psutil = "7.0.0"
 pyarrow = "21.0.0"
-arthur-client = "1.4.1905"
-arthur-common = "2.4.52"
+arthur-common = "2.4.53"
 gunicorn = "^23.0.0"
 sqlalchemy = "2.0.48"
 snowflake-sqlalchemy = "1.7.7"
 databricks-sqlalchemy = "^2.0"
 databricks-sdk = "^0.84.0"
+arthur-client = "1.4.1972"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -59,7 +59,7 @@ optional = true
 mypy = "^1.16.1"
 isort = "^6.0.1"
 autoflake = "^2.3.1"
-black = "25.11.0"
+black = "25.12.0"
 
 [tool.mypy]
 python_version = "3.13"

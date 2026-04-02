@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from starlette import status
 from starlette.responses import Response
 
+from config.extra_features import extra_feature_config
 from dependencies import get_application_config, get_db_session, logger
 from repositories.configuration_repository import ConfigurationRepository
 from repositories.metrics_repository import MetricRepository
@@ -79,6 +80,7 @@ def get_display_settings(
 ) -> DisplaySettingsResponse:
     return DisplaySettingsResponse(
         default_currency=get_display_currency(application_config),
+        chatbot_enabled=extra_feature_config.CHATBOT_ENABLED,
     )
 
 
