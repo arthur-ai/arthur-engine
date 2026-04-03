@@ -1353,3 +1353,106 @@ def test_remove_tag_from_llm_eval_version_dne_error(
 
     # Cleanup
     llm_evals_repo.delete_llm_item(task_id, eval_name)
+
+
+@pytest.mark.unit_tests
+def test_get_all_llm_eval_metadata_with_tag_filter(llm_evals_repo):
+    """Test tag filter on get_all_llm_item_metadata: single match, OR logic, no match, empty list, cross-version."""
+    task_id = str(uuid4())
+    name_a = "eval_tag_a"
+    name_b = "eval_tag_b"
+
+    pagination_params = PaginationParameters(
+        page=0,
+        page_size=10,
+        sort=PaginationSortMethod.ASCENDING,
+    )
+
+    eval_a = llm_evals_repo.save_llm_item(
+        task_id,
+        name_a,
+        CreateEvalRequest(
+            model_name="gpt-4",
+            model_provider="openai",
+            instructions="eval a",
+        ),
+    )
+    eval_b = llm_evals_repo.save_llm_item(
+        task_id,
+        name_b,
+        CreateEvalRequest(
+            model_name="gpt-4",
+            model_provider="openai",
+            instructions="eval b",
+        ),
+    )
+
+    try:
+        llm_evals_repo.add_tag_to_llm_item_version(
+            task_id,
+            name_a,
+            str(eval_a.version),
+            "production",
+        )
+        llm_evals_repo.add_tag_to_llm_item_version(
+            task_id,
+            name_b,
+            str(eval_b.version),
+            "staging",
+        )
+
+        # Single tag match — only eval_a has "production"
+        result = llm_evals_repo.get_all_llm_item_metadata(
+            task_id=task_id,
+            pagination_parameters=pagination_params,
+            filter_request=LLMGetAllFilterRequest(tags=["production"]),
+        )
+        assert result.count == 1
+        assert result.llm_metadata[0].name == name_a
+
+        # OR logic — both evals match when filtering for both tags
+        result = llm_evals_repo.get_all_llm_item_metadata(
+            task_id=task_id,
+            pagination_parameters=pagination_params,
+            filter_request=LLMGetAllFilterRequest(tags=["production", "staging"]),
+        )
+        assert result.count == 2
+
+        # No match — tag does not exist
+        result = llm_evals_repo.get_all_llm_item_metadata(
+            task_id=task_id,
+            pagination_parameters=pagination_params,
+            filter_request=LLMGetAllFilterRequest(tags=["nonexistent_tag"]),
+        )
+        assert result.count == 0
+
+        # Empty list — falsy guard should return all items unfiltered
+        result = llm_evals_repo.get_all_llm_item_metadata(
+            task_id=task_id,
+            pagination_parameters=pagination_params,
+            filter_request=LLMGetAllFilterRequest(tags=[]),
+        )
+        assert result.count == 2
+
+        # Cross-version: add a second version to eval_a without any tag — filter by
+        # "production" should still return eval_a because version 1 carries the tag
+        llm_evals_repo.save_llm_item(
+            task_id,
+            name_a,
+            CreateEvalRequest(
+                model_name="gpt-4",
+                model_provider="openai",
+                instructions="eval a v2",
+            ),
+        )
+        result = llm_evals_repo.get_all_llm_item_metadata(
+            task_id=task_id,
+            pagination_parameters=pagination_params,
+            filter_request=LLMGetAllFilterRequest(tags=["production"]),
+        )
+        assert result.count == 1
+        assert result.llm_metadata[0].name == name_a
+
+    finally:
+        llm_evals_repo.delete_llm_item(task_id, name_a)
+        llm_evals_repo.delete_llm_item(task_id, name_b)

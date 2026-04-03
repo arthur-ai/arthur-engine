@@ -2139,3 +2139,106 @@ def test_malformed_response_format_errors_on_creation(agentic_prompt_repo):
         f'response format must only be {{"type": "text"}} when using type="text"'
         in str(exc_info.value)
     )
+
+
+@pytest.mark.unit_tests
+def test_get_all_prompt_metadata_with_tag_filter(agentic_prompt_repo):
+    """Test tag filter on get_all_llm_item_metadata: single match, OR logic, no match, empty list, cross-version."""
+    task_id = str(uuid4())
+    name_a = "prompt_tag_a"
+    name_b = "prompt_tag_b"
+
+    pagination_params = PaginationParameters(
+        page=0,
+        page_size=10,
+        sort=PaginationSortMethod.ASCENDING,
+    )
+
+    prompt_a = agentic_prompt_repo.save_llm_item(
+        task_id,
+        name_a,
+        CreateAgenticPromptRequest(
+            messages=[{"role": "user", "content": "prompt a"}],
+            model_name="gpt-4",
+            model_provider="openai",
+        ),
+    )
+    prompt_b = agentic_prompt_repo.save_llm_item(
+        task_id,
+        name_b,
+        CreateAgenticPromptRequest(
+            messages=[{"role": "user", "content": "prompt b"}],
+            model_name="gpt-4",
+            model_provider="openai",
+        ),
+    )
+
+    try:
+        agentic_prompt_repo.add_tag_to_llm_item_version(
+            task_id,
+            name_a,
+            str(prompt_a.version),
+            "production",
+        )
+        agentic_prompt_repo.add_tag_to_llm_item_version(
+            task_id,
+            name_b,
+            str(prompt_b.version),
+            "staging",
+        )
+
+        # Single tag match — only prompt_a has "production"
+        result = agentic_prompt_repo.get_all_llm_item_metadata(
+            task_id=task_id,
+            pagination_parameters=pagination_params,
+            filter_request=LLMGetAllFilterRequest(tags=["production"]),
+        )
+        assert result.count == 1
+        assert result.llm_metadata[0].name == name_a
+
+        # OR logic — both prompts match when filtering for both tags
+        result = agentic_prompt_repo.get_all_llm_item_metadata(
+            task_id=task_id,
+            pagination_parameters=pagination_params,
+            filter_request=LLMGetAllFilterRequest(tags=["production", "staging"]),
+        )
+        assert result.count == 2
+
+        # No match — tag does not exist
+        result = agentic_prompt_repo.get_all_llm_item_metadata(
+            task_id=task_id,
+            pagination_parameters=pagination_params,
+            filter_request=LLMGetAllFilterRequest(tags=["nonexistent_tag"]),
+        )
+        assert result.count == 0
+
+        # Empty list — falsy guard should return all items unfiltered
+        result = agentic_prompt_repo.get_all_llm_item_metadata(
+            task_id=task_id,
+            pagination_parameters=pagination_params,
+            filter_request=LLMGetAllFilterRequest(tags=[]),
+        )
+        assert result.count == 2
+
+        # Cross-version: add a second version to prompt_a without any tag — filter by
+        # "production" should still return prompt_a because version 1 carries the tag
+        agentic_prompt_repo.save_llm_item(
+            task_id,
+            name_a,
+            CreateAgenticPromptRequest(
+                messages=[{"role": "user", "content": "prompt a v2"}],
+                model_name="gpt-4",
+                model_provider="openai",
+            ),
+        )
+        result = agentic_prompt_repo.get_all_llm_item_metadata(
+            task_id=task_id,
+            pagination_parameters=pagination_params,
+            filter_request=LLMGetAllFilterRequest(tags=["production"]),
+        )
+        assert result.count == 1
+        assert result.llm_metadata[0].name == name_a
+
+    finally:
+        agentic_prompt_repo.delete_llm_item(task_id, name_a)
+        agentic_prompt_repo.delete_llm_item(task_id, name_b)
