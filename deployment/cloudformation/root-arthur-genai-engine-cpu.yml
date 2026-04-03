@@ -228,7 +228,7 @@ Parameters:
     AllowedValues:
       - 'Azure'
       - 'OpenAI'
-    Default: "Azure"
+    Default: "OpenAI"
     Description: 'Provider of OpenAI LLMs'
   GenaiEngineCacheTaskRulesCacheEnabled:
     Type: String
