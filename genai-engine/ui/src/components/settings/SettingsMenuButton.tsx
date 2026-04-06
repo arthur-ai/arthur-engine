@@ -20,15 +20,7 @@ export const SettingsMenuButton: React.FC = () => {
   const navigate = useNavigate();
   const api = useApi();
   const { logout } = useAuth();
-  const {
-    timezone,
-    use24Hour,
-    setTimezone,
-    setUse24Hour,
-    serverChatbotEnabled,
-    enableChatbot,
-    setEnableChatbot,
-  } = useDisplaySettings();
+  const { timezone, use24Hour, setTimezone, setUse24Hour, serverChatbotEnabled, enableChatbot, setEnableChatbot } = useDisplaySettings();
   const { providers: enabledProviders } = useModelProviders();
   const { availableModels: availableModelsMap } = useAvailableModels(enabledProviders);
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
