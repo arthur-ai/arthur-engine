@@ -80,7 +80,7 @@ jobs:
           if [ "${{ github.ref }}" = "refs/heads/dev" ]; then
             DEV_VERSION="${BASE_VERSION}.dev0"
             echo "Building dev version: ${DEV_VERSION}"
-            python3 -c 'import re, pathlib, os; dv=os.environ["DEV_VERSION"]; p = pathlib.Path("arthur-observability-sdk/python/pyproject.toml"); txt=p.read_text(); p.write_text(re.sub(r"(?m)^version = \".*\"", "version = \"" + dv + "\"", txt, count=1))'
+            export DEV_VERSION="${BASE_VERSION}.dev0"
           else
             echo "Building stable version: ${BASE_VERSION}"
           fi
