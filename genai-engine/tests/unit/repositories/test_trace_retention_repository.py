@@ -14,7 +14,7 @@ from db_models import (
     DatabaseTraceMetadata,
 )
 from repositories.trace_retention_repository import (
-    DEFAULT_BATCH_SIZE,
+    DEFAULT_TRACE_RETENTION_BATCH_SIZE,
     delete_trace_batch,
     get_expired_trace_ids,
 )
@@ -232,7 +232,9 @@ def test_get_expired_trace_ids_empty_cutoff() -> None:
     )
     db_session.commit()
     cutoff = now + timedelta(days=1)
-    result = get_expired_trace_ids(db_session, cutoff, batch_size=DEFAULT_BATCH_SIZE)
+    result = get_expired_trace_ids(
+        db_session, cutoff, batch_size=DEFAULT_TRACE_RETENTION_BATCH_SIZE
+    )
     assert result == []
     db_session.execute(
         delete(DatabaseTraceMetadata).where(DatabaseTraceMetadata.trace_id == trace_id)

@@ -9,7 +9,7 @@ from typing import Optional
 from dependencies import db_session_context
 from repositories.configuration_repository import ConfigurationRepository
 from repositories.trace_retention_repository import (
-    DEFAULT_BATCH_SIZE,
+    DEFAULT_TRACE_RETENTION_BATCH_SIZE,
     delete_trace_batch,
     get_expired_trace_ids,
 )
@@ -50,7 +50,7 @@ class TraceRetentionService(BaseQueueService[TraceRetentionJob]):
             total_deleted = 0
             while True:
                 trace_ids = get_expired_trace_ids(
-                    db_session, cutoff, batch_size=DEFAULT_BATCH_SIZE
+                    db_session, cutoff, batch_size=DEFAULT_TRACE_RETENTION_BATCH_SIZE
                 )
                 if not trace_ids:
                     break

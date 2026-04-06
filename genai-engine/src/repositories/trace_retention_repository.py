@@ -18,13 +18,13 @@ from db_models import (
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_BATCH_SIZE = 500
+DEFAULT_TRACE_RETENTION_BATCH_SIZE = 500
 
 
 def get_expired_trace_ids(
     db_session: Session,
     cutoff: datetime,
-    batch_size: int = DEFAULT_BATCH_SIZE,
+    batch_size: int = DEFAULT_TRACE_RETENTION_BATCH_SIZE,
 ) -> list[str]:
     """Return up to batch_size trace_ids from trace_metadata with end_time < cutoff."""
     stmt = (
@@ -110,9 +110,7 @@ def delete_trace_batch(db_session: Session, trace_ids: list[str]) -> None:
         )
         remaining_trace_resource_ids = (
             select(DatabaseTraceMetadata.root_span_resource_id)
-            .where(
-                DatabaseTraceMetadata.root_span_resource_id.in_(batch_resource_ids)
-            )
+            .where(DatabaseTraceMetadata.root_span_resource_id.in_(batch_resource_ids))
             .distinct()
         )
         db_session.execute(
