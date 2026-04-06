@@ -1,5 +1,4 @@
 import { MustacheHighlightedTextField } from "@arthur/shared-components";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CloseIcon from "@mui/icons-material/Close";
 import EditIcon from "@mui/icons-material/Edit";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
@@ -34,7 +33,7 @@ import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import type { ContinuousEvalResponse, CreateEvalRequest } from "@/lib/api-client/api-client";
 import { formatDateInTimezone } from "@/utils/formatters";
 
-const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestVersion, taskId, onClose, onRefetch }: EvalDetailViewProps) => {
+const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestVersion, taskId, onRefetch }: EvalDetailViewProps) => {
   const [tagAnchorEl, setTagAnchorEl] = useState<HTMLButtonElement | null>(null);
   const [newTag, setNewTag] = useState("");
   const [tagError, setTagError] = useState("");
@@ -197,13 +196,6 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
       <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", mb: 2, flexShrink: 0 }}>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, flex: 1 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-            {onClose && (
-              <Tooltip title="Go back">
-                <IconButton onClick={onClose} size="small" aria-label="Go back">
-                  <ArrowBackIcon />
-                </IconButton>
-              </Tooltip>
-            )}
             <Typography variant="h5" sx={{ fontWeight: 600 }}>
               {evalName}
             </Typography>
