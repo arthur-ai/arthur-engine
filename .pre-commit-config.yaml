@@ -72,7 +72,7 @@ repos:
         files: ^genai-engine/src/
       - id: genai-engine-mypy-check
         name: "genai-engine: mypy type checking"
-        entry: uv run --project genai-engine mypy src
+        entry: uv run --directory genai-engine mypy src
         language: system
         types: [python]
         pass_filenames: false
@@ -85,7 +85,7 @@ repos:
         files: ^genai-engine/src/schemas/
       - id: ml-engine-pytest-check
         name: "ml-engine: pytest unit tests"
-        entry: uv run --project ml-engine pytest tests/unit
+        entry: uv run --directory ml-engine pytest tests/unit
         language: system
         types: [python]
         pass_filenames: false
@@ -93,14 +93,14 @@ repos:
         files: ^ml-engine/src/
       - id: ml-engine-mypy-check
         name: "ml-engine: mypy type checking"
-        entry: uv run --project ml-engine mypy src/ml_engine
+        entry: uv run --directory ml-engine mypy src/ml_engine
         language: system
         types: [python]
         pass_filenames: false
         files: ^ml-engine/src/
       - id: arthur-observability-sdk-pytest-check
         name: "arthur-observability-sdk: pytest unit tests"
-        entry: uv run --project arthur-observability-sdk/python pytest tests -m "unit_tests"
+        entry: uv run --directory arthur-observability-sdk/python pytest tests -m "unit_tests"
         language: system
         types: [python]
         pass_filenames: false
@@ -108,7 +108,7 @@ repos:
         files: ^arthur-observability-sdk/python/src/arthur_observability_sdk/
       - id: arthur-observability-sdk-mypy-check
         name: "arthur-observability-sdk: mypy type checking"
-        entry: uv run --project arthur-observability-sdk/python mypy src/arthur_observability_sdk
+        entry: uv run --directory arthur-observability-sdk/python mypy src/arthur_observability_sdk
         language: system
         types: [python]
         pass_filenames: false
