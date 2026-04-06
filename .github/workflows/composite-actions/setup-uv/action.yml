@@ -1,0 +1,28 @@
+name: "Setup uv"
+description: "Installs uv and syncs dependencies"
+
+inputs:
+  working-directory:
+    description: "Directory containing the pyproject.toml file"
+    required: true
+  with-groups:
+    description: "Additional dependency groups to install (comma-separated)"
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Install uv"
+      uses: astral-sh/setup-uv@v5
+    - name: "Install dependencies"
+      shell: bash
+      run: |
+        GROUPS_FLAG=""
+        if [ -n "${{ inputs.with-groups }}" ]; then
+          IFS=',' read -ra GROUPS <<< "${{ inputs.with-groups }}"
+          for group in "${GROUPS[@]}"; do
+            GROUPS_FLAG="$GROUPS_FLAG --group $group"
+          done
+        fi
+        uv sync --project ${{ inputs.working-directory }} --frozen $GROUPS_FLAG

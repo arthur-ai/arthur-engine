@@ -1,31 +1,36 @@
-[tool.poetry]
+[project]
 name = "arthur-model-upload-gcp"
 version = "1.0.0"
 description = "Cloud Run job to upload ML models to GCS for airgapped environments"
-authors = ["Arthur <engineering@arthur.ai>"]
+authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 readme = "README.md"
-package-mode = false
+requires-python = ">=3.12,<3.13"
 
-[tool.poetry.dependencies]
-python = ">=3.12,<3.13.dev0"
-google-cloud-storage = ">=2.10.0"
-huggingface-hub = "^0.36.0"
+dependencies = [
+  "google-cloud-storage>=2.10.0",
+  "huggingface-hub>=0.36.0",
+]
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.0.0"
-pytest-asyncio = "^0.26.0"
-black = "^24.0.0"
-mypy = "^1.13.0"
-isort = "^5.13.0"
-autoflake = "^2.3.0"
-
-[tool.poetry.scripts]
+[project.scripts]
 upload = "upload_models:main"
 download = "download_models:main"
 
+[dependency-groups]
+dev = [
+  "pytest>=8.0.0,<9",
+  "pytest-asyncio>=0.26.0",
+  "black>=24.0.0,<25",
+  "mypy>=1.13.0,<2",
+  "isort>=5.13.0,<6",
+  "autoflake>=2.3.0,<3",
+]
+
+[tool.uv]
+package = false
+
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.mypy]
 python_version = "3.12"

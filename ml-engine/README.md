@@ -59,17 +59,16 @@ docker run -e ARTHUR_API_HOST=https://platform.arthur.ai -e ARTHUR_CLIENT_SECRET
 ### Running ML Engine in Terminal Window
 
 #### Install prerequisite
-1. Install Poetry
+1. Install uv
 ```bash
-pip install "poetry>=2,<3"
+pip install uv
 ```
 
 #### Set Up Python Environment
 Assume all commands are run from `arthur-engine/ml-engine`path:
 
-1. Use poetry environment with Python 3.13
+1. Create a uv environment
 ```bash
-poetry env use 3.13
 ```
 
 2. Generate and Install GenAI Client
@@ -112,7 +111,7 @@ You need to install both the Basic and the ODBC package linked on that page.
 
 5. Install Python dependencies
 ```bash
-poetry install
+uv sync
 ```
 
 #### Setup environment Configuration
@@ -135,7 +134,7 @@ export GENAI_ENGINE_INTERNAL_INGRESS_HOST=https://engine.development.arthur.ai
 Use this command to start the app:
 
 ```bash
-poetry run python src/ml_engine/job_agent.py
+uv run python src/ml_engine/job_agent.py
 ```
 
 If the app has started successfully, can communicate with the control plane, and is polling for jobs,
@@ -169,8 +168,8 @@ Commit any linter changes.
 Prerequisite: [Set up your Python environment](#set-up-python-environment).
 
 ```bash
-poetry install --with dev
-poetry run pytest tests/
+uv sync --group dev
+uv run pytest tests/
 ```
 
 **NOTE**: If your computer is low on resources (specifically available memory), you may see failures in the
@@ -194,7 +193,7 @@ the integration tests locally. The easiest way to do this is outside of Docker s
 version of the arthur-client into the Docker image.
 
 1. From the ml-engine directory, [set up your Python environment](#set-up-python-environment). All Python environment set up steps
-   MUST happen before step 3 in this guide (particularly `poetry install`) or the local version of the arthur-client that you install
+   MUST happen before step 3 in this guide (particularly `uv sync`) or the local version of the arthur-client that you install
    will get overwritten by the project dependency installation.
 2. From the `arthur-scope` repository, run the OpenAPI Client generation & install steps in the [root README](https://gitlab.com/ArthurAI/arthur-scope#generate-client).
 3. From this repository, run `./scripts/install_local_scope_packages.sh`. If you did not clone arthur-scope into your home directory, you

@@ -47,7 +47,7 @@ jobs:
         with:
           name: arthur-genai-client
           path: arthur-observability-sdk/python/src/arthur_genai_client
-      - uses: ./.github/workflows/composite-actions/setup-poetry
+      - uses: ./.github/workflows/composite-actions/setup-uv
         with:
           working-directory: arthur-observability-sdk/python
           with-groups: dev
@@ -55,22 +55,22 @@ jobs:
         id: isort
         continue-on-error: true
         run: |
-          poetry -C arthur-observability-sdk/python run isort src/arthur_observability_sdk tests --profile black --check
+          uv run --project arthur-observability-sdk/python isort src/arthur_observability_sdk tests --profile black --check
       - name: Run autoflake
         id: autoflake
         continue-on-error: true
         run: |
-          poetry -C arthur-observability-sdk/python run autoflake --remove-all-unused-imports --in-place --check --recursive --quiet src/arthur_observability_sdk tests
+          uv run --project arthur-observability-sdk/python autoflake --remove-all-unused-imports --in-place --check --recursive --quiet src/arthur_observability_sdk tests
       - name: Run black
         id: black
         continue-on-error: true
         run: |
-          poetry -C arthur-observability-sdk/python run black --check src/arthur_observability_sdk tests
+          uv run --project arthur-observability-sdk/python black --check src/arthur_observability_sdk tests
       - name: Run mypy
         id: mypy
         continue-on-error: true
         run: |
-          poetry -C arthur-observability-sdk/python run mypy src/arthur_observability_sdk
+          uv run --project arthur-observability-sdk/python mypy src/arthur_observability_sdk
       - name: Check linter results
         if: steps.isort.outcome == 'failure' || steps.autoflake.outcome == 'failure' || steps.black.outcome == 'failure' || steps.mypy.outcome == 'failure'
         run: |
@@ -98,13 +98,13 @@ jobs:
         with:
           name: arthur-genai-client
           path: arthur-observability-sdk/python/src/arthur_genai_client
-      - uses: ./.github/workflows/composite-actions/setup-poetry
+      - uses: ./.github/workflows/composite-actions/setup-uv
         with:
           working-directory: arthur-observability-sdk/python
           with-groups: dev
       - name: Run unit tests
         run: |
-          poetry -C arthur-observability-sdk/python run pytest tests -m "unit_tests" -v
+          uv run --project arthur-observability-sdk/python pytest tests -m "unit_tests" -v
 
   run-integration-tests:
     needs: generate-client
@@ -123,13 +123,13 @@ jobs:
         with:
           name: arthur-genai-client
           path: arthur-observability-sdk/python/src/arthur_genai_client
-      - uses: ./.github/workflows/composite-actions/setup-poetry
+      - uses: ./.github/workflows/composite-actions/setup-uv
         with:
           working-directory: arthur-observability-sdk/python
           with-groups: dev
       - name: Run integration tests
         run: |
-          poetry -C arthur-observability-sdk/python run pytest tests -m "integration_tests" -v
+          uv run --project arthur-observability-sdk/python pytest tests -m "integration_tests" -v
 
   check-new-instrumentors:
     runs-on: ubuntu-latest

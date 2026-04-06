@@ -44,7 +44,7 @@ fi
 export PYTHONPATH="src"
 
 echo "==> Running database migration"
-poetry run alembic upgrade head || exit 1
+uv run alembic upgrade head || exit 1
 
 echo "==> Starting the GenAI Engine server with ${WORKERS:-1} worker(s)"
-exec poetry run gunicorn src.server:get_app -c src/gunicorn.conf.py
+exec uv run gunicorn src.server:get_app -c src/gunicorn.conf.py
