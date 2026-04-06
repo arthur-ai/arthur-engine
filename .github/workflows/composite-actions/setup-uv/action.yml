@@ -25,4 +25,4 @@ runs:
             GROUPS_FLAG="$GROUPS_FLAG --group $group"
           done
         fi
-        uv sync --project ${{ inputs.working-directory }} --frozen $GROUPS_FLAG
+        uv sync --directory ${{ inputs.working-directory }} --frozen $GROUPS_FLAG

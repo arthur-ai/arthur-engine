@@ -46,22 +46,22 @@ jobs:
         id: isort
         continue-on-error: true
         run: |
-          uv run --project genai-engine isort src --profile black --check
+          uv run --directory genai-engine isort src --profile black --check
       - name: Run autoflake
         id: autoflake
         continue-on-error: true
         run: |
-          uv run --project genai-engine autoflake --remove-all-unused-imports --in-place --check --recursive --quiet src
+          uv run --directory genai-engine autoflake --remove-all-unused-imports --in-place --check --recursive --quiet src
       - name: Run black
         id: black
         continue-on-error: true
         run: |
-          uv run --project genai-engine black --check src
+          uv run --directory genai-engine black --check src
       - name: Run mypy
         id: mypy
         continue-on-error: true
         run: |
-          uv run --project genai-engine mypy src
+          uv run --directory genai-engine mypy src
       - name: Check linter results
         if: steps.isort.outcome == 'failure' || steps.autoflake.outcome == 'failure' || steps.black.outcome == 'failure' || steps.mypy.outcome == 'failure'
         run: |
@@ -97,27 +97,27 @@ jobs:
           pip install 'openapi-generator-cli[jdk4py]==7.12'
           openapi-generator-cli generate -c ml-engine/scripts/openapitools.json
           sed -i 's/license = "NoLicense"/license = "Unlicense"/g' ./ml-engine/src/genai_client/pyproject.toml
-          pip install ./ml-engine/src/genai_client
+          uv pip install --python ml-engine/.venv ./ml-engine/src/genai_client
       - name: Run isort
         id: isort
         continue-on-error: true
         run: |
-          uv run --project ml-engine isort src/ml_engine --profile black --check
+          uv run --directory ml-engine isort src/ml_engine --profile black --check
       - name: Run autoflake
         id: autoflake
         continue-on-error: true
         run: |
-          uv run --project ml-engine autoflake --remove-all-unused-imports --in-place --check --recursive --quiet src/ml_engine
+          uv run --directory ml-engine autoflake --remove-all-unused-imports --in-place --check --recursive --quiet src/ml_engine
       - name: Run black
         id: black
         continue-on-error: true
         run: |
-          uv run --project ml-engine black --check src/ml_engine
+          uv run --directory ml-engine black --check src/ml_engine
       - name: Run mypy
         id: mypy
         continue-on-error: true
         run: |
-          uv run --project ml-engine mypy src/ml_engine
+          uv run --directory ml-engine mypy src/ml_engine
       - name: Check linter results
         if: steps.isort.outcome == 'failure' || steps.autoflake.outcome == 'failure' || steps.black.outcome == 'failure' || steps.mypy.outcome == 'failure'
         run: |
@@ -150,8 +150,7 @@ jobs:
         env:
           GENAI_ENGINE_SECRET_STORE_KEY: changeme_secret_store_key
         run: |
-          export PYTHONPATH=src
-          uv run --project genai-engine generate_changelog
+          uv run --directory genai-engine generate_changelog
       - name: Upload artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -259,9 +258,9 @@ jobs:
           GENAI_ENGINE_SECRET_STORE_KEY: changeme_secret_store_key
         run: |
           set -o pipefail
-          uv run --project genai-engine pytest --cov --cov=genai-engine/src \
+          uv run --directory genai-engine pytest --cov --cov=src \
             --cov-report term \
-            --junitxml=genai-engine/report.xml \
+            --junitxml=report.xml \
             -m "unit_tests" | tee pytest-coverage.txt
       - name: Pytest coverage comment
         if: always()
@@ -353,7 +352,7 @@ jobs:
             --skip-validate-spec --package-name genai_client
       - name: Run unit-tests
         run: |
-          uv run --project ml-engine pytest
+          uv run --directory ml-engine pytest tests/unit
 
   build-genai-engine-docker-images:
     environment: shared-protected-branch-secrets
