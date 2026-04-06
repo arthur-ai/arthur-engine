@@ -100,13 +100,25 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
 
   return (
     <Box sx={{ px: 2, py: 1.5 }}>
-      {/* Column headers */}
-      <Table sx={{ mb: 1 }}>
+      {/* Column headers — matches MUI Table header style used across the app */}
+      <Table sx={{ mb: 1, tableLayout: "fixed" }}>
         <TableHead>
           <TableRow>
-            <TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Last Updated</TableCell>
-            <TableCell sx={{ fontWeight: 600, width: 80 }}>Actions</TableCell>
+            <TableCell>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                Name
+              </Typography>
+            </TableCell>
+            <TableCell sx={{ width: 220 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                Last Updated
+              </Typography>
+            </TableCell>
+            <TableCell sx={{ width: 96 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                Actions
+              </Typography>
+            </TableCell>
           </TableRow>
         </TableHead>
       </Table>
