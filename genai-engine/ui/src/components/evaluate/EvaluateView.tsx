@@ -18,10 +18,7 @@ type EvaluateTab = "evaluators" | "results";
 export const EvaluateView = () => {
   const [isEvalsModalOpen, setIsEvalsModalOpen] = useState(false);
 
-  const [activeTab, setActiveTab] = useQueryState(
-    "section",
-    parseAsStringEnum<EvaluateTab>(["evaluators", "results"]).withDefault("evaluators")
-  );
+  const [activeTab, setActiveTab] = useQueryState("section", parseAsStringEnum<EvaluateTab>(["evaluators", "results"]).withDefault("evaluators"));
 
   return (
     <Box

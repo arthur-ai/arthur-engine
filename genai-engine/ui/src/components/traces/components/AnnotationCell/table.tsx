@@ -174,10 +174,7 @@ const createColumns = ({
               >
                 <Menu.Item
                   render={
-                    <ListItemButton
-                      onClick={() => onNavigate(`/tasks/${taskId}/evaluate?id=${annotation.id}&section=results`)}
-                      className="gap-4"
-                    />
+                    <ListItemButton onClick={() => onNavigate(`/tasks/${taskId}/evaluate?id=${annotation.id}&section=results`)} className="gap-4" />
                   }
                 >
                   <ListItemText primary="View Results" />

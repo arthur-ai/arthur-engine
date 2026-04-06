@@ -132,12 +132,7 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
                   <Typography variant="body1" fontWeight={500}>
                     {evalMeta.name}
                   </Typography>
-                  <Chip
-                    label={`v${evalMeta.versions}`}
-                    size="small"
-                    variant="outlined"
-                    sx={{ height: 20, fontSize: "0.7rem", fontWeight: 600 }}
-                  />
+                  <Chip label={`v${evalMeta.versions}`} size="small" variant="outlined" sx={{ height: 20, fontSize: "0.7rem", fontWeight: 600 }} />
                   {pipelines.length > 0 && (
                     <Chip
                       label={`${activePipelines}/${pipelines.length} evals active`}
@@ -192,8 +187,8 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
           </DialogContentText>
           <Box sx={{ mt: 2, p: 2, bgcolor: "warning.light", borderRadius: 1, opacity: 0.85 }}>
             <Typography variant="body2">
-              <strong>Warning:</strong> This will permanently delete the evaluator and its entire version history. Any continuous evals using
-              this evaluator will also be affected. This action cannot be undone.
+              <strong>Warning:</strong> This will permanently delete the evaluator and its entire version history. Any continuous evals using this
+              evaluator will also be affected. This action cannot be undone.
             </Typography>
           </Box>
         </DialogContent>
