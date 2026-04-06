@@ -27,7 +27,7 @@ wheels = [
 [[package]]
 name = "arthur-genai-engine-models-k8s"
 version = "1.0.0"
-source = { editable = "." }
+source = { virtual = "." }
 dependencies = [
     { name = "huggingface-hub" },
 ]
