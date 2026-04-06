@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -19,6 +20,9 @@ logger = logging.getLogger(__name__)
 
 ONE_DAY_SECONDS = 24 * 3600
 TRACE_RETENTION_JOB_KEY = "trace_retention"
+INTER_BATCH_DELAY_SECONDS = 1
+MAX_TRACES_PER_RUN = 100_000
+CIRCUIT_BREAKER_THRESHOLD = 3
 
 
 class TraceRetentionJob(BaseQueueJob):
@@ -35,34 +39,70 @@ class TraceRetentionService(BaseQueueService[TraceRetentionJob]):
     service_name = "trace_retention_service"
     background_thread_name = "trace-retention"
 
+    def __init__(self, **kwargs: object) -> None:
+        super().__init__(**kwargs)  # type: ignore[arg-type]
+        self._tripped = threading.Event()
+        self._consecutive_failures = 0
+
+    def _trip_latch(self, reason: str) -> None:
+        """Trip the fail-stop latch. Once tripped it stays tripped until process restart."""
+        logger.critical("Trace retention latch tripped: %s", reason)
+        self._tripped.set()
+        self.shutdown_event.set()
+
     def _get_job_key(self, job: TraceRetentionJob) -> str:
         return TRACE_RETENTION_JOB_KEY
 
     def _execute_job(self, job: TraceRetentionJob) -> None:
         """Run one retention pass: delete traces older than configured retention."""
-        with db_session_context() as db_session:
-            config_repo = ConfigurationRepository(db_session)
-            config = config_repo.get_configurations()
-            cutoff = datetime.now(timezone.utc) - timedelta(
-                days=config.trace_retention_days
-            )
-
-            total_deleted = 0
-            while True:
-                trace_ids = get_expired_trace_ids(
-                    db_session, cutoff, batch_size=DEFAULT_TRACE_RETENTION_BATCH_SIZE
+        try:
+            with db_session_context() as db_session:
+                config_repo = ConfigurationRepository(db_session)
+                config = config_repo.get_configurations()
+                cutoff = datetime.now(timezone.utc) - timedelta(
+                    days=config.trace_retention_days
                 )
-                if not trace_ids:
-                    break
-                delete_trace_batch(db_session, trace_ids)
-                db_session.commit()
-                total_deleted += len(trace_ids)
 
-            if total_deleted > 0:
-                logger.info(
-                    "Trace retention: deleted %d traces older than %s",
-                    total_deleted,
-                    cutoff.isoformat(),
+                total_deleted = 0
+                while True:
+                    trace_ids = get_expired_trace_ids(
+                        db_session,
+                        cutoff,
+                        batch_size=DEFAULT_TRACE_RETENTION_BATCH_SIZE,
+                    )
+                    if not trace_ids:
+                        break
+                    delete_trace_batch(db_session, trace_ids)
+                    db_session.commit()
+                    total_deleted += len(trace_ids)
+
+                    if total_deleted >= MAX_TRACES_PER_RUN:
+                        self._trip_latch(
+                            f"runaway deletion cap reached: deleted {total_deleted} "
+                            f"traces (cutoff={cutoff.isoformat()})"
+                        )
+                        break
+
+                    if self.shutdown_event.wait(INTER_BATCH_DELAY_SECONDS):
+                        break
+
+                if total_deleted > 0:
+                    logger.info(
+                        "Trace retention: deleted %d traces older than %s",
+                        total_deleted,
+                        cutoff.isoformat(),
+                    )
+            self._consecutive_failures = 0
+        except Exception:
+            self._consecutive_failures += 1
+            logger.exception(
+                "Trace retention run failed (%d consecutive)",
+                self._consecutive_failures,
+            )
+            if self._consecutive_failures >= CIRCUIT_BREAKER_THRESHOLD:
+                self._trip_latch(
+                    f"circuit breaker threshold reached: "
+                    f"{self._consecutive_failures} consecutive failures"
                 )
 
     def _background_loop(self) -> None:
@@ -77,6 +117,11 @@ class TraceRetentionService(BaseQueueService[TraceRetentionJob]):
             if not self.shutdown_event.is_set():
                 self.enqueue(TraceRetentionJob(delay_seconds=0))
 
+        if self._tripped.is_set():
+            logger.critical(
+                "Trace retention latch is tripped; background thread exiting. "
+                "Manual intervention required -- restart the process to resume.",
+            )
         logger.info("Background thread stopped for %s", self.service_name)
 
 
