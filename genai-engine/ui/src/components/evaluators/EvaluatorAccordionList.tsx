@@ -96,6 +96,21 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
 
   return (
     <Box sx={{ px: 2, py: 1.5 }}>
+      {/* Column headers */}
+      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 2, pb: 1, borderBottom: 1, borderColor: "divider", mb: 1 }}>
+        <Typography variant="caption" fontWeight={600} color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
+          Name
+        </Typography>
+        <Stack direction="row" alignItems="center" gap={4} mr={1}>
+          <Typography variant="caption" fontWeight={600} color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
+            Last Updated
+          </Typography>
+          <Typography variant="caption" fontWeight={600} color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
+            Actions
+          </Typography>
+        </Stack>
+      </Stack>
+
       {evals.map((evalMeta) => {
         const pipelines = cesByEval.get(evalMeta.name) ?? [];
         const activePipelines = pipelines.filter((ce) => ce.enabled).length;
