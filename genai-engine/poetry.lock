@@ -2567,15 +2567,15 @@ examples = ["oauth2"]
 
 [[package]]
 name = "gliner"
-version = "0.2.21"
+version = "0.2.26"
 description = "Generalist model for NER (Extract any entity types from texts)"
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
 markers = "sys_platform != \"linux\" and sys_platform != \"win32\" or sys_platform == \"linux\" or sys_platform == \"win32\""
 files = [
-    {file = "gliner-0.2.21-py3-none-any.whl", hash = "sha256:05f9b8f31bccd310e8d02796badb853e5c61e313af2afa252f791512d265311e"},
-    {file = "gliner-0.2.21.tar.gz", hash = "sha256:44bc73b3e8b1a2804b333912fca729eb1fb0065f8f7b34f601bc95aa39abc749"},
+    {file = "gliner-0.2.26-py3-none-any.whl", hash = "sha256:b9baa47641efb90b9d069add0528ed2464d137991ff097f42b0cab37a91ba991"},
+    {file = "gliner-0.2.26.tar.gz", hash = "sha256:6783be92b4b81caa878dcc4269ba37800207c37118d8ff9be028b93bddd6813d"},
 ]
 
 [package.dependencies]
@@ -2584,11 +2584,13 @@ onnxruntime = "*"
 sentencepiece = "*"
 torch = ">=2.0.0"
 tqdm = "*"
-transformers = ">=4.38.2"
+transformers = ">=4.51.3,<5.2.0"
 
 [package.extras]
 gpu = ["onnxruntime-gpu"]
-tokenizers = ["camel_tools", "indic-nlp-library", "janome", "jieba", "langdetect", "python-mecab-ko", "spacy"]
+stanza = ["langdetect", "stanza"]
+tokenizers = ["camel_tools", "indic-nlp-library", "janome", "jieba3", "langdetect", "python-mecab-ko", "spacy", "stanza"]
+training = ["accelerate"]
 
 [[package]]
 name = "google-api-core"
@@ -10230,4 +10232,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.13.dev0"
-content-hash = "4ab0d46597f8f941c1cc129d69459b27220e6996841c75e55ac251a29c7f63e8"
+content-hash = "7a4a9b4eedd496088ade6b9900ae4af2384aea3d92c6e9561851bea4f49f3a48"
