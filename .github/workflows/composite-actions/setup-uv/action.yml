@@ -14,7 +14,8 @@ runs:
   using: "composite"
   steps:
     - name: "Install uv"
-      uses: astral-sh/setup-uv@v5
+      shell: bash
+      run: pip install uv --quiet
     - name: "Install dependencies"
       shell: bash
       run: |
