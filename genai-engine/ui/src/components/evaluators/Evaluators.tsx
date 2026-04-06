@@ -9,8 +9,8 @@ import Typography from "@mui/material/Typography";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
-import { EvaluatorAccordionList } from "./EvaluatorAccordionList";
 import EvalFormModal from "./EvalFormModal";
+import { EvaluatorAccordionList } from "./EvaluatorAccordionList";
 import EvaluatorsHeader from "./EvaluatorsHeader";
 import EvalFullScreenView from "./fullscreen/EvalFullScreenView";
 import { useCreateEvalMutation } from "./hooks/useCreateEvalMutation";

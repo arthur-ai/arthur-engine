@@ -5,8 +5,8 @@ import { Box, Button, Chip, Link as MuiLink, Stack, Table, TableBody, TableCell,
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-import { EditFormDialog } from "@/components/live-evals/components/edit-form";
 import { LiveEvalActions } from "@/components/live-evals/components/actions";
+import { EditFormDialog } from "@/components/live-evals/components/edit-form";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import type { ContinuousEvalResponse } from "@/lib/api-client/api-client";
 import { formatDateInTimezone } from "@/utils/formatters";
