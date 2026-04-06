@@ -1,4 +1,5 @@
 import { MustacheHighlightedTextField } from "@arthur/shared-components";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CloseIcon from "@mui/icons-material/Close";
 import EditIcon from "@mui/icons-material/Edit";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
@@ -196,6 +197,13 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
       <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", mb: 2, flexShrink: 0 }}>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, flex: 1 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+            {onClose && (
+              <Tooltip title="Go back">
+                <IconButton onClick={onClose} size="small" aria-label="Go back">
+                  <ArrowBackIcon />
+                </IconButton>
+              </Tooltip>
+            )}
             <Typography variant="h5" sx={{ fontWeight: 600 }}>
               {evalName}
             </Typography>
@@ -263,11 +271,6 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
             <Button variant="outlined" size="small" startIcon={<EditIcon />} onClick={handleEditClick} sx={{ minWidth: 80 }}>
               Edit
             </Button>
-          )}
-          {onClose && (
-            <IconButton onClick={onClose} aria-label="Close">
-              <CloseIcon />
-            </IconButton>
           )}
         </Box>
       </Box>
