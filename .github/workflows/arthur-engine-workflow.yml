@@ -149,6 +149,7 @@ jobs:
       - name: Generate changelog
         env:
           GENAI_ENGINE_SECRET_STORE_KEY: changeme_secret_store_key
+          PYTHONPATH: src
         run: |
           uv run --directory genai-engine generate_changelog
       - name: Upload artifacts on failure
