@@ -30,6 +30,7 @@ def get_expired_trace_ids(
     stmt = (
         select(DatabaseTraceMetadata.trace_id)
         .where(DatabaseTraceMetadata.end_time < cutoff)
+        .order_by(DatabaseTraceMetadata.end_time.asc())
         .limit(batch_size)
     )
     rows = db_session.execute(stmt).all()
@@ -104,12 +105,14 @@ def delete_trace_batch(db_session: Session, trace_ids: list[str]) -> None:
     if batch_resource_ids:
         remaining_span_resource_ids = (
             select(DatabaseSpan.resource_id)
-            .where(DatabaseSpan.resource_id.isnot(None))
+            .where(DatabaseSpan.resource_id.in_(batch_resource_ids))
             .distinct()
         )
         remaining_trace_resource_ids = (
             select(DatabaseTraceMetadata.root_span_resource_id)
-            .where(DatabaseTraceMetadata.root_span_resource_id.isnot(None))
+            .where(
+                DatabaseTraceMetadata.root_span_resource_id.in_(batch_resource_ids)
+            )
             .distinct()
         )
         db_session.execute(
@@ -120,7 +123,6 @@ def delete_trace_batch(db_session: Session, trace_ids: list[str]) -> None:
             )
         )
 
-    db_session.commit()
     logger.info(
         "Trace retention: deleted batch of %d traces (%d spans)",
         len(trace_ids),

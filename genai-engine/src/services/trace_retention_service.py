@@ -6,7 +6,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from dependencies import get_db_session
+from dependencies import db_session_context
 from repositories.configuration_repository import ConfigurationRepository
 from repositories.trace_retention_repository import (
     DEFAULT_BATCH_SIZE,
@@ -14,7 +14,6 @@ from repositories.trace_retention_repository import (
     get_expired_trace_ids,
 )
 from services.base_queue_service import BaseQueueJob, BaseQueueService
-from utils.constants import DEFAULT_TRACE_RETENTION_DAYS
 
 logger = logging.getLogger(__name__)
 
@@ -41,14 +40,12 @@ class TraceRetentionService(BaseQueueService[TraceRetentionJob]):
 
     def _execute_job(self, job: TraceRetentionJob) -> None:
         """Run one retention pass: delete traces older than configured retention."""
-        db_session = next(get_db_session())
-        try:
+        with db_session_context() as db_session:
             config_repo = ConfigurationRepository(db_session)
             config = config_repo.get_configurations()
-            retention_days = getattr(
-                config, "trace_retention_days", DEFAULT_TRACE_RETENTION_DAYS
+            cutoff = datetime.now(timezone.utc) - timedelta(
+                days=config.trace_retention_days
             )
-            cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
 
             total_deleted = 0
             while True:
@@ -58,6 +55,7 @@ class TraceRetentionService(BaseQueueService[TraceRetentionJob]):
                 if not trace_ids:
                     break
                 delete_trace_batch(db_session, trace_ids)
+                db_session.commit()
                 total_deleted += len(trace_ids)
 
             if total_deleted > 0:
@@ -66,8 +64,6 @@ class TraceRetentionService(BaseQueueService[TraceRetentionJob]):
                     total_deleted,
                     cutoff.isoformat(),
                 )
-        finally:
-            db_session.close()
 
     def _background_loop(self) -> None:
         """Run retention once, then wait 24 hours and enqueue again."""

@@ -70,10 +70,10 @@ def test_get_expired_trace_ids_returns_only_expired_and_respects_batch_size() ->
     assert set(result) == {expired_1, expired_2}
     assert not_expired not in result
 
-    # Respect batch_size
+    # Respect batch_size; ORDER BY end_time ASC means oldest first
     result_cap = get_expired_trace_ids(db_session, cutoff, batch_size=1)
     assert len(result_cap) == 1
-    assert result_cap[0] in {expired_1, expired_2}
+    assert result_cap[0] == expired_2
 
     # Cleanup
     db_session.execute(
@@ -154,6 +154,7 @@ def test_delete_trace_batch_removes_trace_and_orphan_resource_metadata_only() ->
     db_session.commit()
 
     delete_trace_batch(db_session, [trace_id])
+    db_session.commit()
 
     # Batch trace and span gone
     assert (
