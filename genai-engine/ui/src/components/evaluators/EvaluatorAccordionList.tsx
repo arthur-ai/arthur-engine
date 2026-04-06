@@ -198,7 +198,7 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={handleDeleteCancel} disabled={isDeleting}>
+          <Button onClick={handleDeleteCancel} disabled={isDeleting} variant="outlined">
             Cancel
           </Button>
           <Button
