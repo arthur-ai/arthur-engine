@@ -78,9 +78,8 @@ jobs:
         run: |
           BASE_VERSION=$(python3 -c "import tomllib; d=tomllib.load(open('arthur-observability-sdk/python/pyproject.toml','rb')); print(d['project']['version'])")
           if [ "${{ github.ref }}" = "refs/heads/dev" ]; then
-            export DEV_VERSION="${BASE_VERSION}.dev0"
+            DEV_VERSION="${BASE_VERSION}.dev0"
             echo "Building dev version: ${DEV_VERSION}"
-            export DEV_VERSION="${BASE_VERSION}.dev0"
             sed -i "s/^version = .*/version = \"${DEV_VERSION}\"/" arthur-observability-sdk/python/pyproject.toml
           else
             echo "Building stable version: ${BASE_VERSION}"
