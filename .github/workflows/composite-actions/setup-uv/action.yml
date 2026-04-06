@@ -15,10 +15,11 @@ runs:
   steps:
     - name: "Install uv"
       shell: bash
-      run: pip install uv --quiet
+      run: curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
     - name: "Install dependencies"
       shell: bash
       run: |
+        uv --version
         GROUPS_FLAG=""
         if [ -n "${{ inputs.with-groups }}" ]; then
           IFS=',' read -ra GROUPS <<< "${{ inputs.with-groups }}"
