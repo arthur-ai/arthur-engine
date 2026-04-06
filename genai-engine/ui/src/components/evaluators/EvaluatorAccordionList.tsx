@@ -105,8 +105,8 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
         <TableHead>
           <TableRow>
             <TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
-            <TableCell sx={{ fontWeight: 600, textAlign: "right" }}>Last Updated</TableCell>
-            <TableCell sx={{ fontWeight: 600, textAlign: "right", width: 80 }}>Actions</TableCell>
+            <TableCell sx={{ fontWeight: 600 }}>Last Updated</TableCell>
+            <TableCell sx={{ fontWeight: 600, width: 80 }}>Actions</TableCell>
           </TableRow>
         </TableHead>
       </Table>
