@@ -41,7 +41,7 @@ jobs:
       - uses: ./.github/workflows/composite-actions/setup-uv
         with:
           working-directory: genai-engine
-          with-groups: dev,linters,performance
+          with-groups: dev,linters
       - name: Run isort
         id: isort
         continue-on-error: true
