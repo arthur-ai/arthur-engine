@@ -4077,15 +4077,15 @@ utils = ["numpydoc"]
 
 [[package]]
 name = "locust"
-version = "2.43.3"
+version = "2.43.4"
 description = "Developer-friendly load testing framework"
 optional = false
 python-versions = ">=3.10"
 groups = ["performance"]
 markers = "sys_platform != \"linux\" and sys_platform != \"win32\" or sys_platform == \"linux\" or sys_platform == \"win32\""
 files = [
-    {file = "locust-2.43.3-py3-none-any.whl", hash = "sha256:e032c119b54a9d984cb74a936ee83cfd7d68b3c76c8f308af63d04f11396b553"},
-    {file = "locust-2.43.3.tar.gz", hash = "sha256:b5d2c48f8f7d443e3abdfdd6ec2f7aebff5cd74fab986bcf1e95b375b5c5a54b"},
+    {file = "locust-2.43.4-py3-none-any.whl", hash = "sha256:a4f40403e9f665e0dcb94991d9a8f19317d0d36afe88400833c5fab99ba942ed"},
+    {file = "locust-2.43.4.tar.gz", hash = "sha256:4ace60f07f5fa9bf08d1b64da25915707befca19a790897eed6372656824deee"},
 ]
 
 [package.dependencies]
@@ -4110,6 +4110,7 @@ dns = ["dnspython (>=2.8.0)"]
 milvus = ["pymilvus (>=2.5.0)"]
 mqtt = ["paho-mqtt (>=2.1.0)"]
 otel = ["opentelemetry-exporter-otlp-proto-grpc (>=1.38.0)", "opentelemetry-exporter-otlp-proto-http (>=1.38.0)", "opentelemetry-instrumentation-requests (>=0.59b0)", "opentelemetry-instrumentation-urllib3 (>=0.59b0)", "opentelemetry-sdk (>=1.38.0)"]
+qdrant = ["qdrant-client (>=1.16.2)"]
 
 [[package]]
 name = "mako"
@@ -10229,4 +10230,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.13.dev0"
-content-hash = "66e19584d69baffe110baf386fd2db4eca617c477deca14abb4c50593f4e68db"
+content-hash = "4ab0d46597f8f941c1cc129d69459b27220e6996841c75e55ac251a29c7f63e8"
