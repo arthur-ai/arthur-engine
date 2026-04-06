@@ -43,7 +43,7 @@ export default defineConfig(({ mode }) => {
       "import.meta.env.VITE_AMPLITUDE_TOKEN": JSON.stringify(amplitudeApiKey || ""),
     },
     server: {
-      port: 3000,
+      port: parseInt(env.GENAI_UI_PORT || "3000", 10),
       host: true, // Allow external connections
     },
     resolve: {
