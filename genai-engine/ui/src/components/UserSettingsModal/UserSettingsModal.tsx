@@ -52,6 +52,8 @@ function MethodChip({ method, compact = false }: { method: string; compact?: boo
   );
 }
 
+const ALLOWED_TRACE_RETENTION_DAYS = [7, 14, 30, 90, 120, 365] as const;
+
 const TITLE_ID = "user-settings-dialog-title";
 const DESCRIPTION_ID = "user-settings-dialog-description";
 
@@ -67,6 +69,9 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   availableModelsMap = new Map(),
   availableEndpoints = [],
   chatbotEnabled = false,
+  traceRetentionEnabled = false,
+  initialTraceRetentionDays,
+  isLoadingTraceRetention = false,
   title = "Settings",
   saveLabel = "Save",
   savingLabel = "Saving...",
@@ -84,6 +89,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [chatbotModelName, setChatbotModelName] = useState<string>(initialSettings?.chatbotModelName ?? "");
   const [blacklistEndpoints, setBlacklistEndpoints] = useState<string[]>(initialSettings?.blacklistEndpoints ?? []);
   const [blacklistSearch, setBlacklistSearch] = useState("");
+  const [traceRetentionDays, setTraceRetentionDays] = useState<number>(initialTraceRetentionDays ?? 90);
 
   useEffect(() => {
     if (open) {
@@ -94,6 +100,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       setChatbotModelName(initialSettings?.chatbotModelName ?? "");
       setBlacklistEndpoints(initialSettings?.blacklistEndpoints ?? []);
       setBlacklistSearch("");
+      setTraceRetentionDays(initialTraceRetentionDays ?? 90);
     }
   }, [
     open,
@@ -103,6 +110,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     initialSettings?.chatbotModelProvider,
     initialSettings?.chatbotModelName,
     initialSettings?.blacklistEndpoints,
+    initialTraceRetentionDays,
   ]);
 
   const options = timezoneOptions.length > 0 ? timezoneOptions : DEFAULT_TIMEZONE_OPTIONS;
@@ -132,6 +140,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     onSave({
       timezone: value,
       use24Hour,
+      traceRetentionDays,
       enableChatbot,
       chatbotModelProvider: chatbotProvider,
       chatbotModelName,
@@ -172,6 +181,33 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             <MenuItem value="24">24-hour</MenuItem>
           </Select>
         </FormControl>
+
+        {traceRetentionEnabled && (
+          <>
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+              Application
+            </Typography>
+            <FormControl fullWidth size="small" disabled={isLoading || isLoadingTraceRetention}>
+              <InputLabel id="trace-retention-label">Trace retention (days)</InputLabel>
+              <Select
+                labelId="trace-retention-label"
+                label="Trace retention (days)"
+                value={traceRetentionDays}
+                onChange={(e) => setTraceRetentionDays(e.target.value as number)}
+              >
+                {ALLOWED_TRACE_RETENTION_DAYS.map((days) => (
+                  <MenuItem key={days} value={days}>
+                    {days} days
+                  </MenuItem>
+                ))}
+              </Select>
+              <Typography variant="caption" sx={{ mt: 1, display: "block", color: "text.secondary" }}>
+                Traces older than this many days are automatically deleted.
+              </Typography>
+            </FormControl>
+          </>
+        )}
 
         {chatbotEnabled && (
           <>

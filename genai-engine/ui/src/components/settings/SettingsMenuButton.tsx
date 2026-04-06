@@ -2,8 +2,8 @@ import AppsOutlined from "@mui/icons-material/AppsOutlined";
 import KeyOutlined from "@mui/icons-material/KeyOutlined";
 import LogoutOutlined from "@mui/icons-material/LogoutOutlined";
 import SettingsIcon from "@mui/icons-material/Settings";
-import SettingsApplicationsOutlined from "@mui/icons-material/SettingsApplicationsOutlined";
 import { Box, Divider, IconButton, ListItemIcon, ListItemText, Menu, MenuItem } from "@mui/material";
+import { useSnackbar } from "notistack";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -13,6 +13,7 @@ import { UserSettingsModal } from "@/components/UserSettingsModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
+import { useApplicationConfiguration } from "@/hooks/useApplicationConfiguration";
 import { useAvailableModels, useModelProviders } from "@/hooks/useModelProviders";
 import type { ModelProvider } from "@/lib/api-client/api-client";
 
@@ -23,6 +24,8 @@ export const SettingsMenuButton: React.FC = () => {
   const { timezone, use24Hour, setTimezone, setUse24Hour, serverChatbotEnabled, enableChatbot, setEnableChatbot } = useDisplaySettings();
   const { providers: enabledProviders } = useModelProviders();
   const { availableModels: availableModelsMap } = useAvailableModels(enabledProviders);
+  const { data: appConfig, isLoading: isLoadingAppConfig, error: appConfigError, updateConfiguration } = useApplicationConfiguration();
+  const { enqueueSnackbar } = useSnackbar();
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [userSettingsModalOpen, setUserSettingsModalOpen] = useState(false);
   const [chatbotModelProvider, setChatbotModelProvider] = useState<ModelProvider | "">("");
@@ -90,7 +93,7 @@ export const SettingsMenuButton: React.FC = () => {
           <ListItemIcon>
             <SettingsIcon />
           </ListItemIcon>
-          <ListItemText>User settings</ListItemText>
+          <ListItemText>Settings</ListItemText>
         </MenuItem>
         <MenuItem
           onClick={() => {
@@ -113,17 +116,6 @@ export const SettingsMenuButton: React.FC = () => {
             <KeyOutlined />
           </ListItemIcon>
           <ListItemText>API Keys</ListItemText>
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            handleMenuClose();
-            navigate("/settings/application-config");
-          }}
-        >
-          <ListItemIcon>
-            <SettingsApplicationsOutlined />
-          </ListItemIcon>
-          <ListItemText>Application config</ListItemText>
         </MenuItem>
         <Divider />
         <Box sx={{ px: 2, py: 1 }}>
@@ -152,38 +144,53 @@ export const SettingsMenuButton: React.FC = () => {
         enabledProviders={enabledProviders}
         availableModelsMap={availableModelsMap}
         availableEndpoints={availableEndpoints}
+        traceRetentionEnabled={!appConfigError && !!appConfig}
+        initialTraceRetentionDays={appConfig?.trace_retention_days}
+        isLoadingTraceRetention={isLoadingAppConfig}
         isSaving={isSavingSettings}
         onSave={async (settings) => {
           if (settings.timezone !== undefined) setTimezone(settings.timezone);
           if (settings.use24Hour !== undefined) setUse24Hour(settings.use24Hour);
           if (settings.enableChatbot !== undefined) setEnableChatbot(settings.enableChatbot);
 
-          const providerChanged = settings.chatbotModelProvider && settings.chatbotModelProvider !== chatbotModelProvider;
-          const modelChanged = settings.chatbotModelName && settings.chatbotModelName !== chatbotModelName;
-          const blacklistChanged = JSON.stringify(settings.blacklistEndpoints ?? []) !== JSON.stringify(blacklistEndpoints);
+          setIsSavingSettings(true);
+          try {
+            const providerChanged = settings.chatbotModelProvider && settings.chatbotModelProvider !== chatbotModelProvider;
+            const modelChanged = settings.chatbotModelName && settings.chatbotModelName !== chatbotModelName;
+            const blacklistChanged = JSON.stringify(settings.blacklistEndpoints ?? []) !== JSON.stringify(blacklistEndpoints);
 
-          if (api && (providerChanged || modelChanged || blacklistChanged)) {
-            const prevProvider = chatbotModelProvider;
-            const prevModel = chatbotModelName;
-            const prevBlacklist = blacklistEndpoints;
-            if (settings.chatbotModelProvider) setChatbotModelProvider(settings.chatbotModelProvider as ModelProvider);
-            if (settings.chatbotModelName) setChatbotModelName(settings.chatbotModelName);
-            if (settings.blacklistEndpoints) setBlacklistEndpoints(settings.blacklistEndpoints);
-            setIsSavingSettings(true);
-            try {
-              await api.api.updateChatbotConfigApiV1ChatbotConfigPut({
-                model_provider: (settings.chatbotModelProvider || chatbotModelProvider) as ModelProvider,
-                model_name: settings.chatbotModelName || chatbotModelName,
-                blacklist_endpoints: settings.blacklistEndpoints,
-              });
-            } catch (err) {
-              console.error("Failed to update chatbot config:", err);
-              setChatbotModelProvider(prevProvider);
-              setChatbotModelName(prevModel);
-              setBlacklistEndpoints(prevBlacklist);
-            } finally {
-              setIsSavingSettings(false);
+            if (api && (providerChanged || modelChanged || blacklistChanged)) {
+              const prevProvider = chatbotModelProvider;
+              const prevModel = chatbotModelName;
+              const prevBlacklist = blacklistEndpoints;
+              if (settings.chatbotModelProvider) setChatbotModelProvider(settings.chatbotModelProvider as ModelProvider);
+              if (settings.chatbotModelName) setChatbotModelName(settings.chatbotModelName);
+              if (settings.blacklistEndpoints) setBlacklistEndpoints(settings.blacklistEndpoints);
+              try {
+                await api.api.updateChatbotConfigApiV1ChatbotConfigPut({
+                  model_provider: (settings.chatbotModelProvider || chatbotModelProvider) as ModelProvider,
+                  model_name: settings.chatbotModelName || chatbotModelName,
+                  blacklist_endpoints: settings.blacklistEndpoints,
+                });
+              } catch (err) {
+                console.error("Failed to update chatbot config:", err);
+                setChatbotModelProvider(prevProvider);
+                setChatbotModelName(prevModel);
+                setBlacklistEndpoints(prevBlacklist);
+              }
             }
+
+            if (settings.traceRetentionDays !== undefined && settings.traceRetentionDays !== appConfig?.trace_retention_days) {
+              try {
+                await updateConfiguration({ trace_retention_days: settings.traceRetentionDays });
+                enqueueSnackbar("Application configuration updated", { variant: "success" });
+              } catch (err) {
+                const message = err instanceof Error ? err.message : "Failed to update configuration";
+                enqueueSnackbar(message, { variant: "error" });
+              }
+            }
+          } finally {
+            setIsSavingSettings(false);
           }
 
           setUserSettingsModalOpen(false);

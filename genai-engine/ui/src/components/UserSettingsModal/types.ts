@@ -3,6 +3,7 @@ import type { ModelProvider } from "@/lib/api-client/api-client";
 export interface UserSettings {
   timezone?: string;
   use24Hour?: boolean;
+  traceRetentionDays?: number;
   enableChatbot?: boolean;
   chatbotModelProvider?: ModelProvider | "";
   chatbotModelName?: string;
@@ -33,6 +34,12 @@ export interface UserSettingsModalProps {
   availableModelsMap?: Map<ModelProvider, string[]>;
   /** All available chatbot endpoints for the blacklist selector. */
   availableEndpoints?: string[];
+  /** Whether trace retention configuration is available. Controls visibility of the Application section. */
+  traceRetentionEnabled?: boolean;
+  /** Current trace retention value from the server. */
+  initialTraceRetentionDays?: number;
+  /** Whether the application configuration is still loading. */
+  isLoadingTraceRetention?: boolean;
   title?: string;
   saveLabel?: string;
   /** Shown on Save button when isSaving is true. */
