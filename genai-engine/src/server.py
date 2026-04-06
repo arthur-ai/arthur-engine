@@ -415,6 +415,12 @@ def get_base_app(
     ):
         origins.append(ingress_url)
 
+    if cors_extra := get_env_var(
+        constants.CORS_EXTRA_ORIGINS_ENV_VAR,
+        none_on_missing=True,
+    ):
+        origins.extend(o.strip() for o in cors_extra.split(",") if o.strip())
+
     arthur_allowed_origins = r"https://.*\.arthur\.ai"
 
     app.add_middleware(
@@ -582,7 +588,8 @@ def get_app() -> FastAPI:
 def start() -> None:
     send_telemetry_event(TelemetryEventTypes.SERVER_START_INITIATED)
     app = get_app()
-    uvicorn.run(app, host="0.0.0.0", port=3030)
+    port = int(get_env_var(constants.GENAI_ENGINE_PORT_ENV_VAR, default="3030"))
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 
 if __name__ == "__main__":
