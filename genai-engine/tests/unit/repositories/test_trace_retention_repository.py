@@ -215,8 +215,8 @@ def test_delete_trace_batch_removes_trace_and_orphan_resource_metadata_only() ->
 
 
 @pytest.mark.unit_tests
-def test_get_expired_trace_ids_empty_cutoff() -> None:
-    """get_expired_trace_ids with cutoff in future returns empty list."""
+def test_get_expired_trace_ids_returns_nothing_when_no_traces_expired() -> None:
+    """get_expired_trace_ids returns empty when cutoff is older than all traces."""
     db_session: Session = override_get_db_session()
     task_id = _make_task(db_session)
     now = datetime.now(timezone.utc)
@@ -231,7 +231,7 @@ def test_get_expired_trace_ids_empty_cutoff() -> None:
         )
     )
     db_session.commit()
-    cutoff = now + timedelta(days=1)
+    cutoff = now - timedelta(days=1)
     result = get_expired_trace_ids(
         db_session, cutoff, batch_size=DEFAULT_TRACE_RETENTION_BATCH_SIZE
     )

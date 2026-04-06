@@ -32,6 +32,7 @@ def get_expired_trace_ids(
         .where(DatabaseTraceMetadata.end_time < cutoff)
         .order_by(DatabaseTraceMetadata.end_time.asc())
         .limit(batch_size)
+        .with_for_update(skip_locked=True)
     )
     rows = db_session.execute(stmt).all()
     return [row[0] for row in rows]

@@ -71,8 +71,7 @@ def test_execute_job_uses_config_retention_days_and_calls_repository(
 
     mock_config_repo.get_configurations.assert_called_once()
     mock_get_expired_trace_ids.assert_called()
-    call_kwargs = mock_get_expired_trace_ids.call_args[1]
-    cutoff = call_kwargs["cutoff"]
+    cutoff = mock_get_expired_trace_ids.call_args[0][1]
     now = datetime.now(timezone.utc)
     expected_cutoff = now - timedelta(days=30)
     assert abs((cutoff - expected_cutoff).total_seconds()) < 2
