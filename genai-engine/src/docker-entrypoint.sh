@@ -47,4 +47,4 @@ echo "==> Running database migration"
 uv run alembic upgrade head || exit 1
 
 echo "==> Starting the GenAI Engine server with ${WORKERS:-1} worker(s)"
-exec uv run gunicorn src.server:get_app -c src/gunicorn.conf.py
+exec uv run --no-project gunicorn src.server:get_app -c src/gunicorn.conf.py
