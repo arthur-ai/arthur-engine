@@ -3,7 +3,7 @@ services:
   db:
     image: postgres:18
     ports:
-      - "5432:5432"
+      - "${GENAI_DB_PORT:-5432}:5432"
     environment:
       POSTGRES_PASSWORD: changeme_pg_password
       POSTGRES_DB: arthur_genai_engine
@@ -22,7 +22,7 @@ services:
       args:
         GITLAB_UNIFY_FRONTEND_TOKEN: ${GITLAB_UNIFY_FRONTEND_TOKEN}
     ports:
-      - "3030:3030"
+      - "${GENAI_ENGINE_PORT:-3030}:3030"
     environment:
       - POSTGRES_URL=db
       - POSTGRES_PORT=5432
