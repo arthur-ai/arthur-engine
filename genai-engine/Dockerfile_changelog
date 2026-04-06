@@ -22,7 +22,7 @@ ENV PYTHONPATH="$PYTHONPATH:/app/genai-engine/src"
 # Install only the minimal dependencies needed for changelog generation
 # We need FastAPI and its dependencies, but not the heavy ML dependencies
 WORKDIR /app/genai-engine
-RUN uv sync --system --frozen --no-install-project
+RUN UV_SYSTEM_PYTHON=1 uv sync --frozen --no-install-project
 
 # Install oasdiff - detect architecture and install correct version
 RUN ARCH=$(dpkg --print-architecture) && \
