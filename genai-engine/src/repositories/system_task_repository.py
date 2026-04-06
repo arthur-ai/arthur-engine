@@ -123,7 +123,7 @@ class SystemTaskRepository:
             ),
             OpenAIMessage(
                 role=MessageRole.USER,
-                content=""""PREVIOUS CONVERSATION:
+                content="""PREVIOUS CONVERSATION:
 
                 {{prev_conversation}}""",
             ),
@@ -190,7 +190,7 @@ class SystemTaskRepository:
 
             if not acquired:
                 logger.info(
-                    "System task initialization already in progress on another worker, skipping."
+                    "System task initialization already in progress on another worker, skipping.",
                 )
                 return
 
