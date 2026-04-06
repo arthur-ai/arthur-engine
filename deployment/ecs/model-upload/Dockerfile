@@ -19,6 +19,7 @@ COPY pyproject.toml uv.lock* ./
 # Install dependencies (only main dependencies needed for download)
 RUN uv export --frozen \
     --no-emit-project \
+    --no-group dev \
     -o /tmp/requirements.txt \
     && uv pip install --system --no-cache -r /tmp/requirements.txt
 

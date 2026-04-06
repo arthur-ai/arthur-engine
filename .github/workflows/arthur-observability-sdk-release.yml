@@ -81,6 +81,7 @@ jobs:
             DEV_VERSION="${BASE_VERSION}.dev0"
             echo "Building dev version: ${DEV_VERSION}"
             export DEV_VERSION="${BASE_VERSION}.dev0"
+            sed -i "s/^version = .*/version = \"${DEV_VERSION}\"/" arthur-observability-sdk/python/pyproject.toml
           else
             echo "Building stable version: ${BASE_VERSION}"
           fi
