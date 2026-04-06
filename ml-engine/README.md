@@ -1,21 +1,23 @@
 # ML Engine
 This is the repository for the Arthur ML Engine, which computes evals over user-configured datasets in the Arthur Platform.
 
-# Table of Contents
-- [Developer Setup (for Mac)](#developer-setup-for-mac)
-  - [Running ML Engine in Docker](#running-ml-engine-in-docker)
-    - [Prerequisites](#prerequisites)
-    - [Running Local ML Engine Build in Docker](#running-local-ml-engine-build-in-docker)
-  - [Running ML Engine in Terminal](#running-ml-engine-in-terminal-window)
-    - [Install Prerequisites](#install-prerequisite)
-    - [Set Up Python Environment](#set-up-python-environment)
-    - [Configure Environment](#setup-environment-configuration)
-    - [Run ML Engine](#run-the-ml-engine)
-  - [Running the Linter](#running-the-linter)
-  - [Running the Unit tests](#run-unit-tests)
-  - [Running the Integration tests](#run-integration-tests)
-  - [Running the ML Engine with Local Arthur-Client](#running-the-ml-engine-with-a-local-version-of-the-arthur-client-optional-dev-only)
-  - [Running the ML Engine with Local Arthur-Common](#running-the-ml-engine-with-a-local-version-of-arthur-common-optional-dev-only)
+## Table of Contents
+- [ML Engine](#ml-engine)
+  - [Table of Contents](#table-of-contents)
+  - [Developer Setup (for Mac)](#developer-setup-for-mac)
+    - [Running ML Engine in Docker](#running-ml-engine-in-docker)
+      - [Prerequisites](#prerequisites)
+      - [Running Local ML Engine Build in Docker](#running-local-ml-engine-build-in-docker)
+    - [Running ML Engine in Terminal Window](#running-ml-engine-in-terminal-window)
+      - [Install prerequisite](#install-prerequisite)
+      - [Set Up Python Environment](#set-up-python-environment)
+      - [Setup environment Configuration](#setup-environment-configuration)
+      - [Run the ML Engine](#run-the-ml-engine)
+    - [Running the linter](#running-the-linter)
+    - [Run Unit Tests](#run-unit-tests)
+    - [Run Integration Tests](#run-integration-tests)
+    - [Running the ML Engine with a Local Version of the Arthur-Client (Optional, Dev only)](#running-the-ml-engine-with-a-local-version-of-the-arthur-client-optional-dev-only)
+    - [Running the ML Engine with a Local Version of Arthur-Common (Optional, Dev only)](#running-the-ml-engine-with-a-local-version-of-arthur-common-optional-dev-only)
 
 
 ## Developer Setup (for Mac)
@@ -67,10 +69,6 @@ pip install uv
 #### Set Up Python Environment
 Assume all commands are run from `arthur-engine/ml-engine`path:
 
-1. Create a uv environment
-```bash
-```
-
 2. Generate and Install GenAI Client
 ```bash
 cd scripts
@@ -79,7 +77,7 @@ cd scripts
 ```
 
 3. Install system dependencies for database drivers
-This must happen before Step 4 (install the Python dependencies) because some of the Python packages depend on these
+This must happen before `uv sync` because some of the Python packages depend on these
 system libraries.
 
 ```bash
