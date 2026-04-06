@@ -10,6 +10,7 @@ from arthur_client.api_bindings import (
     Model,
     ModelsV1Api,
     PatchJob,
+    PoliciesV1Api,
     PostJob,
     PostJobBatch,
     PostJobKind,
@@ -60,13 +61,22 @@ def _make_mock_job_spec() -> Mock:
     return job_spec
 
 
+def _make_mock_assignments_response(total: int = 1) -> Mock:
+    response = Mock()
+    response.pagination = Mock()
+    response.pagination.total_records = total
+    return response
+
+
 def _make_executor(
     models_client: Mock = None,
     jobs_client: Mock = None,
+    policies_client: Mock = None,
 ) -> ScheduleComplianceJobsExecutor:
     return ScheduleComplianceJobsExecutor(
         models_client=models_client or Mock(spec=ModelsV1Api),
         jobs_client=jobs_client or Mock(spec=JobsV1Api),
+        policies_client=policies_client or Mock(spec=PoliciesV1Api),
         logger=Mock(),
     )
 
@@ -190,10 +200,16 @@ class TestScheduleComplianceJobsExecutor:
     def test_execute_happy_path(self):
         mock_models_client = Mock(spec=ModelsV1Api)
         mock_jobs_client = Mock(spec=JobsV1Api)
-        executor = _make_executor(mock_models_client, mock_jobs_client)
+        mock_policies_client = Mock(spec=PoliciesV1Api)
+        executor = _make_executor(mock_models_client, mock_jobs_client, mock_policies_client)
 
         mock_model = _make_mock_model()
         mock_models_client.get_model.return_value = mock_model
+
+        # Model has assignments
+        mock_policies_client.list_model_policy_assignments.return_value = (
+            _make_mock_assignments_response(total=1)
+        )
 
         # No existing jobs with same nonce
         mock_jobs_response = Mock()
@@ -284,6 +300,32 @@ class TestScheduleComplianceJobsExecutor:
         job_spec = _make_mock_job_spec()
 
         with pytest.raises(ValueError, match="Nonce expected"):
+            executor.execute(job, job_spec)
+
+        mock_jobs_client.update_job.assert_called_once()
+        mock_jobs_client.post_submit_jobs_batch.assert_not_called()
+
+    def test_execute_no_assignments_stops_chain(self):
+        mock_models_client = Mock(spec=ModelsV1Api)
+        mock_jobs_client = Mock(spec=JobsV1Api)
+        mock_policies_client = Mock(spec=PoliciesV1Api)
+        executor = _make_executor(mock_models_client, mock_jobs_client, mock_policies_client)
+
+        mock_models_client.get_model.return_value = _make_mock_model()
+
+        # Model has no assignments
+        mock_policies_client.list_model_policy_assignments.return_value = (
+            _make_mock_assignments_response(total=0)
+        )
+
+        mock_updated_job = Mock(spec=Job)
+        mock_updated_job.max_attempts = 1
+        mock_jobs_client.update_job.return_value = mock_updated_job
+
+        job = _make_mock_job()
+        job_spec = _make_mock_job_spec()
+
+        with pytest.raises(ValueError, match="no policy assignments"):
             executor.execute(job, job_spec)
 
         mock_jobs_client.update_job.assert_called_once()

@@ -9,6 +9,7 @@ from arthur_client.api_bindings import (
     Model,
     ModelsV1Api,
     PatchJob,
+    PoliciesV1Api,
     PostJob,
     PostJobBatch,
     PostJobKind,
@@ -26,10 +27,12 @@ class ScheduleComplianceJobsExecutor:
         self,
         models_client: ModelsV1Api,
         jobs_client: JobsV1Api,
+        policies_client: PoliciesV1Api,
         logger: logging.Logger,
     ):
         self.models_client = models_client
         self.jobs_client = jobs_client
+        self.policies_client = policies_client
         self.logger = logger
 
     def execute(self, job: Job, job_spec: ScheduleComplianceJobsJobSpec) -> None:
@@ -43,6 +46,7 @@ class ScheduleComplianceJobsExecutor:
 
         try:
             self._validate_job(job)
+            self._validate_model_has_assignments(model, job)
         except ValueError as e:
             self._handle_validation_failure(job, e)
 
@@ -92,6 +96,17 @@ class ScheduleComplianceJobsExecutor:
             raise ValueError("Schedule id must be defined for scheduled jobs.")
         if not job.nonce:
             raise ValueError("Nonce expected for this job type.")
+
+    def _validate_model_has_assignments(self, model: Model, job: Job) -> None:
+        """Stop the schedule chain if the model no longer has any policy assignments."""
+        assignments = self.policies_client.list_model_policy_assignments(
+            model_id=model.id, page=1, page_size=1
+        )
+        if assignments.pagination.total_records == 0:
+            raise ValueError(
+                f"Model {model.id} has no policy assignments. "
+                "Schedule was removed; stopping this chain.",
+            )
 
     def _validate_new_schedule_job(self, model: Model, new_job: PostJob) -> None:
         """Validates schedule job nonce is unique before submission to protect against race condition."""

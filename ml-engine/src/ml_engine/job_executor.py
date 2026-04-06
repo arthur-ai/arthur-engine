@@ -408,6 +408,7 @@ class JobExecutor:
                         ScheduleComplianceJobsExecutor(
                             self.models_client,
                             self.jobs_client,
+                            self.policies_client,
                             self.logger,
                         ).execute(job, job.job_spec.actual_instance)
                     case _:
