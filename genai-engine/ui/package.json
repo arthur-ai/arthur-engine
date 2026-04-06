@@ -37,7 +37,7 @@
     "@tanstack/react-query-devtools": "5.91.3",
     "@tanstack/react-table": "8.21.3",
     "axios": "1.13.6",
-    "dayjs": "1.11.19",
+    "dayjs": "1.11.20",
     "framer-motion": "12.35.2",
     "material-react-table": "3.2.1",
     "monaco-editor": "0.55.1",
