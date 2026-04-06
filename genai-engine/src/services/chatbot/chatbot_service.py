@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from typing import AsyncGenerator, List, MutableMapping, Optional, Tuple
@@ -223,9 +224,13 @@ class ChatbotService:
                     SSEEventType.FINAL_RESPONSE,
                     final_response.model_dump_json(),
                 )
-                CONVERSATION_HISTORIES[(user_id, conversation_id)] = (
-                    self._summarize_history(current_prompt.messages, llm_client)
+
+                summarized_history = await asyncio.to_thread(
+                    self._summarize_history,
+                    current_prompt.messages,
+                    llm_client,
                 )
+                CONVERSATION_HISTORIES[(user_id, conversation_id)] = summarized_history
                 return
             assistant_msg = OpenAIMessage(
                 role=MessageRole.AI,
@@ -352,7 +357,10 @@ class ChatbotService:
         self.tracing.end_span(agent_span)
         self.tracing.flush()
         yield format_sse_error(error_msg)
-        CONVERSATION_HISTORIES[(user_id, conversation_id)] = self._summarize_history(
+
+        summarized_history = await asyncio.to_thread(
+            self._summarize_history,
             current_prompt.messages,
             llm_client,
         )
+        CONVERSATION_HISTORIES[(user_id, conversation_id)] = summarized_history
