@@ -40,7 +40,7 @@ const PromptFullScreenView = ({ promptName, initialVersion, onClose }: PromptFul
   const handleSelectVersion = (version: number) => {
     setSelectedVersion(version);
     // Update URL to reflect the selected version
-    navigate(`/tasks/${taskId}/prompts/${promptName}/versions/${version}`);
+    navigate(`/tasks/${taskId}/prompts/${encodeURIComponent(promptName)}/versions/${version}`);
   };
 
   const handleDeleteVersion = async (version: number) => {

@@ -6,6 +6,7 @@ import litellm
 from arthur_common.models.common_schemas import PaginationParameters
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Response, status
 from fastapi.responses import StreamingResponse
+from pydantic import AfterValidator
 from sqlalchemy.orm import Session
 
 from dependencies import (
@@ -40,6 +41,7 @@ from schemas.response_schemas import (
     UnsavedPromptVariablesListResponse,
 )
 from services.prompt.chat_completion_service import ChatCompletionService
+from utils.url_encoding import decode_path_param
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 
@@ -59,11 +61,7 @@ agentic_prompt_routes = APIRouter(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
 def get_agentic_prompt(
-    prompt_name: str = Path(
-        ...,
-        description="The name of the prompt to retrieve.",
-        title="Prompt Name",
-    ),
+    prompt_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
     prompt_version: str = Path(
         ...,
         description="The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
@@ -143,11 +141,7 @@ def get_all_agentic_prompt_versions(
         LLMGetVersionsFilterRequest,
         Depends(llm_get_versions_filter_parameters),
     ],
-    prompt_name: str = Path(
-        ...,
-        description="The name of the prompt to retrieve.",
-        title="Prompt Name",
-    ),
+    prompt_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
@@ -438,11 +432,7 @@ def get_unsaved_prompt_variables_list(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 async def run_saved_agentic_prompt(
-    prompt_name: str = Path(
-        ...,
-        description="The name of the prompt to run.",
-        title="Prompt Name",
-    ),
+    prompt_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
     prompt_version: str = Path(
         ...,
         description="The version of the prompt to run. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
@@ -496,11 +486,7 @@ async def run_saved_agentic_prompt(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
 def render_saved_agentic_prompt(
-    prompt_name: str = Path(
-        ...,
-        description="The name of the prompt to render.",
-        title="Prompt Name",
-    ),
+    prompt_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
     prompt_version: str = Path(
         ...,
         description="The version of the prompt to render. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
@@ -561,11 +547,7 @@ def render_saved_agentic_prompt(
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def save_agentic_prompt(
     prompt_config: CreateAgenticPromptRequest,
-    prompt_name: str = Path(
-        ...,
-        description="The name of the prompt to save.",
-        title="Prompt Name",
-    ),
+    prompt_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
@@ -593,11 +575,7 @@ def save_agentic_prompt(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def delete_agentic_prompt(
-    prompt_name: str = Path(
-        ...,
-        description="The name of the prompt to delete.",
-        title="Prompt Name",
-    ),
+    prompt_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
@@ -625,11 +603,7 @@ def delete_agentic_prompt(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def delete_agentic_prompt_version(
-    prompt_name: str = Path(
-        ...,
-        description="The name of the prompt to delete.",
-        title="Prompt Name",
-    ),
+    prompt_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
     prompt_version: str = Path(
         ...,
         description="The version of the prompt to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
@@ -667,16 +641,8 @@ def delete_agentic_prompt_version(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
 def get_agentic_prompt_by_tag(
-    prompt_name: str = Path(
-        ...,
-        description="The name of the prompt to retrieve.",
-        title="Prompt Name",
-    ),
-    tag: str = Path(
-        ...,
-        description="The tag of the prompt to retrieve.",
-        title="Tag",
-    ),
+    prompt_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
+    tag: Annotated[str, Path(), AfterValidator(decode_path_param)],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
@@ -709,11 +675,7 @@ def get_agentic_prompt_by_tag(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def add_tag_to_agentic_prompt_version(
-    prompt_name: str = Path(
-        ...,
-        description="The name of the prompt to retrieve.",
-        title="Prompt Name",
-    ),
+    prompt_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
     prompt_version: str = Path(
         ...,
         description="The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
@@ -761,21 +723,15 @@ def add_tag_to_agentic_prompt_version(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def delete_tag_from_agentic_prompt_version(
-    prompt_name: str = Path(
-        ...,
-        description="The name of the prompt to retrieve.",
-        title="Prompt Name",
-    ),
-    prompt_version: str = Path(
-        ...,
-        description="The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
-        title="Prompt Version",
-    ),
-    tag: str = Path(
-        ...,
-        description="The tag to remove from the prompt version.",
-        title="Tag",
-    ),
+    prompt_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
+    prompt_version: Annotated[
+        str,
+        Path(
+            description="The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
+            title="Prompt Version",
+        ),
+    ],
+    tag: Annotated[str, Path(), AfterValidator(decode_path_param)],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),

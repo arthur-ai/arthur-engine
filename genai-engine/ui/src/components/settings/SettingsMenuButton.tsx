@@ -4,7 +4,7 @@ import LogoutOutlined from "@mui/icons-material/LogoutOutlined";
 import SettingsIcon from "@mui/icons-material/Settings";
 import SettingsApplicationsOutlined from "@mui/icons-material/SettingsApplicationsOutlined";
 import { Box, Divider, IconButton, ListItemIcon, ListItemText, Menu, MenuItem } from "@mui/material";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { ThemeToggle } from "../common/ThemeToggle";
@@ -12,13 +12,32 @@ import { ThemeToggle } from "../common/ThemeToggle";
 import { UserSettingsModal } from "@/components/UserSettingsModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { useApi } from "@/hooks/useApi";
+import { useAvailableModels, useModelProviders } from "@/hooks/useModelProviders";
+import type { ModelProvider } from "@/lib/api-client/api-client";
 
 export const SettingsMenuButton: React.FC = () => {
   const navigate = useNavigate();
+  const api = useApi();
   const { logout } = useAuth();
-  const { timezone, use24Hour, setTimezone, setUse24Hour } = useDisplaySettings();
+  const {
+    timezone,
+    use24Hour,
+    setTimezone,
+    setUse24Hour,
+    serverChatbotEnabled,
+    enableChatbot,
+    setEnableChatbot,
+  } = useDisplaySettings();
+  const { providers: enabledProviders } = useModelProviders();
+  const { availableModels: availableModelsMap } = useAvailableModels(enabledProviders);
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [userSettingsModalOpen, setUserSettingsModalOpen] = useState(false);
+  const [chatbotModelProvider, setChatbotModelProvider] = useState<ModelProvider | "">("");
+  const [chatbotModelName, setChatbotModelName] = useState("");
+  const [blacklistEndpoints, setBlacklistEndpoints] = useState<string[]>([]);
+  const [availableEndpoints, setAvailableEndpoints] = useState<string[]>([]);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   const isMenuOpen = Boolean(menuAnchorEl);
 
@@ -29,6 +48,22 @@ export const SettingsMenuButton: React.FC = () => {
   const handleLogout = () => {
     logout();
   };
+
+  useEffect(() => {
+    if (api && userSettingsModalOpen) {
+      api.api
+        .getChatbotConfigApiV1ChatbotConfigGet()
+        .then((res) => {
+          setChatbotModelProvider(res.data.model_provider);
+          setChatbotModelName(res.data.model_name);
+          setBlacklistEndpoints(res.data.blacklist_endpoints ?? []);
+          setAvailableEndpoints(res.data.available_endpoints ?? []);
+        })
+        .catch(() => {
+          // Chatbot config not available (e.g. feature disabled)
+        });
+    }
+  }, [api, userSettingsModalOpen]);
 
   return (
     <>
@@ -113,10 +148,52 @@ export const SettingsMenuButton: React.FC = () => {
       <UserSettingsModal
         open={userSettingsModalOpen}
         onClose={() => setUserSettingsModalOpen(false)}
-        initialSettings={{ timezone, use24Hour }}
-        onSave={(settings) => {
+        initialSettings={{
+          timezone,
+          use24Hour,
+          enableChatbot,
+          chatbotModelProvider,
+          chatbotModelName,
+          blacklistEndpoints,
+        }}
+        chatbotEnabled={serverChatbotEnabled}
+        enabledProviders={enabledProviders}
+        availableModelsMap={availableModelsMap}
+        availableEndpoints={availableEndpoints}
+        isSaving={isSavingSettings}
+        onSave={async (settings) => {
           if (settings.timezone !== undefined) setTimezone(settings.timezone);
           if (settings.use24Hour !== undefined) setUse24Hour(settings.use24Hour);
+          if (settings.enableChatbot !== undefined) setEnableChatbot(settings.enableChatbot);
+
+          const providerChanged = settings.chatbotModelProvider && settings.chatbotModelProvider !== chatbotModelProvider;
+          const modelChanged = settings.chatbotModelName && settings.chatbotModelName !== chatbotModelName;
+          const blacklistChanged = JSON.stringify(settings.blacklistEndpoints ?? []) !== JSON.stringify(blacklistEndpoints);
+
+          if (api && (providerChanged || modelChanged || blacklistChanged)) {
+            const prevProvider = chatbotModelProvider;
+            const prevModel = chatbotModelName;
+            const prevBlacklist = blacklistEndpoints;
+            if (settings.chatbotModelProvider) setChatbotModelProvider(settings.chatbotModelProvider as ModelProvider);
+            if (settings.chatbotModelName) setChatbotModelName(settings.chatbotModelName);
+            if (settings.blacklistEndpoints) setBlacklistEndpoints(settings.blacklistEndpoints);
+            setIsSavingSettings(true);
+            try {
+              await api.api.updateChatbotConfigApiV1ChatbotConfigPut({
+                model_provider: (settings.chatbotModelProvider || chatbotModelProvider) as ModelProvider,
+                model_name: settings.chatbotModelName || chatbotModelName,
+                blacklist_endpoints: settings.blacklistEndpoints,
+              });
+            } catch (err) {
+              console.error("Failed to update chatbot config:", err);
+              setChatbotModelProvider(prevProvider);
+              setChatbotModelName(prevModel);
+              setBlacklistEndpoints(prevBlacklist);
+            } finally {
+              setIsSavingSettings(false);
+            }
+          }
+
           setUserSettingsModalOpen(false);
         }}
       />

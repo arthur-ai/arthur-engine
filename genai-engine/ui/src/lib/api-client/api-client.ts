@@ -1257,6 +1257,40 @@ export interface ChatResponse {
   timestamp: number;
 }
 
+/** ChatbotConfigResponse */
+export interface ChatbotConfigResponse {
+  /**
+   * Available Endpoints
+   * @default []
+   */
+  available_endpoints?: string[];
+  /**
+   * Blacklist Endpoints
+   * @default []
+   */
+  blacklist_endpoints?: string[];
+  /** Model Name */
+  model_name: string;
+  model_provider: ModelProvider;
+}
+
+/** ChatbotConfigUpdateRequest */
+export interface ChatbotConfigUpdateRequest {
+  /** Blacklist Endpoints */
+  blacklist_endpoints?: string[] | null;
+  /** Model Name */
+  model_name?: string | null;
+  model_provider?: ModelProvider | null;
+}
+
+/** ChatbotRequest */
+export interface ChatbotRequest {
+  /** Conversation Id */
+  conversation_id: string;
+  /** Message */
+  message: string;
+}
+
 export type CheckUserPermissionUsersPermissionsCheckGetData = any;
 
 export type CheckUserPermissionUsersPermissionsCheckGetError = HTTPValidationError;
@@ -1267,6 +1301,10 @@ export interface CheckUserPermissionUsersPermissionsCheckGetParams {
   /** Resource to check permissions of. */
   resource?: UserPermissionResource;
 }
+
+export type ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteData = any;
+
+export type ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteError = HTTPValidationError;
 
 /**
  * CompletionRequest
@@ -2271,6 +2309,11 @@ export interface DiscoverAndPollResponse {
  */
 export interface DisplaySettingsResponse {
   /**
+   * Chatbot Enabled
+   * @default true
+   */
+  chatbot_enabled?: boolean;
+  /**
    * Default Currency
    * @default "USD"
    */
@@ -3066,10 +3109,7 @@ export interface GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVer
    * @default 10
    */
   page_size?: number;
-  /**
-   * Prompt Name
-   * The name of the prompt to retrieve.
-   */
+  /** Prompt Name */
   promptName: string;
   /**
    * Sort the results (asc/desc)
@@ -3131,6 +3171,11 @@ export interface GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Tags
+   * List of tags to filter for items that have any matching tag across any version.
+   */
+  tags?: string[] | null;
+  /**
    * Task Id
    * @format uuid
    */
@@ -3152,10 +3197,7 @@ export interface GetAllLlmEvalVersionsApiV1TasksTaskIdLlmEvalsEvalNameVersionsGe
    * Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).
    */
   created_before?: string | null;
-  /**
-   * LLM Eval Name
-   * The name of the llm eval to retrieve.
-   */
+  /** Eval Name */
   evalName: string;
   /**
    * Exclude Deleted
@@ -3255,6 +3297,11 @@ export interface GetAllLlmEvalsApiV1TasksTaskIdLlmEvalsGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Tags
+   * List of tags to filter for items that have any matching tag across any version.
+   */
+  tags?: string[] | null;
+  /**
    * Task Id
    * @format uuid
    */
@@ -3271,6 +3318,8 @@ export type GetAnnotationByIdApiV1TracesAnnotationsAnnotationIdGetError = HTTPVa
 export type GetApiKeyAuthApiKeysApiKeyIdGetData = ApiKeyResponse;
 
 export type GetApiKeyAuthApiKeysApiKeyIdGetError = HTTPValidationError;
+
+export type GetChatbotConfigApiV1ChatbotConfigGetData = ChatbotConfigResponse;
 
 export type GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetData = ContinuousEvalResponse;
 
@@ -5321,6 +5370,36 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
   /** Filter by trace annotation type (i.e. 'human' or 'continuous_eval'). */
   annotation_type?: AgenticAnnotationType;
   /**
+   * Completion Token Count Eq
+   * Completion token count exactly equal to this value.
+   * @min 0
+   */
+  completion_token_count_eq?: number;
+  /**
+   * Completion Token Count Gt
+   * Completion token count greater than this value.
+   * @min 0
+   */
+  completion_token_count_gt?: number;
+  /**
+   * Completion Token Count Gte
+   * Completion token count greater than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_gte?: number;
+  /**
+   * Completion Token Count Lt
+   * Completion token count less than this value.
+   * @min 0
+   */
+  completion_token_count_lt?: number;
+  /**
+   * Completion Token Count Lte
+   * Completion token count less than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_lte?: number;
+  /**
    * Continuous Eval Name
    * Filter by continuous eval name.
    */
@@ -5351,6 +5430,36 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
    * @default 10
    */
   page_size?: number;
+  /**
+   * Prompt Token Count Eq
+   * Prompt token count exactly equal to this value.
+   * @min 0
+   */
+  prompt_token_count_eq?: number;
+  /**
+   * Prompt Token Count Gt
+   * Prompt token count greater than this value.
+   * @min 0
+   */
+  prompt_token_count_gt?: number;
+  /**
+   * Prompt Token Count Gte
+   * Prompt token count greater than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_gte?: number;
+  /**
+   * Prompt Token Count Lt
+   * Prompt token count less than this value.
+   * @min 0
+   */
+  prompt_token_count_lt?: number;
+  /**
+   * Prompt Token Count Lte
+   * Prompt token count less than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_lte?: number;
   /**
    * Query Relevance Eq
    * Equal to this value.
@@ -5432,6 +5541,41 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Column to sort results by.
+   * @default "start_time"
+   */
+  sort_by?: TraceSortBy;
+  /**
+   * Span Count Eq
+   * Span count exactly equal to this value.
+   * @min 1
+   */
+  span_count_eq?: number;
+  /**
+   * Span Count Gt
+   * Span count greater than this value.
+   * @min 1
+   */
+  span_count_gt?: number;
+  /**
+   * Span Count Gte
+   * Span count greater than or equal to this value.
+   * @min 1
+   */
+  span_count_gte?: number;
+  /**
+   * Span Count Lt
+   * Span count less than this value.
+   * @min 1
+   */
+  span_count_lt?: number;
+  /**
+   * Span Count Lte
+   * Span count less than or equal to this value.
+   * @min 1
+   */
+  span_count_lte?: number;
+  /**
    * Span Ids
    * Span IDs to filter on. Optional.
    */
@@ -5477,6 +5621,36 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
   tool_selection?: ToolClassEnum;
   /** Tool usage evaluation result. */
   tool_usage?: ToolClassEnum;
+  /**
+   * Total Token Count Eq
+   * Total token count exactly equal to this value.
+   * @min 0
+   */
+  total_token_count_eq?: number;
+  /**
+   * Total Token Count Gt
+   * Total token count greater than this value.
+   * @min 0
+   */
+  total_token_count_gt?: number;
+  /**
+   * Total Token Count Gte
+   * Total token count greater than or equal to this value.
+   * @min 0
+   */
+  total_token_count_gte?: number;
+  /**
+   * Total Token Count Lt
+   * Total token count less than this value.
+   * @min 0
+   */
+  total_token_count_lt?: number;
+  /**
+   * Total Token Count Lte
+   * Total token count less than or equal to this value.
+   * @min 0
+   */
+  total_token_count_lte?: number;
   /**
    * Trace Duration Eq
    * Duration exactly equal to this value (seconds).
@@ -5548,6 +5722,36 @@ export interface ListTracesMetadataApiV1TracesGetParams {
   /** Filter by trace annotation type (i.e. 'human' or 'continuous_eval'). */
   annotation_type?: AgenticAnnotationType;
   /**
+   * Completion Token Count Eq
+   * Completion token count exactly equal to this value.
+   * @min 0
+   */
+  completion_token_count_eq?: number;
+  /**
+   * Completion Token Count Gt
+   * Completion token count greater than this value.
+   * @min 0
+   */
+  completion_token_count_gt?: number;
+  /**
+   * Completion Token Count Gte
+   * Completion token count greater than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_gte?: number;
+  /**
+   * Completion Token Count Lt
+   * Completion token count less than this value.
+   * @min 0
+   */
+  completion_token_count_lt?: number;
+  /**
+   * Completion Token Count Lte
+   * Completion token count less than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_lte?: number;
+  /**
    * Continuous Eval Name
    * Filter by continuous eval name.
    */
@@ -5584,6 +5788,36 @@ export interface ListTracesMetadataApiV1TracesGetParams {
    * @default 10
    */
   page_size?: number;
+  /**
+   * Prompt Token Count Eq
+   * Prompt token count exactly equal to this value.
+   * @min 0
+   */
+  prompt_token_count_eq?: number;
+  /**
+   * Prompt Token Count Gt
+   * Prompt token count greater than this value.
+   * @min 0
+   */
+  prompt_token_count_gt?: number;
+  /**
+   * Prompt Token Count Gte
+   * Prompt token count greater than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_gte?: number;
+  /**
+   * Prompt Token Count Lt
+   * Prompt token count less than this value.
+   * @min 0
+   */
+  prompt_token_count_lt?: number;
+  /**
+   * Prompt Token Count Lte
+   * Prompt token count less than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_lte?: number;
   /**
    * Query Relevance Eq
    * Equal to this value.
@@ -5665,6 +5899,41 @@ export interface ListTracesMetadataApiV1TracesGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Column to sort results by.
+   * @default "start_time"
+   */
+  sort_by?: TraceSortBy;
+  /**
+   * Span Count Eq
+   * Span count exactly equal to this value.
+   * @min 1
+   */
+  span_count_eq?: number;
+  /**
+   * Span Count Gt
+   * Span count greater than this value.
+   * @min 1
+   */
+  span_count_gt?: number;
+  /**
+   * Span Count Gte
+   * Span count greater than or equal to this value.
+   * @min 1
+   */
+  span_count_gte?: number;
+  /**
+   * Span Count Lt
+   * Span count less than this value.
+   * @min 1
+   */
+  span_count_lt?: number;
+  /**
+   * Span Count Lte
+   * Span count less than or equal to this value.
+   * @min 1
+   */
+  span_count_lte?: number;
+  /**
    * Span Ids
    * Span IDs to filter on. Optional.
    */
@@ -5710,6 +5979,36 @@ export interface ListTracesMetadataApiV1TracesGetParams {
   tool_selection?: ToolClassEnum;
   /** Tool usage evaluation result. */
   tool_usage?: ToolClassEnum;
+  /**
+   * Total Token Count Eq
+   * Total token count exactly equal to this value.
+   * @min 0
+   */
+  total_token_count_eq?: number;
+  /**
+   * Total Token Count Gt
+   * Total token count greater than this value.
+   * @min 0
+   */
+  total_token_count_gt?: number;
+  /**
+   * Total Token Count Gte
+   * Total token count greater than or equal to this value.
+   * @min 0
+   */
+  total_token_count_gte?: number;
+  /**
+   * Total Token Count Lt
+   * Total token count less than this value.
+   * @min 0
+   */
+  total_token_count_lt?: number;
+  /**
+   * Total Token Count Lte
+   * Total token count less than or equal to this value.
+   * @min 0
+   */
+  total_token_count_lte?: number;
   /**
    * Trace Duration Eq
    * Duration exactly equal to this value (seconds).
@@ -7542,6 +7841,36 @@ export interface QuerySpansV1TracesQueryGetParams {
   /** Filter by trace annotation type (i.e. 'human' or 'continuous_eval'). */
   annotation_type?: AgenticAnnotationType;
   /**
+   * Completion Token Count Eq
+   * Completion token count exactly equal to this value.
+   * @min 0
+   */
+  completion_token_count_eq?: number;
+  /**
+   * Completion Token Count Gt
+   * Completion token count greater than this value.
+   * @min 0
+   */
+  completion_token_count_gt?: number;
+  /**
+   * Completion Token Count Gte
+   * Completion token count greater than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_gte?: number;
+  /**
+   * Completion Token Count Lt
+   * Completion token count less than this value.
+   * @min 0
+   */
+  completion_token_count_lt?: number;
+  /**
+   * Completion Token Count Lte
+   * Completion token count less than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_lte?: number;
+  /**
    * Continuous Eval Name
    * Filter by continuous eval name.
    */
@@ -7572,6 +7901,36 @@ export interface QuerySpansV1TracesQueryGetParams {
    * @default 10
    */
   page_size?: number;
+  /**
+   * Prompt Token Count Eq
+   * Prompt token count exactly equal to this value.
+   * @min 0
+   */
+  prompt_token_count_eq?: number;
+  /**
+   * Prompt Token Count Gt
+   * Prompt token count greater than this value.
+   * @min 0
+   */
+  prompt_token_count_gt?: number;
+  /**
+   * Prompt Token Count Gte
+   * Prompt token count greater than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_gte?: number;
+  /**
+   * Prompt Token Count Lt
+   * Prompt token count less than this value.
+   * @min 0
+   */
+  prompt_token_count_lt?: number;
+  /**
+   * Prompt Token Count Lte
+   * Prompt token count less than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_lte?: number;
   /**
    * Query Relevance Eq
    * Equal to this value.
@@ -7653,6 +8012,41 @@ export interface QuerySpansV1TracesQueryGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Column to sort results by.
+   * @default "start_time"
+   */
+  sort_by?: TraceSortBy;
+  /**
+   * Span Count Eq
+   * Span count exactly equal to this value.
+   * @min 1
+   */
+  span_count_eq?: number;
+  /**
+   * Span Count Gt
+   * Span count greater than this value.
+   * @min 1
+   */
+  span_count_gt?: number;
+  /**
+   * Span Count Gte
+   * Span count greater than or equal to this value.
+   * @min 1
+   */
+  span_count_gte?: number;
+  /**
+   * Span Count Lt
+   * Span count less than this value.
+   * @min 1
+   */
+  span_count_lt?: number;
+  /**
+   * Span Count Lte
+   * Span count less than or equal to this value.
+   * @min 1
+   */
+  span_count_lte?: number;
+  /**
    * Span Ids
    * Span IDs to filter on. Optional.
    */
@@ -7698,6 +8092,36 @@ export interface QuerySpansV1TracesQueryGetParams {
   tool_selection?: ToolClassEnum;
   /** Tool usage evaluation result. */
   tool_usage?: ToolClassEnum;
+  /**
+   * Total Token Count Eq
+   * Total token count exactly equal to this value.
+   * @min 0
+   */
+  total_token_count_eq?: number;
+  /**
+   * Total Token Count Gt
+   * Total token count greater than this value.
+   * @min 0
+   */
+  total_token_count_gt?: number;
+  /**
+   * Total Token Count Gte
+   * Total token count greater than or equal to this value.
+   * @min 0
+   */
+  total_token_count_gte?: number;
+  /**
+   * Total Token Count Lt
+   * Total token count less than this value.
+   * @min 0
+   */
+  total_token_count_lt?: number;
+  /**
+   * Total Token Count Lte
+   * Total token count less than or equal to this value.
+   * @min 0
+   */
+  total_token_count_lte?: number;
   /**
    * Trace Duration Eq
    * Duration exactly equal to this value (seconds).
@@ -7755,6 +8179,36 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
   /** Filter by trace annotation type (i.e. 'human' or 'continuous_eval'). */
   annotation_type?: AgenticAnnotationType;
   /**
+   * Completion Token Count Eq
+   * Completion token count exactly equal to this value.
+   * @min 0
+   */
+  completion_token_count_eq?: number;
+  /**
+   * Completion Token Count Gt
+   * Completion token count greater than this value.
+   * @min 0
+   */
+  completion_token_count_gt?: number;
+  /**
+   * Completion Token Count Gte
+   * Completion token count greater than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_gte?: number;
+  /**
+   * Completion Token Count Lt
+   * Completion token count less than this value.
+   * @min 0
+   */
+  completion_token_count_lt?: number;
+  /**
+   * Completion Token Count Lte
+   * Completion token count less than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_lte?: number;
+  /**
    * Continuous Eval Name
    * Filter by continuous eval name.
    */
@@ -7785,6 +8239,36 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
    * @default 10
    */
   page_size?: number;
+  /**
+   * Prompt Token Count Eq
+   * Prompt token count exactly equal to this value.
+   * @min 0
+   */
+  prompt_token_count_eq?: number;
+  /**
+   * Prompt Token Count Gt
+   * Prompt token count greater than this value.
+   * @min 0
+   */
+  prompt_token_count_gt?: number;
+  /**
+   * Prompt Token Count Gte
+   * Prompt token count greater than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_gte?: number;
+  /**
+   * Prompt Token Count Lt
+   * Prompt token count less than this value.
+   * @min 0
+   */
+  prompt_token_count_lt?: number;
+  /**
+   * Prompt Token Count Lte
+   * Prompt token count less than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_lte?: number;
   /**
    * Query Relevance Eq
    * Equal to this value.
@@ -7866,6 +8350,41 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Column to sort results by.
+   * @default "start_time"
+   */
+  sort_by?: TraceSortBy;
+  /**
+   * Span Count Eq
+   * Span count exactly equal to this value.
+   * @min 1
+   */
+  span_count_eq?: number;
+  /**
+   * Span Count Gt
+   * Span count greater than this value.
+   * @min 1
+   */
+  span_count_gt?: number;
+  /**
+   * Span Count Gte
+   * Span count greater than or equal to this value.
+   * @min 1
+   */
+  span_count_gte?: number;
+  /**
+   * Span Count Lt
+   * Span count less than this value.
+   * @min 1
+   */
+  span_count_lt?: number;
+  /**
+   * Span Count Lte
+   * Span count less than or equal to this value.
+   * @min 1
+   */
+  span_count_lte?: number;
+  /**
    * Span Ids
    * Span IDs to filter on. Optional.
    */
@@ -7911,6 +8430,36 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
   tool_selection?: ToolClassEnum;
   /** Tool usage evaluation result. */
   tool_usage?: ToolClassEnum;
+  /**
+   * Total Token Count Eq
+   * Total token count exactly equal to this value.
+   * @min 0
+   */
+  total_token_count_eq?: number;
+  /**
+   * Total Token Count Gt
+   * Total token count greater than this value.
+   * @min 0
+   */
+  total_token_count_gt?: number;
+  /**
+   * Total Token Count Gte
+   * Total token count greater than or equal to this value.
+   * @min 0
+   */
+  total_token_count_gte?: number;
+  /**
+   * Total Token Count Lt
+   * Total token count less than this value.
+   * @min 0
+   */
+  total_token_count_lt?: number;
+  /**
+   * Total Token Count Lte
+   * Total token count less than or equal to this value.
+   * @min 0
+   */
+  total_token_count_lte?: number;
   /**
    * Trace Duration Eq
    * Duration exactly equal to this value (seconds).
@@ -9825,6 +10374,10 @@ export interface SpanWithMetricsResponse {
 /** StatusCodeEnum */
 export type StatusCodeEnum = "Ok" | "Error" | "Unset";
 
+export type StreamChatbotApiV1TasksTaskIdChatbotStreamPostData = any;
+
+export type StreamChatbotApiV1TasksTaskIdChatbotStreamPostError = HTTPValidationError;
+
 /** StreamOptions */
 export interface StreamOptions {
   /**
@@ -10586,6 +11139,9 @@ export interface TraceResponse {
   trace_id: string;
 }
 
+/** TraceSortBy */
+export type TraceSortBy = "start_time" | "total_token_count" | "total_token_cost" | "span_count";
+
 /** TraceTransformDefinition */
 export interface TraceTransformDefinition {
   /**
@@ -11053,6 +11609,10 @@ export interface UpdateAgenticNotebookRequest {
    */
   name?: string | null;
 }
+
+export type UpdateChatbotConfigApiV1ChatbotConfigPutData = ChatbotConfigResponse;
+
+export type UpdateChatbotConfigApiV1ChatbotConfigPutError = HTTPValidationError;
 
 export type UpdateContinuousEvalApiV1ContinuousEvalsEvalIdPatchData = ContinuousEvalResponse;
 
@@ -12221,7 +12781,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.454
+ * @version 2.1.493
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -12464,6 +13024,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         method: "POST",
         body: data,
         type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Chatbot
+     * @name ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDelete
+     * @summary Clear chatbot conversation history
+     * @request DELETE:/api/v1/chatbot/history/{conversation_id}
+     * @secure
+     */
+    clearChatbotHistoryApiV1ChatbotHistoryConversationIdDelete: (conversationId: string, params: RequestParams = {}) =>
+      this.request<ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteData, ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteError>({
+        path: `/api/v1/chatbot/history/${conversationId}`,
+        method: "DELETE",
+        secure: true,
         format: "json",
         ...params,
       }),
@@ -13772,6 +14350,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getAnnotationByIdApiV1TracesAnnotationsAnnotationIdGet: (annotationId: string, params: RequestParams = {}) =>
       this.request<GetAnnotationByIdApiV1TracesAnnotationsAnnotationIdGetData, GetAnnotationByIdApiV1TracesAnnotationsAnnotationIdGetError>({
         path: `/api/v1/traces/annotations/${annotationId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Returns the model provider, model name, blacklisted endpoints, and available endpoints.
+     *
+     * @tags Chatbot
+     * @name GetChatbotConfigApiV1ChatbotConfigGet
+     * @summary Get chatbot model configuration
+     * @request GET:/api/v1/chatbot/config
+     * @secure
+     */
+    getChatbotConfigApiV1ChatbotConfigGet: (params: RequestParams = {}) =>
+      this.request<GetChatbotConfigApiV1ChatbotConfigGetData, any>({
+        path: `/api/v1/chatbot/config`,
         method: "GET",
         secure: true,
         format: "json",
@@ -15561,6 +16157,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Send a message to the Arthur AI chatbot and receive a streaming response. The chatbot can call Arthur Engine API endpoints on your behalf.
+     *
+     * @tags Chatbot
+     * @name StreamChatbotApiV1TasksTaskIdChatbotStreamPost
+     * @summary Stream a chatbot response
+     * @request POST:/api/v1/tasks/{task_id}/chatbot/stream
+     * @secure
+     */
+    streamChatbotApiV1TasksTaskIdChatbotStreamPost: (taskId: string, data: ChatbotRequest, params: RequestParams = {}) =>
+      this.request<StreamChatbotApiV1TasksTaskIdChatbotStreamPostData, StreamChatbotApiV1TasksTaskIdChatbotStreamPostError>({
+        path: `/api/v1/tasks/${taskId}/chatbot/stream`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Test a new RAG provider connection configuration.
      *
      * @tags RAG Providers
@@ -15617,6 +16233,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     updateAgenticNotebookApiV1AgenticNotebooksNotebookIdPut: (notebookId: string, data: UpdateAgenticNotebookRequest, params: RequestParams = {}) =>
       this.request<UpdateAgenticNotebookApiV1AgenticNotebooksNotebookIdPutData, UpdateAgenticNotebookApiV1AgenticNotebooksNotebookIdPutError>({
         path: `/api/v1/agentic_notebooks/${notebookId}`,
+        method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Saves a new version of the chatbot prompt with the specified model provider and model name, and tags it as production.
+     *
+     * @tags Chatbot
+     * @name UpdateChatbotConfigApiV1ChatbotConfigPut
+     * @summary Update chatbot model configuration
+     * @request PUT:/api/v1/chatbot/config
+     * @secure
+     */
+    updateChatbotConfigApiV1ChatbotConfigPut: (data: ChatbotConfigUpdateRequest, params: RequestParams = {}) =>
+      this.request<UpdateChatbotConfigApiV1ChatbotConfigPutData, UpdateChatbotConfigApiV1ChatbotConfigPutError>({
+        path: `/api/v1/chatbot/config`,
         method: "PUT",
         body: data,
         secure: true,

@@ -79,6 +79,19 @@ export const mapFiltersToRequest = (filters: IncomingFilter[]) => {
       return (request["include_experiment_traces"] = boolValue);
     }
 
+    // Tool name: backend expects "tool_name", not "tool_name_eq"
+    if (key === "tool_name" && filter.operator === Operators.EQUALS) {
+      return (request["tool_name"] = filter.value as string);
+    }
+
+    // Custom timestamp filters: map to start_time/end_time ISO strings
+    if (key === "start_time" && filter.operator === Operators.GREATER_THAN_OR_EQUAL) {
+      return (request["start_time"] = filter.value as string);
+    }
+    if (key === "end_time" && filter.operator === Operators.LESS_THAN_OR_EQUAL) {
+      return (request["end_time"] = filter.value as string);
+    }
+
     const keyPart = OPERATOR_TO_KEY_PART.get(filter.operator);
 
     if (keyPart) {

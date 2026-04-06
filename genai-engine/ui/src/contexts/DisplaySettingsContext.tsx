@@ -12,6 +12,12 @@ const defaultDisplaySettings: DisplaySettingsResponse = { default_currency: "USD
 
 interface DisplaySettingsContextValue {
   defaultCurrency: string;
+  /** True only when BOTH server and user have chatbot enabled. */
+  chatbotEnabled: boolean;
+  /** Whether the server allows chatbot at all. */
+  serverChatbotEnabled: boolean;
+  enableChatbot: boolean;
+  setEnableChatbot: (enableChatbot: boolean) => void;
   isLoading: boolean;
   timezone: string;
   setTimezone: (timezone: string) => void;
@@ -46,9 +52,17 @@ export const DisplaySettingsProvider: React.FC<DisplaySettingsProviderProps> = (
   const setTimezone = useUserSettingsStore((s) => s.setTimezone);
   const use24Hour = useUserSettingsStore((s) => s.use24Hour);
   const setUse24Hour = useUserSettingsStore((s) => s.setUse24Hour);
+  const enableChatbot = useUserSettingsStore((s) => s.enableChatbot);
+  const setEnableChatbot = useUserSettingsStore((s) => s.setEnableChatbot);
+
+  const serverChatbotEnabled = (settings as DisplaySettingsResponse & { chatbot_enabled?: boolean }).chatbot_enabled ?? true;
 
   const value: DisplaySettingsContextValue = {
     defaultCurrency: settings.default_currency ?? "USD",
+    chatbotEnabled: serverChatbotEnabled && enableChatbot,
+    serverChatbotEnabled,
+    enableChatbot,
+    setEnableChatbot,
     isLoading: isPending,
     timezone,
     setTimezone,

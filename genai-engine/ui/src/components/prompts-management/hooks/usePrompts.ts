@@ -17,6 +17,7 @@ export function usePrompts(taskId: string | undefined, filters: PromptsFilters) 
         model_provider: filters.model_provider ?? null,
         model_name: filters.model_name ?? null,
         llm_asset_names: filters.llm_asset_names ?? null,
+        tags: filters.tags ?? null,
       },
     ],
     enabled: !!taskId,

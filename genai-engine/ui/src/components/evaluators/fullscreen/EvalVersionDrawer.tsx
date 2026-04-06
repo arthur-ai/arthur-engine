@@ -36,6 +36,7 @@ const EvalVersionDrawer = ({
   onRefetchTrigger,
 }: EvalVersionDrawerProps) => {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [excludeDeleted, setExcludeDeleted] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [versionToDelete, setVersionToDelete] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -43,7 +44,7 @@ const EvalVersionDrawer = ({
   const { timezone, use24Hour } = useDisplaySettings();
   const { versions, isLoading, error, refetch } = useEvalVersions(taskId, evalName, {
     sort: sortOrder,
-    exclude_deleted: false,
+    exclude_deleted: excludeDeleted,
   });
 
   // Refetch versions when the trigger changes (e.g., when a new version is created)
@@ -122,12 +123,20 @@ const EvalVersionDrawer = ({
           Versions: {evalName}
         </Typography>
 
-        <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+        <Box sx={{ display: "flex", gap: 1, mb: 2, flexWrap: "wrap" }}>
           <Chip
             label={`Sort: ${sortOrder === "asc" ? "Oldest First" : "Newest First"}`}
             onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
             clickable
             size="small"
+          />
+          <Chip
+            label={excludeDeleted ? "Hide Deleted" : "Show Deleted"}
+            onClick={() => setExcludeDeleted((prev) => !prev)}
+            clickable
+            size="small"
+            color={excludeDeleted ? "default" : "warning"}
+            variant={excludeDeleted ? "filled" : "outlined"}
           />
         </Box>
 

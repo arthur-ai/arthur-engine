@@ -14,5 +14,5 @@ export const agenticNotebookQueryOptions = ({ api, notebookId }: { api: Api<unkn
 export const useAgenticNotebook = (notebookId: string) => {
   const api = useApi()!;
 
-  return useQuery(agenticNotebookQueryOptions({ api, notebookId }));
+  return useQuery({ ...agenticNotebookQueryOptions({ api, notebookId }), enabled: !!notebookId });
 };

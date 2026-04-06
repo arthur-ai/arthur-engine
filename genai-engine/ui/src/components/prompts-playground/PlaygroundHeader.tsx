@@ -1,7 +1,6 @@
 import AddIcon from "@mui/icons-material/Add";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CheckIcon from "@mui/icons-material/Check";
-import EditIcon from "@mui/icons-material/Edit";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import SaveIcon from "@mui/icons-material/Save";
@@ -11,30 +10,24 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Container from "@mui/material/Container";
-import IconButton from "@mui/material/IconButton";
 import Popover from "@mui/material/Popover";
 import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
-import Typography from "@mui/material/Typography";
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import VariableInputs from "./VariableInputs";
 
+import { EditableTitle } from "@/components/common";
 import { useTask } from "@/hooks/useTask";
 import type { PromptExperimentDetail } from "@/lib/api-client/api-client";
 
 export interface PlaygroundHeaderProps {
   notebookId: string | null;
-  isRenaming: boolean;
-  newNotebookName: string;
-  setNewNotebookName: (name: string) => void;
   saveStatus: "saved" | "saving" | "unsaved";
   notebookName: string;
-  onStartRename: () => void;
-  onSaveRename: () => void;
-  onCancelRename: () => void;
+  onSaveRename: (newName: string) => Promise<void>;
+  isRenamePending: boolean;
   onManualSave: () => void;
   configDrawerOpen: boolean;
   configModeActive: boolean;
@@ -52,14 +45,10 @@ export interface PlaygroundHeaderProps {
  */
 export default function PlaygroundHeader({
   notebookId,
-  isRenaming,
-  newNotebookName,
-  setNewNotebookName,
   saveStatus,
   notebookName,
-  onStartRename,
   onSaveRename,
-  onCancelRename,
+  isRenamePending,
   onManualSave,
   configDrawerOpen,
   configModeActive,
@@ -84,104 +73,68 @@ export default function PlaygroundHeader({
       <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2}>
         <Stack direction="row" alignItems="center" spacing={2}>
           {notebookId && (
-            <>
-              <IconButton
+            <Stack alignItems="flex-start">
+              <Button
                 size="small"
+                variant="text"
+                startIcon={<ArrowBackIcon />}
+                color="inherit"
                 onClick={() => navigate(`/tasks/${task?.id}/prompts`)}
-                sx={{
-                  color: "text.secondary",
-                  "&:hover": { backgroundColor: "action.hover" },
-                }}
+                sx={{ color: "text.primary" }}
               >
-                <ArrowBackIcon fontSize="small" />
-              </IconButton>
+                Back to Notebooks
+              </Button>
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                {isRenaming ? (
-                  <TextField
-                    variant="filled"
-                    size="small"
-                    value={newNotebookName}
-                    onChange={(e) => setNewNotebookName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        onSaveRename();
-                      } else if (e.key === "Escape") {
-                        onCancelRename();
-                      }
-                    }}
-                    onBlur={onSaveRename}
-                    autoFocus
-                    sx={{
-                      "& .MuiInputBase-root": {
-                        fontSize: "0.875rem",
-                        fontWeight: 600,
-                      },
-                    }}
-                  />
-                ) : (
-                  <>
-                    <Tooltip
-                      title={saveStatus === "saved" ? "All changes saved" : saveStatus === "saving" ? "Saving changes..." : "Click to save changes"}
-                      arrow
-                    >
-                      <span>
-                        <Button
-                          size="small"
-                          variant={saveStatus === "unsaved" ? "contained" : "outlined"}
-                          onClick={() => {
-                            if (saveStatus === "unsaved") {
-                              onManualSave();
-                            }
-                          }}
-                          disabled={saveStatus !== "unsaved"}
-                          startIcon={
-                            saveStatus === "saving" ? (
-                              <CircularProgress size={14} color="inherit" />
-                            ) : saveStatus === "saved" ? (
-                              <CheckIcon />
-                            ) : (
-                              <SaveIcon />
-                            )
-                          }
-                          sx={{
-                            minWidth: "auto",
-                            px: 1.5,
-                            py: 0.5,
-                            fontSize: "0.75rem",
-                            textTransform: "none",
-                            color: saveStatus === "saved" ? "success.main" : undefined,
-                            borderColor: saveStatus === "saved" ? "success.main" : undefined,
-                            "&.Mui-disabled": {
-                              color: saveStatus === "saved" ? "success.main" : undefined,
-                              borderColor: saveStatus === "saved" ? "success.main" : undefined,
-                            },
-                          }}
-                        >
-                          {saveStatus === "saved" ? "Saved" : saveStatus === "saving" ? "Saving..." : "Save"}
-                        </Button>
-                      </span>
-                    </Tooltip>
-                    <Typography variant="body2" sx={{ fontWeight: 600, color: "text.primary" }}>
-                      {notebookName || "Notebook"}
-                    </Typography>
-                    <IconButton
+                <Tooltip
+                  title={saveStatus === "saved" ? "All changes saved" : saveStatus === "saving" ? "Saving changes..." : "Click to save changes"}
+                  arrow
+                >
+                  <span>
+                    <Button
                       size="small"
-                      onClick={onStartRename}
+                      variant={saveStatus === "unsaved" ? "contained" : "outlined"}
+                      onClick={() => {
+                        if (saveStatus === "unsaved") {
+                          onManualSave();
+                        }
+                      }}
+                      disabled={saveStatus !== "unsaved"}
+                      startIcon={
+                        saveStatus === "saving" ? (
+                          <CircularProgress size={14} color="inherit" />
+                        ) : saveStatus === "saved" ? (
+                          <CheckIcon />
+                        ) : (
+                          <SaveIcon />
+                        )
+                      }
                       sx={{
-                        padding: 0.5,
-                        color: "text.secondary",
-                        "&:hover": {
-                          color: "text.primary",
-                          backgroundColor: "action.hover",
+                        minWidth: "auto",
+                        px: 1.5,
+                        py: 0.5,
+                        fontSize: "0.75rem",
+                        textTransform: "none",
+                        color: saveStatus === "saved" ? "success.main" : undefined,
+                        borderColor: saveStatus === "saved" ? "success.main" : undefined,
+                        "&.Mui-disabled": {
+                          color: saveStatus === "saved" ? "success.main" : undefined,
+                          borderColor: saveStatus === "saved" ? "success.main" : undefined,
                         },
                       }}
                     >
-                      <EditIcon sx={{ fontSize: "1rem" }} />
-                    </IconButton>
-                  </>
-                )}
+                      {saveStatus === "saved" ? "Saved" : saveStatus === "saving" ? "Saving..." : "Save"}
+                    </Button>
+                  </span>
+                </Tooltip>
+                <EditableTitle
+                  value={notebookName}
+                  onSave={onSaveRename}
+                  isPending={isRenamePending}
+                  fallbackText="Notebook"
+                  typographySx={{ fontWeight: 600, color: "text.primary" }}
+                />
               </Box>
-            </>
+            </Stack>
           )}
         </Stack>
 

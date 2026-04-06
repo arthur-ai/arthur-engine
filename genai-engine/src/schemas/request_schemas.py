@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
 from arthur_common.models.common_schemas import VariableTemplateValue
@@ -736,6 +736,11 @@ class LLMGetAllFilterRequest(BaseModel):
     created_before: Optional[datetime] = Field(
         None,
         description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    )
+    tags: Optional[list[Annotated[str, Field(max_length=200)]]] = Field(
+        None,
+        description="List of tags to filter for items that have any matching tag across any version.",
+        max_length=50,
     )
 
 

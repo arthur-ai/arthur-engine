@@ -88,6 +88,15 @@ const Notebooks: React.FC<NotebooksProps> = ({ onRegisterCreate }) => {
     [taskId, navigate]
   );
 
+  const handleViewLastRun = useCallback(
+    (experimentId: string) => {
+      if (taskId) {
+        navigate(`/tasks/${taskId}/prompt-experiments/${experimentId}`);
+      }
+    },
+    [taskId, navigate]
+  );
+
   const handleSort = useCallback(
     (column: string) => {
       if (sortColumn === column) {
@@ -199,6 +208,7 @@ const Notebooks: React.FC<NotebooksProps> = ({ onRegisterCreate }) => {
             onSort={handleSort}
             onRowClick={handleRowClick}
             onLaunchNotebook={handleLaunchNotebook}
+            onViewLastRun={handleViewLastRun}
             onDelete={deleteMutation.mutateAsync}
           />
         )}

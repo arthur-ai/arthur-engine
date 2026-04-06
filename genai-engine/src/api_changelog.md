@@ -1,6 +1,111 @@
 The intention of this changelog is to document API changes as they happen to effectively communicate them to customers.
 
 ---
+
+# 04/02/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals  added the new optional 'query' request parameter 'tags'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  added the new optional 'query' request parameter 'tags'
+
+# 03/26/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals  added the new optional 'query' request parameter 'tags'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  added the new optional 'query' request parameter 'tags'
+
+# 03/19/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/chatbot/stream  endpoint added
+- **CHANGE** for **URL**: /api/v1/chatbot/history/{conversation_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/chatbot/config  endpoint added
+- **CHANGE** for **URL**: /api/v1/chatbot/config  endpoint added
+- **CHANGE** for **URL**: /api/v2/display-settings  added the optional property 'chatbot_enabled' to the response with the '200' status
+
+# 03/16/2026
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_count_eq'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_count_gt'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_count_gte'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_count_lt'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_count_lte'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_count_eq'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_count_gt'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_count_gte'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_count_lt'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_count_lte'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_count_eq'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_count_gt'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_count_gte'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_count_lt'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_count_lte'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_count_eq'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_count_gt'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_count_gte'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_count_lt'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_count_lte'
+
+# 03/13/2026
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'sort_by'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'sort_by'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'sort_by'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'sort_by'
+
+# 03/13/2026
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'completion_token_count_eq'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'completion_token_count_gt'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'completion_token_count_gte'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'completion_token_count_lt'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'completion_token_count_lte'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'prompt_token_count_eq'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'prompt_token_count_gt'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'prompt_token_count_gte'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'prompt_token_count_lt'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'prompt_token_count_lte'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'total_token_count_eq'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'total_token_count_gt'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'total_token_count_gte'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'total_token_count_lt'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'total_token_count_lte'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'completion_token_count_eq'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'completion_token_count_gt'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'completion_token_count_gte'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'completion_token_count_lt'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'completion_token_count_lte'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'prompt_token_count_eq'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'prompt_token_count_gt'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'prompt_token_count_gte'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'prompt_token_count_lt'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'prompt_token_count_lte'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'total_token_count_eq'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'total_token_count_gt'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'total_token_count_gte'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'total_token_count_lt'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'total_token_count_lte'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'completion_token_count_eq'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'completion_token_count_gt'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'completion_token_count_gte'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'completion_token_count_lt'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'completion_token_count_lte'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'prompt_token_count_eq'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'prompt_token_count_gt'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'prompt_token_count_gte'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'prompt_token_count_lt'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'prompt_token_count_lte'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'total_token_count_eq'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'total_token_count_gt'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'total_token_count_gte'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'total_token_count_lt'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'total_token_count_lte'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'completion_token_count_eq'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'completion_token_count_gt'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'completion_token_count_gte'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'completion_token_count_lt'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'completion_token_count_lte'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'prompt_token_count_eq'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'prompt_token_count_gt'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'prompt_token_count_gte'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'prompt_token_count_lt'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'prompt_token_count_lte'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'total_token_count_eq'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'total_token_count_gt'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'total_token_count_gte'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'total_token_count_lt'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'total_token_count_lte'
 # 02/27/2026
 
 # 03/10/2026

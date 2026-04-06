@@ -20,6 +20,7 @@ RUN pip3 install poetry==1.8.5
 WORKDIR /app
 
 ENV PYTHONPATH="$PYTHONPATH:/app/src"
+ENV PYTHONUNBUFFERED=1
 RUN poetry config virtualenvs.create false && poetry install --without dev,performance --no-ansi --no-root
 
 # install lsof for healthchecks

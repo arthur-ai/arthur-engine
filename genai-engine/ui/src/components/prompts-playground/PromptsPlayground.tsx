@@ -193,14 +193,10 @@ const PromptsPlayground = ({ initialData }: { initialData: PlaygroundInitialData
       <Box className="flex flex-col h-full" sx={{ position: "relative", backgroundColor: "background.default" }}>
         <PlaygroundHeader
           notebookId={notebookId}
-          isRenaming={autoSave.isRenaming}
-          newNotebookName={autoSave.newNotebookName}
-          setNewNotebookName={autoSave.setNewNotebookName}
           saveStatus={autoSave.saveStatus}
           notebookName={autoSave.notebookName}
-          onStartRename={autoSave.handleStartRename}
           onSaveRename={autoSave.handleSaveRename}
-          onCancelRename={autoSave.handleCancelRename}
+          isRenamePending={autoSave.isRenamePending}
           onManualSave={() => autoSave.autoSaveNotebookState("manual")}
           configDrawerOpen={configDrawerOpen}
           configModeActive={config.configModeActive}

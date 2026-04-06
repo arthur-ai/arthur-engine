@@ -407,6 +407,10 @@ def llm_get_all_filter_parameters(
         None,
         description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
     ),
+    tags: Optional[list[str]] = Query(
+        None,
+        description="List of tags to filter for items that have any matching tag across any version.",
+    ),
 ) -> LLMGetAllFilterRequest:
     """Create a LLMGetAllFilterRequest from query parameters."""
     return LLMGetAllFilterRequest(
@@ -417,6 +421,7 @@ def llm_get_all_filter_parameters(
         created_before=(
             datetime.fromisoformat(created_before) if created_before else None
         ),
+        tags=tags,
     )
 
 
