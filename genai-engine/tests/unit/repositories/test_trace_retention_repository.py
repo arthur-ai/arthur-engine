@@ -68,24 +68,24 @@ def test_get_expired_trace_ids_returns_only_expired_and_respects_batch_size() ->
         )
     db_session.commit()
 
-    result = get_expired_trace_ids(db_session, cutoff, batch_size=10)
-    assert set(result) == {expired_1, expired_2}
-    assert not_expired not in result
+    try:
+        result = get_expired_trace_ids(db_session, cutoff, batch_size=10)
+        assert set(result) == {expired_1, expired_2}
+        assert not_expired not in result
 
-    # Respect batch_size; ORDER BY end_time ASC means oldest first
-    result_cap = get_expired_trace_ids(db_session, cutoff, batch_size=1)
-    assert len(result_cap) == 1
-    assert result_cap[0] == expired_2
-
-    # Cleanup
-    db_session.execute(
-        delete(DatabaseTraceMetadata).where(
-            DatabaseTraceMetadata.trace_id.in_([expired_1, expired_2, not_expired])
+        # Respect batch_size; ORDER BY end_time ASC means oldest first
+        result_cap = get_expired_trace_ids(db_session, cutoff, batch_size=1)
+        assert len(result_cap) == 1
+        assert result_cap[0] == expired_2
+    finally:
+        db_session.execute(
+            delete(DatabaseTraceMetadata).where(
+                DatabaseTraceMetadata.trace_id.in_([expired_1, expired_2, not_expired])
+            )
         )
-    )
-    db_session.execute(delete(DatabaseTask).where(DatabaseTask.id == task_id))
-    db_session.commit()
-    db_session.close()
+        db_session.execute(delete(DatabaseTask).where(DatabaseTask.id == task_id))
+        db_session.commit()
+        db_session.close()
 
 
 @pytest.mark.unit_tests
@@ -155,65 +155,68 @@ def test_delete_trace_batch_removes_trace_and_orphan_resource_metadata_only() ->
     )
     db_session.commit()
 
-    delete_trace_batch(db_session, [trace_id])
-    db_session.commit()
+    try:
+        delete_trace_batch(db_session, [trace_id])
+        db_session.commit()
 
-    # Batch trace and span gone
-    assert (
-        db_session.execute(
-            select(DatabaseTraceMetadata).where(
-                DatabaseTraceMetadata.trace_id == trace_id
-            )
-        ).scalar_one_or_none()
-        is None
-    )
-    assert (
-        db_session.execute(
-            select(DatabaseSpan).where(DatabaseSpan.id == span_id)
-        ).scalar_one_or_none()
-        is None
-    )
-    # Orphan resource (only referenced by deleted batch) is deleted
-    assert (
-        db_session.execute(
-            select(DatabaseResourceMetadata).where(
-                DatabaseResourceMetadata.id == resource_id_batch
-            )
-        ).scalar_one_or_none()
-        is None
-    )
-    # Resource still referenced by other trace remains
-    assert (
-        db_session.execute(
-            select(DatabaseResourceMetadata).where(
-                DatabaseResourceMetadata.id == resource_id_other
-            )
-        ).scalar_one_or_none()
-        is not None
-    )
-    assert (
-        db_session.execute(
-            select(DatabaseTraceMetadata).where(
-                DatabaseTraceMetadata.trace_id == other_trace_id
-            )
-        ).scalar_one_or_none()
-        is not None
-    )
-
-    # Cleanup remaining test data
-    db_session.execute(
-        delete(DatabaseTraceMetadata).where(
-            DatabaseTraceMetadata.trace_id == other_trace_id
+        # Batch trace and span gone
+        assert (
+            db_session.execute(
+                select(DatabaseTraceMetadata).where(
+                    DatabaseTraceMetadata.trace_id == trace_id
+                )
+            ).scalar_one_or_none()
+            is None
         )
-    )
-    db_session.execute(
-        delete(DatabaseResourceMetadata).where(
-            DatabaseResourceMetadata.id == resource_id_other
+        assert (
+            db_session.execute(
+                select(DatabaseSpan).where(DatabaseSpan.id == span_id)
+            ).scalar_one_or_none()
+            is None
         )
-    )
-    db_session.execute(delete(DatabaseTask).where(DatabaseTask.id == task_id))
-    db_session.commit()
-    db_session.close()
+        # Orphan resource (only referenced by deleted batch) is deleted
+        assert (
+            db_session.execute(
+                select(DatabaseResourceMetadata).where(
+                    DatabaseResourceMetadata.id == resource_id_batch
+                )
+            ).scalar_one_or_none()
+            is None
+        )
+        # Resource still referenced by other trace remains
+        assert (
+            db_session.execute(
+                select(DatabaseResourceMetadata).where(
+                    DatabaseResourceMetadata.id == resource_id_other
+                )
+            ).scalar_one_or_none()
+            is not None
+        )
+        assert (
+            db_session.execute(
+                select(DatabaseTraceMetadata).where(
+                    DatabaseTraceMetadata.trace_id == other_trace_id
+                )
+            ).scalar_one_or_none()
+            is not None
+        )
+    finally:
+        db_session.execute(
+            delete(DatabaseTraceMetadata).where(
+                DatabaseTraceMetadata.trace_id.in_([trace_id, other_trace_id])
+            )
+        )
+        db_session.execute(
+            delete(DatabaseSpan).where(DatabaseSpan.trace_id == trace_id)
+        )
+        db_session.execute(
+            delete(DatabaseResourceMetadata).where(
+                DatabaseResourceMetadata.id.in_([resource_id_batch, resource_id_other])
+            )
+        )
+        db_session.execute(delete(DatabaseTask).where(DatabaseTask.id == task_id))
+        db_session.commit()
+        db_session.close()
 
 
 @pytest.mark.unit_tests
@@ -234,16 +237,21 @@ def test_get_expired_trace_ids_returns_nothing_when_no_traces_expired() -> None:
     )
     db_session.commit()
     cutoff = now - timedelta(days=1)
-    result = get_expired_trace_ids(
-        db_session, cutoff, batch_size=DEFAULT_TRACE_RETENTION_BATCH_SIZE
-    )
-    assert result == []
-    db_session.execute(
-        delete(DatabaseTraceMetadata).where(DatabaseTraceMetadata.trace_id == trace_id)
-    )
-    db_session.execute(delete(DatabaseTask).where(DatabaseTask.id == task_id))
-    db_session.commit()
-    db_session.close()
+
+    try:
+        result = get_expired_trace_ids(
+            db_session, cutoff, batch_size=DEFAULT_TRACE_RETENTION_BATCH_SIZE
+        )
+        assert result == []
+    finally:
+        db_session.execute(
+            delete(DatabaseTraceMetadata).where(
+                DatabaseTraceMetadata.trace_id == trace_id
+            )
+        )
+        db_session.execute(delete(DatabaseTask).where(DatabaseTask.id == task_id))
+        db_session.commit()
+        db_session.close()
 
 
 @pytest.mark.unit_tests
@@ -305,32 +313,45 @@ def test_delete_trace_batch_removes_metric_results_for_deleted_spans() -> None:
         )
     db_session.commit()
 
-    delete_trace_batch(db_session, [trace_id])
-    db_session.commit()
+    try:
+        delete_trace_batch(db_session, [trace_id])
+        db_session.commit()
 
-    assert (
+        assert (
+            db_session.execute(
+                select(DatabaseSpan).where(DatabaseSpan.id == span_id)
+            ).scalar_one_or_none()
+            is None
+        )
+        assert (
+            db_session.execute(
+                select(DatabaseMetricResult).where(
+                    DatabaseMetricResult.span_id == span_id
+                )
+            ).all()
+            == []
+        )
+        assert (
+            db_session.execute(
+                select(DatabaseTraceMetadata).where(
+                    DatabaseTraceMetadata.trace_id == trace_id
+                )
+            ).scalar_one_or_none()
+            is None
+        )
+    finally:
         db_session.execute(
-            select(DatabaseSpan).where(DatabaseSpan.id == span_id)
-        ).scalar_one_or_none()
-        is None
-    )
-    assert (
+            delete(DatabaseMetricResult).where(DatabaseMetricResult.span_id == span_id)
+        )
         db_session.execute(
-            select(DatabaseMetricResult).where(DatabaseMetricResult.span_id == span_id)
-        ).all()
-        == []
-    )
-    assert (
+            delete(DatabaseSpan).where(DatabaseSpan.trace_id == trace_id)
+        )
         db_session.execute(
-            select(DatabaseTraceMetadata).where(
+            delete(DatabaseTraceMetadata).where(
                 DatabaseTraceMetadata.trace_id == trace_id
             )
-        ).scalar_one_or_none()
-        is None
-    )
-
-    # Cleanup
-    db_session.execute(delete(DatabaseMetric).where(DatabaseMetric.id == metric_id))
-    db_session.execute(delete(DatabaseTask).where(DatabaseTask.id == task_id))
-    db_session.commit()
-    db_session.close()
+        )
+        db_session.execute(delete(DatabaseMetric).where(DatabaseMetric.id == metric_id))
+        db_session.execute(delete(DatabaseTask).where(DatabaseTask.id == task_id))
+        db_session.commit()
+        db_session.close()
