@@ -8,6 +8,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from db_models import (
+    DatabaseAgenticAnnotation,
     DatabaseMetric,
     DatabaseMetricResult,
     DatabaseResourceMetadata,
@@ -352,6 +353,306 @@ def test_delete_trace_batch_removes_metric_results_for_deleted_spans() -> None:
             )
         )
         db_session.execute(delete(DatabaseMetric).where(DatabaseMetric.id == metric_id))
+        db_session.execute(delete(DatabaseTask).where(DatabaseTask.id == task_id))
+        db_session.commit()
+        db_session.close()
+
+
+@pytest.mark.unit_tests
+def test_delete_trace_batch_noop_on_empty_list() -> None:
+    """delete_trace_batch returns immediately when given an empty list, leaving existing data intact."""
+    db_session: Session = override_get_db_session()
+    task_id = _make_task(db_session)
+    now = datetime.now(timezone.utc)
+    trace_id = str(uuid.uuid4())
+    db_session.add(
+        DatabaseTraceMetadata(
+            trace_id=trace_id,
+            task_id=task_id,
+            start_time=now,
+            end_time=now,
+            span_count=0,
+        )
+    )
+    db_session.commit()
+
+    try:
+        delete_trace_batch(db_session, [])
+        db_session.commit()
+
+        assert (
+            db_session.execute(
+                select(DatabaseTraceMetadata).where(
+                    DatabaseTraceMetadata.trace_id == trace_id
+                )
+            ).scalar_one_or_none()
+            is not None
+        )
+    finally:
+        db_session.execute(
+            delete(DatabaseTraceMetadata).where(
+                DatabaseTraceMetadata.trace_id == trace_id
+            )
+        )
+        db_session.execute(delete(DatabaseTask).where(DatabaseTask.id == task_id))
+        db_session.commit()
+        db_session.close()
+
+
+@pytest.mark.unit_tests
+def test_delete_trace_batch_removes_agentic_annotations() -> None:
+    """delete_trace_batch deletes agentic annotations for targeted traces and preserves others."""
+    db_session: Session = override_get_db_session()
+    task_id = _make_task(db_session)
+    now = datetime.now(timezone.utc)
+
+    trace_to_delete = str(uuid.uuid4())
+    trace_survivor = str(uuid.uuid4())
+    for tid in (trace_to_delete, trace_survivor):
+        db_session.add(
+            DatabaseTraceMetadata(
+                trace_id=tid,
+                task_id=task_id,
+                start_time=now - timedelta(days=2),
+                end_time=now - timedelta(days=2),
+                span_count=0,
+            )
+        )
+    db_session.commit()
+
+    annotation_deleted = uuid.uuid4()
+    annotation_survivor = uuid.uuid4()
+    db_session.add(
+        DatabaseAgenticAnnotation(
+            id=annotation_deleted,
+            annotation_type="human",
+            annotation_score=1,
+            trace_id=trace_to_delete,
+            created_at=now,
+            updated_at=now,
+        )
+    )
+    db_session.add(
+        DatabaseAgenticAnnotation(
+            id=annotation_survivor,
+            annotation_type="human",
+            annotation_score=0,
+            trace_id=trace_survivor,
+            created_at=now,
+            updated_at=now,
+        )
+    )
+    db_session.commit()
+
+    try:
+        delete_trace_batch(db_session, [trace_to_delete])
+        db_session.commit()
+
+        assert (
+            db_session.execute(
+                select(DatabaseAgenticAnnotation).where(
+                    DatabaseAgenticAnnotation.id == annotation_deleted
+                )
+            ).scalar_one_or_none()
+            is None
+        )
+        assert (
+            db_session.execute(
+                select(DatabaseAgenticAnnotation).where(
+                    DatabaseAgenticAnnotation.id == annotation_survivor
+                )
+            ).scalar_one_or_none()
+            is not None
+        )
+    finally:
+        db_session.execute(
+            delete(DatabaseAgenticAnnotation).where(
+                DatabaseAgenticAnnotation.id.in_(
+                    [annotation_deleted, annotation_survivor]
+                )
+            )
+        )
+        db_session.execute(
+            delete(DatabaseTraceMetadata).where(
+                DatabaseTraceMetadata.trace_id.in_([trace_to_delete, trace_survivor])
+            )
+        )
+        db_session.execute(delete(DatabaseTask).where(DatabaseTask.id == task_id))
+        db_session.commit()
+        db_session.close()
+
+
+@pytest.mark.unit_tests
+def test_resource_preserved_when_referenced_by_span_in_other_trace() -> None:
+    """A resource referenced via DatabaseSpan.resource_id in a surviving trace is not deleted."""
+    db_session: Session = override_get_db_session()
+    task_id = _make_task(db_session)
+    now = datetime.now(timezone.utc)
+
+    shared_resource_id = str(uuid.uuid4())
+    db_session.add(
+        DatabaseResourceMetadata(
+            id=shared_resource_id,
+            service_name="shared-service",
+            resource_attributes={},
+        )
+    )
+    db_session.commit()
+
+    trace_a = str(uuid.uuid4())
+    trace_b = str(uuid.uuid4())
+    for tid in (trace_a, trace_b):
+        db_session.add(
+            DatabaseTraceMetadata(
+                trace_id=tid,
+                task_id=task_id,
+                root_span_resource_id=None,
+                start_time=now - timedelta(days=2),
+                end_time=now - timedelta(days=2),
+                span_count=1,
+            )
+        )
+
+    span_a = str(uuid.uuid4())
+    db_session.add(
+        DatabaseSpan(
+            id=span_a,
+            trace_id=trace_a,
+            span_id=span_a,
+            start_time=now - timedelta(days=2),
+            end_time=now - timedelta(days=2),
+            task_id=task_id,
+            resource_id=shared_resource_id,
+            raw_data={},
+            status_code="Unset",
+        )
+    )
+    span_b = str(uuid.uuid4())
+    db_session.add(
+        DatabaseSpan(
+            id=span_b,
+            trace_id=trace_b,
+            span_id=span_b,
+            start_time=now - timedelta(days=2),
+            end_time=now - timedelta(days=2),
+            task_id=task_id,
+            resource_id=shared_resource_id,
+            raw_data={},
+            status_code="Unset",
+        )
+    )
+    db_session.commit()
+
+    try:
+        delete_trace_batch(db_session, [trace_a])
+        db_session.commit()
+
+        assert (
+            db_session.execute(
+                select(DatabaseTraceMetadata).where(
+                    DatabaseTraceMetadata.trace_id == trace_a
+                )
+            ).scalar_one_or_none()
+            is None
+        )
+        assert (
+            db_session.execute(
+                select(DatabaseSpan).where(DatabaseSpan.id == span_a)
+            ).scalar_one_or_none()
+            is None
+        )
+        assert (
+            db_session.execute(
+                select(DatabaseResourceMetadata).where(
+                    DatabaseResourceMetadata.id == shared_resource_id
+                )
+            ).scalar_one_or_none()
+            is not None
+        )
+    finally:
+        db_session.execute(
+            delete(DatabaseSpan).where(DatabaseSpan.id.in_([span_a, span_b]))
+        )
+        db_session.execute(
+            delete(DatabaseTraceMetadata).where(
+                DatabaseTraceMetadata.trace_id.in_([trace_a, trace_b])
+            )
+        )
+        db_session.execute(
+            delete(DatabaseResourceMetadata).where(
+                DatabaseResourceMetadata.id == shared_resource_id
+            )
+        )
+        db_session.execute(delete(DatabaseTask).where(DatabaseTask.id == task_id))
+        db_session.commit()
+        db_session.close()
+
+
+@pytest.mark.unit_tests
+def test_resource_preserved_when_referenced_by_root_span_resource_id_in_other_trace() -> (
+    None
+):
+    """A resource referenced via root_span_resource_id in a surviving trace is not deleted."""
+    db_session: Session = override_get_db_session()
+    task_id = _make_task(db_session)
+    now = datetime.now(timezone.utc)
+
+    shared_resource_id = str(uuid.uuid4())
+    db_session.add(
+        DatabaseResourceMetadata(
+            id=shared_resource_id,
+            service_name="shared-service",
+            resource_attributes={},
+        )
+    )
+    db_session.commit()
+
+    trace_a = str(uuid.uuid4())
+    trace_b = str(uuid.uuid4())
+    for tid in (trace_a, trace_b):
+        db_session.add(
+            DatabaseTraceMetadata(
+                trace_id=tid,
+                task_id=task_id,
+                root_span_resource_id=shared_resource_id,
+                start_time=now - timedelta(days=2),
+                end_time=now - timedelta(days=2),
+                span_count=0,
+            )
+        )
+    db_session.commit()
+
+    try:
+        delete_trace_batch(db_session, [trace_a])
+        db_session.commit()
+
+        assert (
+            db_session.execute(
+                select(DatabaseTraceMetadata).where(
+                    DatabaseTraceMetadata.trace_id == trace_a
+                )
+            ).scalar_one_or_none()
+            is None
+        )
+        assert (
+            db_session.execute(
+                select(DatabaseResourceMetadata).where(
+                    DatabaseResourceMetadata.id == shared_resource_id
+                )
+            ).scalar_one_or_none()
+            is not None
+        )
+    finally:
+        db_session.execute(
+            delete(DatabaseTraceMetadata).where(
+                DatabaseTraceMetadata.trace_id.in_([trace_a, trace_b])
+            )
+        )
+        db_session.execute(
+            delete(DatabaseResourceMetadata).where(
+                DatabaseResourceMetadata.id == shared_resource_id
+            )
+        )
         db_session.execute(delete(DatabaseTask).where(DatabaseTask.id == task_id))
         db_session.commit()
         db_session.close()
