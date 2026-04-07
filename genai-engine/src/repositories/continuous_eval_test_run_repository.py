@@ -227,6 +227,21 @@ class ContinuousEvalTestRunRepository:
             .count()
         )
 
+    def delete_test_run(self, test_run_id: uuid.UUID) -> None:
+        """Delete a test run and its associated annotations (via CASCADE)."""
+        db_test_run = (
+            self.db_session.query(DatabaseContinuousEvalTestRun)
+            .filter(DatabaseContinuousEvalTestRun.id == test_run_id)
+            .first()
+        )
+        if not db_test_run:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Test run {test_run_id} not found.",
+            )
+        self.db_session.delete(db_test_run)
+        self.db_session.commit()
+
     def count_test_run_results(self, test_run_id: uuid.UUID) -> int:
         """Count results for a test run."""
         return (

@@ -719,3 +719,32 @@ def get_test_run_results(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@continuous_eval_routes.delete(
+    "/continuous_evals/test_runs/{test_run_id}",
+    summary="Delete a test run",
+    description="Delete a test run and all its associated annotation results.",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        status.HTTP_204_NO_CONTENT: {"description": "Test run deleted."},
+    },
+    tags=["Continuous Eval Test Runs"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+def delete_test_run(
+    test_run_id: UUID = Path(
+        ...,
+        description="The id of the test run to delete.",
+        title="Test Run ID",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> None:
+    try:
+        test_run_repo = ContinuousEvalTestRunRepository(db_session)
+        test_run_repo.delete_test_run(test_run_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
