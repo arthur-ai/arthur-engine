@@ -376,7 +376,7 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
     ) -> None:
         """Atomically increment test run counters after an annotation completes."""
         try:
-            update_values: dict = {
+            update_values = {
                 "completed_count": DatabaseContinuousEvalTestRun.completed_count + 1,
                 "updated_at": datetime.now(),
             }
