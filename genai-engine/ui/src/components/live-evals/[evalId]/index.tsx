@@ -1,8 +1,10 @@
 import { Operators, TracesEmptyState } from "@arthur/shared-components";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import ScienceOutlinedIcon from "@mui/icons-material/ScienceOutlined";
 import {
   Box,
+  Button,
   Chip,
   CircularProgress,
   Dialog,
@@ -30,6 +32,7 @@ import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { Details } from "../components/results/components/details";
+import { TestRunDialog } from "../components/TestRunDialog";
 import { useContinuousEval } from "../hooks/useContinuousEval";
 import { continuousEvalsResultsQueryOptions } from "../hooks/useContinuousEvalsResults";
 
@@ -66,6 +69,7 @@ export const LiveEvalDetail = () => {
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
   const [selectedAnnotationId, setSelectedAnnotationId] = useState("");
   const [statusFilter, setStatusFilter] = useState<ContinuousEvalRunStatus | "">("");
+  const [testDialogOpen, setTestDialogOpen] = useState(false);
 
   const filters = [
     { name: "continuous_eval_id", operator: Operators.IN, value: [evalId!] },
@@ -163,6 +167,9 @@ export const LiveEvalDetail = () => {
 
           <Stack direction="row" alignItems="center" justifyContent="space-between" ml="auto">
             <Stack direction="row" gap={2} alignItems="center">
+              <Button variant="outlined" size="small" startIcon={<ScienceOutlinedIcon />} onClick={() => setTestDialogOpen(true)}>
+                Test Eval
+              </Button>
               <CopyableChip label={evalId ?? liveEval.id} sx={{ fontFamily: "monospace", fontSize: "0.75rem" }} />
               <Typography variant="body2" color="text.secondary">
                 Created {formatDateInTimezone(liveEval.created_at, timezone, { hour12: !use24Hour })}
@@ -281,6 +288,14 @@ export const LiveEvalDetail = () => {
       <Dialog open={!!selectedAnnotationId} onClose={() => setSelectedAnnotationId("")} maxWidth="xl" fullWidth>
         <Details annotationId={selectedAnnotationId || undefined} onClose={() => setSelectedAnnotationId("")} onRerunComplete={() => {}} />
       </Dialog>
+
+      <TestRunDialog
+        open={testDialogOpen}
+        onClose={() => setTestDialogOpen(false)}
+        evalId={evalId!}
+        evalName={liveEval.name}
+        taskId={task?.id ?? ""}
+      />
     </Stack>
   );
 };

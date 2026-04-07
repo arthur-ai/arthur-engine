@@ -1,7 +1,7 @@
 import logging
 import uuid
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Any, Optional
 
 from arthur_common.models.common_schemas import VariableTemplateValue
 from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
@@ -376,7 +376,7 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
     ) -> None:
         """Atomically increment test run counters after an annotation completes."""
         try:
-            update_values = {
+            update_values: dict[Any, Any] = {
                 "completed_count": DatabaseContinuousEvalTestRun.completed_count + 1,
                 "updated_at": datetime.now(),
             }
