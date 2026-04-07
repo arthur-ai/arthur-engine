@@ -3,13 +3,15 @@ import KeyOutlined from "@mui/icons-material/KeyOutlined";
 import LogoutOutlined from "@mui/icons-material/LogoutOutlined";
 import SettingsIcon from "@mui/icons-material/Settings";
 import { Box, Divider, IconButton, ListItemIcon, ListItemText, Menu, MenuItem } from "@mui/material";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSnackbar } from "notistack";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { ThemeToggle } from "../common/ThemeToggle";
 
 import { UserSettingsModal } from "@/components/UserSettingsModal";
+import type { UserSettings } from "@/components/UserSettingsModal/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
@@ -17,9 +19,12 @@ import { useApplicationConfiguration } from "@/hooks/useApplicationConfiguration
 import { useAvailableModels, useModelProviders } from "@/hooks/useModelProviders";
 import type { ModelProvider } from "@/lib/api-client/api-client";
 
+const CHATBOT_CONFIG_QUERY_KEY = ["getChatbotConfigApiV1ChatbotConfigGet"] as const;
+
 export const SettingsMenuButton: React.FC = () => {
   const navigate = useNavigate();
   const api = useApi();
+  const queryClient = useQueryClient();
   const { logout } = useAuth();
   const { timezone, use24Hour, setTimezone, setUse24Hour, serverChatbotEnabled, enableChatbot, setEnableChatbot } = useDisplaySettings();
   const { providers: enabledProviders } = useModelProviders();
@@ -28,13 +33,25 @@ export const SettingsMenuButton: React.FC = () => {
   const { enqueueSnackbar } = useSnackbar();
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [userSettingsModalOpen, setUserSettingsModalOpen] = useState(false);
-  const [chatbotModelProvider, setChatbotModelProvider] = useState<ModelProvider | "">("");
-  const [chatbotModelName, setChatbotModelName] = useState("");
-  const [blacklistEndpoints, setBlacklistEndpoints] = useState<string[]>([]);
-  const [availableEndpoints, setAvailableEndpoints] = useState<string[]>([]);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   const isMenuOpen = Boolean(menuAnchorEl);
+
+  const chatbotConfigQuery = useQuery({
+    // eslint-disable-next-line @tanstack/query/exhaustive-deps
+    queryKey: CHATBOT_CONFIG_QUERY_KEY,
+    queryFn: async () => {
+      if (!api) throw new Error("API client not available");
+      const res = await api.api.getChatbotConfigApiV1ChatbotConfigGet();
+      return res.data;
+    },
+    enabled: !!api && userSettingsModalOpen,
+  });
+
+  const chatbotModelProvider: ModelProvider | "" = chatbotConfigQuery.data?.model_provider ?? "";
+  const chatbotModelName: string = chatbotConfigQuery.data?.model_name ?? "";
+  const blacklistEndpoints: string[] = chatbotConfigQuery.data?.blacklist_endpoints ?? [];
+  const availableEndpoints: string[] = chatbotConfigQuery.data?.available_endpoints ?? [];
 
   const handleMenuClose = () => {
     setMenuAnchorEl(null);
@@ -44,21 +61,46 @@ export const SettingsMenuButton: React.FC = () => {
     logout();
   };
 
-  useEffect(() => {
-    if (api && userSettingsModalOpen) {
-      api.api
-        .getChatbotConfigApiV1ChatbotConfigGet()
-        .then((res) => {
-          setChatbotModelProvider(res.data.model_provider);
-          setChatbotModelName(res.data.model_name);
-          setBlacklistEndpoints(res.data.blacklist_endpoints ?? []);
-          setAvailableEndpoints(res.data.available_endpoints ?? []);
-        })
-        .catch(() => {
-          // Chatbot config not available (e.g. feature disabled)
-        });
+  const handleSettingsSave = async (settings: UserSettings) => {
+    if (settings.timezone !== undefined) setTimezone(settings.timezone);
+    if (settings.use24Hour !== undefined) setUse24Hour(settings.use24Hour);
+    if (settings.enableChatbot !== undefined) setEnableChatbot(settings.enableChatbot);
+
+    setIsSavingSettings(true);
+    try {
+      const providerChanged = settings.chatbotModelProvider && settings.chatbotModelProvider !== chatbotModelProvider;
+      const modelChanged = settings.chatbotModelName && settings.chatbotModelName !== chatbotModelName;
+      const blacklistChanged = JSON.stringify(settings.blacklistEndpoints ?? []) !== JSON.stringify(blacklistEndpoints);
+
+      if (api && (providerChanged || modelChanged || blacklistChanged)) {
+        try {
+          await api.api.updateChatbotConfigApiV1ChatbotConfigPut({
+            model_provider: (settings.chatbotModelProvider || chatbotModelProvider) as ModelProvider,
+            model_name: settings.chatbotModelName || chatbotModelName,
+            blacklist_endpoints: settings.blacklistEndpoints,
+          });
+          await queryClient.invalidateQueries({ queryKey: CHATBOT_CONFIG_QUERY_KEY });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Failed to update chatbot settings";
+          enqueueSnackbar(message, { variant: "error" });
+        }
+      }
+
+      if (settings.traceRetentionDays !== undefined) {
+        try {
+          await updateConfiguration({ trace_retention_days: settings.traceRetentionDays });
+          enqueueSnackbar("Application configuration updated", { variant: "success" });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Failed to update configuration";
+          enqueueSnackbar(message, { variant: "error" });
+        }
+      }
+    } finally {
+      setIsSavingSettings(false);
     }
-  }, [api, userSettingsModalOpen]);
+
+    setUserSettingsModalOpen(false);
+  };
 
   return (
     <>
@@ -146,55 +188,10 @@ export const SettingsMenuButton: React.FC = () => {
         availableEndpoints={availableEndpoints}
         traceRetentionEnabled={!appConfigError && !!appConfig}
         initialTraceRetentionDays={appConfig?.trace_retention_days}
+        allowedTraceRetentionDays={appConfig?.allowed_trace_retention_days}
         isLoadingTraceRetention={isLoadingAppConfig}
         isSaving={isSavingSettings}
-        onSave={async (settings) => {
-          if (settings.timezone !== undefined) setTimezone(settings.timezone);
-          if (settings.use24Hour !== undefined) setUse24Hour(settings.use24Hour);
-          if (settings.enableChatbot !== undefined) setEnableChatbot(settings.enableChatbot);
-
-          setIsSavingSettings(true);
-          try {
-            const providerChanged = settings.chatbotModelProvider && settings.chatbotModelProvider !== chatbotModelProvider;
-            const modelChanged = settings.chatbotModelName && settings.chatbotModelName !== chatbotModelName;
-            const blacklistChanged = JSON.stringify(settings.blacklistEndpoints ?? []) !== JSON.stringify(blacklistEndpoints);
-
-            if (api && (providerChanged || modelChanged || blacklistChanged)) {
-              const prevProvider = chatbotModelProvider;
-              const prevModel = chatbotModelName;
-              const prevBlacklist = blacklistEndpoints;
-              if (settings.chatbotModelProvider) setChatbotModelProvider(settings.chatbotModelProvider as ModelProvider);
-              if (settings.chatbotModelName) setChatbotModelName(settings.chatbotModelName);
-              if (settings.blacklistEndpoints) setBlacklistEndpoints(settings.blacklistEndpoints);
-              try {
-                await api.api.updateChatbotConfigApiV1ChatbotConfigPut({
-                  model_provider: (settings.chatbotModelProvider || chatbotModelProvider) as ModelProvider,
-                  model_name: settings.chatbotModelName || chatbotModelName,
-                  blacklist_endpoints: settings.blacklistEndpoints,
-                });
-              } catch (err) {
-                console.error("Failed to update chatbot config:", err);
-                setChatbotModelProvider(prevProvider);
-                setChatbotModelName(prevModel);
-                setBlacklistEndpoints(prevBlacklist);
-              }
-            }
-
-            if (settings.traceRetentionDays !== undefined && settings.traceRetentionDays !== appConfig?.trace_retention_days) {
-              try {
-                await updateConfiguration({ trace_retention_days: settings.traceRetentionDays });
-                enqueueSnackbar("Application configuration updated", { variant: "success" });
-              } catch (err) {
-                const message = err instanceof Error ? err.message : "Failed to update configuration";
-                enqueueSnackbar(message, { variant: "error" });
-              }
-            }
-          } finally {
-            setIsSavingSettings(false);
-          }
-
-          setUserSettingsModalOpen(false);
-        }}
+        onSave={handleSettingsSave}
       />
     </>
   );

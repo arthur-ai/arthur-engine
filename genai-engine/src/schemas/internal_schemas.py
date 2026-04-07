@@ -1955,6 +1955,7 @@ class ApplicationConfiguration(BaseModel):
             ),
             max_llm_rules_per_task_count=self.max_llm_rules_per_task_count,
             trace_retention_days=self.trace_retention_days,
+            allowed_trace_retention_days=constants.ALLOWED_TRACE_RETENTION_DAYS,
         )
 
 

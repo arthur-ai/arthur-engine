@@ -47,6 +47,7 @@ from schemas.enums import (
     RagProviderEnum,
     RagSearchKind,
 )
+from utils.constants import ALLOWED_TRACE_RETENTION_DAYS
 
 
 class DocumentStorageConfigurationUpdateRequest(BaseModel):
@@ -79,9 +80,6 @@ class DocumentStorageConfigurationUpdateRequest(BaseModel):
                     "Role ARN must be supplied for AWS document configuration",
                 )
         return values
-
-
-ALLOWED_TRACE_RETENTION_DAYS = (7, 14, 30, 90, 120, 365)
 
 
 class ApplicationConfigurationUpdateRequest(BaseModel):

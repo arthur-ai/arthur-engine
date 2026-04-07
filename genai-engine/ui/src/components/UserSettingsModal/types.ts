@@ -38,6 +38,8 @@ export interface UserSettingsModalProps {
   traceRetentionEnabled?: boolean;
   /** Current trace retention value from the server. */
   initialTraceRetentionDays?: number;
+  /** Allowed retention day values from the server. When empty, the retention selector is hidden. */
+  allowedTraceRetentionDays?: number[];
   /** Whether the application configuration is still loading. */
   isLoadingTraceRetention?: boolean;
   title?: string;

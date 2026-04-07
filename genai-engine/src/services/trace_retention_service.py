@@ -42,6 +42,7 @@ class TraceRetentionService(BaseQueueService[TraceRetentionJob]):
     def __init__(self, **kwargs: object) -> None:
         super().__init__(**kwargs)  # type: ignore[arg-type]
         self._tripped = threading.Event()
+        self._failure_lock = threading.Lock()
         self._consecutive_failures = 0
 
     def _trip_latch(self, reason: str) -> None:
@@ -55,6 +56,9 @@ class TraceRetentionService(BaseQueueService[TraceRetentionJob]):
 
     def _execute_job(self, job: TraceRetentionJob) -> None:
         """Run one retention pass: delete traces older than configured retention."""
+        total_deleted = 0
+        batch_error = False
+
         try:
             with db_session_context() as db_session:
                 config_repo = ConfigurationRepository(db_session)
@@ -63,18 +67,26 @@ class TraceRetentionService(BaseQueueService[TraceRetentionJob]):
                     days=config.trace_retention_days
                 )
 
-                total_deleted = 0
                 while True:
-                    trace_ids = get_expired_trace_ids(
-                        db_session,
-                        cutoff,
-                        batch_size=DEFAULT_TRACE_RETENTION_BATCH_SIZE,
-                    )
-                    if not trace_ids:
+                    try:
+                        trace_ids = get_expired_trace_ids(
+                            db_session,
+                            cutoff,
+                            batch_size=DEFAULT_TRACE_RETENTION_BATCH_SIZE,
+                        )
+                        if not trace_ids:
+                            break
+                        delete_trace_batch(db_session, trace_ids)
+                        db_session.commit()
+                        total_deleted += len(trace_ids)
+                    except Exception:
+                        logger.exception(
+                            "Trace retention batch failed after deleting %d traces",
+                            total_deleted,
+                        )
+                        db_session.rollback()
+                        batch_error = True
                         break
-                    delete_trace_batch(db_session, trace_ids)
-                    db_session.commit()
-                    total_deleted += len(trace_ids)
 
                     if total_deleted >= MAX_TRACES_PER_RUN:
                         self._trip_latch(
@@ -92,18 +104,34 @@ class TraceRetentionService(BaseQueueService[TraceRetentionJob]):
                         total_deleted,
                         cutoff.isoformat(),
                     )
-            self._consecutive_failures = 0
         except Exception:
-            self._consecutive_failures += 1
+            with self._failure_lock:
+                self._consecutive_failures += 1
+                failures = self._consecutive_failures
             logger.exception(
                 "Trace retention run failed (%d consecutive)",
-                self._consecutive_failures,
+                failures,
             )
-            if self._consecutive_failures >= CIRCUIT_BREAKER_THRESHOLD:
+            if failures >= CIRCUIT_BREAKER_THRESHOLD:
                 self._trip_latch(
                     f"circuit breaker threshold reached: "
-                    f"{self._consecutive_failures} consecutive failures"
+                    f"{failures} consecutive failures"
                 )
+            return
+
+        with self._failure_lock:
+            if batch_error and total_deleted == 0:
+                self._consecutive_failures += 1
+                failures = self._consecutive_failures
+            else:
+                self._consecutive_failures = 0
+                failures = 0
+
+        if failures >= CIRCUIT_BREAKER_THRESHOLD:
+            self._trip_latch(
+                f"circuit breaker threshold reached: "
+                f"{failures} consecutive failures"
+            )
 
     def _background_loop(self) -> None:
         """Run retention once, then wait 24 hours and enqueue again."""

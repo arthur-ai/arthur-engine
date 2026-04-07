@@ -24,6 +24,58 @@ from repositories.trace_retention_repository import (
 from tests.clients.base_test_client import override_get_db_session
 
 
+def _cleanup_trace_data(
+    db_session: Session,
+    *,
+    task_ids: list[str] | None = None,
+    trace_ids: list[str] | None = None,
+    span_ids: list[str] | None = None,
+    resource_ids: list[str] | None = None,
+    metric_ids: list[str] | None = None,
+    annotation_ids: list[uuid.UUID] | None = None,
+) -> None:
+    """Delete test data in FK-safe order and close the session."""
+    if annotation_ids:
+        db_session.execute(
+            delete(DatabaseAgenticAnnotation).where(
+                DatabaseAgenticAnnotation.id.in_(annotation_ids)
+            )
+        )
+    if metric_ids or span_ids:
+        if span_ids:
+            db_session.execute(
+                delete(DatabaseMetricResult).where(
+                    DatabaseMetricResult.span_id.in_(span_ids)
+                )
+            )
+        if metric_ids:
+            db_session.execute(
+                delete(DatabaseMetric).where(DatabaseMetric.id.in_(metric_ids))
+            )
+    if span_ids:
+        db_session.execute(
+            delete(DatabaseSpan).where(DatabaseSpan.id.in_(span_ids))
+        )
+    if trace_ids:
+        db_session.execute(
+            delete(DatabaseTraceMetadata).where(
+                DatabaseTraceMetadata.trace_id.in_(trace_ids)
+            )
+        )
+    if resource_ids:
+        db_session.execute(
+            delete(DatabaseResourceMetadata).where(
+                DatabaseResourceMetadata.id.in_(resource_ids)
+            )
+        )
+    if task_ids:
+        db_session.execute(
+            delete(DatabaseTask).where(DatabaseTask.id.in_(task_ids))
+        )
+    db_session.commit()
+    db_session.close()
+
+
 def _make_task(session: Session) -> str:
     """Create a task and return its id."""
     task_id = str(uuid.uuid4())
@@ -79,14 +131,11 @@ def test_get_expired_trace_ids_returns_only_expired_and_respects_batch_size() ->
         assert len(result_cap) == 1
         assert result_cap[0] == expired_2
     finally:
-        db_session.execute(
-            delete(DatabaseTraceMetadata).where(
-                DatabaseTraceMetadata.trace_id.in_([expired_1, expired_2, not_expired])
-            )
+        _cleanup_trace_data(
+            db_session,
+            task_ids=[task_id],
+            trace_ids=[expired_1, expired_2, not_expired],
         )
-        db_session.execute(delete(DatabaseTask).where(DatabaseTask.id == task_id))
-        db_session.commit()
-        db_session.close()
 
 
 @pytest.mark.unit_tests
@@ -202,22 +251,13 @@ def test_delete_trace_batch_removes_trace_and_orphan_resource_metadata_only() ->
             is not None
         )
     finally:
-        db_session.execute(
-            delete(DatabaseTraceMetadata).where(
-                DatabaseTraceMetadata.trace_id.in_([trace_id, other_trace_id])
-            )
+        _cleanup_trace_data(
+            db_session,
+            task_ids=[task_id],
+            trace_ids=[trace_id, other_trace_id],
+            span_ids=[span_id],
+            resource_ids=[resource_id_batch, resource_id_other],
         )
-        db_session.execute(
-            delete(DatabaseSpan).where(DatabaseSpan.trace_id == trace_id)
-        )
-        db_session.execute(
-            delete(DatabaseResourceMetadata).where(
-                DatabaseResourceMetadata.id.in_([resource_id_batch, resource_id_other])
-            )
-        )
-        db_session.execute(delete(DatabaseTask).where(DatabaseTask.id == task_id))
-        db_session.commit()
-        db_session.close()
 
 
 @pytest.mark.unit_tests
@@ -245,14 +285,11 @@ def test_get_expired_trace_ids_returns_nothing_when_no_traces_expired() -> None:
         )
         assert result == []
     finally:
-        db_session.execute(
-            delete(DatabaseTraceMetadata).where(
-                DatabaseTraceMetadata.trace_id == trace_id
-            )
+        _cleanup_trace_data(
+            db_session,
+            task_ids=[task_id],
+            trace_ids=[trace_id],
         )
-        db_session.execute(delete(DatabaseTask).where(DatabaseTask.id == task_id))
-        db_session.commit()
-        db_session.close()
 
 
 @pytest.mark.unit_tests
@@ -341,21 +378,13 @@ def test_delete_trace_batch_removes_metric_results_for_deleted_spans() -> None:
             is None
         )
     finally:
-        db_session.execute(
-            delete(DatabaseMetricResult).where(DatabaseMetricResult.span_id == span_id)
+        _cleanup_trace_data(
+            db_session,
+            task_ids=[task_id],
+            trace_ids=[trace_id],
+            span_ids=[span_id],
+            metric_ids=[metric_id],
         )
-        db_session.execute(
-            delete(DatabaseSpan).where(DatabaseSpan.trace_id == trace_id)
-        )
-        db_session.execute(
-            delete(DatabaseTraceMetadata).where(
-                DatabaseTraceMetadata.trace_id == trace_id
-            )
-        )
-        db_session.execute(delete(DatabaseMetric).where(DatabaseMetric.id == metric_id))
-        db_session.execute(delete(DatabaseTask).where(DatabaseTask.id == task_id))
-        db_session.commit()
-        db_session.close()
 
 
 @pytest.mark.unit_tests
@@ -389,14 +418,11 @@ def test_delete_trace_batch_noop_on_empty_list() -> None:
             is not None
         )
     finally:
-        db_session.execute(
-            delete(DatabaseTraceMetadata).where(
-                DatabaseTraceMetadata.trace_id == trace_id
-            )
+        _cleanup_trace_data(
+            db_session,
+            task_ids=[task_id],
+            trace_ids=[trace_id],
         )
-        db_session.execute(delete(DatabaseTask).where(DatabaseTask.id == task_id))
-        db_session.commit()
-        db_session.close()
 
 
 @pytest.mark.unit_tests
@@ -465,21 +491,12 @@ def test_delete_trace_batch_removes_agentic_annotations() -> None:
             is not None
         )
     finally:
-        db_session.execute(
-            delete(DatabaseAgenticAnnotation).where(
-                DatabaseAgenticAnnotation.id.in_(
-                    [annotation_deleted, annotation_survivor]
-                )
-            )
+        _cleanup_trace_data(
+            db_session,
+            task_ids=[task_id],
+            trace_ids=[trace_to_delete, trace_survivor],
+            annotation_ids=[annotation_deleted, annotation_survivor],
         )
-        db_session.execute(
-            delete(DatabaseTraceMetadata).where(
-                DatabaseTraceMetadata.trace_id.in_([trace_to_delete, trace_survivor])
-            )
-        )
-        db_session.execute(delete(DatabaseTask).where(DatabaseTask.id == task_id))
-        db_session.commit()
-        db_session.close()
 
 
 @pytest.mark.unit_tests
@@ -570,22 +587,13 @@ def test_resource_preserved_when_referenced_by_span_in_other_trace() -> None:
             is not None
         )
     finally:
-        db_session.execute(
-            delete(DatabaseSpan).where(DatabaseSpan.id.in_([span_a, span_b]))
+        _cleanup_trace_data(
+            db_session,
+            task_ids=[task_id],
+            trace_ids=[trace_a, trace_b],
+            span_ids=[span_a, span_b],
+            resource_ids=[shared_resource_id],
         )
-        db_session.execute(
-            delete(DatabaseTraceMetadata).where(
-                DatabaseTraceMetadata.trace_id.in_([trace_a, trace_b])
-            )
-        )
-        db_session.execute(
-            delete(DatabaseResourceMetadata).where(
-                DatabaseResourceMetadata.id == shared_resource_id
-            )
-        )
-        db_session.execute(delete(DatabaseTask).where(DatabaseTask.id == task_id))
-        db_session.commit()
-        db_session.close()
 
 
 @pytest.mark.unit_tests
@@ -643,16 +651,9 @@ def test_resource_preserved_when_referenced_by_root_span_resource_id_in_other_tr
             is not None
         )
     finally:
-        db_session.execute(
-            delete(DatabaseTraceMetadata).where(
-                DatabaseTraceMetadata.trace_id.in_([trace_a, trace_b])
-            )
+        _cleanup_trace_data(
+            db_session,
+            task_ids=[task_id],
+            trace_ids=[trace_a, trace_b],
+            resource_ids=[shared_resource_id],
         )
-        db_session.execute(
-            delete(DatabaseResourceMetadata).where(
-                DatabaseResourceMetadata.id == shared_resource_id
-            )
-        )
-        db_session.execute(delete(DatabaseTask).where(DatabaseTask.id == task_id))
-        db_session.commit()
-        db_session.close()

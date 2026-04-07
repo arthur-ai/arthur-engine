@@ -26,7 +26,13 @@ def get_expired_trace_ids(
     cutoff: datetime,
     batch_size: int = DEFAULT_TRACE_RETENTION_BATCH_SIZE,
 ) -> list[str]:
-    """Return up to batch_size trace_ids from trace_metadata with end_time < cutoff."""
+    """Return up to batch_size trace_ids from trace_metadata with end_time < cutoff.
+
+    Uses ``FOR UPDATE SKIP LOCKED`` so concurrent callers don't block each other.
+    Under contention this may return fewer than *batch_size* rows (even zero) when
+    eligible rows exist but are locked by another session.  Callers in a
+    multi-instance deployment should not treat an empty result as "all done."
+    """
     stmt = (
         select(DatabaseTraceMetadata.trace_id)
         .where(DatabaseTraceMetadata.end_time < cutoff)

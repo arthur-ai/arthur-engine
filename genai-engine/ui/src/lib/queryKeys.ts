@@ -2,7 +2,6 @@ import type { GetFilteredSpansParams, GetFilteredTracesParams, GetSessionsParams
 import type { TimeInterval } from "@/utils/timeWindows";
 
 export const queryKeys = {
-  applicationConfiguration: () => ["applicationConfiguration"] as const,
   prompts: {
     variables: (name: string, versions: number[]) => ["promptsVariables", { name, versions }] as const,
   },
