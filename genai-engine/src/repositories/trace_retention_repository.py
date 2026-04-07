@@ -53,23 +53,18 @@ def delete_trace_batch(db_session: Session, trace_ids: list[str]) -> None:
         )
     )
 
-    # 2. Span ids for these traces (for metric_results)
-    span_ids_stmt = select(DatabaseSpan.id).where(DatabaseSpan.trace_id.in_(trace_ids))
-    span_ids = [row[0] for row in db_session.execute(span_ids_stmt).all()]
-
-    # Collect resource_ids referenced by this batch (before we delete spans/trace_metadata)
-    # so we only delete orphan resource_metadata that belonged to this batch.
-    batch_resource_ids_stmt = (
-        select(DatabaseSpan.resource_id)
-        .where(
-            DatabaseSpan.trace_id.in_(trace_ids),
-            DatabaseSpan.resource_id.isnot(None),
-        )
-        .distinct()
+    # 2. Lock span rows (prevents concurrent metric_result inserts via FK check
+    # blocking) and collect span_ids + resource_ids in one query.
+    span_rows_stmt = (
+        select(DatabaseSpan.id, DatabaseSpan.resource_id)
+        .where(DatabaseSpan.trace_id.in_(trace_ids))
+        .with_for_update()
     )
-    batch_resource_ids = [
-        row[0] for row in db_session.execute(batch_resource_ids_stmt).all()
-    ]
+    span_rows = db_session.execute(span_rows_stmt).all()
+    span_ids = [row[0] for row in span_rows]
+    batch_resource_ids: list[str] = [row[1] for row in span_rows if row[1] is not None]
+
+    # Also collect resource_ids from trace_metadata (root_span_resource_id).
     trace_resource_ids_stmt = (
         select(DatabaseTraceMetadata.root_span_resource_id)
         .where(

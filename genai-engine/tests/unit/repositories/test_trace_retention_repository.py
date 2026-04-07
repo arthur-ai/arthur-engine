@@ -8,6 +8,8 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from db_models import (
+    DatabaseMetric,
+    DatabaseMetricResult,
     DatabaseResourceMetadata,
     DatabaseSpan,
     DatabaseTask,
@@ -239,6 +241,96 @@ def test_get_expired_trace_ids_returns_nothing_when_no_traces_expired() -> None:
     db_session.execute(
         delete(DatabaseTraceMetadata).where(DatabaseTraceMetadata.trace_id == trace_id)
     )
+    db_session.execute(delete(DatabaseTask).where(DatabaseTask.id == task_id))
+    db_session.commit()
+    db_session.close()
+
+
+@pytest.mark.unit_tests
+def test_delete_trace_batch_removes_metric_results_for_deleted_spans() -> None:
+    """delete_trace_batch deletes metric_results that reference spans in the batch."""
+    db_session: Session = override_get_db_session()
+    task_id = _make_task(db_session)
+    now = datetime.now(timezone.utc)
+    trace_id = str(uuid.uuid4())
+
+    metric_id = str(uuid.uuid4())
+    db_session.add(
+        DatabaseMetric(
+            id=metric_id,
+            type="hallucination",
+            name="test_metric",
+            metric_metadata="{}",
+        )
+    )
+    db_session.commit()
+
+    db_session.add(
+        DatabaseTraceMetadata(
+            trace_id=trace_id,
+            task_id=task_id,
+            start_time=now - timedelta(days=2),
+            end_time=now - timedelta(days=2),
+            span_count=1,
+        )
+    )
+    span_id = str(uuid.uuid4())
+    db_session.add(
+        DatabaseSpan(
+            id=span_id,
+            trace_id=trace_id,
+            span_id=span_id,
+            start_time=now - timedelta(days=2),
+            end_time=now - timedelta(days=2),
+            task_id=task_id,
+            raw_data={},
+            status_code="Unset",
+        )
+    )
+    db_session.commit()
+
+    mr_id_1 = str(uuid.uuid4())
+    mr_id_2 = str(uuid.uuid4())
+    for mr_id in (mr_id_1, mr_id_2):
+        db_session.add(
+            DatabaseMetricResult(
+                id=mr_id,
+                metric_type="hallucination",
+                prompt_tokens=0,
+                completion_tokens=0,
+                latency_ms=0,
+                span_id=span_id,
+                metric_id=metric_id,
+            )
+        )
+    db_session.commit()
+
+    delete_trace_batch(db_session, [trace_id])
+    db_session.commit()
+
+    assert (
+        db_session.execute(
+            select(DatabaseSpan).where(DatabaseSpan.id == span_id)
+        ).scalar_one_or_none()
+        is None
+    )
+    assert (
+        db_session.execute(
+            select(DatabaseMetricResult).where(DatabaseMetricResult.span_id == span_id)
+        ).all()
+        == []
+    )
+    assert (
+        db_session.execute(
+            select(DatabaseTraceMetadata).where(
+                DatabaseTraceMetadata.trace_id == trace_id
+            )
+        ).scalar_one_or_none()
+        is None
+    )
+
+    # Cleanup
+    db_session.execute(delete(DatabaseMetric).where(DatabaseMetric.id == metric_id))
     db_session.execute(delete(DatabaseTask).where(DatabaseTask.id == task_id))
     db_session.commit()
     db_session.close()
