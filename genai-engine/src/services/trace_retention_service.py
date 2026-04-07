@@ -60,6 +60,7 @@ TRACE_RETENTION_ADVISORY_LOCK_KEY = 17449341
 INTER_BATCH_DELAY_SECONDS = 1
 MAX_TRACES_PER_RUN = 100_000
 CIRCUIT_BREAKER_THRESHOLD = 3
+LEADER_ELECTION_RETRY_SECONDS = 60
 
 
 class TraceRetentionJob(BaseQueueJob):
@@ -214,6 +215,7 @@ class TraceRetentionService(BaseQueueService[TraceRetentionJob]):
                     e,
                     exc_info=True,
                 )
+                self.shutdown_event.wait(timeout=LEADER_ELECTION_RETRY_SECONDS)
             finally:
                 if leader_session is not None:
                     leader_session.close()

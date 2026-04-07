@@ -195,7 +195,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 labelId="trace-retention-label"
                 label="Trace retention (days)"
                 value={traceRetentionDays ?? ""}
-                onChange={(e) => setTraceRetentionDays(e.target.value as number)}
+                onChange={(e) => setTraceRetentionDays(Number(e.target.value))}
               >
                 {allowedTraceRetentionDays.map((days) => (
                   <MenuItem key={days} value={days}>

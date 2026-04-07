@@ -3,12 +3,9 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 04/07/2026
+- **CHANGE** for **URL**: /api/v2/configuration  added the optional property 'trace_retention_days' to the request body
+- **CHANGE** for **URL**: /api/v2/configuration  added the optional property 'trace_retention_days' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v2/configuration  added the optional property 'allowed_trace_retention_days' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/configuration  added the optional property 'allowed_trace_retention_days' to the response with the '200' status
-
-# 04/07/2026
-- **CHANGE** for **URL**: /api/v2/configuration  endpoint added
-- **CHANGE** for **URL**: /api/v2/configuration  endpoint added
 
 # 04/06/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/chatbot/stream  for the 'path' request parameter 'task_id', the type/format was changed from 'string'/'' to 'string'/'uuid'
