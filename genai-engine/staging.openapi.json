@@ -18508,6 +18508,14 @@
                     "trace_retention_days": {
                         "type": "integer",
                         "title": "Trace Retention Days"
+                    },
+                    "allowed_trace_retention_days": {
+                        "items": {
+                            "type": "integer"
+                        },
+                        "type": "array",
+                        "title": "Allowed Trace Retention Days",
+                        "default": []
                     }
                 },
                 "type": "object",

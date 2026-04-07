@@ -1040,7 +1040,10 @@ export interface ApiKeyResponse {
 
 /** ApplicationConfigurationResponse */
 export interface ApplicationConfigurationResponse {
-  /** Allowed Trace Retention Days */
+  /**
+   * Allowed Trace Retention Days
+   * @default []
+   */
   allowed_trace_retention_days?: number[];
   /** Chat Task Id */
   chat_task_id?: string | null;

@@ -1,4 +1,28 @@
-"""Background service that deletes trace data older than the configured retention period."""
+"""Background service that deletes trace data older than the configured retention period.
+
+Scheduling
+----------
+A background thread enqueues a retention job immediately on startup and then
+once every 24 hours.  Each job queries for traces whose ``end_time`` is older
+than the configured ``trace_retention_days`` and deletes them in batches of
+``DEFAULT_TRACE_RETENTION_BATCH_SIZE`` (500).
+
+Inter-batch throttling
+----------------------
+A 1-second pause (``INTER_BATCH_DELAY_SECONDS``) is inserted between batches
+so the deletion workload doesn't spike database load, especially on startup
+when a large backlog may exist.  The pause is interruptible via the shutdown
+event for graceful termination.
+
+Circuit breaker / fail-stop latch
+---------------------------------
+The service maintains a consecutive-failure counter.  If a run fails
+``CIRCUIT_BREAKER_THRESHOLD`` (3) times in a row, or if a single run deletes
+more than ``MAX_TRACES_PER_RUN`` (100 000) traces, a fail-stop latch is
+tripped.  Once tripped the background loop exits permanently and a
+``CRITICAL`` log is emitted.  **A process restart is required to resume
+retention.**
+"""
 
 from __future__ import annotations
 
