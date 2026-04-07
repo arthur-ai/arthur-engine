@@ -44,7 +44,41 @@ export function testRunResultsQueryOptions({
   };
 }
 
+export function testRunsListQueryOptions({
+  api,
+  evalId,
+  page = 0,
+  pageSize = 10,
+}: {
+  api: Api<unknown>;
+  evalId: string;
+  page?: number;
+  pageSize?: number;
+}) {
+  return {
+    queryKey: [...queryKeys.continuousEvals.testRuns.byEval(evalId), { page, pageSize }],
+    queryFn: async () => {
+      const res = await api.api.listTestRunsApiV1ContinuousEvalsEvalIdTestRunsGet({
+        evalId,
+        page,
+        page_size: pageSize,
+        sort: "desc",
+      });
+      return res.data;
+    },
+  };
+}
+
 // --- Hooks ---
+
+export function useTestRunsList(evalId: string | undefined, page: number = 0, pageSize: number = 10) {
+  const api = useApi()!;
+
+  return useQuery({
+    ...testRunsListQueryOptions({ api, evalId: evalId ?? "", page, pageSize }),
+    enabled: !!evalId,
+  });
+}
 
 export function useCreateTestRun(evalId: string) {
   const api = useApi()!;
