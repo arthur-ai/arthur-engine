@@ -797,6 +797,28 @@ class ContinuousEvalRerunResponse(BaseModel):
     trace_id: str = Field(description="ID of the trace that was rerun.")
 
 
+class ContinuousEvalTestRunResponse(BaseModel):
+    id: UUID = Field(description="ID of the test run.")
+    continuous_eval_id: UUID = Field(description="ID of the continuous eval being tested.")
+    task_id: str = Field(description="ID of the parent task.")
+    status: str = Field(description="Status of the test run: running, completed, or partial_failure.")
+    total_count: int = Field(description="Total number of traces in the test run.")
+    completed_count: int = Field(description="Number of completed test cases.")
+    passed_count: int = Field(description="Number of test cases that passed.")
+    failed_count: int = Field(description="Number of test cases that failed.")
+    error_count: int = Field(description="Number of test cases that errored.")
+    skipped_count: int = Field(description="Number of test cases that were skipped.")
+    created_at: datetime = Field(description="When the test run was created.")
+    updated_at: datetime = Field(description="When the test run was last updated.")
+
+
+class ListContinuousEvalTestRunsResponse(BaseModel):
+    test_runs: List[ContinuousEvalTestRunResponse] = Field(
+        description="List of test runs.",
+    )
+    count: int = Field(description="Total number of test runs.")
+
+
 # ============================================================================
 # Synthetic Data Generation Response Schemas
 # ============================================================================

@@ -324,6 +324,7 @@ class ContinuousEvalsRepository:
                 DatabaseContinuousEval.task_id == task_id,
                 DatabaseAgenticAnnotation.annotation_type
                 == AgenticAnnotationType.CONTINUOUS_EVAL.value,
+                DatabaseAgenticAnnotation.test_run_id.is_(None),
             )
         )
 
@@ -625,6 +626,7 @@ class ContinuousEvalsRepository:
                 DatabaseContinuousEval.task_id == task_id,
                 DatabaseAgenticAnnotation.created_at >= start_time,
                 DatabaseAgenticAnnotation.created_at < end_time,
+                DatabaseAgenticAnnotation.test_run_id.is_(None),
             )
             .group_by(date_col)
             .order_by(desc(date_col))

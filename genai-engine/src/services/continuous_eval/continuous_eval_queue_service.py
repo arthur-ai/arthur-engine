@@ -8,6 +8,7 @@ from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunS
 from sqlalchemy.orm import Session
 
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
+from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTestRun
 from db_models.llm_eval_models import DatabaseContinuousEval
 from dependencies import get_db_session
 from repositories.llm_evals_repository import LLMEvalsRepository
@@ -89,6 +90,7 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                     DatabaseAgenticAnnotation.run_status
                     == ContinuousEvalRunStatus.PENDING.value,
                     DatabaseAgenticAnnotation.created_at < cutoff_time,
+                    DatabaseAgenticAnnotation.test_run_id.is_(None),
                 )
                 .all()
             )
@@ -357,6 +359,68 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
 
         db_session.commit()
         logger.debug(f"Updated annotation {annotation_id} to status {run_status}")
+
+        # If this annotation belongs to a test run, update the test run counters
+        if db_annotation.test_run_id:
+            self._increment_test_run_counters(
+                db_session, db_annotation.test_run_id, run_status,
+            )
+
+
+    def _increment_test_run_counters(
+        self,
+        db_session: Session,
+        test_run_id: uuid.UUID,
+        run_status: str,
+    ) -> None:
+        """Atomically increment test run counters after an annotation completes."""
+        try:
+            update_values: dict = {
+                "completed_count": DatabaseContinuousEvalTestRun.completed_count + 1,
+                "updated_at": datetime.now(),
+            }
+
+            if run_status == ContinuousEvalRunStatus.PASSED.value:
+                update_values["passed_count"] = DatabaseContinuousEvalTestRun.passed_count + 1
+            elif run_status == ContinuousEvalRunStatus.FAILED.value:
+                update_values["failed_count"] = DatabaseContinuousEvalTestRun.failed_count + 1
+            elif run_status == ContinuousEvalRunStatus.ERROR.value:
+                update_values["error_count"] = DatabaseContinuousEvalTestRun.error_count + 1
+            elif run_status == ContinuousEvalRunStatus.SKIPPED.value:
+                update_values["skipped_count"] = DatabaseContinuousEvalTestRun.skipped_count + 1
+
+            db_session.query(DatabaseContinuousEvalTestRun).filter(
+                DatabaseContinuousEvalTestRun.id == test_run_id,
+            ).update(update_values, synchronize_session=False)
+            db_session.commit()
+
+            # Check if test run is complete and update status
+            db_test_run = (
+                db_session.query(DatabaseContinuousEvalTestRun)
+                .filter(DatabaseContinuousEvalTestRun.id == test_run_id)
+                .first()
+            )
+            if db_test_run and db_test_run.completed_count >= db_test_run.total_count:
+                has_issues = (
+                    db_test_run.error_count > 0 or db_test_run.skipped_count > 0
+                )
+                final_status = "partial_failure" if has_issues else "completed"
+                db_session.query(DatabaseContinuousEvalTestRun).filter(
+                    DatabaseContinuousEvalTestRun.id == test_run_id,
+                ).update(
+                    {"status": final_status, "updated_at": datetime.now()},
+                    synchronize_session=False,
+                )
+                db_session.commit()
+                logger.info(
+                    f"Test run {test_run_id} completed with status: {final_status}",
+                )
+
+        except Exception as e:
+            logger.error(
+                f"Error incrementing test run counters for {test_run_id}: {e}",
+                exc_info=True,
+            )
 
 
 CONTINUOUS_EVAL_QUEUE_SERVICE: ContinuousEvalQueueService | None = None

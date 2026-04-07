@@ -19,6 +19,7 @@ from sqlalchemy.types import TIMESTAMP
 from db_models.base import Base
 
 if TYPE_CHECKING:
+    from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTestRun
     from db_models.llm_eval_models import DatabaseContinuousEval
 
 
@@ -58,6 +59,13 @@ class DatabaseAgenticAnnotation(Base):
     cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     run_status: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
+    test_run_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID,
+        ForeignKey("continuous_eval_test_runs.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
         default=datetime.now,
@@ -75,6 +83,11 @@ class DatabaseAgenticAnnotation(Base):
     continuous_eval: Mapped[Optional["DatabaseContinuousEval"]] = relationship(
         "DatabaseContinuousEval",
         foreign_keys=[continuous_eval_id],
+        lazy="selectin",
+    )
+    test_run: Mapped[Optional["DatabaseContinuousEvalTestRun"]] = relationship(
+        "DatabaseContinuousEvalTestRun",
+        foreign_keys=[test_run_id],
         lazy="selectin",
     )
 
