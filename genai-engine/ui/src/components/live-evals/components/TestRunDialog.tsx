@@ -28,7 +28,6 @@ import { Details } from "@/components/live-evals/components/results/components/d
 import { serializeDrawerTarget } from "@/components/traces/hooks/useDrawerTarget";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import type { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
-import { isInProgressStatus } from "@/lib/polling";
 import { formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
@@ -62,7 +61,7 @@ export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId }: Props
   const createMutation = useCreateTestRun(evalId);
   const testRunQuery = useTestRun(testRunId);
   const testRun = testRunQuery.data;
-  const isRunning = testRun ? isInProgressStatus(testRun.status) : false;
+  const isRunning = testRun?.status === "running";
   const resultsQuery = useTestRunResults(testRunId);
 
   const parsedIds = useMemo(() => parseTraceIds(traceIdsInput), [traceIdsInput]);
