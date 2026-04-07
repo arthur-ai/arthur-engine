@@ -48,7 +48,7 @@ export POSTGRES_USER=postgres \
   GENAI_ENGINE_ADMIN_KEY=changeme123 \
   GENAI_ENGINE_ENABLE_PERSISTENCE=enabled \
   ALLOW_ADMIN_KEY_GENERAL_ACCESS=enabled && \
-poetry run serve &
+uv run serve &
 ```
 
 **Step 3 — Wait for the backend to become healthy:**

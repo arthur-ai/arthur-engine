@@ -16,9 +16,9 @@ This is the **OpenShift PVC version** that:
 
 ### Build the Docker Image
 
-First, regenerate the poetry.lock file:
+First, generate the lock file:
 ```bash
-rm -rf poetry.lock && poetry lock
+uv lock
 ```
 
 Then build and push to Docker Hub:

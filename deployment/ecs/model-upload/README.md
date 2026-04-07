@@ -211,18 +211,18 @@ The `check_model_updates.py` script detects when Hugging Face models have been u
 
 ```bash
 # Check for updates (read-only)
-poetry run python check_model_updates.py
+uv run python check_model_updates.py
 
 # Check and update the manifest file
-poetry run python check_model_updates.py --update
+uv run python check_model_updates.py --update
 
 # Output in different formats
-poetry run python check_model_updates.py --output json    # JSON output
-poetry run python check_model_updates.py --output github  # GitHub Actions format
-poetry run python check_model_updates.py --output text    # Human-readable (default)
+uv run python check_model_updates.py --output json    # JSON output
+uv run python check_model_updates.py --output github  # GitHub Actions format
+uv run python check_model_updates.py --output text    # Human-readable (default)
 
 # Use a custom manifest path
-poetry run python check_model_updates.py --manifest /path/to/manifest.json
+uv run python check_model_updates.py --manifest /path/to/manifest.json
 ```
 
 ### Command-Line Options
@@ -350,12 +350,12 @@ This ensures:
 ## Local Development
 
 ```bash
-# Install dependencies with Poetry
-poetry install
+# Install dependencies with uv
+uv sync
 
 # Download models locally
-poetry run python download_models.py --output-dir ./models --workers 4
+uv run python download_models.py --output-dir ./models --workers 4
 
 # Test upload (requires AWS credentials)
-S3_BUCKET=my-bucket S3_PREFIX=models MODELS_DIR=./models poetry run python upload_models.py
+S3_BUCKET=my-bucket S3_PREFIX=models MODELS_DIR=./models uv run python upload_models.py
 ```
