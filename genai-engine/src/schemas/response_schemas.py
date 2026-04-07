@@ -28,6 +28,7 @@ from schemas.enums import (
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
     RagSearchKind,
+    TestRunStatus,
 )
 
 
@@ -803,8 +804,8 @@ class ContinuousEvalTestRunResponse(BaseModel):
         description="ID of the continuous eval being tested."
     )
     task_id: str = Field(description="ID of the parent task.")
-    status: str = Field(
-        description="Status of the test run: running, completed, or partial_failure."
+    status: TestRunStatus = Field(
+        description="Status of the test run."
     )
     total_count: int = Field(description="Total number of traces in the test run.")
     completed_count: int = Field(description="Number of completed test cases.")

@@ -16,12 +16,12 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { PaginationState } from "@tanstack/react-table";
 import { createMRTColumnHelper, MaterialReactTable, useMaterialReactTable } from "material-react-table";
 import { useCallback, useMemo, useState } from "react";
 
-import { testRunResultsQueryOptions, useCreateTestRun, useDeleteTestRun, useTestRunsList } from "../hooks/useTestRun";
+import { testRunResultsQueryOptions, useCreateTestRun, useDeleteTestRun, useTestRun, useTestRunResults, useTestRunsList } from "../hooks/useTestRun";
 
 import { CopyableChip } from "@/components/common";
 import { Details } from "@/components/live-evals/components/results/components/details";
@@ -130,8 +130,11 @@ function TestRunResultsModal({
   const deleteTestRun = useDeleteTestRun(evalId);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState("");
 
+  const { data: liveTestRun } = useTestRun(testRun.id);
+  const displayTestRun = liveTestRun ?? testRun;
+
   const resultsQueryOpts = testRunResultsQueryOptions({ api, testRunId: testRun.id, pageSize: 50 });
-  const { data: resultsData, isLoading } = useQuery(resultsQueryOpts);
+  const { data: resultsData, isLoading } = useTestRunResults(testRun.id);
 
   const handleRunAgain = async () => {
     const results = await queryClient.fetchQuery(resultsQueryOpts);
@@ -236,10 +239,10 @@ function TestRunResultsModal({
           <Stack direction="row" alignItems="center" gap={2}>
             <Typography variant="h6">Test Run Results</Typography>
             <Stack direction="row" gap={1}>
-              {testRun.passed_count > 0 && <Chip label={`${testRun.passed_count} passed`} size="small" color="success" variant="outlined" />}
-              {testRun.failed_count > 0 && <Chip label={`${testRun.failed_count} failed`} size="small" color="error" variant="outlined" />}
-              {testRun.error_count > 0 && <Chip label={`${testRun.error_count} errors`} size="small" color="warning" variant="outlined" />}
-              {testRun.skipped_count > 0 && <Chip label={`${testRun.skipped_count} skipped`} size="small" variant="outlined" />}
+              {displayTestRun.passed_count > 0 && <Chip label={`${displayTestRun.passed_count} passed`} size="small" color="success" variant="outlined" />}
+              {displayTestRun.failed_count > 0 && <Chip label={`${displayTestRun.failed_count} failed`} size="small" color="error" variant="outlined" />}
+              {displayTestRun.error_count > 0 && <Chip label={`${displayTestRun.error_count} errors`} size="small" color="warning" variant="outlined" />}
+              {displayTestRun.skipped_count > 0 && <Chip label={`${displayTestRun.skipped_count} skipped`} size="small" variant="outlined" />}
             </Stack>
           </Stack>
         </DialogTitle>

@@ -1557,11 +1557,8 @@ export interface ContinuousEvalTestRunResponse {
    * Number of test cases that were skipped.
    */
   skipped_count: number;
-  /**
-   * Status
-   * Status of the test run: running, completed, or partial_failure.
-   */
-  status: string;
+  /** Status of the test run. */
+  status: TestRunStatus;
   /**
    * Task Id
    * ID of the parent task.
@@ -10898,6 +10895,9 @@ export type TestCaseStatus = "queued" | "running" | "evaluating" | "failed" | "c
 export type TestRagProviderConnectionApiV1TasksTaskIdRagProvidersTestConnectionPostData = ConnectionCheckResult;
 
 export type TestRagProviderConnectionApiV1TasksTaskIdRagProvidersTestConnectionPostError = HTTPValidationError;
+
+/** TestRunStatus */
+export type TestRunStatus = "running" | "completed" | "partial_failure";
 
 /** TokenUsageCount */
 export interface TokenUsageCount {

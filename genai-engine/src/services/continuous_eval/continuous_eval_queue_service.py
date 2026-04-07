@@ -16,6 +16,7 @@ from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from repositories.trace_transform_repository import TraceTransformRepository
+from schemas.enums import TestRunStatus
 from schemas.internal_schemas import ContinuousEval
 from schemas.request_schemas import BaseCompletionRequest
 from services.base_queue_service import BaseQueueJob, BaseQueueService
@@ -413,7 +414,7 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                 has_issues = (
                     db_test_run.error_count > 0 or db_test_run.skipped_count > 0
                 )
-                final_status = "partial_failure" if has_issues else "completed"
+                final_status = TestRunStatus.PARTIAL_FAILURE if has_issues else TestRunStatus.COMPLETED
                 db_session.query(DatabaseContinuousEvalTestRun).filter(
                     DatabaseContinuousEvalTestRun.id == test_run_id,
                 ).update(

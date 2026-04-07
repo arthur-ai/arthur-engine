@@ -17,6 +17,7 @@ from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTestRun
 from db_models.llm_eval_models import DatabaseContinuousEval
 from db_models.telemetry_models import DatabaseTraceMetadata
+from schemas.enums import TestRunStatus
 from schemas.internal_schemas import AgenticAnnotation, ContinuousEvalTestRun
 from services.continuous_eval import (
     ContinuousEvalJob,
@@ -78,7 +79,7 @@ class ContinuousEvalTestRunRepository:
             id=uuid.uuid4(),
             continuous_eval_id=continuous_eval_id,
             task_id=task_id,
-            status="running",
+            status=TestRunStatus.RUNNING,
             total_count=len(unique_trace_ids),
             completed_count=0,
             passed_count=0,

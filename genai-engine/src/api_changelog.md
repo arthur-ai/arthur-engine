@@ -3,6 +3,20 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 04/07/2026
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}  added the new 'completed' enum value to the 'status' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/continuous_evals/test_runs/{test_run_id}
+- **CHANGE**warning [response-property-enum-value-added] at /vagrant/genai-engine/new.openapi.json 
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/test_runs  added the new 'completed' enum value to the 'test_runs/items/status' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/continuous_evals/{eval_id}/test_runs
+- **CHANGE**warning [response-property-enum-value-added] at /vagrant/genai-engine/new.openapi.json 
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/test_runs  added the new 'completed' enum value to the 'status' response property for the response status '200'
+- **CHANGE** in API POST /api/v1/continuous_evals/{eval_id}/test_runs
+- **CHANGE**warning [response-property-enum-value-added] at /vagrant/genai-engine/new.openapi.json 
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+
+# 04/07/2026
 - **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}  endpoint added
 
 # 04/07/2026

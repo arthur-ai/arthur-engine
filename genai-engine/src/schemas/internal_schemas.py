@@ -164,6 +164,7 @@ from schemas.enums import (
     RuleDataType,
     RuleScoringMethod,
     SecretType,
+    TestRunStatus,
 )
 from schemas.metric_schemas import MetricScoreDetails
 from schemas.rag_experiment_schemas import (
@@ -3915,7 +3916,7 @@ class ContinuousEvalTestRun(BaseModel):
     id: uuid.UUID
     continuous_eval_id: uuid.UUID
     task_id: str
-    status: str
+    status: TestRunStatus
     total_count: int
     completed_count: int = 0
     passed_count: int = 0

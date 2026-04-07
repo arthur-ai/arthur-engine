@@ -19402,9 +19402,8 @@
                         "description": "ID of the parent task."
                     },
                     "status": {
-                        "type": "string",
-                        "title": "Status",
-                        "description": "Status of the test run: running, completed, or partial_failure."
+                        "$ref": "#/components/schemas/TestRunStatus",
+                        "description": "Status of the test run."
                     },
                     "total_count": {
                         "type": "integer",
@@ -30193,6 +30192,15 @@
                 ],
                 "title": "TestCaseStatus",
                 "description": "Status of a test case"
+            },
+            "TestRunStatus": {
+                "type": "string",
+                "enum": [
+                    "running",
+                    "completed",
+                    "partial_failure"
+                ],
+                "title": "TestRunStatus"
             },
             "TokenUsageCount": {
                 "properties": {
