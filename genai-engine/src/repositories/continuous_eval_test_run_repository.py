@@ -91,7 +91,7 @@ class ContinuousEvalTestRunRepository:
         self.db_session.add(db_test_run)
         self.db_session.flush()
 
-        # Create pending annotations and enqueue jobs
+        # Create pending annotations
         queue_service = get_continuous_eval_queue_service()
         if not queue_service:
             raise HTTPException(
@@ -99,6 +99,7 @@ class ContinuousEvalTestRunRepository:
                 detail="Continuous eval queue service is not available.",
             )
 
+        annotations = []
         for trace_id in unique_trace_ids:
             annotation = DatabaseAgenticAnnotation(
                 id=uuid.uuid4(),
@@ -111,18 +112,21 @@ class ContinuousEvalTestRunRepository:
                 updated_at=now,
             )
             self.db_session.add(annotation)
-            self.db_session.flush()
+            annotations.append(annotation)
 
+        # Commit all annotations so worker threads can see them
+        self.db_session.commit()
+
+        # Now enqueue jobs — annotations are visible to workers
+        for annotation in annotations:
             job = ContinuousEvalJob(
                 annotation_id=annotation.id,
-                trace_id=trace_id,
+                trace_id=annotation.trace_id,
                 continuous_eval_id=continuous_eval_id,
                 task_id=task_id,
                 delay_seconds=0,
             )
             queue_service.enqueue(job)
-
-        self.db_session.commit()
 
         logger.info(
             f"Created test run {db_test_run.id} with {len(unique_trace_ids)} traces for eval {continuous_eval_id}",

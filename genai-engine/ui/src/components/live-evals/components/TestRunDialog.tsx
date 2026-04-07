@@ -63,7 +63,7 @@ export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId }: Props
   const testRunQuery = useTestRun(testRunId);
   const testRun = testRunQuery.data;
   const isRunning = testRun ? isInProgressStatus(testRun.status) : false;
-  const resultsQuery = useTestRunResults(testRunId, isRunning);
+  const resultsQuery = useTestRunResults(testRunId);
 
   const parsedIds = useMemo(() => parseTraceIds(traceIdsInput), [traceIdsInput]);
   const tooMany = parsedIds.length > MAX_TRACES;

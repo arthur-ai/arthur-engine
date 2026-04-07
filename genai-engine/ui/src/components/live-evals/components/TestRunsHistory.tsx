@@ -222,7 +222,7 @@ function TestRunResultsModal({
           <Button
             startIcon={<ReplayIcon />}
             onClick={handleRunAgain}
-            disabled={createTestRun.isPending || testRun.status === "running"}
+            disabled={createTestRun.isPending}
           >
             {createTestRun.isPending ? "Starting..." : "Run Again"}
           </Button>

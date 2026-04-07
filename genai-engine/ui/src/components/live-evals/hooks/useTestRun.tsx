@@ -5,7 +5,7 @@ import { useSnackbar } from "notistack";
 import { useApi } from "@/hooks/useApi";
 import type { Api } from "@/lib/api";
 import type { ContinuousEvalTestRunResponse } from "@/lib/api-client/api-client";
-import { pollWhileInProgress, POLL_INTERVAL } from "@/lib/polling";
+import { pollWhileAnyInProgress, pollWhileInProgress, POLL_INTERVAL } from "@/lib/polling";
 import { queryKeys } from "@/lib/queryKeys";
 
 // --- Query options ---
@@ -77,6 +77,11 @@ export function useTestRunsList(evalId: string | undefined, page: number = 0, pa
   return useQuery({
     ...testRunsListQueryOptions({ api, evalId: evalId ?? "", page, pageSize }),
     enabled: !!evalId,
+    refetchInterval: pollWhileAnyInProgress(
+      (data) => data?.test_runs,
+      (run) => run.status,
+      POLL_INTERVAL.FAST,
+    ),
   });
 }
 
@@ -118,12 +123,16 @@ export function useTestRun(testRunId: string | undefined) {
   });
 }
 
-export function useTestRunResults(testRunId: string | undefined, isRunning: boolean = false) {
+export function useTestRunResults(testRunId: string | undefined) {
   const api = useApi()!;
 
   return useQuery({
     ...testRunResultsQueryOptions({ api, testRunId: testRunId ?? "", pageSize: 50 }),
     enabled: !!testRunId,
-    refetchInterval: isRunning ? POLL_INTERVAL.FAST : false,
+    refetchInterval: pollWhileAnyInProgress(
+      (data) => data?.annotations,
+      (annotation) => annotation.run_status,
+      POLL_INTERVAL.FAST,
+    ),
   });
 }
