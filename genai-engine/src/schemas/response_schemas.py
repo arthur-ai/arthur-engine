@@ -804,9 +804,7 @@ class ContinuousEvalTestRunResponse(BaseModel):
         description="ID of the continuous eval being tested."
     )
     task_id: str = Field(description="ID of the parent task.")
-    status: TestRunStatus = Field(
-        description="Status of the test run."
-    )
+    status: TestRunStatus = Field(description="Status of the test run.")
     total_count: int = Field(description="Total number of traces in the test run.")
     completed_count: int = Field(description="Number of completed test cases.")
     passed_count: int = Field(description="Number of test cases that passed.")

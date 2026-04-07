@@ -414,7 +414,11 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                 has_issues = (
                     db_test_run.error_count > 0 or db_test_run.skipped_count > 0
                 )
-                final_status = TestRunStatus.PARTIAL_FAILURE if has_issues else TestRunStatus.COMPLETED
+                final_status = (
+                    TestRunStatus.PARTIAL_FAILURE
+                    if has_issues
+                    else TestRunStatus.COMPLETED
+                )
                 db_session.query(DatabaseContinuousEvalTestRun).filter(
                     DatabaseContinuousEvalTestRun.id == test_run_id,
                 ).update(
