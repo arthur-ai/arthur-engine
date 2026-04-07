@@ -93,7 +93,11 @@ export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId }: Props
         header: "Status",
         Cell: ({ cell }) => {
           const status = cell.getValue();
-          return status ? <Chip label={status} size="small" variant="outlined" sx={getStatusChipSx(status)} /> : <Typography variant="body2">—</Typography>;
+          return status ? (
+            <Chip label={status} size="small" variant="outlined" sx={getStatusChipSx(status)} />
+          ) : (
+            <Typography variant="body2">—</Typography>
+          );
         },
       }),
       columnHelper.accessor("annotation_score", {
@@ -140,7 +144,7 @@ export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId }: Props
         ),
       }),
     ],
-    [taskId, defaultCurrency],
+    [taskId, defaultCurrency]
   );
 
   const resultsData = resultsQuery.data?.annotations ?? [];
@@ -183,7 +187,11 @@ export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId }: Props
                 value={traceIdsInput}
                 onChange={(e) => setTraceIdsInput(e.target.value)}
                 error={tooMany}
-                helperText={tooMany ? `Maximum ${MAX_TRACES} traces allowed` : `${parsedIds.length} trace${parsedIds.length !== 1 ? "s" : ""} (max ${MAX_TRACES})`}
+                helperText={
+                  tooMany
+                    ? `Maximum ${MAX_TRACES} traces allowed`
+                    : `${parsedIds.length} trace${parsedIds.length !== 1 ? "s" : ""} (max ${MAX_TRACES})`
+                }
               />
             </Stack>
           ) : (
@@ -217,7 +225,13 @@ export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId }: Props
               {testRun && !isRunning && (
                 <Alert
                   severity={testRun.error_count > 0 || testRun.skipped_count > 0 ? "warning" : testRun.failed_count > 0 ? "info" : "success"}
-                  icon={testRun.error_count === 0 && testRun.skipped_count === 0 && testRun.failed_count === 0 ? <CheckCircleOutlineIcon /> : <ErrorOutlineIcon />}
+                  icon={
+                    testRun.error_count === 0 && testRun.skipped_count === 0 && testRun.failed_count === 0 ? (
+                      <CheckCircleOutlineIcon />
+                    ) : (
+                      <ErrorOutlineIcon />
+                    )
+                  }
                 >
                   {testRun.passed_count === testRun.total_count
                     ? "All test cases passed!"

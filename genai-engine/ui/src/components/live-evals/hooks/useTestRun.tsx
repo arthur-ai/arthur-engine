@@ -80,7 +80,7 @@ export function useTestRunsList(evalId: string | undefined, page: number = 0, pa
     refetchInterval: pollWhileAnyInProgress(
       (data) => data?.test_runs,
       (run) => run.status,
-      POLL_INTERVAL.FAST,
+      POLL_INTERVAL.FAST
     ),
   });
 }
@@ -139,10 +139,7 @@ export function useTestRun(testRunId: string | undefined) {
   return useQuery({
     ...testRunQueryOptions({ api, testRunId: testRunId ?? "" }),
     enabled: !!testRunId,
-    refetchInterval: pollWhileInProgress(
-      (data: ContinuousEvalTestRunResponse | undefined) => data?.status,
-      POLL_INTERVAL.FAST,
-    ),
+    refetchInterval: pollWhileInProgress((data: ContinuousEvalTestRunResponse | undefined) => data?.status, POLL_INTERVAL.FAST),
   });
 }
 
@@ -155,7 +152,7 @@ export function useTestRunResults(testRunId: string | undefined) {
     refetchInterval: pollWhileAnyInProgress(
       (data) => data?.annotations,
       (annotation) => annotation.run_status,
-      POLL_INTERVAL.FAST,
+      POLL_INTERVAL.FAST
     ),
   });
 }

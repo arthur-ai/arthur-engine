@@ -36,21 +36,11 @@ import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 const testRunColumnHelper = createMRTColumnHelper<ContinuousEvalTestRunResponse>();
 
-function createTestRunColumns({
-  timezone,
-  use24Hour,
-  onDelete,
-}: {
-  timezone: string;
-  use24Hour: boolean;
-  onDelete: (testRunId: string) => void;
-}) {
+function createTestRunColumns({ timezone, use24Hour, onDelete }: { timezone: string; use24Hour: boolean; onDelete: (testRunId: string) => void }) {
   return [
     testRunColumnHelper.accessor("created_at", {
       header: "Date",
-      Cell: ({ cell }) => (
-        <Typography variant="body2">{formatDateInTimezone(cell.getValue(), timezone, { hour12: !use24Hour })}</Typography>
-      ),
+      Cell: ({ cell }) => <Typography variant="body2">{formatDateInTimezone(cell.getValue(), timezone, { hour12: !use24Hour })}</Typography>,
     }),
     testRunColumnHelper.accessor("status", {
       header: "Status",
@@ -213,7 +203,7 @@ function TestRunResultsModal({
         ),
       }),
     ],
-    [taskId, defaultCurrency],
+    [taskId, defaultCurrency]
   );
 
   const table = useMaterialReactTable({
@@ -239,9 +229,15 @@ function TestRunResultsModal({
           <Stack direction="row" alignItems="center" gap={2}>
             <Typography variant="h6">Test Run Results</Typography>
             <Stack direction="row" gap={1}>
-              {displayTestRun.passed_count > 0 && <Chip label={`${displayTestRun.passed_count} passed`} size="small" color="success" variant="outlined" />}
-              {displayTestRun.failed_count > 0 && <Chip label={`${displayTestRun.failed_count} failed`} size="small" color="error" variant="outlined" />}
-              {displayTestRun.error_count > 0 && <Chip label={`${displayTestRun.error_count} errors`} size="small" color="warning" variant="outlined" />}
+              {displayTestRun.passed_count > 0 && (
+                <Chip label={`${displayTestRun.passed_count} passed`} size="small" color="success" variant="outlined" />
+              )}
+              {displayTestRun.failed_count > 0 && (
+                <Chip label={`${displayTestRun.failed_count} failed`} size="small" color="error" variant="outlined" />
+              )}
+              {displayTestRun.error_count > 0 && (
+                <Chip label={`${displayTestRun.error_count} errors`} size="small" color="warning" variant="outlined" />
+              )}
               {displayTestRun.skipped_count > 0 && <Chip label={`${displayTestRun.skipped_count} skipped`} size="small" variant="outlined" />}
             </Stack>
           </Stack>
@@ -256,19 +252,10 @@ function TestRunResultsModal({
           )}
         </DialogContent>
         <DialogActions>
-          <Button
-            startIcon={<DeleteOutlineIcon />}
-            color="error"
-            onClick={handleDelete}
-            disabled={deleteTestRun.isPending}
-          >
+          <Button startIcon={<DeleteOutlineIcon />} color="error" onClick={handleDelete} disabled={deleteTestRun.isPending}>
             {deleteTestRun.isPending ? "Deleting..." : "Delete"}
           </Button>
-          <Button
-            startIcon={<ReplayIcon />}
-            onClick={handleRunAgain}
-            disabled={createTestRun.isPending}
-          >
+          <Button startIcon={<ReplayIcon />} onClick={handleRunAgain} disabled={createTestRun.isPending}>
             {createTestRun.isPending ? "Starting..." : "Run Again"}
           </Button>
           <Box sx={{ flex: 1 }} />
@@ -300,10 +287,7 @@ export const TestRunsHistory = ({ evalId, taskId }: { evalId: string; taskId: st
   const deleteTestRun = useDeleteTestRun(evalId);
   const handleDelete = useCallback((id: string) => deleteTestRun.mutate(id), [deleteTestRun]);
 
-  const testRunColumns = useMemo(
-    () => createTestRunColumns({ timezone, use24Hour, onDelete: handleDelete }),
-    [timezone, use24Hour, handleDelete],
-  );
+  const testRunColumns = useMemo(() => createTestRunColumns({ timezone, use24Hour, onDelete: handleDelete }), [timezone, use24Hour, handleDelete]);
 
   const table = useMaterialReactTable({
     columns: testRunColumns,
@@ -333,14 +317,7 @@ export const TestRunsHistory = ({ evalId, taskId }: { evalId: string; taskId: st
     <>
       <MaterialReactTable table={table} />
 
-      {selectedTestRun && (
-        <TestRunResultsModal
-          testRun={selectedTestRun}
-          taskId={taskId}
-          evalId={evalId}
-          onClose={() => setSelectedTestRun(null)}
-        />
-      )}
+      {selectedTestRun && <TestRunResultsModal testRun={selectedTestRun} taskId={taskId} evalId={evalId} onClose={() => setSelectedTestRun(null)} />}
     </>
   );
 };
