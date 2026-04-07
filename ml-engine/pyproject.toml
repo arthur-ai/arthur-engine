@@ -60,6 +60,9 @@ linters = [
   "black==25.12.0",
 ]
 
+[tool.uv]
+exclude-newer = "3 days"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

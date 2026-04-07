@@ -32,6 +32,7 @@ build-backend = "hatchling.build"
 
 [tool.uv]
 package = false
+exclude-newer = "3 days"
 
 [tool.mypy]
 python_version = "3.12"

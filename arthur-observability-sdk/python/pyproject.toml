@@ -102,6 +102,9 @@ dev = [
   "pytest-asyncio",
 ]
 
+[tool.uv]
+exclude-newer = "3 days"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

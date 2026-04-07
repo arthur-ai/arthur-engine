@@ -27,6 +27,7 @@ dev = [
 
 [tool.uv]
 package = false
+exclude-newer = "3 days"
 
 [build-system]
 requires = ["hatchling"]
