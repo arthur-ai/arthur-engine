@@ -4,11 +4,11 @@ name: Arthur Observability SDK - Release
 #
 # Dev pre-release (push to `dev` touching arthur-observability-sdk/):
 #   generate-client → build-wheel (.dev0 suffix) → publish-pypi
-#   Install: pip install --pre arthur-ai-observability-sdk
+#   Install: pip install --pre arthur-observability-sdk
 #
 # Stable release (push to `main` with "Increment arthur-engine version to …" commit):
 #   generate-client → build-wheel → publish-pypi → create-git-tag
-#   Install: pip install arthur-ai-observability-sdk
+#   Install: pip install arthur-observability-sdk
 on:
   push:
     branches:
@@ -97,7 +97,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: shared-protected-branch-secrets
-      url: https://pypi.org/project/arthur-ai-observability-sdk/
+      url: https://pypi.org/project/arthur-observability-sdk/
     permissions:
       contents: read
       id-token: write

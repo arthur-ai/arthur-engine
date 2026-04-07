@@ -7,6 +7,7 @@ from arthur_common.models.llm_model_providers import (
     ModelProvider,
     OpenAIMessage,
 )
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from db_models.task_models import DatabaseTask
@@ -27,6 +28,10 @@ from utils.constants import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Arbitrary fixed ID used as a PostgreSQL advisory lock key to serialize
+# system task initialization across concurrent workers/replicas.
+_SYSTEM_TASK_INIT_LOCK_ID = 8675309
 
 
 class SystemTaskRepository:
@@ -118,7 +123,7 @@ class SystemTaskRepository:
             ),
             OpenAIMessage(
                 role=MessageRole.USER,
-                content=""""PREVIOUS CONVERSATION:
+                content="""PREVIOUS CONVERSATION:
 
                 {{prev_conversation}}""",
             ),
@@ -164,5 +169,37 @@ class SystemTaskRepository:
         self._create_chatbot_prompt()
         self._create_chatbot_summarizer_prompt()
 
+    def _is_postgresql(self) -> bool:
+        return (
+            self.db_session.bind is not None
+            and self.db_session.bind.dialect.name == "postgresql"
+        )
+
     def initialize_system_tasks(self) -> None:
-        self._create_chatbot_task()
+        # Use a non-blocking advisory lock so only the first worker runs the
+        # delete-and-recreate sequence. Other workers skip immediately.
+        # Advisory locks are PostgreSQL-specific; skip locking on other backends
+        # (e.g. SQLite in tests).
+        if self._is_postgresql():
+            logger.info("Acquiring system task initialization lock.")
+            result = self.db_session.execute(
+                text("SELECT pg_try_advisory_lock(:lock_id)"),
+                {"lock_id": _SYSTEM_TASK_INIT_LOCK_ID},
+            )
+            acquired = result.scalar()
+
+            if not acquired:
+                logger.info(
+                    "System task initialization already in progress on another worker, skipping.",
+                )
+                return
+
+        try:
+            self._create_chatbot_task()
+        finally:
+            if self._is_postgresql():
+                self.db_session.execute(
+                    text("SELECT pg_advisory_unlock(:lock_id)"),
+                    {"lock_id": _SYSTEM_TASK_INIT_LOCK_ID},
+                )
+                logger.info("Released system task initialization lock.")

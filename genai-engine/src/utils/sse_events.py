@@ -12,7 +12,9 @@ from schemas.enums import SSEEventType
 
 def format_sse(event: SSEEventType, data: str) -> str:
     """Build a properly formatted SSE string: ``event: <type>\\ndata: <payload>\\n\\n``."""
-    return f"event: {event.value}\ndata: {data}\n\n"
+    return (
+        f"event: {event.value}\ndata: {data.replace(chr(10), chr(10) + 'data: ')}\n\n"
+    )
 
 
 def format_sse_json(event: SSEEventType, data: Any) -> str:

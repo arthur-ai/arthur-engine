@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.488"
+        "version": "2.1.503"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -6759,10 +6759,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to retrieve."
-                        },
-                        "description": "The name of the prompt to retrieve."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "prompt_version",
@@ -6828,10 +6826,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to delete."
-                        },
-                        "description": "The name of the prompt to delete."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "prompt_version",
@@ -7023,6 +7019,27 @@
                             "title": "Created Before"
                         },
                         "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "tags",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "List of tags to filter for items that have any matching tag across any version.",
+                            "title": "Tags"
+                        },
+                        "description": "List of tags to filter for items that have any matching tag across any version."
                     }
                 ],
                 "responses": {
@@ -7069,10 +7086,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to retrieve."
-                        },
-                        "description": "The name of the prompt to retrieve."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -7433,10 +7448,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to run."
-                        },
-                        "description": "The name of the prompt to run."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "prompt_version",
@@ -7524,10 +7537,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to render."
-                        },
-                        "description": "The name of the prompt to render."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "prompt_version",
@@ -7610,10 +7621,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to save."
-                        },
-                        "description": "The name of the prompt to save."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -7678,10 +7687,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to delete."
-                        },
-                        "description": "The name of the prompt to delete."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -7731,10 +7738,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to retrieve."
-                        },
-                        "description": "The name of the prompt to retrieve."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "tag",
@@ -7742,10 +7747,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Tag",
-                            "description": "The tag of the prompt to retrieve."
-                        },
-                        "description": "The tag of the prompt to retrieve."
+                            "title": "Tag"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -7802,10 +7805,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to retrieve."
-                        },
-                        "description": "The name of the prompt to retrieve."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "prompt_version",
@@ -7883,10 +7884,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to retrieve."
-                        },
-                        "description": "The name of the prompt to retrieve."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "prompt_version",
@@ -7905,10 +7904,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Tag",
-                            "description": "The tag to remove from the prompt version."
-                        },
-                        "description": "The tag to remove from the prompt version."
+                            "title": "Tag"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -10334,10 +10331,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "description": "Tag to fetch the version by.",
                             "title": "Tag"
-                        },
-                        "description": "Tag to fetch the version by."
+                        }
                     }
                 ],
                 "responses": {
@@ -10384,10 +10379,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to retrieve."
-                        },
-                        "description": "The name of the llm eval to retrieve."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "eval_version",
@@ -10453,10 +10446,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to delete."
-                        },
-                        "description": "The name of the llm eval to delete."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "eval_version",
@@ -10517,10 +10508,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to retrieve."
-                        },
-                        "description": "The name of the llm eval to retrieve."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -10865,6 +10854,27 @@
                             "title": "Created Before"
                         },
                         "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "tags",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "List of tags to filter for items that have any matching tag across any version.",
+                            "title": "Tags"
+                        },
+                        "description": "List of tags to filter for items that have any matching tag across any version."
                     }
                 ],
                 "responses": {
@@ -10911,10 +10921,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to run."
-                        },
-                        "description": "The name of the llm eval to run."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "eval_version",
@@ -10992,10 +11000,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to save."
-                        },
-                        "description": "The name of the llm eval to save."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -11060,10 +11066,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to delete."
-                        },
-                        "description": "The name of the llm eval to delete."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -11113,10 +11117,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to retrieve."
-                        },
-                        "description": "The name of the llm eval to retrieve."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "tag",
@@ -11124,10 +11126,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Tag",
-                            "description": "The tag of the llm eval to retrieve."
-                        },
-                        "description": "The tag of the llm eval to retrieve."
+                            "title": "Tag"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -11184,10 +11184,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to retrieve."
-                        },
-                        "description": "The name of the llm eval to retrieve."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "eval_version",
@@ -11265,10 +11263,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to retrieve."
-                        },
-                        "description": "The name of the llm eval to retrieve."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "eval_version",
@@ -11287,10 +11283,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Tag",
-                            "description": "The tag to remove from the llm eval version."
-                        },
-                        "description": "The tag to remove from the llm eval version."
+                            "title": "Tag"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -15617,10 +15611,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to get the continuous eval variables and mappings for."
-                        },
-                        "description": "The name of the llm eval to get the continuous eval variables and mappings for."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "eval_version",
@@ -15940,6 +15932,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
+                            "format": "uuid",
                             "title": "Task Id"
                         }
                     }
@@ -16077,683 +16070,6 @@
                         "content": {
                             "application/json": {
                                 "schema": {}
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/users": {
-            "post": {
-                "tags": [
-                    "User Management"
-                ],
-                "summary": "Create User",
-                "description": "Creates a new user with specific roles. The available roles are TASK-ADMIN and CHAT-USER. The 'temporary' field is for indicating if the user password needs to be reset at the first login.",
-                "operationId": "create_user_users_post",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CreateUserRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {}
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "get": {
-                "tags": [
-                    "User Management"
-                ],
-                "summary": "Search Users",
-                "description": "Fetch users.",
-                "operationId": "search_users_users_get",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "search_string",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "description": "Substring to match on. Will search first name, last name, email.",
-                            "title": "Search String"
-                        },
-                        "description": "Substring to match on. Will search first name, last name, email."
-                    },
-                    {
-                        "name": "sort",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "$ref": "#/components/schemas/PaginationSortMethod",
-                            "description": "Sort the results (asc/desc)",
-                            "default": "desc"
-                        },
-                        "description": "Sort the results (asc/desc)"
-                    },
-                    {
-                        "name": "page_size",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer",
-                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
-                            "default": 10,
-                            "title": "Page Size"
-                        },
-                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
-                    },
-                    {
-                        "name": "page",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer",
-                            "description": "Page number",
-                            "default": 0,
-                            "title": "Page"
-                        },
-                        "description": "Page number"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/UserResponse"
-                                    },
-                                    "title": "Response Search Users Users Get"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/users/permissions/check": {
-            "get": {
-                "tags": [
-                    "User Management"
-                ],
-                "summary": "Check User Permission",
-                "description": "Checks if the current user has the requested permission. Returns 200 status code for authorized or 403 if not.",
-                "operationId": "check_user_permission_users_permissions_check_get",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "action",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "$ref": "#/components/schemas/UserPermissionAction",
-                            "description": "Action to check permissions of."
-                        },
-                        "description": "Action to check permissions of."
-                    },
-                    {
-                        "name": "resource",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "$ref": "#/components/schemas/UserPermissionResource",
-                            "description": "Resource to check permissions of."
-                        },
-                        "description": "Resource to check permissions of."
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {}
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/users/{user_id}": {
-            "delete": {
-                "tags": [
-                    "User Management"
-                ],
-                "summary": "Delete User",
-                "description": "Delete a user.",
-                "operationId": "delete_user_users__user_id__delete",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "user_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "description": "User id, not email.",
-                            "title": "User Id"
-                        },
-                        "description": "User id, not email."
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {}
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/users/{user_id}/reset_password": {
-            "post": {
-                "tags": [
-                    "User Management"
-                ],
-                "summary": "Reset User Password",
-                "description": "Reset password for user.",
-                "operationId": "reset_user_password_users__user_id__reset_password_post",
-                "parameters": [
-                    {
-                        "name": "user_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "User Id"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/PasswordResetRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {}
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/chat/files": {
-            "post": {
-                "tags": [
-                    "Chat"
-                ],
-                "summary": "Upload Embeddings File",
-                "description": "Upload files via form-data. Only PDF, CSV, TXT types accepted.",
-                "operationId": "upload_embeddings_file_api_chat_files_post",
-                "parameters": [
-                    {
-                        "name": "is_global",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "boolean",
-                            "default": false,
-                            "title": "Is Global"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "multipart/form-data": {
-                            "schema": {
-                                "$ref": "#/components/schemas/Body_upload_embeddings_file_api_chat_files_post"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/FileUploadResult"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "get": {
-                "tags": [
-                    "Chat"
-                ],
-                "summary": "Get Files",
-                "description": "List uploaded files. Only files that are global or owned by the caller are returned.",
-                "operationId": "get_files_api_chat_files_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/ExternalDocument"
-                                    },
-                                    "title": "Response Get Files Api Chat Files Get"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/chat/files/{file_id}": {
-            "delete": {
-                "tags": [
-                    "Chat"
-                ],
-                "summary": "Delete File",
-                "description": "Remove a file by ID. This action cannot be undone.",
-                "operationId": "delete_file_api_chat_files__file_id__delete",
-                "parameters": [
-                    {
-                        "name": "file_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "File Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {}
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/chat/": {
-            "post": {
-                "tags": [
-                    "Chat"
-                ],
-                "summary": "Chat",
-                "description": "Chat request for Arthur Chat",
-                "operationId": "chat_request",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ChatRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ChatResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/chat/context/{inference_id}": {
-            "get": {
-                "tags": [
-                    "Chat"
-                ],
-                "summary": "Get Inference Document Context",
-                "description": "Get document context used for a past inference ID.",
-                "operationId": "get_inference_document_context_api_chat_context__inference_id__get",
-                "parameters": [
-                    {
-                        "name": "inference_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Inference Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/ChatDocumentContext"
-                                    },
-                                    "title": "Response Get Inference Document Context Api Chat Context  Inference Id  Get"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/chat/feedback/{inference_id}": {
-            "post": {
-                "tags": [
-                    "Chat",
-                    "Chat"
-                ],
-                "summary": "Post Chat Feedback",
-                "description": "Post feedback for Arthur Chat.",
-                "operationId": "post_chat_feedback_api_chat_feedback__inference_id__post",
-                "parameters": [
-                    {
-                        "name": "inference_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Inference Id"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/FeedbackRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {}
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/chat/conversations": {
-            "get": {
-                "tags": [
-                    "Chat"
-                ],
-                "summary": "Get Conversations",
-                "description": "Get list of conversation IDs.",
-                "operationId": "get_conversations_api_chat_conversations_get",
-                "parameters": [
-                    {
-                        "name": "page",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "default": 1,
-                            "title": "Page"
-                        }
-                    },
-                    {
-                        "name": "size",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer",
-                            "maximum": 100,
-                            "minimum": 1,
-                            "default": 50,
-                            "title": "Size"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Page_ConversationBaseResponse_"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/chat/default_task": {
-            "get": {
-                "tags": [
-                    "Chat"
-                ],
-                "summary": "Get Default Task",
-                "description": "Get the default task for Arthur Chat.",
-                "operationId": "get_default_task_api_chat_default_task_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ChatDefaultTaskResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "put": {
-                "tags": [
-                    "Chat"
-                ],
-                "summary": "Update Default Task",
-                "description": "Update the default task for Arthur Chat.",
-                "operationId": "update_default_task_api_chat_default_task_put",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ChatDefaultTaskRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ChatDefaultTaskResponse"
-                                }
                             }
                         }
                     },
@@ -18585,40 +17901,6 @@
                 ],
                 "title": "ApiKeyResponse"
             },
-            "AuthUserRole": {
-                "properties": {
-                    "id": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Id"
-                    },
-                    "name": {
-                        "type": "string",
-                        "title": "Name"
-                    },
-                    "description": {
-                        "type": "string",
-                        "title": "Description"
-                    },
-                    "composite": {
-                        "type": "boolean",
-                        "title": "Composite"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "name",
-                    "description",
-                    "composite"
-                ],
-                "title": "AuthUserRole"
-            },
             "BaseCompletionRequest": {
                 "properties": {
                     "variables": {
@@ -18702,174 +17984,11 @@
                 ],
                 "title": "Body_add_tag_to_llm_eval_version_api_v1_tasks__task_id__llm_evals__eval_name__versions__eval_version__tags_put"
             },
-            "Body_upload_embeddings_file_api_chat_files_post": {
-                "properties": {
-                    "file": {
-                        "type": "string",
-                        "format": "binary",
-                        "title": "File"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "file"
-                ],
-                "title": "Body_upload_embeddings_file_api_chat_files_post"
-            },
             "ChatCompletionMessageToolCall": {
                 "properties": {},
                 "additionalProperties": true,
                 "type": "object",
                 "title": "ChatCompletionMessageToolCall"
-            },
-            "ChatDefaultTaskRequest": {
-                "properties": {
-                    "task_id": {
-                        "type": "string",
-                        "title": "Task Id"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "task_id"
-                ],
-                "title": "ChatDefaultTaskRequest"
-            },
-            "ChatDefaultTaskResponse": {
-                "properties": {
-                    "task_id": {
-                        "type": "string",
-                        "title": "Task Id"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "task_id"
-                ],
-                "title": "ChatDefaultTaskResponse"
-            },
-            "ChatDocumentContext": {
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "title": "Id"
-                    },
-                    "seq_num": {
-                        "type": "integer",
-                        "title": "Seq Num"
-                    },
-                    "context": {
-                        "type": "string",
-                        "title": "Context"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "id",
-                    "seq_num",
-                    "context"
-                ],
-                "title": "ChatDocumentContext"
-            },
-            "ChatRequest": {
-                "properties": {
-                    "user_prompt": {
-                        "type": "string",
-                        "title": "User Prompt",
-                        "description": "Prompt user wants to send to chat."
-                    },
-                    "conversation_id": {
-                        "type": "string",
-                        "title": "Conversation Id",
-                        "description": "Conversation ID"
-                    },
-                    "file_ids": {
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array",
-                        "title": "File Ids",
-                        "description": "list of file IDs to retrieve from during chat."
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "user_prompt",
-                    "conversation_id",
-                    "file_ids"
-                ],
-                "title": "ChatRequest"
-            },
-            "ChatResponse": {
-                "properties": {
-                    "inference_id": {
-                        "type": "string",
-                        "title": "Inference Id",
-                        "description": "ID of the inference sent to the chat"
-                    },
-                    "conversation_id": {
-                        "type": "string",
-                        "title": "Conversation Id",
-                        "description": "ID of the conversation session"
-                    },
-                    "timestamp": {
-                        "type": "integer",
-                        "title": "Timestamp",
-                        "description": "Time the inference was made in unix milliseconds"
-                    },
-                    "retrieved_context": {
-                        "items": {
-                            "$ref": "#/components/schemas/ChatDocumentContext"
-                        },
-                        "type": "array",
-                        "title": "Retrieved Context",
-                        "description": "related sections of documents that were most relevant to the inference prompt. Formatted as a list of retrieved context chunks which include document name, seq num, and context."
-                    },
-                    "llm_response": {
-                        "type": "string",
-                        "title": "Llm Response",
-                        "description": "response from the LLM for the original user prompt"
-                    },
-                    "prompt_results": {
-                        "items": {
-                            "$ref": "#/components/schemas/ExternalRuleResult"
-                        },
-                        "type": "array",
-                        "title": "Prompt Results",
-                        "description": "list of rule results for the user prompt"
-                    },
-                    "response_results": {
-                        "items": {
-                            "$ref": "#/components/schemas/ExternalRuleResult"
-                        },
-                        "type": "array",
-                        "title": "Response Results",
-                        "description": "list of rule results for the llm response"
-                    },
-                    "model_name": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Model Name",
-                        "description": "The model name and version used for this chat response (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro')."
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "inference_id",
-                    "conversation_id",
-                    "timestamp",
-                    "retrieved_context",
-                    "llm_response",
-                    "prompt_results",
-                    "response_results"
-                ],
-                "title": "ChatResponse"
             },
             "ChatbotConfigResponse": {
                 "properties": {
@@ -19174,15 +18293,59 @@
                         "title": "Task Id",
                         "description": "ID of the parent task."
                     },
-                    "llm_eval_name": {
+                    "eval_type": {
                         "type": "string",
+                        "title": "Eval Type",
+                        "description": "Type of evaluator: 'llm_eval' or 'ml_eval'.",
+                        "default": "llm_eval"
+                    },
+                    "llm_eval_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Llm Eval Name",
-                        "description": "Name of the llm eval."
+                        "description": "Name of the llm eval (set when eval_type='llm_eval')."
                     },
                     "llm_eval_version": {
-                        "type": "integer",
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Llm Eval Version",
-                        "description": "Version of the llm eval."
+                        "description": "Version of the llm eval (set when eval_type='llm_eval')."
+                    },
+                    "ml_eval_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Ml Eval Name",
+                        "description": "Name of the ml eval (set when eval_type='ml_eval')."
+                    },
+                    "ml_eval_version": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Ml Eval Version",
+                        "description": "Version of the ml eval (set when eval_type='ml_eval')."
                     },
                     "transform_id": {
                         "type": "string",
@@ -19222,8 +18385,6 @@
                     "id",
                     "name",
                     "task_id",
-                    "llm_eval_name",
-                    "llm_eval_version",
                     "transform_id",
                     "created_at",
                     "updated_at"
@@ -19316,25 +18477,6 @@
                     "eval_variables"
                 ],
                 "title": "ContinuousEvalVariableMappingResponse"
-            },
-            "ConversationBaseResponse": {
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "title": "Id"
-                    },
-                    "updated_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "title": "Updated At"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "id",
-                    "updated_at"
-                ],
-                "title": "ConversationBaseResponse"
             },
             "CreateAgenticExperimentRequest": {
                 "properties": {
@@ -19791,47 +18933,6 @@
                 ],
                 "title": "CreateRagNotebookRequest",
                 "description": "Request to create a new RAG notebook"
-            },
-            "CreateUserRequest": {
-                "properties": {
-                    "email": {
-                        "type": "string",
-                        "title": "Email"
-                    },
-                    "password": {
-                        "type": "string",
-                        "title": "Password"
-                    },
-                    "temporary": {
-                        "type": "boolean",
-                        "title": "Temporary",
-                        "default": true
-                    },
-                    "roles": {
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array",
-                        "title": "Roles"
-                    },
-                    "firstName": {
-                        "type": "string",
-                        "title": "Firstname"
-                    },
-                    "lastName": {
-                        "type": "string",
-                        "title": "Lastname"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "email",
-                    "password",
-                    "roles",
-                    "firstName",
-                    "lastName"
-                ],
-                "title": "CreateUserRequest"
             },
             "DailyAgenticAnnotationStats": {
                 "properties": {
@@ -20825,34 +19926,6 @@
                 "title": "ExperimentStatus",
                 "description": "Status of an experiment"
             },
-            "ExternalDocument": {
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "title": "Id"
-                    },
-                    "name": {
-                        "type": "string",
-                        "title": "Name"
-                    },
-                    "type": {
-                        "type": "string",
-                        "title": "Type"
-                    },
-                    "owner_id": {
-                        "type": "string",
-                        "title": "Owner Id"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "id",
-                    "name",
-                    "type",
-                    "owner_id"
-                ],
-                "title": "ExternalDocument"
-            },
             "ExternalInference": {
                 "properties": {
                     "id": {
@@ -21205,39 +20278,6 @@
                     "reason"
                 ],
                 "title": "FeedbackRequest"
-            },
-            "FileUploadResult": {
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "title": "Id"
-                    },
-                    "name": {
-                        "type": "string",
-                        "title": "Name"
-                    },
-                    "type": {
-                        "type": "string",
-                        "title": "Type"
-                    },
-                    "word_count": {
-                        "type": "integer",
-                        "title": "Word Count"
-                    },
-                    "success": {
-                        "type": "boolean",
-                        "title": "Success"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "id",
-                    "name",
-                    "type",
-                    "word_count",
-                    "success"
-                ],
-                "title": "FileUploadResult"
             },
             "GCPAgentCreationSource": {
                 "properties": {
@@ -25165,46 +24205,6 @@
                 ],
                 "title": "PIIEntityTypes"
             },
-            "Page_ConversationBaseResponse_": {
-                "properties": {
-                    "items": {
-                        "items": {
-                            "$ref": "#/components/schemas/ConversationBaseResponse"
-                        },
-                        "type": "array",
-                        "title": "Items"
-                    },
-                    "total": {
-                        "type": "integer",
-                        "minimum": 0.0,
-                        "title": "Total"
-                    },
-                    "page": {
-                        "type": "integer",
-                        "minimum": 1.0,
-                        "title": "Page"
-                    },
-                    "size": {
-                        "type": "integer",
-                        "minimum": 1.0,
-                        "title": "Size"
-                    },
-                    "pages": {
-                        "type": "integer",
-                        "minimum": 0.0,
-                        "title": "Pages"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "items",
-                    "total",
-                    "page",
-                    "size",
-                    "pages"
-                ],
-                "title": "Page[ConversationBaseResponse]"
-            },
             "PaginationSortMethod": {
                 "type": "string",
                 "enum": [
@@ -25212,19 +24212,6 @@
                     "desc"
                 ],
                 "title": "PaginationSortMethod"
-            },
-            "PasswordResetRequest": {
-                "properties": {
-                    "password": {
-                        "type": "string",
-                        "title": "Password"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "password"
-                ],
-                "title": "PasswordResetRequest"
             },
             "PromptCompletionRequest": {
                 "properties": {
@@ -31759,72 +30746,6 @@
                 ],
                 "title": "UpdateRuleRequest"
             },
-            "UserPermissionAction": {
-                "type": "string",
-                "enum": [
-                    "create",
-                    "read"
-                ],
-                "title": "UserPermissionAction"
-            },
-            "UserPermissionResource": {
-                "type": "string",
-                "enum": [
-                    "prompts",
-                    "responses",
-                    "rules",
-                    "tasks"
-                ],
-                "title": "UserPermissionResource"
-            },
-            "UserResponse": {
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "title": "Id"
-                    },
-                    "email": {
-                        "type": "string",
-                        "title": "Email"
-                    },
-                    "first_name": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "First Name"
-                    },
-                    "last_name": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Last Name"
-                    },
-                    "roles": {
-                        "items": {
-                            "$ref": "#/components/schemas/AuthUserRole"
-                        },
-                        "type": "array",
-                        "title": "Roles"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "id",
-                    "email",
-                    "roles"
-                ],
-                "title": "UserResponse"
-            },
             "ValidationError": {
                 "properties": {
                     "loc": {
@@ -33855,5 +32776,67 @@
                 "scheme": "bearer"
             }
         }
-    }
+    },
+    "tags": [
+        {
+            "name": "Rules",
+            "description": "Endpoints to manage rules"
+        },
+        {
+            "name": "Tasks",
+            "description": "Endpoints to manage tasks and their rules"
+        },
+        {
+            "name": "Default Validation",
+            "description": "Endpoints to validate prompt and response on default rules"
+        },
+        {
+            "name": "Task Based Validation",
+            "description": "Endpoints to validate prompt and response for a task"
+        },
+        {
+            "name": "Feedback",
+            "description": "Endpoints to manage user feedback on inferences"
+        },
+        {
+            "name": "Usage",
+            "description": "Endpoints for retrieving token usage"
+        },
+        {
+            "name": "Inferences",
+            "description": "Endpoints for querying past inferences"
+        },
+        {
+            "name": "API Keys",
+            "description": "Endpoints for API keys management"
+        },
+        {
+            "name": "Secrets",
+            "description": "Endpoints for secrets management"
+        },
+        {
+            "name": "Model Providers",
+            "description": "Endpoints for model provider management"
+        },
+        {
+            "name": "RAG Settings",
+            "description": "Endpoints for RAG setting management"
+        },
+        {
+            "name": "RAG Providers",
+            "description": "Endpoints for RAG provider management"
+        },
+        {
+            "name": "Prompt Experiments",
+            "description": "Endpoints for managing prompt experiments"
+        },
+        {
+            "name": "RAG Experiments",
+            "description": "Endpoints for managing RAG experiments"
+        },
+        {
+            "name": "Notebooks",
+            "description": "Endpoints for managing experiment notebooks"
+        }
+    ]
 }

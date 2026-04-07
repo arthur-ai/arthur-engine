@@ -1105,18 +1105,6 @@ export interface AttachNotebookToRagExperimentApiV1RagExperimentsExperimentIdNot
   notebook_id: string;
 }
 
-/** AuthUserRole */
-export interface AuthUserRole {
-  /** Composite */
-  composite: boolean;
-  /** Description */
-  description: string;
-  /** Id */
-  id?: string | null;
-  /** Name */
-  name: string;
-}
-
 /** BaseCompletionRequest */
 export interface BaseCompletionRequest {
   /**
@@ -1156,106 +1144,8 @@ export interface BodyAddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersi
   tag: string;
 }
 
-/** Body_upload_embeddings_file_api_chat_files_post */
-export interface BodyUploadEmbeddingsFileApiChatFilesPost {
-  /**
-   * File
-   * @format binary
-   */
-  file: File;
-}
-
 /** ChatCompletionMessageToolCall */
 export type ChatCompletionMessageToolCall = Record<string, any>;
-
-/** ChatDefaultTaskRequest */
-export interface ChatDefaultTaskRequest {
-  /** Task Id */
-  task_id: string;
-}
-
-/** ChatDefaultTaskResponse */
-export interface ChatDefaultTaskResponse {
-  /** Task Id */
-  task_id: string;
-}
-
-/** ChatDocumentContext */
-export interface ChatDocumentContext {
-  /** Context */
-  context: string;
-  /** Id */
-  id: string;
-  /** Seq Num */
-  seq_num: number;
-}
-
-/** ChatRequest */
-export interface ChatRequest {
-  /**
-   * Conversation Id
-   * Conversation ID
-   */
-  conversation_id: string;
-  /**
-   * File Ids
-   * list of file IDs to retrieve from during chat.
-   */
-  file_ids: string[];
-  /**
-   * User Prompt
-   * Prompt user wants to send to chat.
-   */
-  user_prompt: string;
-}
-
-export type ChatRequestData = ChatResponse;
-
-export type ChatRequestError = HTTPValidationError;
-
-/** ChatResponse */
-export interface ChatResponse {
-  /**
-   * Conversation Id
-   * ID of the conversation session
-   */
-  conversation_id: string;
-  /**
-   * Inference Id
-   * ID of the inference sent to the chat
-   */
-  inference_id: string;
-  /**
-   * Llm Response
-   * response from the LLM for the original user prompt
-   */
-  llm_response: string;
-  /**
-   * Model Name
-   * The model name and version used for this chat response (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro').
-   */
-  model_name?: string | null;
-  /**
-   * Prompt Results
-   * list of rule results for the user prompt
-   */
-  prompt_results: ExternalRuleResult[];
-  /**
-   * Response Results
-   * list of rule results for the llm response
-   */
-  response_results: ExternalRuleResult[];
-  /**
-   * Retrieved Context
-   * related sections of documents that were most relevant to the inference prompt. Formatted as a list of retrieved context chunks which include document name, seq num, and context.
-   */
-  retrieved_context: ChatDocumentContext[];
-  /**
-   * Timestamp
-   * Time the inference was made in unix milliseconds
-   */
-  timestamp: number;
-}
 
 /** ChatbotConfigResponse */
 export interface ChatbotConfigResponse {
@@ -1289,17 +1179,6 @@ export interface ChatbotRequest {
   conversation_id: string;
   /** Message */
   message: string;
-}
-
-export type CheckUserPermissionUsersPermissionsCheckGetData = any;
-
-export type CheckUserPermissionUsersPermissionsCheckGetError = HTTPValidationError;
-
-export interface CheckUserPermissionUsersPermissionsCheckGetParams {
-  /** Action to check permissions of. */
-  action?: UserPermissionAction;
-  /** Resource to check permissions of. */
-  resource?: UserPermissionResource;
 }
 
 export type ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteData = any;
@@ -1465,6 +1344,12 @@ export interface ContinuousEvalResponse {
    */
   enabled?: boolean;
   /**
+   * Eval Type
+   * Type of evaluator: 'llm_eval' or 'ml_eval'.
+   * @default "llm_eval"
+   */
+  eval_type?: string;
+  /**
    * Id
    * ID of the transform.
    * @format uuid
@@ -1472,14 +1357,24 @@ export interface ContinuousEvalResponse {
   id: string;
   /**
    * Llm Eval Name
-   * Name of the llm eval.
+   * Name of the llm eval (set when eval_type='llm_eval').
    */
-  llm_eval_name: string;
+  llm_eval_name?: string | null;
   /**
    * Llm Eval Version
-   * Version of the llm eval.
+   * Version of the llm eval (set when eval_type='llm_eval').
    */
-  llm_eval_version: number;
+  llm_eval_version?: number | null;
+  /**
+   * Ml Eval Name
+   * Name of the ml eval (set when eval_type='ml_eval').
+   */
+  ml_eval_name?: string | null;
+  /**
+   * Ml Eval Version
+   * Version of the ml eval (set when eval_type='ml_eval').
+   */
+  ml_eval_version?: number | null;
   /**
    * Name
    * Name of the continuous eval.
@@ -1557,17 +1452,6 @@ export interface ContinuousEvalVariableMappingResponse {
    * List of transform variables.
    */
   transform_variables: string[];
-}
-
-/** ConversationBaseResponse */
-export interface ConversationBaseResponse {
-  /** Id */
-  id: string;
-  /**
-   * Updated At
-   * @format date-time
-   */
-  updated_at: string;
 }
 
 export type CreateAgenticExperimentApiV1TasksTaskIdAgenticExperimentsPostData = AgenticExperimentSummary;
@@ -1867,29 +1751,6 @@ export type CreateTaskRuleApiV2TasksTaskIdRulesPostError = HTTPValidationError;
 export type CreateTransformForTaskApiV1TasksTaskIdTracesTransformsPostData = TraceTransformResponse;
 
 export type CreateTransformForTaskApiV1TasksTaskIdTracesTransformsPostError = HTTPValidationError;
-
-/** CreateUserRequest */
-export interface CreateUserRequest {
-  /** Email */
-  email: string;
-  /** Firstname */
-  firstName: string;
-  /** Lastname */
-  lastName: string;
-  /** Password */
-  password: string;
-  /** Roles */
-  roles: string[];
-  /**
-   * Temporary
-   * @default true
-   */
-  temporary?: boolean;
-}
-
-export type CreateUserUsersPostData = any;
-
-export type CreateUserUsersPostError = HTTPValidationError;
 
 /**
  * DailyAgenticAnnotationStats
@@ -2225,10 +2086,6 @@ export type DeleteDatasetApiV2DatasetsDatasetIdDeleteData = any;
 
 export type DeleteDatasetApiV2DatasetsDatasetIdDeleteError = HTTPValidationError;
 
-export type DeleteFileApiChatFilesFileIdDeleteData = any;
-
-export type DeleteFileApiChatFilesFileIdDeleteError = HTTPValidationError;
-
 export type DeleteLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameDeleteData = any;
 
 export type DeleteLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameDeleteError = HTTPValidationError;
@@ -2276,10 +2133,6 @@ export type DeleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsE
 export type DeleteTransformApiV1TracesTransformsTransformIdDeleteData = any;
 
 export type DeleteTransformApiV1TracesTransformsTransformIdDeleteError = HTTPValidationError;
-
-export type DeleteUserUsersUserIdDeleteData = any;
-
-export type DeleteUserUsersUserIdDeleteError = HTTPValidationError;
 
 /**
  * DiscoverAndPollResponse
@@ -2672,18 +2525,6 @@ export interface ExperimentOutputVariableSource {
  */
 export type ExperimentStatus = "queued" | "running" | "failed" | "completed";
 
-/** ExternalDocument */
-export interface ExternalDocument {
-  /** Id */
-  id: string;
-  /** Name */
-  name: string;
-  /** Owner Id */
-  owner_id: string;
-  /** Type */
-  type: string;
-}
-
 /** ExternalInference */
 export interface ExternalInference {
   /** Conversation Id */
@@ -2806,20 +2647,6 @@ export interface FeedbackRequest {
   target: InferenceFeedbackTarget;
   /** User Id */
   user_id?: string | null;
-}
-
-/** FileUploadResult */
-export interface FileUploadResult {
-  /** Id */
-  id: string;
-  /** Name */
-  name: string;
-  /** Success */
-  success: boolean;
-  /** Type */
-  type: string;
-  /** Word Count */
-  word_count: number;
 }
 
 /**
@@ -3171,6 +2998,11 @@ export interface GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Tags
+   * List of tags to filter for items that have any matching tag across any version.
+   */
+  tags?: string[] | null;
+  /**
    * Task Id
    * @format uuid
    */
@@ -3292,6 +3124,11 @@ export interface GetAllLlmEvalsApiV1TasksTaskIdLlmEvalsGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Tags
+   * List of tags to filter for items that have any matching tag across any version.
+   */
+  tags?: string[] | null;
+  /**
    * Task Id
    * @format uuid
    */
@@ -3320,26 +3157,6 @@ export type GetContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvals
 
 export type GetContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvalsTransformsTransformIdLlmEvalsEvalNameVersionsEvalVersionVariablesGetError =
   HTTPValidationError;
-
-export type GetConversationsApiChatConversationsGetData = PageConversationBaseResponse;
-
-export type GetConversationsApiChatConversationsGetError = HTTPValidationError;
-
-export interface GetConversationsApiChatConversationsGetParams {
-  /**
-   * Page
-   * @min 1
-   * @default 1
-   */
-  page?: number;
-  /**
-   * Size
-   * @min 1
-   * @max 100
-   * @default 50
-   */
-  size?: number;
-}
 
 export type GetDailyAnnotationAnalyticsApiV1TasksTaskIdContinuousEvalsAnalyticsDailyGetData = AgenticAnnotationAnalyticsResponse;
 
@@ -3489,8 +3306,6 @@ export interface GetDatasetsApiV2TasksTaskIdDatasetsSearchGetParams {
 /** Response Get Default Rules Api V2 Default Rules Get */
 export type GetDefaultRulesApiV2DefaultRulesGetData = RuleResponse[];
 
-export type GetDefaultTaskApiChatDefaultTaskGetData = ChatDefaultTaskResponse;
-
 export type GetDisplaySettingsApiV2DisplaySettingsGetData = DisplaySettingsResponse;
 
 export type GetExperimentTestCasesApiV1PromptExperimentsExperimentIdTestCasesGetData = TestCaseListResponse;
@@ -3521,14 +3336,6 @@ export interface GetExperimentTestCasesApiV1PromptExperimentsExperimentIdTestCas
    */
   sort?: PaginationSortMethod;
 }
-
-/** Response Get Files Api Chat Files Get */
-export type GetFilesApiChatFilesGetData = ExternalDocument[];
-
-/** Response Get Inference Document Context Api Chat Context  Inference Id  Get */
-export type GetInferenceDocumentContextApiChatContextInferenceIdGetData = ChatDocumentContext[];
-
-export type GetInferenceDocumentContextApiChatContextInferenceIdGetError = HTTPValidationError;
 
 export type GetLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGetData = LLMEval;
 
@@ -7031,44 +6838,8 @@ export type PIIEntityTypes =
   | "US_PASSPORT"
   | "US_SSN";
 
-/** Page[ConversationBaseResponse] */
-export interface PageConversationBaseResponse {
-  /** Items */
-  items: ConversationBaseResponse[];
-  /**
-   * Page
-   * @min 1
-   */
-  page: number;
-  /**
-   * Pages
-   * @min 0
-   */
-  pages: number;
-  /**
-   * Size
-   * @min 1
-   */
-  size: number;
-  /**
-   * Total
-   * @min 0
-   */
-  total: number;
-}
-
 /** PaginationSortMethod */
 export type PaginationSortMethod = "asc" | "desc";
-
-/** PasswordResetRequest */
-export interface PasswordResetRequest {
-  /** Password */
-  password: string;
-}
-
-export type PostChatFeedbackApiChatFeedbackInferenceIdPostData = any;
-
-export type PostChatFeedbackApiChatFeedbackInferenceIdPostError = HTTPValidationError;
 
 export type PostFeedbackApiV2FeedbackInferenceIdPostData = InferenceFeedbackResponse;
 
@@ -9563,10 +9334,6 @@ export type RerunContinuousEvalApiV1ContinuousEvalsResultsRunIdRerunPostData = C
 
 export type RerunContinuousEvalApiV1ContinuousEvalsResultsRunIdRerunPostError = HTTPValidationError;
 
-export type ResetUserPasswordUsersUserIdResetPasswordPostData = any;
-
-export type ResetUserPasswordUsersUserIdResetPasswordPostError = HTTPValidationError;
-
 /** ResponseValidationRequest */
 export interface ResponseValidationRequest {
   /**
@@ -9928,36 +9695,6 @@ export interface SearchTasksResponse {
    * List of tasks matching the search filters. Length is less than or equal to page_size parameter
    */
   tasks: TaskResponse[];
-}
-
-/** Response Search Users Users Get */
-export type SearchUsersUsersGetData = UserResponse[];
-
-export type SearchUsersUsersGetError = HTTPValidationError;
-
-export interface SearchUsersUsersGetParams {
-  /**
-   * Page
-   * Page number
-   * @default 0
-   */
-  page?: number;
-  /**
-   * Page Size
-   * Page size. Default is 10. Must be greater than 0 and less than 5000.
-   * @default 10
-   */
-  page_size?: number;
-  /**
-   * Search String
-   * Substring to match on. Will search first name, last name, email.
-   */
-  search_string?: string | null;
-  /**
-   * Sort the results (asc/desc)
-   * @default "desc"
-   */
-  sort?: PaginationSortMethod;
 }
 
 export type SendSyntheticDataMessageApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticMessagePostData = SyntheticDataGenerationResponse;
@@ -11253,18 +10990,8 @@ export interface TraceTransformVersionResponse {
    * Author who created this version.
    */
   author?: string | null;
-  /**
-   * Config Snapshot
-   * Snapshot of the transform definition at the time of this version.
-   */
-  config_snapshot: {
-    variables: Array<{
-      variable_name: string;
-      span_name: string;
-      attribute_path: string;
-      fallback?: string | null;
-    }>;
-  };
+  /** Snapshot of the transform definition at the time of this version. */
+  config_snapshot: TraceTransformDefinition;
   /**
    * Created At
    * Timestamp when this version was created.
@@ -11729,10 +11456,6 @@ export type UpdateDatasetApiV2DatasetsDatasetIdPatchData = DatasetResponse;
 
 export type UpdateDatasetApiV2DatasetsDatasetIdPatchError = HTTPValidationError;
 
-export type UpdateDefaultTaskApiChatDefaultTaskPutData = ChatDefaultTaskResponse;
-
-export type UpdateDefaultTaskApiChatDefaultTaskPutError = HTTPValidationError;
-
 /** UpdateMetricRequest */
 export interface UpdateMetricRequest {
   /**
@@ -11817,38 +11540,6 @@ export type UpdateTaskRulesApiV2TasksTaskIdRulesRuleIdPatchError = HTTPValidatio
 export type UpdateTransformApiV1TracesTransformsTransformIdPatchData = TraceTransformResponse;
 
 export type UpdateTransformApiV1TracesTransformsTransformIdPatchError = HTTPValidationError;
-
-export type UploadEmbeddingsFileApiChatFilesPostData = FileUploadResult;
-
-export type UploadEmbeddingsFileApiChatFilesPostError = HTTPValidationError;
-
-export interface UploadEmbeddingsFileApiChatFilesPostParams {
-  /**
-   * Is Global
-   * @default false
-   */
-  is_global?: boolean;
-}
-
-/** UserPermissionAction */
-export type UserPermissionAction = "create" | "read";
-
-/** UserPermissionResource */
-export type UserPermissionResource = "prompts" | "responses" | "rules" | "tasks";
-
-/** UserResponse */
-export interface UserResponse {
-  /** Email */
-  email: string;
-  /** First Name */
-  first_name?: string | null;
-  /** Id */
-  id: string;
-  /** Last Name */
-  last_name?: string | null;
-  /** Roles */
-  roles: AuthUserRole[];
-}
 
 export type ValidatePromptEndpointApiV2TasksTaskIdValidatePromptPostData = ValidationResult;
 
@@ -12846,7 +12537,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.491
+ * @version 2.1.503
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -13071,24 +12762,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         method: "PATCH",
         query: query,
         secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Chat request for Arthur Chat
-     *
-     * @tags Chat
-     * @name ChatRequest
-     * @summary Chat
-     * @request POST:/api/chat/
-     */
-    chatRequest: (data: ChatRequest, params: RequestParams = {}) =>
-      this.request<ChatRequestData, ChatRequestError>({
-        path: `/api/chat/`,
-        method: "POST",
-        body: data,
-        type: ContentType.Json,
         format: "json",
         ...params,
       }),
@@ -13698,22 +13371,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v2/datasets/${datasetId}`,
         method: "DELETE",
         secure: true,
-        ...params,
-      }),
-
-    /**
-     * @description Remove a file by ID. This action cannot be undone.
-     *
-     * @tags Chat
-     * @name DeleteFileApiChatFilesFileIdDelete
-     * @summary Delete File
-     * @request DELETE:/api/chat/files/{file_id}
-     */
-    deleteFileApiChatFilesFileIdDelete: (fileId: string, params: RequestParams = {}) =>
-      this.request<DeleteFileApiChatFilesFileIdDeleteData, DeleteFileApiChatFilesFileIdDeleteError>({
-        path: `/api/chat/files/${fileId}`,
-        method: "DELETE",
-        format: "json",
         ...params,
       }),
 
@@ -14485,23 +14142,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Get list of conversation IDs.
-     *
-     * @tags Chat
-     * @name GetConversationsApiChatConversationsGet
-     * @summary Get Conversations
-     * @request GET:/api/chat/conversations
-     */
-    getConversationsApiChatConversationsGet: (query: GetConversationsApiChatConversationsGetParams, params: RequestParams = {}) =>
-      this.request<GetConversationsApiChatConversationsGetData, GetConversationsApiChatConversationsGetError>({
-        path: `/api/chat/conversations`,
-        method: "GET",
-        query: query,
-        format: "json",
-        ...params,
-      }),
-
-    /**
      * @description Returns daily counts of passed/failed/error/skipped annotations and total cost per day
      *
      * @tags Continuous Evals
@@ -14658,22 +14298,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Get the default task for Arthur Chat.
-     *
-     * @tags Chat
-     * @name GetDefaultTaskApiChatDefaultTaskGet
-     * @summary Get Default Task
-     * @request GET:/api/chat/default_task
-     */
-    getDefaultTaskApiChatDefaultTaskGet: (params: RequestParams = {}) =>
-      this.request<GetDefaultTaskApiChatDefaultTaskGetData, any>({
-        path: `/api/chat/default_task`,
-        method: "GET",
-        format: "json",
-        ...params,
-      }),
-
-    /**
      * @description Get display settings (e.g. default currency for cost formatting).
      *
      * @tags Settings
@@ -14710,38 +14334,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         method: "GET",
         query: query,
         secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description List uploaded files. Only files that are global or owned by the caller are returned.
-     *
-     * @tags Chat
-     * @name GetFilesApiChatFilesGet
-     * @summary Get Files
-     * @request GET:/api/chat/files
-     */
-    getFilesApiChatFilesGet: (params: RequestParams = {}) =>
-      this.request<GetFilesApiChatFilesGetData, any>({
-        path: `/api/chat/files`,
-        method: "GET",
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Get document context used for a past inference ID.
-     *
-     * @tags Chat
-     * @name GetInferenceDocumentContextApiChatContextInferenceIdGet
-     * @summary Get Inference Document Context
-     * @request GET:/api/chat/context/{inference_id}
-     */
-    getInferenceDocumentContextApiChatContextInferenceIdGet: (inferenceId: string, params: RequestParams = {}) =>
-      this.request<GetInferenceDocumentContextApiChatContextInferenceIdGetData, GetInferenceDocumentContextApiChatContextInferenceIdGetError>({
-        path: `/api/chat/context/${inferenceId}`,
-        method: "GET",
         format: "json",
         ...params,
       }),
@@ -15760,24 +15352,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Post feedback for Arthur Chat.
-     *
-     * @tags Chat, Chat
-     * @name PostChatFeedbackApiChatFeedbackInferenceIdPost
-     * @summary Post Chat Feedback
-     * @request POST:/api/chat/feedback/{inference_id}
-     */
-    postChatFeedbackApiChatFeedbackInferenceIdPost: (inferenceId: string, data: FeedbackRequest, params: RequestParams = {}) =>
-      this.request<PostChatFeedbackApiChatFeedbackInferenceIdPostData, PostChatFeedbackApiChatFeedbackInferenceIdPostError>({
-        path: `/api/chat/feedback/${inferenceId}`,
-        method: "POST",
-        body: data,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
      * @description Post feedback for LLM Application.
      *
      * @tags Feedback
@@ -16434,24 +16008,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Update the default task for Arthur Chat.
-     *
-     * @tags Chat
-     * @name UpdateDefaultTaskApiChatDefaultTaskPut
-     * @summary Update Default Task
-     * @request PUT:/api/chat/default_task
-     */
-    updateDefaultTaskApiChatDefaultTaskPut: (data: ChatDefaultTaskRequest, params: RequestParams = {}) =>
-      this.request<UpdateDefaultTaskApiChatDefaultTaskPutData, UpdateDefaultTaskApiChatDefaultTaskPutError>({
-        path: `/api/chat/default_task`,
-        method: "PUT",
-        body: data,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
      * @description Update notebook name or description (not the state)
      *
      * @tags Notebooks
@@ -16626,29 +16182,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         body: data,
         secure: true,
         type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Upload files via form-data. Only PDF, CSV, TXT types accepted.
-     *
-     * @tags Chat
-     * @name UploadEmbeddingsFileApiChatFilesPost
-     * @summary Upload Embeddings File
-     * @request POST:/api/chat/files
-     */
-    uploadEmbeddingsFileApiChatFilesPost: (
-      query: UploadEmbeddingsFileApiChatFilesPostParams,
-      data: BodyUploadEmbeddingsFileApiChatFilesPost,
-      params: RequestParams = {}
-    ) =>
-      this.request<UploadEmbeddingsFileApiChatFilesPostData, UploadEmbeddingsFileApiChatFilesPostError>({
-        path: `/api/chat/files`,
-        method: "POST",
-        query: query,
-        body: data,
-        type: ContentType.FormData,
         format: "json",
         ...params,
       }),
@@ -16873,101 +16406,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         body: data,
         secure: true,
         type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-  };
-  users = {
-    /**
-     * @description Checks if the current user has the requested permission. Returns 200 status code for authorized or 403 if not.
-     *
-     * @tags User Management
-     * @name CheckUserPermissionUsersPermissionsCheckGet
-     * @summary Check User Permission
-     * @request GET:/users/permissions/check
-     * @secure
-     */
-    checkUserPermissionUsersPermissionsCheckGet: (query: CheckUserPermissionUsersPermissionsCheckGetParams, params: RequestParams = {}) =>
-      this.request<CheckUserPermissionUsersPermissionsCheckGetData, CheckUserPermissionUsersPermissionsCheckGetError>({
-        path: `/users/permissions/check`,
-        method: "GET",
-        query: query,
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Creates a new user with specific roles. The available roles are TASK-ADMIN and CHAT-USER. The 'temporary' field is for indicating if the user password needs to be reset at the first login.
-     *
-     * @tags User Management
-     * @name CreateUserUsersPost
-     * @summary Create User
-     * @request POST:/users
-     * @secure
-     */
-    createUserUsersPost: (data: CreateUserRequest, params: RequestParams = {}) =>
-      this.request<CreateUserUsersPostData, CreateUserUsersPostError>({
-        path: `/users`,
-        method: "POST",
-        body: data,
-        secure: true,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Delete a user.
-     *
-     * @tags User Management
-     * @name DeleteUserUsersUserIdDelete
-     * @summary Delete User
-     * @request DELETE:/users/{user_id}
-     * @secure
-     */
-    deleteUserUsersUserIdDelete: (userId: string, params: RequestParams = {}) =>
-      this.request<DeleteUserUsersUserIdDeleteData, DeleteUserUsersUserIdDeleteError>({
-        path: `/users/${userId}`,
-        method: "DELETE",
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Reset password for user.
-     *
-     * @tags User Management
-     * @name ResetUserPasswordUsersUserIdResetPasswordPost
-     * @summary Reset User Password
-     * @request POST:/users/{user_id}/reset_password
-     */
-    resetUserPasswordUsersUserIdResetPasswordPost: (userId: string, data: PasswordResetRequest, params: RequestParams = {}) =>
-      this.request<ResetUserPasswordUsersUserIdResetPasswordPostData, ResetUserPasswordUsersUserIdResetPasswordPostError>({
-        path: `/users/${userId}/reset_password`,
-        method: "POST",
-        body: data,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Fetch users.
-     *
-     * @tags User Management
-     * @name SearchUsersUsersGet
-     * @summary Search Users
-     * @request GET:/users
-     * @secure
-     */
-    searchUsersUsersGet: (query: SearchUsersUsersGetParams, params: RequestParams = {}) =>
-      this.request<SearchUsersUsersGetData, SearchUsersUsersGetError>({
-        path: `/users`,
-        method: "GET",
-        query: query,
-        secure: true,
         format: "json",
         ...params,
       }),

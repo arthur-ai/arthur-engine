@@ -10,3 +10,7 @@ export type {
   GenerateGraphToolResult,
   WeatherToolResult,
 };
+
+// Guardrail utility — exported for direct use and trace visibility
+export { checkArthurGuardrails } from "./arthurGuardrail";
+export type { GuardrailCheckResult, GuardrailRuleResult, GuardrailClaimResult } from "./arthurGuardrail";

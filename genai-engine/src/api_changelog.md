@@ -2,10 +2,28 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 04/06/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/chatbot/stream  for the 'path' request parameter 'task_id', the type/format was changed from 'string'/'' to 'string'/'uuid'
+
+# 04/02/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals  added the new optional 'query' request parameter 'tags'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  added the new optional 'query' request parameter 'tags'
+
+# 03/26/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals  added the new optional 'query' request parameter 'tags'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  added the new optional 'query' request parameter 'tags'
+
 # 03/24/2026
 - **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  added the required property 'versions/items/config_snapshot/variables' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  added the required property 'config_snapshot/variables' to the response with the '200' status
 - **INFO** for **TraceTransformVersionResponse**: `config_snapshot` field now returns a typed `TraceTransformDefinition` object `{"variables": [...]}` instead of a generic object. The structure contains a `variables` array of extraction rules (`variable_name`, `span_name`, `attribute_path`, `fallback`). This is a backward-compatible refinement.
+
+# 03/19/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/chatbot/stream  endpoint added
+- **CHANGE** for **URL**: /api/v1/chatbot/history/{conversation_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/chatbot/config  endpoint added
+- **CHANGE** for **URL**: /api/v1/chatbot/config  endpoint added
+- **CHANGE** for **URL**: /api/v2/display-settings  added the optional property 'chatbot_enabled' to the response with the '200' status
 
 # 03/16/2026
 - **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_count_eq'
