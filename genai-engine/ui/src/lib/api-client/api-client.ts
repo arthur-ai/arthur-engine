@@ -2359,6 +2359,10 @@ export type DeleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsE
 
 export type DeleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsTagDeleteError = HTTPValidationError;
 
+export type DeleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDeleteData = any;
+
+export type DeleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDeleteError = HTTPValidationError;
+
 export type DeleteTransformApiV1TracesTransformsTransformIdDeleteData = any;
 
 export type DeleteTransformApiV1TracesTransformsTransformIdDeleteError = HTTPValidationError;
@@ -14039,6 +14043,23 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         DeleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsTagDeleteError
       >({
         path: `/api/v1/tasks/${taskId}/llm_evals/${evalName}/versions/${evalVersion}/tags/${tag}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Delete a test run and all its associated annotation results.
+     *
+     * @tags Continuous Eval Test Runs
+     * @name DeleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDelete
+     * @summary Delete a test run
+     * @request DELETE:/api/v1/continuous_evals/test_runs/{test_run_id}
+     * @secure
+     */
+    deleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDelete: (testRunId: string, params: RequestParams = {}) =>
+      this.request<DeleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDeleteData, DeleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDeleteError>({
+        path: `/api/v1/continuous_evals/test_runs/${testRunId}`,
         method: "DELETE",
         secure: true,
         ...params,

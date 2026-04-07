@@ -15815,6 +15815,48 @@
                         }
                     }
                 }
+            },
+            "delete": {
+                "tags": [
+                    "Continuous Eval Test Runs"
+                ],
+                "summary": "Delete a test run",
+                "description": "Delete a test run and all its associated annotation results.",
+                "operationId": "delete_test_run_api_v1_continuous_evals_test_runs__test_run_id__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "test_run_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Test Run ID",
+                            "description": "The id of the test run to delete."
+                        },
+                        "description": "The id of the test run to delete."
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Test run deleted."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/v1/continuous_evals/test_runs/{test_run_id}/results": {
