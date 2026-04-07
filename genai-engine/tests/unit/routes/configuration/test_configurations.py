@@ -111,7 +111,7 @@ def test_trace_retention_days_config(client: GenaiEngineTestClientBase):
         {"trace_retention_days": 99},
         headers=headers,
     )
-    assert invalid_resp.status_code == 422
+    assert invalid_resp.status_code == 400
 
 
 @pytest.mark.unit_tests
