@@ -58,7 +58,9 @@ from job_executors.metrics_calculation_executor import (
     CustomAggregationTestExecutor,
     MetricsCalculationExecutor,
 )
-from job_executors.schedule_compliance_jobs_executor import ScheduleComplianceJobsExecutor
+from job_executors.schedule_compliance_jobs_executor import (
+    ScheduleComplianceJobsExecutor,
+)
 from job_executors.schedule_jobs_executor import ScheduleJobsExecutor
 from job_executors.schema_inference_executor import SchemaInferenceExecutor
 from job_executors.task_management_job_executors import (
