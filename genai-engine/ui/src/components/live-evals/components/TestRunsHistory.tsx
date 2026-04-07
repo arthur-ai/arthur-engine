@@ -1,4 +1,5 @@
 import { TracesEmptyState } from "@arthur/shared-components";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import ReplayIcon from "@mui/icons-material/Replay";
 import {
@@ -18,9 +19,9 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PaginationState } from "@tanstack/react-table";
 import { createMRTColumnHelper, MaterialReactTable, useMaterialReactTable } from "material-react-table";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
-import { testRunResultsQueryOptions, useCreateTestRun, useTestRunsList } from "../hooks/useTestRun";
+import { testRunResultsQueryOptions, useCreateTestRun, useDeleteTestRun, useTestRunsList } from "../hooks/useTestRun";
 
 import { CopyableChip } from "@/components/common";
 import { Details } from "@/components/live-evals/components/results/components/details";
@@ -35,7 +36,15 @@ import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 const testRunColumnHelper = createMRTColumnHelper<ContinuousEvalTestRunResponse>();
 
-function createTestRunColumns({ timezone, use24Hour }: { timezone: string; use24Hour: boolean }) {
+function createTestRunColumns({
+  timezone,
+  use24Hour,
+  onDelete,
+}: {
+  timezone: string;
+  use24Hour: boolean;
+  onDelete: (testRunId: string) => void;
+}) {
   return [
     testRunColumnHelper.accessor("created_at", {
       header: "Date",
@@ -79,6 +88,25 @@ function createTestRunColumns({ timezone, use24Hour }: { timezone: string; use24
       header: "Traces",
       Cell: ({ cell }) => <Typography variant="body2">{cell.getValue()}</Typography>,
     }),
+    testRunColumnHelper.display({
+      id: "actions",
+      header: "",
+      size: 48,
+      Cell: ({ row }) => (
+        <Tooltip title="Delete test run">
+          <IconButton
+            size="small"
+            color="error"
+            onClick={(e: React.MouseEvent) => {
+              e.stopPropagation();
+              onDelete(row.original.id);
+            }}
+          >
+            <DeleteOutlineIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      ),
+    }),
   ];
 }
 
@@ -99,6 +127,7 @@ function TestRunResultsModal({
   const { defaultCurrency } = useDisplaySettings();
   const queryClient = useQueryClient();
   const createTestRun = useCreateTestRun(evalId);
+  const deleteTestRun = useDeleteTestRun(evalId);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState("");
 
   const resultsQueryOpts = testRunResultsQueryOptions({ api, testRunId: testRun.id, pageSize: 50 });
@@ -111,6 +140,11 @@ function TestRunResultsModal({
       await createTestRun.mutateAsync(traceIds);
       onClose();
     }
+  };
+
+  const handleDelete = async () => {
+    await deleteTestRun.mutateAsync(testRun.id);
+    onClose();
   };
 
   const columns = useMemo(
@@ -220,12 +254,21 @@ function TestRunResultsModal({
         </DialogContent>
         <DialogActions>
           <Button
+            startIcon={<DeleteOutlineIcon />}
+            color="error"
+            onClick={handleDelete}
+            disabled={deleteTestRun.isPending}
+          >
+            {deleteTestRun.isPending ? "Deleting..." : "Delete"}
+          </Button>
+          <Button
             startIcon={<ReplayIcon />}
             onClick={handleRunAgain}
             disabled={createTestRun.isPending}
           >
             {createTestRun.isPending ? "Starting..." : "Run Again"}
           </Button>
+          <Box sx={{ flex: 1 }} />
           <Button onClick={onClose}>Close</Button>
         </DialogActions>
       </Dialog>
@@ -251,8 +294,13 @@ export const TestRunsHistory = ({ evalId, taskId }: { evalId: string; taskId: st
   const [selectedTestRun, setSelectedTestRun] = useState<ContinuousEvalTestRunResponse | null>(null);
 
   const { data, isLoading, isFetching } = useTestRunsList(evalId, pagination.pageIndex, pagination.pageSize);
+  const deleteTestRun = useDeleteTestRun(evalId);
+  const handleDelete = useCallback((id: string) => deleteTestRun.mutate(id), [deleteTestRun]);
 
-  const testRunColumns = useMemo(() => createTestRunColumns({ timezone, use24Hour }), [timezone, use24Hour]);
+  const testRunColumns = useMemo(
+    () => createTestRunColumns({ timezone, use24Hour, onDelete: handleDelete }),
+    [timezone, use24Hour, handleDelete],
+  );
 
   const table = useMaterialReactTable({
     columns: testRunColumns,

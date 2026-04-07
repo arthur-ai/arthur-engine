@@ -85,6 +85,29 @@ export function useTestRunsList(evalId: string | undefined, page: number = 0, pa
   });
 }
 
+export function useDeleteTestRun(evalId: string) {
+  const api = useApi()!;
+  const { enqueueSnackbar } = useSnackbar();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (testRunId: string) => {
+      await api.api.deleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDelete(testRunId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.continuousEvals.testRuns.byEval(evalId) });
+      enqueueSnackbar("Test run deleted", { variant: "success" });
+    },
+    onError: (error) => {
+      let message = "Failed to delete test run";
+      if (isAxiosError(error)) {
+        message = error.response?.data.detail ?? message;
+      }
+      enqueueSnackbar(message, { variant: "error" });
+    },
+  });
+}
+
 export function useCreateTestRun(evalId: string) {
   const api = useApi()!;
   const { enqueueSnackbar } = useSnackbar();
