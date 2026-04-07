@@ -22,9 +22,9 @@ runs:
         uv --version
         GROUPS_FLAG=""
         if [ -n "${{ inputs.with-groups }}" ]; then
-          IFS=',' read -ra GROUPS <<< "${{ inputs.with-groups }}"
-          for group in "${GROUPS[@]}"; do
+          IFS=',' read -ra DEP_GROUPS <<< "${{ inputs.with-groups }}"
+          for group in "${DEP_GROUPS[@]}"; do
             GROUPS_FLAG="$GROUPS_FLAG --group $group"
           done
         fi
-        uv sync --directory ${{ inputs.working-directory }} --frozen $GROUPS_FLAG --verbose
+        uv sync --directory ${{ inputs.working-directory }} --frozen $GROUPS_FLAG
