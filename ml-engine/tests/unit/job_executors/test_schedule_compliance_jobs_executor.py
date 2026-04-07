@@ -36,10 +36,11 @@ SCHEDULE_ID = "test_schedule_id"
 NONCE = "test_nonce"
 
 
-def _make_mock_model() -> Mock:
+def _make_mock_model(compliance_schedule_id: str = SCHEDULE_ID) -> Mock:
     model = Mock(spec=Model)
     model.id = MODEL_ID
     model.project_id = PROJECT_ID
+    model.compliance_schedule_id = compliance_schedule_id
     return model
 
 
@@ -62,18 +63,10 @@ def _make_mock_job_spec() -> Mock:
     return job_spec
 
 
-def _make_mock_assignments_response(
-    total: int = 1, schedule_id: str = SCHEDULE_ID
-) -> Mock:
+def _make_mock_assignments_response(total: int = 1) -> Mock:
     response = Mock()
     response.pagination = Mock()
     response.pagination.total_records = total
-    records = []
-    for _ in range(total):
-        record = Mock()
-        record.schedule_id = schedule_id
-        records.append(record)
-    response.records = records
     return response
 
 
@@ -340,17 +333,14 @@ class TestScheduleComplianceJobsExecutor:
         mock_jobs_client.update_job.assert_called_once()
         mock_jobs_client.post_submit_jobs_batch.assert_not_called()
 
-    def test_execute_no_matching_schedule_id_stops_chain(self):
+    def test_execute_mismatched_schedule_id_stops_chain(self):
         mock_models_client = Mock(spec=ModelsV1Api)
         mock_jobs_client = Mock(spec=JobsV1Api)
-        mock_policies_client = Mock(spec=PoliciesV1Api)
-        executor = _make_executor(mock_models_client, mock_jobs_client, mock_policies_client)
+        executor = _make_executor(mock_models_client, mock_jobs_client)
 
-        mock_models_client.get_model.return_value = _make_mock_model()
-
-        # Model has assignments but with a different schedule_id
-        mock_policies_client.list_model_policy_assignments.return_value = (
-            _make_mock_assignments_response(total=2, schedule_id="other_schedule_id")
+        # Model has a different compliance_schedule_id than the job
+        mock_models_client.get_model.return_value = _make_mock_model(
+            compliance_schedule_id="other_schedule_id"
         )
 
         mock_updated_job = Mock(spec=Job)

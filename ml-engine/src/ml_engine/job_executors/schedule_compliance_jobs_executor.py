@@ -1,8 +1,6 @@
 import logging
 from datetime import datetime, timedelta, timezone
 
-from typing import Any
-
 from arthur_client.api_bindings import (
     CompliancePolicyCheckJobSpec,
     Job,
@@ -48,6 +46,7 @@ class ScheduleComplianceJobsExecutor:
 
         try:
             self._validate_job(job)
+            self._validate_schedule_id(model, job)
             self._validate_model_has_assignments(model, job)
         except ValueError as e:
             self._handle_validation_failure(job, e)
@@ -99,40 +98,26 @@ class ScheduleComplianceJobsExecutor:
         if not job.nonce:
             raise ValueError("Nonce expected for this job type.")
 
-    def _validate_model_has_assignments(self, model: Model, job: Job) -> None:
-        """Stop the schedule chain if no assignments reference this schedule_id."""
-        all_assignments = self._fetch_all_assignments(model.id)
+    def _validate_schedule_id(self, model: Model, job: Job) -> None:
+        """Stop the chain if the model's compliance_schedule_id doesn't match."""
+        model_schedule_id = getattr(model, "compliance_schedule_id", None)
+        if model_schedule_id != job.schedule_id:
+            raise ValueError(
+                f"Model {model.id} has compliance_schedule_id={model_schedule_id} "
+                f"but job has schedule_id={job.schedule_id}. "
+                "This chain is orphaned; stopping.",
+            )
 
-        if not all_assignments:
+    def _validate_model_has_assignments(self, model: Model, job: Job) -> None:
+        """Stop the schedule chain if the model no longer has any policy assignments."""
+        assignments = self.policies_client.list_model_policy_assignments(
+            model_id=model.id, page=1, page_size=1
+        )
+        if assignments.pagination.total_records == 0:
             raise ValueError(
                 f"Model {model.id} has no policy assignments. "
                 "Schedule was removed; stopping this chain.",
             )
-
-        matching = [
-            a
-            for a in all_assignments
-            if getattr(a, "schedule_id", None) == job.schedule_id
-        ]
-        if not matching:
-            raise ValueError(
-                f"No assignments for model {model.id} reference schedule "
-                f"{job.schedule_id}. This chain is orphaned; stopping.",
-            )
-
-    def _fetch_all_assignments(self, model_id: str) -> list[Any]:
-        """Paginate through all policy assignments for a model."""
-        all_records = []
-        page = 1
-        while True:
-            resp = self.policies_client.list_model_policy_assignments(
-                model_id=model_id, page=page, page_size=100
-            )
-            all_records.extend(resp.records)
-            if len(resp.records) < 100:
-                break
-            page += 1
-        return all_records
 
     def _validate_new_schedule_job(self, model: Model, new_job: PostJob) -> None:
         """Validates schedule job nonce is unique before submission to protect against race condition."""
