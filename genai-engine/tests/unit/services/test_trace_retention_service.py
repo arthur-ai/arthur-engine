@@ -9,6 +9,7 @@ from schemas.internal_schemas import ApplicationConfiguration
 from services.trace_retention_service import (
     CIRCUIT_BREAKER_THRESHOLD,
     MAX_TRACES_PER_RUN,
+    TRACE_RETENTION_ADVISORY_LOCK_KEY,
     TraceRetentionJob,
     TraceRetentionService,
     get_trace_retention_service,
@@ -224,6 +225,112 @@ def test_inter_batch_delay_respects_shutdown(
 
     mock_delete_trace_batch.assert_called_once()
     assert not service._tripped.is_set()
+
+
+@pytest.mark.unit_tests
+@patch("services.trace_retention_service.get_db_session")
+def test_background_loop_acquires_lock_and_enqueues(
+    mock_get_db_session: MagicMock,
+) -> None:
+    """When the advisory lock is acquired, the loop enqueues a job and the session is closed."""
+    mock_session = MagicMock()
+    mock_session.execute.return_value.scalar.return_value = True
+    mock_get_db_session.return_value = iter([mock_session])
+
+    service = _make_service()
+
+    is_set_calls = [False, False, False, True]
+    service.shutdown_event = MagicMock()
+    service.shutdown_event.is_set = MagicMock(side_effect=is_set_calls)
+    service.shutdown_event.wait = MagicMock(return_value=True)
+
+    with patch.object(service, "enqueue") as mock_enqueue:
+        service._background_loop()
+
+    mock_enqueue.assert_called_once()
+    mock_session.close.assert_called_once()
+
+
+@pytest.mark.unit_tests
+@patch("services.trace_retention_service.get_db_session")
+def test_background_loop_standby_when_lock_not_acquired(
+    mock_get_db_session: MagicMock,
+) -> None:
+    """When another replica holds the lock, the loop stands by without enqueuing."""
+    mock_session = MagicMock()
+    mock_session.execute.return_value.scalar.return_value = False
+    mock_get_db_session.return_value = iter([mock_session])
+
+    service = _make_service()
+
+    is_set_calls = [False, True]
+    service.shutdown_event = MagicMock()
+    service.shutdown_event.is_set = MagicMock(side_effect=is_set_calls)
+    service.shutdown_event.wait = MagicMock(return_value=False)
+
+    with patch.object(service, "enqueue") as mock_enqueue:
+        service._background_loop()
+
+    mock_enqueue.assert_not_called()
+    mock_session.close.assert_called_once()
+
+
+@pytest.mark.unit_tests
+@patch("services.trace_retention_service.get_db_session")
+def test_background_loop_retries_on_lock_acquisition_error(
+    mock_get_db_session: MagicMock,
+) -> None:
+    """When get_db_session raises, the loop logs the error and retries."""
+    mock_get_db_session.side_effect = [
+        RuntimeError("connection failed"),
+        RuntimeError("connection failed"),
+    ]
+
+    service = _make_service()
+
+    is_set_calls = [False, False, True]
+    service.shutdown_event = MagicMock()
+    service.shutdown_event.is_set = MagicMock(side_effect=is_set_calls)
+
+    with patch.object(service, "enqueue") as mock_enqueue:
+        service._background_loop()
+
+    mock_enqueue.assert_not_called()
+
+
+@pytest.mark.unit_tests
+@patch("services.trace_retention_service.get_db_session")
+def test_background_loop_closes_session_on_latch_trip(
+    mock_get_db_session: MagicMock,
+) -> None:
+    """When the latch trips mid-loop, the session is closed (releasing the lock)."""
+    mock_session = MagicMock()
+    mock_session.execute.return_value.scalar.return_value = True
+    mock_get_db_session.return_value = iter([mock_session])
+
+    service = _make_service()
+
+    def enqueue_and_trip(job: TraceRetentionJob) -> tuple[bool, None]:
+        service._tripped.set()
+        service.shutdown_event.set()
+        return True, None
+
+    # is_set call sequence:
+    #   1. outer while check → False (enter loop)
+    #   2. before enqueue   → False (enqueue runs, trips latch)
+    #   3. inner while check → True  (exit inner loop)
+    #   4. outer while check → True  (exit outer loop)
+    service.shutdown_event = MagicMock()
+    service.shutdown_event.is_set = MagicMock(side_effect=[False, False, True, True])
+    service.shutdown_event.set = MagicMock(side_effect=lambda: None)
+    service.shutdown_event.wait = MagicMock(return_value=True)
+
+    with patch.object(service, "enqueue", side_effect=enqueue_and_trip) as mock_enqueue:
+        service._background_loop()
+
+    mock_enqueue.assert_called_once()
+    mock_session.close.assert_called_once()
+    assert service._tripped.is_set()
 
 
 @pytest.mark.unit_tests

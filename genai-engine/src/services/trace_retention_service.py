@@ -1,10 +1,17 @@
 """Background service that deletes trace data older than the configured retention period.
 
+Leader election
+---------------
+A PostgreSQL session-level advisory lock (``TRACE_RETENTION_ADVISORY_LOCK_KEY``)
+ensures that only one replica runs the retention loop at a time.  Non-leaders
+stand by and retry each interval; if the leader crashes its DB session closes,
+releasing the lock so another replica can take over.
+
 Scheduling
 ----------
-A background thread enqueues a retention job immediately on startup and then
-once every 24 hours.  Each job queries for traces whose ``end_time`` is older
-than the configured ``trace_retention_days`` and deletes them in batches of
+The leader enqueues a retention job immediately on startup and then once every
+24 hours.  Each job queries for traces whose ``end_time`` is older than the
+configured ``trace_retention_days`` and deletes them in batches of
 ``DEFAULT_TRACE_RETENTION_BATCH_SIZE`` (500).
 
 Inter-batch throttling
@@ -31,7 +38,9 @@ import threading
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from dependencies import db_session_context
+from sqlalchemy import text
+
+from dependencies import db_session_context, get_db_session
 from repositories.configuration_repository import ConfigurationRepository
 from repositories.trace_retention_repository import (
     DEFAULT_TRACE_RETENTION_BATCH_SIZE,
@@ -44,6 +53,10 @@ logger = logging.getLogger(__name__)
 
 ONE_DAY_SECONDS = 24 * 3600
 TRACE_RETENTION_JOB_KEY = "trace_retention"
+# PostgreSQL session-level advisory lock key for leader election.
+# Must be unique across all advisory lock users in the application
+# (see also POLLING_ADVISORY_LOCK_KEY and _SYSTEM_TASK_INIT_LOCK_ID).
+TRACE_RETENTION_ADVISORY_LOCK_KEY = 17449341
 INTER_BATCH_DELAY_SECONDS = 1
 MAX_TRACES_PER_RUN = 100_000
 CIRCUIT_BREAKER_THRESHOLD = 3
@@ -158,16 +171,52 @@ class TraceRetentionService(BaseQueueService[TraceRetentionJob]):
             )
 
     def _background_loop(self) -> None:
-        """Run retention once, then wait 24 hours and enqueue again."""
+        """Run retention once, then wait 24 hours and enqueue again.
+
+        Uses a PostgreSQL session-level advisory lock to elect a single leader
+        across all replicas.  Only the replica that acquires the lock runs the
+        retention loop.  Non-leaders wait and retry each interval so they can
+        take over if the leader crashes (the lock is released automatically
+        when the leader's DB session closes).
+        """
         logger.info("Background thread started for %s", self.service_name)
-        if not self.shutdown_event.is_set():
-            self.enqueue(TraceRetentionJob(delay_seconds=0))
 
         while not self.shutdown_event.is_set():
-            if self.shutdown_event.wait(timeout=ONE_DAY_SECONDS):
-                break
-            if not self.shutdown_event.is_set():
-                self.enqueue(TraceRetentionJob(delay_seconds=0))
+            leader_session = None
+            try:
+                leader_session = next(get_db_session())
+                acquired = leader_session.execute(
+                    text("SELECT pg_try_advisory_lock(:key)"),
+                    {"key": TRACE_RETENTION_ADVISORY_LOCK_KEY},
+                ).scalar()
+
+                if not acquired:
+                    logger.info(
+                        "Another replica holds the trace retention leader lock, standing by"
+                    )
+                    self.shutdown_event.wait(timeout=ONE_DAY_SECONDS)
+                    continue
+
+                logger.info("Acquired trace retention leader lock")
+
+                if not self.shutdown_event.is_set():
+                    self.enqueue(TraceRetentionJob(delay_seconds=0))
+
+                while not self.shutdown_event.is_set():
+                    if self.shutdown_event.wait(timeout=ONE_DAY_SECONDS):
+                        break
+                    if not self.shutdown_event.is_set():
+                        self.enqueue(TraceRetentionJob(delay_seconds=0))
+
+            except Exception as e:
+                logger.error(
+                    "Error in trace retention leader election: %s",
+                    e,
+                    exc_info=True,
+                )
+            finally:
+                if leader_session is not None:
+                    leader_session.close()
 
         if self._tripped.is_set():
             logger.critical(
