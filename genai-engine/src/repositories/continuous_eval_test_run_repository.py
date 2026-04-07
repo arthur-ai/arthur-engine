@@ -166,7 +166,9 @@ class ContinuousEvalTestRunRepository:
             base_query = base_query.order_by(
                 sort_fn(DatabaseContinuousEvalTestRun.created_at),
             )
-            base_query = base_query.offset(pagination_parameters.page * pagination_parameters.page_size)
+            base_query = base_query.offset(
+                pagination_parameters.page * pagination_parameters.page_size
+            )
             base_query = base_query.limit(pagination_parameters.page_size)
         else:
             base_query = base_query.order_by(
@@ -199,7 +201,9 @@ class ContinuousEvalTestRunRepository:
             base_query = base_query.order_by(
                 sort_fn(DatabaseAgenticAnnotation.created_at),
             )
-            base_query = base_query.offset(pagination_parameters.page * pagination_parameters.page_size)
+            base_query = base_query.offset(
+                pagination_parameters.page * pagination_parameters.page_size
+            )
             base_query = base_query.limit(pagination_parameters.page_size)
 
         db_annotations = base_query.all()

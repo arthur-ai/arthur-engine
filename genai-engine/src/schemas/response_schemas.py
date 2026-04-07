@@ -799,9 +799,13 @@ class ContinuousEvalRerunResponse(BaseModel):
 
 class ContinuousEvalTestRunResponse(BaseModel):
     id: UUID = Field(description="ID of the test run.")
-    continuous_eval_id: UUID = Field(description="ID of the continuous eval being tested.")
+    continuous_eval_id: UUID = Field(
+        description="ID of the continuous eval being tested."
+    )
     task_id: str = Field(description="ID of the parent task.")
-    status: str = Field(description="Status of the test run: running, completed, or partial_failure.")
+    status: str = Field(
+        description="Status of the test run: running, completed, or partial_failure."
+    )
     total_count: int = Field(description="Total number of traces in the test run.")
     completed_count: int = Field(description="Number of completed test cases.")
     passed_count: int = Field(description="Number of test cases that passed.")

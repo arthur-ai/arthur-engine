@@ -126,11 +126,11 @@ from db_models import (
     DatabaseTraceMetadata,
     DatabaseUser,
 )
+from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTestRun
 from db_models.dataset_models import (
     DatabaseDatasetVersion,
     DatabaseDatasetVersionRow,
 )
-from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTestRun
 from db_models.llm_eval_models import DatabaseContinuousEval
 from db_models.rag_provider_models import (
     DatabaseApiKeyRagProviderConfiguration,

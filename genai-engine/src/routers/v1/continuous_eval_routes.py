@@ -17,7 +17,9 @@ from dependencies import (
     get_db_session,
     get_validated_task,
 )
-from repositories.continuous_eval_test_run_repository import ContinuousEvalTestRunRepository
+from repositories.continuous_eval_test_run_repository import (
+    ContinuousEvalTestRunRepository,
+)
 from repositories.continuous_evals_repository import ContinuousEvalsRepository
 from repositories.llm_evals_repository import LLMEvalsRepository
 from repositories.trace_transform_repository import TraceTransformRepository
@@ -710,9 +712,7 @@ def get_test_run_results(
         )
         count = test_run_repo.count_test_run_results(test_run_id)
         return ListAgenticAnnotationsResponse(
-            annotations=[
-                annotation.to_response_model() for annotation in annotations
-            ],
+            annotations=[annotation.to_response_model() for annotation in annotations],
             count=count,
         )
     except HTTPException:

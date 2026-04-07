@@ -363,9 +363,10 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
         # If this annotation belongs to a test run, update the test run counters
         if db_annotation.test_run_id:
             self._increment_test_run_counters(
-                db_session, db_annotation.test_run_id, run_status,
+                db_session,
+                db_annotation.test_run_id,
+                run_status,
             )
-
 
     def _increment_test_run_counters(
         self,
@@ -381,13 +382,21 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
             }
 
             if run_status == ContinuousEvalRunStatus.PASSED.value:
-                update_values["passed_count"] = DatabaseContinuousEvalTestRun.passed_count + 1
+                update_values["passed_count"] = (
+                    DatabaseContinuousEvalTestRun.passed_count + 1
+                )
             elif run_status == ContinuousEvalRunStatus.FAILED.value:
-                update_values["failed_count"] = DatabaseContinuousEvalTestRun.failed_count + 1
+                update_values["failed_count"] = (
+                    DatabaseContinuousEvalTestRun.failed_count + 1
+                )
             elif run_status == ContinuousEvalRunStatus.ERROR.value:
-                update_values["error_count"] = DatabaseContinuousEvalTestRun.error_count + 1
+                update_values["error_count"] = (
+                    DatabaseContinuousEvalTestRun.error_count + 1
+                )
             elif run_status == ContinuousEvalRunStatus.SKIPPED.value:
-                update_values["skipped_count"] = DatabaseContinuousEvalTestRun.skipped_count + 1
+                update_values["skipped_count"] = (
+                    DatabaseContinuousEvalTestRun.skipped_count + 1
+                )
 
             db_session.query(DatabaseContinuousEvalTestRun).filter(
                 DatabaseContinuousEvalTestRun.id == test_run_id,

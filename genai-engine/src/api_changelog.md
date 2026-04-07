@@ -2,6 +2,12 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 04/07/2026
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}/results  endpoint added
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/test_runs  endpoint added
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/test_runs  endpoint added
+
 # 04/06/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/chatbot/stream  for the 'path' request parameter 'task_id', the type/format was changed from 'string'/'' to 'string'/'uuid'
 
