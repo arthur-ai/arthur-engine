@@ -1,63 +1,25 @@
-[tool.poetry]
+[project]
 name = "arthur-observability-sdk"
-version = "2.1.503"
+version = "2.1.504"
 description = "Arthur Observability SDK — telemetry, prompt management, and framework instrumentation"
-authors = ["Arthur AI <engineering@arthur.ai>"]
+authors = [{ name = "Arthur AI", email = "engineering@arthur.ai" }]
 readme = "../README.md"
-packages = [
-    { include = "arthur_observability_sdk", from = "src" },
-    { include = "arthur_genai_client", from = "src" },
+requires-python = ">=3.10,<3.14"
+
+dependencies = [
+  "python-dateutil>=2.8.2",
+  "urllib3>=1.25.3,<3.0.0",
+  "pydantic>=2",
+  "typing-extensions>=4.7.1",
+  "opentelemetry-api>=1.27,<2",
+  "opentelemetry-sdk>=1.27,<2",
+  "opentelemetry-exporter-otlp-proto-http>=1.27,<2",
+  "openinference-instrumentation>=0.1,<1",
+  "openinference-semantic-conventions>=0.1,<1",
+  "httpx>=0.28,<1",
 ]
 
-[tool.poetry.dependencies]
-python = ">=3.10,<3.14"
-python-dateutil = ">=2.8.2"
-urllib3 = ">=1.25.3,<3.0.0"
-pydantic = ">=2"
-typing-extensions = ">=4.7.1"
-opentelemetry-api = "^1.27"
-opentelemetry-sdk = "^1.27"
-opentelemetry-exporter-otlp-proto-http = "^1.27"
-openinference-instrumentation = "^0.1"
-openinference-semantic-conventions = "^0.1"
-httpx = "^0.28"
-
-# Optional framework extras
-openinference-instrumentation-agent-framework = { version = "*", optional = true }
-openinference-instrumentation-agentspec = { version = "*", optional = true }
-openinference-instrumentation-agno = { version = "*", optional = true }
-openinference-instrumentation-anthropic = { version = "*", optional = true }
-openinference-instrumentation-autogen = { version = "*", optional = true }
-openinference-instrumentation-autogen-agentchat = { version = "*", optional = true }
-openinference-instrumentation-bedrock = { version = "*", optional = true }
-openinference-instrumentation-beeai = { version = "*", optional = true, python = ">=3.11" }
-openinference-instrumentation-crewai = { version = "*", optional = true }
-openinference-instrumentation-dspy = { version = "*", optional = true }
-openinference-instrumentation-google-adk = { version = "*", optional = true }
-openinference-instrumentation-google-genai = { version = "*", optional = true }
-openinference-instrumentation-groq = { version = "*", optional = true }
-openinference-instrumentation-guardrails = { version = "*", optional = true }
-openinference-instrumentation-haystack = { version = "*", optional = true }
-openinference-instrumentation-instructor = { version = "*", optional = true }
-openinference-instrumentation-langchain = { version = "*", optional = true }
-openinference-instrumentation-litellm = { version = "*", optional = true }
-openinference-instrumentation-llama-index = { version = "*", optional = true }
-openinference-instrumentation-mcp = { version = "*", optional = true }
-openinference-instrumentation-mistralai = { version = "*", optional = true }
-openinference-instrumentation-monkai-agent = { version = "*", optional = true }
-openinference-instrumentation-openai = { version = "*", optional = true }
-openinference-instrumentation-openai-agents = { version = "*", optional = true }
-openinference-instrumentation-openlit = { version = "*", optional = true }
-openinference-instrumentation-openllmetry = { version = "*", optional = true }
-openinference-instrumentation-pipecat = { version = "*", optional = true }
-openinference-instrumentation-portkey = { version = "*", optional = true }
-openinference-instrumentation-pydantic-ai = { version = "*", optional = true }
-openinference-instrumentation-smolagents = { version = "*", optional = true }
-openinference-instrumentation-strands-agents = { version = "*", optional = true }
-openinference-instrumentation-vertexai = { version = "*", optional = true }
-openinference-instrumentation-claude-agent-sdk = { version = "*", optional = true }
-
-[tool.poetry.extras]
+[project.optional-dependencies]
 agent-framework = ["openinference-instrumentation-agent-framework"]
 agentspec = ["openinference-instrumentation-agentspec"]
 agno = ["openinference-instrumentation-agno"]
@@ -65,7 +27,7 @@ anthropic = ["openinference-instrumentation-anthropic"]
 autogen = ["openinference-instrumentation-autogen"]
 autogen-agentchat = ["openinference-instrumentation-autogen-agentchat"]
 bedrock = ["openinference-instrumentation-bedrock"]
-beeai = ["openinference-instrumentation-beeai"]
+beeai = ["openinference-instrumentation-beeai ; python_version >= '3.11'"]
 crewai = ["openinference-instrumentation-crewai"]
 dspy = ["openinference-instrumentation-dspy"]
 google-adk = ["openinference-instrumentation-google-adk"]
@@ -92,55 +54,63 @@ strands-agents = ["openinference-instrumentation-strands-agents"]
 vertexai = ["openinference-instrumentation-vertexai"]
 claude-agent-sdk = ["openinference-instrumentation-claude-agent-sdk"]
 all = [
-    "openinference-instrumentation-agent-framework",
-    "openinference-instrumentation-agentspec",
-    "openinference-instrumentation-agno",
-    "openinference-instrumentation-anthropic",
-    "openinference-instrumentation-autogen",
-    "openinference-instrumentation-autogen-agentchat",
-    "openinference-instrumentation-bedrock",
-    "openinference-instrumentation-beeai",
-    "openinference-instrumentation-crewai",
-    "openinference-instrumentation-dspy",
-    "openinference-instrumentation-google-adk",
-    "openinference-instrumentation-google-genai",
-    "openinference-instrumentation-groq",
-    "openinference-instrumentation-guardrails",
-    "openinference-instrumentation-haystack",
-    "openinference-instrumentation-instructor",
-    "openinference-instrumentation-langchain",
-    "openinference-instrumentation-litellm",
-    "openinference-instrumentation-llama-index",
-    "openinference-instrumentation-mcp",
-    "openinference-instrumentation-mistralai",
-    "openinference-instrumentation-monkai-agent",
-    "openinference-instrumentation-openai",
-    "openinference-instrumentation-openai-agents",
-    "openinference-instrumentation-openlit",
-    "openinference-instrumentation-openllmetry",
-    "openinference-instrumentation-pipecat",
-    "openinference-instrumentation-portkey",
-    "openinference-instrumentation-pydantic-ai",
-    "openinference-instrumentation-smolagents",
-    "openinference-instrumentation-strands-agents",
-    "openinference-instrumentation-vertexai",
-    "openinference-instrumentation-claude-agent-sdk",
+  "openinference-instrumentation-agent-framework",
+  "openinference-instrumentation-agentspec",
+  "openinference-instrumentation-agno",
+  "openinference-instrumentation-anthropic",
+  "openinference-instrumentation-autogen",
+  "openinference-instrumentation-autogen-agentchat",
+  "openinference-instrumentation-bedrock",
+  "openinference-instrumentation-beeai ; python_version >= '3.11'",
+  "openinference-instrumentation-crewai",
+  "openinference-instrumentation-dspy",
+  "openinference-instrumentation-google-adk",
+  "openinference-instrumentation-google-genai",
+  "openinference-instrumentation-groq",
+  "openinference-instrumentation-guardrails",
+  "openinference-instrumentation-haystack",
+  "openinference-instrumentation-instructor",
+  "openinference-instrumentation-langchain",
+  "openinference-instrumentation-litellm",
+  "openinference-instrumentation-llama-index",
+  "openinference-instrumentation-mcp",
+  "openinference-instrumentation-mistralai",
+  "openinference-instrumentation-monkai-agent",
+  "openinference-instrumentation-openai",
+  "openinference-instrumentation-openai-agents",
+  "openinference-instrumentation-openlit",
+  "openinference-instrumentation-openllmetry",
+  "openinference-instrumentation-pipecat",
+  "openinference-instrumentation-portkey",
+  "openinference-instrumentation-pydantic-ai",
+  "openinference-instrumentation-smolagents",
+  "openinference-instrumentation-strands-agents",
+  "openinference-instrumentation-vertexai",
+  "openinference-instrumentation-claude-agent-sdk",
 ]
 
-[tool.poetry.group.dev.dependencies]
-black = "*"
-isort = "*"
-autoflake = "*"
-ruff = "*"
-mypy = "*"
-pytest = "*"
-pytest-mock = "*"
-respx = "*"
-pytest-asyncio = "*"
+[dependency-groups]
+dev = [
+  "black",
+  "isort",
+  "autoflake",
+  "ruff",
+  "mypy",
+  "pytest",
+  "pytest-mock",
+  "respx",
+  "pytest-asyncio",
+]
+
+[tool.uv]
+exclude-newer = "3 days"
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/arthur_observability_sdk", "src/arthur_genai_client"]
 
 [tool.black]
 line-length = 100

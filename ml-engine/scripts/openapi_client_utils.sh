@@ -51,5 +51,5 @@ fi
 
 if [ "$purpose" == "install" ]; then
   echo "Installing the newly generated $runtime client"
-  poetry run pip install ../src/genai_client -vvv
+  uv pip install ../src/genai_client -vvv
 fi
