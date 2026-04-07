@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.501"
+        "version": "2.1.503"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -15755,6 +15755,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
+                            "format": "uuid",
                             "title": "Task Id"
                         }
                     }

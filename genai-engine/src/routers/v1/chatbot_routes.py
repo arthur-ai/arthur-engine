@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from auth.authorization_header_elements import (
     get_bearer_access_token_from_cookie_or_header,
 )
-from dependencies import get_db_session
+from dependencies import get_db_session, get_validated_task
 from repositories.chatbot_repository import ChatbotRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
@@ -15,7 +15,7 @@ from schemas.chatbot_schemas import (
     ChatbotRequest,
 )
 from schemas.enums import PermissionLevelsEnum
-from schemas.internal_schemas import User
+from schemas.internal_schemas import Task, User
 from utils.constants import GENAI_ENGINE_INGRESS_URI_ENV_VAR
 from utils.users import permission_checker
 from utils.utils import get_env_var
@@ -35,11 +35,11 @@ chatbot_routes = APIRouter(
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 async def stream_chatbot(
     request: Request,
-    task_id: str,
     body: ChatbotRequest,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     token: str = Depends(get_bearer_access_token_from_cookie_or_header),
+    task: Task = Depends(get_validated_task),
 ) -> StreamingResponse:
     try:
         repo = ChatbotRepository(db_session)
@@ -57,7 +57,7 @@ async def stream_chatbot(
         user_id = current_user.id
         return repo.stream_response(
             body,
-            task_id,
+            task.id,
             token,
             request.app,
             base_url,
