@@ -45,7 +45,7 @@ if [[ $REMOTE_TEST_URL != *"localhost"* ]]; then
     sleep 90
 fi
 
-poetry run pytest -m "integration_tests"
+uv run pytest -m "integration_tests"
 if [[ $? == '1' ]]
 then
     echo "$(date): Integration tests failed, returning with exit code 1"

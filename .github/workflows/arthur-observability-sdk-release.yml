@@ -70,17 +70,17 @@ jobs:
           name: arthur-genai-client
           path: arthur-observability-sdk/python/src/arthur_genai_client
 
-      - uses: ./.github/workflows/composite-actions/setup-poetry
+      - uses: ./.github/workflows/composite-actions/setup-uv
         with:
           working-directory: arthur-observability-sdk/python
 
       - name: Compute version and build wheel
         run: |
-          BASE_VERSION=$(poetry -C arthur-observability-sdk/python version --short)
+          BASE_VERSION=$(python3 -c "import tomllib; d=tomllib.load(open('arthur-observability-sdk/python/pyproject.toml','rb')); print(d['project']['version'])")
           if [ "${{ github.ref }}" = "refs/heads/dev" ]; then
             DEV_VERSION="${BASE_VERSION}.dev0"
             echo "Building dev version: ${DEV_VERSION}"
-            poetry -C arthur-observability-sdk/python version "${DEV_VERSION}"
+            sed -i "s/^version = .*/version = \"${DEV_VERSION}\"/" arthur-observability-sdk/python/pyproject.toml
           else
             echo "Building stable version: ${BASE_VERSION}"
           fi
@@ -131,12 +131,12 @@ jobs:
           fetch-depth: 0
           token: ${{ steps.generate-token.outputs.token }}
 
-      - name: Install Poetry
-        run: pip install poetry
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
 
       - name: Create and push git tag
         run: |
-          VERSION=$(poetry -C arthur-observability-sdk/python version --short)
+          VERSION=$(python3 -c "import tomllib; d=tomllib.load(open('arthur-observability-sdk/python/pyproject.toml','rb')); print(d['project']['version'])")
           TAG="sdk-v${VERSION}"
           echo "Creating tag: ${TAG}"
           git tag "${TAG}"

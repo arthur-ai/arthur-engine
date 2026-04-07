@@ -1,5 +1,6 @@
 import pytest
 from arthur_common.models.enums import RuleScope
+
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 from tests.clients.unit_test_client import get_genai_engine_test_client
 
@@ -24,6 +25,8 @@ def clear_old_tasks_before_test_run(initialize_client):
     tasks = tasks.tasks
     assert status_code == 200
     for task in tasks:
+        if task.is_system_task:
+            continue
         status_code = client.delete_task(task.id)
         assert status_code == 204
     yield
