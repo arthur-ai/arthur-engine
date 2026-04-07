@@ -162,7 +162,7 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
 
   return (
     <Stack gap={1} height="100%" overflow="hidden">
-      <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={hasActiveFilters} dataType="traces">
+      <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={hasActiveFilters} isLoading={isLoading} dataType="traces">
         {/* Search bar and filter button */}
         {(hasData || hasActiveFilters || error) && (
           <Paper variant="outlined" sx={{ p: 2 }}>
