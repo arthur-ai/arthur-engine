@@ -1,6 +1,6 @@
 ---
 name: setup-genai-dev
-description: Set up the GenAI Engine development environment. Use when starting work on the project for the first time, or when environment needs to be reset. Handles Poetry, PostgreSQL, migrations, and environment variables.
+description: Set up the GenAI Engine development environment. Use when starting work on the project for the first time, or when environment needs to be reset. Handles uv, PostgreSQL, migrations, and environment variables.
 allowed-tools: Bash, Read, Task
 ---
 
@@ -25,13 +25,13 @@ Run the following setup steps for the GenAI Engine development environment. Repo
 
 **Step 1 — Prerequisites check:**
 ```bash
-python3 --version && docker ps && poetry --version
+python3 --version && docker ps && uv --version
 ```
 If any fail, report which tool is missing and stop.
 
-**Step 2 — Configure Poetry and install dependencies:**
+**Step 2 — Install dependencies:**
 ```bash
-cd genai-engine && poetry env use 3.12 && poetry install --with dev,linters
+cd genai-engine && uv sync --group dev --group linters
 ```
 
 **Step 3 — Start PostgreSQL:**
@@ -55,7 +55,7 @@ export POSTGRES_USER=postgres \
   GENAI_ENGINE_ADMIN_KEY=changeme123 \
   GENAI_ENGINE_ENABLE_PERSISTENCE=enabled \
   ALLOW_ADMIN_KEY_GENERAL_ACCESS=enabled && \
-poetry run alembic upgrade head && poetry run alembic current
+uv run alembic upgrade head && uv run alembic current
 ```
 
 Report the final migration revision that is current after running these steps.

@@ -12,8 +12,9 @@ The GenAI Engine (formerly known as Arthur Shield) is **a tool for evaluating an
   - [Documentation](#documentation)
   - [⚠️ Important Note for Intel Users](#️-important-note-for-intel-users)
   - [Developer Setup (for Mac)](#developer-setup-for-mac)
-    - [Install the Python dependencies with Poetry](#install-the-python-dependencies-with-poetry)
+    - [Install the Python dependencies with uv](#install-the-python-dependencies-with-uv)
     - [Run Postgres](#run-postgres)
+    - [Building the Docker image (`dockerfile`)](#building-the-docker-image-dockerfile)
     - [Alembic](#alembic)
       - [Set up variables for Alembic](#set-up-variables-for-alembic)
       - [Populate the Database Schema with Alembic](#populate-the-database-schema-with-alembic)
@@ -79,33 +80,24 @@ This ensures a consistent development experience across all platforms.
 
 ## Developer Setup (for Mac)
 
-### Install the Python dependencies with Poetry
+### Install the Python dependencies with uv
 
 1. Git clone the repo
-2. Install Poetry: Poetry is a Python dependency management framework. `pyproject.toml` is the descriptor.
+2. Install uv: uv is a Python dependency management tool. `pyproject.toml` is the descriptor.
    ```bash
-   pip install poetry
+   pip install uv
    ```
-3. Set the proper Python version: Currently developed and tested with `3.12.8`
-
+3. Load Python env and install dependencies/packages
    ```bash
-   cd genai-engine
-
-   poetry self add poetry-plugin-shell
-   poetry shell && poetry env use 3.12
-   ```
-
-4. Install dependencies/packages
-   ```bash
-   poetry install
+   uv sync
    ```
    To add (or upgrade) a dependency, use the following command:
    ```bash
-   poetry add <package_name>==<package_version>
+   uv add <package_name>==<package_version>
    ```
    To add (or upgrade) a dev dependency, use the following command:
    ```bash
-   poetry add --group dev <package_name>==<package_version>
+   uv add --group dev <package_name>==<package_version>
    ```
 
 ### Run Postgres
@@ -117,10 +109,41 @@ A Postgres database is required to run the GenAI Engine. The easiest way to get 
 3. Run `docker compose up`
 4. Login with `postgres/changeme_pg_password`
 
+### Building the Docker image (`dockerfile`)
+
+The [dockerfile](dockerfile) builds the API, installs Python dependencies from `uv.lock`, and compiles the React UI into static assets. The UI depends on **private npm packages** under the `@arthur` scope; Yarn reads `GITLAB_UNIFY_FRONTEND_TOKEN` from the environment (see [ui/.yarnrc.yml](ui/.yarnrc.yml)). If that token is missing or invalid, `yarn install` fails with **HTTP 404** from GitLab’s npm registry. Use a GitLab **deploy token** or **personal access token** with **`read_package_registry`** (and access to the registry project referenced in `.yarnrc.yml`).
+
+From the `genai-engine` directory:
+
+```bash
+# Required: pass a token (or export GITLAB_UNIFY_FRONTEND_TOKEN first)
+docker build -f dockerfile \
+  --build-arg GITLAB_UNIFY_FRONTEND_TOKEN="$GITLAB_UNIFY_FRONTEND_TOKEN" \
+  -t genai-engine:local \
+  .
+```
+
+```bash
+# GPU image (PyTorch CUDA stack from requirements-gpu.txt)
+docker build -f dockerfile \
+  --build-arg TORCH_DEVICE=gpu \
+  --build-arg GITLAB_UNIFY_FRONTEND_TOKEN="$GITLAB_UNIFY_FRONTEND_TOKEN" \
+  -t genai-engine:local-gpu \
+  .
+```
+
+Optional build arguments:
+
+- `TORCH_DEVICE` — `cpu` (default) or `gpu`
+- `ENABLE_TELEMETRY` — `true` or `false` (default `false`); appended to the copied `.env` in the image
+- `METICULOUS_RECORDING_TOKEN`, `METICULOUS_API_TOKEN` — only if the UI build needs them
+
+**Docker Compose:** [docker-compose.yml](docker-compose.yml) forwards `GITLAB_UNIFY_FRONTEND_TOKEN` from your shell or `.env` into `docker compose build`, so you do not need to repeat `--build-arg` if that variable is already set.
+
 ### Alembic
 #### Set up variables for Alembic
 
-Make sure the Poetry install is complete and you have a running Postgres instance first. After that setup the variables
+Make sure the uv sync is complete and you have a running Postgres instance first. After that setup the variables
 (example contains default valuse)
 
 Example:
@@ -139,7 +162,7 @@ export GENAI_ENGINE_SECRET_STORE_KEY=changeme_secret_store_key
 After setting up variables you could run a migration scripts. To do it go to `genai-engine` directory and execute following command:
 
 ```bash
-poetry run alembic upgrade head
+uv run alembic upgrade head
 ```
 
 This command will apply newest migration scripts
@@ -150,7 +173,7 @@ a new file that contains DB changes import this file to [DB Models init file](sr
 
 After that run following command:
 ```bash
-poetry run alembic revision --autogenerate -m "<commit message>"
+uv run alembic revision --autogenerate -m "<commit message>"
 ```
 
 **Keep the message short, avoid special characters.**
@@ -165,9 +188,9 @@ poetry run alembic revision --autogenerate -m "<commit message>"
    - Kubernetes
    - Markdown All in One
 3. Open a new window and select the `genai-engine` folder
-4. Find the path to the interpreter used by the Poetry environment
+4. Find the path to the interpreter used by the uv environment
    ```bash
-   poetry env info --path
+   uv python find
    ```
 5. Open a Python file (e.g. `src/server.py`) and make sure you have the Python interpreter looked up in the previous step selected
 6. Create a new launch configuration: `Run` -> `Add Configurations` -> `Python Debugger` -> `Python File `. Add the below configuration and adjust the values according to your environment. Please reference the `.env` file.
@@ -178,11 +201,20 @@ poetry run alembic revision --autogenerate -m "<commit message>"
      "type": "python",
      "request": "launch",
      "module": "uvicorn",
-     "args": ["src.server:get_app", "--reload"],
+     "args": [
+       "src.server:get_app",
+       "--host",
+       "0.0.0.0",
+       "--port",
+       "3030",
+       "--reload"
+     ],
      "jinja": true,
      "justMyCode": false,
      "env": {
        "PYTHONPATH": "src",
+       "PYTHONUNBUFFERED": "1",
+       "PYTHONWARNINGS": "default",
 
        "POSTGRES_USER": "postgres",
        "POSTGRES_PASSWORD": "changeme_pg_password",
@@ -198,7 +230,7 @@ poetry run alembic revision --autogenerate -m "<commit message>"
 
        "GENAI_ENGINE_OPENAI_PROVIDER": "Azure",
        "GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS": "model_name::https://my_service.openai.azure.com/::my_api_key",
-       "GENAI_ENGINE_SECRET_STORE_KEY": "some_test_key"
+       "GENAI_ENGINE_SECRET_STORE_KEY": "changeme_secret_store_key"
      }
    }
    ```
@@ -209,7 +241,7 @@ poetry run alembic revision --autogenerate -m "<commit message>"
 ### Run the app via the terminal
 
 1. Load a dedicated Python environment with a compatible Python version (i.e. `3.12`)
-2. [Install the Python dependencies with Poetry](#install-the-python-dependencies-with-poetry)
+2. [Install the Python dependencies with uv](#install-the-python-dependencies-with-uv)
 3. Set the following environment variables:
 
    ```
@@ -228,13 +260,13 @@ poetry run alembic revision --autogenerate -m "<commit message>"
    export GENAI_ENGINE_OPENAI_PROVIDER=Azure
    export OPENAI_API_VERSION=2023-07-01-preview
    export GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=model_name::https://my_service.openai.azure.com/::my_api_key
-   export GENAI_ENGINE_SECRET_STORE_KEY="some_test_key"
+   export GENAI_ENGINE_SECRET_STORE_KEY="changeme_secret_store_key"
    ```
 
 4. Run the server
    ```bash
    export PYTHONPATH="src:$PYTHONPATH"
-   poetry run serve
+   uv run serve
    ```
 
 ## Making your first commit
@@ -259,7 +291,7 @@ The pre-commit hook also runs a check to make sure that all endpoints have been 
 using the below script.
 
 ```bash
-poetry run python routes_security_check.py
+uv run python routes_security_check.py
 ```
 
 Script accepts the following arguments:
@@ -272,19 +304,19 @@ Script accepts the following arguments:
 
 Setup variables:
 ```bash
-export GENAI_ENGINE_SECRET_STORE_KEY="some_test_key"
+export GENAI_ENGINE_SECRET_STORE_KEY="changeme_secret_store_key"
 ```
 
 Run the unit tests with the following command:
 
 ```bash
-poetry run pytest -m "unit_tests"
+uv run pytest -m "unit_tests"
 ```
 
 Run the unit tests with coverage:
 
 ```bash
-poetry run pytest -m "unit_tests" --cov=src --cov-fail-under=79
+uv run pytest -m "unit_tests" --cov=src --cov-fail-under=79
 ```
 
 ## Integration Tests
@@ -310,7 +342,7 @@ Follow the steps below to run performance tests:
 
 1. Install Locust
    ```bash
-   poetry install --only performance
+   uv sync --group performance
    ```
 2. Run performance tests by referring to the [Locust README](locust/README.md)
 
@@ -322,7 +354,7 @@ brew install oasdiff
 export PYTHONPATH="src:$PYTHONPATH"
 ```
 
-`poetry run generate_changelog` from the genai-engine directory when making changes to routes and request/response schemas.
+`uv run generate_changelog` from the genai-engine directory when making changes to routes and request/response schemas.
 
 If you can't install torch on your computer and want to generate the changelog from a container, run
 `docker compose up -d changelog-generator` from the genai-engine directory instead.
