@@ -1,8 +1,10 @@
 import { Operators, TracesEmptyState } from "@arthur/shared-components";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import ScienceOutlinedIcon from "@mui/icons-material/ScienceOutlined";
 import {
   Box,
+  Button,
   Chip,
   CircularProgress,
   Dialog,
@@ -15,11 +17,13 @@ import {
   Select,
   Skeleton,
   Stack,
+  Tab,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableRow,
+  Tabs,
   Typography,
 } from "@mui/material";
 import { Link as MuiLink } from "@mui/material";
@@ -30,6 +34,8 @@ import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { Details } from "../components/results/components/details";
+import { TestRunDialog } from "../components/TestRunDialog";
+import { TestRunsHistory } from "../components/TestRunsHistory";
 import { useContinuousEval } from "../hooks/useContinuousEval";
 import { continuousEvalsResultsQueryOptions } from "../hooks/useContinuousEvalsResults";
 
@@ -56,6 +62,8 @@ const STATUS_OPTIONS: Array<{ label: string; value: ContinuousEvalRunStatus | ""
   { label: "Skipped", value: "skipped" },
 ];
 
+type DetailTab = "traces" | "test-runs";
+
 export const LiveEvalDetail = () => {
   const { evalId } = useParams<{ evalId: string }>();
 
@@ -63,9 +71,11 @@ export const LiveEvalDetail = () => {
   const { defaultCurrency, timezone, use24Hour } = useDisplaySettings();
   const api = useApi()!;
 
+  const [activeTab, setActiveTab] = useState<DetailTab>("traces");
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
   const [selectedAnnotationId, setSelectedAnnotationId] = useState("");
   const [statusFilter, setStatusFilter] = useState<ContinuousEvalRunStatus | "">("");
+  const [testDialogOpen, setTestDialogOpen] = useState(false);
 
   const filters = [
     { name: "continuous_eval_id", operator: Operators.IN, value: [evalId!] },
@@ -83,7 +93,7 @@ export const LiveEvalDetail = () => {
       pagination: { page: pagination.pageIndex, page_size: pagination.pageSize },
       filters,
     }),
-    enabled: !!task?.id && !!evalId,
+    enabled: !!task?.id && !!evalId && activeTab === "traces",
   });
 
   const handleStatusChange = (value: ContinuousEvalRunStatus | "") => {
@@ -249,38 +259,61 @@ export const LiveEvalDetail = () => {
             )}
           </Paper>
 
-          {/* Evaluated Traces */}
-          <Paper variant="outlined" sx={{ overflow: "hidden" }}>
-            <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: "divider" }}>
-              <Stack direction="row" alignItems="center" justifyContent="space-between">
-                <Stack>
-                  <Typography variant="h6" fontWeight={600}>
-                    Evaluated Traces
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Real-time evaluation results as traces are processed
-                  </Typography>
+          {/* Tabs */}
+          <Stack direction="row" alignItems="center" sx={{ borderBottom: 1, borderColor: "divider" }}>
+            <Tabs value={activeTab} onChange={(_, value) => setActiveTab(value)} sx={{ flex: 1 }}>
+              <Tab label="Evaluated Traces" value="traces" />
+              <Tab label="Test Runs" value="test-runs" />
+            </Tabs>
+            <Button variant="outlined" size="small" startIcon={<ScienceOutlinedIcon />} onClick={() => setTestDialogOpen(true)} sx={{ mr: 1 }}>
+              Test Eval
+            </Button>
+          </Stack>
+
+          {/* Tab content */}
+          {activeTab === "traces" && (
+            <Paper variant="outlined" sx={{ overflow: "hidden" }}>
+              <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: "divider" }}>
+                <Stack direction="row" alignItems="center" justifyContent="space-between">
+                  <Stack>
+                    <Typography variant="h6" fontWeight={600}>
+                      Evaluated Traces
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Real-time evaluation results as traces are processed
+                    </Typography>
+                  </Stack>
+                  <FormControl size="small" sx={{ minWidth: 140 }}>
+                    <InputLabel>Status</InputLabel>
+                    <Select value={statusFilter} label="Status" onChange={(e) => handleStatusChange(e.target.value as ContinuousEvalRunStatus | "")}>
+                      {STATUS_OPTIONS.map((opt) => (
+                        <MenuItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Stack>
-                <FormControl size="small" sx={{ minWidth: 140 }}>
-                  <InputLabel>Status</InputLabel>
-                  <Select value={statusFilter} label="Status" onChange={(e) => handleStatusChange(e.target.value as ContinuousEvalRunStatus | "")}>
-                    {STATUS_OPTIONS.map((opt) => (
-                      <MenuItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Stack>
-            </Box>
-            <MaterialReactTable table={table} />
-          </Paper>
+              </Box>
+              <MaterialReactTable table={table} />
+            </Paper>
+          )}
+
+          {activeTab === "test-runs" && <TestRunsHistory evalId={evalId!} taskId={task?.id ?? ""} />}
         </Stack>
       </Box>
 
       <Dialog open={!!selectedAnnotationId} onClose={() => setSelectedAnnotationId("")} maxWidth="xl" fullWidth>
         <Details annotationId={selectedAnnotationId || undefined} onClose={() => setSelectedAnnotationId("")} onRerunComplete={() => {}} />
       </Dialog>
+
+      <TestRunDialog
+        open={testDialogOpen}
+        onClose={() => setTestDialogOpen(false)}
+        evalId={evalId!}
+        evalName={liveEval.name}
+        taskId={task?.id ?? ""}
+      />
     </Stack>
   );
 };
