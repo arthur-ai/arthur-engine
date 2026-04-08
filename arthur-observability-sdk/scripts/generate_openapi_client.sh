@@ -51,7 +51,7 @@ if [[ "$purpose" == "generate" ]]; then
       exit 1
     fi
 
-    pkg_version=$(python3 -c "import tomllib; d=tomllib.load(open('$SCRIPT_DIR/../python/pyproject.toml','rb')); print(d['tool']['poetry']['version'])" 2>/dev/null || echo "1.0.0")
+    pkg_version=$(python3 -c "import tomllib; d=tomllib.load(open('$SCRIPT_DIR/../python/pyproject.toml','rb')); print(d['project']['version'])" 2>/dev/null || echo "1.0.0")
 
     OUTPUT_PATH="$SCRIPT_DIR/../python/src/arthur_genai_client_build"
     PACKAGE_PATH="$SCRIPT_DIR/../python/src/arthur_genai_client"
@@ -83,8 +83,8 @@ if [[ "$purpose" == "generate" ]]; then
 
 elif [[ "$purpose" == "install" ]]; then
   if [[ "$language" == "python" ]]; then
-    echo "Installing Python client into Poetry environment..."
-    poetry -C "$SCRIPT_DIR/../python" install --no-interaction
+    echo "Installing Python client into uv environment..."
+    uv sync --project "$SCRIPT_DIR/../python"
     echo "Client installed successfully."
   else
     echo "Unsupported language: $language"
