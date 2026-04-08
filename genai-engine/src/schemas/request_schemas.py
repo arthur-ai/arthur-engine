@@ -933,6 +933,34 @@ class TransformListFilterRequest(BaseModel):
     )
 
 
+# Re-exported from db_models to avoid duplication — import from there directly when possible.
+from db_models.llm_eval_models import EVAL_TYPE_LLM_EVAL, EVAL_TYPE_ML_EVAL, ML_EVAL_INPUT_VARIABLE  # noqa: E402
+
+# ML eval type identifiers
+ML_EVAL_TYPE_PII_V2 = "pii"
+ML_EVAL_TYPE_PII_V1 = "pii_v1"
+ML_EVAL_TYPE_TOXICITY = "toxicity"
+ML_EVAL_TYPE_PROMPT_INJECTION = "prompt_injection"
+
+
+class CreateMLEvalRequest(BaseModel):
+    """Request schema for creating a new ML eval version."""
+
+    ml_eval_type: str = Field(
+        description="Type of built-in ML scorer (e.g. 'pii', 'toxicity', 'prompt_injection').",
+    )
+    config: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Per-eval configuration (thresholds, entity lists, etc.).",
+    )
+
+
+class RunMLEvalRequest(BaseModel):
+    """Request schema for running an ML eval on a text input."""
+
+    text: str = Field(description="The text to evaluate.")
+
+
 class ContinuousEvalTransformVariableMappingRequest(BaseModel):
     transform_variable: str = Field(description="Name of the transform variable")
     eval_variable: str = Field(description="Name of the eval variable")
@@ -946,11 +974,27 @@ class ContinuousEvalCreateRequest(BaseModel):
         default=None,
         description="Description of the continuous eval",
     )
-    llm_eval_name: str = Field(
+    eval_type: str = Field(
+        default=EVAL_TYPE_LLM_EVAL,
+        description="Type of eval: 'llm_eval' or 'ml_eval'.",
+    )
+    # LLM eval fields (required when eval_type = "llm_eval")
+    llm_eval_name: Optional[str] = Field(
+        default=None,
         description="Name of the llm eval to create the continuous eval for",
     )
-    llm_eval_version: Union[str, int] = Field(
-        description="Version of the llm eval to create the continuous eval for. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
+    llm_eval_version: Optional[Union[str, int]] = Field(
+        default=None,
+        description="Version of the llm eval. Can be 'latest', a version number, an ISO datetime string, or a tag.",
+    )
+    # ML eval fields (required when eval_type = "ml_eval")
+    ml_eval_name: Optional[str] = Field(
+        default=None,
+        description="Name of the ML eval to create the continuous eval for",
+    )
+    ml_eval_version: Optional[Union[str, int]] = Field(
+        default=None,
+        description="Version of the ML eval. Can be 'latest', a version number, or a tag.",
     )
     transform_id: UUID = Field(
         description="ID of the transform to create the continuous eval for",
@@ -964,6 +1008,24 @@ class ContinuousEvalCreateRequest(BaseModel):
         default=True,
         description="Whether to enable or disable a continuous eval. Defaults to True.",
     )
+
+    @model_validator(mode="after")
+    def validate_eval_ref(self) -> "ContinuousEvalCreateRequest":
+        if self.eval_type == EVAL_TYPE_LLM_EVAL:
+            if not self.llm_eval_name or self.llm_eval_version is None:
+                raise ValueError(
+                    f"llm_eval_name and llm_eval_version are required when eval_type='{EVAL_TYPE_LLM_EVAL}'",
+                )
+        elif self.eval_type == EVAL_TYPE_ML_EVAL:
+            if not self.ml_eval_name or self.ml_eval_version is None:
+                raise ValueError(
+                    f"ml_eval_name and ml_eval_version are required when eval_type='{EVAL_TYPE_ML_EVAL}'",
+                )
+        else:
+            raise ValueError(
+                f"eval_type must be '{EVAL_TYPE_LLM_EVAL}' or '{EVAL_TYPE_ML_EVAL}', got '{self.eval_type}'",
+            )
+        return self
 
 
 class UpdateContinuousEvalRequest(BaseModel):

@@ -185,17 +185,31 @@ export const LiveEvalDetail = () => {
                 <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
                   Evaluator
                 </Typography>
-                <Stack direction="row" alignItems="center" gap={1}>
-                  <MuiLink
-                    variant="body1"
-                    fontWeight={500}
-                    component={Link}
-                    to={`/tasks/${liveEval.task_id}/evaluators/${encodeURIComponent(liveEval.llm_eval_name)}/versions/${liveEval.llm_eval_version}`}
-                  >
-                    {liveEval.llm_eval_name}
-                  </MuiLink>
-                  <Chip label={`v${liveEval.llm_eval_version}`} size="small" sx={{ width: "fit-content" }} />
-                </Stack>
+                {liveEval.eval_type === "ml_eval" ? (
+                  <Stack direction="row" alignItems="center" gap={1}>
+                    <Typography variant="body1" fontWeight={500}>
+                      {liveEval.ml_eval_name}
+                    </Typography>
+                    <Chip label="ML" size="small" color="secondary" variant="outlined" sx={{ width: "fit-content" }} />
+                    <Chip
+                      label={liveEval.ml_eval_version != null ? `v${liveEval.ml_eval_version}` : "latest"}
+                      size="small"
+                      sx={{ width: "fit-content" }}
+                    />
+                  </Stack>
+                ) : (
+                  <Stack direction="row" alignItems="center" gap={1}>
+                    <MuiLink
+                      variant="body1"
+                      fontWeight={500}
+                      component={Link}
+                      to={`/tasks/${liveEval.task_id}/evaluators/${encodeURIComponent(liveEval.llm_eval_name ?? "")}/versions/${liveEval.llm_eval_version ?? ""}`}
+                    >
+                      {liveEval.llm_eval_name}
+                    </MuiLink>
+                    <Chip label={`v${liveEval.llm_eval_version}`} size="small" sx={{ width: "fit-content" }} />
+                  </Stack>
+                )}
               </Stack>
 
               <Stack spacing={0.5}>

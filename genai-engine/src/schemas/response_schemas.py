@@ -751,6 +751,78 @@ class LLMEvalRunResponse(BaseModel):
     cost: str = Field(..., description="Cost of this llm completion")
 
 
+# Alias — ML evals share the same run response shape as LLM evals
+EvalRunResponse = LLMEvalRunResponse
+
+
+class MLVersionResponse(BaseModel):
+    version: int = Field(description="Version number of the ml eval")
+    created_at: datetime = Field(description="Timestamp when the ml eval version was created")
+    deleted_at: Optional[datetime] = Field(
+        default=None,
+        description="Timestamp when the ml eval version was deleted (None if not deleted)",
+    )
+    ml_eval_type: str = Field(description="Type of the ml eval (e.g. pii, toxicity)")
+    tags: List[str] = Field(default_factory=list, description="List of tags for this version")
+
+
+class MLEvalsVersionListResponse(BaseModel):
+    versions: list[MLVersionResponse] = Field(description="List of ml eval version metadata")
+    count: int = Field(description="Total number of ml eval versions")
+
+
+class MLGetAllMetadataResponse(BaseModel):
+    name: str = Field(description="Name of the ml eval")
+    versions: int = Field(description="Number of versions of the ml eval")
+    ml_eval_type: str = Field(description="Type of the ml eval")
+    latest_version_created_at: Optional[datetime] = Field(
+        default=None,
+        description="Timestamp of the latest version",
+    )
+
+
+class MLGetAllMetadataListResponse(BaseModel):
+    ml_metadata: list[MLGetAllMetadataResponse] = Field(description="List of ml eval metadata")
+    count: int = Field(description="Total number of ml evals matching filters")
+
+
+class EvalMetadataItem(BaseModel):
+    """A single eval entry from the unified /evals endpoint.
+
+    ``eval_type`` is either ``"llm"`` or ``"ml"`` and acts as the discriminator
+    for type-specific fields.  Future eval types can be added without breaking
+    existing callers by extending this model with additional optional fields.
+    """
+
+    eval_type: str = Field(description="Type of evaluator: 'llm' or 'ml'")
+    name: str = Field(description="Name of the evaluator")
+    versions: int = Field(description="Number of versions")
+    # Shared fields
+    latest_version_created_at: Optional[datetime] = Field(
+        default=None,
+        description="Timestamp of the latest version",
+    )
+    # LLM-only fields
+    tags: Optional[List[str]] = Field(default=None, description="Tags (LLM evals only)")
+    created_at: Optional[datetime] = Field(default=None, description="Creation timestamp (LLM evals only)")
+    deleted_versions: Optional[List[int]] = Field(
+        default=None,
+        description="List of deleted version numbers (LLM evals only)",
+    )
+    # ML-only fields
+    ml_eval_type: Optional[str] = Field(
+        default=None,
+        description="ML eval sub-type, e.g. 'pii', 'toxicity' (ML evals only)",
+    )
+
+
+class AllEvalsMetadataListResponse(BaseModel):
+    """Response for GET /api/v2/tasks/{task_id}/evals — all evaluator types combined."""
+
+    evals: List[EvalMetadataItem] = Field(description="List of all evaluators across all types")
+    count: int = Field(description="Total number of evaluators")
+
+
 class RenderedPromptResponse(BaseModel):
     messages: List[OpenAIMessage] = Field(
         description="List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])",

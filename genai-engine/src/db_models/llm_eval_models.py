@@ -7,6 +7,7 @@ from sqlalchemy import (
     TIMESTAMP,
     UUID,
     Boolean,
+    CheckConstraint,
     ForeignKey,
     ForeignKeyConstraint,
     Integer,
@@ -20,6 +21,13 @@ from db_models.base import Base
 
 if TYPE_CHECKING:
     from db_models.task_models import DatabaseTask
+
+# Input variable name for all ML evals
+ML_EVAL_INPUT_VARIABLE = "input"
+
+# Eval type discriminators
+EVAL_TYPE_LLM_EVAL = "llm_eval"
+EVAL_TYPE_ML_EVAL = "ml_eval"
 
 
 class DatabaseLLMEval(Base):
@@ -108,6 +116,89 @@ class DatabaseLLMEvalVersionTag(Base):
     )
 
 
+class DatabaseMLEval(Base):
+    """Database model for storing ML evals (built-in scorers) associated with tasks."""
+
+    __tablename__ = "ml_evals"
+
+    # Composite primary key: task_id + name + version
+    task_id: Mapped[str] = mapped_column(
+        String,
+        ForeignKey("tasks.id", name="fk_ml_evals_task_id"),
+        primary_key=True,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String, primary_key=True)
+    version: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+
+    # Type of built-in ML scorer (e.g. "pii", "toxicity", "prompt_injection")
+    ml_eval_type: Mapped[str] = mapped_column(String, nullable=False)
+
+    # model_provider is always "arthur_builtin" for ML evals
+    model_provider: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        default="arthur_builtin",
+    )
+
+    # Per-eval configuration (thresholds, entity lists, etc.)
+    config: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=None)
+
+    # Variables consumed by this eval (default: [ML_EVAL_INPUT_VARIABLE])
+    variables: Mapped[List[str]] = mapped_column(
+        JSON,
+        nullable=False,
+        server_default=f'["{ML_EVAL_INPUT_VARIABLE}"]',
+        default=lambda: [ML_EVAL_INPUT_VARIABLE],
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP,
+        default=datetime.now,
+        nullable=False,
+    )
+
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP,
+        nullable=True,
+        default=None,
+    )
+
+    @property
+    def tags(self) -> List[str]:
+        return [t.tag for t in self.version_tags]
+
+    # Relationships
+    version_tags: Mapped[List["DatabaseMLEvalVersionTag"]] = relationship(
+        back_populates="ml_eval",
+        lazy="select",
+        cascade="all, delete-orphan",
+    )
+
+
+class DatabaseMLEvalVersionTag(Base):
+    __tablename__ = "ml_eval_version_tags"
+
+    task_id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String, primary_key=True)
+    version: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    tag: Mapped[str] = mapped_column(String, primary_key=True)
+
+    ml_eval: Mapped["DatabaseMLEval"] = relationship(
+        back_populates="version_tags",
+        lazy="select",
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["task_id", "name", "version"],
+            ["ml_evals.task_id", "ml_evals.name", "ml_evals.version"],
+            name="fk_ml_eval_version_tags_eval",
+        ),
+        UniqueConstraint("task_id", "name", "tag", name="uq_ml_eval_task_name_tag"),
+    )
+
+
 class DatabaseContinuousEval(Base):
     __tablename__ = "continuous_evals"
 
@@ -120,10 +211,22 @@ class DatabaseContinuousEval(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
-    # llm eval composite primary key
     task_id: Mapped[str] = mapped_column(String, nullable=False)
-    llm_eval_name: Mapped[str] = mapped_column(String, nullable=False)
-    llm_eval_version: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # Discriminator: "llm_eval" or "ml_eval"
+    eval_type: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        server_default=EVAL_TYPE_LLM_EVAL,
+    )
+
+    # LLM eval reference (nullable — only set when eval_type = "llm_eval")
+    llm_eval_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    llm_eval_version: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    # ML eval reference (nullable — only set when eval_type = "ml_eval")
+    ml_eval_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    ml_eval_version: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     transform_id: Mapped[uuid.UUID] = mapped_column(
         UUID,
@@ -155,6 +258,17 @@ class DatabaseContinuousEval(Base):
             ["task_id", "llm_eval_name", "llm_eval_version"],
             ["llm_evals.task_id", "llm_evals.name", "llm_evals.version"],
             ondelete="CASCADE",
-            name="fk_llm_eval_transforms_eval",
+            name="fk_continuous_evals_llm_eval",
+        ),
+        ForeignKeyConstraint(
+            ["task_id", "ml_eval_name", "ml_eval_version"],
+            ["ml_evals.task_id", "ml_evals.name", "ml_evals.version"],
+            ondelete="CASCADE",
+            name="fk_continuous_evals_ml_eval",
+        ),
+        CheckConstraint(
+            "(eval_type = 'llm_eval' AND llm_eval_name IS NOT NULL AND llm_eval_version IS NOT NULL)"
+            " OR (eval_type = 'ml_eval' AND ml_eval_name IS NOT NULL AND ml_eval_version IS NOT NULL)",
+            name="ck_continuous_evals_eval_ref",
         ),
     )

@@ -27,7 +27,7 @@ export const LiveEvalActions = ({ config, onEdit }: Props) => {
   const { transform_id, task_id, llm_eval_name, llm_eval_version, enabled } = config;
 
   const evalUrl = useMemo(() => {
-    return `/tasks/${task_id}/evaluators/${encodeURIComponent(llm_eval_name)}/versions/${encodeURIComponent(llm_eval_version)}` as const;
+    return `/tasks/${task_id}/evaluators/${encodeURIComponent(llm_eval_name ?? "")}/versions/${encodeURIComponent(llm_eval_version ?? "")}` as const;
   }, [llm_eval_name, llm_eval_version, task_id]);
 
   const deleteContinuousEval = useDeleteContinuousEval();
@@ -48,7 +48,7 @@ export const LiveEvalActions = ({ config, onEdit }: Props) => {
         Continuous Eval
       </Menu.Trigger>
       <Menu.Portal keepMounted>
-        <Menu.Positioner sideOffset={8} side="bottom" align="center">
+        <Menu.Positioner sideOffset={8} side="bottom" align="center" style={{ zIndex: 1300 }}>
           <Menu.Popup render={<List component={Paper} dense className="outline-none origin-(--transform-origin) min-w-(--anchor-width)" />}>
             <Menu.Item render={<ListItemButton component={Link} to={`/tasks/${task_id}/transforms?id=${transform_id}`} className="gap-4" />}>
               <ListItemText primary="View Transform" />

@@ -35,7 +35,7 @@ import { useCreateContinuousEval } from "../hooks/useCreateContinuousEval";
 
 import { EvaluatorSelector } from "./components/EvaluatorSelector";
 
-import { useEval } from "@/components/evaluators/hooks/useEval";
+import { useEval, useMLEval } from "@/components/evaluators/hooks/useEval";
 import { validateTransform } from "@/components/traces/components/add-to-dataset/utils/transformBuilder";
 import { useCreateTransformMutation } from "@/components/transforms/hooks/useCreateTransformMutation";
 import { useTransforms } from "@/components/transforms/hooks/useTransforms";
@@ -46,6 +46,7 @@ import type { ContinuousEvalTransformVariableMappingRequest, NestedSpanWithMetri
 type EvaluatorFormState = {
   name: string | null;
   version: string | null;
+  eval_type: string | null;
 };
 
 type TransformFormState = {
@@ -100,6 +101,7 @@ export const ContinuousEvalStepper = ({
       evaluator: {
         name: null,
         version: null,
+        eval_type: null,
       } as EvaluatorFormState,
       transform: {
         transformId: null,
@@ -114,6 +116,7 @@ export const ContinuousEvalStepper = ({
         evaluator: z.object({
           name: z.string().min(1),
           version: z.string().min(1),
+          eval_type: z.string().min(1),
         }),
         transform: z.object({
           transformId: z.string().nullable(),
@@ -132,6 +135,7 @@ export const ContinuousEvalStepper = ({
         evaluator: z.object({
           name: z.string().min(1),
           version: z.string().min(1),
+          eval_type: z.string().min(1),
         }),
         transform: z.object({
           transformId: z.string().nullable(),
@@ -177,11 +181,14 @@ export const ContinuousEvalStepper = ({
           definition,
         });
 
+        const isMLEval = value.evaluator.eval_type === "ml";
         const { id } = await createContinuousEval.mutateAsync({
           name: evalName,
           enabled: true,
-          llm_eval_name: value.evaluator.name!,
-          llm_eval_version: value.evaluator.version!,
+          eval_type: isMLEval ? "ml_eval" : "llm_eval",
+          ...(isMLEval
+            ? { ml_eval_name: value.evaluator.name!, ml_eval_version: "latest" }
+            : { llm_eval_name: value.evaluator.name!, llm_eval_version: value.evaluator.version! }),
           transform_id: transformData.id,
           transform_variable_mapping: inlineVariables.map((v) => ({
             eval_variable: v.variable_name,
@@ -196,11 +203,14 @@ export const ContinuousEvalStepper = ({
         }
       } else {
         // Select existing transform
+        const isMLEvalSelect = value.evaluator.eval_type === "ml";
         const { id } = await createContinuousEval.mutateAsync({
           name: evalName,
           enabled: true,
-          llm_eval_name: value.evaluator.name!,
-          llm_eval_version: value.evaluator.version!,
+          eval_type: isMLEvalSelect ? "ml_eval" : "llm_eval",
+          ...(isMLEvalSelect
+            ? { ml_eval_name: value.evaluator.name!, ml_eval_version: "latest" }
+            : { llm_eval_name: value.evaluator.name!, llm_eval_version: value.evaluator.version! }),
           transform_id: value.transform.transformId!,
           transform_variable_mapping: value.variableMappings,
         });
@@ -217,7 +227,14 @@ export const ContinuousEvalStepper = ({
   const evaluator = useStore(form.store, (state) => state.values.evaluator);
   const transform = useStore(form.store, (state) => state.values.transform);
 
-  const { eval: evaluatorData } = useEval(task?.id, evaluator.name ?? undefined, evaluator.version ?? undefined);
+  const isMLEvalType = evaluator.eval_type === "ml";
+  const { eval: llmEvaluatorData } = useEval(
+    task?.id,
+    isMLEvalType ? undefined : (evaluator.name ?? undefined),
+    isMLEvalType ? undefined : (evaluator.version ?? undefined)
+  );
+  const { eval: mlEvaluatorData } = useMLEval(task?.id, isMLEvalType ? (evaluator.name ?? undefined) : undefined, evaluator.version ?? "latest");
+  const evaluatorData = isMLEvalType ? mlEvaluatorData : llmEvaluatorData;
 
   const evalVariables = useMemo(() => evaluatorData?.variables ?? [], [evaluatorData]);
 
@@ -234,12 +251,25 @@ export const ContinuousEvalStepper = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [evalVariables, transformMode]);
 
-  const { data: variableMappingData, isLoading: isLoadingVariableMapping } = useContinuousEvalVariableMapping(
+  const { data: llmVariableMappingData, isLoading: isLoadingVariableMapping } = useContinuousEvalVariableMapping(
     task?.id,
     transform.transformId ?? undefined,
     evaluator.name ?? undefined,
-    evaluator.version ?? undefined
+    evaluator.version ?? undefined,
+    evaluator.eval_type
   );
+
+  // For ML evals, derive variable mapping locally from the transform definition + eval variables
+  const { data: allTransforms } = useTransforms(task?.id ?? undefined);
+  const selectedTransform = allTransforms?.find((t) => t.id === transform.transformId);
+  const mlVariableMappingData = useMemo(() => {
+    if (evaluator.eval_type !== "ml" || !selectedTransform || evalVariables.length === 0) return undefined;
+    const transformVars = selectedTransform.definition.variables.map((v) => v.variable_name);
+    const matching = evalVariables.filter((v) => transformVars.includes(v));
+    return { eval_variables: evalVariables, transform_variables: transformVars, matching_variables: matching };
+  }, [evaluator.eval_type, selectedTransform, evalVariables]);
+
+  const variableMappingData = evaluator.eval_type === "ml" ? mlVariableMappingData : llmVariableMappingData;
 
   const variableMappings = useStore(form.store, (state) => state.values.variableMappings);
 
@@ -359,12 +389,12 @@ export const ContinuousEvalStepper = ({
               <Stack gap={2}>
                 <EvaluatorSelector taskId={task?.id ?? ""} form={form} fields="evaluator" onSelectionChange={handleSelectionChange} />
 
-                {evaluatorData && (
+                {!isMLEvalType && llmEvaluatorData && (
                   <Paper variant="outlined" sx={{ p: 2 }}>
                     <Typography variant="body2" fontWeight="bold" mb={1}>
                       Instructions Preview
                     </Typography>
-                    <MustacheHighlightedTextField value={evaluatorData?.instructions ?? ""} onChange={() => {}} readOnly size="small" />
+                    <MustacheHighlightedTextField value={llmEvaluatorData.instructions ?? ""} onChange={() => {}} readOnly size="small" />
                   </Paper>
                 )}
 

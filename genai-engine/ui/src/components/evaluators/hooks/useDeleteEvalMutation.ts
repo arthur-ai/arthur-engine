@@ -11,7 +11,7 @@ export const useDeleteEvalMutation = (taskId: string | undefined, onSuccess?: ()
 
       await api.api.deleteLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameDelete(encodePathParam(evalName), taskId);
     },
-    invalidateQueries: [{ queryKey: ["getAllLlmEvalsApiV1TasksTaskIdLlmEvalsGet"] }],
+    invalidateQueries: [{ queryKey: ["getAllLlmEvalsApiV1TasksTaskIdLlmEvalsGet"] }, { queryKey: ["getAllEvalsApiV2TasksTaskIdEvalsGet"] }],
     onSuccess,
     onError: (err) => {
       console.error("Failed to delete eval:", err);

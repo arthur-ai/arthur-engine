@@ -56,7 +56,7 @@ export const EvaluatorPipelinesPanel = ({ taskId, evalName, latestVersion, pipel
         </TableHead>
         <TableBody>
           {pipelines.map((ce) => {
-            const isStale = ce.llm_eval_version < latestVersion;
+            const isStale = (ce.llm_eval_version ?? 0) < latestVersion;
 
             return (
               <TableRow key={ce.id} hover>
