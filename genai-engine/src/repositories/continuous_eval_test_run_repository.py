@@ -78,9 +78,6 @@ class ContinuousEvalTestRunRepository:
                 detail=f"Traces not found: {', '.join(sorted(wrong_task_ids))}",
             )
 
-        # Deduplicate trace IDs
-        unique_trace_ids = list(dict.fromkeys(trace_ids))
-
         # Create test run
         now = datetime.now()
         db_test_run = DatabaseContinuousEvalTestRun(
@@ -88,7 +85,7 @@ class ContinuousEvalTestRunRepository:
             continuous_eval_id=continuous_eval_id,
             task_id=task_id,
             status=TestRunStatus.RUNNING,
-            total_count=len(unique_trace_ids),
+            total_count=len(existing_trace_ids),
             completed_count=0,
             passed_count=0,
             failed_count=0,
@@ -109,7 +106,7 @@ class ContinuousEvalTestRunRepository:
             )
 
         annotations = []
-        for trace_id in unique_trace_ids:
+        for trace_id in existing_trace_ids:
             annotation = DatabaseAgenticAnnotation(
                 id=uuid.uuid4(),
                 annotation_type=AgenticAnnotationType.CONTINUOUS_EVAL,
@@ -139,7 +136,7 @@ class ContinuousEvalTestRunRepository:
             queue_service.enqueue(job)
 
         logger.info(
-            f"Created test run {db_test_run.id} with {len(unique_trace_ids)} traces for eval {continuous_eval_id}",
+            f"Created test run {db_test_run.id} with {len(existing_trace_ids)} traces for eval {continuous_eval_id}",
         )
 
         return ContinuousEvalTestRun.from_db_model(db_test_run)
@@ -213,7 +210,7 @@ class ContinuousEvalTestRunRepository:
                 else asc
             )
             base_query = base_query.order_by(
-                sort_fn(DatabaseAgenticAnnotation.created_at),
+                sort_fn(DatabaseAgenticAnnotation.updated_at),
             )
             base_query = base_query.offset(
                 pagination_parameters.page * pagination_parameters.page_size

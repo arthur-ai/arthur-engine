@@ -38,6 +38,7 @@ export function testRunResultsQueryOptions({
         testRunId,
         page,
         page_size: pageSize,
+        sort: "desc",
       });
       return res.data;
     },
