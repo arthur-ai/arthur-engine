@@ -2,7 +2,6 @@ import AddIcon from "@mui/icons-material/Add";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Skeleton from "@mui/material/Skeleton";
-import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import Typography from "@mui/material/Typography";
@@ -11,25 +10,20 @@ import { Suspense, useState, type SyntheticEvent } from "react";
 
 import Evaluators from "@/components/evaluators/Evaluators";
 import { Results } from "@/components/live-evals/components/results";
-import MLEvaluators from "@/components/ml-evaluators/MLEvaluators";
 import { FilterStoreProvider } from "@/components/traces/stores/filter.store";
 import { TOUR_IDS } from "@/features/task-tour/selectors";
 import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 
-type EvaluateTab = "evals-management" | "ml-evals-management" | "ce-management" | "ce-results";
+type EvaluateTab = "evaluators" | "results";
 
 export const EvaluateView = () => {
-  const [isEvalsModalOpen, setIsEvalsModalOpen] = useState(false);
-  const [isMLEvalsModalOpen, setIsMLEvalsModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  const [activeTab, setActiveTab] = useQueryState(
-    "section",
-    parseAsStringEnum<EvaluateTab>(["evals-management", "ml-evals-management", "ce-management", "ce-results"]).withDefault("evals-management")
-  );
+  const [activeTab, setActiveTab] = useQueryState("section", parseAsStringEnum<EvaluateTab>(["evaluators", "results"]).withDefault("evaluators"));
 
   const handleTabChange = (_: SyntheticEvent, value: EvaluateTab) => {
     void setActiveTab(value);
-    if (value === "ce-results") {
+    if (value === "results") {
       dispatchTourEvent(TASK_TOUR_EVENTS.evaluateResultsOpened);
     }
   };
@@ -55,7 +49,7 @@ export const EvaluateView = () => {
           backgroundColor: "background.paper",
         }}
       >
-        <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
+        <Box sx={{ display: "flex", flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
           <Box>
             <Typography variant="h5" fontWeight={600} color="text.primary">
               Evaluate
@@ -64,22 +58,12 @@ export const EvaluateView = () => {
               Manage evaluators and monitor continuous evaluation performance
             </Typography>
           </Box>
-          {activeTab === "evals-management" && (
-            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => setIsEvalsModalOpen(true)}>
+          {activeTab === "evaluators" && (
+            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => setIsCreateModalOpen(true)}>
               Evaluator
             </Button>
           )}
-          {activeTab === "ml-evals-management" && (
-            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => setIsMLEvalsModalOpen(true)}>
-              ML Evaluator
-            </Button>
-          )}
-          {(activeTab === "ce-management" || activeTab === "ce-results") && (
-            <Button variant="contained" color="primary" startIcon={<AddIcon />} component={Link} to={`/tasks/${task?.id}/continuous-evals/new`}>
-              Continuous Eval
-            </Button>
-          )}
-        </Stack>
+        </Box>
       </Box>
 
       <Tabs
@@ -88,41 +72,20 @@ export const EvaluateView = () => {
         onChange={handleTabChange}
         sx={{ backgroundColor: "background.paper", borderBottom: 1, borderColor: "divider" }}
       >
-        <Tab label="Evals Management" value="evals-management" />
-        <Tab label="ML Evals" value="ml-evals-management" />
-        <Tab label="Continuous Evals" value="ce-management" />
-        <Tab label="Results" value="ce-results" data-tour-id={TOUR_IDS.evaluateResultsTab} />
+        <Tab label="Evaluators" value="evaluators" />
+        <Tab label="Results" value="results" data-tour-id={TOUR_IDS.evaluateResultsTab} />
       </Tabs>
 
       <Box sx={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-        {activeTab === "evals-management" && (
+        {activeTab === "evaluators" && (
           <Evaluators
             embedded
-            isCreateModalOpen={isEvalsModalOpen}
-            onCreateModalOpen={() => setIsEvalsModalOpen(true)}
-            onCreateModalClose={() => setIsEvalsModalOpen(false)}
+            isCreateModalOpen={isCreateModalOpen}
+            onCreateModalOpen={() => setIsCreateModalOpen(true)}
+            onCreateModalClose={() => setIsCreateModalOpen(false)}
           />
         )}
-        {activeTab === "ml-evals-management" && (
-          <MLEvaluators
-            isCreateModalOpen={isMLEvalsModalOpen}
-            onCreateModalClose={() => setIsMLEvalsModalOpen(false)}
-          />
-        )}
-        {activeTab === "ce-management" && (
-          <Suspense
-            fallback={
-              <Box sx={{ p: 3 }}>
-                <Skeleton variant="rectangular" height="50%" sx={{ borderRadius: 1 }} />
-              </Box>
-            }
-          >
-            <FilterStoreProvider timeRange="3 months">
-              <Management />
-            </FilterStoreProvider>
-          </Suspense>
-        )}
-        {activeTab === "ce-results" && (
+        {activeTab === "results" && (
           <Suspense
             fallback={
               <Box sx={{ p: 3 }}>

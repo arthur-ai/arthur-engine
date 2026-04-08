@@ -11,7 +11,8 @@ from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Task, User
-from schemas.request_schemas import CreateMLEvalRequest
+from db_models.llm_eval_models import ML_EVAL_INPUT_VARIABLE
+from schemas.request_schemas import CreateMLEvalRequest, RunMLEvalRequest
 from schemas.response_schemas import (
     EvalRunResponse,
     MLEvalsVersionListResponse,
@@ -195,7 +196,7 @@ def delete_ml_eval_version(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def run_ml_eval(
-    run_request: dict,
+    run_request: RunMLEvalRequest,
     eval_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
     eval_version: str = Path(
         ...,
@@ -208,15 +209,13 @@ def run_ml_eval(
 ) -> EvalRunResponse:
     """Run an ML eval with provided variables.
 
-    Request body should be a dict with key 'text' containing the string to evaluate.
-    Example: {"text": "Hello, my name is John and my SSN is 123-45-6789"}
+    Request body: {"text": "Hello, my name is John and my SSN is 123-45-6789"}
     """
     try:
         from repositories.ml_evals_repository import MLEvaluator
 
         evaluator = MLEvaluator(db_session)
-        text = run_request.get("text", "")
-        resolved_variables = {"text": text}
+        resolved_variables = {ML_EVAL_INPUT_VARIABLE: run_request.text}
         return evaluator.run(
             task_id=task.id,
             eval_name=eval_name,
