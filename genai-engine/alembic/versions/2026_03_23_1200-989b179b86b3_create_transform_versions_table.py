@@ -6,6 +6,7 @@ Create Date: 2026-03-23 12:00:00.000000
 
 """
 
+import json
 import uuid
 
 import sqlalchemy as sa
@@ -73,7 +74,7 @@ def upgrade() -> None:
                 "transform_id": str(row.id),
                 "task_id": row.task_id,
                 "version_number": 1,
-                "config_snapshot": row.definition,
+                "config_snapshot": json.dumps(row.definition),
                 "author": None,
                 "created_at": row.created_at,
             }
@@ -85,7 +86,7 @@ def upgrade() -> None:
                 INSERT INTO transform_versions
                     (id, transform_id, task_id, version_number, config_snapshot, author, created_at)
                 VALUES
-                    (:id, :transform_id, :task_id, :version_number, :config_snapshot::jsonb, :author, :created_at)
+                    (:id, :transform_id, :task_id, :version_number, CAST(:config_snapshot AS json), :author, :created_at)
                 """,
             ),
             rows,
