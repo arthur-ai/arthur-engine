@@ -10897,7 +10897,7 @@ export type TestRagProviderConnectionApiV1TasksTaskIdRagProvidersTestConnectionP
 export type TestRagProviderConnectionApiV1TasksTaskIdRagProvidersTestConnectionPostError = HTTPValidationError;
 
 /** TestRunStatus */
-export type TestRunStatus = "running" | "completed" | "partial_failure";
+export type TestRunStatus = "running" | "completed" | "partial_failure" | "error";
 
 /** TokenUsageCount */
 export interface TokenUsageCount {
@@ -12949,7 +12949,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.503
+ * @version 2.1.505
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {

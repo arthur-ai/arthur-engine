@@ -30198,7 +30198,8 @@
                 "enum": [
                     "running",
                     "completed",
-                    "partial_failure"
+                    "partial_failure",
+                    "error"
                 ],
                 "title": "TestRunStatus"
             },
