@@ -25,8 +25,8 @@ from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Task, User
+from db_models.llm_eval_models import EVAL_TYPE_ML_EVAL
 from schemas.request_schemas import (
-    EVAL_TYPE_ML_EVAL,
     ContinuousEvalCreateRequest,
     ContinuousEvalListFilterRequest,
     ContinuousEvalRunResultsListFilterRequest,

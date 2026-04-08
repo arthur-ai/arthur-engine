@@ -865,6 +865,7 @@ class AgenticAnnotation(BaseModel):
                 str(self.continuous_eval_id) if self.continuous_eval_id else None
             ),
             continuous_eval_name=self.continuous_eval_name,
+            eval_type=self.eval_type,
             eval_name=self.eval_name,
             eval_version=self.eval_version,
             annotation_score=self.annotation_score,
@@ -3842,8 +3843,11 @@ class ContinuousEval(BaseModel):
     name: str
     description: Optional[str]
     task_id: str
-    llm_eval_name: str
-    llm_eval_version: int
+    eval_type: str
+    llm_eval_name: Optional[str] = None
+    llm_eval_version: Optional[int] = None
+    ml_eval_name: Optional[str] = None
+    ml_eval_version: Optional[int] = None
     transform_id: uuid.UUID
     created_at: datetime
     updated_at: datetime
@@ -3867,8 +3871,11 @@ class ContinuousEval(BaseModel):
             name=self.name,
             description=self.description,
             task_id=self.task_id,
+            eval_type=self.eval_type,
             llm_eval_name=self.llm_eval_name,
             llm_eval_version=self.llm_eval_version,
+            ml_eval_name=self.ml_eval_name,
+            ml_eval_version=self.ml_eval_version,
             transform_id=self.transform_id,
             created_at=self.created_at,
             updated_at=self.updated_at,
@@ -3891,8 +3898,11 @@ class ContinuousEval(BaseModel):
             name=db_eval.name,
             description=db_eval.description,
             task_id=db_eval.task_id,
+            eval_type=db_eval.eval_type,
             llm_eval_name=db_eval.llm_eval_name,
             llm_eval_version=db_eval.llm_eval_version,
+            ml_eval_name=db_eval.ml_eval_name,
+            ml_eval_version=db_eval.ml_eval_version,
             transform_id=db_eval.transform_id,
             created_at=db_eval.created_at,
             updated_at=db_eval.updated_at,
@@ -3914,8 +3924,11 @@ class ContinuousEval(BaseModel):
             name=self.name,
             description=self.description,
             task_id=self.task_id,
+            eval_type=self.eval_type,
             llm_eval_name=self.llm_eval_name,
             llm_eval_version=self.llm_eval_version,
+            ml_eval_name=self.ml_eval_name,
+            ml_eval_version=self.ml_eval_version,
             transform_id=self.transform_id,
             created_at=self.created_at,
             updated_at=self.updated_at,

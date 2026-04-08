@@ -1,6 +1,6 @@
 """add ml_evals table and update continuous_evals for ML eval support
 
-Revision ID: a1b2c3d4e5f7
+Revision ID: f3d8c92e7a14
 Revises: 04c5e8528072
 Create Date: 2026-04-06 12:00:00.000000
 
@@ -12,7 +12,7 @@ from sqlalchemy.dialects.postgresql import JSON
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "a1b2c3d4e5f7"
+revision = "f3d8c92e7a14"
 down_revision = "04c5e8528072"
 branch_labels = None
 depends_on = None
@@ -145,8 +145,20 @@ def upgrade() -> None:
         " OR (eval_type = 'ml_eval' AND ml_eval_name IS NOT NULL AND ml_eval_version IS NOT NULL)",
     )
 
+    # 8. Add indexes on continuous_evals for new columns
+    op.create_index("ix_continuous_evals_eval_type", "continuous_evals", ["eval_type"])
+    op.create_index(
+        "ix_continuous_evals_task_ml_eval_name",
+        "continuous_evals",
+        ["task_id", "ml_eval_name"],
+    )
+
 
 def downgrade() -> None:
+    # Drop indexes added in upgrade
+    op.drop_index("ix_continuous_evals_task_ml_eval_name", "continuous_evals")
+    op.drop_index("ix_continuous_evals_eval_type", "continuous_evals")
+
     # Remove check constraint
     op.drop_constraint(
         "ck_continuous_evals_eval_ref",
@@ -167,6 +179,10 @@ def downgrade() -> None:
         "continuous_evals",
         type_="foreignkey",
     )
+
+    # Delete any continuous_evals that reference ml_evals — they have NULL
+    # llm_eval_name/llm_eval_version and would violate the NOT NULL constraint below.
+    op.execute("DELETE FROM continuous_evals WHERE eval_type = 'ml_eval'")
 
     # Remove ml eval columns
     op.drop_column("continuous_evals", "ml_eval_version")

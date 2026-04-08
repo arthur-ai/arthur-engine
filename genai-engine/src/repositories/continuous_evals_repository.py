@@ -17,7 +17,7 @@ from sqlalchemy.orm import Query, Session
 
 from db_models import DatabaseSpan
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
-from db_models.llm_eval_models import DatabaseContinuousEval
+from db_models.llm_eval_models import DatabaseContinuousEval, EVAL_TYPE_LLM_EVAL
 from schemas.internal_schemas import AgenticAnnotation, ContinuousEval, TraceTransform
 from schemas.request_schemas import (
     ContinuousEvalCreateRequest,
@@ -143,8 +143,11 @@ class ContinuousEvalsRepository:
             name=continuous_eval_request.name,
             description=continuous_eval_request.description,
             task_id=task_id,
+            eval_type=continuous_eval_request.eval_type,
             llm_eval_name=continuous_eval_request.llm_eval_name,
             llm_eval_version=continuous_eval_request.llm_eval_version,
+            ml_eval_name=continuous_eval_request.ml_eval_name,
+            ml_eval_version=continuous_eval_request.ml_eval_version,
             transform_id=continuous_eval_request.transform_id,
             created_at=datetime.now(),
             updated_at=datetime.now(),
@@ -437,6 +440,14 @@ class ContinuousEvalsRepository:
 
             if not continuous_evals:
                 return
+
+            # Prioritize LLM evals over ML evals — LLM evals are fast (API calls),
+            # ML evals load local models and take longer. Sorting here ensures LLM
+            # eval jobs land in the executor FIFO queue first.
+            continuous_evals = sorted(
+                continuous_evals,
+                key=lambda ce: 0 if ce.eval_type == EVAL_TYPE_LLM_EVAL else 1,
+            )
 
             # Create pending annotations and enqueue jobs
             for continuous_eval in continuous_evals:

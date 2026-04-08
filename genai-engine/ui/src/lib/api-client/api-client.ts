@@ -917,6 +917,23 @@ export interface AgenticTestCaseListResponse {
   total_pages: number;
 }
 
+/**
+ * AllEvalsMetadataListResponse
+ * Response for GET /api/v2/tasks/{task_id}/evals — all evaluator types combined.
+ */
+export interface AllEvalsMetadataListResponse {
+  /**
+   * Count
+   * Total number of evaluators
+   */
+  count: number;
+  /**
+   * Evals
+   * List of all evaluators across all types
+   */
+  evals: EvalMetadataItem[];
+}
+
 export type AnnotateTraceApiV1TracesTraceIdAnnotationsPostData = AgenticAnnotationResponse;
 
 export type AnnotateTraceApiV1TracesTraceIdAnnotationsPostError = HTTPValidationError;
@@ -2330,6 +2347,58 @@ export interface EvalExecutionResult {
 }
 
 /**
+ * EvalMetadataItem
+ * A single eval entry from the unified /evals endpoint.
+ */
+export interface EvalMetadataItem {
+  /**
+   * Created At
+   * Creation timestamp (LLM evals only)
+   * @default null
+   */
+  created_at?: string | null;
+  /**
+   * Deleted Versions
+   * List of deleted version numbers (LLM evals only)
+   * @default null
+   */
+  deleted_versions?: number[] | null;
+  /**
+   * Eval Type
+   * Type of evaluator: 'llm' or 'ml'
+   */
+  eval_type: string;
+  /**
+   * Latest Version Created At
+   * Timestamp of the latest version
+   * @default null
+   */
+  latest_version_created_at?: string | null;
+  /**
+   * Ml Eval Type
+   * ML eval sub-type, e.g. 'pii', 'toxicity' (ML evals only)
+   * @default null
+   */
+  ml_eval_type?: string | null;
+  /**
+   * Name
+   * Name of the evaluator
+   */
+  name: string;
+  /**
+   * Tags
+   * Tags (LLM evals only)
+   * @default null
+   */
+  tags?: string[] | null;
+  /**
+   * Versions
+   * Number of versions
+   */
+  versions: number;
+}
+
+/**
  * EvalRef
  * Reference to an evaluation configuration
  */
@@ -3064,6 +3133,35 @@ export interface GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams {
    * Task Id
    * @format uuid
    */
+  taskId: string;
+}
+
+export type GetAllEvalsApiV2TasksTaskIdEvalsGetData = AllEvalsMetadataListResponse;
+
+export type GetAllEvalsApiV2TasksTaskIdEvalsGetError = HTTPValidationError;
+
+export interface GetAllEvalsApiV2TasksTaskIdEvalsGetParams {
+  /**
+   * Name
+   * @default null
+   */
+  name?: string | null;
+  /**
+   * Page
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * @default 50
+   */
+  page_size?: number;
+  /**
+   * Sort
+   * @default "desc"
+   */
+  sort?: string | null;
+  /** Task Id */
   taskId: string;
 }
 
@@ -6129,6 +6227,12 @@ export interface MLGetAllMetadataListResponse {
 
 /** MLGetAllMetadataResponse */
 export interface MLGetAllMetadataResponse {
+  /**
+   * Latest Version Created At
+   * Timestamp of the latest version
+   * @default null
+   */
+  latest_version_created_at?: string | null;
   /**
    * Ml Eval Type
    * Type of ML evaluator
@@ -14220,6 +14324,25 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetError
       >({
         path: `/api/v1/tasks/${taskId}/prompts/${promptName}/versions`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Return metadata for every evaluator associated with a task — both LLM and ML evals — in a single list. The eval_type field on each item indicates the type ('llm' or 'ml').
+     *
+     * @tags Evals
+     * @name GetAllEvalsApiV2TasksTaskIdEvalsGet
+     * @summary Get all evaluators
+     * @request GET:/api/v2/tasks/{task_id}/evals
+     * @secure
+     */
+    getAllEvalsApiV2TasksTaskIdEvalsGet: ({ taskId, ...query }: GetAllEvalsApiV2TasksTaskIdEvalsGetParams, params: RequestParams = {}) =>
+      this.request<GetAllEvalsApiV2TasksTaskIdEvalsGetData, GetAllEvalsApiV2TasksTaskIdEvalsGetError>({
+        path: `/api/v2/tasks/${taskId}/evals`,
         method: "GET",
         query: query,
         secure: true,

@@ -7,13 +7,15 @@ get_ml_scorer — per-type lazy scorer initialization.
 import logging
 from typing import List, Optional, Type
 
+from sqlalchemy import func
+
 from arthur_common.models.task_eval_schemas import MLEval
 from sqlalchemy.orm import Session
 
-from db_models.llm_eval_models import DatabaseMLEval, DatabaseMLEvalVersionTag
+from db_models.llm_eval_models import DatabaseMLEval, DatabaseMLEvalVersionTag, ML_EVAL_INPUT_VARIABLE
 from repositories.base_evaluator import BaseEvaluator
 from schemas.internal_schemas import ContinuousEvalTransformVariableMapping
-from schemas.request_schemas import ML_EVAL_INPUT_VARIABLE, CreateMLEvalRequest
+from schemas.request_schemas import CreateMLEvalRequest
 from schemas.response_schemas import (
     EvalRunResponse,
     MLEvalsVersionListResponse,
@@ -226,30 +228,23 @@ class MLEvalsRepository:
         rows = (
             self.db_session.query(
                 self.db_model.name,
+                func.count(self.db_model.version).label("version_count"),
+                func.max(self.db_model.ml_eval_type).label("ml_eval_type"),
+                func.max(self.db_model.created_at).label("latest_version_created_at"),
             )
             .filter(self.db_model.task_id == task_id)
-            .distinct(self.db_model.name)
+            .group_by(self.db_model.name)
             .all()
         )
-        metadata = []
-        for (name,) in rows:
-            items = (
-                self.db_session.query(self.db_model)
-                .filter(
-                    self.db_model.task_id == task_id,
-                    self.db_model.name == name,
-                )
-                .all()
+        metadata = [
+            MLGetAllMetadataResponse(
+                name=name,
+                versions=version_count,
+                ml_eval_type=ml_eval_type or "",
+                latest_version_created_at=latest_version_created_at,
             )
-            # Use ml_eval_type from the latest version
-            ml_eval_type = items[-1].ml_eval_type if items else ""
-            metadata.append(
-                MLGetAllMetadataResponse(
-                    name=name,
-                    versions=len(items),
-                    ml_eval_type=ml_eval_type,
-                ),
-            )
+            for name, version_count, ml_eval_type, latest_version_created_at in rows
+        ]
         return MLGetAllMetadataListResponse(ml_metadata=metadata, count=len(metadata))
 
     def delete_version(

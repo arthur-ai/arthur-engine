@@ -2,7 +2,6 @@ import AddIcon from "@mui/icons-material/Add";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Skeleton from "@mui/material/Skeleton";
-import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import Typography from "@mui/material/Typography";
@@ -11,19 +10,14 @@ import { Suspense, useState } from "react";
 
 import Evaluators from "@/components/evaluators/Evaluators";
 import { Results } from "@/components/live-evals/components/results";
-import MLEvaluators from "@/components/ml-evaluators/MLEvaluators";
 import { FilterStoreProvider } from "@/components/traces/stores/filter.store";
 
-type EvaluateTab = "evaluators" | "ml-evals-management" | "results";
+type EvaluateTab = "evaluators" | "results";
 
 export const EvaluateView = () => {
-  const [isEvalsModalOpen, setIsEvalsModalOpen] = useState(false);
-  const [isMLEvalsModalOpen, setIsMLEvalsModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  const [activeTab, setActiveTab] = useQueryState(
-    "section",
-    parseAsStringEnum<EvaluateTab>(["evaluators", "ml-evals-management", "results"]).withDefault("evaluators")
-  );
+  const [activeTab, setActiveTab] = useQueryState("section", parseAsStringEnum<EvaluateTab>(["evaluators", "results"]).withDefault("evaluators"));
 
   return (
     <Box
@@ -46,7 +40,7 @@ export const EvaluateView = () => {
           backgroundColor: "background.paper",
         }}
       >
-        <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
+        <Box sx={{ display: "flex", flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
           <Box>
             <Typography variant="h5" fontWeight={600} color="text.primary">
               Evaluate
@@ -56,16 +50,11 @@ export const EvaluateView = () => {
             </Typography>
           </Box>
           {activeTab === "evaluators" && (
-            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => setIsEvalsModalOpen(true)}>
+            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => setIsCreateModalOpen(true)}>
               Evaluator
             </Button>
           )}
-          {activeTab === "ml-evals-management" && (
-            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => setIsMLEvalsModalOpen(true)}>
-              ML Evaluator
-            </Button>
-          )}
-        </Stack>
+        </Box>
       </Box>
 
       <Tabs
@@ -75,7 +64,6 @@ export const EvaluateView = () => {
         sx={{ backgroundColor: "background.paper", borderBottom: 1, borderColor: "divider" }}
       >
         <Tab label="Evaluators" value="evaluators" />
-        <Tab label="ML Evals" value="ml-evals-management" />
         <Tab label="Results" value="results" />
       </Tabs>
 
@@ -83,15 +71,9 @@ export const EvaluateView = () => {
         {activeTab === "evaluators" && (
           <Evaluators
             embedded
-            isCreateModalOpen={isEvalsModalOpen}
-            onCreateModalOpen={() => setIsEvalsModalOpen(true)}
-            onCreateModalClose={() => setIsEvalsModalOpen(false)}
-          />
-        )}
-        {activeTab === "ml-evals-management" && (
-          <MLEvaluators
-            isCreateModalOpen={isMLEvalsModalOpen}
-            onCreateModalClose={() => setIsMLEvalsModalOpen(false)}
+            isCreateModalOpen={isCreateModalOpen}
+            onCreateModalOpen={() => setIsCreateModalOpen(true)}
+            onCreateModalClose={() => setIsCreateModalOpen(false)}
           />
         )}
         {activeTab === "results" && (

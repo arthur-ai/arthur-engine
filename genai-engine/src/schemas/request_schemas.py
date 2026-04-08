@@ -933,9 +933,8 @@ class TransformListFilterRequest(BaseModel):
     )
 
 
-# Eval type discriminators
-EVAL_TYPE_LLM_EVAL = "llm_eval"
-EVAL_TYPE_ML_EVAL = "ml_eval"
+# Re-exported from db_models to avoid duplication — import from there directly when possible.
+from db_models.llm_eval_models import EVAL_TYPE_LLM_EVAL, EVAL_TYPE_ML_EVAL, ML_EVAL_INPUT_VARIABLE  # noqa: E402
 
 # ML eval type identifiers
 ML_EVAL_TYPE_PII_V2 = "pii"
@@ -943,8 +942,23 @@ ML_EVAL_TYPE_PII_V1 = "pii_v1"
 ML_EVAL_TYPE_TOXICITY = "toxicity"
 ML_EVAL_TYPE_PROMPT_INJECTION = "prompt_injection"
 
-# Single input variable name for all ML evals
-ML_EVAL_INPUT_VARIABLE = "input"
+
+class CreateMLEvalRequest(BaseModel):
+    """Request schema for creating a new ML eval version."""
+
+    ml_eval_type: str = Field(
+        description="Type of built-in ML scorer (e.g. 'pii', 'toxicity', 'prompt_injection').",
+    )
+    config: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Per-eval configuration (thresholds, entity lists, etc.).",
+    )
+
+
+class RunMLEvalRequest(BaseModel):
+    """Request schema for running an ML eval on a text input."""
+
+    text: str = Field(description="The text to evaluate.")
 
 
 class ContinuousEvalTransformVariableMappingRequest(BaseModel):
