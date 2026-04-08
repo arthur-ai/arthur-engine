@@ -12,6 +12,7 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
+  LinearProgress,
   Link as MuiLink,
   Stack,
   Tooltip,
@@ -246,6 +247,20 @@ function TestRunResultsModal({
             </IconButton>
           </Stack>
         </DialogTitle>
+        {displayTestRun.status === "running" && (
+          <Box sx={{ px: 3, pb: 1 }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
+              <Typography variant="caption" color="text.secondary">
+                {displayTestRun.completed_count} / {displayTestRun.total_count} completed
+              </Typography>
+            </Stack>
+            <LinearProgress
+              variant="determinate"
+              value={displayTestRun.total_count > 0 ? (displayTestRun.completed_count / displayTestRun.total_count) * 100 : 0}
+              sx={{ borderRadius: 1, height: 6 }}
+            />
+          </Box>
+        )}
         <DialogContent sx={{ p: 0 }}>
           {isLoading ? (
             <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
