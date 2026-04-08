@@ -56,9 +56,9 @@ class ContinuousEvalTestRunRepository:
                 detail=f"Continuous eval {continuous_eval_id} does not belong to task {task_id}.",
             )
 
-        # Validate all trace IDs exist
+        # Validate all trace IDs exist and belong to the same task
         existing_traces = (
-            self.db_session.query(DatabaseTraceMetadata.trace_id)
+            self.db_session.query(DatabaseTraceMetadata.trace_id, DatabaseTraceMetadata.task_id)
             .filter(DatabaseTraceMetadata.trace_id.in_(trace_ids))
             .all()
         )
@@ -68,6 +68,12 @@ class ContinuousEvalTestRunRepository:
             raise HTTPException(
                 status_code=404,
                 detail=f"Traces not found: {', '.join(sorted(missing_trace_ids))}",
+            )
+        wrong_task_ids = {t.trace_id for t in existing_traces if t.task_id != task_id}
+        if wrong_task_ids:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Traces not found: {', '.join(sorted(wrong_task_ids))}",
             )
 
         # Deduplicate trace IDs

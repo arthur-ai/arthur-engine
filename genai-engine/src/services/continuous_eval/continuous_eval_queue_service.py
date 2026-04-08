@@ -431,6 +431,7 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                 )
 
         except Exception as e:
+            db_session.rollback()
             logger.error(
                 f"Error incrementing test run counters for {test_run_id}: {e}",
                 exc_info=True,
