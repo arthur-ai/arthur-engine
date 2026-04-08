@@ -51,6 +51,7 @@ def _make_model_summary(model_id: str = None) -> ModelSummary:
     return ModelSummary(
         id=model_id or str(uuid4()),
         name="Test Model",
+        project_id=str(uuid4()),
     )
 
 
