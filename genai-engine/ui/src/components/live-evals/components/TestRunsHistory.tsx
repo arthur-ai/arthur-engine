@@ -1,4 +1,5 @@
 import { TracesEmptyState } from "@arthur/shared-components";
+import CloseIcon from "@mui/icons-material/Close";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import ReplayIcon from "@mui/icons-material/Replay";
@@ -8,7 +9,6 @@ import {
   Chip,
   CircularProgress,
   Dialog,
-  DialogActions,
   DialogContent,
   DialogTitle,
   IconButton,
@@ -107,17 +107,18 @@ function TestRunResultsModal({
   taskId,
   evalId,
   onClose,
+  onSwitchTestRun,
 }: {
   testRun: ContinuousEvalTestRunResponse;
   taskId: string;
   evalId: string;
   onClose: () => void;
+  onSwitchTestRun: (testRun: ContinuousEvalTestRunResponse) => void;
 }) {
   const api = useApi()!;
   const { defaultCurrency } = useDisplaySettings();
   const queryClient = useQueryClient();
   const createTestRun = useCreateTestRun(evalId);
-  const deleteTestRun = useDeleteTestRun(evalId);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState("");
 
   const { data: liveTestRun } = useTestRun(testRun.id);
@@ -130,14 +131,9 @@ function TestRunResultsModal({
     const results = await queryClient.fetchQuery(resultsQueryOpts);
     const traceIds = results.annotations.map((a) => a.trace_id);
     if (traceIds.length > 0) {
-      await createTestRun.mutateAsync(traceIds);
-      onClose();
+      const newTestRun = await createTestRun.mutateAsync(traceIds);
+      onSwitchTestRun(newTestRun);
     }
-  };
-
-  const handleDelete = async () => {
-    await deleteTestRun.mutateAsync(testRun.id);
-    onClose();
   };
 
   const columns = useMemo(
@@ -240,6 +236,13 @@ function TestRunResultsModal({
               )}
               {displayTestRun.skipped_count > 0 && <Chip label={`${displayTestRun.skipped_count} skipped`} size="small" variant="outlined" />}
             </Stack>
+            <Box sx={{ flex: 1 }} />
+            <Button size="small" startIcon={<ReplayIcon />} onClick={handleRunAgain} disabled={createTestRun.isPending}>
+              {createTestRun.isPending ? "Starting..." : "Run Again"}
+            </Button>
+            <IconButton size="small" onClick={onClose}>
+              <CloseIcon fontSize="small" />
+            </IconButton>
           </Stack>
         </DialogTitle>
         <DialogContent sx={{ p: 0 }}>
@@ -251,16 +254,6 @@ function TestRunResultsModal({
             <MaterialReactTable table={table} />
           )}
         </DialogContent>
-        <DialogActions>
-          <Button startIcon={<DeleteOutlineIcon />} color="error" onClick={handleDelete} disabled={deleteTestRun.isPending}>
-            {deleteTestRun.isPending ? "Deleting..." : "Delete"}
-          </Button>
-          <Button startIcon={<ReplayIcon />} onClick={handleRunAgain} disabled={createTestRun.isPending}>
-            {createTestRun.isPending ? "Starting..." : "Run Again"}
-          </Button>
-          <Box sx={{ flex: 1 }} />
-          <Button onClick={onClose}>Close</Button>
-        </DialogActions>
       </Dialog>
 
       <Dialog open={!!selectedAnnotationId} onClose={() => setSelectedAnnotationId("")} maxWidth="xl" fullWidth>
@@ -317,7 +310,15 @@ export const TestRunsHistory = ({ evalId, taskId }: { evalId: string; taskId: st
     <>
       <MaterialReactTable table={table} />
 
-      {selectedTestRun && <TestRunResultsModal testRun={selectedTestRun} taskId={taskId} evalId={evalId} onClose={() => setSelectedTestRun(null)} />}
+      {selectedTestRun && (
+        <TestRunResultsModal
+          testRun={selectedTestRun}
+          taskId={taskId}
+          evalId={evalId}
+          onClose={() => setSelectedTestRun(null)}
+          onSwitchTestRun={setSelectedTestRun}
+        />
+      )}
     </>
   );
 };

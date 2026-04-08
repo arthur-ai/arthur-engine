@@ -173,9 +173,6 @@ export const LiveEvalDetail = () => {
 
           <Stack direction="row" alignItems="center" justifyContent="space-between" ml="auto">
             <Stack direction="row" gap={2} alignItems="center">
-              <Button variant="outlined" size="small" startIcon={<ScienceOutlinedIcon />} onClick={() => setTestDialogOpen(true)}>
-                Test Eval
-              </Button>
               <CopyableChip label={evalId ?? liveEval.id} sx={{ fontFamily: "monospace", fontSize: "0.75rem" }} />
               <Typography variant="body2" color="text.secondary">
                 Created {formatDateInTimezone(liveEval.created_at, timezone, { hour12: !use24Hour })}
@@ -263,10 +260,15 @@ export const LiveEvalDetail = () => {
           </Paper>
 
           {/* Tabs */}
-          <Tabs value={activeTab} onChange={(_, value) => setActiveTab(value)} sx={{ borderBottom: 1, borderColor: "divider" }}>
-            <Tab label="Evaluated Traces" value="traces" />
-            <Tab label="Test Runs" value="test-runs" />
-          </Tabs>
+          <Stack direction="row" alignItems="center" sx={{ borderBottom: 1, borderColor: "divider" }}>
+            <Tabs value={activeTab} onChange={(_, value) => setActiveTab(value)} sx={{ flex: 1 }}>
+              <Tab label="Evaluated Traces" value="traces" />
+              <Tab label="Test Runs" value="test-runs" />
+            </Tabs>
+            <Button variant="outlined" size="small" startIcon={<ScienceOutlinedIcon />} onClick={() => setTestDialogOpen(true)} sx={{ mr: 1 }}>
+              Test Eval
+            </Button>
+          </Stack>
 
           {/* Tab content */}
           {activeTab === "traces" && (

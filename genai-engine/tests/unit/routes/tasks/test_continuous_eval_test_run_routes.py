@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from unittest.mock import MagicMock, patch
 
 import pytest
 from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
@@ -10,11 +11,16 @@ from db_models.task_models import DatabaseTask
 from db_models.telemetry_models import DatabaseSpan, DatabaseTraceMetadata
 from schemas.enums import TestRunStatus
 from schemas.internal_schemas import Span as InternalSpan
+from services.continuous_eval.continuous_eval_queue_service import (
+    ContinuousEvalQueueService,
+)
 from services.trace.span_normalization_service import SpanNormalizationService
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
 )
+
+MOCK_QUEUE_PATH = "repositories.continuous_eval_test_run_repository.get_continuous_eval_queue_service"
 
 
 def create_test_transform(client, task_id):
@@ -171,7 +177,9 @@ def cleanup_test_run(test_run_id):
 
 
 @pytest.mark.unit_tests
-def test_create_test_run_success(client: GenaiEngineTestClientBase):
+@patch(MOCK_QUEUE_PATH)
+def test_create_test_run_success(mock_queue, client: GenaiEngineTestClientBase):
+    mock_queue.return_value = MagicMock(spec=ContinuousEvalQueueService)
     """Test creating a test run successfully."""
     status_code, task = client.create_task(
         name="test_create_test_run_success",
@@ -226,7 +234,9 @@ def test_create_test_run_success(client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
-def test_create_test_run_deduplicates_trace_ids(client: GenaiEngineTestClientBase):
+@patch(MOCK_QUEUE_PATH)
+def test_create_test_run_deduplicates_trace_ids(mock_queue, client: GenaiEngineTestClientBase):
+    mock_queue.return_value = MagicMock(spec=ContinuousEvalQueueService)
     """Test that duplicate trace IDs are deduplicated."""
     status_code, task = client.create_task(
         name="test_create_test_run_dedup",
@@ -265,7 +275,9 @@ def test_create_test_run_deduplicates_trace_ids(client: GenaiEngineTestClientBas
 
 
 @pytest.mark.unit_tests
-def test_create_test_run_invalid_trace_ids(client: GenaiEngineTestClientBase):
+@patch(MOCK_QUEUE_PATH)
+def test_create_test_run_invalid_trace_ids(mock_queue, client: GenaiEngineTestClientBase):
+    mock_queue.return_value = MagicMock(spec=ContinuousEvalQueueService)
     """Test that creating a test run with nonexistent trace IDs returns 404."""
     status_code, task = client.create_task(
         name="test_create_test_run_invalid_traces",
@@ -295,7 +307,9 @@ def test_create_test_run_invalid_trace_ids(client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
-def test_create_test_run_invalid_eval_id(client: GenaiEngineTestClientBase):
+@patch(MOCK_QUEUE_PATH)
+def test_create_test_run_invalid_eval_id(mock_queue, client: GenaiEngineTestClientBase):
+    mock_queue.return_value = MagicMock(spec=ContinuousEvalQueueService)
     """Test that creating a test run with a nonexistent eval ID returns 404."""
     status_code, task = client.create_task(
         name="test_create_test_run_invalid_eval",
@@ -318,7 +332,9 @@ def test_create_test_run_invalid_eval_id(client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
-def test_create_test_run_empty_trace_ids(client: GenaiEngineTestClientBase):
+@patch(MOCK_QUEUE_PATH)
+def test_create_test_run_empty_trace_ids(mock_queue, client: GenaiEngineTestClientBase):
+    mock_queue.return_value = MagicMock(spec=ContinuousEvalQueueService)
     """Test that creating a test run with empty trace IDs returns 422."""
     status_code, task = client.create_task(
         name="test_create_test_run_empty",
@@ -353,7 +369,9 @@ def test_create_test_run_empty_trace_ids(client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
-def test_get_test_run(client: GenaiEngineTestClientBase):
+@patch(MOCK_QUEUE_PATH)
+def test_get_test_run(mock_queue, client: GenaiEngineTestClientBase):
+    mock_queue.return_value = MagicMock(spec=ContinuousEvalQueueService)
     """Test getting a test run by ID."""
     status_code, task = client.create_task(
         name="test_get_test_run",
@@ -404,7 +422,9 @@ def test_get_test_run_not_found(client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
-def test_list_test_runs(client: GenaiEngineTestClientBase):
+@patch(MOCK_QUEUE_PATH)
+def test_list_test_runs(mock_queue, client: GenaiEngineTestClientBase):
+    mock_queue.return_value = MagicMock(spec=ContinuousEvalQueueService)
     """Test listing test runs for a continuous eval."""
     status_code, task = client.create_task(
         name="test_list_test_runs",
@@ -460,8 +480,10 @@ def test_list_test_runs(client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
-def test_delete_test_run(client: GenaiEngineTestClientBase):
+@patch(MOCK_QUEUE_PATH)
+def test_delete_test_run(mock_queue, client: GenaiEngineTestClientBase):
     """Test deleting a test run removes it and its annotations."""
+    mock_queue.return_value = MagicMock(spec=ContinuousEvalQueueService)
     status_code, task = client.create_task(
         name="test_delete_test_run",
         is_agentic=True,
@@ -524,9 +546,12 @@ def test_delete_test_run_not_found(client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
+@patch(MOCK_QUEUE_PATH)
 def test_test_run_annotations_excluded_from_production_results(
+    mock_queue,
     client: GenaiEngineTestClientBase,
 ):
+    mock_queue.return_value = MagicMock(spec=ContinuousEvalQueueService)
     """Test that test run annotations don't appear in production continuous eval results."""
     status_code, task = client.create_task(
         name="test_isolation",
