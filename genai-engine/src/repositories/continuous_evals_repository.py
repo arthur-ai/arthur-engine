@@ -510,6 +510,7 @@ class ContinuousEvalsRepository:
         annotation = (
             self.db_session.query(DatabaseAgenticAnnotation)
             .filter(DatabaseAgenticAnnotation.id == run_id)
+            .with_for_update()
             .first()
         )
 

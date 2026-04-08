@@ -91,7 +91,6 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                     DatabaseAgenticAnnotation.run_status
                     == ContinuousEvalRunStatus.PENDING.value,
                     DatabaseAgenticAnnotation.created_at < cutoff_time,
-                    DatabaseAgenticAnnotation.test_run_id.is_(None),
                 )
                 .all()
             )
@@ -375,8 +374,14 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
         test_run_id: uuid.UUID,
         run_status: str,
     ) -> None:
-        """Atomically increment test run counters after an annotation completes."""
+        """Increment test run counters after an annotation completes.
+
+        Uses two steps:
+        1. Atomic SQL increment + commit (no read needed, safe under concurrency)
+        2. Row-locked read to check completion and set final status
+        """
         try:
+            # Step 1: Atomically increment counters via SQL arithmetic
             update_values: dict[Any, Any] = {
                 "completed_count": DatabaseContinuousEvalTestRun.completed_count + 1,
                 "updated_at": datetime.now(),
@@ -404,10 +409,13 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
             ).update(update_values, synchronize_session=False)
             db_session.commit()
 
-            # Check if test run is complete and update status
+            # Step 2: Lock and check if all annotations are done
+            # FOR UPDATE serializes concurrent completion checks and prevents
+            # races with rerun decrements
             db_test_run = (
                 db_session.query(DatabaseContinuousEvalTestRun)
                 .filter(DatabaseContinuousEvalTestRun.id == test_run_id)
+                .with_for_update()
                 .first()
             )
             if db_test_run and db_test_run.completed_count >= db_test_run.total_count:
@@ -425,10 +433,10 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                     {"status": final_status, "updated_at": datetime.now()},
                     synchronize_session=False,
                 )
-                db_session.commit()
                 logger.info(
                     f"Test run {test_run_id} completed with status: {final_status}",
                 )
+            db_session.commit()
 
         except Exception as e:
             db_session.rollback()
