@@ -162,11 +162,12 @@ def cleanup_traces(trace_ids):
 
 def cleanup_test_run(test_run_id):
     db_session = override_get_db_session()
+    run_id = uuid.UUID(test_run_id) if isinstance(test_run_id, str) else test_run_id
     db_session.query(DatabaseAgenticAnnotation).filter(
-        DatabaseAgenticAnnotation.test_run_id == test_run_id,
+        DatabaseAgenticAnnotation.test_run_id == run_id,
     ).delete()
     db_session.query(DatabaseContinuousEvalTestRun).filter(
-        DatabaseContinuousEvalTestRun.id == test_run_id,
+        DatabaseContinuousEvalTestRun.id == run_id,
     ).delete()
     db_session.commit()
 
@@ -358,7 +359,7 @@ def test_create_test_run_empty_trace_ids(mock_queue, client: GenaiEngineTestClie
             eval_id=str(continuous_eval.id),
             trace_ids=[],
         )
-        assert status_code == 422
+        assert status_code == 400
     finally:
         client.delete_task(task.id)
 

@@ -22,4 +22,4 @@ export PYTHONPATH="src:$PYTHONPATH"
 
 export GENAI_ENGINE_SECRET_STORE_KEY=changeme_secret_store_key
 
-poetry run generate_changelog
+uv run generate_changelog

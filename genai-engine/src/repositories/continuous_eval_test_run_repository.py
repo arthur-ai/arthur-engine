@@ -58,7 +58,9 @@ class ContinuousEvalTestRunRepository:
 
         # Validate all trace IDs exist and belong to the same task
         existing_traces = (
-            self.db_session.query(DatabaseTraceMetadata.trace_id, DatabaseTraceMetadata.task_id)
+            self.db_session.query(
+                DatabaseTraceMetadata.trace_id, DatabaseTraceMetadata.task_id
+            )
             .filter(DatabaseTraceMetadata.trace_id.in_(trace_ids))
             .all()
         )
@@ -236,7 +238,7 @@ class ContinuousEvalTestRunRepository:
         )
 
     def delete_test_run(self, test_run_id: uuid.UUID) -> None:
-        """Delete a test run and its associated annotations (via CASCADE)."""
+        """Delete a test run and its associated annotations."""
         db_test_run = (
             self.db_session.query(DatabaseContinuousEvalTestRun)
             .filter(DatabaseContinuousEvalTestRun.id == test_run_id)
@@ -247,6 +249,10 @@ class ContinuousEvalTestRunRepository:
                 status_code=404,
                 detail=f"Test run {test_run_id} not found.",
             )
+        # Delete annotations explicitly (CASCADE may not be enforced in all DB engines)
+        self.db_session.query(DatabaseAgenticAnnotation).filter(
+            DatabaseAgenticAnnotation.test_run_id == test_run_id,
+        ).delete()
         self.db_session.delete(db_test_run)
         self.db_session.commit()
 

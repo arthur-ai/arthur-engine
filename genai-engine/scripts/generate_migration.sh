@@ -24,4 +24,4 @@ export PYTHONPATH="src:$PYTHONPATH"
 
 export GENAI_ENGINE_SECRET_STORE_KEY=changeme_secret_store_key
 
-poetry run alembic revision --autogenerate -m "$1"
+uv run alembic revision --autogenerate -m "$1"
