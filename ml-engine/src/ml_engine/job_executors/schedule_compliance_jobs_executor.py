@@ -100,7 +100,7 @@ class ScheduleComplianceJobsExecutor:
 
     def _validate_schedule_id(self, model: Model, job: Job) -> None:
         """Stop the chain if the model's compliance_schedule_id doesn't match."""
-        model_schedule_id = getattr(model, "compliance_schedule_id", None)
+        model_schedule_id = model.compliance_schedule_id
         if model_schedule_id != job.schedule_id:
             raise ValueError(
                 f"Model {model.id} has compliance_schedule_id={model_schedule_id} "
