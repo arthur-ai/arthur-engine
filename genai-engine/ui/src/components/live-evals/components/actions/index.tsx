@@ -27,7 +27,7 @@ export const LiveEvalActions = ({ config, onEdit }: Props) => {
   const { transform_id, task_id, llm_eval_name, llm_eval_version, enabled } = config;
 
   const evalUrl = useMemo(() => {
-    return `/tasks/${task_id}/evaluators/${encodeURIComponent(llm_eval_name)}/versions/${encodeURIComponent(llm_eval_version)}` as const;
+    return `/tasks/${task_id}/evaluators/${encodeURIComponent(llm_eval_name ?? "")}/versions/${encodeURIComponent(llm_eval_version ?? "")}` as const;
   }, [llm_eval_name, llm_eval_version, task_id]);
 
   const deleteContinuousEval = useDeleteContinuousEval();

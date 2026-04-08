@@ -19,7 +19,7 @@ export const useImpactedContinuousEvals = (taskId: string | undefined) => {
       });
 
       const allCEs = response.data.evals ?? [];
-      return allCEs.filter((ce) => ce.llm_eval_version < newVersion);
+      return allCEs.filter((ce) => (ce.llm_eval_version ?? 0) < newVersion);
     },
     [api, taskId]
   );
