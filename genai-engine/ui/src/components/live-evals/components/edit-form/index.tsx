@@ -64,8 +64,8 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
         transformId: data.transform_id,
       },
       evaluator: {
-        name: data.llm_eval_name,
-        version: data.llm_eval_version.toString(),
+        name: data.llm_eval_name ?? null,
+        version: (data.llm_eval_version ?? 1).toString(),
       },
       variableMappings: initialMappings,
     },

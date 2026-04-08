@@ -23,7 +23,7 @@ import { useTask } from "@/hooks/useTask";
 import type { ContinuousEvalResponse, ContinuousEvalTransformVariableMappingRequest } from "@/lib/api-client/api-client";
 
 type EvaluatorFormState = {
-  name: ContinuousEvalResponse["llm_eval_name"] | null;
+  name: string | null;
   version: string | null;
 };
 

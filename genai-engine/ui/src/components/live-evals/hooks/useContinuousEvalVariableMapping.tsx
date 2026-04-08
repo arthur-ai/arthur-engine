@@ -10,12 +10,12 @@ export const useContinuousEvalVariableMapping = (taskId?: string, transformId?: 
     enabled: !!taskId && !!transformId && !!evalName && !!evalVersion,
     queryKey: [queryKeys.continuousEvals.variableMapping(taskId!, transformId!, evalName!, evalVersion!)],
     queryFn: () =>
-      api.api.getContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvalsTransformsTransformIdLlmEvalsEvalNameVersionsEvalVersionVariablesGet(
-        transformId!,
-        evalName!,
-        evalVersion!,
-        taskId!
-      ),
+      api.api.getContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvalsTransformsTransformIdLlmEvalsEvalNameVersionsEvalVersionVariablesGet({
+        transformId: transformId!,
+        evalName: evalName!,
+        evalVersion: evalVersion!,
+        taskId: taskId!,
+      }),
     select: (data) => data.data,
   });
 };

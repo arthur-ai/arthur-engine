@@ -13,18 +13,20 @@ import { Link } from "react-router-dom";
 import Evaluators from "@/components/evaluators/Evaluators";
 import { Management } from "@/components/live-evals/components/management";
 import { Results } from "@/components/live-evals/components/results";
+import MLEvaluators from "@/components/ml-evaluators/MLEvaluators";
 import { FilterStoreProvider } from "@/components/traces/stores/filter.store";
 import { useTask } from "@/hooks/useTask";
 
-type EvaluateTab = "evals-management" | "ce-management" | "ce-results";
+type EvaluateTab = "evals-management" | "ml-evals-management" | "ce-management" | "ce-results";
 
 export const EvaluateView = () => {
   const { task } = useTask();
   const [isEvalsModalOpen, setIsEvalsModalOpen] = useState(false);
+  const [isMLEvalsModalOpen, setIsMLEvalsModalOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useQueryState(
     "section",
-    parseAsStringEnum<EvaluateTab>(["evals-management", "ce-management", "ce-results"]).withDefault("evals-management")
+    parseAsStringEnum<EvaluateTab>(["evals-management", "ml-evals-management", "ce-management", "ce-results"]).withDefault("evals-management")
   );
 
   return (
@@ -62,6 +64,11 @@ export const EvaluateView = () => {
               Evaluator
             </Button>
           )}
+          {activeTab === "ml-evals-management" && (
+            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => setIsMLEvalsModalOpen(true)}>
+              ML Evaluator
+            </Button>
+          )}
           {(activeTab === "ce-management" || activeTab === "ce-results") && (
             <Button variant="contained" color="primary" startIcon={<AddIcon />} component={Link} to={`/tasks/${task?.id}/continuous-evals/new`}>
               Continuous Eval
@@ -77,6 +84,7 @@ export const EvaluateView = () => {
         sx={{ backgroundColor: "background.paper", borderBottom: 1, borderColor: "divider" }}
       >
         <Tab label="Evals Management" value="evals-management" />
+        <Tab label="ML Evals" value="ml-evals-management" />
         <Tab label="Continuous Evals" value="ce-management" />
         <Tab label="Results" value="ce-results" />
       </Tabs>
@@ -88,6 +96,12 @@ export const EvaluateView = () => {
             isCreateModalOpen={isEvalsModalOpen}
             onCreateModalOpen={() => setIsEvalsModalOpen(true)}
             onCreateModalClose={() => setIsEvalsModalOpen(false)}
+          />
+        )}
+        {activeTab === "ml-evals-management" && (
+          <MLEvaluators
+            isCreateModalOpen={isMLEvalsModalOpen}
+            onCreateModalClose={() => setIsMLEvalsModalOpen(false)}
           />
         )}
         {activeTab === "ce-management" && (

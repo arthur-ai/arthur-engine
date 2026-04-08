@@ -612,7 +612,7 @@ class Task(BaseModel):
                         gcp_project_id=x.agent_metadata.gcp_metadata.project_id,
                         gcp_region=x.agent_metadata.gcp_metadata.region,
                         gcp_reasoning_engine_id=x.agent_metadata.gcp_metadata.resource_id,
-                    )
+                    ),
                 )
             else:
                 creation_source = AgentCreationSource(root=ManualAgentCreationSource())
@@ -738,6 +738,10 @@ class AgenticAnnotation(BaseModel):
         default=None,
         description="Name of the continuous eval this annotation belongs to",
     )
+    eval_type: Optional[str] = Field(
+        default=None,
+        description="Type of eval: 'llm_eval' or 'ml_eval'",
+    )
     eval_name: Optional[str] = Field(
         default=None,
         description="Name of the eval the continuous eval used when scoring",
@@ -800,8 +804,13 @@ class AgenticAnnotation(BaseModel):
 
         if db_annotation.continuous_eval_id and db_annotation.continuous_eval:
             continuous_eval_name = db_annotation.continuous_eval.name
-            eval_name = db_annotation.continuous_eval.llm_eval_name
-            eval_version = db_annotation.continuous_eval.llm_eval_version
+            ce = db_annotation.continuous_eval
+            if ce.eval_type == "ml_eval":
+                eval_name = ce.ml_eval_name
+                eval_version = ce.ml_eval_version
+            else:
+                eval_name = ce.llm_eval_name
+                eval_version = ce.llm_eval_version
 
         return AgenticAnnotation(
             id=db_annotation.id,
@@ -809,6 +818,11 @@ class AgenticAnnotation(BaseModel):
             trace_id=db_annotation.trace_id or "",
             continuous_eval_id=db_annotation.continuous_eval_id,
             continuous_eval_name=continuous_eval_name,
+            eval_type=(
+                db_annotation.continuous_eval.eval_type
+                if db_annotation.continuous_eval
+                else None
+            ),
             eval_name=eval_name,
             eval_version=eval_version,
             annotation_score=db_annotation.annotation_score,
