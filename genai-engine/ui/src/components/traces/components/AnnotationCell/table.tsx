@@ -174,10 +174,7 @@ const createColumns = ({
               >
                 <Menu.Item
                   render={
-                    <ListItemButton
-                      onClick={() => onNavigate(`/tasks/${taskId}/evaluate?id=${annotation.id}&section=ce-results`)}
-                      className="gap-4"
-                    />
+                    <ListItemButton onClick={() => onNavigate(`/tasks/${taskId}/evaluate?id=${annotation.id}&section=results`)} className="gap-4" />
                   }
                 >
                   <ListItemText primary="View Results" />
@@ -189,7 +186,7 @@ const createColumns = ({
                   render={
                     <ListItemButton
                       disabled={annotation.run_status !== "error"}
-                      onClick={() => onNavigate(`/tasks/${taskId}/evaluate?id=${annotation.id}&section=ce-results&action=rerun`)}
+                      onClick={() => onNavigate(`/tasks/${taskId}/evaluate?id=${annotation.id}&section=results&action=rerun`)}
                       className="gap-4"
                     />
                   }
