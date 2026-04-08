@@ -33,7 +33,7 @@ import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import type { ContinuousEvalResponse, CreateEvalRequest } from "@/lib/api-client/api-client";
 import { formatDateInTimezone } from "@/utils/formatters";
 
-const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestVersion, taskId, onClose, onRefetch }: EvalDetailViewProps) => {
+const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestVersion, taskId, onRefetch }: EvalDetailViewProps) => {
   const [tagAnchorEl, setTagAnchorEl] = useState<HTMLButtonElement | null>(null);
   const [newTag, setNewTag] = useState("");
   const [tagError, setTagError] = useState("");
@@ -263,11 +263,6 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
             <Button variant="outlined" size="small" startIcon={<EditIcon />} onClick={handleEditClick} sx={{ minWidth: 80 }}>
               Edit
             </Button>
-          )}
-          {onClose && (
-            <IconButton onClick={onClose} aria-label="Close">
-              <CloseIcon />
-            </IconButton>
           )}
         </Box>
       </Box>

@@ -8,25 +8,21 @@ import Tabs from "@mui/material/Tabs";
 import Typography from "@mui/material/Typography";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 import { Suspense, useState } from "react";
-import { Link } from "react-router-dom";
 
 import Evaluators from "@/components/evaluators/Evaluators";
-import { Management } from "@/components/live-evals/components/management";
 import { Results } from "@/components/live-evals/components/results";
 import MLEvaluators from "@/components/ml-evaluators/MLEvaluators";
 import { FilterStoreProvider } from "@/components/traces/stores/filter.store";
-import { useTask } from "@/hooks/useTask";
 
-type EvaluateTab = "evals-management" | "ml-evals-management" | "ce-management" | "ce-results";
+type EvaluateTab = "evaluators" | "ml-evals-management" | "results";
 
 export const EvaluateView = () => {
-  const { task } = useTask();
   const [isEvalsModalOpen, setIsEvalsModalOpen] = useState(false);
   const [isMLEvalsModalOpen, setIsMLEvalsModalOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useQueryState(
     "section",
-    parseAsStringEnum<EvaluateTab>(["evals-management", "ml-evals-management", "ce-management", "ce-results"]).withDefault("evals-management")
+    parseAsStringEnum<EvaluateTab>(["evaluators", "ml-evals-management", "results"]).withDefault("evaluators")
   );
 
   return (
@@ -59,7 +55,7 @@ export const EvaluateView = () => {
               Manage evaluators and monitor continuous evaluation performance
             </Typography>
           </Box>
-          {activeTab === "evals-management" && (
+          {activeTab === "evaluators" && (
             <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => setIsEvalsModalOpen(true)}>
               Evaluator
             </Button>
@@ -67,11 +63,6 @@ export const EvaluateView = () => {
           {activeTab === "ml-evals-management" && (
             <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => setIsMLEvalsModalOpen(true)}>
               ML Evaluator
-            </Button>
-          )}
-          {(activeTab === "ce-management" || activeTab === "ce-results") && (
-            <Button variant="contained" color="primary" startIcon={<AddIcon />} component={Link} to={`/tasks/${task?.id}/continuous-evals/new`}>
-              Continuous Eval
             </Button>
           )}
         </Stack>
@@ -83,14 +74,13 @@ export const EvaluateView = () => {
         onChange={(_, value) => setActiveTab(value)}
         sx={{ backgroundColor: "background.paper", borderBottom: 1, borderColor: "divider" }}
       >
-        <Tab label="Evals Management" value="evals-management" />
+        <Tab label="Evaluators" value="evaluators" />
         <Tab label="ML Evals" value="ml-evals-management" />
-        <Tab label="Continuous Evals" value="ce-management" />
-        <Tab label="Results" value="ce-results" />
+        <Tab label="Results" value="results" />
       </Tabs>
 
       <Box sx={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-        {activeTab === "evals-management" && (
+        {activeTab === "evaluators" && (
           <Evaluators
             embedded
             isCreateModalOpen={isEvalsModalOpen}
@@ -104,20 +94,7 @@ export const EvaluateView = () => {
             onCreateModalClose={() => setIsMLEvalsModalOpen(false)}
           />
         )}
-        {activeTab === "ce-management" && (
-          <Suspense
-            fallback={
-              <Box sx={{ p: 3 }}>
-                <Skeleton variant="rectangular" height="50%" sx={{ borderRadius: 1 }} />
-              </Box>
-            }
-          >
-            <FilterStoreProvider timeRange="3 months">
-              <Management />
-            </FilterStoreProvider>
-          </Suspense>
-        )}
-        {activeTab === "ce-results" && (
+        {activeTab === "results" && (
           <Suspense
             fallback={
               <Box sx={{ p: 3 }}>
