@@ -120,6 +120,7 @@ class ContinuousEvalTestRunRepository:
 
         # Now enqueue jobs — annotations are visible to workers
         for annotation in annotations:
+            assert annotation.trace_id is not None
             job = ContinuousEvalJob(
                 annotation_id=annotation.id,
                 trace_id=annotation.trace_id,

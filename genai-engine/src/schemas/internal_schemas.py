@@ -3934,7 +3934,7 @@ class ContinuousEvalTestRun(BaseModel):
             id=db_test_run.id,
             continuous_eval_id=db_test_run.continuous_eval_id,
             task_id=db_test_run.task_id,
-            status=db_test_run.status,
+            status=TestRunStatus(db_test_run.status),
             total_count=db_test_run.total_count,
             completed_count=db_test_run.completed_count,
             passed_count=db_test_run.passed_count,
