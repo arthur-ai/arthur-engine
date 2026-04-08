@@ -17,7 +17,7 @@ This package provides the in-app currency conversion layer: it keeps an in-memor
 
 ### Conversion
 
-- **`convert_usd_to(amount_usd: float, target_currency: str) -> tuple[float, str]`**  
+- **`convert_usd_to(amount_usd: float, target_currency: str) -> tuple[float, str]`**
   Returns `(converted_amount, currency_code)`.
 - **Fallback to USD** – If the target is `"USD"`, the rate is missing, or any exception occurs, the method returns `(amount_usd, "USD")` (unconverted). Callers can treat this as “show in USD.”
 - **Precision** – Converted amounts are rounded to 6 decimal places.
@@ -51,7 +51,7 @@ To run the service once (start, wait for rates, convert, print, shutdown) from t
 
 ```bash
 cd genai-engine
-PYTHONPATH=src poetry run python scripts/test_currency_conversion_standalone.py [amount] [currency]
+PYTHONPATH=src uv run python scripts/test_currency_conversion_standalone.py [amount] [currency]
 ```
 
 Example: `... 25 EUR` converts 25 USD to EUR and prints the result. The script polls `has_rates()` until the first fetch completes or a timeout is reached.

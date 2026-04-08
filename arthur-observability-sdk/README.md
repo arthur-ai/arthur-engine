@@ -132,13 +132,13 @@ cd arthur-observability-sdk
 cd python
 
 # Unit tests only (fast, no network)
-poetry run pytest tests -m "unit_tests" -v
+uv run pytest tests -m "unit_tests" -v
 
 # Integration/smoke tests (builds wheel, installs into a fresh venv)
-poetry run pytest tests -m "integration_tests" -v
+uv run pytest tests -m "integration_tests" -v
 
 # All tests
-poetry run pytest tests -v
+uv run pytest tests -v
 ```
 
 ### Linting
@@ -152,10 +152,10 @@ Or individually (from `arthur-observability-sdk/python/`):
 
 ```bash
 cd python
-poetry run black src tests
-poetry run isort src tests --profile black
-poetry run autoflake --remove-all-unused-imports --in-place --recursive src tests
-poetry run mypy src/arthur_observability_sdk
+uv run black src tests
+uv run isort src tests --profile black
+uv run autoflake --remove-all-unused-imports --in-place --recursive src tests
+uv run mypy src/arthur_observability_sdk
 ```
 
 ### Regenerating the API client
@@ -173,5 +173,5 @@ Requires Node.js (any recent LTS) and Java 11+.
 ### Building the wheel
 
 ```bash
-poetry build --format wheel
+uv build --wheel
 ```

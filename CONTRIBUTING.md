@@ -27,9 +27,9 @@ Before making your first commit, please follow the instructions below to install
 2. Change directory to the module you are contributing to (i.e. `genai-engine` or `ml-engine`)
 3. Install `pre-commit` package:
     ```
-    poetry install --only dev
+    uv sync --group dev
     ```
 4. Install the git pre-commit hooks:
     ```
-    poetry run pre-commit install
+    uv run pre-commit install
     ```
