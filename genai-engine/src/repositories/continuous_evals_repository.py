@@ -559,13 +559,21 @@ class ContinuousEvalsRepository:
                 "updated_at": datetime.now(),
             }
             if old_status == ContinuousEvalRunStatus.PASSED.value:
-                update_values["passed_count"] = DatabaseContinuousEvalTestRun.passed_count - 1
+                update_values["passed_count"] = (
+                    DatabaseContinuousEvalTestRun.passed_count - 1
+                )
             elif old_status == ContinuousEvalRunStatus.FAILED.value:
-                update_values["failed_count"] = DatabaseContinuousEvalTestRun.failed_count - 1
+                update_values["failed_count"] = (
+                    DatabaseContinuousEvalTestRun.failed_count - 1
+                )
             elif old_status == ContinuousEvalRunStatus.ERROR.value:
-                update_values["error_count"] = DatabaseContinuousEvalTestRun.error_count - 1
+                update_values["error_count"] = (
+                    DatabaseContinuousEvalTestRun.error_count - 1
+                )
             elif old_status == ContinuousEvalRunStatus.SKIPPED.value:
-                update_values["skipped_count"] = DatabaseContinuousEvalTestRun.skipped_count - 1
+                update_values["skipped_count"] = (
+                    DatabaseContinuousEvalTestRun.skipped_count - 1
+                )
 
             self.db_session.query(DatabaseContinuousEvalTestRun).filter(
                 DatabaseContinuousEvalTestRun.id == annotation.test_run_id,

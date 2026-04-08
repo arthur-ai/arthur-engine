@@ -886,7 +886,7 @@ class TraceMetadata(TokenCountCostSchema):
 
     @staticmethod
     def _from_database_model(x: DatabaseTraceMetadata) -> "TraceMetadata":
-        # Add formatted annotations
+        # Add formatted annotations (test run annotations excluded by relationship filter)
         annotations = [
             AgenticAnnotation.from_db_model(annotation) for annotation in x.annotations
         ]

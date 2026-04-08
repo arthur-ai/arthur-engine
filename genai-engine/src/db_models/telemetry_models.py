@@ -71,11 +71,13 @@ class DatabaseTraceMetadata(Base):
         nullable=False,
     )
 
-    # Relationships
+    # Relationships — excludes test run annotations at the DB level
     annotations: Mapped[List["DatabaseAgenticAnnotation"]] = relationship(
         "DatabaseAgenticAnnotation",
+        primaryjoin="and_(DatabaseTraceMetadata.trace_id == DatabaseAgenticAnnotation.trace_id, DatabaseAgenticAnnotation.test_run_id == None)",
         foreign_keys="DatabaseAgenticAnnotation.trace_id",
         lazy="selectin",
+        viewonly=True,
     )
 
     __table_args__ = (
