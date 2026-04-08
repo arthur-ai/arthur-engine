@@ -53,9 +53,7 @@ def _cleanup_trace_data(
                 delete(DatabaseMetric).where(DatabaseMetric.id.in_(metric_ids))
             )
     if span_ids:
-        db_session.execute(
-            delete(DatabaseSpan).where(DatabaseSpan.id.in_(span_ids))
-        )
+        db_session.execute(delete(DatabaseSpan).where(DatabaseSpan.id.in_(span_ids)))
     if trace_ids:
         db_session.execute(
             delete(DatabaseTraceMetadata).where(
@@ -69,9 +67,7 @@ def _cleanup_trace_data(
             )
         )
     if task_ids:
-        db_session.execute(
-            delete(DatabaseTask).where(DatabaseTask.id.in_(task_ids))
-        )
+        db_session.execute(delete(DatabaseTask).where(DatabaseTask.id.in_(task_ids)))
     db_session.commit()
     db_session.close()
 
@@ -135,128 +131,6 @@ def test_get_expired_trace_ids_returns_only_expired_and_respects_batch_size() ->
             db_session,
             task_ids=[task_id],
             trace_ids=[expired_1, expired_2, not_expired],
-        )
-
-
-@pytest.mark.unit_tests
-def test_delete_trace_batch_removes_trace_and_orphan_resource_metadata_only() -> None:
-    """delete_trace_batch deletes trace, spans, and only resource_metadata orphaned by this batch."""
-    db_session: Session = override_get_db_session()
-    task_id = _make_task(db_session)
-    trace_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc)
-
-    # Resource used only by this batch (should be deleted)
-    resource_id_batch = str(uuid.uuid4())
-    db_session.add(
-        DatabaseResourceMetadata(
-            id=resource_id_batch,
-            service_name="batch-service",
-            resource_attributes={},
-        )
-    )
-    # Resource used by another trace (should remain)
-    resource_id_other = str(uuid.uuid4())
-    db_session.add(
-        DatabaseResourceMetadata(
-            id=resource_id_other,
-            service_name="other-service",
-            resource_attributes={},
-        )
-    )
-    db_session.commit()
-
-    # Trace and span for this batch (reference resource_id_batch)
-    db_session.add(
-        DatabaseTraceMetadata(
-            trace_id=trace_id,
-            task_id=task_id,
-            root_span_resource_id=resource_id_batch,
-            start_time=now - timedelta(days=2),
-            end_time=now - timedelta(days=2),
-            span_count=1,
-        )
-    )
-    span_id = str(uuid.uuid4())
-    db_session.add(
-        DatabaseSpan(
-            id=span_id,
-            trace_id=trace_id,
-            span_id=span_id,
-            start_time=now - timedelta(days=2),
-            end_time=now - timedelta(days=2),
-            task_id=task_id,
-            resource_id=resource_id_batch,
-            raw_data={},
-            status_code="Unset",
-        )
-    )
-    # Another trace that references resource_id_other (so it stays)
-    other_trace_id = str(uuid.uuid4())
-    db_session.add(
-        DatabaseTraceMetadata(
-            trace_id=other_trace_id,
-            task_id=task_id,
-            root_span_resource_id=resource_id_other,
-            start_time=now,
-            end_time=now,
-            span_count=0,
-        )
-    )
-    db_session.commit()
-
-    try:
-        delete_trace_batch(db_session, [trace_id])
-        db_session.commit()
-
-        # Batch trace and span gone
-        assert (
-            db_session.execute(
-                select(DatabaseTraceMetadata).where(
-                    DatabaseTraceMetadata.trace_id == trace_id
-                )
-            ).scalar_one_or_none()
-            is None
-        )
-        assert (
-            db_session.execute(
-                select(DatabaseSpan).where(DatabaseSpan.id == span_id)
-            ).scalar_one_or_none()
-            is None
-        )
-        # Orphan resource (only referenced by deleted batch) is deleted
-        assert (
-            db_session.execute(
-                select(DatabaseResourceMetadata).where(
-                    DatabaseResourceMetadata.id == resource_id_batch
-                )
-            ).scalar_one_or_none()
-            is None
-        )
-        # Resource still referenced by other trace remains
-        assert (
-            db_session.execute(
-                select(DatabaseResourceMetadata).where(
-                    DatabaseResourceMetadata.id == resource_id_other
-                )
-            ).scalar_one_or_none()
-            is not None
-        )
-        assert (
-            db_session.execute(
-                select(DatabaseTraceMetadata).where(
-                    DatabaseTraceMetadata.trace_id == other_trace_id
-                )
-            ).scalar_one_or_none()
-            is not None
-        )
-    finally:
-        _cleanup_trace_data(
-            db_session,
-            task_ids=[task_id],
-            trace_ids=[trace_id, other_trace_id],
-            span_ids=[span_id],
-            resource_ids=[resource_id_batch, resource_id_other],
         )
 
 
@@ -500,60 +374,43 @@ def test_delete_trace_batch_removes_agentic_annotations() -> None:
 
 
 @pytest.mark.unit_tests
-def test_resource_preserved_when_referenced_by_span_in_other_trace() -> None:
-    """A resource referenced via DatabaseSpan.resource_id in a surviving trace is not deleted."""
+def test_delete_trace_batch_preserves_resource_metadata() -> None:
+    """delete_trace_batch never deletes resource_metadata, even when no traces reference it."""
     db_session: Session = override_get_db_session()
     task_id = _make_task(db_session)
     now = datetime.now(timezone.utc)
 
-    shared_resource_id = str(uuid.uuid4())
+    resource_id = str(uuid.uuid4())
     db_session.add(
         DatabaseResourceMetadata(
-            id=shared_resource_id,
-            service_name="shared-service",
+            id=resource_id,
+            service_name="test-service",
             resource_attributes={},
         )
     )
     db_session.commit()
 
-    trace_a = str(uuid.uuid4())
-    trace_b = str(uuid.uuid4())
-    for tid in (trace_a, trace_b):
-        db_session.add(
-            DatabaseTraceMetadata(
-                trace_id=tid,
-                task_id=task_id,
-                root_span_resource_id=None,
-                start_time=now - timedelta(days=2),
-                end_time=now - timedelta(days=2),
-                span_count=1,
-            )
-        )
-
-    span_a = str(uuid.uuid4())
+    trace_id = str(uuid.uuid4())
     db_session.add(
-        DatabaseSpan(
-            id=span_a,
-            trace_id=trace_a,
-            span_id=span_a,
+        DatabaseTraceMetadata(
+            trace_id=trace_id,
+            task_id=task_id,
+            root_span_resource_id=resource_id,
             start_time=now - timedelta(days=2),
             end_time=now - timedelta(days=2),
-            task_id=task_id,
-            resource_id=shared_resource_id,
-            raw_data={},
-            status_code="Unset",
+            span_count=1,
         )
     )
-    span_b = str(uuid.uuid4())
+    span_id = str(uuid.uuid4())
     db_session.add(
         DatabaseSpan(
-            id=span_b,
-            trace_id=trace_b,
-            span_id=span_b,
+            id=span_id,
+            trace_id=trace_id,
+            span_id=span_id,
             start_time=now - timedelta(days=2),
             end_time=now - timedelta(days=2),
             task_id=task_id,
-            resource_id=shared_resource_id,
+            resource_id=resource_id,
             raw_data={},
             status_code="Unset",
         )
@@ -561,27 +418,27 @@ def test_resource_preserved_when_referenced_by_span_in_other_trace() -> None:
     db_session.commit()
 
     try:
-        delete_trace_batch(db_session, [trace_a])
+        delete_trace_batch(db_session, [trace_id])
         db_session.commit()
 
         assert (
             db_session.execute(
                 select(DatabaseTraceMetadata).where(
-                    DatabaseTraceMetadata.trace_id == trace_a
+                    DatabaseTraceMetadata.trace_id == trace_id
                 )
             ).scalar_one_or_none()
             is None
         )
         assert (
             db_session.execute(
-                select(DatabaseSpan).where(DatabaseSpan.id == span_a)
+                select(DatabaseSpan).where(DatabaseSpan.id == span_id)
             ).scalar_one_or_none()
             is None
         )
         assert (
             db_session.execute(
                 select(DatabaseResourceMetadata).where(
-                    DatabaseResourceMetadata.id == shared_resource_id
+                    DatabaseResourceMetadata.id == resource_id
                 )
             ).scalar_one_or_none()
             is not None
@@ -590,70 +447,7 @@ def test_resource_preserved_when_referenced_by_span_in_other_trace() -> None:
         _cleanup_trace_data(
             db_session,
             task_ids=[task_id],
-            trace_ids=[trace_a, trace_b],
-            span_ids=[span_a, span_b],
-            resource_ids=[shared_resource_id],
-        )
-
-
-@pytest.mark.unit_tests
-def test_resource_preserved_when_referenced_by_root_span_resource_id_in_other_trace() -> (
-    None
-):
-    """A resource referenced via root_span_resource_id in a surviving trace is not deleted."""
-    db_session: Session = override_get_db_session()
-    task_id = _make_task(db_session)
-    now = datetime.now(timezone.utc)
-
-    shared_resource_id = str(uuid.uuid4())
-    db_session.add(
-        DatabaseResourceMetadata(
-            id=shared_resource_id,
-            service_name="shared-service",
-            resource_attributes={},
-        )
-    )
-    db_session.commit()
-
-    trace_a = str(uuid.uuid4())
-    trace_b = str(uuid.uuid4())
-    for tid in (trace_a, trace_b):
-        db_session.add(
-            DatabaseTraceMetadata(
-                trace_id=tid,
-                task_id=task_id,
-                root_span_resource_id=shared_resource_id,
-                start_time=now - timedelta(days=2),
-                end_time=now - timedelta(days=2),
-                span_count=0,
-            )
-        )
-    db_session.commit()
-
-    try:
-        delete_trace_batch(db_session, [trace_a])
-        db_session.commit()
-
-        assert (
-            db_session.execute(
-                select(DatabaseTraceMetadata).where(
-                    DatabaseTraceMetadata.trace_id == trace_a
-                )
-            ).scalar_one_or_none()
-            is None
-        )
-        assert (
-            db_session.execute(
-                select(DatabaseResourceMetadata).where(
-                    DatabaseResourceMetadata.id == shared_resource_id
-                )
-            ).scalar_one_or_none()
-            is not None
-        )
-    finally:
-        _cleanup_trace_data(
-            db_session,
-            task_ids=[task_id],
-            trace_ids=[trace_a, trace_b],
-            resource_ids=[shared_resource_id],
+            trace_ids=[trace_id],
+            span_ids=[span_id],
+            resource_ids=[resource_id],
         )

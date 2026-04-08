@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 from db_models import (
     DatabaseAgenticAnnotation,
     DatabaseMetricResult,
-    DatabaseResourceMetadata,
     DatabaseSpan,
     DatabaseTraceMetadata,
 )
@@ -47,7 +46,10 @@ def get_expired_trace_ids(
 def delete_trace_batch(db_session: Session, trace_ids: list[str]) -> None:
     """
     Delete one batch of traces and related rows in FK-safe order.
-    Order: agentic_annotations -> metric_results -> spans -> trace_metadata -> orphan resource_metadata.
+    Order: agentic_annotations -> metric_results -> spans -> trace_metadata.
+
+    Resource metadata is intentionally preserved — resources are logical
+    groupings of traces and should outlive individual trace retention.
     """
     if not trace_ids:
         return
@@ -60,31 +62,13 @@ def delete_trace_batch(db_session: Session, trace_ids: list[str]) -> None:
     )
 
     # 2. Lock span rows (prevents concurrent metric_result inserts via FK check
-    # blocking) and collect span_ids + resource_ids in one query.
+    # blocking) and collect span_ids.
     span_rows_stmt = (
-        select(DatabaseSpan.id, DatabaseSpan.resource_id)
+        select(DatabaseSpan.id)
         .where(DatabaseSpan.trace_id.in_(trace_ids))
         .with_for_update()
     )
-    span_rows = db_session.execute(span_rows_stmt).all()
-    span_ids = [row[0] for row in span_rows]
-    batch_resource_ids: list[str] = [row[1] for row in span_rows if row[1] is not None]
-
-    # Also collect resource_ids from trace_metadata (root_span_resource_id).
-    trace_resource_ids_stmt = (
-        select(DatabaseTraceMetadata.root_span_resource_id)
-        .where(
-            DatabaseTraceMetadata.trace_id.in_(trace_ids),
-            DatabaseTraceMetadata.root_span_resource_id.isnot(None),
-        )
-        .distinct()
-    )
-    batch_resource_ids.extend(
-        row[0] for row in db_session.execute(trace_resource_ids_stmt).all()
-    )
-    batch_resource_ids = list(
-        dict.fromkeys(batch_resource_ids)
-    )  # unique, preserve order
+    span_ids = [row[0] for row in db_session.execute(span_rows_stmt).all()]
 
     if span_ids:
         db_session.execute(
@@ -102,26 +86,6 @@ def delete_trace_batch(db_session: Session, trace_ids: list[str]) -> None:
             DatabaseTraceMetadata.trace_id.in_(trace_ids)
         )
     )
-
-    # 5. Orphan resource_metadata: only those referenced by this batch and no longer referenced elsewhere
-    if batch_resource_ids:
-        remaining_span_resource_ids = (
-            select(DatabaseSpan.resource_id)
-            .where(DatabaseSpan.resource_id.in_(batch_resource_ids))
-            .distinct()
-        )
-        remaining_trace_resource_ids = (
-            select(DatabaseTraceMetadata.root_span_resource_id)
-            .where(DatabaseTraceMetadata.root_span_resource_id.in_(batch_resource_ids))
-            .distinct()
-        )
-        db_session.execute(
-            delete(DatabaseResourceMetadata).where(
-                DatabaseResourceMetadata.id.in_(batch_resource_ids),
-                ~DatabaseResourceMetadata.id.in_(remaining_span_resource_ids),
-                ~DatabaseResourceMetadata.id.in_(remaining_trace_resource_ids),
-            )
-        )
 
     logger.info(
         "Trace retention: deleted batch of %d traces (%d spans)",
