@@ -15621,6 +15621,330 @@
                 }
             }
         },
+        "/api/v1/continuous_evals/{eval_id}/test_runs": {
+            "post": {
+                "tags": [
+                    "Continuous Eval Test Runs"
+                ],
+                "summary": "Create and start a test run for a continuous eval",
+                "description": "Run a continuous eval against specific traces as a test. Results are stored separately from production annotations.",
+                "operationId": "create_test_run_api_v1_continuous_evals__eval_id__test_runs_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "eval_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Continuous Eval ID",
+                            "description": "The id of the continuous eval to test."
+                        },
+                        "description": "The id of the continuous eval to test."
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateTestRunRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ContinuousEvalTestRunResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "tags": [
+                    "Continuous Eval Test Runs"
+                ],
+                "summary": "List test runs for a continuous eval",
+                "description": "Get all test runs for a specific continuous eval.",
+                "operationId": "list_test_runs_api_v1_continuous_evals__eval_id__test_runs_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "eval_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Continuous Eval ID",
+                            "description": "The id of the continuous eval."
+                        },
+                        "description": "The id of the continuous eval."
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListContinuousEvalTestRunsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/continuous_evals/test_runs/{test_run_id}": {
+            "get": {
+                "tags": [
+                    "Continuous Eval Test Runs"
+                ],
+                "summary": "Get a test run by id",
+                "description": "Get the status and counters for a specific test run. Use this endpoint for polling progress.",
+                "operationId": "get_test_run_api_v1_continuous_evals_test_runs__test_run_id__get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "test_run_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Test Run ID",
+                            "description": "The id of the test run."
+                        },
+                        "description": "The id of the test run."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ContinuousEvalTestRunResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Continuous Eval Test Runs"
+                ],
+                "summary": "Delete a test run",
+                "description": "Delete a test run and all its associated annotation results.",
+                "operationId": "delete_test_run_api_v1_continuous_evals_test_runs__test_run_id__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "test_run_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Test Run ID",
+                            "description": "The id of the test run to delete."
+                        },
+                        "description": "The id of the test run to delete."
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Test run deleted."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/continuous_evals/test_runs/{test_run_id}/results": {
+            "get": {
+                "tags": [
+                    "Continuous Eval Test Runs"
+                ],
+                "summary": "Get individual test case results for a test run",
+                "description": "Get the per-trace results of a test run, including scores, reasons, and input variables.",
+                "operationId": "get_test_run_results_api_v1_continuous_evals_test_runs__test_run_id__results_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "test_run_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Test Run ID",
+                            "description": "The id of the test run."
+                        },
+                        "description": "The id of the test run."
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListAgenticAnnotationsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tasks/{task_id}/agent-polling/execute": {
             "post": {
                 "tags": [
@@ -19058,6 +19382,89 @@
                 ],
                 "title": "ContinuousEvalRunStatus"
             },
+            "ContinuousEvalTestRunResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id",
+                        "description": "ID of the test run."
+                    },
+                    "continuous_eval_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Continuous Eval Id",
+                        "description": "ID of the continuous eval being tested."
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "ID of the parent task."
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/TestRunStatus",
+                        "description": "Status of the test run."
+                    },
+                    "total_count": {
+                        "type": "integer",
+                        "title": "Total Count",
+                        "description": "Total number of traces in the test run."
+                    },
+                    "completed_count": {
+                        "type": "integer",
+                        "title": "Completed Count",
+                        "description": "Number of completed test cases."
+                    },
+                    "passed_count": {
+                        "type": "integer",
+                        "title": "Passed Count",
+                        "description": "Number of test cases that passed."
+                    },
+                    "failed_count": {
+                        "type": "integer",
+                        "title": "Failed Count",
+                        "description": "Number of test cases that failed."
+                    },
+                    "error_count": {
+                        "type": "integer",
+                        "title": "Error Count",
+                        "description": "Number of test cases that errored."
+                    },
+                    "skipped_count": {
+                        "type": "integer",
+                        "title": "Skipped Count",
+                        "description": "Number of test cases that were skipped."
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "When the test run was created."
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At",
+                        "description": "When the test run was last updated."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "continuous_eval_id",
+                    "task_id",
+                    "status",
+                    "total_count",
+                    "completed_count",
+                    "passed_count",
+                    "failed_count",
+                    "error_count",
+                    "skipped_count",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "ContinuousEvalTestRunResponse"
+            },
             "ContinuousEvalTransformVariableMappingRequest": {
                 "properties": {
                     "transform_variable": {
@@ -19607,6 +20014,26 @@
                 ],
                 "title": "CreateRagNotebookRequest",
                 "description": "Request to create a new RAG notebook"
+            },
+            "CreateTestRunRequest": {
+                "properties": {
+                    "trace_ids": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "maxItems": 50,
+                        "minItems": 1,
+                        "title": "Trace Ids",
+                        "description": "List of trace IDs to test the continuous eval against"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "trace_ids"
+                ],
+                "title": "CreateTestRunRequest",
+                "description": "Request schema for creating a continuous eval test run"
             },
             "CreateUserRequest": {
                 "properties": {
@@ -23003,6 +23430,29 @@
                     "count"
                 ],
                 "title": "ListAgenticAnnotationsResponse"
+            },
+            "ListContinuousEvalTestRunsResponse": {
+                "properties": {
+                    "test_runs": {
+                        "items": {
+                            "$ref": "#/components/schemas/ContinuousEvalTestRunResponse"
+                        },
+                        "type": "array",
+                        "title": "Test Runs",
+                        "description": "List of test runs."
+                    },
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "Total number of test runs."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "test_runs",
+                    "count"
+                ],
+                "title": "ListContinuousEvalTestRunsResponse"
             },
             "ListContinuousEvalsResponse": {
                 "properties": {
@@ -29742,6 +30192,16 @@
                 ],
                 "title": "TestCaseStatus",
                 "description": "Status of a test case"
+            },
+            "TestRunStatus": {
+                "type": "string",
+                "enum": [
+                    "running",
+                    "completed",
+                    "partial_failure",
+                    "error"
+                ],
+                "title": "TestRunStatus"
             },
             "TokenUsageCount": {
                 "properties": {
