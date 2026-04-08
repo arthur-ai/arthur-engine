@@ -553,7 +553,7 @@ class ContinuousEvalsRepository:
         # and completed count so re-execution doesn't corrupt the totals
         if annotation.test_run_id is not None:
             old_status = annotation.run_status
-            update_values: dict = {
+            update_values: dict[Any, Any] = {
                 "completed_count": DatabaseContinuousEvalTestRun.completed_count - 1,
                 "status": "running",
                 "updated_at": datetime.now(),

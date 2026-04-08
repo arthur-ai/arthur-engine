@@ -599,3 +599,103 @@ def test_test_run_annotations_excluded_from_production_results(
             cleanup_traces(trace_ids)
     finally:
         client.delete_task(task.id)
+
+
+@pytest.mark.unit_tests
+@patch(MOCK_QUEUE_PATH)
+def test_test_run_annotations_excluded_from_trace_list(
+    mock_queue,
+    client: GenaiEngineTestClientBase,
+):
+    """Test that test run annotations don't appear on traces returned by GET /api/v1/traces."""
+    mock_queue.return_value = MagicMock(spec=ContinuousEvalQueueService)
+    status_code, task = client.create_task(
+        name="test_trace_list_isolation",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    try:
+        status_code, llm_eval = create_test_llm_eval(client, task.id)
+        assert status_code == 200
+
+        status_code, transform = create_test_transform(client, task.id)
+        assert status_code == 200
+
+        status_code, continuous_eval = create_test_continuous_eval(
+            client, task.id, llm_eval, transform,
+        )
+        assert status_code == 200
+
+        trace_ids = setup_traces(task.id, count=1)
+
+        try:
+            # Create a test run — this creates annotations with test_run_id set
+            status_code, test_run = client.create_test_run(
+                eval_id=str(continuous_eval.id),
+                trace_ids=trace_ids,
+            )
+            assert status_code == 200
+
+            # List traces — annotations on traces should NOT include test run annotations
+            status_code, trace_list = client.trace_api_list_traces_metadata(
+                task_ids=[task.id],
+            )
+            assert status_code == 200
+            assert trace_list.count == 1
+            trace = trace_list.traces[0]
+            assert trace.annotations is None or len(trace.annotations) == 0
+
+            cleanup_test_run(str(test_run.id))
+        finally:
+            cleanup_traces(trace_ids)
+    finally:
+        client.delete_task(task.id)
+
+
+@pytest.mark.unit_tests
+@patch(MOCK_QUEUE_PATH)
+def test_test_run_annotations_excluded_from_single_trace(
+    mock_queue,
+    client: GenaiEngineTestClientBase,
+):
+    """Test that test run annotations don't appear on GET /api/v1/traces/{trace_id}."""
+    mock_queue.return_value = MagicMock(spec=ContinuousEvalQueueService)
+    status_code, task = client.create_task(
+        name="test_single_trace_isolation",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    try:
+        status_code, llm_eval = create_test_llm_eval(client, task.id)
+        assert status_code == 200
+
+        status_code, transform = create_test_transform(client, task.id)
+        assert status_code == 200
+
+        status_code, continuous_eval = create_test_continuous_eval(
+            client, task.id, llm_eval, transform,
+        )
+        assert status_code == 200
+
+        trace_ids = setup_traces(task.id, count=1)
+
+        try:
+            # Create a test run
+            status_code, test_run = client.create_test_run(
+                eval_id=str(continuous_eval.id),
+                trace_ids=trace_ids,
+            )
+            assert status_code == 200
+
+            # Get single trace — annotations should NOT include test run annotations
+            status_code, trace = client.trace_api_get_trace_by_id(trace_ids[0])
+            assert status_code == 200
+            assert trace.annotations is None or len(trace.annotations) == 0
+
+            cleanup_test_run(str(test_run.id))
+        finally:
+            cleanup_traces(trace_ids)
+    finally:
+        client.delete_task(task.id)
