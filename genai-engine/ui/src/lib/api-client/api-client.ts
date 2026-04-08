@@ -1512,6 +1512,71 @@ export interface ContinuousEvalResponse {
 /** ContinuousEvalRunStatus */
 export type ContinuousEvalRunStatus = "pending" | "passed" | "running" | "failed" | "skipped" | "error";
 
+/** ContinuousEvalTestRunResponse */
+export interface ContinuousEvalTestRunResponse {
+  /**
+   * Completed Count
+   * Number of completed test cases.
+   */
+  completed_count: number;
+  /**
+   * Continuous Eval Id
+   * ID of the continuous eval being tested.
+   * @format uuid
+   */
+  continuous_eval_id: string;
+  /**
+   * Created At
+   * When the test run was created.
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Error Count
+   * Number of test cases that errored.
+   */
+  error_count: number;
+  /**
+   * Failed Count
+   * Number of test cases that failed.
+   */
+  failed_count: number;
+  /**
+   * Id
+   * ID of the test run.
+   * @format uuid
+   */
+  id: string;
+  /**
+   * Passed Count
+   * Number of test cases that passed.
+   */
+  passed_count: number;
+  /**
+   * Skipped Count
+   * Number of test cases that were skipped.
+   */
+  skipped_count: number;
+  /** Status of the test run. */
+  status: TestRunStatus;
+  /**
+   * Task Id
+   * ID of the parent task.
+   */
+  task_id: string;
+  /**
+   * Total Count
+   * Total number of traces in the test run.
+   */
+  total_count: number;
+  /**
+   * Updated At
+   * When the test run was last updated.
+   * @format date-time
+   */
+  updated_at: string;
+}
+
 /** ContinuousEvalTransformVariableMappingRequest */
 export interface ContinuousEvalTransformVariableMappingRequest {
   /**
@@ -1863,6 +1928,24 @@ export type CreateTaskMetricApiV2TasksTaskIdMetricsPostError = HTTPValidationErr
 export type CreateTaskRuleApiV2TasksTaskIdRulesPostData = RuleResponse;
 
 export type CreateTaskRuleApiV2TasksTaskIdRulesPostError = HTTPValidationError;
+
+export type CreateTestRunApiV1ContinuousEvalsEvalIdTestRunsPostData = ContinuousEvalTestRunResponse;
+
+export type CreateTestRunApiV1ContinuousEvalsEvalIdTestRunsPostError = HTTPValidationError;
+
+/**
+ * CreateTestRunRequest
+ * Request schema for creating a continuous eval test run
+ */
+export interface CreateTestRunRequest {
+  /**
+   * Trace Ids
+   * List of trace IDs to test the continuous eval against
+   * @maxItems 50
+   * @minItems 1
+   */
+  trace_ids: string[];
+}
 
 export type CreateTransformForTaskApiV1TasksTaskIdTracesTransformsPostData = TraceTransformResponse;
 
@@ -2272,6 +2355,10 @@ export type DeleteTagFromAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVe
 export type DeleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsTagDeleteData = any;
 
 export type DeleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsTagDeleteError = HTTPValidationError;
+
+export type DeleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDeleteData = any;
+
+export type DeleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDeleteError = HTTPValidationError;
 
 export type DeleteTransformApiV1TracesTransformsTransformIdDeleteData = any;
 
@@ -3909,6 +3996,40 @@ export interface GetTaskRagSearchSettingsApiV1TasksTaskIdRagSearchSettingsGetPar
   taskId: string;
 }
 
+export type GetTestRunApiV1ContinuousEvalsTestRunsTestRunIdGetData = ContinuousEvalTestRunResponse;
+
+export type GetTestRunApiV1ContinuousEvalsTestRunsTestRunIdGetError = HTTPValidationError;
+
+export type GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGetData = ListAgenticAnnotationsResponse;
+
+export type GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGetError = HTTPValidationError;
+
+export interface GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGetParams {
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Test Run ID
+   * The id of the test run.
+   * @format uuid
+   */
+  testRunId: string;
+}
+
 /** Response Get Token Usage Api V2 Usage Tokens Get */
 export type GetTokenUsageApiV2UsageTokensGetData = TokenUsageResponse[];
 
@@ -5018,6 +5139,20 @@ export interface ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResu
   trace_ids?: string[] | null;
 }
 
+/** ListContinuousEvalTestRunsResponse */
+export interface ListContinuousEvalTestRunsResponse {
+  /**
+   * Count
+   * Total number of test runs.
+   */
+  count: number;
+  /**
+   * Test Runs
+   * List of test runs.
+   */
+  test_runs: ContinuousEvalTestRunResponse[];
+}
+
 export type ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetData = ListContinuousEvalsResponse;
 
 export type ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetError = HTTPValidationError;
@@ -5691,6 +5826,36 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
    * User IDs to filter on. Optional.
    */
   user_ids?: string[];
+}
+
+export type ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGetData = ListContinuousEvalTestRunsResponse;
+
+export type ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGetError = HTTPValidationError;
+
+export interface ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGetParams {
+  /**
+   * Continuous Eval ID
+   * The id of the continuous eval.
+   * @format uuid
+   */
+  evalId: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
 }
 
 /** ListTraceTransformsResponse */
@@ -10731,6 +10896,9 @@ export type TestRagProviderConnectionApiV1TasksTaskIdRagProvidersTestConnectionP
 
 export type TestRagProviderConnectionApiV1TasksTaskIdRagProvidersTestConnectionPostError = HTTPValidationError;
 
+/** TestRunStatus */
+export type TestRunStatus = "running" | "completed" | "partial_failure" | "error";
+
 /** TokenUsageCount */
 export interface TokenUsageCount {
   /**
@@ -12781,7 +12949,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.493
+ * @version 2.1.505
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -13440,6 +13608,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Run a continuous eval against specific traces as a test. Results are stored separately from production annotations.
+     *
+     * @tags Continuous Eval Test Runs
+     * @name CreateTestRunApiV1ContinuousEvalsEvalIdTestRunsPost
+     * @summary Create and start a test run for a continuous eval
+     * @request POST:/api/v1/continuous_evals/{eval_id}/test_runs
+     * @secure
+     */
+    createTestRunApiV1ContinuousEvalsEvalIdTestRunsPost: (evalId: string, data: CreateTestRunRequest, params: RequestParams = {}) =>
+      this.request<CreateTestRunApiV1ContinuousEvalsEvalIdTestRunsPostData, CreateTestRunApiV1ContinuousEvalsEvalIdTestRunsPostError>({
+        path: `/api/v1/continuous_evals/${evalId}/test_runs`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Create a new transform for a task.
      *
      * @tags Transforms
@@ -13855,6 +14043,23 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         DeleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsTagDeleteError
       >({
         path: `/api/v1/tasks/${taskId}/llm_evals/${evalName}/versions/${evalVersion}/tags/${tag}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Delete a test run and all its associated annotation results.
+     *
+     * @tags Continuous Eval Test Runs
+     * @name DeleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDelete
+     * @summary Delete a test run
+     * @request DELETE:/api/v1/continuous_evals/test_runs/{test_run_id}
+     * @secure
+     */
+    deleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDelete: (testRunId: string, params: RequestParams = {}) =>
+      this.request<DeleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDeleteData, DeleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDeleteError>({
+        path: `/api/v1/continuous_evals/test_runs/${testRunId}`,
         method: "DELETE",
         secure: true,
         ...params,
@@ -15197,6 +15402,49 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Get the status and counters for a specific test run. Use this endpoint for polling progress.
+     *
+     * @tags Continuous Eval Test Runs
+     * @name GetTestRunApiV1ContinuousEvalsTestRunsTestRunIdGet
+     * @summary Get a test run by id
+     * @request GET:/api/v1/continuous_evals/test_runs/{test_run_id}
+     * @secure
+     */
+    getTestRunApiV1ContinuousEvalsTestRunsTestRunIdGet: (testRunId: string, params: RequestParams = {}) =>
+      this.request<GetTestRunApiV1ContinuousEvalsTestRunsTestRunIdGetData, GetTestRunApiV1ContinuousEvalsTestRunsTestRunIdGetError>({
+        path: `/api/v1/continuous_evals/test_runs/${testRunId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get the per-trace results of a test run, including scores, reasons, and input variables.
+     *
+     * @tags Continuous Eval Test Runs
+     * @name GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGet
+     * @summary Get individual test case results for a test run
+     * @request GET:/api/v1/continuous_evals/test_runs/{test_run_id}/results
+     * @secure
+     */
+    getTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGet: (
+      { testRunId, ...query }: GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGetData,
+        GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGetError
+      >({
+        path: `/api/v1/continuous_evals/test_runs/${testRunId}/results`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get token usage.
      *
      * @tags Usage
@@ -15585,6 +15833,28 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     listSpansMetadataApiV1TracesSpansGet: (query: ListSpansMetadataApiV1TracesSpansGetParams, params: RequestParams = {}) =>
       this.request<ListSpansMetadataApiV1TracesSpansGetData, ListSpansMetadataApiV1TracesSpansGetError>({
         path: `/api/v1/traces/spans`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get all test runs for a specific continuous eval.
+     *
+     * @tags Continuous Eval Test Runs
+     * @name ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGet
+     * @summary List test runs for a continuous eval
+     * @request GET:/api/v1/continuous_evals/{eval_id}/test_runs
+     * @secure
+     */
+    listTestRunsApiV1ContinuousEvalsEvalIdTestRunsGet: (
+      { evalId, ...query }: ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGetData, ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGetError>({
+        path: `/api/v1/continuous_evals/${evalId}/test_runs`,
         method: "GET",
         query: query,
         secure: true,

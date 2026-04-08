@@ -59,6 +59,13 @@ class ClaimClassifierResultEnum(str, Enum):
     DIALOG = "dialog"
 
 
+class TestRunStatus(str, Enum):
+    RUNNING = "running"
+    COMPLETED = "completed"
+    PARTIAL_FAILURE = "partial_failure"
+    ERROR = "error"
+
+
 class PermissionLevelsEnum(Enum):
     API_KEY_READ = frozenset(
         [constants.ORG_ADMIN, constants.ORG_AUDITOR, constants.ADMIN_KEY],

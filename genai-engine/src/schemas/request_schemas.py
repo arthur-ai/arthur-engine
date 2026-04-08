@@ -933,6 +933,16 @@ class TransformListFilterRequest(BaseModel):
     )
 
 
+class CreateTestRunRequest(BaseModel):
+    """Request schema for creating a continuous eval test run"""
+
+    trace_ids: List[str] = Field(
+        description="List of trace IDs to test the continuous eval against",
+        min_length=1,
+        max_length=50,
+    )
+
+
 class ContinuousEvalTransformVariableMappingRequest(BaseModel):
     transform_variable: str = Field(description="Name of the transform variable")
     eval_variable: str = Field(description="Name of the eval variable")
