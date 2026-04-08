@@ -24,6 +24,6 @@ export PYTHONPATH="src:$PYTHONPATH"
 
 export GENAI_ENGINE_SECRET_STORE_KEY=changeme_secret_store_key
 
-poetry run alembic upgrade head
+uv run alembic upgrade head
 
-poetry run gunicorn src.server:get_app -c src/gunicorn.conf.py --reload
+uv run gunicorn src.server:get_app -c src/gunicorn.conf.py --reload

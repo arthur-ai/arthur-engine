@@ -34,7 +34,7 @@ From the `arthur-observability-sdk/` directory:
 - Read `genai-engine/staging.openapi.json`
 - Write the generated package to `python/src/arthur_genai_client/`
 
-`install python` runs `poetry install` to register the generated package in the venv.
+`install python` runs `uv sync` to register the generated package in the venv.
 
 ### 3. Verify
 

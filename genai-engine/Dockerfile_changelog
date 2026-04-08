@@ -13,17 +13,16 @@ WORKDIR /app
 # Copy files needed for changelog generation to the expected structure
 COPY . /app/genai-engine/
 
-# Install Poetry
-RUN pip3 install poetry==1.8.5
+# Install uv
+RUN pip3 install uv
 
 # Set environment variables
 ENV PYTHONPATH="$PYTHONPATH:/app/genai-engine/src"
-ENV POETRY_VIRTUALENVS_CREATE=false
 
 # Install only the minimal dependencies needed for changelog generation
 # We need FastAPI and its dependencies, but not the heavy ML dependencies
 WORKDIR /app/genai-engine
-RUN poetry install
+RUN UV_SYSTEM_PYTHON=1 uv sync --frozen --no-install-project
 
 # Install oasdiff - detect architecture and install correct version
 RUN ARCH=$(dpkg --print-architecture) && \
@@ -39,4 +38,4 @@ RUN ARCH=$(dpkg --print-architecture) && \
 
 # Set the default command
 WORKDIR /app
-CMD ["bash", "-c", "cd genai-engine && poetry run python changelog.py"]
+CMD ["bash", "-c", "cd genai-engine && uv run python changelog.py"]

@@ -5,12 +5,12 @@
   "schedule": ["* 0-4 * * *"],
   "automergeSchedule": ["* 0-4 * * *"],
   "timezone": "America/New_York",
-  "enabledManagers": ["npm", "poetry"],
+  "enabledManagers": ["npm", "uv"],
   "includePaths": [
     "genai-engine/ui/package.json",
     "genai-engine/ui/yarn.lock",
     "**/pyproject.toml",
-    "**/poetry.lock"
+    "**/uv.lock"
   ],
   "packageRules": [
     {
