@@ -63,6 +63,7 @@ class TestRunStatus(str, Enum):
     RUNNING = "running"
     COMPLETED = "completed"
     PARTIAL_FAILURE = "partial_failure"
+    ERROR = "error"
 
 
 class PermissionLevelsEnum(Enum):

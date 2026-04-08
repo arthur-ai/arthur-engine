@@ -336,7 +336,7 @@ def test_create_test_run_invalid_eval_id(mock_queue, client: GenaiEngineTestClie
 @patch(MOCK_QUEUE_PATH)
 def test_create_test_run_empty_trace_ids(mock_queue, client: GenaiEngineTestClientBase):
     mock_queue.return_value = MagicMock(spec=ContinuousEvalQueueService)
-    """Test that creating a test run with empty trace IDs returns 422."""
+    """Test that creating a test run with empty trace IDs returns 400."""
     status_code, task = client.create_task(
         name="test_create_test_run_empty",
         is_agentic=True,
