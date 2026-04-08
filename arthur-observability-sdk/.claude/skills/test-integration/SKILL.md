@@ -12,27 +12,27 @@ Integration tests (`test_install.py`) build the real SDK wheel, install it into 
 2. A real OTLP span is delivered to a mock HTTP collector.
 3. OpenAI instrumentation emits a span that reaches the collector.
 
-The wheel build is delegated to `scripts/build_sdk_wheel.sh`, which copies the SDK to a git-free temp directory so poetry includes the gitignored `python/src/arthur_genai_client/`.
+The wheel build is delegated to `scripts/build_sdk_wheel.sh`, which copies the SDK to a git-free temp directory so uv includes the gitignored `python/src/arthur_genai_client/`.
 
 ## Prerequisites
 
 - `python/src/arthur_genai_client/` must exist. If missing, run the generate-client skill first.
-- `poetry` must be on `PATH`.
+- `uv` must be on `PATH`.
 
 ## Run all integration tests
 
 From the `arthur-observability-sdk/python/` directory:
 
 ```bash
-poetry run pytest tests -m integration_tests -v
+uv run pytest tests -m integration_tests -v
 ```
 
 ## Run a specific integration test
 
 ```bash
-poetry run pytest tests/test_install.py::test_imports_in_fresh_venv -v
-poetry run pytest tests/test_install.py::test_telemetry_reaches_collector -v
-poetry run pytest tests/test_install.py::test_openai_instrumentation_sends_span -v
+uv run pytest tests/test_install.py::test_imports_in_fresh_venv -v
+uv run pytest tests/test_install.py::test_telemetry_reaches_collector -v
+uv run pytest tests/test_install.py::test_openai_instrumentation_sends_span -v
 ```
 
 ## Build the wheel manually (without running tests)
@@ -45,6 +45,6 @@ poetry run pytest tests/test_install.py::test_openai_instrumentation_sends_span 
 ## Notes
 
 - Integration tests are marked with `@pytest.mark.integration_tests`.
-- The wheel build copies the SDK to a temp dir with no `.git` ancestor so that poetry uses filesystem-based file discovery (not `git ls-files`). This ensures the gitignored `python/src/arthur_genai_client/` is included in the wheel.
+- The wheel build copies the SDK to a temp dir with no `.git` ancestor so that uv uses filesystem-based file discovery (not `git ls-files`). This ensures the gitignored `python/src/arthur_genai_client/` is included in the wheel.
 - These tests are slower than unit tests (~1–2 min) due to the wheel build and venv creation.
 - The mock server in the fixture listens on a random free port for both `POST /v1/traces` (OTLP collector) and `POST /v1/chat/completions` (fake OpenAI API).

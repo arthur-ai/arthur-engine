@@ -10,7 +10,7 @@ Job-based evaluation engine that executes dataset evaluations and metric calcula
 
 ```bash
 # Install dependencies
-poetry install
+uv sync
 
 # Generate GenAI Engine client
 cd scripts
@@ -21,18 +21,18 @@ cd scripts
 ./install_db_dependencies.sh
 
 # Run ML Engine
-poetry run python src/ml_engine/job_agent.py
+uv run python src/ml_engine/job_agent.py
 
 # Linting
 ./scripts/lint.sh
 
 # Tests
-poetry run pytest tests/
+uv run pytest tests/
 ```
 
 ### Architecture
 
-**Tech Stack**: Python 3.13, Poetry, arthur-client, PostgreSQL/MySQL/Oracle/Snowflake/BigQuery connectors, Pandas, NumPy, PyArrow
+**Tech Stack**: Python 3.13, uv, arthur-client, PostgreSQL/MySQL/Oracle/Snowflake/BigQuery connectors, Pandas, NumPy, PyArrow
 
 **Job Processing Flow**:
 
