@@ -126,6 +126,7 @@ from db_models import (
     DatabaseTraceMetadata,
     DatabaseUser,
 )
+from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTestRun
 from db_models.dataset_models import (
     DatabaseDatasetVersion,
     DatabaseDatasetVersionRow,
@@ -163,6 +164,7 @@ from schemas.enums import (
     RuleDataType,
     RuleScoringMethod,
     SecretType,
+    TestRunStatus,
 )
 from schemas.metric_schemas import MetricScoreDetails
 from schemas.rag_experiment_schemas import (
@@ -884,7 +886,7 @@ class TraceMetadata(TokenCountCostSchema):
 
     @staticmethod
     def _from_database_model(x: DatabaseTraceMetadata) -> "TraceMetadata":
-        # Add formatted annotations
+        # Add formatted annotations (test run annotations excluded by relationship filter)
         annotations = [
             AgenticAnnotation.from_db_model(annotation) for annotation in x.annotations
         ]
@@ -3919,6 +3921,40 @@ class ContinuousEval(BaseModel):
             updated_at=self.updated_at,
             transform_variable_mapping=transform_variable_mapping,
             enabled=self.enabled,
+        )
+
+
+class ContinuousEvalTestRun(BaseModel):
+    id: uuid.UUID
+    continuous_eval_id: uuid.UUID
+    task_id: str
+    status: TestRunStatus
+    total_count: int
+    completed_count: int = 0
+    passed_count: int = 0
+    failed_count: int = 0
+    error_count: int = 0
+    skipped_count: int = 0
+    created_at: datetime
+    updated_at: datetime
+
+    @staticmethod
+    def from_db_model(
+        db_test_run: DatabaseContinuousEvalTestRun,
+    ) -> "ContinuousEvalTestRun":
+        return ContinuousEvalTestRun(
+            id=db_test_run.id,
+            continuous_eval_id=db_test_run.continuous_eval_id,
+            task_id=db_test_run.task_id,
+            status=TestRunStatus(db_test_run.status),
+            total_count=db_test_run.total_count,
+            completed_count=db_test_run.completed_count,
+            passed_count=db_test_run.passed_count,
+            failed_count=db_test_run.failed_count,
+            error_count=db_test_run.error_count,
+            skipped_count=db_test_run.skipped_count,
+            created_at=db_test_run.created_at,
+            updated_at=db_test_run.updated_at,
         )
 
 
