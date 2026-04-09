@@ -713,9 +713,7 @@ const SelectExistingTransform = ({
                   field.handleChange(value?.id ?? null);
                   onSelectionChange();
                 }}
-                getOptionLabel={(option) =>
-                  `Version ${option.version_number}${option.id === latestVersion?.id ? " (Latest)" : ""}`
-                }
+                getOptionLabel={(option) => `Version ${option.version_number}${option.id === latestVersion?.id ? " (Latest)" : ""}`}
                 isOptionEqualToValue={(option, value) => option.id === value.id}
                 renderInput={(params) => <TextField {...params} label="Version" size="small" />}
               />

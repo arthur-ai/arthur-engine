@@ -43,7 +43,7 @@ const TransformFullScreenView = ({ transformId, initialVersionId, editKey, onClo
     }
     setSelectedVersionId(null);
     navigate(`/tasks/${taskId}/transforms/${transformId}`);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editKey]);
   const [pendingRestoreVersionId, setPendingRestoreVersionId] = useState<string | null>(null);
   const [pendingRestoreVersionNumber, setPendingRestoreVersionNumber] = useState<number | null>(null);

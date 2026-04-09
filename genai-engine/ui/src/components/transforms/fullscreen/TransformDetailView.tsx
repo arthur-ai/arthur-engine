@@ -36,7 +36,16 @@ interface TransformDetailViewProps {
   onRestore: (versionId: string, versionNumber: number) => void;
 }
 
-const TransformDetailView = ({ transform, versionData, isVersionLoading, versionError, isLatest, onClose, onEdit, onRestore }: TransformDetailViewProps) => {
+const TransformDetailView = ({
+  transform,
+  versionData,
+  isVersionLoading,
+  versionError,
+  isLatest,
+  onClose,
+  onEdit,
+  onRestore,
+}: TransformDetailViewProps) => {
   const [copied, setCopied] = useState(false);
   const { timezone, use24Hour } = useDisplaySettings();
 
@@ -76,7 +85,9 @@ const TransformDetailView = ({ transform, versionData, isVersionLoading, version
   }
 
   // Use the version snapshot if viewing a historical version, otherwise use current transform definition
-  const definition = versionData ? (versionData.config_snapshot as { variables?: VariableDefinition[] }) : (transform.definition as { variables?: VariableDefinition[] });
+  const definition = versionData
+    ? (versionData.config_snapshot as { variables?: VariableDefinition[] })
+    : (transform.definition as { variables?: VariableDefinition[] });
   const variables = definition?.variables ?? [];
   const versionNumber = versionData?.version_number ?? null;
   const createdAt = versionData?.created_at ?? transform.created_at;
