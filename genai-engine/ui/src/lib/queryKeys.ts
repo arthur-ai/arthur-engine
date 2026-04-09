@@ -61,6 +61,11 @@ export const queryKeys = {
         "getContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvalsTransformsTransformIdLlmEvalsEvalNameVersionsEvalVersionVariablesGet",
         { taskId, transformId, evalName, evalVersion },
       ] as const,
+    testRuns: {
+      byEval: (evalId: string) => ["listTestRunsApiV1ContinuousEvalsEvalIdTestRunsGet", { evalId }] as const,
+      byId: (testRunId: string) => ["getTestRunApiV1ContinuousEvalsTestRunsTestRunIdGet", { testRunId }] as const,
+      results: (testRunId: string) => ["getTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGet", { testRunId }] as const,
+    },
   },
   transforms: {
     list: (taskId: string) => ["listTransformsApiV1TasksTaskIdTracesTransformsGet", { taskId }] as const,

@@ -273,7 +273,7 @@ Parameters:
     AllowedValues:
       - 'Azure'
       - 'OpenAI'
-    Default: "OpenAI"
+    Default: "Azure"
     Description: 'Provider of OpenAI LLMs'
   GenaiEngineECSClusterGPUInstanceScheduledScaleInCron:
     Type: String

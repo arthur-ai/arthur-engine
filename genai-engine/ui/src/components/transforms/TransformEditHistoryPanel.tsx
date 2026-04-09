@@ -24,7 +24,7 @@ function formatTimestamp(isoString: string): string {
   });
 }
 
-function buildChangeSummary(configSnapshot: Record<string, unknown>): string {
+function buildChangeSummary(configSnapshot: { variables?: unknown[] }): string {
   const variables = configSnapshot?.variables;
   if (Array.isArray(variables)) {
     const count = variables.length;

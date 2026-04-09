@@ -708,14 +708,14 @@ const SelectExistingTransform = ({
                 loading={versionsLoading}
                 options={versions}
                 value={versions.find((v) => v.id === field.state.value) ?? latestVersion ?? null}
-                onChange={(_: unknown, value: { id: string; version_number: number } | null) => {
+                onChange={(_, value) => {
                   field.handleChange(value?.id ?? null);
                   onSelectionChange();
                 }}
                 getOptionLabel={(option) =>
                   `Version ${option.version_number}${option.id === latestVersion?.id ? " (Latest)" : ""}`
                 }
-                isOptionEqualToValue={(option: { id: string }, value: { id: string }) => option.id === value.id}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
                 renderInput={(params) => <TextField {...params} label="Version" size="small" />}
               />
             )}
