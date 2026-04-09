@@ -375,6 +375,59 @@ class TraceTransformRepository:
             ],
         )
 
+    def delete_version(self, transform_id: UUID, version_id: UUID) -> None:
+        """Delete a specific version of a transform.
+
+        Raises 404 if not found, 409 if it is the only version or pinned by a continuous eval.
+        """
+        db_version = (
+            self.db_session.query(DatabaseTraceTransformVersion)
+            .filter(
+                DatabaseTraceTransformVersion.id == version_id,
+                DatabaseTraceTransformVersion.transform_id == transform_id,
+            )
+            .one_or_none()
+        )
+        if not db_version:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Version {version_id} not found for transform {transform_id}",
+            )
+
+        version_count = (
+            self.db_session.query(func.count(DatabaseTraceTransformVersion.id))
+            .filter(DatabaseTraceTransformVersion.transform_id == transform_id)
+            .scalar()
+        )
+        if version_count <= 1:
+            raise HTTPException(
+                status_code=409,
+                detail="Cannot delete the only version of a transform.",
+            )
+
+        pinned_evals = (
+            self.db_session.query(
+                DatabaseContinuousEval.id,
+                DatabaseContinuousEval.name,
+            )
+            .filter(DatabaseContinuousEval.transform_version_id == version_id)
+            .all()
+        )
+        if pinned_evals:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "Cannot delete this version because it is pinned by continuous evals. "
+                    "Update those evals to use a different version first.",
+                    "continuous_evals": [
+                        {"id": str(e.id), "name": e.name} for e in pinned_evals
+                    ],
+                },
+            )
+
+        self.db_session.delete(db_version)
+        self.db_session.commit()
+
     def delete_transform(self, transform_id: UUID) -> None:
         db_transform = self._get_db_transform_by_id(transform_id)
 
