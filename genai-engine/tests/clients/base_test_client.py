@@ -1266,25 +1266,6 @@ class GenaiEngineTestClientBase(httpx.Client):
             ),
         )
 
-    def restore_transform_version(
-        self,
-        transform_id: str,
-        version_id: str,
-    ) -> tuple[int, Any]:
-        resp = self.base_client.post(
-            f"/api/v1/traces/transforms/{transform_id}/versions/{version_id}/restore",
-            headers=self.authorized_user_api_key_headers,
-        )
-        log_response(resp)
-        return (
-            resp.status_code,
-            (
-                TraceTransformResponse.model_validate(resp.json())
-                if resp.status_code == 200
-                else resp.json()
-            ),
-        )
-
     def search_datasets(
         self,
         task_id: str,

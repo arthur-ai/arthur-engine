@@ -122,7 +122,7 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
 
   const variableMappingData = useMemo(() => {
     if (!selectedVersion || !apiVariableMappingData) return apiVariableMappingData;
-    const snapshot = selectedVersion.config_snapshot as { variables?: { variable_name: string }[] };
+    const snapshot = selectedVersion.definition as { variables?: { variable_name: string }[] };
     const transformVars = snapshot?.variables?.map((v) => v.variable_name) ?? [];
     return {
       ...apiVariableMappingData,

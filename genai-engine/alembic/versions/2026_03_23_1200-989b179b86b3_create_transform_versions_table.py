@@ -27,8 +27,7 @@ def upgrade() -> None:
         sa.Column("id", sa.UUID(), nullable=False),
         sa.Column("transform_id", sa.UUID(), nullable=False),
         sa.Column("version_number", sa.Integer(), nullable=False),
-        sa.Column("config_snapshot", sa.JSON(), nullable=False),
-        sa.Column("author", sa.String(), nullable=True),
+        sa.Column("definition", sa.JSON(), nullable=False),
         sa.Column("created_at", sa.TIMESTAMP(), nullable=False),
         sa.ForeignKeyConstraint(
             ["transform_id"],
@@ -61,8 +60,7 @@ def upgrade() -> None:
                 "id": str(uuid.uuid4()),
                 "transform_id": str(row.id),
                 "version_number": 1,
-                "config_snapshot": json.dumps(row.definition),
-                "author": None,
+                "definition": json.dumps(row.definition),
                 "created_at": row.created_at,
             }
             for row in transforms
@@ -71,16 +69,49 @@ def upgrade() -> None:
             text(
                 """
                 INSERT INTO transform_versions
-                    (id, transform_id, version_number, config_snapshot, author, created_at)
+                    (id, transform_id, version_number, definition, created_at)
                 VALUES
-                    (:id, :transform_id, :version_number, CAST(:config_snapshot AS json), :author, :created_at)
+                    (:id, :transform_id, :version_number, CAST(:definition AS json), :created_at)
                 """,
             ),
             rows,
         )
 
+    op.drop_column("trace_transforms", "definition")
+
 
 def downgrade() -> None:
+    # Add definition column back to trace_transforms
+    op.add_column(
+        "trace_transforms",
+        sa.Column("definition", sa.JSON(), nullable=False, server_default="{}"),
+    )
+    op.alter_column("trace_transforms", "definition", server_default=None)
+
+    # Restore each transform's definition from its latest version snapshot
+    conn = op.get_bind()
+    latest_versions = conn.execute(
+        text(
+            """
+            SELECT DISTINCT ON (transform_id)
+                transform_id, definition
+            FROM transform_versions
+            ORDER BY transform_id, version_number DESC
+            """,
+        ),
+    ).fetchall()
+
+    for row in latest_versions:
+        conn.execute(
+            text(
+                "UPDATE trace_transforms SET definition = CAST(:definition AS json) WHERE id = :transform_id",
+            ),
+            {
+                "definition": json.dumps(row.definition),
+                "transform_id": str(row.transform_id),
+            },
+        )
+
     op.drop_index(
         op.f("ix_transform_versions_transform_id"),
         table_name="transform_versions",

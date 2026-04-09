@@ -34,7 +34,6 @@ class DatabaseTraceTransform(Base):
     )
     name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    definition: Mapped[Dict[str, Any]] = mapped_column(postgresql.JSON, nullable=False)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now)
 
@@ -56,11 +55,10 @@ class DatabaseTraceTransformVersion(Base):
         nullable=False,
     )
     version_number: Mapped[int] = mapped_column(Integer, nullable=False)
-    config_snapshot: Mapped[Dict[str, Any]] = mapped_column(
+    definition: Mapped[Dict[str, Any]] = mapped_column(
         postgresql.JSON,
         nullable=False,
     )
-    author: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
         default=datetime.now,

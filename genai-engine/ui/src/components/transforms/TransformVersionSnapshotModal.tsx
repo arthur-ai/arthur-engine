@@ -1,5 +1,4 @@
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
-import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import TagIcon from "@mui/icons-material/Tag";
 import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Typography } from "@mui/material";
 
@@ -26,7 +25,7 @@ interface ConfigSnapshot {
 export const TransformVersionSnapshotModal: React.FC<TransformVersionSnapshotModalProps> = ({ open, onClose, transformId, versionId }) => {
   const { data: version, isLoading, error } = useTransformVersion(transformId, versionId);
 
-  const snapshot = version?.config_snapshot as ConfigSnapshot | undefined;
+  const snapshot = version?.definition as ConfigSnapshot | undefined;
 
   const formattedDate = version?.created_at
     ? new Date(version.created_at).toLocaleString(undefined, {
@@ -73,14 +72,6 @@ export const TransformVersionSnapshotModal: React.FC<TransformVersionSnapshotMod
                   <CalendarTodayIcon sx={{ fontSize: 16, color: "text.secondary" }} />
                   <Typography variant="body2" color="text.secondary">
                     {formattedDate}
-                  </Typography>
-                </Box>
-              )}
-              {version.author && (
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                  <PersonOutlineIcon sx={{ fontSize: 16, color: "text.secondary" }} />
-                  <Typography variant="body2" color="text.secondary">
-                    {version.author}
                   </Typography>
                 </Box>
               )}

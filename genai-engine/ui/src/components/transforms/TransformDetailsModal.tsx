@@ -9,11 +9,10 @@ import { TraceTransform } from "./types";
 interface TransformDetailsModalProps {
   open: boolean;
   onClose: () => void;
-  onRestoreSuccess?: () => void;
   transform: TraceTransform | null;
 }
 
-export const TransformDetailsModal: React.FC<TransformDetailsModalProps> = ({ open, onClose, onRestoreSuccess, transform }) => {
+export const TransformDetailsModal: React.FC<TransformDetailsModalProps> = ({ open, onClose, transform }) => {
   const [copied, setCopied] = useState(false);
 
   if (!transform) return null;
@@ -146,7 +145,7 @@ export const TransformDetailsModal: React.FC<TransformDetailsModalProps> = ({ op
             <Typography variant="subtitle2" fontWeight="medium" gutterBottom>
               Edit History
             </Typography>
-            <TransformEditHistoryPanel transformId={transform.id} onRestoreSuccess={onRestoreSuccess} />
+            <TransformEditHistoryPanel transformId={transform.id} />
           </Box>
         </Box>
       </DialogContent>

@@ -3,6 +3,17 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 04/09/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}/restore  api path removed without deprecation
+
+# 04/09/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  removed the required property 'versions/items/config_snapshot' from the response with the '200' status
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  removed the required property 'config_snapshot' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  removed the optional property 'versions/items/author' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  removed the optional property 'author' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  added the required property 'versions/items/definition' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  added the required property 'definition' to the response with the '200' status
+
+# 04/09/2026
 - **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property 'transform_version_id' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the new optional request property 'transform_version_id'
 - **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property 'transform_version_id' to the response with the '200' status
@@ -100,9 +111,9 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  added the new optional 'query' request parameter 'tags'
 
 # 03/24/2026
-- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  added the required property 'versions/items/config_snapshot/variables' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  added the required property 'config_snapshot/variables' to the response with the '200' status
-- **INFO** for **TraceTransformVersionResponse**: `config_snapshot` field now returns a typed `TraceTransformDefinition` object `{"variables": [...]}` instead of a generic object. The structure contains a `variables` array of extraction rules (`variable_name`, `span_name`, `attribute_path`, `fallback`). This is a backward-compatible refinement.
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  added the required property 'versions/items/definition/variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  added the required property 'definition/variables' to the response with the '200' status
+- **INFO** for **TraceTransformVersionResponse**: `definition` field returns a typed `TraceTransformDefinition` object `{"variables": [...]}` instead of a generic object. The structure contains a `variables` array of extraction rules (`variable_name`, `span_name`, `attribute_path`, `fallback`). This is a backward-compatible refinement.
 
 # 03/19/2026
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/chatbot/stream  endpoint added

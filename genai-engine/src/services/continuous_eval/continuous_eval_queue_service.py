@@ -196,13 +196,13 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                     f"Transform {db_continuous_eval.transform_id} not found",
                 )
 
-            # Use pinned version's config_snapshot if set, otherwise use current definition
+            # Use pinned version's definition if set, otherwise use current definition
             if db_continuous_eval.transform_version_id is not None:
                 pinned_version = trace_transform_repository.get_version_by_id(
                     db_continuous_eval.transform_id,
                     db_continuous_eval.transform_version_id,
                 )
-                transform_definition = pinned_version.config_snapshot
+                transform_definition = pinned_version.definition
             else:
                 transform_definition = trace_transform.definition
 

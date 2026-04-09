@@ -149,11 +149,8 @@ def create_transform_for_task(
     task: Task = Depends(get_validated_task),
 ) -> TraceTransformResponse:
     try:
-        author = current_user.email if current_user else None
         trace_transform_repo = TraceTransformRepository(db_session)
-        trace_transform = trace_transform_repo.create_transform(
-            task.id, request, author=author
-        )
+        trace_transform = trace_transform_repo.create_transform(task.id, request)
         return trace_transform.to_response_model()
     except HTTPException:
         raise
@@ -175,13 +172,8 @@ def update_transform(
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> TraceTransformResponse:
     try:
-        author = current_user.email if current_user else None
         trace_transform_repo = TraceTransformRepository(db_session)
-        trace_transform = trace_transform_repo.update_transform(
-            transform_id,
-            request,
-            author=author,
-        )
+        trace_transform = trace_transform_repo.update_transform(transform_id, request)
         return trace_transform.to_response_model()
     except HTTPException:
         raise
@@ -242,30 +234,6 @@ def get_transform_version(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@transform_routes.post(
-    "/traces/transforms/{transform_id}/versions/{version_id}/restore",
-    description="Restore a transform to a previous version snapshot. Creates a new version entry rather than overwriting history.",
-    response_model=TraceTransformResponse,
-    tags=["Transforms"],
-)
-@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
-def restore_transform_version(
-    transform_id: UUID = Path(description="ID of the transform."),
-    version_id: UUID = Path(description="ID of the version to restore."),
-    db_session: Session = Depends(get_db_session),
-    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-) -> TraceTransformResponse:
-    try:
-        author = current_user.email if current_user else None
-        repo = TraceTransformRepository(db_session)
-        trace_transform = repo.restore_version(transform_id, version_id, author=author)
-        return trace_transform.to_response_model()
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @transform_routes.delete(
     "/traces/transforms/{transform_id}",
     description="Delete a transform. Returns 409 if the transform is referenced by continuous evals, agentic experiments, or agentic notebooks.",
@@ -273,8 +241,8 @@ def restore_transform_version(
     status_code=HTTP_204_NO_CONTENT,
     responses={
         409: {
-            "description": "Transform has dependent resources that must be removed first."
-        }
+            "description": "Transform has dependent resources that must be removed first.",
+        },
     },
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)

@@ -2,7 +2,6 @@ import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import EditIcon from "@mui/icons-material/Edit";
-import RestoreIcon from "@mui/icons-material/Restore";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -33,19 +32,9 @@ interface TransformDetailViewProps {
   isLatest: boolean;
   onClose: () => void;
   onEdit: () => void;
-  onRestore: (versionId: string, versionNumber: number) => void;
 }
 
-const TransformDetailView = ({
-  transform,
-  versionData,
-  isVersionLoading,
-  versionError,
-  isLatest,
-  onClose,
-  onEdit,
-  onRestore,
-}: TransformDetailViewProps) => {
+const TransformDetailView = ({ transform, versionData, isVersionLoading, versionError, isLatest, onClose, onEdit }: TransformDetailViewProps) => {
   const [copied, setCopied] = useState(false);
   const { timezone, use24Hour } = useDisplaySettings();
 
@@ -86,12 +75,11 @@ const TransformDetailView = ({
 
   // Use the version snapshot if viewing a historical version, otherwise use current transform definition
   const definition = versionData
-    ? (versionData.config_snapshot as { variables?: VariableDefinition[] })
+    ? (versionData.definition as { variables?: VariableDefinition[] })
     : (transform.definition as { variables?: VariableDefinition[] });
   const variables = definition?.variables ?? [];
   const versionNumber = versionData?.version_number ?? null;
   const createdAt = versionData?.created_at ?? transform.created_at;
-  const author = versionData?.author ?? null;
 
   return (
     <Box sx={{ p: 3, height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -108,11 +96,6 @@ const TransformDetailView = ({
           {isLatest && (
             <Button variant="outlined" size="small" startIcon={<EditIcon />} onClick={onEdit}>
               Edit
-            </Button>
-          )}
-          {!isLatest && versionData && (
-            <Button variant="outlined" size="small" startIcon={<RestoreIcon />} onClick={() => onRestore(versionData.id, versionData.version_number)}>
-              Restore
             </Button>
           )}
           <IconButton onClick={onClose} aria-label="Close">
@@ -151,16 +134,6 @@ const TransformDetailView = ({
                 {formatDateInTimezone(createdAt, timezone, { hour12: !use24Hour })}
               </Typography>
             </Box>
-            {author && (
-              <Box>
-                <Typography variant="caption" color="text.secondary">
-                  Author
-                </Typography>
-                <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                  {author}
-                </Typography>
-              </Box>
-            )}
             {transform.description && (
               <Box>
                 <Typography variant="caption" color="text.secondary">

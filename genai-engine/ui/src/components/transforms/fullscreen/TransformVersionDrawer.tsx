@@ -1,15 +1,12 @@
-import RestoreIcon from "@mui/icons-material/Restore";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
 import Divider from "@mui/material/Divider";
 import Drawer from "@mui/material/Drawer";
-import IconButton from "@mui/material/IconButton";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
-import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useCallback } from "react";
 
@@ -24,17 +21,9 @@ interface TransformVersionDrawerProps {
   selectedVersionId: string | null;
   latestVersionId: string | null;
   onSelectVersion: (versionId: string) => void;
-  onRestore: (versionId: string, versionNumber: number) => void;
 }
 
-const TransformVersionDrawer = ({
-  transformId,
-  transformName,
-  selectedVersionId,
-  latestVersionId,
-  onSelectVersion,
-  onRestore,
-}: TransformVersionDrawerProps) => {
+const TransformVersionDrawer = ({ transformId, transformName, selectedVersionId, latestVersionId, onSelectVersion }: TransformVersionDrawerProps) => {
   const { timezone, use24Hour } = useDisplaySettings();
   const { data: versions = [], isLoading, error } = useTransformVersions(transformId);
 
@@ -123,32 +112,12 @@ const TransformVersionDrawer = ({
                       }
                       secondary={
                         <Box component="span" sx={{ mt: 0.5, display: "block" }}>
-                          {version.author && (
-                            <Typography variant="caption" color="text.secondary" component="span" sx={{ display: "block" }}>
-                              {version.author}
-                            </Typography>
-                          )}
                           <Typography variant="caption" color="text.secondary" component="span" sx={{ display: "block", mt: 0.25 }}>
                             {formatDateInTimezone(version.created_at, timezone, { hour12: !use24Hour })}
                           </Typography>
                         </Box>
                       }
                     />
-                    {!isLatest && (
-                      <Tooltip title="Restore this version">
-                        <IconButton
-                          size="small"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onRestore(version.id, version.version_number);
-                          }}
-                          sx={{ color: "primary.main" }}
-                          aria-label="Restore version"
-                        >
-                          <RestoreIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    )}
                   </ListItemButton>
                 </ListItem>
               );

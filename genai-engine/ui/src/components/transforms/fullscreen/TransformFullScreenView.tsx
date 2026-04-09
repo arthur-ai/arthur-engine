@@ -2,10 +2,8 @@ import Box from "@mui/material/Box";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { useRestoreTransformVersionMutation } from "../hooks/useRestoreTransformVersionMutation";
 import { useTransformVersion } from "../hooks/useTransformVersion";
 import { useTransformVersions } from "../hooks/useTransformVersions";
-import RestoreTransformVersionDialog from "../RestoreTransformVersionDialog";
 import { TraceTransform } from "../types";
 
 import TransformDetailView from "./TransformDetailView";
@@ -45,31 +43,11 @@ const TransformFullScreenView = ({ transformId, initialVersionId, editKey, onClo
     navigate(`/tasks/${taskId}/transforms/${transformId}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editKey]);
-  const [pendingRestoreVersionId, setPendingRestoreVersionId] = useState<string | null>(null);
-  const [pendingRestoreVersionNumber, setPendingRestoreVersionNumber] = useState<number | null>(null);
-
-  // Track the latestVersionId at the moment a restore fires so we can detect when
-  // the query has actually refetched a *new* latest (vs the stale one).
-  const preRestoreLatestId = useRef<string | null>(null);
-  const latestVersionIdRef = useRef<string | null>(latestVersionId);
-  useEffect(() => {
-    latestVersionIdRef.current = latestVersionId;
-  }, [latestVersionId]);
 
   // Default to latest version once versions are loaded
   useEffect(() => {
     if (selectedVersionId === null && latestVersionId !== null) {
-      if (preRestoreLatestId.current !== null) {
-        // Post-restore: wait until the query refetches a genuinely new latest version
-        // before snapping. While waiting, selectedVersionId stays null so isLatest=true
-        // and the panel correctly shows the updated transform.definition.
-        if (latestVersionId !== preRestoreLatestId.current) {
-          preRestoreLatestId.current = null;
-          setSelectedVersionId(latestVersionId);
-        }
-      } else {
-        setSelectedVersionId(latestVersionId);
-      }
+      setSelectedVersionId(latestVersionId);
     }
   }, [latestVersionId, selectedVersionId]);
 
@@ -79,16 +57,6 @@ const TransformFullScreenView = ({ transformId, initialVersionId, editKey, onClo
     isLoading: isVersionLoading,
     error: versionError,
   } = useTransformVersion(transformId, selectedVersionId !== latestVersionId ? selectedVersionId : null);
-
-  const restoreMutation = useRestoreTransformVersionMutation(transformId, () => {
-    setPendingRestoreVersionId(null);
-    setPendingRestoreVersionNumber(null);
-    // Capture the current latest ID so the snap-to-latest effect knows to wait
-    // for the query to refetch a genuinely new version before snapping.
-    preRestoreLatestId.current = latestVersionIdRef.current;
-    setSelectedVersionId(null);
-    navigate(`/tasks/${taskId}/transforms/${transformId}`);
-  });
 
   const handleSelectVersion = useCallback(
     (versionId: string) => {
@@ -101,23 +69,6 @@ const TransformFullScreenView = ({ transformId, initialVersionId, editKey, onClo
     },
     [taskId, transformId, latestVersionId, navigate]
   );
-
-  const handleRestoreClick = useCallback((versionId: string, versionNumber: number) => {
-    setPendingRestoreVersionId(versionId);
-    setPendingRestoreVersionNumber(versionNumber);
-  }, []);
-
-  const handleRestoreClose = useCallback(() => {
-    if (!restoreMutation.isPending) {
-      setPendingRestoreVersionId(null);
-      setPendingRestoreVersionNumber(null);
-    }
-  }, [restoreMutation.isPending]);
-
-  const handleRestoreConfirm = useCallback(() => {
-    if (!pendingRestoreVersionId) return;
-    restoreMutation.mutate(pendingRestoreVersionId);
-  }, [pendingRestoreVersionId, restoreMutation]);
 
   const handleEdit = useCallback(() => {
     if (transform) onEdit(transform);
@@ -136,7 +87,6 @@ const TransformFullScreenView = ({ transformId, initialVersionId, editKey, onClo
         selectedVersionId={selectedVersionId}
         latestVersionId={latestVersionId}
         onSelectVersion={handleSelectVersion}
-        onRestore={handleRestoreClick}
       />
       <Box sx={{ flex: 1, height: "100%", overflow: "hidden", minWidth: 0 }}>
         <TransformDetailView
@@ -147,17 +97,8 @@ const TransformFullScreenView = ({ transformId, initialVersionId, editKey, onClo
           isLatest={isLatest}
           onClose={onClose}
           onEdit={handleEdit}
-          onRestore={handleRestoreClick}
         />
       </Box>
-
-      <RestoreTransformVersionDialog
-        open={!!pendingRestoreVersionId}
-        versionNumber={pendingRestoreVersionNumber}
-        onClose={handleRestoreClose}
-        onConfirm={handleRestoreConfirm}
-        isRestoring={restoreMutation.isPending}
-      />
     </Box>
   );
 };

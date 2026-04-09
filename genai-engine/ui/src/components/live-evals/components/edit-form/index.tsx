@@ -1,5 +1,6 @@
 import { useAppForm } from "@arthur/shared-components";
 import {
+  Alert,
   Button,
   CircularProgress,
   Dialog,
@@ -105,7 +106,7 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
 
   const variableMappingData = useMemo(() => {
     if (!selectedVersion || !apiVariableMappingData) return apiVariableMappingData;
-    const snapshot = selectedVersion.config_snapshot as { variables?: { variable_name: string }[] };
+    const snapshot = selectedVersion.definition as { variables?: { variable_name: string }[] };
     const transformVars = snapshot?.variables?.map((v) => v.variable_name) ?? [];
     return {
       ...apiVariableMappingData,
@@ -120,10 +121,20 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
     form.setFieldValue("variableMappings", []);
   };
 
+  const hasStaleMappings = useMemo(() => {
+    if (!variableMappingData || variableMappings.length === 0) return false;
+    const validVars = new Set(variableMappingData.transform_variables);
+    return variableMappings.some((m) => m.transform_variable && !validVars.has(m.transform_variable));
+  }, [variableMappingData, variableMappings]);
+
   const allVariablesMapped =
     !variableMappingData ||
     variableMappingData.eval_variables.length === 0 ||
-    variableMappingData.eval_variables.every((evalVar) => variableMappings.some((m) => m.eval_variable === evalVar && m.transform_variable));
+    variableMappingData.eval_variables.every((evalVar) =>
+      variableMappings.some(
+        (m) => m.eval_variable === evalVar && m.transform_variable && variableMappingData.transform_variables.includes(m.transform_variable)
+      )
+    );
 
   const canShowVariableMapping = evaluator.name && evaluator.version && transform.transformId;
 
@@ -175,6 +186,11 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
           {canShowVariableMapping && (
             <>
               <Divider sx={{ my: 2 }} />
+              {hasStaleMappings && (
+                <Alert severity="warning">
+                  The transform was updated and some variable mappings no longer match. Please review and update the mappings below.
+                </Alert>
+              )}
               <VariableMappingSection
                 form={form}
                 fields={{ variableMappings: "variableMappings" }}

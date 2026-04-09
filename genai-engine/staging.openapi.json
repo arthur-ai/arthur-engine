@@ -14759,69 +14759,6 @@
                 }
             }
         },
-        "/api/v1/traces/transforms/{transform_id}/versions/{version_id}/restore": {
-            "post": {
-                "tags": [
-                    "Transforms"
-                ],
-                "summary": "Restore Transform Version",
-                "description": "Restore a transform to a previous version snapshot. Creates a new version entry rather than overwriting history.",
-                "operationId": "restore_transform_version_api_v1_traces_transforms__transform_id__versions__version_id__restore_post",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "transform_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "description": "ID of the transform.",
-                            "title": "Transform Id"
-                        },
-                        "description": "ID of the transform."
-                    },
-                    {
-                        "name": "version_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "description": "ID of the version to restore.",
-                            "title": "Version Id"
-                        },
-                        "description": "ID of the version to restore."
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/TraceTransformResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/traces/{trace_id}/transforms/{transform_id}/extractions": {
             "post": {
                 "tags": [
@@ -31388,21 +31325,9 @@
                         "title": "Version Number",
                         "description": "Monotonically increasing version number."
                     },
-                    "config_snapshot": {
+                    "definition": {
                         "$ref": "#/components/schemas/TraceTransformDefinition",
                         "description": "Snapshot of the transform definition at the time of this version."
-                    },
-                    "author": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Author",
-                        "description": "Author who created this version."
                     },
                     "created_at": {
                         "type": "string",
@@ -31416,7 +31341,7 @@
                     "id",
                     "transform_id",
                     "version_number",
-                    "config_snapshot",
+                    "definition",
                     "created_at"
                 ],
                 "title": "TraceTransformVersionResponse"

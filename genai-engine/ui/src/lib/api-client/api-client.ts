@@ -9771,10 +9771,6 @@ export interface ResponseValidationRequest {
   response: string;
 }
 
-export type RestoreTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdRestorePostData = TraceTransformResponse;
-
-export type RestoreTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdRestorePostError = HTTPValidationError;
-
 export type RotateSecretsApiV1SecretsRotationPostData = any;
 
 /** RuleResponse */
@@ -11437,18 +11433,13 @@ export interface TraceTransformVariableDefinition {
 /** TraceTransformVersionResponse */
 export interface TraceTransformVersionResponse {
   /**
-   * Author
-   * Author who created this version.
-   */
-  author?: string | null;
-  /** Snapshot of the transform definition at the time of this version. */
-  config_snapshot: TraceTransformDefinition;
-  /**
    * Created At
    * Timestamp when this version was created.
    * @format date-time
    */
   created_at: string;
+  /** Snapshot of the transform definition at the time of this version. */
+  definition: TraceTransformDefinition;
   /**
    * Id
    * ID of the version.
@@ -16215,31 +16206,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         RerunContinuousEvalApiV1ContinuousEvalsResultsRunIdRerunPostError
       >({
         path: `/api/v1/continuous_evals/results/${runId}/rerun`,
-        method: "POST",
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Restore a transform to a previous version snapshot. Creates a new version entry rather than overwriting history.
-     *
-     * @tags Transforms
-     * @name RestoreTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdRestorePost
-     * @summary Restore Transform Version
-     * @request POST:/api/v1/traces/transforms/{transform_id}/versions/{version_id}/restore
-     * @secure
-     */
-    restoreTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdRestorePost: (
-      transformId: string,
-      versionId: string,
-      params: RequestParams = {}
-    ) =>
-      this.request<
-        RestoreTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdRestorePostData,
-        RestoreTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdRestorePostError
-      >({
-        path: `/api/v1/traces/transforms/${transformId}/versions/${versionId}/restore`,
         method: "POST",
         secure: true,
         format: "json",

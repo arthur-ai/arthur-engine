@@ -21,8 +21,8 @@ function formatTimestamp(isoString: string): string {
   });
 }
 
-function summarizeChange(version: { config_snapshot: object; version_number: number }): string {
-  const snapshot = version.config_snapshot as Record<string, unknown>;
+function summarizeChange(version: { definition: object; version_number: number }): string {
+  const snapshot = version.definition as Record<string, unknown>;
   const variables = snapshot.variables;
   if (Array.isArray(variables)) {
     return `${variables.length} variable${variables.length !== 1 ? "s" : ""}`;
@@ -93,11 +93,6 @@ export const TransformEditHistory: React.FC<TransformEditHistoryProps> = ({ tran
                 <Typography variant="body2" sx={{ fontWeight: 500, color: "text.primary" }}>
                   {summarizeChange(version)}
                 </Typography>
-                {version.author && (
-                  <Typography variant="caption" color="text.secondary">
-                    by {version.author}
-                  </Typography>
-                )}
               </Box>
             </Box>
             <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: "nowrap", ml: 2, flexShrink: 0 }}>

@@ -13,9 +13,11 @@ import DeleteTransformDialog from "./DeleteTransformDialog";
 import TransformFullScreenView from "./fullscreen/TransformFullScreenView";
 import { useCreateTransformMutation } from "./hooks/useCreateTransformMutation";
 import { useDeleteTransformMutation } from "./hooks/useDeleteTransformMutation";
+import { useImpactedTransformContinuousEvals } from "./hooks/useImpactedTransformContinuousEvals";
 import { useUpdateTransformMutation } from "./hooks/useUpdateTransformMutation";
 import TransformsTable from "./table/TransformsTable";
 import TransformFormModal from "./TransformFormModal";
+import TransformImpactedCEsDialog from "./TransformImpactedCEsDialog";
 import TransformsHeader from "./TransformsHeader";
 import { TraceTransform } from "./types";
 
@@ -23,6 +25,7 @@ import { TransformDefinition } from "@/components/traces/components/add-to-datas
 import { getContentHeight } from "@/constants/layout";
 import { useTransforms } from "@/hooks/transforms/useTransforms";
 import { usePagination } from "@/hooks/usePagination";
+import type { ContinuousEvalResponse } from "@/lib/api-client/api-client";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -37,6 +40,9 @@ const TransformsManagement: React.FC = () => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [fullScreenTransformId, setFullScreenTransformId] = useState<string | null>(urlTransformId ?? null);
   const [editKey, setEditKey] = useState(0);
+  const [impactedCEs, setImpactedCEs] = useState<ContinuousEvalResponse[]>([]);
+  const [impactedTransformName, setImpactedTransformName] = useState("");
+  const [isImpactedDialogOpen, setIsImpactedDialogOpen] = useState(false);
 
   // Sync fullScreenTransformId with URL parameter
   useEffect(() => {
@@ -51,6 +57,8 @@ const TransformsManagement: React.FC = () => {
   const { data, error, isLoading, refetch } = useTransforms({ page: pagination.page, page_size: pagination.rowsPerPage });
 
   const transforms = useMemo(() => data?.transforms ?? [], [data]);
+
+  const { fetchImpactedCEs } = useImpactedTransformContinuousEvals(taskId);
 
   const createMutation = useCreateTransformMutation(taskId, () => {
     setIsCreateModalOpen(false);
@@ -109,8 +117,19 @@ const TransformsManagement: React.FC = () => {
         description,
         definition,
       });
+
+      try {
+        const affected = await fetchImpactedCEs(editingTransform.id);
+        if (affected.length > 0) {
+          setImpactedCEs(affected);
+          setImpactedTransformName(name);
+          setIsImpactedDialogOpen(true);
+        }
+      } catch {
+        // Non-critical — don't block the save flow if the check fails
+      }
     },
-    [editingTransform, updateMutation]
+    [editingTransform, updateMutation, fetchImpactedCEs]
   );
 
   const handleView = useCallback(
@@ -168,6 +187,12 @@ const TransformsManagement: React.FC = () => {
           isLoading={updateMutation.isPending}
           taskId={taskId}
           initialTransform={editingTransform || undefined}
+        />
+        <TransformImpactedCEsDialog
+          open={isImpactedDialogOpen}
+          onClose={() => setIsImpactedDialogOpen(false)}
+          impactedCEs={impactedCEs}
+          transformName={impactedTransformName}
         />
       </Box>
     );
@@ -302,6 +327,13 @@ const TransformsManagement: React.FC = () => {
         onClose={() => setDeleteConfirmId(null)}
         onConfirm={handleConfirmDelete}
         isDeleting={deleteMutation.isPending}
+      />
+
+      <TransformImpactedCEsDialog
+        open={isImpactedDialogOpen}
+        onClose={() => setIsImpactedDialogOpen(false)}
+        impactedCEs={impactedCEs}
+        transformName={impactedTransformName}
       />
     </Box>
   );

@@ -17,29 +17,14 @@ def test_transform_version_instantiation() -> None:
     version = DatabaseTraceTransformVersion(
         transform_id=transform_id,
         version_number=1,
-        config_snapshot=config,
-        author="test-user",
+        definition=config,
         created_at=datetime(2026, 3, 23, 12, 0, 0),
     )
 
     assert version.transform_id == transform_id
     assert version.version_number == 1
-    assert version.config_snapshot == config
-    assert version.author == "test-user"
+    assert version.definition == config
     assert version.created_at == datetime(2026, 3, 23, 12, 0, 0)
-
-
-@pytest.mark.unit_tests
-def test_transform_version_author_optional() -> None:
-    """Test that author field is optional (nullable)."""
-    version = DatabaseTraceTransformVersion(
-        transform_id=uuid.uuid4(),
-        version_number=1,
-        config_snapshot={"variables": []},
-        author=None,
-    )
-
-    assert version.author is None
 
 
 @pytest.mark.unit_tests
@@ -57,8 +42,8 @@ def test_transform_version_unique_constraint_defined() -> None:
 
 
 @pytest.mark.unit_tests
-def test_transform_version_config_snapshot_stores_complex_json() -> None:
-    """Test that config_snapshot can hold complex nested JSON."""
+def test_transform_version_definition_stores_complex_json() -> None:
+    """Test that definition can hold complex nested JSON."""
     complex_config = {
         "variables": [
             {
@@ -80,9 +65,9 @@ def test_transform_version_config_snapshot_stores_complex_json() -> None:
     version = DatabaseTraceTransformVersion(
         transform_id=uuid.uuid4(),
         version_number=3,
-        config_snapshot=complex_config,
+        definition=complex_config,
     )
 
-    assert version.config_snapshot == complex_config
-    assert len(version.config_snapshot["variables"]) == 2
-    assert version.config_snapshot["metadata"]["tags"] == ["v2", "production"]
+    assert version.definition == complex_config
+    assert len(version.definition["variables"]) == 2
+    assert version.definition["metadata"]["tags"] == ["v2", "production"]

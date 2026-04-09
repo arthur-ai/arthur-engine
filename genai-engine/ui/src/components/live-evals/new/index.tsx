@@ -166,7 +166,7 @@ const LiveEvalsNewForm = () => {
 
   const variableMappingData = useMemo(() => {
     if (!selectedVersion || !apiVariableMappingData) return apiVariableMappingData;
-    const snapshot = selectedVersion.config_snapshot as { variables?: { variable_name: string }[] };
+    const snapshot = selectedVersion.definition as { variables?: { variable_name: string }[] };
     const transformVars = snapshot?.variables?.map((v) => v.variable_name) ?? [];
     return {
       ...apiVariableMappingData,
@@ -435,7 +435,6 @@ export const TransformSelector = withFieldGroup({
                     value={versions.find((v) => v.id === field.state.value) ?? latestVersion ?? null}
                     onChange={(_, value) => {
                       field.handleChange(value?.id ?? null);
-                      onSelectionChange?.();
                     }}
                     getOptionLabel={(option) => `Version ${option.version_number}${option.id === latestVersion?.id ? " (Latest)" : ""}`}
                     isOptionEqualToValue={(option, value) => option.id === value.id}

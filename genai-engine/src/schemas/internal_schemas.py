@@ -2545,7 +2545,6 @@ class TraceTransform(BaseModel):
             task_id=self.task_id,
             name=self.name,
             description=self.description,
-            definition=self.definition.model_dump(),
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
@@ -2569,15 +2568,14 @@ class TraceTransform(BaseModel):
     @staticmethod
     def from_db_model(
         db_transform: DatabaseTraceTransform,
+        definition: TraceTransformDefinition,
     ) -> "TraceTransform":
         return TraceTransform(
             id=db_transform.id,
             task_id=db_transform.task_id,
             name=db_transform.name,
             description=db_transform.description,
-            definition=TraceTransformDefinition.model_validate(
-                db_transform.definition,
-            ),
+            definition=definition,
             created_at=db_transform.created_at,
             updated_at=db_transform.updated_at,
         )

@@ -286,7 +286,7 @@ def create_continuous_eval(
                 create_request.transform_version_id,
             )
             # Use the version snapshot for variable mapping validation
-            transform.definition = pinned_version.config_snapshot
+            transform.definition = pinned_version.definition
 
         continuous_eval_repo = ContinuousEvalsRepository(db_session)
 
@@ -407,7 +407,7 @@ def update_continuous_eval(
                     transform_id,
                     effective_version_id,
                 )
-                transform.definition = pinned_version.config_snapshot
+                transform.definition = pinned_version.definition
 
             if llm_eval is None:
                 llm_eval_name = (

@@ -889,12 +889,8 @@ class TraceTransformVersionResponse(BaseModel):
     id: UUID = Field(description="ID of the version.")
     transform_id: UUID = Field(description="ID of the parent transform.")
     version_number: int = Field(description="Monotonically increasing version number.")
-    config_snapshot: TraceTransformDefinition = Field(
+    definition: TraceTransformDefinition = Field(
         description="Snapshot of the transform definition at the time of this version.",
-    )
-    author: Optional[str] = Field(
-        default=None,
-        description="Author who created this version.",
     )
     created_at: datetime = Field(description="Timestamp when this version was created.")
 

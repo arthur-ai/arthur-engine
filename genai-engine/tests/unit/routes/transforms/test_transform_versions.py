@@ -59,7 +59,7 @@ def test_create_transform_creates_initial_version(
         assert len(versions.versions) == 1
         assert versions.versions[0].version_number == 1
         assert versions.versions[0].transform_id == transform.id
-        assert versions.versions[0].config_snapshot.model_dump() == transform_definition
+        assert versions.versions[0].definition.model_dump() == transform_definition
     finally:
         client.delete_task(task.id)
 
@@ -96,9 +96,9 @@ def test_update_transform_creates_new_version(
         assert versions.count == 2
         # Ordered descending by version_number
         assert versions.versions[0].version_number == 2
-        assert versions.versions[0].config_snapshot.model_dump() == updated_definition
+        assert versions.versions[0].definition.model_dump() == updated_definition
         assert versions.versions[1].version_number == 1
-        assert versions.versions[1].config_snapshot.model_dump() == transform_definition
+        assert versions.versions[1].definition.model_dump() == transform_definition
     finally:
         client.delete_task(task.id)
 
@@ -147,7 +147,7 @@ def test_get_transform_version_success(
         assert status_code == 200
         assert str(version.id) == version_id
         assert version.version_number == 1
-        assert version.config_snapshot.model_dump() == transform_definition
+        assert version.definition.model_dump() == transform_definition
         assert version.transform_id == transform.id
     finally:
         client.delete_task(task.id)
@@ -226,90 +226,6 @@ def test_get_transform_version_nonexistent(
 
 
 @pytest.mark.unit_tests
-def test_restore_transform_version(
-    client: GenaiEngineTestClientBase,
-    transform_definition: dict,
-    updated_definition: dict,
-) -> None:
-    """Test that restoring a version applies the snapshot and creates a new version."""
-    status_code, task = client.create_task(
-        name="test_restore_task",
-        is_agentic=True,
-    )
-    assert status_code == 200
-
-    try:
-        status_code, transform = client.create_transform(
-            task_id=task.id,
-            name="test_transform",
-            definition=transform_definition,
-        )
-        assert status_code == 200
-
-        # Update to create version 2
-        status_code, _ = client.update_transform(
-            transform_id=str(transform.id),
-            definition=updated_definition,
-        )
-        assert status_code == 200
-
-        # Get version 1's ID
-        status_code, versions = client.list_transform_versions(str(transform.id))
-        assert status_code == 200
-        assert versions.count == 2
-        # Descending order: version 2 first, version 1 second
-        v1_id = str(versions.versions[1].id)
-
-        # Restore version 1
-        status_code, restored_transform = client.restore_transform_version(
-            transform_id=str(transform.id),
-            version_id=v1_id,
-        )
-        assert status_code == 200
-        assert restored_transform.id == transform.id
-        assert restored_transform.definition.model_dump() == transform_definition
-
-        # Should now have 3 versions
-        status_code, versions = client.list_transform_versions(str(transform.id))
-        assert status_code == 200
-        assert versions.count == 3
-        assert versions.versions[0].version_number == 3
-        assert versions.versions[0].config_snapshot.model_dump() == transform_definition
-    finally:
-        client.delete_task(task.id)
-
-
-@pytest.mark.unit_tests
-def test_restore_nonexistent_version(
-    client: GenaiEngineTestClientBase,
-    transform_definition: dict,
-) -> None:
-    """Test that restoring a nonexistent version returns 404."""
-    status_code, task = client.create_task(
-        name="test_restore_nonexistent_task",
-        is_agentic=True,
-    )
-    assert status_code == 200
-
-    try:
-        status_code, transform = client.create_transform(
-            task_id=task.id,
-            name="test_transform",
-            definition=transform_definition,
-        )
-        assert status_code == 200
-
-        nonexistent_version_id = str(uuid.uuid4())
-        status_code, error = client.restore_transform_version(
-            transform_id=str(transform.id),
-            version_id=nonexistent_version_id,
-        )
-        assert status_code == 404
-    finally:
-        client.delete_task(task.id)
-
-
-@pytest.mark.unit_tests
 def test_update_name_only_creates_new_version(
     client: GenaiEngineTestClientBase,
     transform_definition: dict,
@@ -338,8 +254,8 @@ def test_update_name_only_creates_new_version(
         status_code, versions = client.list_transform_versions(str(transform.id))
         assert status_code == 200
         assert versions.count == 2
-        # Both versions should have same config_snapshot (definition unchanged)
-        assert versions.versions[0].config_snapshot.model_dump() == transform_definition
-        assert versions.versions[1].config_snapshot.model_dump() == transform_definition
+        # Both versions should have same definition (definition unchanged)
+        assert versions.versions[0].definition.model_dump() == transform_definition
+        assert versions.versions[1].definition.model_dump() == transform_definition
     finally:
         client.delete_task(task.id)
