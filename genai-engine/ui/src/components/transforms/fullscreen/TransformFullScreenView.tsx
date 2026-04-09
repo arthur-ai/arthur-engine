@@ -48,10 +48,28 @@ const TransformFullScreenView = ({ transformId, initialVersionId, editKey, onClo
   const [pendingRestoreVersionId, setPendingRestoreVersionId] = useState<string | null>(null);
   const [pendingRestoreVersionNumber, setPendingRestoreVersionNumber] = useState<number | null>(null);
 
+  // Track the latestVersionId at the moment a restore fires so we can detect when
+  // the query has actually refetched a *new* latest (vs the stale one).
+  const preRestoreLatestId = useRef<string | null>(null);
+  const latestVersionIdRef = useRef<string | null>(latestVersionId);
+  useEffect(() => {
+    latestVersionIdRef.current = latestVersionId;
+  }, [latestVersionId]);
+
   // Default to latest version once versions are loaded
   useEffect(() => {
     if (selectedVersionId === null && latestVersionId !== null) {
-      setSelectedVersionId(latestVersionId);
+      if (preRestoreLatestId.current !== null) {
+        // Post-restore: wait until the query refetches a genuinely new latest version
+        // before snapping. While waiting, selectedVersionId stays null so isLatest=true
+        // and the panel correctly shows the updated transform.definition.
+        if (latestVersionId !== preRestoreLatestId.current) {
+          preRestoreLatestId.current = null;
+          setSelectedVersionId(latestVersionId);
+        }
+      } else {
+        setSelectedVersionId(latestVersionId);
+      }
     }
   }, [latestVersionId, selectedVersionId]);
 
@@ -65,7 +83,9 @@ const TransformFullScreenView = ({ transformId, initialVersionId, editKey, onClo
   const restoreMutation = useRestoreTransformVersionMutation(transformId, () => {
     setPendingRestoreVersionId(null);
     setPendingRestoreVersionNumber(null);
-    // After restore, navigate to the new latest version (reset selection)
+    // Capture the current latest ID so the snap-to-latest effect knows to wait
+    // for the query to refetch a genuinely new version before snapping.
+    preRestoreLatestId.current = latestVersionIdRef.current;
     setSelectedVersionId(null);
     navigate(`/tasks/${taskId}/transforms/${transformId}`);
   });

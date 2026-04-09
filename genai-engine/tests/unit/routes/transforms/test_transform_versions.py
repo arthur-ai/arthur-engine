@@ -59,7 +59,6 @@ def test_create_transform_creates_initial_version(
         assert len(versions.versions) == 1
         assert versions.versions[0].version_number == 1
         assert versions.versions[0].transform_id == transform.id
-        assert versions.versions[0].task_id == task.id
         assert versions.versions[0].config_snapshot.model_dump() == transform_definition
     finally:
         client.delete_task(task.id)
@@ -150,7 +149,6 @@ def test_get_transform_version_success(
         assert version.version_number == 1
         assert version.config_snapshot.model_dump() == transform_definition
         assert version.transform_id == transform.id
-        assert version.task_id == task.id
     finally:
         client.delete_task(task.id)
 

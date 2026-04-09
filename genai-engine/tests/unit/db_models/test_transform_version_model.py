@@ -10,12 +10,12 @@ from db_models.transform_models import DatabaseTraceTransformVersion
 def test_transform_version_instantiation() -> None:
     """Test that DatabaseTraceTransformVersion can be instantiated with required fields."""
     transform_id = uuid.uuid4()
-    task_id = str(uuid.uuid4())
-    config = {"variables": [{"variable_name": "x", "span_name": "s", "attribute_path": "a"}]}
+    config = {
+        "variables": [{"variable_name": "x", "span_name": "s", "attribute_path": "a"}],
+    }
 
     version = DatabaseTraceTransformVersion(
         transform_id=transform_id,
-        task_id=task_id,
         version_number=1,
         config_snapshot=config,
         author="test-user",
@@ -23,7 +23,6 @@ def test_transform_version_instantiation() -> None:
     )
 
     assert version.transform_id == transform_id
-    assert version.task_id == task_id
     assert version.version_number == 1
     assert version.config_snapshot == config
     assert version.author == "test-user"
@@ -35,7 +34,6 @@ def test_transform_version_author_optional() -> None:
     """Test that author field is optional (nullable)."""
     version = DatabaseTraceTransformVersion(
         transform_id=uuid.uuid4(),
-        task_id=str(uuid.uuid4()),
         version_number=1,
         config_snapshot={"variables": []},
         author=None,
@@ -81,7 +79,6 @@ def test_transform_version_config_snapshot_stores_complex_json() -> None:
 
     version = DatabaseTraceTransformVersion(
         transform_id=uuid.uuid4(),
-        task_id=str(uuid.uuid4()),
         version_number=3,
         config_snapshot=complex_config,
     )

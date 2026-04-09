@@ -2,6 +2,52 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 04/08/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  removed the required property 'versions/items/task_id' from the response with the '200' status
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  removed the required property 'task_id' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  removed the optional property 'eval_type' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  removed the optional property 'ml_eval_name' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  removed the optional property 'ml_eval_version' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  removed the optional property 'eval_type' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  removed the optional property 'ml_eval_name' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  removed the optional property 'ml_eval_version' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  removed the optional property 'evals/items/eval_type' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  removed the optional property 'evals/items/ml_eval_name' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  removed the optional property 'evals/items/ml_eval_version' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  removed the optional property 'eval_type' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  removed the optional property 'ml_eval_name' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  removed the optional property 'ml_eval_version' from the response with the '200' status
+- **CHANGE** for **URL**: /api/chat/  endpoint added
+- **CHANGE** for **URL**: /api/chat/context/{inference_id}  endpoint added
+- **CHANGE** for **URL**: /api/chat/conversations  endpoint added
+- **CHANGE** for **URL**: /api/chat/default_task  endpoint added
+- **CHANGE** for **URL**: /api/chat/default_task  endpoint added
+- **CHANGE** for **URL**: /api/chat/feedback/{inference_id}  endpoint added
+- **CHANGE** for **URL**: /api/chat/files  endpoint added
+- **CHANGE** for **URL**: /api/chat/files  endpoint added
+- **CHANGE** for **URL**: /api/chat/files/{file_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'llm_eval_name' became required for the status '200'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'llm_eval_version' became required for the status '200'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  response property 'llm_eval_name' list-of-types was narrowed by removing types 'null' from media type 'application/json' of response '200'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  response property 'llm_eval_version' list-of-types was narrowed by removing types 'null' from media type 'application/json' of response '200'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'llm_eval_name' became required for the status '200'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'llm_eval_version' became required for the status '200'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  response property 'llm_eval_name' list-of-types was narrowed by removing types 'null' from media type 'application/json' of response '200'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  response property 'llm_eval_version' list-of-types was narrowed by removing types 'null' from media type 'application/json' of response '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the response property 'evals/items/llm_eval_name' became required for the status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the response property 'evals/items/llm_eval_version' became required for the status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  response property 'evals/items/llm_eval_name' list-of-types was narrowed by removing types 'null' from media type 'application/json' of response '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  response property 'evals/items/llm_eval_version' list-of-types was narrowed by removing types 'null' from media type 'application/json' of response '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the response property 'llm_eval_name' became required for the status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the response property 'llm_eval_version' became required for the status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  response property 'llm_eval_name' list-of-types was narrowed by removing types 'null' from media type 'application/json' of response '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  response property 'llm_eval_version' list-of-types was narrowed by removing types 'null' from media type 'application/json' of response '200'
+- **CHANGE** for **URL**: /users  endpoint added
+- **CHANGE** for **URL**: /users  endpoint added
+- **CHANGE** for **URL**: /users/permissions/check  endpoint added
+- **CHANGE** for **URL**: /users/{user_id}  endpoint added
+- **CHANGE** for **URL**: /users/{user_id}/reset_password  endpoint added
+
 # 04/06/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/chatbot/stream  for the 'path' request parameter 'task_id', the type/format was changed from 'string'/'' to 'string'/'uuid'
 

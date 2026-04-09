@@ -55,19 +55,16 @@ class DatabaseTraceTransformVersion(Base):
         index=True,
         nullable=False,
     )
-    task_id: Mapped[str] = mapped_column(
-        String,
-        ForeignKey("tasks.id", ondelete="CASCADE"),
-        index=True,
-        nullable=False,
-    )
     version_number: Mapped[int] = mapped_column(Integer, nullable=False)
     config_snapshot: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSON, nullable=False
+        postgresql.JSON,
+        nullable=False,
     )
     author: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP, default=datetime.now, nullable=False
+        TIMESTAMP,
+        default=datetime.now,
+        nullable=False,
     )
 
     __table_args__ = (

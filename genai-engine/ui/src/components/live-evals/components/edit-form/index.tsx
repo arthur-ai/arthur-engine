@@ -13,12 +13,13 @@ import {
   Typography,
 } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
-import { useId } from "react";
+import { useId, useMemo } from "react";
 
 import { useContinuousEval } from "../../hooks/useContinuousEval";
 import { useContinuousEvalVariableMapping } from "../../hooks/useContinuousEvalVariableMapping";
 import { useUpdateContinuousEval } from "../../hooks/useUpdateContinuousEval";
 import { DetailsFieldGroup, EvaluatorSelector, TransformSelector } from "../../new";
+import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
 import { VariableMappingSection } from "../variable-mapping";
 
 import { CopyableChip } from "@/components/common";
@@ -62,10 +63,11 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
       enabled: data.enabled,
       transform: {
         transformId: data.transform_id,
+        transformVersionId: null as string | null,
       },
       evaluator: {
-        name: data.llm_eval_name,
-        version: data.llm_eval_version.toString(),
+        name: data.llm_eval_name ?? null,
+        version: (data.llm_eval_version ?? 1).toString(),
       },
       variableMappings: initialMappings,
     },
@@ -90,12 +92,26 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
   const evaluator = useStore(form.store, (state) => state.values.evaluator);
   const transform = useStore(form.store, (state) => state.values.transform);
 
-  const { data: variableMappingData, isLoading: isLoadingVariableMapping } = useContinuousEvalVariableMapping(
+  const { data: versions = [] } = useTransformVersions(transform.transformId);
+  const selectedVersion = transform.transformVersionId ? versions.find((v) => v.id === transform.transformVersionId) : null;
+
+  const { data: apiVariableMappingData, isLoading: isLoadingVariableMapping } = useContinuousEvalVariableMapping(
     data.task_id,
     transform.transformId ?? undefined,
     evaluator.name ?? undefined,
     evaluator.version ?? undefined
   );
+
+  const variableMappingData = useMemo(() => {
+    if (!selectedVersion || !apiVariableMappingData) return apiVariableMappingData;
+    const snapshot = selectedVersion.config_snapshot as { variables?: { variable_name: string }[] };
+    const transformVars = snapshot?.variables?.map((v) => v.variable_name) ?? [];
+    return {
+      ...apiVariableMappingData,
+      transform_variables: transformVars,
+      matching_variables: apiVariableMappingData.eval_variables.filter((v) => transformVars.includes(v)),
+    };
+  }, [selectedVersion, apiVariableMappingData]);
 
   const variableMappings = useStore(form.store, (state) => state.values.variableMappings);
 

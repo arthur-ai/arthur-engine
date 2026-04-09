@@ -1,3 +1,4 @@
+import copy
 from datetime import datetime
 from typing import List, Optional
 from uuid import UUID, uuid4
@@ -138,8 +139,9 @@ class TraceTransformRepository:
             next_version_number = (
                 self.db_session.query(
                     func.coalesce(
-                        func.max(DatabaseTraceTransformVersion.version_number), 0
-                    )
+                        func.max(DatabaseTraceTransformVersion.version_number),
+                        0,
+                    ),
                 )
                 .filter(DatabaseTraceTransformVersion.transform_id == db_transform.id)
                 .scalar()
@@ -148,7 +150,6 @@ class TraceTransformRepository:
             version = DatabaseTraceTransformVersion(
                 id=uuid4(),
                 transform_id=db_transform.id,
-                task_id=db_transform.task_id,
                 version_number=next_version_number,
                 config_snapshot=db_transform.definition,
                 author=author,
@@ -166,7 +167,8 @@ class TraceTransformRepository:
                         detail="Version creation conflict due to concurrent request, please retry.",
                     )
         raise HTTPException(
-            status_code=500, detail="Unexpected error creating version."
+            status_code=500,
+            detail="Unexpected error creating version.",
         )
 
     def create_transform(
@@ -239,10 +241,9 @@ class TraceTransformRepository:
             TraceTransformVersionResponse(
                 id=v.id,
                 transform_id=v.transform_id,
-                task_id=v.task_id,
                 version_number=v.version_number,
                 config_snapshot=TraceTransformDefinition.model_validate(
-                    v.config_snapshot
+                    v.config_snapshot,
                 ),
                 author=v.author,
                 created_at=v.created_at,
@@ -250,7 +251,8 @@ class TraceTransformRepository:
             for v in db_versions
         ]
         return ListTraceTransformVersionsResponse(
-            versions=versions, count=len(versions)
+            versions=versions,
+            count=len(versions),
         )
 
     def get_version_by_id(
@@ -275,10 +277,9 @@ class TraceTransformRepository:
         return TraceTransformVersionResponse(
             id=db_version.id,
             transform_id=db_version.transform_id,
-            task_id=db_version.task_id,
             version_number=db_version.version_number,
             config_snapshot=TraceTransformDefinition.model_validate(
-                db_version.config_snapshot
+                db_version.config_snapshot,
             ),
             author=db_version.author,
             created_at=db_version.created_at,
@@ -312,7 +313,7 @@ class TraceTransformRepository:
                 detail=f"Transform {transform_id} not found",
             )
 
-        db_transform.definition = db_version.config_snapshot
+        db_transform.definition = copy.deepcopy(db_version.config_snapshot)
         db_transform.updated_at = datetime.now()
         self._create_version(db_transform, author=author)
         self.db_session.commit()
@@ -323,7 +324,8 @@ class TraceTransformRepository:
     def get_transform_dependents(self, transform_id: UUID) -> TransformDependents:
         continuous_evals = (
             self.db_session.query(
-                DatabaseContinuousEval.id, DatabaseContinuousEval.name
+                DatabaseContinuousEval.id,
+                DatabaseContinuousEval.name,
             )
             .filter(DatabaseContinuousEval.transform_id == transform_id)
             .all()
@@ -333,24 +335,26 @@ class TraceTransformRepository:
 
         agentic_experiments = (
             self.db_session.query(
-                DatabaseAgenticExperiment.id, DatabaseAgenticExperiment.name
+                DatabaseAgenticExperiment.id,
+                DatabaseAgenticExperiment.name,
             )
             .filter(
                 cast(DatabaseAgenticExperiment.eval_configs, String).contains(
-                    transform_id_str
-                )
+                    transform_id_str,
+                ),
             )
             .all()
         )
 
         agentic_notebooks = (
             self.db_session.query(
-                DatabaseAgenticNotebook.id, DatabaseAgenticNotebook.name
+                DatabaseAgenticNotebook.id,
+                DatabaseAgenticNotebook.name,
             )
             .filter(
                 DatabaseAgenticNotebook.eval_configs.isnot(None),
                 cast(DatabaseAgenticNotebook.eval_configs, String).contains(
-                    transform_id_str
+                    transform_id_str,
                 ),
             )
             .all()

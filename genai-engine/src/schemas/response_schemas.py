@@ -863,7 +863,6 @@ class AgenticAnnotationAnalyticsResponse(BaseModel):
 class TraceTransformVersionResponse(BaseModel):
     id: UUID = Field(description="ID of the version.")
     transform_id: UUID = Field(description="ID of the parent transform.")
-    task_id: str = Field(description="ID of the parent task.")
     version_number: int = Field(description="Monotonically increasing version number.")
     config_snapshot: TraceTransformDefinition = Field(
         description="Snapshot of the transform definition at the time of this version.",

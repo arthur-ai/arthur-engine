@@ -38,6 +38,7 @@ import { EvaluatorSelector } from "./components/EvaluatorSelector";
 import { useEval } from "@/components/evaluators/hooks/useEval";
 import { validateTransform } from "@/components/traces/components/add-to-dataset/utils/transformBuilder";
 import { useCreateTransformMutation } from "@/components/transforms/hooks/useCreateTransformMutation";
+import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
 import { useTransforms } from "@/components/transforms/hooks/useTransforms";
 import TransformFormModal from "@/components/transforms/TransformFormModal";
 import { useTask } from "@/hooks/useTask";
@@ -50,6 +51,7 @@ type EvaluatorFormState = {
 
 type TransformFormState = {
   transformId: string | null;
+  transformVersionId: string | null;
 };
 
 export type PickerState = {
@@ -103,6 +105,7 @@ export const ContinuousEvalStepper = ({
       } as EvaluatorFormState,
       transform: {
         transformId: null,
+        transformVersionId: null,
       } as TransformFormState,
       variableMappings: [] as ContinuousEvalTransformVariableMappingRequest[],
     },
@@ -117,6 +120,7 @@ export const ContinuousEvalStepper = ({
         }),
         transform: z.object({
           transformId: z.string().nullable(),
+          transformVersionId: z.string().nullable(),
         }),
         variableMappings: z.array(
           z.object({
@@ -135,6 +139,7 @@ export const ContinuousEvalStepper = ({
         }),
         transform: z.object({
           transformId: z.string().nullable(),
+          transformVersionId: z.string().nullable(),
         }),
         variableMappings: z.array(
           z.object({
@@ -234,12 +239,26 @@ export const ContinuousEvalStepper = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [evalVariables, transformMode]);
 
-  const { data: variableMappingData, isLoading: isLoadingVariableMapping } = useContinuousEvalVariableMapping(
+  const { data: versions = [] } = useTransformVersions(transform.transformId);
+  const selectedVersion = transform.transformVersionId ? versions.find((v) => v.id === transform.transformVersionId) : null;
+
+  const { data: apiVariableMappingData, isLoading: isLoadingVariableMapping } = useContinuousEvalVariableMapping(
     task?.id,
     transform.transformId ?? undefined,
     evaluator.name ?? undefined,
     evaluator.version ?? undefined
   );
+
+  const variableMappingData = useMemo(() => {
+    if (!selectedVersion || !apiVariableMappingData) return apiVariableMappingData;
+    const snapshot = selectedVersion.config_snapshot as { variables?: { variable_name: string }[] };
+    const transformVars = snapshot?.variables?.map((v) => v.variable_name) ?? [];
+    return {
+      ...apiVariableMappingData,
+      transform_variables: transformVars,
+      matching_variables: apiVariableMappingData.eval_variables.filter((v) => transformVars.includes(v)),
+    };
+  }, [selectedVersion, apiVariableMappingData]);
 
   const variableMappings = useStore(form.store, (state) => state.values.variableMappings);
 
@@ -625,6 +644,9 @@ const SelectExistingTransform = ({
 }: SelectExistingTransformProps) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const transform = useStore(form.store, (state: any) => state.values.transform) as TransformFormState;
+  const { data: versions = [], isLoading: versionsLoading } = useTransformVersions(transform.transformId);
+  const latestVersion = versions.length > 0 ? versions.reduce((a, b) => (a.version_number > b.version_number ? a : b)) : null;
+
   const canShowVariableMapping = evaluator.name && evaluator.version && transform.transformId;
 
   return (
@@ -647,26 +669,59 @@ const SelectExistingTransform = ({
         </Button>
       </Stack>
 
-      <form.Field
-        name="transform.transformId"
-        listeners={{ onChange: () => onSelectionChange() }}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        children={(field: any) => {
-          const selected = transforms.data?.find((t) => t.id === field.state.value);
-          return (
-            <Autocomplete
-              loading={transforms.isLoading}
-              options={transforms.data ?? []}
-              value={selected ?? null}
-              onChange={(_: unknown, value: { id: string; name: string } | null) => field.handleChange(value?.id ?? "")}
-              getOptionLabel={(option) => option.name}
-              isOptionEqualToValue={(option, value) => option.id === value.id}
-              getOptionKey={(option) => option.id}
-              renderInput={(params) => <TextField {...params} label="Transform" size="small" />}
-            />
-          );
-        }}
-      />
+      <Stack direction="row" gap={2} alignItems="flex-start">
+        <form.Field
+          name="transform.transformId"
+          listeners={{
+            onChange: () => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (form as any).setFieldValue("transform.transformVersionId", null);
+              onSelectionChange();
+            },
+          }}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          children={(field: any) => {
+            const selected = transforms.data?.find((t) => t.id === field.state.value);
+            return (
+              <Autocomplete
+                sx={{ flex: 1 }}
+                loading={transforms.isLoading}
+                options={transforms.data ?? []}
+                value={selected ?? null}
+                onChange={(_: unknown, value: { id: string; name: string } | null) => field.handleChange(value?.id ?? "")}
+                getOptionLabel={(option) => option.name}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                getOptionKey={(option) => option.id}
+                renderInput={(params) => <TextField {...params} label="Transform" size="small" />}
+              />
+            );
+          }}
+        />
+
+        {transform.transformId && (
+          <form.Field
+            name="transform.transformVersionId"
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            children={(field: any) => (
+              <Autocomplete
+                sx={{ width: 200 }}
+                loading={versionsLoading}
+                options={versions}
+                value={versions.find((v) => v.id === field.state.value) ?? latestVersion ?? null}
+                onChange={(_: unknown, value: { id: string; version_number: number } | null) => {
+                  field.handleChange(value?.id ?? null);
+                  onSelectionChange();
+                }}
+                getOptionLabel={(option) =>
+                  `Version ${option.version_number}${option.id === latestVersion?.id ? " (Latest)" : ""}`
+                }
+                isOptionEqualToValue={(option: { id: string }, value: { id: string }) => option.id === value.id}
+                renderInput={(params) => <TextField {...params} label="Version" size="small" />}
+              />
+            )}
+          />
+        )}
+      </Stack>
 
       {canShowVariableMapping && (
         <>
