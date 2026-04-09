@@ -3,6 +3,14 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 04/09/2026
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property 'transform_version_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the new optional request property 'transform_version_id'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property 'transform_version_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property 'evals/items/transform_version_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional request property 'transform_version_id'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property 'transform_version_id' to the response with the '200' status
+
+# 04/09/2026
 - **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  endpoint added
 - **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  endpoint added
 - **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}/restore  endpoint added

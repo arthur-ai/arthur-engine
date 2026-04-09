@@ -1,7 +1,7 @@
 """create transform_versions table
 
 Revision ID: 989b179b86b3
-Revises: 04c5e8528072
+Revises: 6939d74b3750
 Create Date: 2026-03-23 12:00:00.000000
 
 """
@@ -16,7 +16,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "989b179b86b3"
-down_revision = "04c5e8528072"
+down_revision = "6939d74b3750"
 branch_labels = None
 depends_on = None
 

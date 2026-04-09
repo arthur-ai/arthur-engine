@@ -19414,6 +19414,19 @@
                         "title": "Transform Id",
                         "description": "ID of the transform to create the continuous eval for"
                     },
+                    "transform_version_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Transform Version Id",
+                        "description": "ID of the transform version to pin. When set, the continuous eval will always execute using this version's configuration snapshot."
+                    },
                     "transform_variable_mapping": {
                         "items": {
                             "$ref": "#/components/schemas/ContinuousEvalTransformVariableMappingRequest"
@@ -19506,6 +19519,19 @@
                         "format": "uuid",
                         "title": "Transform Id",
                         "description": "ID of the transform."
+                    },
+                    "transform_version_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Transform Version Id",
+                        "description": "ID of the pinned transform version. When set, the continuous eval will always execute using this version's configuration snapshot."
                     },
                     "transform_variable_mapping": {
                         "items": {
@@ -32083,6 +32109,19 @@
                         ],
                         "title": "Transform Id",
                         "description": "ID of the transform to create the continuous eval for"
+                    },
+                    "transform_version_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Transform Version Id",
+                        "description": "ID of the transform version to pin. When set, the continuous eval will always execute using this version's configuration snapshot."
                     },
                     "transform_variable_mapping": {
                         "anyOf": [

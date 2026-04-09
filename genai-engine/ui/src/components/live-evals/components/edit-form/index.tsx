@@ -19,10 +19,10 @@ import { useContinuousEval } from "../../hooks/useContinuousEval";
 import { useContinuousEvalVariableMapping } from "../../hooks/useContinuousEvalVariableMapping";
 import { useUpdateContinuousEval } from "../../hooks/useUpdateContinuousEval";
 import { DetailsFieldGroup, EvaluatorSelector, TransformSelector } from "../../new";
-import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
 import { VariableMappingSection } from "../variable-mapping";
 
 import { CopyableChip } from "@/components/common";
+import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
 import type { ContinuousEvalResponse, ContinuousEvalTransformVariableMappingRequest } from "@/lib/api-client/api-client";
 
 type Props = {
@@ -63,7 +63,7 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
       enabled: data.enabled,
       transform: {
         transformId: data.transform_id,
-        transformVersionId: null as string | null,
+        transformVersionId: data.transform_version_id ?? null,
       },
       evaluator: {
         name: data.llm_eval_name ?? null,
@@ -80,6 +80,7 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
         description: value.description?.trim() || undefined,
         enabled: value.enabled,
         transform_id: value.transform.transformId,
+        transform_version_id: value.transform.transformVersionId ?? undefined,
         llm_eval_name: value.evaluator.name,
         llm_eval_version: value.evaluator.version,
         transform_variable_mapping: value.variableMappings,

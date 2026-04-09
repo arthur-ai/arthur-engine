@@ -147,6 +147,7 @@ class ContinuousEvalsRepository:
             llm_eval_name=continuous_eval_request.llm_eval_name,
             llm_eval_version=continuous_eval_request.llm_eval_version,
             transform_id=continuous_eval_request.transform_id,
+            transform_version_id=continuous_eval_request.transform_version_id,
             created_at=datetime.now(),
             updated_at=datetime.now(),
             transform_variable_mapping=transform_variable_mapping_dicts,
@@ -202,6 +203,11 @@ class ContinuousEvalsRepository:
             has_changes = True
         if update_continuous_eval.transform_id:
             db_continuous_eval.transform_id = update_continuous_eval.transform_id
+            has_changes = True
+        if "transform_version_id" in update_continuous_eval.model_fields_set:
+            db_continuous_eval.transform_version_id = (
+                update_continuous_eval.transform_version_id
+            )
             has_changes = True
         if update_continuous_eval.transform_variable_mapping:
             # Convert Pydantic models to dicts for JSON serialization

@@ -38,8 +38,8 @@ import { EvaluatorSelector } from "./components/EvaluatorSelector";
 import { useEval } from "@/components/evaluators/hooks/useEval";
 import { validateTransform } from "@/components/traces/components/add-to-dataset/utils/transformBuilder";
 import { useCreateTransformMutation } from "@/components/transforms/hooks/useCreateTransformMutation";
-import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
 import { useTransforms } from "@/components/transforms/hooks/useTransforms";
+import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
 import TransformFormModal from "@/components/transforms/TransformFormModal";
 import { useTask } from "@/hooks/useTask";
 import type { ContinuousEvalTransformVariableMappingRequest, NestedSpanWithMetricsResponse } from "@/lib/api-client/api-client";
@@ -207,6 +207,7 @@ export const ContinuousEvalStepper = ({
           llm_eval_name: value.evaluator.name!,
           llm_eval_version: value.evaluator.version!,
           transform_id: value.transform.transformId!,
+          transform_version_id: value.transform.transformVersionId ?? undefined,
           transform_variable_mapping: value.variableMappings,
         });
 

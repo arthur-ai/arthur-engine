@@ -9,9 +9,9 @@ import z from "zod";
 import { useContinuousEvalVariableMapping } from "../../hooks/useContinuousEvalVariableMapping";
 import { useCreateContinuousEval } from "../../hooks/useCreateContinuousEval";
 import { DetailsFieldGroup, EvaluatorSelector, TransformSelector } from "../../new";
-import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
 import { VariableMappingSection } from "../variable-mapping";
 
+import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
 import type { ContinuousEvalTransformVariableMappingRequest } from "@/lib/api-client/api-client";
 
 type Props = {
@@ -97,6 +97,7 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
         llm_eval_name: value.evaluator.name!,
         llm_eval_version: value.evaluator.version!,
         transform_id: value.transform.transformId!,
+        transform_version_id: value.transform.transformVersionId ?? undefined,
         transform_variable_mapping: value.variableMappings,
       });
 

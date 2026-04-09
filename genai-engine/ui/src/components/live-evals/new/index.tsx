@@ -30,12 +30,12 @@ import { ContinuousEvalWithTracePage } from "./ContinuousEvalWithTracePage";
 
 import { useEval } from "@/components/evaluators/hooks/useEval";
 import { useCreateTransformMutation } from "@/components/transforms/hooks/useCreateTransformMutation";
-import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
 import { useTransforms } from "@/components/transforms/hooks/useTransforms";
+import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
 import TransformFormModal from "@/components/transforms/TransformFormModal";
 import { getContentHeight } from "@/constants/layout";
 import { useTask } from "@/hooks/useTask";
-import type { ContinuousEvalResponse, ContinuousEvalTransformVariableMappingRequest } from "@/lib/api-client/api-client";
+import type { ContinuousEvalTransformVariableMappingRequest } from "@/lib/api-client/api-client";
 
 type EvaluatorFormState = {
   name: string | null;
@@ -139,6 +139,7 @@ const LiveEvalsNewForm = () => {
         llm_eval_name: value.evaluator.name!,
         llm_eval_version: value.evaluator.version!,
         transform_id: value.transform.transformId!,
+        transform_version_id: value.transform.transformVersionId ?? undefined,
         transform_variable_mapping: value.variableMappings,
       });
 

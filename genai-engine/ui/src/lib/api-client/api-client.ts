@@ -1428,6 +1428,11 @@ export interface ContinuousEvalCreateRequest {
    * Mapping of transform variables to eval variables.
    */
   transform_variable_mapping: ContinuousEvalTransformVariableMappingRequest[];
+  /**
+   * Transform Version Id
+   * ID of the transform version to pin. When set, the continuous eval will always execute using this version's configuration snapshot.
+   */
+  transform_version_id?: string | null;
 }
 
 /** ContinuousEvalRerunResponse */
@@ -1501,6 +1506,11 @@ export interface ContinuousEvalResponse {
    * Mapping of transform variables to eval variables.
    */
   transform_variable_mapping?: ContinuousEvalTransformVariableMappingResponse[];
+  /**
+   * Transform Version Id
+   * ID of the pinned transform version. When set, the continuous eval will always execute using this version's configuration snapshot.
+   */
+  transform_version_id?: string | null;
   /**
    * Updated At
    * Timestamp representing the time the continuous eval was last updated.
@@ -11886,6 +11896,11 @@ export interface UpdateContinuousEvalRequest {
    * Mapping of transform variables to eval variables.
    */
   transform_variable_mapping?: ContinuousEvalTransformVariableMappingRequest[] | null;
+  /**
+   * Transform Version Id
+   * ID of the transform version to pin. When set, the continuous eval will always execute using this version's configuration snapshot.
+   */
+  transform_version_id?: string | null;
 }
 
 export type UpdateDatasetApiV2DatasetsDatasetIdPatchData = DatasetResponse;

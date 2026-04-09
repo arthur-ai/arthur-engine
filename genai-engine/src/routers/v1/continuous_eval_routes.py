@@ -279,6 +279,15 @@ def create_continuous_eval(
                 detail=f"Transform {create_request.transform_id} not found.",
             )
 
+        if create_request.transform_version_id is not None:
+            # Validate version belongs to this transform (raises 404 if not found)
+            pinned_version = transform_repo.get_version_by_id(
+                create_request.transform_id,
+                create_request.transform_version_id,
+            )
+            # Use the version snapshot for variable mapping validation
+            transform.definition = pinned_version.config_snapshot
+
         continuous_eval_repo = ContinuousEvalsRepository(db_session)
 
         continuous_eval_repo.validate_transform_variable_mapping(
@@ -357,6 +366,22 @@ def update_continuous_eval(
             # set the version to the integer version of the llm eval
             update_request.llm_eval_version = llm_eval.version
 
+        # Validate that transform_version_id belongs to the transform (when mapping is not being updated)
+        if (
+            "transform_version_id" in update_request.model_fields_set
+            and update_request.transform_version_id is not None
+            and update_request.transform_variable_mapping is None
+        ):
+            transform_id = (
+                update_request.transform_id
+                if update_request.transform_id is not None
+                else existing_eval.transform_id
+            )
+            transform_repo.get_version_by_id(
+                transform_id,
+                update_request.transform_version_id,
+            )
+
         # Validate the transform variable mapping
         if update_request.transform_variable_mapping is not None:
             transform_id = (
@@ -370,6 +395,19 @@ def update_continuous_eval(
                     status_code=404,
                     detail=f"Transform {transform_id} not found.",
                 )
+
+            # If a version is being pinned (new or existing), validate and use its snapshot
+            effective_version_id = (
+                update_request.transform_version_id
+                if "transform_version_id" in update_request.model_fields_set
+                else existing_eval.transform_version_id
+            )
+            if effective_version_id is not None:
+                pinned_version = transform_repo.get_version_by_id(
+                    transform_id,
+                    effective_version_id,
+                )
+                transform.definition = pinned_version.config_snapshot
 
             if llm_eval is None:
                 llm_eval_name = (

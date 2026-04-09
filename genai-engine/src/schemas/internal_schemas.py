@@ -614,7 +614,7 @@ class Task(BaseModel):
                         gcp_project_id=x.agent_metadata.gcp_metadata.project_id,
                         gcp_region=x.agent_metadata.gcp_metadata.region,
                         gcp_reasoning_engine_id=x.agent_metadata.gcp_metadata.resource_id,
-                    )
+                    ),
                 )
             else:
                 creation_source = AgentCreationSource(root=ManualAgentCreationSource())
@@ -3833,6 +3833,7 @@ class ContinuousEval(BaseModel):
     llm_eval_name: str
     llm_eval_version: int
     transform_id: uuid.UUID
+    transform_version_id: Optional[uuid.UUID] = None
     created_at: datetime
     updated_at: datetime
     transform_variable_mapping: List[ContinuousEvalTransformVariableMapping] = Field(
@@ -3858,6 +3859,7 @@ class ContinuousEval(BaseModel):
             llm_eval_name=self.llm_eval_name,
             llm_eval_version=self.llm_eval_version,
             transform_id=self.transform_id,
+            transform_version_id=self.transform_version_id,
             created_at=self.created_at,
             updated_at=self.updated_at,
             transform_variable_mapping=transform_variable_mapping_dicts,
@@ -3882,6 +3884,7 @@ class ContinuousEval(BaseModel):
             llm_eval_name=db_eval.llm_eval_name,
             llm_eval_version=db_eval.llm_eval_version,
             transform_id=db_eval.transform_id,
+            transform_version_id=db_eval.transform_version_id,
             created_at=db_eval.created_at,
             updated_at=db_eval.updated_at,
             transform_variable_mapping=transform_variable_mapping,
@@ -3905,6 +3908,7 @@ class ContinuousEval(BaseModel):
             llm_eval_name=self.llm_eval_name,
             llm_eval_version=self.llm_eval_version,
             transform_id=self.transform_id,
+            transform_version_id=self.transform_version_id,
             created_at=self.created_at,
             updated_at=self.updated_at,
             transform_variable_mapping=transform_variable_mapping,
