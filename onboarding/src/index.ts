@@ -12,7 +12,6 @@ async function main(): Promise<void> {
   const banner = figlet.textSync('BUZZ', { font: 'Big' });
   console.log(chalk.cyan(banner));
   console.log(chalk.dim('  Arthur GenAI Engine Onboarding Agent'));
-  console.log(chalk.dim('  Inspired by PostHog Wizard & Vercel CLI'));
   console.log();
 
   // Animated startup
