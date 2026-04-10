@@ -20,6 +20,9 @@ export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVe
 
 export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPutError = HTTPValidationError;
 
+/** AgentCreationSource */
+export type AgentCreationSource = GCPAgentCreationSource | OTELAgentCreationSource | ManualAgentCreationSource;
+
 /** AgentMetadata */
 export interface AgentMetadata {
   /** Metadata for the agent. */
@@ -713,11 +716,8 @@ export interface AgenticPrompt {
    * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
    */
   model_name: string;
-  /**
-   * Model Provider
-   * Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). The sentinel value 'empty' indicates the system default placeholder has not been configured.
-   */
-  model_provider: ModelProvider | "empty";
+  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
+  model_provider: ModelProvider;
   /**
    * Name
    * Name of the agentic prompt
@@ -794,11 +794,8 @@ export interface AgenticPromptVersionResponse {
    * Model name chosen for this version of the llm eval
    */
   model_name: string;
-  /**
-   * Model Provider
-   * Model provider chosen for this version of the llm eval
-   */
-  model_provider: ModelProvider | "empty";
+  /** Model provider chosen for this version of the llm eval */
+  model_provider: ModelProvider;
   /**
    * Num Messages
    * Number of messages in the prompt
@@ -1260,6 +1257,40 @@ export interface ChatResponse {
   timestamp: number;
 }
 
+/** ChatbotConfigResponse */
+export interface ChatbotConfigResponse {
+  /**
+   * Available Endpoints
+   * @default []
+   */
+  available_endpoints?: string[];
+  /**
+   * Blacklist Endpoints
+   * @default []
+   */
+  blacklist_endpoints?: string[];
+  /** Model Name */
+  model_name: string;
+  model_provider: ModelProvider;
+}
+
+/** ChatbotConfigUpdateRequest */
+export interface ChatbotConfigUpdateRequest {
+  /** Blacklist Endpoints */
+  blacklist_endpoints?: string[] | null;
+  /** Model Name */
+  model_name?: string | null;
+  model_provider?: ModelProvider | null;
+}
+
+/** ChatbotRequest */
+export interface ChatbotRequest {
+  /** Conversation Id */
+  conversation_id: string;
+  /** Message */
+  message: string;
+}
+
 export type CheckUserPermissionUsersPermissionsCheckGetData = any;
 
 export type CheckUserPermissionUsersPermissionsCheckGetError = HTTPValidationError;
@@ -1270,6 +1301,10 @@ export interface CheckUserPermissionUsersPermissionsCheckGetParams {
   /** Resource to check permissions of. */
   resource?: UserPermissionResource;
 }
+
+export type ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteData = any;
+
+export type ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteError = HTTPValidationError;
 
 /**
  * CompletionRequest
@@ -1476,6 +1511,71 @@ export interface ContinuousEvalResponse {
 
 /** ContinuousEvalRunStatus */
 export type ContinuousEvalRunStatus = "pending" | "passed" | "running" | "failed" | "skipped" | "error";
+
+/** ContinuousEvalTestRunResponse */
+export interface ContinuousEvalTestRunResponse {
+  /**
+   * Completed Count
+   * Number of completed test cases.
+   */
+  completed_count: number;
+  /**
+   * Continuous Eval Id
+   * ID of the continuous eval being tested.
+   * @format uuid
+   */
+  continuous_eval_id: string;
+  /**
+   * Created At
+   * When the test run was created.
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Error Count
+   * Number of test cases that errored.
+   */
+  error_count: number;
+  /**
+   * Failed Count
+   * Number of test cases that failed.
+   */
+  failed_count: number;
+  /**
+   * Id
+   * ID of the test run.
+   * @format uuid
+   */
+  id: string;
+  /**
+   * Passed Count
+   * Number of test cases that passed.
+   */
+  passed_count: number;
+  /**
+   * Skipped Count
+   * Number of test cases that were skipped.
+   */
+  skipped_count: number;
+  /** Status of the test run. */
+  status: TestRunStatus;
+  /**
+   * Task Id
+   * ID of the parent task.
+   */
+  task_id: string;
+  /**
+   * Total Count
+   * Total number of traces in the test run.
+   */
+  total_count: number;
+  /**
+   * Updated At
+   * When the test run was last updated.
+   * @format date-time
+   */
+  updated_at: string;
+}
 
 /** ContinuousEvalTransformVariableMappingRequest */
 export interface ContinuousEvalTransformVariableMappingRequest {
@@ -1829,6 +1929,24 @@ export type CreateTaskRuleApiV2TasksTaskIdRulesPostData = RuleResponse;
 
 export type CreateTaskRuleApiV2TasksTaskIdRulesPostError = HTTPValidationError;
 
+export type CreateTestRunApiV1ContinuousEvalsEvalIdTestRunsPostData = ContinuousEvalTestRunResponse;
+
+export type CreateTestRunApiV1ContinuousEvalsEvalIdTestRunsPostError = HTTPValidationError;
+
+/**
+ * CreateTestRunRequest
+ * Request schema for creating a continuous eval test run
+ */
+export interface CreateTestRunRequest {
+  /**
+   * Trace Ids
+   * List of trace IDs to test the continuous eval against
+   * @maxItems 50
+   * @minItems 1
+   */
+  trace_ids: string[];
+}
+
 export type CreateTransformForTaskApiV1TasksTaskIdTracesTransformsPostData = TraceTransformResponse;
 
 export type CreateTransformForTaskApiV1TasksTaskIdTracesTransformsPostError = HTTPValidationError;
@@ -1855,38 +1973,6 @@ export interface CreateUserRequest {
 export type CreateUserUsersPostData = any;
 
 export type CreateUserUsersPostError = HTTPValidationError;
-
-/**
- * CreationSource
- * Source information for how an unregistered agent was created.
- */
-export interface CreationSource {
-  /**
-   * Gcp Project Id
-   * Optional GCP project ID where the agent is running.
-   */
-  gcp_project_id?: string | null;
-  /**
-   * Gcp Reasoning Engine Id
-   * Optional GCP Vertex AI Reasoning Engine ID.
-   */
-  gcp_reasoning_engine_id?: string | null;
-  /**
-   * Gcp Region
-   * Optional GCP region where the agent is running.
-   */
-  gcp_region?: string | null;
-  /**
-   * Task Id
-   * Optional UUID of the task that created this agent.
-   */
-  task_id?: string | null;
-  /**
-   * Top Level Span Name
-   * Optional top-level span name (legacy field, prefer GCP fields for GCP agents).
-   */
-  top_level_span_name?: string | null;
-}
 
 /**
  * DailyAgenticAnnotationStats
@@ -1928,6 +2014,18 @@ export interface DailyAgenticAnnotationStats {
    * Total annotations for the day
    */
   total_count: number;
+}
+
+/**
+ * DataSource
+ * Data source used by an agent.
+ */
+export interface DataSource {
+  /**
+   * Url
+   * URL of the data source.
+   */
+  url: string;
 }
 
 /**
@@ -2258,6 +2356,10 @@ export type DeleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsE
 
 export type DeleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsTagDeleteError = HTTPValidationError;
 
+export type DeleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDeleteData = any;
+
+export type DeleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDeleteError = HTTPValidationError;
+
 export type DeleteTransformApiV1TracesTransformsTransformIdDeleteData = any;
 
 export type DeleteTransformApiV1TracesTransformsTransformIdDeleteError = HTTPValidationError;
@@ -2266,89 +2368,43 @@ export type DeleteUserUsersUserIdDeleteData = any;
 
 export type DeleteUserUsersUserIdDeleteError = HTTPValidationError;
 
-export type DiscoverAgentsApiV1DiscoverAgentsPostData = DiscoverAgentsResponse;
-
-export type DiscoverAgentsApiV1DiscoverAgentsPostError = HTTPValidationError;
-
 /**
- * DiscoverAgentsRequest
- * Request to discover agents from infrastructure.
+ * DiscoverAndPollResponse
+ * Response model for the execute-all agent polling endpoint.
  */
-export interface DiscoverAgentsRequest {
+export interface DiscoverAndPollResponse {
   /**
-   * Data Plane Id
-   * UUID of the data plane to discover agents from
-   * @format uuid
+   * Discovered
+   * Number of new agent tasks created
    */
-  data_plane_id: string;
+  discovered: number;
   /**
-   * Lookback Hours
-   * Number of hours to look back for traces (default 30 days)
-   * @default 720
+   * Status
+   * Status of the operation
    */
-  lookback_hours?: number;
+  status: string;
+  /**
+   * Traces Fetched
+   * Total number of traces fetched across all tasks (0 in async mode)
+   */
+  traces_fetched: number;
 }
 
 /**
- * DiscoverAgentsResponse
- * Response containing discovered agents.
+ * DisplaySettingsResponse
+ * Public display settings (e.g. default currency for cost formatting).
  */
-export interface DiscoverAgentsResponse {
+export interface DisplaySettingsResponse {
   /**
-   * Agents
-   * List of discovered agents
+   * Chatbot Enabled
+   * @default true
    */
-  agents: DiscoveredAgent[];
+  chatbot_enabled?: boolean;
   /**
-   * Metadata
-   * Discovery metadata (e.g., traces processed, errors)
+   * Default Currency
+   * @default "USD"
    */
-  metadata?: Record<string, any>;
-}
-
-/**
- * DiscoveredAgent
- * A discovered agent from infrastructure.
- */
-export interface DiscoveredAgent {
-  /** Information about how this agent was created. */
-  creation_source: CreationSource;
-  /**
-   * Data Plane Id
-   * UUID of the data plane where this agent was detected.
-   * @format uuid
-   */
-  data_plane_id: string;
-  /**
-   * First Detected
-   * ISO 8601 timestamp when agent was first detected.
-   */
-  first_detected: string;
-  /**
-   * Infrastructure
-   * Infrastructure where this agent is running (e.g., 'GCP').
-   */
-  infrastructure: string;
-  /**
-   * Name
-   * Name of the agent.
-   */
-  name: string;
-  /**
-   * Num Spans
-   * Number of spans associated with this agent.
-   */
-  num_spans?: number | null;
-  /**
-   * Sub Agents
-   * List of sub-agents used by this agent.
-   */
-  sub_agents?: SubAgent[];
-  /**
-   * Tools
-   * List of tools used by this agent.
-   */
-  tools?: Tool[];
+  default_currency?: string;
 }
 
 /**
@@ -2362,27 +2418,18 @@ export interface EnrichedTaskResponse {
    * @format date-time
    */
   created_at: string;
+  /** Information about how this task/agent was created */
+  creation_source?: AgentCreationSource | null;
   /**
-   * Creation Source
-   * Information about how this task/agent was created
+   * Data Sources
+   * Data sources used by this agent (computed from spans)
    */
-  creation_source?: GCPCreationSource | OTELCreationSource | ManualCreationSource | null;
+  data_sources?: DataSource[] | null;
   /**
    * Id
    * Task ID
    */
   id: string;
-  /**
-   * Infrastructure
-   * Infrastructure where agent is running (e.g., 'GCP', 'AWS')
-   */
-  infrastructure?: string | null;
-  /**
-   * Is Agentic
-   * Whether this is an agentic task
-   * @default false
-   */
-  is_agentic?: boolean;
   /**
    * Is Autocreated
    * Whether this task was auto-created (vs manually created)
@@ -2390,10 +2437,15 @@ export interface EnrichedTaskResponse {
    */
   is_autocreated?: boolean;
   /**
+   * Last Fetched
+   * Last time traces were fetched for this task (from task_polling_state)
+   */
+  last_fetched?: string | null;
+  /**
    * Models
    * Models used by this agent (computed from spans)
    */
-  models?: string[] | null;
+  models?: LLMModel[] | null;
   /**
    * Name
    * Task name
@@ -2624,6 +2676,24 @@ export interface ExamplesConfig {
   hint?: string | null;
 }
 
+export type ExecuteAgentPollingApiV1TasksTaskIdAgentPollingExecutePostData = ExecutePollingResponse;
+
+export type ExecuteAgentPollingApiV1TasksTaskIdAgentPollingExecutePostError = HTTPValidationError;
+
+export type ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostData = DiscoverAndPollResponse;
+
+export type ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostError = HTTPValidationError;
+
+export interface ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostParams {
+  /** Timeout */
+  timeout?: number | null;
+  /**
+   * Wait For Completion
+   * @default false
+   */
+  wait_for_completion?: boolean;
+}
+
 export type ExecuteHybridSearchApiV1RagProvidersProviderIdHybridSearchPostData = RagProviderQueryResponse;
 
 export type ExecuteHybridSearchApiV1RagProvidersProviderIdHybridSearchPostError = HTTPValidationError;
@@ -2631,6 +2701,23 @@ export type ExecuteHybridSearchApiV1RagProvidersProviderIdHybridSearchPostError 
 export type ExecuteKeywordSearchApiV1RagProvidersProviderIdKeywordSearchPostData = RagProviderQueryResponse;
 
 export type ExecuteKeywordSearchApiV1RagProvidersProviderIdKeywordSearchPostError = HTTPValidationError;
+
+/**
+ * ExecutePollingResponse
+ * Response model for the single-task agent polling endpoint.
+ */
+export interface ExecutePollingResponse {
+  /**
+   * Status
+   * Status of the operation
+   */
+  status: string;
+  /**
+   * Task Id
+   * Task ID that was enqueued
+   */
+  task_id: string;
+}
 
 export type ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPostData = RagProviderQueryResponse;
 
@@ -2822,6 +2909,38 @@ export interface FileUploadResult {
   word_count: number;
 }
 
+/**
+ * GCPAgentCreationSource
+ * Creation source for GCP-discovered agents.
+ */
+export interface GCPAgentCreationSource {
+  /**
+   * Gcp Project Id
+   * GCP project ID
+   */
+  gcp_project_id: string;
+  /**
+   * Gcp Reasoning Engine Id
+   * GCP Vertex AI Reasoning Engine ID
+   */
+  gcp_reasoning_engine_id: string;
+  /**
+   * Gcp Region
+   * GCP region
+   */
+  gcp_region: string;
+  /**
+   * Service Names
+   * Service names associated with this agent
+   */
+  service_names?: string[];
+  /**
+   * Type
+   * @default "GCP"
+   */
+  type?: "GCP";
+}
+
 /** GCPAgentMetadata */
 export interface GCPAgentMetadata {
   /**
@@ -2861,43 +2980,6 @@ export interface GCPAgentMetadataResponse {
    * Resource ID of the agent.
    */
   resource_id: string;
-}
-
-/**
- * GCPCreationSource
- * Creation source for GCP-discovered agents.
- */
-export interface GCPCreationSource {
-  /**
-   * Gcp Project Id
-   * GCP project ID
-   */
-  gcp_project_id: string;
-  /**
-   * Gcp Reasoning Engine Id
-   * GCP Vertex AI Reasoning Engine ID
-   */
-  gcp_reasoning_engine_id: string;
-  /**
-   * Gcp Region
-   * GCP region
-   */
-  gcp_region: string;
-  /**
-   * Last Fetched
-   * Timestamp of last successful trace fetch
-   */
-  last_fetched?: string | null;
-  /**
-   * Service Names
-   * List of service names that send traces to this task
-   */
-  service_names?: string[];
-  /**
-   * Type
-   * @default "GCP"
-   */
-  type?: "GCP";
 }
 
 /** GCPServiceAccountCredentialsRequest */
@@ -3114,10 +3196,7 @@ export interface GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVer
    * @default 10
    */
   page_size?: number;
-  /**
-   * Prompt Name
-   * The name of the prompt to retrieve.
-   */
+  /** Prompt Name */
   promptName: string;
   /**
    * Sort the results (asc/desc)
@@ -3179,6 +3258,11 @@ export interface GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Tags
+   * List of tags to filter for items that have any matching tag across any version.
+   */
+  tags?: string[] | null;
+  /**
    * Task Id
    * @format uuid
    */
@@ -3200,10 +3284,7 @@ export interface GetAllLlmEvalVersionsApiV1TasksTaskIdLlmEvalsEvalNameVersionsGe
    * Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).
    */
   created_before?: string | null;
-  /**
-   * LLM Eval Name
-   * The name of the llm eval to retrieve.
-   */
+  /** Eval Name */
   evalName: string;
   /**
    * Exclude Deleted
@@ -3303,6 +3384,11 @@ export interface GetAllLlmEvalsApiV1TasksTaskIdLlmEvalsGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Tags
+   * List of tags to filter for items that have any matching tag across any version.
+   */
+  tags?: string[] | null;
+  /**
    * Task Id
    * @format uuid
    */
@@ -3319,6 +3405,8 @@ export type GetAnnotationByIdApiV1TracesAnnotationsAnnotationIdGetError = HTTPVa
 export type GetApiKeyAuthApiKeysApiKeyIdGetData = ApiKeyResponse;
 
 export type GetApiKeyAuthApiKeysApiKeyIdGetError = HTTPValidationError;
+
+export type GetChatbotConfigApiV1ChatbotConfigGetData = ChatbotConfigResponse;
 
 export type GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetData = ContinuousEvalResponse;
 
@@ -3499,6 +3587,8 @@ export interface GetDatasetsApiV2TasksTaskIdDatasetsSearchGetParams {
 export type GetDefaultRulesApiV2DefaultRulesGetData = RuleResponse[];
 
 export type GetDefaultTaskApiChatDefaultTaskGetData = ChatDefaultTaskResponse;
+
+export type GetDisplaySettingsApiV2DisplaySettingsGetData = DisplaySettingsResponse;
 
 export type GetExperimentTestCasesApiV1PromptExperimentsExperimentIdTestCasesGetData = TestCaseListResponse;
 
@@ -3862,8 +3952,6 @@ export type GetSpanByIdApiV1TracesSpansSpanIdGetData = SpanWithMetricsResponse;
 
 export type GetSpanByIdApiV1TracesSpansSpanIdGetError = HTTPValidationError;
 
-export type GetSyntheticDataPromptStatusApiV2DatasetsSyntheticDataPromptStatusGetData = SyntheticDataPromptStatus;
-
 export type GetTaskApiV2TasksTaskIdGetData = TaskResponse;
 
 export type GetTaskApiV2TasksTaskIdGetError = HTTPValidationError;
@@ -3908,6 +3996,40 @@ export interface GetTaskRagSearchSettingsApiV1TasksTaskIdRagSearchSettingsGetPar
   taskId: string;
 }
 
+export type GetTestRunApiV1ContinuousEvalsTestRunsTestRunIdGetData = ContinuousEvalTestRunResponse;
+
+export type GetTestRunApiV1ContinuousEvalsTestRunsTestRunIdGetError = HTTPValidationError;
+
+export type GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGetData = ListAgenticAnnotationsResponse;
+
+export type GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGetError = HTTPValidationError;
+
+export interface GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGetParams {
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Test Run ID
+   * The id of the test run.
+   * @format uuid
+   */
+  testRunId: string;
+}
+
 /** Response Get Token Usage Api V2 Usage Tokens Get */
 export type GetTokenUsageApiV2UsageTokensGetData = TokenUsageResponse[];
 
@@ -3941,6 +4063,10 @@ export type GetTraceByIdApiV1TracesTraceIdGetError = HTTPValidationError;
 export type GetTransformApiV1TracesTransformsTransformIdGetData = TraceTransformResponse;
 
 export type GetTransformApiV1TracesTransformsTransformIdGetError = HTTPValidationError;
+
+export type GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGetData = TransformDependents;
+
+export type GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGetError = HTTPValidationError;
 
 export type GetUnregisteredRootSpansApiV1TracesSpansUnregisteredGetData = UnregisteredRootSpansResponse;
 
@@ -4521,6 +4647,18 @@ export interface LLMGetAllMetadataResponse {
   versions: number;
 }
 
+/**
+ * LLMModel
+ * Model used by an agent.
+ */
+export interface LLMModel {
+  /**
+   * Name
+   * Name of the model.
+   */
+  name: string;
+}
+
 /** LLMPromptRequestConfigSettings */
 export interface LLMPromptRequestConfigSettings {
   /**
@@ -4779,11 +4917,8 @@ export interface LLMVersionResponse {
    * Model name chosen for this version of the llm eval
    */
   model_name: string;
-  /**
-   * Model Provider
-   * Model provider chosen for this version of the llm eval
-   */
-  model_provider: ModelProvider | "empty";
+  /** Model provider chosen for this version of the llm eval */
+  model_provider: ModelProvider;
   /**
    * Tags
    * List of tags for the llm asset
@@ -5004,6 +5139,20 @@ export interface ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResu
   trace_ids?: string[] | null;
 }
 
+/** ListContinuousEvalTestRunsResponse */
+export interface ListContinuousEvalTestRunsResponse {
+  /**
+   * Count
+   * Total number of test runs.
+   */
+  count: number;
+  /**
+   * Test Runs
+   * List of test runs.
+   */
+  test_runs: ContinuousEvalTestRunResponse[];
+}
+
 export type ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetData = ListContinuousEvalsResponse;
 
 export type ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetError = HTTPValidationError;
@@ -5034,6 +5183,16 @@ export interface ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetParams {
    * Name of the llm eval to filter on
    */
   llm_eval_name?: string | null;
+  /**
+   * Llm Eval Name Exact
+   * Exact LLM eval name to filter on (case-sensitive exact match).
+   */
+  llm_eval_name_exact?: string | null;
+  /**
+   * Llm Eval Version
+   * LLM eval version to filter on.
+   */
+  llm_eval_version?: number | null;
   /**
    * Name
    * Name of the continuous eval to filter on.
@@ -5346,6 +5505,36 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
   /** Filter by trace annotation type (i.e. 'human' or 'continuous_eval'). */
   annotation_type?: AgenticAnnotationType;
   /**
+   * Completion Token Count Eq
+   * Completion token count exactly equal to this value.
+   * @min 0
+   */
+  completion_token_count_eq?: number;
+  /**
+   * Completion Token Count Gt
+   * Completion token count greater than this value.
+   * @min 0
+   */
+  completion_token_count_gt?: number;
+  /**
+   * Completion Token Count Gte
+   * Completion token count greater than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_gte?: number;
+  /**
+   * Completion Token Count Lt
+   * Completion token count less than this value.
+   * @min 0
+   */
+  completion_token_count_lt?: number;
+  /**
+   * Completion Token Count Lte
+   * Completion token count less than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_lte?: number;
+  /**
    * Continuous Eval Name
    * Filter by continuous eval name.
    */
@@ -5376,6 +5565,36 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
    * @default 10
    */
   page_size?: number;
+  /**
+   * Prompt Token Count Eq
+   * Prompt token count exactly equal to this value.
+   * @min 0
+   */
+  prompt_token_count_eq?: number;
+  /**
+   * Prompt Token Count Gt
+   * Prompt token count greater than this value.
+   * @min 0
+   */
+  prompt_token_count_gt?: number;
+  /**
+   * Prompt Token Count Gte
+   * Prompt token count greater than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_gte?: number;
+  /**
+   * Prompt Token Count Lt
+   * Prompt token count less than this value.
+   * @min 0
+   */
+  prompt_token_count_lt?: number;
+  /**
+   * Prompt Token Count Lte
+   * Prompt token count less than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_lte?: number;
   /**
    * Query Relevance Eq
    * Equal to this value.
@@ -5457,6 +5676,41 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Column to sort results by.
+   * @default "start_time"
+   */
+  sort_by?: TraceSortBy;
+  /**
+   * Span Count Eq
+   * Span count exactly equal to this value.
+   * @min 1
+   */
+  span_count_eq?: number;
+  /**
+   * Span Count Gt
+   * Span count greater than this value.
+   * @min 1
+   */
+  span_count_gt?: number;
+  /**
+   * Span Count Gte
+   * Span count greater than or equal to this value.
+   * @min 1
+   */
+  span_count_gte?: number;
+  /**
+   * Span Count Lt
+   * Span count less than this value.
+   * @min 1
+   */
+  span_count_lt?: number;
+  /**
+   * Span Count Lte
+   * Span count less than or equal to this value.
+   * @min 1
+   */
+  span_count_lte?: number;
+  /**
    * Span Ids
    * Span IDs to filter on. Optional.
    */
@@ -5502,6 +5756,36 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
   tool_selection?: ToolClassEnum;
   /** Tool usage evaluation result. */
   tool_usage?: ToolClassEnum;
+  /**
+   * Total Token Count Eq
+   * Total token count exactly equal to this value.
+   * @min 0
+   */
+  total_token_count_eq?: number;
+  /**
+   * Total Token Count Gt
+   * Total token count greater than this value.
+   * @min 0
+   */
+  total_token_count_gt?: number;
+  /**
+   * Total Token Count Gte
+   * Total token count greater than or equal to this value.
+   * @min 0
+   */
+  total_token_count_gte?: number;
+  /**
+   * Total Token Count Lt
+   * Total token count less than this value.
+   * @min 0
+   */
+  total_token_count_lt?: number;
+  /**
+   * Total Token Count Lte
+   * Total token count less than or equal to this value.
+   * @min 0
+   */
+  total_token_count_lte?: number;
   /**
    * Trace Duration Eq
    * Duration exactly equal to this value (seconds).
@@ -5544,6 +5828,36 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
   user_ids?: string[];
 }
 
+export type ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGetData = ListContinuousEvalTestRunsResponse;
+
+export type ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGetError = HTTPValidationError;
+
+export interface ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGetParams {
+  /**
+   * Continuous Eval ID
+   * The id of the continuous eval.
+   * @format uuid
+   */
+  evalId: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+}
+
 /** ListTraceTransformsResponse */
 export interface ListTraceTransformsResponse {
   /**
@@ -5572,6 +5886,36 @@ export interface ListTracesMetadataApiV1TracesGetParams {
   annotation_score?: number;
   /** Filter by trace annotation type (i.e. 'human' or 'continuous_eval'). */
   annotation_type?: AgenticAnnotationType;
+  /**
+   * Completion Token Count Eq
+   * Completion token count exactly equal to this value.
+   * @min 0
+   */
+  completion_token_count_eq?: number;
+  /**
+   * Completion Token Count Gt
+   * Completion token count greater than this value.
+   * @min 0
+   */
+  completion_token_count_gt?: number;
+  /**
+   * Completion Token Count Gte
+   * Completion token count greater than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_gte?: number;
+  /**
+   * Completion Token Count Lt
+   * Completion token count less than this value.
+   * @min 0
+   */
+  completion_token_count_lt?: number;
+  /**
+   * Completion Token Count Lte
+   * Completion token count less than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_lte?: number;
   /**
    * Continuous Eval Name
    * Filter by continuous eval name.
@@ -5609,6 +5953,36 @@ export interface ListTracesMetadataApiV1TracesGetParams {
    * @default 10
    */
   page_size?: number;
+  /**
+   * Prompt Token Count Eq
+   * Prompt token count exactly equal to this value.
+   * @min 0
+   */
+  prompt_token_count_eq?: number;
+  /**
+   * Prompt Token Count Gt
+   * Prompt token count greater than this value.
+   * @min 0
+   */
+  prompt_token_count_gt?: number;
+  /**
+   * Prompt Token Count Gte
+   * Prompt token count greater than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_gte?: number;
+  /**
+   * Prompt Token Count Lt
+   * Prompt token count less than this value.
+   * @min 0
+   */
+  prompt_token_count_lt?: number;
+  /**
+   * Prompt Token Count Lte
+   * Prompt token count less than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_lte?: number;
   /**
    * Query Relevance Eq
    * Equal to this value.
@@ -5690,6 +6064,41 @@ export interface ListTracesMetadataApiV1TracesGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Column to sort results by.
+   * @default "start_time"
+   */
+  sort_by?: TraceSortBy;
+  /**
+   * Span Count Eq
+   * Span count exactly equal to this value.
+   * @min 1
+   */
+  span_count_eq?: number;
+  /**
+   * Span Count Gt
+   * Span count greater than this value.
+   * @min 1
+   */
+  span_count_gt?: number;
+  /**
+   * Span Count Gte
+   * Span count greater than or equal to this value.
+   * @min 1
+   */
+  span_count_gte?: number;
+  /**
+   * Span Count Lt
+   * Span count less than this value.
+   * @min 1
+   */
+  span_count_lt?: number;
+  /**
+   * Span Count Lte
+   * Span count less than or equal to this value.
+   * @min 1
+   */
+  span_count_lte?: number;
+  /**
    * Span Ids
    * Span IDs to filter on. Optional.
    */
@@ -5735,6 +6144,36 @@ export interface ListTracesMetadataApiV1TracesGetParams {
   tool_selection?: ToolClassEnum;
   /** Tool usage evaluation result. */
   tool_usage?: ToolClassEnum;
+  /**
+   * Total Token Count Eq
+   * Total token count exactly equal to this value.
+   * @min 0
+   */
+  total_token_count_eq?: number;
+  /**
+   * Total Token Count Gt
+   * Total token count greater than this value.
+   * @min 0
+   */
+  total_token_count_gt?: number;
+  /**
+   * Total Token Count Gte
+   * Total token count greater than or equal to this value.
+   * @min 0
+   */
+  total_token_count_gte?: number;
+  /**
+   * Total Token Count Lt
+   * Total token count less than this value.
+   * @min 0
+   */
+  total_token_count_lt?: number;
+  /**
+   * Total Token Count Lte
+   * Total token count less than or equal to this value.
+   * @min 0
+   */
+  total_token_count_lte?: number;
   /**
    * Trace Duration Eq
    * Duration exactly equal to this value (seconds).
@@ -5880,20 +6319,15 @@ export interface LogitBiasItem {
 }
 
 /**
- * ManualCreationSource
+ * ManualAgentCreationSource
  * Creation source for manually created tasks.
  */
-export interface ManualCreationSource {
-  /**
-   * Service Names
-   * List of service names that send traces to this task
-   */
-  service_names?: string[];
+export interface ManualAgentCreationSource {
   /**
    * Type
-   * @default "manual"
+   * @default "MANUAL"
    */
-  type?: "manual";
+  type?: "MANUAL";
 }
 
 /** MessageRole */
@@ -6587,15 +7021,15 @@ export interface NotebookSummary {
 }
 
 /**
- * OTELCreationSource
+ * OTELAgentCreationSource
  * Creation source for OTEL-discovered agents (auto-created from traces).
  */
-export interface OTELCreationSource {
+export interface OTELAgentCreationSource {
   /**
-   * Service Name
-   * Service name from OTEL trace
+   * Service Names
+   * Service names associated with this agent
    */
-  service_name: string;
+  service_names?: string[];
   /**
    * Type
    * @default "OTEL"
@@ -7572,6 +8006,36 @@ export interface QuerySpansV1TracesQueryGetParams {
   /** Filter by trace annotation type (i.e. 'human' or 'continuous_eval'). */
   annotation_type?: AgenticAnnotationType;
   /**
+   * Completion Token Count Eq
+   * Completion token count exactly equal to this value.
+   * @min 0
+   */
+  completion_token_count_eq?: number;
+  /**
+   * Completion Token Count Gt
+   * Completion token count greater than this value.
+   * @min 0
+   */
+  completion_token_count_gt?: number;
+  /**
+   * Completion Token Count Gte
+   * Completion token count greater than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_gte?: number;
+  /**
+   * Completion Token Count Lt
+   * Completion token count less than this value.
+   * @min 0
+   */
+  completion_token_count_lt?: number;
+  /**
+   * Completion Token Count Lte
+   * Completion token count less than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_lte?: number;
+  /**
    * Continuous Eval Name
    * Filter by continuous eval name.
    */
@@ -7602,6 +8066,36 @@ export interface QuerySpansV1TracesQueryGetParams {
    * @default 10
    */
   page_size?: number;
+  /**
+   * Prompt Token Count Eq
+   * Prompt token count exactly equal to this value.
+   * @min 0
+   */
+  prompt_token_count_eq?: number;
+  /**
+   * Prompt Token Count Gt
+   * Prompt token count greater than this value.
+   * @min 0
+   */
+  prompt_token_count_gt?: number;
+  /**
+   * Prompt Token Count Gte
+   * Prompt token count greater than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_gte?: number;
+  /**
+   * Prompt Token Count Lt
+   * Prompt token count less than this value.
+   * @min 0
+   */
+  prompt_token_count_lt?: number;
+  /**
+   * Prompt Token Count Lte
+   * Prompt token count less than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_lte?: number;
   /**
    * Query Relevance Eq
    * Equal to this value.
@@ -7683,6 +8177,41 @@ export interface QuerySpansV1TracesQueryGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Column to sort results by.
+   * @default "start_time"
+   */
+  sort_by?: TraceSortBy;
+  /**
+   * Span Count Eq
+   * Span count exactly equal to this value.
+   * @min 1
+   */
+  span_count_eq?: number;
+  /**
+   * Span Count Gt
+   * Span count greater than this value.
+   * @min 1
+   */
+  span_count_gt?: number;
+  /**
+   * Span Count Gte
+   * Span count greater than or equal to this value.
+   * @min 1
+   */
+  span_count_gte?: number;
+  /**
+   * Span Count Lt
+   * Span count less than this value.
+   * @min 1
+   */
+  span_count_lt?: number;
+  /**
+   * Span Count Lte
+   * Span count less than or equal to this value.
+   * @min 1
+   */
+  span_count_lte?: number;
+  /**
    * Span Ids
    * Span IDs to filter on. Optional.
    */
@@ -7728,6 +8257,36 @@ export interface QuerySpansV1TracesQueryGetParams {
   tool_selection?: ToolClassEnum;
   /** Tool usage evaluation result. */
   tool_usage?: ToolClassEnum;
+  /**
+   * Total Token Count Eq
+   * Total token count exactly equal to this value.
+   * @min 0
+   */
+  total_token_count_eq?: number;
+  /**
+   * Total Token Count Gt
+   * Total token count greater than this value.
+   * @min 0
+   */
+  total_token_count_gt?: number;
+  /**
+   * Total Token Count Gte
+   * Total token count greater than or equal to this value.
+   * @min 0
+   */
+  total_token_count_gte?: number;
+  /**
+   * Total Token Count Lt
+   * Total token count less than this value.
+   * @min 0
+   */
+  total_token_count_lt?: number;
+  /**
+   * Total Token Count Lte
+   * Total token count less than or equal to this value.
+   * @min 0
+   */
+  total_token_count_lte?: number;
   /**
    * Trace Duration Eq
    * Duration exactly equal to this value (seconds).
@@ -7785,6 +8344,36 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
   /** Filter by trace annotation type (i.e. 'human' or 'continuous_eval'). */
   annotation_type?: AgenticAnnotationType;
   /**
+   * Completion Token Count Eq
+   * Completion token count exactly equal to this value.
+   * @min 0
+   */
+  completion_token_count_eq?: number;
+  /**
+   * Completion Token Count Gt
+   * Completion token count greater than this value.
+   * @min 0
+   */
+  completion_token_count_gt?: number;
+  /**
+   * Completion Token Count Gte
+   * Completion token count greater than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_gte?: number;
+  /**
+   * Completion Token Count Lt
+   * Completion token count less than this value.
+   * @min 0
+   */
+  completion_token_count_lt?: number;
+  /**
+   * Completion Token Count Lte
+   * Completion token count less than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_lte?: number;
+  /**
    * Continuous Eval Name
    * Filter by continuous eval name.
    */
@@ -7815,6 +8404,36 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
    * @default 10
    */
   page_size?: number;
+  /**
+   * Prompt Token Count Eq
+   * Prompt token count exactly equal to this value.
+   * @min 0
+   */
+  prompt_token_count_eq?: number;
+  /**
+   * Prompt Token Count Gt
+   * Prompt token count greater than this value.
+   * @min 0
+   */
+  prompt_token_count_gt?: number;
+  /**
+   * Prompt Token Count Gte
+   * Prompt token count greater than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_gte?: number;
+  /**
+   * Prompt Token Count Lt
+   * Prompt token count less than this value.
+   * @min 0
+   */
+  prompt_token_count_lt?: number;
+  /**
+   * Prompt Token Count Lte
+   * Prompt token count less than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_lte?: number;
   /**
    * Query Relevance Eq
    * Equal to this value.
@@ -7896,6 +8515,41 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Column to sort results by.
+   * @default "start_time"
+   */
+  sort_by?: TraceSortBy;
+  /**
+   * Span Count Eq
+   * Span count exactly equal to this value.
+   * @min 1
+   */
+  span_count_eq?: number;
+  /**
+   * Span Count Gt
+   * Span count greater than this value.
+   * @min 1
+   */
+  span_count_gt?: number;
+  /**
+   * Span Count Gte
+   * Span count greater than or equal to this value.
+   * @min 1
+   */
+  span_count_gte?: number;
+  /**
+   * Span Count Lt
+   * Span count less than this value.
+   * @min 1
+   */
+  span_count_lt?: number;
+  /**
+   * Span Count Lte
+   * Span count less than or equal to this value.
+   * @min 1
+   */
+  span_count_lte?: number;
+  /**
    * Span Ids
    * Span IDs to filter on. Optional.
    */
@@ -7941,6 +8595,36 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
   tool_selection?: ToolClassEnum;
   /** Tool usage evaluation result. */
   tool_usage?: ToolClassEnum;
+  /**
+   * Total Token Count Eq
+   * Total token count exactly equal to this value.
+   * @min 0
+   */
+  total_token_count_eq?: number;
+  /**
+   * Total Token Count Gt
+   * Total token count greater than this value.
+   * @min 0
+   */
+  total_token_count_gt?: number;
+  /**
+   * Total Token Count Gte
+   * Total token count greater than or equal to this value.
+   * @min 0
+   */
+  total_token_count_gte?: number;
+  /**
+   * Total Token Count Lt
+   * Total token count less than this value.
+   * @min 0
+   */
+  total_token_count_lt?: number;
+  /**
+   * Total Token Count Lte
+   * Total token count less than or equal to this value.
+   * @min 0
+   */
+  total_token_count_lte?: number;
   /**
    * Trace Duration Eq
    * Duration exactly equal to this value (seconds).
@@ -9055,10 +9739,6 @@ export interface ResponseValidationRequest {
   response: string;
 }
 
-export type RetryAgentPollingApiV1TasksTaskIdAgentPollingRetryAgentPollingDataIdPostData = any;
-
-export type RetryAgentPollingApiV1TasksTaskIdAgentPollingRetryAgentPollingDataIdPostError = HTTPValidationError;
-
 export type RotateSecretsApiV1SecretsRotationPostData = any;
 
 /** RuleResponse */
@@ -9359,10 +10039,20 @@ export interface SearchTasksApiV2TasksSearchPostParams {
 /** SearchTasksRequest */
 export interface SearchTasksRequest {
   /**
+   * Include Archived
+   * Include archived tasks in results. True returns both active and archived tasks, False or None returns only active tasks. If only_archived is True, this flag is ignored.
+   */
+  include_archived?: boolean | null;
+  /**
    * Is Agentic
    * Filter tasks by agentic status. If not provided, returns both agentic and non-agentic tasks.
    */
   is_agentic?: boolean | null;
+  /**
+   * Only Archived
+   * Return only archived tasks. True returns exclusively archived tasks, False or None has no effect. Takes precedence over include_archived when both are set.
+   */
+  only_archived?: boolean | null;
   /**
    * Task Ids
    * List of tasks to query for.
@@ -9433,6 +10123,11 @@ export interface SessionListResponse {
    * Total number of sessions matching filters
    */
   count: number;
+  /**
+   * Display Currency
+   * Currency code for cost fields
+   */
+  display_currency?: string | null;
   /**
    * Sessions
    * List of session metadata
@@ -9535,6 +10230,11 @@ export interface SessionTracesResponse {
    */
   count: number;
   /**
+   * Display Currency
+   * Currency code for cost fields
+   */
+  display_currency?: string | null;
+  /**
    * Session Id
    * Session identifier
    */
@@ -9603,6 +10303,11 @@ export interface SpanListResponse {
    * Total number of spans matching filters
    */
   count: number;
+  /**
+   * Display Currency
+   * Currency code for cost fields
+   */
+  display_currency?: string | null;
   /**
    * Spans
    * List of span metadata
@@ -9834,6 +10539,10 @@ export interface SpanWithMetricsResponse {
 /** StatusCodeEnum */
 export type StatusCodeEnum = "Ok" | "Error" | "Unset";
 
+export type StreamChatbotApiV1TasksTaskIdChatbotStreamPostData = any;
+
+export type StreamChatbotApiV1TasksTaskIdChatbotStreamPostError = HTTPValidationError;
+
 /** StreamOptions */
 export interface StreamOptions {
   /**
@@ -9988,25 +10697,6 @@ export interface SyntheticDataGenerationResponse {
   rows_removed?: string[];
 }
 
-/** SyntheticDataPromptStatus */
-export interface SyntheticDataPromptStatus {
-  /**
-   * Is Placeholder
-   * True when the prompt uses the empty placeholder model
-   */
-  is_placeholder: boolean;
-  /**
-   * Model Name
-   * Model name stored in the SDG system prompt
-   */
-  model_name: string;
-  /**
-   * Model Provider
-   * Model provider stored in the SDG system prompt
-   */
-  model_provider: string;
-}
-
 /**
  * SyntheticDataRowResponse
  * A single generated row with a temporary client-side ID for tracking.
@@ -10043,6 +10733,12 @@ export interface TaskResponse {
    * Whether the task is agentic or not
    */
   is_agentic?: boolean | null;
+  /**
+   * Is Archived
+   * Whether this task is archived
+   * @default false
+   */
+  is_archived?: boolean | null;
   /**
    * Is Autocreated
    * Whether this task was automatically created by Arthur
@@ -10199,6 +10895,9 @@ export type TestCaseStatus = "queued" | "running" | "evaluating" | "failed" | "c
 export type TestRagProviderConnectionApiV1TasksTaskIdRagProvidersTestConnectionPostData = ConnectionCheckResult;
 
 export type TestRagProviderConnectionApiV1TasksTaskIdRagProvidersTestConnectionPostError = HTTPValidationError;
+
+/** TestRunStatus */
+export type TestRunStatus = "running" | "completed" | "partial_failure" | "error";
 
 /** TokenUsageCount */
 export interface TokenUsageCount {
@@ -10411,6 +11110,11 @@ export interface TraceListResponse {
    */
   count: number;
   /**
+   * Display Currency
+   * Currency code for cost fields
+   */
+  display_currency?: string | null;
+  /**
    * Traces
    * List of trace metadata
    */
@@ -10603,6 +11307,9 @@ export interface TraceResponse {
   trace_id: string;
 }
 
+/** TraceSortBy */
+export type TraceSortBy = "start_time" | "total_token_count" | "total_token_cost" | "span_count";
+
 /** TraceTransformDefinition */
 export interface TraceTransformDefinition {
   /**
@@ -10702,6 +11409,11 @@ export interface TraceUserListResponse {
    */
   count: number;
   /**
+   * Display Currency
+   * Currency code for cost fields
+   */
+  display_currency?: string | null;
+  /**
    * Users
    * List of user metadata
    */
@@ -10792,6 +11504,39 @@ export interface TraceUserMetadataResponse {
   user_id: string;
 }
 
+/** TransformDependentRef */
+export interface TransformDependentRef {
+  /**
+   * Id
+   * ID of the dependent resource.
+   */
+  id: string;
+  /**
+   * Name
+   * Name of the dependent resource.
+   */
+  name: string;
+}
+
+/** TransformDependents */
+export interface TransformDependents {
+  /**
+   * Agentic Experiments
+   * Agentic experiments that reference this transform.
+   */
+  agentic_experiments?: TransformDependentRef[];
+  /**
+   * Agentic Notebooks
+   * Agentic notebooks that reference this transform.
+   */
+  agentic_notebooks?: TransformDependentRef[];
+  /**
+   * Continuous Evals
+   * Continuous evals that reference this transform.
+   */
+  continuous_evals?: TransformDependentRef[];
+}
+
 /** TransformExtractionResponseList */
 export interface TransformExtractionResponseList {
   /**
@@ -10828,6 +11573,10 @@ export interface TransformVariableExperimentOutputSource {
    */
   type?: "transform_variable";
 }
+
+export type UnarchiveTaskApiV2TasksTaskIdUnarchivePostData = any;
+
+export type UnarchiveTaskApiV2TasksTaskIdUnarchivePostError = HTTPValidationError;
 
 /**
  * UnregisteredRootSpanGroup
@@ -11028,6 +11777,10 @@ export interface UpdateAgenticNotebookRequest {
    */
   name?: string | null;
 }
+
+export type UpdateChatbotConfigApiV1ChatbotConfigPutData = ChatbotConfigResponse;
+
+export type UpdateChatbotConfigApiV1ChatbotConfigPutError = HTTPValidationError;
 
 export type UpdateContinuousEvalApiV1ContinuousEvalsEvalIdPatchData = ContinuousEvalResponse;
 
@@ -12196,7 +12949,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.404
+ * @version 2.1.505
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -12439,6 +13192,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         method: "POST",
         body: data,
         type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Chatbot
+     * @name ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDelete
+     * @summary Clear chatbot conversation history
+     * @request DELETE:/api/v1/chatbot/history/{conversation_id}
+     * @secure
+     */
+    clearChatbotHistoryApiV1ChatbotHistoryConversationIdDelete: (conversationId: string, params: RequestParams = {}) =>
+      this.request<ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteData, ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteError>({
+        path: `/api/v1/chatbot/history/${conversationId}`,
+        method: "DELETE",
+        secure: true,
         format: "json",
         ...params,
       }),
@@ -12828,6 +13599,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     createTaskRuleApiV2TasksTaskIdRulesPost: (taskId: string, data: NewRuleRequest, params: RequestParams = {}) =>
       this.request<CreateTaskRuleApiV2TasksTaskIdRulesPostData, CreateTaskRuleApiV2TasksTaskIdRulesPostError>({
         path: `/api/v2/tasks/${taskId}/rules`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Run a continuous eval against specific traces as a test. Results are stored separately from production annotations.
+     *
+     * @tags Continuous Eval Test Runs
+     * @name CreateTestRunApiV1ContinuousEvalsEvalIdTestRunsPost
+     * @summary Create and start a test run for a continuous eval
+     * @request POST:/api/v1/continuous_evals/{eval_id}/test_runs
+     * @secure
+     */
+    createTestRunApiV1ContinuousEvalsEvalIdTestRunsPost: (evalId: string, data: CreateTestRunRequest, params: RequestParams = {}) =>
+      this.request<CreateTestRunApiV1ContinuousEvalsEvalIdTestRunsPostData, CreateTestRunApiV1ContinuousEvalsEvalIdTestRunsPostError>({
+        path: `/api/v1/continuous_evals/${evalId}/test_runs`,
         method: "POST",
         body: data,
         secure: true,
@@ -13258,7 +14049,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Delete a transform.
+     * @description Delete a test run and all its associated annotation results.
+     *
+     * @tags Continuous Eval Test Runs
+     * @name DeleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDelete
+     * @summary Delete a test run
+     * @request DELETE:/api/v1/continuous_evals/test_runs/{test_run_id}
+     * @secure
+     */
+    deleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDelete: (testRunId: string, params: RequestParams = {}) =>
+      this.request<DeleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDeleteData, DeleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDeleteError>({
+        path: `/api/v1/continuous_evals/test_runs/${testRunId}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Delete a transform. Returns 409 if the transform is referenced by continuous evals, agentic experiments, or agentic notebooks.
      *
      * @tags Transforms
      * @name DeleteTransformApiV1TracesTransformsTransformIdDelete
@@ -13275,21 +14083,41 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Discover agents from infrastructure (e.g., GCP Vertex AI). This endpoint queries the infrastructure provider and Cloud Trace to find deployed agents.
+     * @description Manually trigger a polling job for a task. Does not require any particular state — admins can use this to force an immediate poll outside the normal loop cadence.
      *
      * @tags Agent Discovery
-     * @name DiscoverAgentsApiV1DiscoverAgentsPost
-     * @summary Discover Agents
-     * @request POST:/api/v1/discover-agents
+     * @name ExecuteAgentPollingApiV1TasksTaskIdAgentPollingExecutePost
+     * @summary Execute Agent Polling
+     * @request POST:/api/v1/tasks/{task_id}/agent-polling/execute
      * @secure
      */
-    discoverAgentsApiV1DiscoverAgentsPost: (data: DiscoverAgentsRequest, params: RequestParams = {}) =>
-      this.request<DiscoverAgentsApiV1DiscoverAgentsPostData, DiscoverAgentsApiV1DiscoverAgentsPostError>({
-        path: `/api/v1/discover-agents`,
+    executeAgentPollingApiV1TasksTaskIdAgentPollingExecutePost: (taskId: string, params: RequestParams = {}) =>
+      this.request<ExecuteAgentPollingApiV1TasksTaskIdAgentPollingExecutePostData, ExecuteAgentPollingApiV1TasksTaskIdAgentPollingExecutePostError>({
+        path: `/api/v1/tasks/${taskId}/agent-polling/execute`,
         method: "POST",
-        body: data,
         secure: true,
-        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Manually trigger a full agent discovery and polling cycle. Discovers new GCP agents and enqueues trace-fetch jobs for all eligible tasks. Use wait_for_completion=true to block until all polling jobs finish.
+     *
+     * @tags Agent Discovery
+     * @name ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPost
+     * @summary Execute All Agent Polling
+     * @request POST:/api/v1/agent-polling/execute-all
+     * @secure
+     */
+    executeAllAgentPollingApiV1AgentPollingExecuteAllPost: (
+      query: ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostData, ExecuteAllAgentPollingApiV1AgentPollingExecuteAllPostError>({
+        path: `/api/v1/agent-polling/execute-all`,
+        method: "POST",
+        query: query,
+        secure: true,
         format: "json",
         ...params,
       }),
@@ -13734,6 +14562,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Returns the model provider, model name, blacklisted endpoints, and available endpoints.
+     *
+     * @tags Chatbot
+     * @name GetChatbotConfigApiV1ChatbotConfigGet
+     * @summary Get chatbot model configuration
+     * @request GET:/api/v1/chatbot/config
+     * @secure
+     */
+    getChatbotConfigApiV1ChatbotConfigGet: (params: RequestParams = {}) =>
+      this.request<GetChatbotConfigApiV1ChatbotConfigGetData, any>({
+        path: `/api/v1/chatbot/config`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get a continuous eval by id
      *
      * @tags Continuous Evals
@@ -13962,6 +14808,22 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getDefaultTaskApiChatDefaultTaskGet: (params: RequestParams = {}) =>
       this.request<GetDefaultTaskApiChatDefaultTaskGetData, any>({
         path: `/api/chat/default_task`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get display settings (e.g. default currency for cost formatting).
+     *
+     * @tags Settings
+     * @name GetDisplaySettingsApiV2DisplaySettingsGet
+     * @summary Get Display Settings
+     * @request GET:/api/v2/display-settings
+     */
+    getDisplaySettingsApiV2DisplaySettingsGet: (params: RequestParams = {}) =>
+      this.request<GetDisplaySettingsApiV2DisplaySettingsGetData, any>({
+        path: `/api/v2/display-settings`,
         method: "GET",
         format: "json",
         ...params,
@@ -14497,24 +15359,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * No description
-     *
-     * @tags Datasets
-     * @name GetSyntheticDataPromptStatusApiV2DatasetsSyntheticDataPromptStatusGet
-     * @summary Get the model configuration stored in the SDG system prompt.
-     * @request GET:/api/v2/datasets/synthetic-data/prompt-status
-     * @secure
-     */
-    getSyntheticDataPromptStatusApiV2DatasetsSyntheticDataPromptStatusGet: (params: RequestParams = {}) =>
-      this.request<GetSyntheticDataPromptStatusApiV2DatasetsSyntheticDataPromptStatusGetData, any>({
-        path: `/api/v2/datasets/synthetic-data/prompt-status`,
-        method: "GET",
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
      * @description Get tasks.
      *
      * @tags Tasks
@@ -14550,6 +15394,49 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         GetTaskRagSearchSettingsApiV1TasksTaskIdRagSearchSettingsGetError
       >({
         path: `/api/v1/tasks/${taskId}/rag_search_settings`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get the status and counters for a specific test run. Use this endpoint for polling progress.
+     *
+     * @tags Continuous Eval Test Runs
+     * @name GetTestRunApiV1ContinuousEvalsTestRunsTestRunIdGet
+     * @summary Get a test run by id
+     * @request GET:/api/v1/continuous_evals/test_runs/{test_run_id}
+     * @secure
+     */
+    getTestRunApiV1ContinuousEvalsTestRunsTestRunIdGet: (testRunId: string, params: RequestParams = {}) =>
+      this.request<GetTestRunApiV1ContinuousEvalsTestRunsTestRunIdGetData, GetTestRunApiV1ContinuousEvalsTestRunsTestRunIdGetError>({
+        path: `/api/v1/continuous_evals/test_runs/${testRunId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get the per-trace results of a test run, including scores, reasons, and input variables.
+     *
+     * @tags Continuous Eval Test Runs
+     * @name GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGet
+     * @summary Get individual test case results for a test run
+     * @request GET:/api/v1/continuous_evals/test_runs/{test_run_id}/results
+     * @secure
+     */
+    getTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGet: (
+      { testRunId, ...query }: GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGetData,
+        GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGetError
+      >({
+        path: `/api/v1/continuous_evals/test_runs/${testRunId}/results`,
         method: "GET",
         query: query,
         secure: true,
@@ -14606,6 +15493,27 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getTransformApiV1TracesTransformsTransformIdGet: (transformId: string, params: RequestParams = {}) =>
       this.request<GetTransformApiV1TracesTransformsTransformIdGetData, GetTransformApiV1TracesTransformsTransformIdGetError>({
         path: `/api/v1/traces/transforms/${transformId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get resources that depend on this transform.
+     *
+     * @tags Transforms
+     * @name GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGet
+     * @summary Get Transform Dependents
+     * @request GET:/api/v1/traces/transforms/{transform_id}/dependents
+     * @secure
+     */
+    getTransformDependentsApiV1TracesTransformsTransformIdDependentsGet: (transformId: string, params: RequestParams = {}) =>
+      this.request<
+        GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGetData,
+        GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGetError
+      >({
+        path: `/api/v1/traces/transforms/${transformId}/dependents`,
         method: "GET",
         secure: true,
         format: "json",
@@ -14933,6 +15841,28 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Get all test runs for a specific continuous eval.
+     *
+     * @tags Continuous Eval Test Runs
+     * @name ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGet
+     * @summary List test runs for a continuous eval
+     * @request GET:/api/v1/continuous_evals/{eval_id}/test_runs
+     * @secure
+     */
+    listTestRunsApiV1ContinuousEvalsEvalIdTestRunsGet: (
+      { evalId, ...query }: ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGetData, ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGetError>({
+        path: `/api/v1/continuous_evals/${evalId}/test_runs`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get lightweight trace metadata for browsing/filtering operations. Returns metadata only without spans or metrics for fast performance. Set include_spans=true to include flat list of spans for each trace.
      *
      * @tags Traces
@@ -15168,31 +16098,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         RerunContinuousEvalApiV1ContinuousEvalsResultsRunIdRerunPostError
       >({
         path: `/api/v1/continuous_evals/results/${runId}/rerun`,
-        method: "POST",
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Retry a failed agent polling job for a given agent polling data id.
-     *
-     * @tags Agent Discovery
-     * @name RetryAgentPollingApiV1TasksTaskIdAgentPollingRetryAgentPollingDataIdPost
-     * @summary Retry Agent Polling
-     * @request POST:/api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}
-     * @secure
-     */
-    retryAgentPollingApiV1TasksTaskIdAgentPollingRetryAgentPollingDataIdPost: (
-      taskId: string,
-      agentPollingDataId: string,
-      params: RequestParams = {}
-    ) =>
-      this.request<
-        RetryAgentPollingApiV1TasksTaskIdAgentPollingRetryAgentPollingDataIdPostData,
-        RetryAgentPollingApiV1TasksTaskIdAgentPollingRetryAgentPollingDataIdPostError
-      >({
-        path: `/api/v1/tasks/${taskId}/agent-polling/retry/${agentPollingDataId}`,
         method: "POST",
         secure: true,
         format: "json",
@@ -15522,6 +16427,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Send a message to the Arthur AI chatbot and receive a streaming response. The chatbot can call Arthur Engine API endpoints on your behalf.
+     *
+     * @tags Chatbot
+     * @name StreamChatbotApiV1TasksTaskIdChatbotStreamPost
+     * @summary Stream a chatbot response
+     * @request POST:/api/v1/tasks/{task_id}/chatbot/stream
+     * @secure
+     */
+    streamChatbotApiV1TasksTaskIdChatbotStreamPost: (taskId: string, data: ChatbotRequest, params: RequestParams = {}) =>
+      this.request<StreamChatbotApiV1TasksTaskIdChatbotStreamPostData, StreamChatbotApiV1TasksTaskIdChatbotStreamPostError>({
+        path: `/api/v1/tasks/${taskId}/chatbot/stream`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Test a new RAG provider connection configuration.
      *
      * @tags RAG Providers
@@ -15549,6 +16474,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Unarchive a previously archived task. Also unarchives all task-scoped rules and metrics that were archived with it.
+     *
+     * @tags Tasks
+     * @name UnarchiveTaskApiV2TasksTaskIdUnarchivePost
+     * @summary Unarchive Task
+     * @request POST:/api/v2/tasks/{task_id}/unarchive
+     * @secure
+     */
+    unarchiveTaskApiV2TasksTaskIdUnarchivePost: (taskId: string, params: RequestParams = {}) =>
+      this.request<UnarchiveTaskApiV2TasksTaskIdUnarchivePostData, UnarchiveTaskApiV2TasksTaskIdUnarchivePostError>({
+        path: `/api/v2/tasks/${taskId}/unarchive`,
+        method: "POST",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Update agentic notebook name or description (not the state)
      *
      * @tags Agentic Notebooks
@@ -15560,6 +16503,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     updateAgenticNotebookApiV1AgenticNotebooksNotebookIdPut: (notebookId: string, data: UpdateAgenticNotebookRequest, params: RequestParams = {}) =>
       this.request<UpdateAgenticNotebookApiV1AgenticNotebooksNotebookIdPutData, UpdateAgenticNotebookApiV1AgenticNotebooksNotebookIdPutError>({
         path: `/api/v1/agentic_notebooks/${notebookId}`,
+        method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Saves a new version of the chatbot prompt with the specified model provider and model name, and tags it as production.
+     *
+     * @tags Chatbot
+     * @name UpdateChatbotConfigApiV1ChatbotConfigPut
+     * @summary Update chatbot model configuration
+     * @request PUT:/api/v1/chatbot/config
+     * @secure
+     */
+    updateChatbotConfigApiV1ChatbotConfigPut: (data: ChatbotConfigUpdateRequest, params: RequestParams = {}) =>
+      this.request<UpdateChatbotConfigApiV1ChatbotConfigPutData, UpdateChatbotConfigApiV1ChatbotConfigPutError>({
+        path: `/api/v1/chatbot/config`,
         method: "PUT",
         body: data,
         secure: true,

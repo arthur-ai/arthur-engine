@@ -1,4 +1,8 @@
+import { useAppForm } from "@arthur/shared-components";
 import AddIcon from "@mui/icons-material/Add";
+import DeleteIcon from "@mui/icons-material/Delete";
+import HistoryIcon from "@mui/icons-material/History";
+import LaunchIcon from "@mui/icons-material/Launch";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import {
   Box,
@@ -8,34 +12,44 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
-  MenuItem,
+  IconButton,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { MaterialReactTable, useMaterialReactTable } from "material-react-table";
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import z from "zod";
 
-import { useAppForm } from "../traces/components/filtering/hooks/form";
-
-import { columns } from "./data/columns";
+import AgentNotebookDetailModal from "./AgentNotebookDetailModal";
+import { createColumns } from "./data/columns";
 import { useAgentNotebooks } from "./hooks/useAgentNotebooks";
 import { useCreateAgenticNotebook } from "./hooks/useCreateAgenticNotebook";
 import { useDeleteAgenticNotebook } from "./hooks/useDeleteAgenticNotebook";
 
 import { getContentHeight } from "@/constants/layout";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { AgenticNotebookSummary } from "@/lib/api-client/api-client";
 import { EVENT_NAMES, track } from "@/services/amplitude";
 
 const DEFAULT_DATA: AgenticNotebookSummary[] = [];
 
-export const AgentNotebook = () => {
+interface AgentNotebookProps {
+  embedded?: boolean;
+  isCreateModalOpen?: boolean;
+  onCreateModalOpen?: () => void;
+  onCreateModalClose?: () => void;
+}
+
+export const AgentNotebook = ({ embedded = false, isCreateModalOpen, onCreateModalOpen, onCreateModalClose }: AgentNotebookProps) => {
+  const { id: taskId } = useParams<{ id: string }>();
   const { pagination, props } = useMRTPagination();
   const navigate = useNavigate();
+  const { timezone, use24Hour } = useDisplaySettings();
+  const columns = useMemo(() => createColumns(timezone, use24Hour), [timezone, use24Hour]);
 
   const form = useAppForm({
     defaultValues: {
@@ -46,14 +60,20 @@ export const AgentNotebook = () => {
       await createAgenticNotebook.mutateAsync(value);
     },
   });
-  const [newDialogOpen, setNewDialogOpen] = useState(false);
+  const [internalDialogOpen, setInternalDialogOpen] = useState(false);
+  const [selectedNotebookId, setSelectedNotebookId] = useState<string | null>(null);
+  const dialogOpen = isCreateModalOpen !== undefined ? isCreateModalOpen : internalDialogOpen;
   const { data, isLoading, isRefetching } = useAgentNotebooks({ page: pagination.pageIndex, page_size: pagination.pageSize });
 
   const createAgenticNotebook = useCreateAgenticNotebook({
     onSuccess: (data) => {
-      setNewDialogOpen(false);
+      if (onCreateModalClose) {
+        onCreateModalClose();
+      } else {
+        setInternalDialogOpen(false);
+      }
       track(EVENT_NAMES.AGENT_NOTEBOOK_CREATED, { notebook_id: data.id });
-      navigate(`./${data.id}`);
+      navigate(`/tasks/${taskId}/agentic-notebooks/${data.id}`);
     },
   });
 
@@ -61,12 +81,20 @@ export const AgentNotebook = () => {
 
   const handleCreateNotebook = () => {
     track(EVENT_NAMES.AGENT_NOTEBOOK_INTENT_CREATE);
-    setNewDialogOpen(true);
+    if (onCreateModalOpen) {
+      onCreateModalOpen();
+    } else {
+      setInternalDialogOpen(true);
+    }
   };
 
   const handleCloseCreateNotebook = () => {
     track(EVENT_NAMES.AGENT_NOTEBOOK_INTENT_CANCEL);
-    setNewDialogOpen(false);
+    if (onCreateModalClose) {
+      onCreateModalClose();
+    } else {
+      setInternalDialogOpen(false);
+    }
   };
 
   const table = useMaterialReactTable({
@@ -93,7 +121,7 @@ export const AgentNotebook = () => {
     },
     muiTableBodyRowProps: ({ row }) => ({
       onClick: () => {
-        navigate(`./${row.original.id}`);
+        setSelectedNotebookId(row.original.id);
       },
       sx: {
         cursor: "pointer",
@@ -101,56 +129,90 @@ export const AgentNotebook = () => {
     }),
     enableColumnPinning: true,
     initialState: { columnPinning: { right: ["mrt-row-actions"] } },
+    displayColumnDefOptions: {
+      "mrt-row-actions": { size: 180 },
+    },
     enableRowActions: true,
     positionActionsColumn: "last",
-    renderRowActionMenuItems: ({ row }) => [
-      <MenuItem
-        disabled={!row.original.latest_run_id}
-        key="view_run"
-        component={Link}
-        to={`/tasks/${row.original.task_id}/agent-experiments/${row.original.latest_run_id}`}
-      >
-        View Latest Run
-      </MenuItem>,
-      <Divider />,
-      <MenuItem key="delete" onClick={() => deleteAgenticNotebook.mutate(row.original.id)}>
-        Delete
-      </MenuItem>,
-    ],
+    renderRowActions: ({ row }) => (
+      <Box sx={{ display: "flex", gap: 1 }}>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<LaunchIcon />}
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/tasks/${taskId}/agentic-notebooks/${row.original.id}`);
+          }}
+        >
+          Launch
+        </Button>
+        <Tooltip title={row.original.latest_run_id ? "View last run" : "No runs yet"}>
+          <span>
+            <IconButton
+              size="small"
+              disabled={!row.original.latest_run_id}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (row.original.latest_run_id) {
+                  navigate(`/tasks/${taskId}/agent-experiments/${row.original.latest_run_id}`);
+                }
+              }}
+            >
+              <HistoryIcon fontSize="small" />
+            </IconButton>
+          </span>
+        </Tooltip>
+        <Tooltip title="Delete Notebook">
+          <IconButton
+            size="small"
+            color="error"
+            onClick={(e) => {
+              e.stopPropagation();
+              deleteAgenticNotebook.mutate(row.original.id);
+            }}
+          >
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Box>
+    ),
   });
 
   return (
     <>
       <Stack
         sx={{
-          height: getContentHeight(),
+          height: embedded ? "100%" : getContentHeight(),
         }}
       >
-        <Box
-          className="flex flex-col lg:flex-row lg:items-center justify-between gap-4"
-          sx={{
-            px: 3,
-            pt: 3,
-            pb: 2,
-            borderBottom: 1,
-            borderColor: "divider",
-            backgroundColor: "background.paper",
-          }}
-        >
-          <div>
-            <Typography variant="h5" color="text.primary" fontWeight="bold" mb={0.5}>
-              Agentic Notebooks
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Use agentic notebooks to test and optimize agent-based task execution strategies with a reusable configuration.
-            </Typography>
-          </div>
-          <ButtonGroup size="small" variant="contained" disableElevation>
-            <Button startIcon={<AddIcon />} onClick={handleCreateNotebook}>
-              Notebook
-            </Button>
-          </ButtonGroup>
-        </Box>
+        {!embedded && (
+          <Box
+            className="flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+            sx={{
+              px: 3,
+              pt: 3,
+              pb: 2,
+              borderBottom: 1,
+              borderColor: "divider",
+              backgroundColor: "background.paper",
+            }}
+          >
+            <div>
+              <Typography variant="h5" color="text.primary" fontWeight="bold" mb={0.5}>
+                Agentic Notebooks
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Use agentic notebooks to test and optimize agent-based task execution strategies with a reusable configuration.
+              </Typography>
+            </div>
+            <ButtonGroup size="small" variant="contained" disableElevation>
+              <Button startIcon={<AddIcon />} onClick={handleCreateNotebook}>
+                Notebook
+              </Button>
+            </ButtonGroup>
+          </Box>
+        )}
         {!isLoading && (data?.data?.length ?? 0) === 0 ? (
           <Box
             sx={{
@@ -168,7 +230,7 @@ export const AgentNotebook = () => {
               No notebooks yet
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-              Get started by creating your first agentic notebook
+              Get started by creating your first agent notebook
             </Typography>
             <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleCreateNotebook} size="large">
               Notebook
@@ -179,7 +241,9 @@ export const AgentNotebook = () => {
         )}
       </Stack>
 
-      <Dialog open={newDialogOpen} onClose={handleCloseCreateNotebook} fullWidth>
+      <AgentNotebookDetailModal open={selectedNotebookId !== null} notebookId={selectedNotebookId} onClose={() => setSelectedNotebookId(null)} />
+
+      <Dialog open={dialogOpen} onClose={handleCloseCreateNotebook} fullWidth>
         <DialogTitle>New Notebook</DialogTitle>
         <form
           className="contents"

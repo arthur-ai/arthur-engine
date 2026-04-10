@@ -1,5 +1,6 @@
 import { useApi } from "@/hooks/useApi";
 import { useApiMutation } from "@/hooks/useApiMutation";
+import { encodePathParam } from "@/utils/url";
 
 export const useDeletePromptMutation = (taskId: string | undefined, onSuccess?: () => void) => {
   const api = useApi();
@@ -8,7 +9,7 @@ export const useDeletePromptMutation = (taskId: string | undefined, onSuccess?: 
     mutationFn: async (promptName: string) => {
       if (!api || !taskId) throw new Error("API or task not available");
 
-      await api.api.deleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDelete(promptName, taskId);
+      await api.api.deleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDelete(encodePathParam(promptName), taskId);
     },
     invalidateQueries: [{ queryKey: ["getAllAgenticPromptsApiV1TasksTaskIdPromptsGet"] }],
     onSuccess,

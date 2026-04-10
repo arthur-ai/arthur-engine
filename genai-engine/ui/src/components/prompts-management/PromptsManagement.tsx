@@ -6,7 +6,7 @@ import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import TablePagination from "@mui/material/TablePagination";
 import Typography from "@mui/material/Typography";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
 import PromptFullScreenView from "./fullscreen/PromptFullScreenView";
@@ -14,13 +14,18 @@ import { useDeletePromptMutation } from "./hooks/useDeletePromptMutation";
 import { usePrompts } from "./hooks/usePrompts";
 import PromptsManagementHeader from "./PromptsManagementHeader";
 import PromptsTable from "./table/PromptsTable";
+import TagFilterControls from "./table/TagFilterControls";
 
 import { getContentHeight } from "@/constants/layout";
 import { useTask } from "@/hooks/useTask";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
-const PromptsManagement: React.FC = () => {
+interface PromptsManagementProps {
+  onRegisterCreate?: (fn: () => void) => void;
+}
+
+const PromptsManagement: React.FC<PromptsManagementProps> = ({ onRegisterCreate }) => {
   const { task } = useTask();
   const { id: taskId, promptName: urlPromptName, version: urlVersion } = useParams<{ id: string; promptName?: string; version?: string }>();
   const navigate = useNavigate();
@@ -29,6 +34,12 @@ const PromptsManagement: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
+  // Reset tag filters when navigating to a different task
+  useEffect(() => {
+    setSelectedTags([]);
+  }, [task?.id]);
 
   // Sync fullScreenPrompt with URL parameter (one-way: URL -> state only)
   useEffect(() => {
@@ -45,11 +56,35 @@ const PromptsManagement: React.FC = () => {
       page,
       pageSize,
       sort: sortDirection,
+      tags: selectedTags.length > 0 ? selectedTags : null,
     }),
-    [page, pageSize, sortDirection]
+    [page, pageSize, sortDirection, selectedTags]
   );
 
   const { prompts, count, error, isLoading, refetch } = usePrompts(task?.id, filters);
+
+  // Separate query with no tag filter to collect all available tags for the filter chips.
+  // Uses a large page_size so tags from all prompts are discoverable regardless of pagination.
+  const { prompts: allPromptsForTags } = usePrompts(task?.id, { pageSize: 5000, page: 0 });
+
+  const { availableProductionTag, availableCustomTags } = useMemo(() => {
+    const allTags = new Set<string>();
+    allPromptsForTags.forEach((p) => (p.tags ?? []).forEach((t) => allTags.add(t)));
+    const hasProduction = allTags.has("production");
+    const customTags = Array.from(allTags)
+      .filter((t) => t !== "production")
+      .sort();
+    return { availableProductionTag: hasProduction, availableCustomTags: customTags };
+  }, [allPromptsForTags]);
+
+  const handleTagToggle = useCallback((tag: string) => {
+    setSelectedTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
+    setPage(0);
+  }, []);
+
+  const handleClearTagFilters = useCallback(() => {
+    setSelectedTags([]);
+  }, []);
 
   const deleteMutation = useDeletePromptMutation(task?.id, () => {
     refetch();
@@ -60,11 +95,16 @@ const PromptsManagement: React.FC = () => {
     window.location.href = `/tasks/${task?.id}/playgrounds/prompts`;
   }, [task?.id]);
 
+  const onRegisterCreateRef = useRef(onRegisterCreate);
+  useEffect(() => {
+    onRegisterCreateRef.current?.(handleCreatePrompt);
+  }, [handleCreatePrompt]);
+
   const handleExpandToFullScreen = useCallback(
     (promptName: string) => {
       setFullScreenPrompt(promptName);
       // Update URL to reflect the selected prompt
-      navigate(`/tasks/${taskId}/prompts/${promptName}`);
+      navigate(`/tasks/${taskId}/prompts/${encodeURIComponent(promptName)}`);
     },
     [taskId, navigate]
   );
@@ -99,7 +139,7 @@ const PromptsManagement: React.FC = () => {
   if (fullScreenPrompt) {
     const initialVersion = urlVersion ? parseInt(urlVersion, 10) : null;
     return (
-      <Box sx={{ height: getContentHeight(), overflow: "hidden" }}>
+      <Box sx={{ height: "100%", overflow: "hidden" }}>
         <PromptFullScreenView promptName={fullScreenPrompt} initialVersion={initialVersion} onClose={handleCloseFullScreen} />
       </Box>
     );
@@ -140,7 +180,16 @@ const PromptsManagement: React.FC = () => {
         overflow: "hidden",
       }}
     >
-      <PromptsManagementHeader onCreatePrompt={handleCreatePrompt} />
+      <Box>
+        {!onRegisterCreate && <PromptsManagementHeader onCreatePrompt={handleCreatePrompt} />}
+        <TagFilterControls
+          availableProductionTag={availableProductionTag}
+          availableCustomTags={availableCustomTags}
+          selectedTags={selectedTags}
+          onTagToggle={handleTagToggle}
+          onClearAll={handleClearTagFilters}
+        />
+      </Box>
 
       {error && prompts.length > 0 && (
         <Box sx={{ px: 3, pt: 2 }}>

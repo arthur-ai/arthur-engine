@@ -17,6 +17,7 @@ from sqlalchemy.orm import Query, Session
 
 from db_models import DatabaseSpan
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
+from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTestRun
 from db_models.llm_eval_models import DatabaseContinuousEval
 from schemas.internal_schemas import AgenticAnnotation, ContinuousEval, TraceTransform
 from schemas.request_schemas import (
@@ -261,6 +262,18 @@ class ContinuousEvalsRepository:
                     ),
                 )
 
+            if filter_request.llm_eval_name_exact:
+                base_query = base_query.filter(
+                    DatabaseContinuousEval.llm_eval_name
+                    == filter_request.llm_eval_name_exact,
+                )
+
+            if filter_request.llm_eval_version is not None:
+                base_query = base_query.filter(
+                    DatabaseContinuousEval.llm_eval_version
+                    == filter_request.llm_eval_version,
+                )
+
             if filter_request.created_after:
                 base_query = base_query.filter(
                     DatabaseContinuousEval.created_at >= filter_request.created_after,
@@ -312,6 +325,7 @@ class ContinuousEvalsRepository:
                 DatabaseContinuousEval.task_id == task_id,
                 DatabaseAgenticAnnotation.annotation_type
                 == AgenticAnnotationType.CONTINUOUS_EVAL.value,
+                DatabaseAgenticAnnotation.test_run_id.is_(None),
             )
         )
 
@@ -449,7 +463,7 @@ class ContinuousEvalsRepository:
                     task_id=task_id,
                     delay_seconds=delay_seconds,
                 )
-                queue_service.enqueue(job)
+                queue_service.enqueue(job)  # Ignore return value
 
             logger.info(
                 f"Enqueued {len(continuous_evals)} continuous eval jobs for trace {trace_id}",
@@ -496,6 +510,7 @@ class ContinuousEvalsRepository:
         annotation = (
             self.db_session.query(DatabaseAgenticAnnotation)
             .filter(DatabaseAgenticAnnotation.id == run_id)
+            .with_for_update()
             .first()
         )
 
@@ -535,6 +550,36 @@ class ContinuousEvalsRepository:
                 detail="Continuous eval queue service is not available.",
             )
 
+        # If this annotation belongs to a test run, decrement the old status counter
+        # and completed count so re-execution doesn't corrupt the totals
+        if annotation.test_run_id is not None:
+            old_status = annotation.run_status
+            update_values: dict[Any, Any] = {
+                "completed_count": DatabaseContinuousEvalTestRun.completed_count - 1,
+                "status": "running",
+                "updated_at": datetime.now(),
+            }
+            if old_status == ContinuousEvalRunStatus.PASSED.value:
+                update_values["passed_count"] = (
+                    DatabaseContinuousEvalTestRun.passed_count - 1
+                )
+            elif old_status == ContinuousEvalRunStatus.FAILED.value:
+                update_values["failed_count"] = (
+                    DatabaseContinuousEvalTestRun.failed_count - 1
+                )
+            elif old_status == ContinuousEvalRunStatus.ERROR.value:
+                update_values["error_count"] = (
+                    DatabaseContinuousEvalTestRun.error_count - 1
+                )
+            elif old_status == ContinuousEvalRunStatus.SKIPPED.value:
+                update_values["skipped_count"] = (
+                    DatabaseContinuousEvalTestRun.skipped_count - 1
+                )
+
+            self.db_session.query(DatabaseContinuousEvalTestRun).filter(
+                DatabaseContinuousEvalTestRun.id == annotation.test_run_id,
+            ).update(update_values, synchronize_session=False)
+
         # Reset annotation to PENDING status
         annotation.run_status = ContinuousEvalRunStatus.PENDING.value
         annotation.annotation_score = None
@@ -558,7 +603,7 @@ class ContinuousEvalsRepository:
             task_id=continuous_eval.task_id,
             delay_seconds=delay_seconds,
         )
-        queue_service.enqueue(job)
+        queue_service.enqueue(job)  # Ignore return value
 
         return ContinuousEvalRerunResponse(run_id=run_id, trace_id=annotation.trace_id)
 
@@ -613,6 +658,7 @@ class ContinuousEvalsRepository:
                 DatabaseContinuousEval.task_id == task_id,
                 DatabaseAgenticAnnotation.created_at >= start_time,
                 DatabaseAgenticAnnotation.created_at < end_time,
+                DatabaseAgenticAnnotation.test_run_id.is_(None),
             )
             .group_by(date_col)
             .order_by(desc(date_col))

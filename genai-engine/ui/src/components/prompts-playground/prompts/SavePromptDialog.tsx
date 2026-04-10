@@ -12,6 +12,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useFetchBackendPrompts } from "../hooks/useFetchBackendPrompts";
 import { usePromptContext } from "../PromptsPlaygroundContext";
 import { SavePromptDialogProps } from "../types";
+import { getPromptSaveableFields } from "../utils/promptSaveState";
 import { toBackendPromptBaseConfig } from "../utils/toBackendPrompt";
 
 import { useApi } from "@/hooks/useApi";
@@ -23,7 +24,7 @@ import { track, EVENT_NAMES } from "@/services/amplitude";
 const SavePromptDialog = ({ open, setOpen, prompt, initialName = "" }: SavePromptDialogProps) => {
   const [nameInputValue, setNameInputValue] = useState("");
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
-  const { dispatch } = usePromptContext();
+  const { dispatch, triggerNotebookSave } = usePromptContext();
   const fetchPrompts = useFetchBackendPrompts();
 
   const apiClient = useApi();
@@ -64,7 +65,7 @@ const SavePromptDialog = ({ open, setOpen, prompt, initialName = "" }: SavePromp
       showSnackbar(`Saved prompt: ${data.name}`, "success");
       handleClose();
       fetchPrompts(dispatch);
-      // Update name, version, and clear dirty flag after saving
+      // Update name, version, and snapshot so the prompt is no longer dirty
       dispatch({
         type: "updatePrompt",
         payload: {
@@ -72,10 +73,12 @@ const SavePromptDialog = ({ open, setOpen, prompt, initialName = "" }: SavePromp
           prompt: {
             name: nameInputValue,
             version: data.version,
-            isDirty: false,
+            savedSnapshot: getPromptSaveableFields({ ...prompt, name: nameInputValue }),
           },
         },
       });
+      // Immediately trigger notebook save to avoid transient "unsaved" flash
+      triggerNotebookSave?.();
       // Track prompt saved event
       track(EVENT_NAMES.PROMPT_SAVED, {
         prompt_name: nameInputValue,
@@ -91,7 +94,7 @@ const SavePromptDialog = ({ open, setOpen, prompt, initialName = "" }: SavePromp
         showSnackbar("Failed to save prompt", "error");
       }
     }
-  }, [nameInputValue, prompt, apiClient, taskId, showSnackbar, handleClose, fetchPrompts, dispatch]);
+  }, [nameInputValue, prompt, apiClient, taskId, showSnackbar, handleClose, fetchPrompts, dispatch, triggerNotebookSave]);
 
   return (
     <>

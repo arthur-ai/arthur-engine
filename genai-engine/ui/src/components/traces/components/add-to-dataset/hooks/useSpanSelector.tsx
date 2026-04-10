@@ -1,12 +1,46 @@
 import { useMemo, useState } from "react";
 
-import { getNestedValue } from "../../../utils/spans";
+import { getNestedValue, getNestedValueWildcard } from "../../../utils/spans";
 
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
 
 const isPrimitive = (value: unknown): value is string | number | boolean | null | undefined => {
   return typeof value !== "object" || value === null;
 };
+
+/**
+ * Walk through navigation keys one at a time, treating '*' as "peek at first element"
+ */
+function resolveNavigationData(rawData: unknown, keys: string[]): { data: unknown; isArray: boolean } {
+  let current: unknown = rawData;
+
+  for (const key of keys) {
+    if (current == null) return { data: {}, isArray: false };
+
+    if (key === "*") {
+      if (Array.isArray(current) && current.length > 0) {
+        current = current[0];
+      } else if (typeof current === "object" && current !== null) {
+        const vals = Object.values(current);
+        current = vals.length > 0 ? vals[0] : undefined;
+      } else {
+        return { data: {}, isArray: false };
+      }
+    } else {
+      const idx = Number(key);
+      if (!Number.isNaN(idx) && Array.isArray(current)) {
+        current = current[idx];
+      } else if (typeof current === "object" && current !== null && key in current) {
+        current = (current as Record<string, unknown>)[key];
+      } else {
+        return { data: {}, isArray: false };
+      }
+    }
+  }
+
+  const isArray = Array.isArray(current);
+  return { data: current && typeof current === "object" ? current : {}, isArray };
+}
 
 type UseSpanSelectorParams = {
   spans: NestedSpanWithMetricsResponse[];
@@ -49,18 +83,29 @@ export const useSpanSelector = ({ spans, path, name, onFieldChange }: UseSpanSel
 
     // Validate that the navigation path exists in the span's data
     if (navigationKeys.length > 0) {
-      const navPath = navigationKeys.join(".");
-      const data = getNestedValue(matchedSpan.raw_data, navPath);
+      if (navigationKeys.includes("*")) {
+        const { data } = resolveNavigationData(matchedSpan.raw_data, navigationKeys);
+        if (!data || typeof data !== "object") {
+          return { spanId: null, keys: [] };
+        }
+        const finalAttribute = attributePath[attributePath.length - 1];
+        if (finalAttribute && typeof data === "object" && data !== null && !(finalAttribute in data)) {
+          return { spanId: null, keys: [] };
+        }
+      } else {
+        const navPath = navigationKeys.join(".");
+        const data = getNestedValue(matchedSpan.raw_data, navPath);
 
-      // If the navigation path doesn't exist or isn't an object, don't use it
-      if (!data || typeof data !== "object") {
-        return { spanId: null, keys: [] };
-      }
+        // If the navigation path doesn't exist or isn't an object, don't use it
+        if (!data || typeof data !== "object") {
+          return { spanId: null, keys: [] };
+        }
 
-      // Also check if the final attribute exists in the data
-      const finalAttribute = attributePath[attributePath.length - 1];
-      if (finalAttribute && !(finalAttribute in data)) {
-        return { spanId: null, keys: [] };
+        // Also check if the final attribute exists in the data
+        const finalAttribute = attributePath[attributePath.length - 1];
+        if (finalAttribute && !(finalAttribute in data)) {
+          return { spanId: null, keys: [] };
+        }
       }
     }
 
@@ -78,16 +123,29 @@ export const useSpanSelector = ({ spans, path, name, onFieldChange }: UseSpanSel
 
   const selectedSpan = spans.find((span) => span.span_id === selectedSpanId);
 
-  const currentData = useMemo(() => {
-    if (!selectedSpan) return {};
-    const data = navigationPath ? getNestedValue(selectedSpan.raw_data, navigationPath) : selectedSpan.raw_data;
-    return data && typeof data === "object" ? data : {};
-  }, [selectedSpan, navigationPath]);
+  const { data: currentData, isArray: isCurrentDataArray } = useMemo(() => {
+    if (!selectedSpan) return { data: {} as Record<string, unknown>, isArray: false };
+    if (selectedKeys.length === 0) return { data: selectedSpan.raw_data as Record<string, unknown>, isArray: false };
+    return resolveNavigationData(selectedSpan.raw_data, selectedKeys) as { data: Record<string, unknown>; isArray: boolean };
+  }, [selectedSpan, selectedKeys]);
 
-  const availableAttributes = Object.keys(currentData);
+  const availableAttributes = useMemo(() => {
+    const keys = Object.keys(currentData);
+    return isCurrentDataArray ? ["*", ...keys] : keys;
+  }, [currentData, isCurrentDataArray]);
 
   const getFullPath = (key: string) => (navigationPath ? `${navigationPath}.${key}` : key);
-  const getAttributeValue = (key: string) => getNestedValue(selectedSpan?.raw_data, getFullPath(key));
+
+  const getAttributeValue = (key: string) => {
+    if (!selectedSpan) return undefined;
+    const fullPath = getFullPath(key);
+    if (fullPath.includes("*")) {
+      // Resolve through wildcards by peeking at first elements for preview
+      const { data } = resolveNavigationData(selectedSpan.raw_data, fullPath.split("."));
+      return data;
+    }
+    return getNestedValue(selectedSpan.raw_data, fullPath);
+  };
 
   const selectedAttribute = useMemo(() => {
     if (!path || !selectedSpan) return null;
@@ -114,15 +172,26 @@ export const useSpanSelector = ({ spans, path, name, onFieldChange }: UseSpanSel
     if (!selectedSpan) return;
 
     const fullPath = getFullPath(key);
-    const value = getNestedValue(selectedSpan?.raw_data, fullPath);
 
-    onFieldChange({
-      value: isPrimitive(value) ? String(value) : JSON.stringify(value),
-      name,
-      path: `${selectedSpan.span_name}.${fullPath}`,
-      span_name: selectedSpan.span_name || undefined,
-      attribute_path: fullPath,
-    });
+    if (fullPath.includes("*")) {
+      const wildcardResults = getNestedValueWildcard(selectedSpan.raw_data, fullPath);
+      onFieldChange({
+        value: JSON.stringify(wildcardResults ?? []),
+        name,
+        path: `${selectedSpan.span_name}.${fullPath}`,
+        span_name: selectedSpan.span_name || undefined,
+        attribute_path: fullPath,
+      });
+    } else {
+      const value = getNestedValue(selectedSpan.raw_data, fullPath);
+      onFieldChange({
+        value: isPrimitive(value) ? String(value) : JSON.stringify(value),
+        name,
+        path: `${selectedSpan.span_name}.${fullPath}`,
+        span_name: selectedSpan.span_name || undefined,
+        attribute_path: fullPath,
+      });
+    }
 
     // Clear manual navigation since we've made a selection
     setManualNavigation(null);

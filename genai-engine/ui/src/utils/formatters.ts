@@ -1,109 +1,100 @@
-import dayjs from "dayjs";
-import duration from "dayjs/plugin/duration";
+import {
+  formatDate,
+  formatDuration,
+  formatTimestampDuration as formatTimestampDurationShared,
+  formatUTCTimestamp,
+  capitalize,
+  truncateText,
+  DATE_FORMAT_24H_TIMEZONE,
+  DATE_FORMAT_12H_TIMEZONE,
+  DATE_FORMAT_24H_UTC,
+} from "@arthur/shared-components";
 
-dayjs.extend(duration);
-
-const dateFormatter = new Intl.DateTimeFormat("en-US", {
-  dateStyle: "short",
-  timeStyle: "long",
-  timeZone: "UTC",
-});
-
-const currencyFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  minimumFractionDigits: 5,
-  maximumFractionDigits: 5,
-});
-
-export function formatDate(date: string | null | undefined) {
-  if (!date) return "-";
-
-  let isoString = date;
-
-  if (!isoString.endsWith("Z") && !isoString.match(/[+-]\d{2}:\d{2}$/)) {
-    isoString = isoString.replace(" ", "T") + "Z";
-  }
-
-  try {
-    const newDate = new Date(isoString);
-    if (isNaN(newDate.getTime())) return dateFormatter.format(new Date(date));
-
-    return dateFormatter.format(newDate);
-  } catch {
-    return dateFormatter.format(new Date(date));
-  }
-}
+import { getLocaleForCurrency } from "./currencyLocales";
 
 /**
- * Formats a UTC timestamp string (without timezone suffix) to local time with timezone display.
- * Assumes the input string is in UTC if no timezone is specified.
+ * Default: formatDate, formatUTCTimestamp, formatDuration, formatTimestampDuration, capitalize, truncateText
+ * come from @arthur/shared-components; use them when no user timezone or 12/24h preference is needed.
  *
- * @param dateString - UTC timestamp string (e.g., "2024-01-15 10:30:00" or "2024-01-15T10:30:00")
- * @returns Formatted date string in local timezone or "-" if invalid/null
+ * Local / extended: formatCurrency(amount, currencyCode) and formatDateInTimezone(value, timezone, options?)
+ * are local and cover display currency and timezone-aware datetime (including UTC and 12/24h);
+ * these are intended to be migrated into shared-components later.
  */
-export function formatUTCTimestamp(dateString: string | null | undefined): string {
-  return formatDate(dateString);
-}
-
-export function formatCurrency(amount: number) {
-  if (amount < 0.00001) return `< ${currencyFormatter.format(0.00001)}`;
-  return currencyFormatter.format(amount);
-}
-
-export function formatDuration(duration: number) {
-  return dayjs
-    .duration(+duration.toFixed(0), "millisecond")
-    .format("H[h] m[m] s[s] SSS[ms]")
-    .replace(/\b0[hmst]\b/g, "");
-}
-
-export function capitalize(str: string): string {
-  return str.charAt(0).toUpperCase() + str.slice(1);
-}
 
 /**
- * Formats the duration between two timestamps in a human-readable format.
- *
- * @param startTime - Start timestamp (UTC string or Date)
- * @param endTime - End timestamp (UTC string or Date)
- * @returns Formatted duration string (e.g., "2h 34m", "5m 42s", "23s") or null if invalid
+ * Local implementation so call sites can pass currency code (e.g. from useDisplaySettings).
+ * shared-components formatCurrency only accepts (amount); we need (amount, currencyCode).
  */
+function getCurrencyFormatter(currency: string): Intl.NumberFormat {
+  const code = currency || "USD";
+  return new Intl.NumberFormat(getLocaleForCurrency(code), {
+    style: "currency",
+    currency: code,
+    minimumFractionDigits: 6,
+    maximumFractionDigits: 6,
+  });
+}
 
-export function formatTimestampDuration(startTime: string | Date, endTime: string | null | undefined): string | null {
-  if (!endTime) return null;
+export function formatCurrency(amount: number, currencyCode: string = "USD"): string {
+  const formatter = getCurrencyFormatter(currencyCode);
+  const smallThreshold = 0.000001;
+  if (amount < smallThreshold) {
+    return `< ${formatter.format(smallThreshold)}`;
+  }
+  return formatter.format(amount);
+}
 
+function toDate(value: string | number | Date | null | undefined): Date | null {
+  if (value == null) return null;
+  if (value instanceof Date) return value;
+  if (typeof value === "number") return new Date(value);
+  const str = String(value);
+  const isoString = str.includes("Z") || str.match(/[+-]\d{2}:\d{2}$/) ? str : str.replace(" ", "T") + "Z";
+  const date = new Date(isoString);
+  return isNaN(date.getTime()) ? null : date;
+}
+
+export interface FormatDateInTimezoneOptions {
+  hour12?: boolean;
+}
+
+/** Format a date/time for display in a specific IANA timezone (including UTC). Supports 12/24h. */
+export function formatDateInTimezone(
+  value: string | number | Date | null | undefined,
+  timezone: string,
+  options?: FormatDateInTimezoneOptions
+): string {
+  const date = toDate(value);
+  if (!date) return "";
+  const hour12 = options?.hour12 ?? false;
   try {
-    // Parse timestamps as UTC
-    const parseDate = (dateInput: string | Date): Date => {
-      if (dateInput instanceof Date) return dateInput;
-      const dateString = dateInput;
-      const isoString = dateString.includes("Z") || dateString.match(/[+-]\d{2}:\d{2}$/) ? dateString : dateString.replace(" ", "T") + "Z";
-      return new Date(isoString);
-    };
-
-    const start = parseDate(startTime);
-    const end = parseDate(endTime);
-
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
-
-    const durationMs = end.getTime() - start.getTime();
-    if (durationMs < 0) return null;
-
-    const seconds = Math.floor(durationMs / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-
-    if (hours > 0) {
-      const remainingMinutes = minutes % 60;
-      return `${hours}h ${remainingMinutes}m`;
-    } else if (minutes > 0) {
-      const remainingSeconds = seconds % 60;
-      return `${minutes}m ${remainingSeconds}s`;
-    } else {
-      return `${seconds}s`;
+    const formatted = new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12,
+      timeZone: timezone,
+    }).format(date);
+    if (timezone === "UTC") {
+      return `${formatted} UTC`;
     }
+    return formatted;
   } catch {
-    return null;
+    return "";
   }
 }
+
+export {
+  formatDate,
+  formatUTCTimestamp,
+  formatDuration,
+  formatTimestampDurationShared as formatTimestampDuration,
+  capitalize,
+  truncateText,
+  DATE_FORMAT_24H_TIMEZONE,
+  DATE_FORMAT_12H_TIMEZONE,
+  DATE_FORMAT_24H_UTC,
+};

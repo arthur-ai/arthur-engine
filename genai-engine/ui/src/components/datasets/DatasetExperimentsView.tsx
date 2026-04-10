@@ -19,22 +19,24 @@ import {
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { CreateExperimentModal, ExperimentFormData } from "../prompt-experiments/CreateExperimentModal";
+import { CreateExperimentModal } from "../prompt-experiments/create-experiment-modal";
 import { PromptExperimentsEmptyState } from "../prompt-experiments/PromptExperimentsEmptyState";
 import { PromptExperimentsTable, PromptExperiment } from "../prompt-experiments/PromptExperimentsTable";
 import { PromptExperimentsViewHeader } from "../prompt-experiments/PromptExperimentsViewHeader";
 
 import { getContentHeight } from "@/constants/layout";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useDataset } from "@/hooks/useDataset";
 import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import { usePromptExperiments, useCreateExperiment, usePromptExperiment } from "@/hooks/usePromptExperiments";
-import type { PromptExperimentDetail } from "@/lib/api-client/api-client";
+import { usePromptExperiments } from "@/hooks/usePromptExperiments";
+import { formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 export const DatasetExperimentsView: React.FC = () => {
   const { id: taskId, datasetId } = useParams<{ id: string; datasetId: string }>();
   const navigate = useNavigate();
+  const { defaultCurrency } = useDisplaySettings();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSelectExistingModalOpen, setIsSelectExistingModalOpen] = useState(false);
   const [selectedExperimentId, setSelectedExperimentId] = useState<string | null>(null);
@@ -61,11 +63,6 @@ export const DatasetExperimentsView: React.FC = () => {
     debouncedSearchText || undefined,
     datasetId // Filter by dataset ID
   );
-  const createExperiment = useCreateExperiment(taskId);
-
-  // Fetch full experiment details when cloning
-  const { experiment: experimentToClone, isLoading: isLoadingExperiment } = usePromptExperiment(selectedExperimentId || undefined);
-
   // Refetch data when window gains focus
   useEffect(() => {
     const handleFocus = () => {
@@ -124,85 +121,6 @@ export const DatasetExperimentsView: React.FC = () => {
     setModalSearchText("");
   };
 
-  const handleSubmitExperiment = async (data: ExperimentFormData): Promise<{ id: string }> => {
-    // Validate that datasetVersion is a number
-    if (typeof data.datasetVersion !== "number") {
-      throw new Error("Dataset version must be selected");
-    }
-
-    try {
-      // Transform prompt variable mappings to API format
-      const promptVariableMapping = Object.entries(data.promptVariableMappings || {}).map(([varName, columnName]) => ({
-        variable_name: varName,
-        source: {
-          type: "dataset_column" as const,
-          dataset_column: {
-            name: columnName,
-          },
-        },
-      }));
-
-      // Transform eval variable mappings to API format
-      const evalList = data.evaluators.map((evaluator) => {
-        const evalMapping = data.evalVariableMappings?.find((m) => m.evalName === evaluator.name && m.evalVersion === evaluator.version);
-
-        const variableMapping = evalMapping
-          ? Object.entries(evalMapping.mappings).map(([varName, mapping]) => {
-              if (mapping.sourceType === "dataset_column") {
-                return {
-                  variable_name: varName,
-                  source: {
-                    type: "dataset_column" as const,
-                    dataset_column: {
-                      name: mapping.datasetColumn || "",
-                    },
-                  },
-                };
-              } else {
-                return {
-                  variable_name: varName,
-                  source: {
-                    type: "experiment_output" as const,
-                    experiment_output: {
-                      json_path: mapping.jsonPath || null,
-                    },
-                  },
-                };
-              }
-            })
-          : [];
-
-        return {
-          name: evaluator.name,
-          version: evaluator.version,
-          variable_mapping: variableMapping,
-        };
-      });
-
-      const result = await createExperiment.mutateAsync({
-        name: data.name,
-        description: data.description,
-        dataset_ref: {
-          id: data.datasetId,
-          version: data.datasetVersion,
-        },
-        prompt_configs: data.promptVersions.map((pv) => ({
-          type: "saved" as const,
-          name: pv.promptName,
-          version: pv.version,
-        })),
-        prompt_variable_mapping: promptVariableMapping,
-        eval_list: evalList,
-        dataset_row_filter: data.datasetRowFilter && data.datasetRowFilter.length > 0 ? data.datasetRowFilter : undefined,
-      });
-      handleCloseModal();
-      return { id: result.id };
-    } catch (err) {
-      console.error("Failed to create experiment:", err);
-      throw err;
-    }
-  };
-
   const handleRowClick = (experiment: PromptExperiment) => {
     navigate(`/tasks/${taskId}/prompt-experiments/${experiment.id}`);
   };
@@ -220,19 +138,6 @@ export const DatasetExperimentsView: React.FC = () => {
     setSearchText(value);
     setPage(0); // Reset to first page when searching
   };
-
-  // Prepare initial data for modal with pre-filled dataset
-  const initialDataWithDataset = experimentToClone
-    ? experimentToClone
-    : dataset && latestVersion
-      ? ({
-          dataset_ref: {
-            id: datasetId!,
-            name: dataset.name,
-            version: latestVersion.version_number,
-          },
-        } as Partial<PromptExperimentDetail>)
-      : undefined;
 
   return (
     <>
@@ -252,11 +157,15 @@ export const DatasetExperimentsView: React.FC = () => {
         <Box className="overflow-auto min-h-0">
           {isLoading ? (
             <Box className="flex items-center justify-center h-full">
-              <p className="text-gray-600 dark:text-gray-400">Loading experiments...</p>
+              <Typography variant="body2" color="text.secondary">
+                Loading experiments...
+              </Typography>
             </Box>
           ) : error ? (
             <Box className="flex items-center justify-center h-full">
-              <p className="text-red-600">{error.message}</p>
+              <Typography variant="body2" color="error.main">
+                {error.message}
+              </Typography>
             </Box>
           ) : experiments.length === 0 ? (
             <PromptExperimentsEmptyState onCreateExperiment={handleCreateExperiment} />
@@ -282,7 +191,7 @@ export const DatasetExperimentsView: React.FC = () => {
             <Typography variant="h6" className="font-semibold mb-1">
               Select an Existing Experiment
             </Typography>
-            <Typography variant="body2" className="text-gray-600">
+            <Typography variant="body2" color="text.secondary">
               Choose an experiment to use as a template. All settings will be copied to your new experiment.
             </Typography>
           </Box>
@@ -322,7 +231,7 @@ export const DatasetExperimentsView: React.FC = () => {
             if (filteredExperiments.length === 0) {
               return (
                 <Box className="py-8 text-center">
-                  <Typography variant="body2" className="text-gray-500 italic">
+                  <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic" }}>
                     {experiments.length === 0 ? "No experiments available to clone." : "No experiments match your search."}
                   </Typography>
                 </Box>
@@ -358,23 +267,23 @@ export const DatasetExperimentsView: React.FC = () => {
                           secondary={
                             <Box>
                               {experiment.description && (
-                                <Typography variant="body2" className="text-gray-700 mb-2">
+                                <Typography variant="body2" color="text.secondary" className="mb-2">
                                   {experiment.description}
                                 </Typography>
                               )}
                               <Box className="flex gap-4 text-sm">
-                                <Typography variant="caption" className="text-gray-600">
+                                <Typography variant="caption" color="text.secondary">
                                   <strong>Prompt:</strong>{" "}
                                   {experiment.prompt_configs?.[0]?.type === "saved"
                                     ? experiment.prompt_configs[0].name
                                     : experiment.prompt_configs?.[0]?.auto_name || "N/A"}
                                 </Typography>
-                                <Typography variant="caption" className="text-gray-600">
+                                <Typography variant="caption" color="text.secondary">
                                   <strong>Rows:</strong> {experiment.total_rows}
                                 </Typography>
                                 {experiment.total_cost && (
-                                  <Typography variant="caption" className="text-gray-600">
-                                    <strong>Cost:</strong> ${parseFloat(experiment.total_cost).toFixed(4)}
+                                  <Typography variant="caption" color="text.secondary">
+                                    <strong>Cost:</strong> {formatCurrency(parseFloat(experiment.total_cost), defaultCurrency)}
                                   </Typography>
                                 )}
                               </Box>
@@ -397,11 +306,10 @@ export const DatasetExperimentsView: React.FC = () => {
       </Dialog>
 
       <CreateExperimentModal
+        templateId={selectedExperimentId ?? undefined}
+        initialData={datasetId && latestVersion ? { info: { dataset: { id: datasetId, version: latestVersion.version_number } } } : undefined}
         open={isModalOpen}
         onClose={handleCloseModal}
-        onSubmit={handleSubmitExperiment}
-        initialData={initialDataWithDataset}
-        isLoadingInitialData={isLoadingExperiment}
       />
     </>
   );

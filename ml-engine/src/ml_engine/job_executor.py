@@ -4,10 +4,12 @@ from typing import Any
 from uuid import uuid4
 
 from arthur_client.api_bindings import (
+    AgentsV1Api,
     AlertCheckJobSpec,
     AlertRulesV1Api,
     AlertsV1Api,
     ApiClient,
+    CompliancePolicyCheckJobSpec,
     ConnectorCheckJobSpec,
     ConnectorsV1Api,
     CreateModelLinkTaskJobSpec,
@@ -24,12 +26,13 @@ from arthur_client.api_bindings import (
     MetricsCalculationJobSpec,
     MetricsV1Api,
     ModelsV1Api,
+    PoliciesV1Api,
     RegenerateTaskValidationKeyJobSpec,
+    ScheduleComplianceJobsJobSpec,
     ScheduleJobsJobSpec,
     SchemaInspectionJobSpec,
     TasksV1Api,
     TestCustomAggregationJobSpec,
-    UnregisteredAgentsV1Api,
 )
 from arthur_client.auth import (
     ArthurClientCredentialsAPISession,
@@ -46,6 +49,7 @@ from pydantic import StrictBytes
 
 from config import Config
 from job_executors.alert_check_executor import AlertCheckExecutor
+from job_executors.compliance_policy_check_executor import CompliancePolicyCheckExecutor
 from job_executors.connector_test_executor import ConnectorTestExecutor
 from job_executors.discover_agents_executor import DiscoverAgentsExecutor
 from job_executors.fetch_data_executor import FetchDataExecutor
@@ -53,6 +57,9 @@ from job_executors.list_datasets_executor import ListDatasetsExecutor
 from job_executors.metrics_calculation_executor import (
     CustomAggregationTestExecutor,
     MetricsCalculationExecutor,
+)
+from job_executors.schedule_compliance_jobs_executor import (
+    ScheduleComplianceJobsExecutor,
 )
 from job_executors.schedule_jobs_executor import ScheduleJobsExecutor
 from job_executors.schema_inference_executor import SchemaInferenceExecutor
@@ -131,8 +138,9 @@ class JobExecutor:
         self.datasets_client = DatasetsV1Api(client)
         self.tasks_client = TasksV1Api(client)
         self.custom_aggregation_tests_client = CustomAggregationTestsV1Api(client)
-        self.unregistered_agents_client = UnregisteredAgentsV1Api(client)
+        self.agents_client = AgentsV1Api(client)
         self.data_planes_client = DataPlanesV1Api(client)
+        self.policies_client = PoliciesV1Api(client)
 
         self.logger: logging.Logger = logging.getLogger(str(uuid4()))
         self.logger.setLevel(logging.INFO)
@@ -371,11 +379,39 @@ class JobExecutor:
                             raise ValueError("GenAI Engine configuration missing")
 
                         DiscoverAgentsExecutor(
-                            self.unregistered_agents_client,
-                            self.models_client,
+                            self.agents_client,
                             self.logger,
                             genai_engine_url,
                             genai_engine_api_key,
+                        ).execute(job, job.job_spec.actual_instance)
+                    case JobKind.COMPLIANCE_POLICY_CHECK:
+                        if not isinstance(
+                            job.job_spec.actual_instance,
+                            CompliancePolicyCheckJobSpec,
+                        ):
+                            raise ValueError(
+                                f"Expected CompliancePolicyCheckJobSpec type, got {type(job.job_spec.actual_instance)}.",
+                            )
+                        CompliancePolicyCheckExecutor(
+                            self.policies_client,
+                            self.alert_rules_client,
+                            self.alerts_client,
+                            self.metrics_client,
+                            self.logger,
+                        ).execute(job, job.job_spec.actual_instance)
+                    case JobKind.SCHEDULE_COMPLIANCE_JOBS:
+                        if not isinstance(
+                            job.job_spec.actual_instance,
+                            ScheduleComplianceJobsJobSpec,
+                        ):
+                            raise ValueError(
+                                f"Expected ScheduleComplianceJobsJobSpec type, got {type(job.job_spec.actual_instance)}.",
+                            )
+                        ScheduleComplianceJobsExecutor(
+                            self.models_client,
+                            self.jobs_client,
+                            self.policies_client,
+                            self.logger,
                         ).execute(job, job.job_spec.actual_instance)
                     case _:
                         raise NotImplementedError(f"Job type {job.kind} not supported.")

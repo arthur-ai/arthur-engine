@@ -17,15 +17,18 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import TableSortLabel from "@mui/material/TableSortLabel";
+import Tooltip from "@mui/material/Tooltip";
 import React, { useCallback, useMemo, useState } from "react";
 
 import type { PromptsTableProps } from "../types";
 
-import { formatDate } from "@/utils/formatters";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { formatDateInTimezone } from "@/utils/formatters";
 
 type SortableColumn = "name" | "created_at" | "latest_version_created_at";
 
 const PromptsTable = ({ prompts, sortColumn, sortDirection, onSort, onExpandToFullScreen, onDelete }: PromptsTableProps) => {
+  const { timezone, use24Hour } = useDisplaySettings();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [promptToDelete, setPromptToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -147,6 +150,11 @@ const PromptsTable = ({ prompts, sortColumn, sortDirection, onSort, onExpandToFu
               </TableCell>
               <TableCell>
                 <Box component="span" sx={{ fontWeight: 600 }}>
+                  Tags
+                </Box>
+              </TableCell>
+              <TableCell>
+                <Box component="span" sx={{ fontWeight: 600 }}>
                   Actions
                 </Box>
               </TableCell>
@@ -154,6 +162,18 @@ const PromptsTable = ({ prompts, sortColumn, sortDirection, onSort, onExpandToFu
           </TableHead>
           <TableBody>
             {sortedPrompts.map((promptMetadata) => {
+              const tags = promptMetadata.tags ?? [];
+              const productionTag = tags.find((tag) => tag.toLowerCase() === "production");
+              const otherTags = tags.filter((tag) => tag.toLowerCase() !== "production");
+              const displayTags: Array<{ label: string; isProduction: boolean }> = [];
+              if (productionTag !== undefined) displayTags.push({ label: productionTag, isProduction: true });
+              otherTags.slice(0, 3 - displayTags.length).forEach((tag) => {
+                displayTags.push({ label: tag, isProduction: false });
+              });
+              const displayedLabels = new Set(displayTags.map((d) => d.label));
+              const hiddenTags = tags.filter((t) => !displayedLabels.has(t));
+              const hiddenTagCount = hiddenTags.length;
+
               return (
                 <TableRow
                   key={promptMetadata.name}
@@ -182,9 +202,28 @@ const PromptsTable = ({ prompts, sortColumn, sortDirection, onSort, onExpandToFu
                       )}
                     </Box>
                   </TableCell>
-                  <TableCell>{formatDate(promptMetadata.created_at)}</TableCell>
-                  <TableCell>{formatDate(promptMetadata.latest_version_created_at)}</TableCell>
+                  <TableCell>{formatDateInTimezone(promptMetadata.created_at, timezone, { hour12: !use24Hour })}</TableCell>
+                  <TableCell>{formatDateInTimezone(promptMetadata.latest_version_created_at, timezone, { hour12: !use24Hour })}</TableCell>
                   <TableCell>{promptMetadata.versions}</TableCell>
+                  <TableCell>
+                    <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+                      {displayTags.map((tag) => (
+                        <Chip
+                          key={tag.label}
+                          label={tag.label}
+                          size="small"
+                          color={tag.isProduction ? "success" : "primary"}
+                          variant={tag.isProduction ? "filled" : "outlined"}
+                          sx={{ height: 20, fontSize: "0.75rem" }}
+                        />
+                      ))}
+                      {hiddenTagCount > 0 && (
+                        <Tooltip title={hiddenTags.join(", ")}>
+                          <Chip label={`+${hiddenTagCount}`} size="small" variant="outlined" sx={{ height: 20, fontSize: "0.75rem" }} />
+                        </Tooltip>
+                      )}
+                    </Box>
+                  </TableCell>
                   <TableCell>
                     <IconButton
                       size="small"

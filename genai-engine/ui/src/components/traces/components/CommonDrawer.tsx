@@ -1,36 +1,53 @@
+import { CommonDrawer as SharedCommonDrawer } from "@arthur/shared-components";
 import { capitalize } from "@mui/material";
-import { QueryErrorResetBoundary } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "framer-motion";
-import { lazy, Suspense } from "react";
-import { ErrorBoundary } from "react-error-boundary";
+import { lazy } from "react";
 
 import { useDrawerTarget } from "../hooks/useDrawerTarget";
 import { useSelection } from "../hooks/useSelection";
 
 import { TraceContentSkeleton } from "./TraceDrawerContent";
 
-import { Drawer } from "@/components/common/Drawer";
-import { ErrorFallback } from "@/components/common/ErrorFallback";
 import { EVENT_NAMES, track } from "@/services/amplitude";
 import { createTitle } from "@/utils/title";
 
-const CONTENT_MAP = {
-  trace: lazy(() =>
+type DrawerTarget = "trace" | "span" | "session" | "user";
+
+/**
+ * Wraps a lazy import factory to handle stale chunk load failures.
+ *
+ * When the app is redeployed, Vite generates new content-hashed chunk filenames.
+ * Users with the old page still open will try to fetch stale chunk URLs that no
+ * longer exist, causing "Failed to fetch dynamically imported module" errors.
+ * Reloading the page fetches the updated index.html and the new chunk URLs.
+ */
+const lazyWithChunkReload = <T extends React.ComponentType<{ id: string }>>(factory: () => Promise<{ default: T }>): React.LazyExoticComponent<T> => {
+  return lazy(() =>
+    factory().catch((err: unknown) => {
+      if (err instanceof TypeError && err.message.toLowerCase().includes("failed to fetch")) {
+        window.location.reload();
+      }
+      throw err;
+    })
+  );
+};
+
+const CONTENT_MAP: Record<DrawerTarget, React.LazyExoticComponent<React.ComponentType<{ id: string }>>> = {
+  trace: lazyWithChunkReload(() =>
     import("./TraceDrawerContent").then((module) => ({
       default: module.TraceDrawerContent,
     }))
   ),
-  span: lazy(() =>
+  span: lazyWithChunkReload(() =>
     import("./SpanDrawerContent").then((module) => ({
       default: module.SpanDrawerContent,
     }))
   ),
-  session: lazy(() =>
+  session: lazyWithChunkReload(() =>
     import("./SessionDrawerContent").then((module) => ({
       default: module.SessionDrawerContent,
     }))
   ),
-  user: lazy(() =>
+  user: lazyWithChunkReload(() =>
     import("./UserDrawerContent").then((module) => ({
       default: module.UserDrawerContent,
     }))
@@ -52,47 +69,26 @@ export const CommonDrawer = () => {
     select(null, { history: "replace" });
   };
 
-  const Content = current?.id ? CONTENT_MAP[current?.target] : null;
-
-  const shouldRender = !!Content;
+  const open = !!current?.id;
+  const target = current?.target ?? null;
+  const id = current?.id ?? null;
 
   return (
-    <>
-      {shouldRender && <title>{createTitle(`${capitalize(current.target)} Details - ${current.id}`)}</title>}
-      <Drawer open={shouldRender} onClose={handleClose}>
-        <Drawer.Content
-          slotProps={{
-            paper: {
-              sx: {
-                width: "90%",
-              },
-            },
-          }}
-        >
-          <AnimatePresence mode="popLayout">
-            <motion.div
-              key={current?.id}
-              initial={{ opacity: 0, x: -64, filter: "blur(8px)" }}
-              animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
-              exit={{ opacity: 0, x: 64, filter: "blur(8px)" }}
-              transition={{ type: "spring", duration: 0.3 }}
-              className="w-full flex-1 overflow-y-auto"
-            >
-              {Content && current && (
-                <QueryErrorResetBoundary>
-                  {({ reset }) => (
-                    <ErrorBoundary key={current.id} onReset={reset} FallbackComponent={ErrorFallback}>
-                      <Suspense fallback={<TraceContentSkeleton />}>
-                        <Content id={current.id!} />
-                      </Suspense>
-                    </ErrorBoundary>
-                  )}
-                </QueryErrorResetBoundary>
-              )}
-            </motion.div>
-          </AnimatePresence>
-        </Drawer.Content>
-      </Drawer>
-    </>
+    <SharedCommonDrawer
+      open={open}
+      target={target}
+      id={id}
+      onClose={handleClose}
+      renderContent={({ target, id: contentId }: { target: DrawerTarget; id: string }) => {
+        const Content = CONTENT_MAP[target];
+        if (!Content) {
+          console.error(`Unknown drawer target: ${target}`);
+          return null;
+        }
+        return <Content id={contentId} />;
+      }}
+      title={current ? createTitle(`${capitalize(current.target)} Details - ${current.id}`) : undefined}
+      skeleton={<TraceContentSkeleton />}
+    />
   );
 };

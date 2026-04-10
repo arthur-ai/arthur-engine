@@ -1,3 +1,4 @@
+import { TextOperators, TracesEmptyState } from "@arthur/shared-components";
 import { Search } from "@mui/icons-material";
 import {
   Box,
@@ -25,9 +26,8 @@ import { continuousEvalsResultsQueryOptions } from "../../hooks/useContinuousEva
 import { Details } from "./components/details";
 import { FilterModal } from "./components/FilterModal";
 
-import { TextOperators } from "@/components/traces/components/filtering/types";
-import { TracesEmptyState } from "@/components/traces/components/TracesEmptyState";
 import { useFilterStore } from "@/components/traces/stores/filter.store";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { usePagination } from "@/hooks/usePagination";
 import { useTask } from "@/hooks/useTask";
@@ -35,6 +35,7 @@ import { useTask } from "@/hooks/useTask";
 export const Results = () => {
   const api = useApi()!;
   const { task } = useTask();
+  const { defaultCurrency } = useDisplaySettings();
 
   const [annotationId, setAnnotationId] = useQueryState("id", parseAsString.withDefault(""));
   const [action, setAction] = useQueryState("action", parseAsStringEnum(["rerun"]));
@@ -72,7 +73,10 @@ export const Results = () => {
 
   const table = useReactTable({
     data: data.annotations,
-    columns: useMemo(() => createColumns({ onView: (annotationId) => setAnnotationId(annotationId) }), [setAnnotationId]),
+    columns: useMemo(
+      () => createColumns({ onView: (annotationId) => setAnnotationId(annotationId), defaultCurrency }),
+      [setAnnotationId, defaultCurrency]
+    ),
     getCoreRowModel: getCoreRowModel(),
   });
 

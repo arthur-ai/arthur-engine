@@ -58,7 +58,6 @@ export const RagConfigEditModal: React.FC<RagConfigEditModalProps> = ({
 
   const { collections, isLoading: isLoadingCollections } = useRagCollections(providerId || undefined);
 
-  // Derive the effective collection: user selection takes priority, otherwise match from loaded collections
   const effectiveCollection =
     selectedCollection ??
     (collections.length > 0 && currentSettings?.collection_name

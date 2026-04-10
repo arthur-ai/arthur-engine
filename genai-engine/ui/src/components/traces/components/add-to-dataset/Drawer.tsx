@@ -1,10 +1,24 @@
 import AddIcon from "@mui/icons-material/Add";
-import { Alert, Autocomplete, Button, Drawer, Snackbar, Stack, TextField, Typography } from "@mui/material";
+import {
+  Autocomplete,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Drawer,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { useControlled } from "@mui/material/utils";
 import { useStore } from "@tanstack/react-form";
 import { AxiosError } from "axios";
+import { useSnackbar } from "notistack";
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { flattenSpans } from "../../utils/spans";
 import { useAppForm } from "../filtering/hooks/form";
@@ -24,7 +38,6 @@ import { useApi } from "@/hooks/useApi";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
 import { useDatasets } from "@/hooks/useDatasets";
-import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";
 import { useTrace } from "@/hooks/useTrace";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
@@ -39,8 +52,9 @@ type Props = {
 export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = false, onClose }: Props) => {
   const api = useApi()!;
   const { task } = useTask();
-  const snackbar = useSnackbar();
+  const { enqueueSnackbar } = useSnackbar();
   const theme = useTheme();
+  const navigate = useNavigate();
 
   const [open, setOpen] = useControlled({
     controlled: openProp,
@@ -53,6 +67,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
   const [showCreateDatasetDialog, setShowCreateDatasetDialog] = useState(false);
   const [showAddColumnDialog, setShowAddColumnDialog] = useState(false);
   const [pendingColumns, setPendingColumns] = useState<Record<string, string[]>>({});
+  const [showExitConfirmDialog, setShowExitConfirmDialog] = useState(false);
 
   const form = useAppForm({
     ...addToDatasetFormOptions,
@@ -91,7 +106,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
       });
     },
     onSuccess: (_data, variables) => {
-      snackbar.showSnackbar("Row added", "success");
+      enqueueSnackbar("Row added", { variant: "success" });
       // Clear pending columns for this dataset
       setPendingColumns((prev) => {
         const updated = { ...prev };
@@ -101,7 +116,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
       setOpen(false);
     },
     onError: () => {
-      snackbar.showSnackbar("Failed to add row", "error");
+      enqueueSnackbar("Failed to add row", { variant: "error" });
     },
   });
 
@@ -120,11 +135,11 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
 
   useEffect(() => {
     if (traceQuery.error) {
-      snackbar.showSnackbar("Failed to fetch trace", "error");
+      enqueueSnackbar("Failed to fetch trace", { variant: "error" });
     } else if (datasetsQuery.error) {
-      snackbar.showSnackbar("Failed to fetch datasets", "error");
+      enqueueSnackbar("Failed to fetch datasets", { variant: "error" });
     }
-  }, [traceQuery.error, datasetsQuery.error, snackbar]);
+  }, [traceQuery.error, datasetsQuery.error, enqueueSnackbar]);
 
   const selectedDataset = datasetsQuery.datasets.find((dataset) => datasetId === dataset.id);
   const flatSpans = useMemo(() => flattenSpans(traceQuery.data?.root_spans ?? []), [traceQuery.data]);
@@ -150,7 +165,14 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
     datasetsQuery.refetch();
     form.setFieldValue("dataset", newDataset.id);
     setShowCreateDatasetDialog(false);
-    snackbar.showSnackbar("Dataset created successfully", "success");
+    enqueueSnackbar("Dataset created successfully", {
+      variant: "success",
+      action: () => (
+        <Button size="small" color="inherit" onClick={() => navigate(`/tasks/${task?.id}/datasets/${newDataset.id}`)}>
+          View Dataset
+        </Button>
+      ),
+    });
   });
 
   const handleCreateDataset = async (name: string, description: string) => {
@@ -168,7 +190,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
 
     // Check if column already exists
     if (currentColumns.includes(columnName)) {
-      snackbar.showSnackbar("Column already exists", "error");
+      enqueueSnackbar("Column already exists", { variant: "error" });
       return;
     }
 
@@ -192,7 +214,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
     ]);
 
     setShowAddColumnDialog(false);
-    snackbar.showSnackbar("Column added", "success");
+    enqueueSnackbar("Column added", { variant: "success" });
   };
 
   const handleSaveTransform = async (name: string, description: string, definition: TransformDefinition) => {
@@ -211,7 +233,14 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
 
       setTimeout(() => {
         setShowSaveTransformDialog(false);
-        snackbar.showSnackbar("Transform saved", "success");
+        enqueueSnackbar("Transform saved", {
+          variant: "success",
+          action: () => (
+            <Button size="small" color="inherit" onClick={() => navigate(`/tasks/${task?.id}/transforms`)}>
+              View Transforms
+            </Button>
+          ),
+        });
       }, 100);
     } catch (error: unknown) {
       let errorMessage = "Failed to save transform";
@@ -230,12 +259,31 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
     }
   };
 
-  const handleClose = () => {
+  const hasInProgressWork = form.state.isDirty || form.state.values.columns.length > 0 || Object.keys(pendingColumns).length > 0;
+
+  const doClose = () => {
     form.reset();
     setPendingColumns({});
     setSavedTransformId(undefined);
     setOpen(false);
     onClose?.();
+  };
+
+  const handleClose = () => {
+    if (hasInProgressWork) {
+      setShowExitConfirmDialog(true);
+    } else {
+      doClose();
+    }
+  };
+
+  const handleConfirmExit = () => {
+    setShowExitConfirmDialog(false);
+    doClose();
+  };
+
+  const handleCancelExit = () => {
+    setShowExitConfirmDialog(false);
   };
 
   return (
@@ -349,6 +397,21 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
         </form>
       </Drawer>
 
+      <Dialog open={showExitConfirmDialog} onClose={handleCancelExit}>
+        <DialogTitle>Discard in-progress work?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>You have unsaved changes in the transform builder. Exiting now will discard all in-progress work.</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelExit} variant="outlined">
+            Continue editing
+          </Button>
+          <Button onClick={handleConfirmExit} variant="contained" color="error">
+            Discard and exit
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <CreateDatasetModal
         open={showCreateDatasetDialog}
         onClose={() => setShowCreateDatasetDialog(false)}
@@ -369,10 +432,6 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
         columns={form.state.values.columns}
         onSave={handleSaveTransform}
       />
-
-      <Snackbar {...snackbar.snackbarProps}>
-        <Alert {...snackbar.alertProps} />
-      </Snackbar>
     </>
   );
 };

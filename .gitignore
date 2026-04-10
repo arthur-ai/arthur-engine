@@ -12,6 +12,7 @@ __pycache__
 .python-version
 *.egg-info
 build/
+.mypy_cache/
 
 # Node.js
 node_modules/
@@ -42,5 +43,11 @@ ml-engine/src/genai_client/**
 
 .cursor/
 
+genai-engine/version
 models/
 arthur-engine.code-workspace
+
+# Claude Code integration (any directory)
+**/.claude/arthur_config.json
+**/.claude/hooks/claude_code_tracer.py
+.gstack/

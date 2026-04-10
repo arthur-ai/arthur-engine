@@ -43,8 +43,7 @@ Arthur Engine is a Python-based AI/ML monitoring and governance platform with th
 ```bash
 # Setup
 cd genai-engine
-poetry shell && poetry env use 3.12
-poetry install --with dev,linters
+uv sync --group dev --group linters
 
 # Start PostgreSQL (required)
 docker compose up
@@ -56,37 +55,36 @@ export POSTGRES_URL=localhost
 export POSTGRES_PORT=5432
 export POSTGRES_DB=arthur_genai_engine
 export GENAI_ENGINE_SECRET_STORE_KEY="some_test_key"
-poetry run alembic upgrade head
+uv run alembic upgrade head
 
 # Run development server
 export PYTHONPATH="src:$PYTHONPATH"
-poetry run serve
+uv run serve
 # Access at http://localhost:3030/docs
 
 # Testing
-poetry run pytest -m "unit_tests"
-poetry run pytest -m "unit_tests" --cov=src --cov-fail-under=79
+uv run pytest -m "unit_tests"
+uv run pytest -m "unit_tests" --cov=src --cov-fail-under=79
 ./tests/test_remote.sh  # Integration tests
 
 # Database migrations
-poetry run alembic revision --autogenerate -m "<message>"
-poetry run alembic upgrade head
+uv run alembic revision --autogenerate -m "<message>"
+uv run alembic upgrade head
 
 # Code quality
-poetry run isort src --profile black
-poetry run autoflake --remove-all-unused-imports --in-place --recursive src
-poetry run black src
-poetry run routes_security_check
+uv run isort src --profile black
+uv run autoflake --remove-all-unused-imports --in-place --recursive src
+uv run black src
+uv run routes_security_check
 
 # Generate API changelog
-poetry run generate_changelog
+uv run generate_changelog
 ```
 
 ### ML Engine
 
 ```bash
 cd ml-engine
-poetry env use 3.13
 
 # Generate GenAI Engine client
 cd scripts
@@ -95,19 +93,19 @@ cd scripts
 ./install_db_dependencies.sh
 cd ..
 
-poetry install
+uv sync
 
 # Run ML Engine
-poetry run python src/ml_engine/job_agent.py
+uv run python src/ml_engine/job_agent.py
 
 # Testing
-poetry install --with dev
-poetry run pytest tests/unit
+uv sync --group dev
+uv run pytest tests/unit
 
 # Code quality
-poetry run isort src/ml_engine --profile black --check
-poetry run black --check src/ml_engine
-poetry run mypy src/ml_engine
+uv run isort src/ml_engine --profile black --check
+uv run black --check src/ml_engine
+uv run mypy src/ml_engine
 ```
 
 ### Frontend UI
@@ -292,35 +290,33 @@ The scorer system in [src/scorer/checks/](src/scorer/checks/) implements:
 ```bash
 # Initial setup
 cd genai-engine
-poetry shell && poetry env use 3.12
-poetry install --with dev,linters
-poetry run pre-commit install
+uv sync --group dev --group linters
+uv run pre-commit install
 
 # Start PostgreSQL
 docker compose up
 
 # Set environment variables (see README.md)
 # Run development server
-poetry run serve
+uv run serve
 
 # Before committing
-poetry run pytest -m "unit_tests"
-poetry run black src
-poetry run isort src
+uv run pytest -m "unit_tests"
+uv run black src
+uv run isort src
 
 # Database schema changes
-poetry run alembic revision --autogenerate -m "description"
-poetry run alembic upgrade head
+uv run alembic revision --autogenerate -m "description"
+uv run alembic upgrade head
 
 # API changes - generate changelog
-poetry run generate_changelog
+uv run generate_changelog
 ```
 
 ### ML Engine Development
 
 ```bash
 cd ml-engine
-poetry env use 3.13
 
 # Generate GenAI client
 cd scripts
@@ -328,7 +324,7 @@ cd scripts
 ./openapi_client_utils.sh install python
 cd ..
 
-poetry install --with dev,linters
+uv sync --group dev --group linters
 
 # Set environment variables
 export ARTHUR_API_HOST=https://platform.arthur.ai
@@ -336,12 +332,12 @@ export ARTHUR_CLIENT_SECRET=<secret>
 export ARTHUR_CLIENT_ID=<id>
 
 # Run
-poetry run python src/ml_engine/job_agent.py
+uv run python src/ml_engine/job_agent.py
 
 # Before committing
-poetry run pytest tests/unit
-poetry run mypy src/ml_engine
-poetry run black --check src/ml_engine
+uv run pytest tests/unit
+uv run mypy src/ml_engine
+uv run black --check src/ml_engine
 ```
 
 ### Frontend Development
@@ -362,15 +358,15 @@ yarn check  # Runs type-check, lint, and format:check
 
 **GenAI Engine:**
 
-- Unit tests: `poetry run pytest -m "unit_tests"`
+- Unit tests: `uv run pytest -m "unit_tests"`
 - Coverage requirement: >= 79%
 - Integration tests: `./tests/test_remote.sh`
 - Performance tests: Locust-based (see [locust/README.md](genai-engine/locust/README.md))
 
 **ML Engine:**
 
-- Unit tests: `poetry run pytest tests/unit`
-- Type checking: `poetry run mypy src/ml_engine`
+- Unit tests: `uv run pytest tests/unit`
+- Type checking: `uv run mypy src/ml_engine`
 
 **Pre-commit Hooks:**
 
@@ -435,7 +431,7 @@ GENAI_ENGINE_INTERNAL_API_KEY=<api-key>
 - GenAI Engine uses Python 3.12, ML Engine uses Python 3.13
 - PostgreSQL with pgVector extension required for vector similarity
 - Pre-commit hooks enforce code quality and run tests
-- API changes require changelog generation via `poetry run generate_changelog`
+- API changes require changelog generation via `uv run generate_changelog`
 - Model files are downloaded and cached on first use
 - GPU support optional but improves performance for model-based checks
 - **Frontend: Always use MUI components** — never use plain HTML elements when MUI provides an equivalent. See "Frontend UI Guidelines" section above for full details.

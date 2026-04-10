@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation, Outlet } from "react-router-dom";
 
+import { ChatbotDrawer } from "@/components/chatbot/ChatbotDrawer";
 import { SidebarNavigation } from "@/components/SidebarNavigation";
 import { TaskErrorState } from "@/components/TaskErrorState";
 import { TaskLoadingState } from "@/components/TaskLoadingState";
 import { TaskNotFoundState } from "@/components/TaskNotFoundState";
-import { useAuth } from "@/contexts/AuthContext";
 import { TaskProvider } from "@/contexts/TaskContext";
 import { useApi } from "@/hooks/useApi";
 import { TaskResponse } from "@/lib/api";
@@ -14,7 +14,6 @@ export const TaskLayout: React.FC = () => {
   const params = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth();
   const api = useApi();
   const [task, setTask] = useState<TaskResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,9 +31,15 @@ export const TaskLayout: React.FC = () => {
     const section = pathSegments[taskIndex + 1];
     if (section === "playgrounds" && pathSegments[taskIndex + 2]) {
       activeSection = `playgrounds/${pathSegments[taskIndex + 2]}`;
-    } else if (section === "prompts") {
-      // Map /tasks/:id/prompts/:promptName to prompts-management
+    } else if (section === "prompts" && pathSegments[taskIndex + 2]) {
+      // Map /tasks/:id/prompts/:promptName to prompts-management (legacy routes)
       activeSection = "prompts-management";
+    } else if (section === "evaluators" || section === "continuous-evals") {
+      // Map legacy evaluator/continuous-evals paths to the combined Evaluate nav item
+      activeSection = "evaluate";
+    } else if (section === "rag-notebooks" || section === "rag-experiments" || section === "rag-configurations") {
+      // Legacy RAG sub-page routes highlight the unified "rag" sidebar item
+      activeSection = "rag";
     } else {
       activeSection = section;
     }
@@ -66,10 +71,6 @@ export const TaskLayout: React.FC = () => {
     fetchTask();
   }, [api, taskId]);
 
-  const handleLogout = () => {
-    logout();
-  };
-
   const handleBack = () => {
     navigate("/");
   };
@@ -80,14 +81,9 @@ export const TaskLayout: React.FC = () => {
 
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-950 flex flex-col overflow-hidden">
+      <ChatbotDrawer taskId={taskId} />
       <div className="flex flex-1 overflow-hidden">
-        <SidebarNavigation
-          onBackToDashboard={handleBack}
-          onNavigate={handleNavigate}
-          onLogout={handleLogout}
-          activeSection={activeSection}
-          taskName={task?.name}
-        />
+        <SidebarNavigation onBackToDashboard={handleBack} onNavigate={handleNavigate} activeSection={activeSection} taskName={task?.name} />
 
         <main className="flex-1 overflow-auto">
           {loading && (

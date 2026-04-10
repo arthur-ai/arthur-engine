@@ -1,3 +1,4 @@
+import { MustacheHighlightedTextField } from "@arthur/shared-components";
 import CloseIcon from "@mui/icons-material/Close";
 import EditIcon from "@mui/icons-material/Edit";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
@@ -23,22 +24,30 @@ import EvalEditModal from "../EvalEditModal";
 import { useAddTagToEvalVersionMutation } from "../hooks/useAddTagToEvalVersionMutation";
 import { useCreateEvalMutation } from "../hooks/useCreateEvalMutation";
 import { useDeleteTagFromEvalVersionMutation } from "../hooks/useDeleteTagFromEvalVersionMutation";
-import NunjucksHighlightedTextField from "../MustacheHighlightedTextField";
+import { useImpactedContinuousEvals } from "../hooks/useImpactedContinuousEvals";
 import type { EvalDetailViewProps } from "../types";
 
-import type { CreateEvalRequest } from "@/lib/api-client/api-client";
-import { formatDate } from "@/utils/formatters";
+import ImpactedCEsDialog from "./ImpactedCEsDialog";
 
-const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestVersion, taskId, onClose, onRefetch }: EvalDetailViewProps) => {
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import type { ContinuousEvalResponse, CreateEvalRequest } from "@/lib/api-client/api-client";
+import { formatDateInTimezone } from "@/utils/formatters";
+
+const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestVersion, taskId, onRefetch }: EvalDetailViewProps) => {
   const [tagAnchorEl, setTagAnchorEl] = useState<HTMLButtonElement | null>(null);
   const [newTag, setNewTag] = useState("");
   const [tagError, setTagError] = useState("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const [impactedCEs, setImpactedCEs] = useState<ContinuousEvalResponse[]>([]);
+  const [impactedCEsNewVersion, setImpactedCEsNewVersion] = useState<number>(0);
+  const [isImpactedCEsDialogOpen, setIsImpactedCEsDialogOpen] = useState(false);
 
   const addTagMutation = useAddTagToEvalVersionMutation();
   const deleteTagMutation = useDeleteTagFromEvalVersionMutation();
   const createEvalMutation = useCreateEvalMutation(taskId);
+  const { fetchImpactedCEs } = useImpactedContinuousEvals(taskId);
+  const { timezone, use24Hour } = useDisplaySettings();
 
   const handleAddTagClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
     setTagAnchorEl(event.currentTarget);
@@ -126,10 +135,22 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
         data,
       });
       setIsEditModalOpen(false);
-      // Trigger refetch to get the new version and pass the new version number
       onRefetch?.(result.version);
+
+      if (result.version != null) {
+        try {
+          const affected = await fetchImpactedCEs(evalName, result.version);
+          if (affected.length > 0) {
+            setImpactedCEs(affected);
+            setImpactedCEsNewVersion(result.version);
+            setIsImpactedCEsDialogOpen(true);
+          }
+        } catch {
+          // Non-critical — don't block the save flow if the check fails
+        }
+      }
     },
-    [evalName, createEvalMutation, onRefetch]
+    [evalName, createEvalMutation, onRefetch, fetchImpactedCEs]
   );
 
   const handleConfigClick = useCallback(() => {
@@ -216,7 +237,7 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
                 Created:
               </Typography>
               <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {evalData.created_at ? formatDate(evalData.created_at) : "N/A"}
+                {evalData.created_at ? formatDateInTimezone(evalData.created_at, timezone, { hour12: !use24Hour }) : "N/A"}
               </Typography>
             </Box>
             {evalData.deleted_at && (
@@ -225,7 +246,7 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
                   Deleted:
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 500, color: "error.main" }}>
-                  {formatDate(evalData.deleted_at)}
+                  {formatDateInTimezone(evalData.deleted_at, timezone, { hour12: !use24Hour })}
                 </Typography>
               </Box>
             )}
@@ -242,11 +263,6 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
             <Button variant="outlined" size="small" startIcon={<EditIcon />} onClick={handleEditClick} sx={{ minWidth: 80 }}>
               Edit
             </Button>
-          )}
-          {onClose && (
-            <IconButton onClick={onClose} aria-label="Close">
-              <CloseIcon />
-            </IconButton>
           )}
         </Box>
       </Box>
@@ -277,7 +293,7 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
             },
           }}
         >
-          <NunjucksHighlightedTextField
+          <MustacheHighlightedTextField
             value={evalData.instructions}
             onChange={() => {}} // Read-only, no-op
             disabled
@@ -399,6 +415,14 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
           initialModelName={evalData.model_name}
         />
       )}
+
+      <ImpactedCEsDialog
+        open={isImpactedCEsDialogOpen}
+        onClose={() => setIsImpactedCEsDialogOpen(false)}
+        impactedCEs={impactedCEs}
+        newVersion={impactedCEsNewVersion}
+        evalName={evalName}
+      />
     </Box>
   );
 };

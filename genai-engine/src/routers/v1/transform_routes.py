@@ -30,6 +30,7 @@ from schemas.request_schemas import (
     TransformListFilterRequest,
 )
 from schemas.response_schemas import (
+    TransformDependents,
     TransformExtractionResponseList,
 )
 from utils.transform_executor import execute_transform
@@ -106,6 +107,32 @@ def get_transform(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@transform_routes.get(
+    "/traces/transforms/{transform_id}/dependents",
+    description="Get resources that depend on this transform.",
+    response_model=TransformDependents,
+    tags=["Transforms"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def get_transform_dependents(
+    transform_id: UUID = Path(description="ID of the transform."),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> TransformDependents:
+    try:
+        repo = TraceTransformRepository(db_session)
+        if not repo.get_transform_by_id(transform_id):
+            raise HTTPException(
+                status_code=404,
+                detail=f"Transform {transform_id} not found",
+            )
+        return repo.get_transform_dependents(transform_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @transform_routes.post(
     "/tasks/{task_id}/traces/transforms",
     description="Create a new transform for a task.",
@@ -157,9 +184,14 @@ def update_transform(
 
 @transform_routes.delete(
     "/traces/transforms/{transform_id}",
-    description="Delete a transform.",
+    description="Delete a transform. Returns 409 if the transform is referenced by continuous evals, agentic experiments, or agentic notebooks.",
     tags=["Transforms"],
     status_code=HTTP_204_NO_CONTENT,
+    responses={
+        409: {
+            "description": "Transform has dependent resources that must be removed first."
+        }
+    },
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def delete_transform(

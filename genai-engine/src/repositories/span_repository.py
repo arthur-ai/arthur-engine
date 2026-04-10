@@ -84,6 +84,7 @@ class SpanRepository:
         pagination_parameters: PaginationParameters,
         user_ids: Optional[list[str]] = None,
         include_spans: bool = False,
+        sort_by: str = "start_time",
     ) -> tuple[int, list[TraceMetadata]]:
         """Get lightweight trace metadata for browsing/filtering operations.
 
@@ -107,16 +108,16 @@ class SpanRepository:
             self.span_query_service.get_paginated_trace_ids_with_filters(
                 filters=internal_filters,
                 pagination_parameters=pagination_parameters,
+                sort_by=sort_by,
             )
         )
 
         if total_count == 0:
             return 0, []
 
-        # Get trace metadata objects directly
+        # Get trace metadata objects directly (order matches paginated_trace_ids)
         trace_metadata_list = self.span_query_service.get_trace_metadata_by_ids(
             trace_ids=paginated_trace_ids,
-            sort_method=pagination_parameters.sort,
         )
 
         # Optionally fetch and attach spans as a flat list
@@ -195,7 +196,6 @@ class SpanRepository:
         # Fetch trace metadata for input/output content
         trace_metadata_list = self.span_query_service.get_trace_metadata_by_ids(
             [trace_id],
-            PaginationSortMethod.DESCENDING,
         )
         # Convert to database models for tree building service
         trace_metadata_db = [tm._to_database_model() for tm in trace_metadata_list]
@@ -532,13 +532,18 @@ class SpanRepository:
                 )
 
                 # Extract span kind from attributes
-                span_kind = attributes.get(
+                # Use get_nested_value because convert_gcp_labels_to_openinference
+                # explodes dotted keys into nested dicts, so flat .get() won't find them.
+                span_kind = trace_utils.get_nested_value(
+                    attributes,
                     SpanAttributes.OPENINFERENCE_SPAN_KIND,
-                    "LLM",
+                    default="LLM",
                 )
 
                 # Extract session_id and user_id if present
-                session_id = attributes.get(SpanAttributes.SESSION_ID)
+                session_id = trace_utils.get_nested_value(
+                    attributes, SpanAttributes.SESSION_ID
+                )
                 user_id = None  # GCP doesn't typically have user_id in labels
 
                 # Build raw_data dict (similar to what would come from OTLP)
@@ -630,6 +635,7 @@ class SpanRepository:
         include_metrics: bool = False,
         compute_new_metrics: bool = True,
         filters: Optional[TraceQueryRequest] = None,
+        sort_by: str = "start_time",
     ) -> tuple[list[Span], int]:
         """Query spans with optional metrics computation.
 
@@ -656,6 +662,7 @@ class SpanRepository:
                         page=page,
                         page_size=page_size,
                     ),
+                    sort_by=sort_by,
                 )
             )
 
@@ -720,6 +727,7 @@ class SpanRepository:
         pagination_parameters: PaginationParameters,
         include_metrics: bool = False,
         compute_new_metrics: bool = True,
+        sort_by: str = "start_time",
     ) -> tuple[int, list[TraceResponse]]:
         """Query traces with comprehensive filtering and optional metrics computation."""
         # Validate parameters
@@ -735,6 +743,7 @@ class SpanRepository:
         result = self.span_query_service.get_paginated_trace_ids_with_filters(
             filters=internal_filters,
             pagination_parameters=pagination_parameters,
+            sort_by=sort_by,
         )
 
         if not result:
@@ -760,6 +769,7 @@ class SpanRepository:
         traces = self.tree_building_service.group_spans_into_traces(
             valid_spans,
             pagination_parameters.sort or PaginationSortMethod.DESCENDING,
+            ordered_trace_ids=paginated_trace_ids,
         )
 
         # add annotation info to trace responses if it exists

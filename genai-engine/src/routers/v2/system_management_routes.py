@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from starlette import status
 from starlette.responses import Response
 
+from config.extra_features import extra_feature_config
 from dependencies import get_application_config, get_db_session, logger
 from repositories.configuration_repository import ConfigurationRepository
 from repositories.metrics_repository import MetricRepository
@@ -19,7 +20,11 @@ from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import ApplicationConfiguration, User
 from schemas.request_schemas import ApplicationConfigurationUpdateRequest
-from schemas.response_schemas import ApplicationConfigurationResponse
+from schemas.response_schemas import (
+    ApplicationConfigurationResponse,
+    DisplaySettingsResponse,
+)
+from utils.currency_display import get_display_currency
 from utils.users import permission_checker
 from utils.utils import public_endpoint
 
@@ -61,6 +66,22 @@ def get_token_usage(
         )
     finally:
         db_session.close()
+
+
+@system_management_routes.get(
+    "/display-settings",
+    description="Get display settings (e.g. default currency for cost formatting).",
+    response_model=DisplaySettingsResponse,
+    tags=["Settings"],
+)
+@public_endpoint
+def get_display_settings(
+    application_config: ApplicationConfiguration = Depends(get_application_config),
+) -> DisplaySettingsResponse:
+    return DisplaySettingsResponse(
+        default_currency=get_display_currency(application_config),
+        chatbot_enabled=extra_feature_config.CHATBOT_ENABLED,
+    )
 
 
 @system_management_routes.get(

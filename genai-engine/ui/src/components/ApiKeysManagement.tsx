@@ -29,8 +29,10 @@ import {
 import { isAxiosError } from "axios";
 import React, { useState, useEffect, useCallback } from "react";
 
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { ApiKeyResponse, APIKeysRolesEnum } from "@/lib/api-client/api-client";
+import { formatDateInTimezone } from "@/utils/formatters";
 
 function getErrorInfo(err: unknown): { status?: number; message: string } {
   if (isAxiosError(err)) {
@@ -66,6 +68,7 @@ export const ApiKeysManagement: React.FC = () => {
   const [createdKey, setCreatedKey] = useState<string | null>(null);
   const [showCreatedKeyModal, setShowCreatedKeyModal] = useState(false);
   const [copied, setCopied] = useState(false);
+  const { timezone, use24Hour } = useDisplaySettings();
 
   const fetchApiKeys = useCallback(async () => {
     if (!api) return;
@@ -110,17 +113,6 @@ export const ApiKeysManagement: React.FC = () => {
       "ORG-ADMIN": "Organization Admin",
     };
     return displayNames[role] || role;
-  };
-
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
   };
 
   const handleDeleteClick = (apiKey: ApiKeyResponse) => {
@@ -298,7 +290,6 @@ export const ApiKeysManagement: React.FC = () => {
                     <TableCell
                       sx={{
                         fontWeight: "bold",
-                        backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
                         width: "30%",
                       }}
                     >
@@ -307,7 +298,6 @@ export const ApiKeysManagement: React.FC = () => {
                     <TableCell
                       sx={{
                         fontWeight: "bold",
-                        backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
                         width: "25%",
                       }}
                     >
@@ -316,7 +306,6 @@ export const ApiKeysManagement: React.FC = () => {
                     <TableCell
                       sx={{
                         fontWeight: "bold",
-                        backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
                         width: "30%",
                       }}
                     >
@@ -325,7 +314,6 @@ export const ApiKeysManagement: React.FC = () => {
                     <TableCell
                       sx={{
                         fontWeight: "bold",
-                        backgroundColor: (theme) => (theme.palette.mode === "dark" ? "background.paper" : "grey.100"),
                         width: "15%",
                       }}
                       align="right"
@@ -363,7 +351,7 @@ export const ApiKeysManagement: React.FC = () => {
                           </Typography>
                         </TableCell>
                         <TableCell>
-                          <Typography variant="body2">{formatDate(apiKey.created_at)}</Typography>
+                          <Typography variant="body2">{formatDateInTimezone(apiKey.created_at, timezone, { hour12: !use24Hour })}</Typography>
                         </TableCell>
                         <TableCell align="right">
                           <IconButton size="small" color="error" onClick={() => handleDeleteClick(apiKey)} title="Delete API key">

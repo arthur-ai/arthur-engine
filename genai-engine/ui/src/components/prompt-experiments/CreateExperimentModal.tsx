@@ -26,6 +26,7 @@ import {
   Snackbar,
   Alert,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
@@ -334,7 +335,20 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
         promptName,
         page_size: 100,
       });
-      setPromptVersions(response.data.versions.filter((v) => !v.deleted_at));
+      const versions = response.data.versions.filter((v) => !v.deleted_at);
+      setPromptVersions(versions);
+
+      // Auto-select the version if there is only one available
+      if (versions.length === 1) {
+        setFormData((prev) => {
+          const alreadySelected = prev.promptVersions.some((pv) => pv.promptName === promptName && pv.version === versions[0].version);
+          if (alreadySelected) return prev;
+          return {
+            ...prev,
+            promptVersions: [...prev.promptVersions, { promptName, version: versions[0].version }],
+          };
+        });
+      }
     } catch (error) {
       console.error("Failed to load prompt versions:", error);
     } finally {
@@ -830,7 +844,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       />
 
       {/* Prompt Selection */}
-      <Box className="border border-gray-300 rounded p-4">
+      <Box sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 2 }}>
         <Box className="flex items-center gap-2 mb-2">
           <Typography variant="subtitle1" className="font-semibold">
             Prompt Versions *
@@ -940,7 +954,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       </Box>
 
       {/* Dataset Selection */}
-      <Box className="border border-gray-300 rounded p-4">
+      <Box sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 2 }}>
         <Box className="flex items-center gap-2 mb-2">
           <Typography variant="subtitle1" className="font-semibold">
             Dataset *
@@ -1116,7 +1130,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       </Box>
 
       {/* Evaluator Selection */}
-      <Box className="border border-gray-300 rounded p-4">
+      <Box sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 2 }}>
         <Box className="flex items-center gap-2 mb-2">
           <Typography variant="subtitle1" className="font-semibold">
             Evaluators *
@@ -1324,12 +1338,19 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
             </strong>{" "}
             to either a dataset column or the experiment output.
           </Typography>
-          <Box className="p-3 bg-blue-50 border border-blue-200 rounded">
-            <Typography variant="body2" className="text-gray-800 dark:text-gray-200">
+          <Box
+            sx={(theme) => ({
+              p: 1.5,
+              bgcolor: alpha(theme.palette.info.main, 0.08),
+              border: `1px solid ${alpha(theme.palette.info.main, 0.3)}`,
+              borderRadius: 1,
+            })}
+          >
+            <Typography variant="body2" sx={{ color: "text.primary" }}>
               <strong>Dataset Column:</strong> Use this when the evaluator needs information from your test data (e.g., expected answers, reference
               text, ground truth labels).
             </Typography>
-            <Typography variant="body2" className="text-gray-800 dark:text-gray-200 mt-1">
+            <Typography variant="body2" sx={{ color: "text.primary", mt: 0.5 }}>
               <strong>Experiment Output:</strong> Use this when the evaluator needs to assess the prompt's generated response (e.g., to check
               accuracy, relevance, or quality of the output).
             </Typography>

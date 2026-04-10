@@ -1,0 +1,132 @@
+[project]
+name = "arthur-observability-sdk"
+version = "2.1.508"
+description = "Arthur Observability SDK — telemetry, prompt management, and framework instrumentation"
+authors = [{ name = "Arthur AI", email = "engineering@arthur.ai" }]
+readme = "../README.md"
+requires-python = ">=3.10,<3.14"
+
+dependencies = [
+  "python-dateutil>=2.8.2",
+  "urllib3>=1.25.3,<3.0.0",
+  "pydantic>=2",
+  "typing-extensions>=4.7.1",
+  "opentelemetry-api>=1.27,<2",
+  "opentelemetry-sdk>=1.27,<2",
+  "opentelemetry-exporter-otlp-proto-http>=1.27,<2",
+  "openinference-instrumentation>=0.1,<1",
+  "openinference-semantic-conventions>=0.1,<1",
+  "httpx>=0.28,<1",
+]
+
+[project.optional-dependencies]
+agent-framework = ["openinference-instrumentation-agent-framework"]
+agentspec = ["openinference-instrumentation-agentspec"]
+agno = ["openinference-instrumentation-agno"]
+anthropic = ["openinference-instrumentation-anthropic"]
+autogen = ["openinference-instrumentation-autogen"]
+autogen-agentchat = ["openinference-instrumentation-autogen-agentchat"]
+bedrock = ["openinference-instrumentation-bedrock"]
+beeai = ["openinference-instrumentation-beeai ; python_version >= '3.11'"]
+crewai = ["openinference-instrumentation-crewai"]
+dspy = ["openinference-instrumentation-dspy"]
+google-adk = ["openinference-instrumentation-google-adk"]
+google-genai = ["openinference-instrumentation-google-genai"]
+groq = ["openinference-instrumentation-groq"]
+guardrails = ["openinference-instrumentation-guardrails"]
+haystack = ["openinference-instrumentation-haystack"]
+instructor = ["openinference-instrumentation-instructor"]
+langchain = ["openinference-instrumentation-langchain"]
+litellm = ["openinference-instrumentation-litellm"]
+llama-index = ["openinference-instrumentation-llama-index"]
+mcp = ["openinference-instrumentation-mcp"]
+mistralai = ["openinference-instrumentation-mistralai"]
+monkai-agent = ["openinference-instrumentation-monkai-agent"]
+openai = ["openinference-instrumentation-openai"]
+openai-agents = ["openinference-instrumentation-openai-agents"]
+openlit = ["openinference-instrumentation-openlit"]
+openllmetry = ["openinference-instrumentation-openllmetry"]
+pipecat = ["openinference-instrumentation-pipecat"]
+portkey = ["openinference-instrumentation-portkey"]
+pydantic-ai = ["openinference-instrumentation-pydantic-ai"]
+smolagents = ["openinference-instrumentation-smolagents"]
+strands-agents = ["openinference-instrumentation-strands-agents"]
+vertexai = ["openinference-instrumentation-vertexai"]
+claude-agent-sdk = ["openinference-instrumentation-claude-agent-sdk"]
+all = [
+  "openinference-instrumentation-agent-framework",
+  "openinference-instrumentation-agentspec",
+  "openinference-instrumentation-agno",
+  "openinference-instrumentation-anthropic",
+  "openinference-instrumentation-autogen",
+  "openinference-instrumentation-autogen-agentchat",
+  "openinference-instrumentation-bedrock",
+  "openinference-instrumentation-beeai ; python_version >= '3.11'",
+  "openinference-instrumentation-crewai",
+  "openinference-instrumentation-dspy",
+  "openinference-instrumentation-google-adk",
+  "openinference-instrumentation-google-genai",
+  "openinference-instrumentation-groq",
+  "openinference-instrumentation-guardrails",
+  "openinference-instrumentation-haystack",
+  "openinference-instrumentation-instructor",
+  "openinference-instrumentation-langchain",
+  "openinference-instrumentation-litellm",
+  "openinference-instrumentation-llama-index",
+  "openinference-instrumentation-mcp",
+  "openinference-instrumentation-mistralai",
+  "openinference-instrumentation-monkai-agent",
+  "openinference-instrumentation-openai",
+  "openinference-instrumentation-openai-agents",
+  "openinference-instrumentation-openlit",
+  "openinference-instrumentation-openllmetry",
+  "openinference-instrumentation-pipecat",
+  "openinference-instrumentation-portkey",
+  "openinference-instrumentation-pydantic-ai",
+  "openinference-instrumentation-smolagents",
+  "openinference-instrumentation-strands-agents",
+  "openinference-instrumentation-vertexai",
+  "openinference-instrumentation-claude-agent-sdk",
+]
+
+[dependency-groups]
+dev = [
+  "black",
+  "isort",
+  "autoflake",
+  "ruff",
+  "mypy",
+  "pytest",
+  "pytest-mock",
+  "respx",
+  "pytest-asyncio",
+]
+
+[tool.uv]
+exclude-newer = "3 days"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/arthur_observability_sdk", "src/arthur_genai_client"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+markers = [
+    "unit_tests: fast, in-process unit tests (no network, no subprocess)",
+    "integration_tests: slow integration/smoke tests that build wheels and make network calls",
+]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+strict = false

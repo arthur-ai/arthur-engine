@@ -28,6 +28,7 @@ from schemas.enums import (
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
     RagSearchKind,
+    TestRunStatus,
 )
 
 
@@ -40,10 +41,18 @@ class DocumentStorageConfigurationResponse(BaseModel):
 
 class ApplicationConfigurationResponse(BaseModel):
     chat_task_id: Optional[str] = None
+    default_currency: Optional[str] = None
     document_storage_configuration: Optional[DocumentStorageConfigurationResponse] = (
         None
     )
     max_llm_rules_per_task_count: int
+
+
+class DisplaySettingsResponse(BaseModel):
+    """Public display settings (e.g. default currency for cost formatting)."""
+
+    default_currency: str = "USD"
+    chatbot_enabled: bool = True
 
 
 class ConversationBaseResponse(BaseModel):
@@ -224,6 +233,10 @@ class TraceListResponse(BaseModel):
     """Response for trace list endpoint"""
 
     count: int = Field(description="Total number of traces matching filters")
+    display_currency: Optional[str] = Field(
+        None,
+        description="Currency code for cost fields",
+    )
     traces: list[TraceMetadataResponse] = Field(description="List of trace metadata")
 
 
@@ -249,6 +262,10 @@ class SpanListResponse(BaseModel):
     """Response for span list endpoint"""
 
     count: int = Field(description="Total number of spans matching filters")
+    display_currency: Optional[str] = Field(
+        None,
+        description="Currency code for cost fields",
+    )
     spans: list[SpanMetadataResponse] = Field(description="List of span metadata")
 
 
@@ -256,6 +273,10 @@ class SessionListResponse(BaseModel):
     """Response for session list endpoint"""
 
     count: int = Field(description="Total number of sessions matching filters")
+    display_currency: Optional[str] = Field(
+        None,
+        description="Currency code for cost fields",
+    )
     sessions: list[SessionMetadataResponse] = Field(
         description="List of session metadata",
     )
@@ -266,6 +287,10 @@ class SessionTracesResponse(BaseModel):
 
     session_id: str = Field(description="Session identifier")
     count: int = Field(description="Number of traces in this session")
+    display_currency: Optional[str] = Field(
+        None,
+        description="Currency code for cost fields",
+    )
     traces: list[TraceResponse] = Field(description="List of full trace trees")
 
 
@@ -287,6 +312,10 @@ class TraceUserListResponse(BaseModel):
     """Response for trace user list endpoint"""
 
     count: int = Field(description="Total number of users matching filters")
+    display_currency: Optional[str] = Field(
+        None,
+        description="Currency code for cost fields",
+    )
     users: list[TraceUserMetadataResponse] = Field(description="List of user metadata")
 
 
@@ -769,6 +798,30 @@ class ContinuousEvalRerunResponse(BaseModel):
     trace_id: str = Field(description="ID of the trace that was rerun.")
 
 
+class ContinuousEvalTestRunResponse(BaseModel):
+    id: UUID = Field(description="ID of the test run.")
+    continuous_eval_id: UUID = Field(
+        description="ID of the continuous eval being tested."
+    )
+    task_id: str = Field(description="ID of the parent task.")
+    status: TestRunStatus = Field(description="Status of the test run.")
+    total_count: int = Field(description="Total number of traces in the test run.")
+    completed_count: int = Field(description="Number of completed test cases.")
+    passed_count: int = Field(description="Number of test cases that passed.")
+    failed_count: int = Field(description="Number of test cases that failed.")
+    error_count: int = Field(description="Number of test cases that errored.")
+    skipped_count: int = Field(description="Number of test cases that were skipped.")
+    created_at: datetime = Field(description="When the test run was created.")
+    updated_at: datetime = Field(description="When the test run was last updated.")
+
+
+class ListContinuousEvalTestRunsResponse(BaseModel):
+    test_runs: List[ContinuousEvalTestRunResponse] = Field(
+        description="List of test runs.",
+    )
+    count: int = Field(description="Total number of test runs.")
+
+
 # ============================================================================
 # Synthetic Data Generation Response Schemas
 # ============================================================================
@@ -828,7 +881,7 @@ class DailyAgenticAnnotationStats(BaseModel):
     failed_count: int = Field(description="Count of annotations with score=0")
     error_count: int = Field(description="Count of annotations with run_status='error'")
     skipped_count: int = Field(
-        description="Count of annotations with run_status='skipped'"
+        description="Count of annotations with run_status='skipped'",
     )
     total_cost: float = Field(description="Total cost for the day")
     total_count: int = Field(description="Total annotations for the day")
@@ -838,6 +891,32 @@ class AgenticAnnotationAnalyticsResponse(BaseModel):
     """Response containing daily aggregated statistics."""
 
     stats: List[DailyAgenticAnnotationStats] = Field(
-        description="Daily statistics ordered by date descending"
+        description="Daily statistics ordered by date descending",
     )
     count: int = Field(description="Number of days with data")
+
+
+class TransformDependentRef(BaseModel):
+    id: str = Field(description="ID of the dependent resource.")
+    name: str = Field(description="Name of the dependent resource.")
+
+
+class TransformDependents(BaseModel):
+    continuous_evals: list[TransformDependentRef] = Field(
+        default_factory=list,
+        description="Continuous evals that reference this transform.",
+    )
+    agentic_experiments: list[TransformDependentRef] = Field(
+        default_factory=list,
+        description="Agentic experiments that reference this transform.",
+    )
+    agentic_notebooks: list[TransformDependentRef] = Field(
+        default_factory=list,
+        description="Agentic notebooks that reference this transform.",
+    )
+
+    @property
+    def has_dependents(self) -> bool:
+        return bool(
+            self.continuous_evals or self.agentic_experiments or self.agentic_notebooks,
+        )

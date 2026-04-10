@@ -1,6 +1,8 @@
 import CloseIcon from "@mui/icons-material/Close";
+import LaunchIcon from "@mui/icons-material/Launch";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
 import Dialog from "@mui/material/Dialog";
@@ -19,7 +21,8 @@ import Typography from "@mui/material/Typography";
 import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { useNotebook, useNotebookHistory } from "@/hooks/useNotebooks";
+import { EditableTitle } from "@/components/common";
+import { useNotebook, useNotebookHistory, useUpdateNotebookMutation } from "@/hooks/useNotebooks";
 import {
   EvalRefOutput,
   PromptExperimentSummary,
@@ -40,6 +43,7 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
   const navigate = useNavigate();
   const { notebook, isLoading, error } = useNotebook(notebookId || undefined);
   const { experiments, isLoading: isLoadingHistory } = useNotebookHistory(notebookId || undefined, 0, 10);
+  const updateMutation = useUpdateNotebookMutation(taskId);
 
   const handleExperimentClick = (experimentId: string) => {
     navigate(`/tasks/${taskId}/prompt-experiments/${experimentId}`);
@@ -48,11 +52,32 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            Notebook Details
-          </Typography>
+      <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <EditableTitle
+          value={notebook?.name ?? ""}
+          onSave={async (newName) => {
+            if (notebookId) {
+              await updateMutation.mutateAsync({ notebookId, request: { name: newName, description: notebook?.description } });
+            }
+          }}
+          isPending={updateMutation.isPending}
+          fallbackText="Notebook Details"
+          showEditButton={!!notebook}
+        />
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          {notebookId && (
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<LaunchIcon />}
+              onClick={() => {
+                navigate(`/tasks/${taskId}/playgrounds/prompts?notebookId=${notebookId}`);
+                onClose();
+              }}
+            >
+              Launch
+            </Button>
+          )}
           <IconButton onClick={onClose} size="small">
             <CloseIcon />
           </IconButton>
@@ -156,7 +181,7 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
                               onClick={
                                 config.type === "saved"
                                   ? () => {
-                                      navigate(`/tasks/${taskId}/prompts/${config.name}/versions/${config.version}`);
+                                      navigate(`/tasks/${taskId}/prompts/${encodeURIComponent(config.name)}/versions/${config.version}`);
                                       onClose();
                                     }
                                   : undefined
@@ -164,7 +189,7 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
                               onDelete={
                                 config.type === "saved"
                                   ? () => {
-                                      navigate(`/tasks/${taskId}/prompts/${config.name}/versions/${config.version}`);
+                                      navigate(`/tasks/${taskId}/prompts/${encodeURIComponent(config.name)}/versions/${config.version}`);
                                       onClose();
                                     }
                                   : undefined
@@ -232,11 +257,11 @@ const NotebookDetailModal: React.FC<NotebookDetailModalProps> = ({ open, noteboo
                               borderColor: theme.palette.mode === "dark" ? "rgba(76, 175, 80, 0.5)" : "#4caf50",
                             })}
                             onClick={() => {
-                              navigate(`/tasks/${taskId}/evaluators/${evalRef.name}/versions/${evalRef.version}`);
+                              navigate(`/tasks/${taskId}/evaluators/${encodeURIComponent(evalRef.name)}/versions/${evalRef.version}`);
                               onClose();
                             }}
                             onDelete={() => {
-                              navigate(`/tasks/${taskId}/evaluators/${evalRef.name}/versions/${evalRef.version}`);
+                              navigate(`/tasks/${taskId}/evaluators/${encodeURIComponent(evalRef.name)}/versions/${evalRef.version}`);
                               onClose();
                             }}
                             deleteIcon={<OpenInNewIcon fontSize="small" />}

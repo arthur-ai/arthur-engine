@@ -1,8 +1,24 @@
+import { MustacheHighlightedTextField } from "@arthur/shared-components";
+import { useAppForm, withFieldGroup } from "@arthur/shared-components";
 import AddIcon from "@mui/icons-material/Add";
-import { Autocomplete, Box, Button, Divider, FormControlLabel, Paper, Stack, Switch, TextField, Typography } from "@mui/material";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import {
+  Autocomplete,
+  Box,
+  Button,
+  Divider,
+  FormControlLabel,
+  IconButton,
+  Paper,
+  Stack,
+  Switch,
+  TextField,
+  Tooltip,
+  Typography,
+} from "@mui/material";
 import { useStore } from "@tanstack/react-form";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Suspense, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import z from "zod";
 
 import { VariableMappingSection } from "../components/variable-mapping";
@@ -10,10 +26,9 @@ import { useContinuousEvalVariableMapping } from "../hooks/useContinuousEvalVari
 import { useCreateContinuousEval } from "../hooks/useCreateContinuousEval";
 
 import { EvaluatorSelector } from "./components/EvaluatorSelector";
+import { ContinuousEvalWithTracePage } from "./ContinuousEvalWithTracePage";
 
 import { useEval } from "@/components/evaluators/hooks/useEval";
-import NunjucksHighlightedTextField from "@/components/evaluators/MustacheHighlightedTextField";
-import { useAppForm, withFieldGroup } from "@/components/traces/components/filtering/hooks/form";
 import { useCreateTransformMutation } from "@/components/transforms/hooks/useCreateTransformMutation";
 import { useTransforms } from "@/components/transforms/hooks/useTransforms";
 import TransformFormModal from "@/components/transforms/TransformFormModal";
@@ -31,7 +46,31 @@ type TransformFormState = {
 };
 
 export const LiveEvalsNew = () => {
+  const [searchParams] = useSearchParams();
+  const traceId = searchParams.get("traceId");
+
+  if (traceId) {
+    return (
+      <Suspense
+        fallback={
+          <Box sx={{ p: 3 }}>
+            <Typography>Loading trace...</Typography>
+          </Box>
+        }
+      >
+        <ContinuousEvalWithTracePage traceId={traceId} />
+      </Suspense>
+    );
+  }
+
+  return <LiveEvalsNewForm />;
+};
+
+const LiveEvalsNewForm = () => {
   const { task } = useTask();
+  const [searchParams] = useSearchParams();
+  const initialEvalName = searchParams.get("evalName");
+  const initialEvalVersion = searchParams.get("evalVersion");
 
   const navigate = useNavigate();
 
@@ -41,8 +80,8 @@ export const LiveEvalsNew = () => {
       description: "",
       enabled: true,
       evaluator: {
-        name: null,
-        version: null,
+        name: initialEvalName ?? null,
+        version: initialEvalVersion ?? null,
       } as EvaluatorFormState,
       transform: {
         transformId: null,
@@ -90,7 +129,7 @@ export const LiveEvalsNew = () => {
     onSubmit: async ({ value }) => {
       const { id } = await createContinuousEval.mutateAsync({
         name: value.name,
-        description: value.description,
+        description: value.description?.trim() || undefined,
         enabled: value.enabled,
         llm_eval_name: value.evaluator.name!,
         llm_eval_version: value.evaluator.version!,
@@ -140,25 +179,26 @@ export const LiveEvalsNew = () => {
       }}
       sx={{ height: getContentHeight() }}
     >
-      <Box
-        sx={{
-          px: 3,
-          pt: 3,
-          pb: 2,
-          borderBottom: 1,
-          borderColor: "divider",
-          backgroundColor: "background.paper",
-        }}
+      <Stack
+        direction="row"
+        alignItems="center"
+        gap={1}
+        sx={{ px: 2, py: 1, borderBottom: 1, borderColor: "divider", backgroundColor: "background.paper" }}
       >
-        <Stack>
-          <Typography variant="h5" color="text.primary" fontWeight="bold" mb={0.5}>
+        <Tooltip title="Go back">
+          <IconButton onClick={() => navigate(-1)} size="small">
+            <ArrowBackIcon />
+          </IconButton>
+        </Tooltip>
+        <Box>
+          <Typography variant="h5" color="text.primary" fontWeight="bold">
             New Continuous Eval
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Create a new continuous eval to monitor and analyze your model's performance in real-time.
           </Typography>
-        </Stack>
-      </Box>
+        </Box>
+      </Stack>
       <Stack sx={{ p: 3, width: "100%", flex: 1, overflow: "auto" }} gap={2}>
         <Typography variant="h6" color="text.primary" fontWeight="bold">
           General Information
@@ -191,7 +231,7 @@ export const LiveEvalsNew = () => {
             <Typography variant="body1" color="text.primary" fontWeight="bold" mb={2}>
               Evaluator Instructions
             </Typography>
-            <NunjucksHighlightedTextField value={evaluatorData?.instructions ?? ""} onChange={() => {}} readOnly size="small" />
+            <MustacheHighlightedTextField value={evaluatorData?.instructions ?? ""} onChange={() => {}} readOnly size="small" />
           </Paper>
         )}
 

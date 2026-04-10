@@ -10,12 +10,14 @@ import { createContext, Fragment, useContext } from "react";
 import { getSpanDetailsStrategy, SpanDetailsStrategy } from "../data/details-strategy";
 import { getSpanDuration, isSpanOfType } from "../utils/spans";
 
+import { DurationCell } from "./DurationCell";
 import { SpanStatusBadge } from "./span-status-badge";
 
 import { CopyableChip } from "@/components/common";
 import { Tabs } from "@/components/ui/Tabs";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
-import { formatDate } from "@/utils/formatters";
+import { formatDateInTimezone } from "@/utils/formatters";
 
 const SpanDetailsContext = createContext<{
   span: NestedSpanWithMetricsResponse;
@@ -58,6 +60,7 @@ type SpanDetailsHeaderProps = {
 
 export const SpanDetailsHeader = ({ onOpenSpanDrawer, onOpenPlayground }: SpanDetailsHeaderProps = {}) => {
   const { span } = useSpanDetails();
+  const { timezone, use24Hour } = useDisplaySettings();
 
   const duration = getSpanDuration(span);
   const isLLM = isSpanOfType(span, OpenInferenceSpanKind.LLM);
@@ -100,13 +103,11 @@ export const SpanDetailsHeader = ({ onOpenSpanDrawer, onOpenPlayground }: SpanDe
           <CopyableChip label={span.span_id} sx={{ fontFamily: "monospace" }} />
         </Stack>
       </Stack>
-      <Stack direction="row" spacing={1}>
+      <Stack direction="row" spacing={1} alignItems="center">
         <Typography variant="caption" color="text.secondary">
-          {formatDate(span.start_time)}
+          {formatDateInTimezone(span.start_time, timezone, { hour12: !use24Hour })}
         </Typography>
-        <Typography variant="caption" color="text.secondary">
-          {duration}ms
-        </Typography>
+        {typeof duration === "number" && <DurationCell duration={duration} />}
       </Stack>
     </Stack>
   );

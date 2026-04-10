@@ -2,76 +2,243 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
-# 03/02/2026
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions  the 'versions/items/model_provider' response's property type/format changed from 'string'/'' to ''/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions  the 'versions/items/model_provider' response's property type/format changed from 'string'/'' to ''/'' for status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions  added '#/components/schemas/ModelProvider, subschema #2' to the 'versions/items/model_provider' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions  removed the 'anthropic' enum value from the 'versions/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions  removed the 'bedrock' enum value from the 'versions/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions  removed the 'gemini' enum value from the 'versions/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions  removed the 'hosted_vllm' enum value from the 'versions/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions  removed the 'openai' enum value from the 'versions/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions  removed the 'vertex_ai' enum value from the 'versions/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions  added '#/components/schemas/ModelProvider, subschema #2' to the 'versions/items/model_provider' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions  removed the 'anthropic' enum value from the 'versions/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions  removed the 'bedrock' enum value from the 'versions/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions  removed the 'gemini' enum value from the 'versions/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions  removed the 'hosted_vllm' enum value from the 'versions/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions  removed the 'openai' enum value from the 'versions/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions  removed the 'vertex_ai' enum value from the 'versions/items/model_provider' response property for the response status '200'
+# 04/08/2026
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}  added the new 'error' enum value to the 'status' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/continuous_evals/{eval_id}/test_runs
+- **CHANGE**warning [response-property-enum-value-added] at /vagrant/genai-engine/new.openapi.json 
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
 
-# 03/02/2026
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  the 'model_provider' response's property type/format changed from 'string'/'' to ''/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}  the 'model_provider' response's property type/format changed from 'string'/'' to ''/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  the 'model_provider' response's property type/format changed from 'string'/'' to ''/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  the 'model_provider' response's property type/format changed from 'string'/'' to ''/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags  the 'model_provider' response's property type/format changed from 'string'/'' to ''/'' for status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added '#/components/schemas/ModelProvider, subschema #2' to the 'model_provider' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the 'anthropic' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the 'bedrock' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the 'gemini' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the 'hosted_vllm' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the 'openai' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the 'vertex_ai' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}  added '#/components/schemas/ModelProvider, subschema #2' to the 'model_provider' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}  removed the 'anthropic' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}  removed the 'bedrock' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}  removed the 'gemini' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}  removed the 'hosted_vllm' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}  removed the 'openai' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}  removed the 'vertex_ai' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  added '#/components/schemas/ModelProvider, subschema #2' to the 'model_provider' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the 'anthropic' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the 'bedrock' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the 'gemini' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the 'hosted_vllm' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the 'openai' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the 'vertex_ai' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added '#/components/schemas/ModelProvider, subschema #2' to the 'model_provider' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  removed the 'anthropic' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  removed the 'bedrock' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  removed the 'gemini' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  removed the 'hosted_vllm' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  removed the 'openai' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  removed the 'vertex_ai' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags  added '#/components/schemas/ModelProvider, subschema #2' to the 'model_provider' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags  removed the 'anthropic' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags  removed the 'bedrock' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags  removed the 'gemini' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags  removed the 'hosted_vllm' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags  removed the 'openai' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags  removed the 'vertex_ai' enum value from the 'model_provider' response property for the response status '200'
+# 04/07/2026
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}  added the new 'completed' enum value to the 'status' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/continuous_evals/test_runs/{test_run_id}
+- **CHANGE**warning [response-property-enum-value-added] at /vagrant/genai-engine/new.openapi.json 
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/test_runs  added the new 'completed' enum value to the 'test_runs/items/status' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/continuous_evals/{eval_id}/test_runs
+- **CHANGE**warning [response-property-enum-value-added] at /vagrant/genai-engine/new.openapi.json 
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/test_runs  added the new 'completed' enum value to the 'status' response property for the response status '200'
+- **CHANGE** in API POST /api/v1/continuous_evals/{eval_id}/test_runs
+- **CHANGE**warning [response-property-enum-value-added] at /vagrant/genai-engine/new.openapi.json 
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
 
-# 03/02/2026
-- **CHANGE** for **URL**: /api/v2/datasets/synthetic-data/prompt-status  endpoint added
+# 04/07/2026
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}  endpoint added
 
-# 02/18/2026
-- **CHANGE** for **URL**: /api/v2/agent-tasks  deleted the 'query' request parameter 'is_agentic'
-- **CHANGE** in API GET /api/v2/agent-tasks
-- **CHANGE** in API GET /api/v2/agent-tasks
+# 04/07/2026
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}/results  endpoint added
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/test_runs  endpoint added
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/test_runs  endpoint added
 
-# 02/18/2026
-- **CHANGE** for **URL**: /api/v2/agent-tasks  endpoint added
+# 04/06/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/chatbot/stream  for the 'path' request parameter 'task_id', the type/format was changed from 'string'/'' to 'string'/'uuid'
+
+# 04/02/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals  added the new optional 'query' request parameter 'tags'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  added the new optional 'query' request parameter 'tags'
+
+# 03/26/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals  added the new optional 'query' request parameter 'tags'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  added the new optional 'query' request parameter 'tags'
+
+# 03/19/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/chatbot/stream  endpoint added
+- **CHANGE** for **URL**: /api/v1/chatbot/history/{conversation_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/chatbot/config  endpoint added
+- **CHANGE** for **URL**: /api/v1/chatbot/config  endpoint added
+- **CHANGE** for **URL**: /api/v2/display-settings  added the optional property 'chatbot_enabled' to the response with the '200' status
+
+# 03/16/2026
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_count_eq'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_count_gt'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_count_gte'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_count_lt'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_count_lte'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_count_eq'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_count_gt'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_count_gte'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_count_lt'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_count_lte'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_count_eq'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_count_gt'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_count_gte'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_count_lt'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_count_lte'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_count_eq'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_count_gt'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_count_gte'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_count_lt'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_count_lte'
+
+# 03/13/2026
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'sort_by'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'sort_by'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'sort_by'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'sort_by'
+
+# 03/13/2026
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'completion_token_count_eq'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'completion_token_count_gt'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'completion_token_count_gte'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'completion_token_count_lt'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'completion_token_count_lte'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'prompt_token_count_eq'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'prompt_token_count_gt'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'prompt_token_count_gte'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'prompt_token_count_lt'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'prompt_token_count_lte'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'total_token_count_eq'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'total_token_count_gt'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'total_token_count_gte'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'total_token_count_lt'
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'total_token_count_lte'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'completion_token_count_eq'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'completion_token_count_gt'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'completion_token_count_gte'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'completion_token_count_lt'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'completion_token_count_lte'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'prompt_token_count_eq'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'prompt_token_count_gt'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'prompt_token_count_gte'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'prompt_token_count_lt'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'prompt_token_count_lte'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'total_token_count_eq'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'total_token_count_gt'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'total_token_count_gte'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'total_token_count_lt'
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'total_token_count_lte'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'completion_token_count_eq'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'completion_token_count_gt'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'completion_token_count_gte'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'completion_token_count_lt'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'completion_token_count_lte'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'prompt_token_count_eq'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'prompt_token_count_gt'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'prompt_token_count_gte'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'prompt_token_count_lt'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'prompt_token_count_lte'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'total_token_count_eq'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'total_token_count_gt'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'total_token_count_gte'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'total_token_count_lt'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'total_token_count_lte'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'completion_token_count_eq'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'completion_token_count_gt'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'completion_token_count_gte'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'completion_token_count_lt'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'completion_token_count_lte'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'prompt_token_count_eq'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'prompt_token_count_gt'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'prompt_token_count_gte'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'prompt_token_count_lt'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'prompt_token_count_lte'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'total_token_count_eq'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'total_token_count_gt'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'total_token_count_gte'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'total_token_count_lt'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'total_token_count_lte'
+# 02/27/2026
+
+# 03/10/2026
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/dependents  endpoint added
+
+# 03/10/2026
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the non-success response with the status '409'
+
+# 02/27/2026
+- **CHANGE** for Component/Schema:  removed the schema 'CreationSource'
+- **CHANGE** for Component/Schema:  removed the schema 'DiscoverAgentsRequest'
+- **CHANGE** for Component/Schema:  removed the schema 'DiscoverAgentsResponse'
+- **CHANGE** for Component/Schema:  removed the schema 'DiscoveredAgent'
+- **CHANGE** for **URL**: /api/v1/discover-agents  api path removed with deprecation
+
+# 02/26/2026
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the new optional request property 'only_archived'
+
+# 02/26/2026
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks  added the optional property 'is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the new optional request property 'include_archived'
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the optional property 'tasks/items/is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  added the optional property 'is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id}  added the optional property 'is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/unarchive  endpoint added
+
+# 02/26/2026
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'display_currency' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions  added the optional property 'display_currency' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'display_currency' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'display_currency' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the optional property 'display_currency' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/users  added the optional property 'display_currency' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/display-settings  endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the new optional request property 'only_archived'
+
+# 02/25/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/agent-polling/execute-all  removed the required property 'enqueued' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  added the new optional 'query' request parameter 'timeout'
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  added the new optional 'query' request parameter 'wait_for_completion'
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  added the non-success response with the status '422'
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  added the required property 'traces_fetched' to the response with the '200' status
+
+# 02/25/2026
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added '#/components/schemas/AgentCreationSource' to the '/items/creation_source' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed '#/components/schemas/GCPAgentCreationSource, #/components/schemas/OTELAgentCreationSource, #/components/schemas/ManualAgentCreationSource' from the '/items/creation_source' response property 'anyOf' list for the response status '200'
+
+# 02/24/2026
+- **CHANGE** for Component/Schema:  removed the schema 'GCPCreationSource'
+- **CHANGE** for Component/Schema:  removed the schema 'ManualCreationSource'
+- **CHANGE** for Component/Schema:  removed the schema 'OTELCreationSource'
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added '#/components/schemas/GCPAgentCreationSource, #/components/schemas/OTELAgentCreationSource, #/components/schemas/ManualAgentCreationSource' to the '/items/creation_source' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed '#/components/schemas/GCPCreationSource, #/components/schemas/OTELCreationSource, #/components/schemas/ManualCreationSource' from the '/items/creation_source' response property 'anyOf' list for the response status '200'
+
+# 02/23/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  the '/items/models/anyOf[subschema #1]/items/' response's property type/format changed from 'string'/'' to 'object'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  removed the required property '/items/creation_source/anyOf[subschema #2: OTELCreationSource]/service_name' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/creation_source/anyOf[subschema #1: GCPCreationSource]/last_fetched' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/creation_source/anyOf[subschema #3: ManualCreationSource]/service_names' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/infrastructure' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/is_agentic' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/execute  endpoint added
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #2: OTELCreationSource]/service_names' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/data_sources' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/last_fetched' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  the 'type' response's property default value changed from 'manual' to 'MANUAL' for the status '200'
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the required property '/items/models/anyOf[subschema #1]/items/name' to the response with the '200' status
+
+# 02/23/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  the '/items/models/anyOf[subschema #1]/items/' response's property type/format changed from 'string'/'' to 'object'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  removed the required property '/items/creation_source/anyOf[subschema #2: OTELCreationSource]/service_name' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/creation_source/anyOf[subschema #1: GCPCreationSource]/last_fetched' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/creation_source/anyOf[subschema #3: ManualCreationSource]/service_names' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/infrastructure' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/is_agentic' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/execute  endpoint added
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #2: OTELCreationSource]/service_names' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/data_sources' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/last_fetched' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  the 'type' response's property default value changed from 'manual' to 'MANUAL' for the status '200'
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the required property '/items/models/anyOf[subschema #1]/items/name' to the response with the '200' status
+
+# 02/23/2026
+- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  the '/items/data_sources/anyOf[subschema #1]/items/' response's property type/format changed from 'string'/'' to 'object'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  the '/items/models/anyOf[subschema #1]/items/' response's property type/format changed from 'string'/'' to 'object'/'' for status '200'
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  endpoint added
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the required property '/items/data_sources/anyOf[subschema #1]/items/url' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks  added the required property '/items/models/anyOf[subschema #1]/items/name' to the response with the '200' status
+
+02/20/2026
+- Added GET /api/v2/agent-tasks — new unified endpoint for listing agentic tasks with enriched metadata (tools, sub-agents, models, data sources, rules, creation source, span counts)
+- Added POST /api/v1/tasks/{task_id}/agent-polling/execute — manual trigger for global polling per task
+- POST /api/v1/discover-agents — deprecated in favor of /api/v2/agent-tasks
+- Removed POST /api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id} — replaced by the new /execute endpoint
+
 
 02/12/2026
 

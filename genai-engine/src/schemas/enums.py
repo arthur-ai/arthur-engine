@@ -43,18 +43,27 @@ class DocumentStorageEnvironment(str, Enum):
 # These are keys in config key : value pairs
 class ApplicationConfigurations(str, Enum):
     CHAT_TASK_ID = "chat_task_id"
+    DEFAULT_CURRENCY = "default_currency"
     DOCUMENT_STORAGE_ENV = "document_storage_environment"
     DOCUMENT_STORAGE_BUCKET_NAME = "document_storage_bucket_name"
     DOCUMENT_STORAGE_ROLE_ARN = "document_storage_assumable_role_arn"
     DOCUMENT_STORAGE_CONTAINER_NAME = "document_storage_container_name"
     DOCUMENT_STORAGE_CONNECTION_STRING = "document_storage_connection_string"
     MAX_LLM_RULES_PER_TASK_COUNT = "max_llm_rules_per_task_count"
+    CHATBOT_BLACKLIST_ENDPOINTS = "chatbot_blacklist_endpoints"
 
 
 class ClaimClassifierResultEnum(str, Enum):
     CLAIM = "claim"
     NONCLAIM = "nonclaim"
     DIALOG = "dialog"
+
+
+class TestRunStatus(str, Enum):
+    RUNNING = "running"
+    COMPLETED = "completed"
+    PARTIAL_FAILURE = "partial_failure"
+    ERROR = "error"
 
 
 class PermissionLevelsEnum(Enum):
@@ -189,3 +198,13 @@ class RagSearchKind(str, Enum):
 class AgenticExperimentGeneratorType(str, Enum):
     UUID = "uuid"
     SESSION_ID = "session_id"
+
+
+class SSEEventType(str, Enum):
+    """Server-Sent Event types"""
+
+    FINAL_RESPONSE = "final_response"
+    ERROR = "error"
+    SEARCH_COMPLETE = "search_complete"
+    TOOL_CALL = "tool_call"
+    TOOL_RESULT = "tool_result"

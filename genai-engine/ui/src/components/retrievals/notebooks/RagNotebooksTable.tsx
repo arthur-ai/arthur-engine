@@ -1,4 +1,5 @@
 import DeleteIcon from "@mui/icons-material/Delete";
+import HistoryIcon from "@mui/icons-material/History";
 import LaunchIcon from "@mui/icons-material/Launch";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -10,6 +11,7 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
 import IconButton from "@mui/material/IconButton";
+import Paper from "@mui/material/Paper";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -33,6 +35,7 @@ const RagNotebooksTable: React.FC<RagNotebooksTableProps> = ({
   onSort,
   onRowClick,
   onLaunchNotebook,
+  onViewLastRun,
   onDelete,
 }) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -65,7 +68,7 @@ const RagNotebooksTable: React.FC<RagNotebooksTableProps> = ({
 
   return (
     <>
-      <TableContainer sx={{ height: "100%" }}>
+      <TableContainer component={Paper} elevation={1} sx={{ overflow: "auto", height: "100%" }}>
         <Table stickyHeader>
           <TableHead>
             <TableRow>
@@ -112,7 +115,7 @@ const RagNotebooksTable: React.FC<RagNotebooksTableProps> = ({
                   </Typography>
                 </TableSortLabel>
               </TableCell>
-              <TableCell align="right">
+              <TableCell>
                 <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                   Actions
                 </Typography>
@@ -149,8 +152,8 @@ const RagNotebooksTable: React.FC<RagNotebooksTableProps> = ({
                     {new Date(notebook.updated_at).toLocaleString()}
                   </Typography>
                 </TableCell>
-                <TableCell align="right">
-                  <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+                <TableCell>
+                  <Box sx={{ display: "flex", gap: 1 }}>
                     <Tooltip title="Launch Notebook">
                       <Button
                         variant="outlined"
@@ -163,6 +166,20 @@ const RagNotebooksTable: React.FC<RagNotebooksTableProps> = ({
                       >
                         Launch
                       </Button>
+                    </Tooltip>
+                    <Tooltip title={notebook.latest_run_id ? "View last run" : "No runs yet"}>
+                      <span>
+                        <IconButton
+                          size="small"
+                          disabled={!notebook.latest_run_id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (notebook.latest_run_id) onViewLastRun(notebook.latest_run_id);
+                          }}
+                        >
+                          <HistoryIcon fontSize="small" />
+                        </IconButton>
+                      </span>
                     </Tooltip>
                     <Tooltip title="Delete Notebook">
                       <IconButton size="small" onClick={(e) => handleDeleteClick(notebook, e)} color="error">

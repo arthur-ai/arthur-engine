@@ -7,15 +7,14 @@ from arthur_common.models.llm_model_providers import (
     ModelProvider,
     OpenAIMessage,
 )
-from pydantic import (
-    BaseModel,
-    Field,
-)
+from pydantic import BaseModel, ConfigDict, Field
 
 from utils.constants import EMPTY_MODEL_PROVIDER
 
 
 class AgenticPrompt(BaseModel):
+    model_config = ConfigDict(use_enum_values=True)
+
     name: str = Field(description="Name of the agentic prompt")
     messages: List[OpenAIMessage] = Field(
         description="List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])",
@@ -52,9 +51,6 @@ class AgenticPrompt(BaseModel):
         default=None,
         description="Time that this prompt was deleted",
     )
-
-    class Config:
-        use_enum_values = True
 
     def has_been_deleted(self) -> bool:
         return self.deleted_at is not None

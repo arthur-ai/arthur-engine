@@ -31,7 +31,7 @@ export const ResultLimitInput: React.FC<ResultLimitInputProps> = React.memo(({ l
         max="100"
         value={limit}
         onChange={handleLimitChange}
-        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-gray-900 dark:text-gray-100 dark:bg-gray-800 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
         disabled={isExecuting}
       />
       <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Maximum number of results to return (1-100)</p>

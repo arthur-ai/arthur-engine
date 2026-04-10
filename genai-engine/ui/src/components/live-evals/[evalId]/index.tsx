@@ -1,7 +1,10 @@
+import { Operators, TracesEmptyState } from "@arthur/shared-components";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import ScienceOutlinedIcon from "@mui/icons-material/ScienceOutlined";
 import {
   Box,
+  Button,
   Chip,
   CircularProgress,
   Dialog,
@@ -14,11 +17,13 @@ import {
   Select,
   Skeleton,
   Stack,
+  Tab,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableRow,
+  Tabs,
   Typography,
 } from "@mui/material";
 import { Link as MuiLink } from "@mui/material";
@@ -29,20 +34,21 @@ import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { Details } from "../components/results/components/details";
+import { TestRunDialog } from "../components/TestRunDialog";
+import { TestRunsHistory } from "../components/TestRunsHistory";
 import { useContinuousEval } from "../hooks/useContinuousEval";
 import { continuousEvalsResultsQueryOptions } from "../hooks/useContinuousEvalsResults";
 
 import { createColumns } from "./columns";
 
 import { CopyableChip } from "@/components/common";
-import { Operators } from "@/components/traces/components/filtering/types";
-import { TracesEmptyState } from "@/components/traces/components/TracesEmptyState";
 import { getContentHeight } from "@/constants/layout";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useTransform } from "@/hooks/transforms/useTransform";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { AgenticAnnotationResponse, ContinuousEvalRunStatus } from "@/lib/api-client/api-client";
-import { formatDate } from "@/utils/formatters";
+import { formatDateInTimezone } from "@/utils/formatters";
 
 const DEFAULT_DATA: AgenticAnnotationResponse[] = [];
 
@@ -56,15 +62,20 @@ const STATUS_OPTIONS: Array<{ label: string; value: ContinuousEvalRunStatus | ""
   { label: "Skipped", value: "skipped" },
 ];
 
+type DetailTab = "traces" | "test-runs";
+
 export const LiveEvalDetail = () => {
   const { evalId } = useParams<{ evalId: string }>();
 
   const { task } = useTask();
+  const { defaultCurrency, timezone, use24Hour } = useDisplaySettings();
   const api = useApi()!;
 
+  const [activeTab, setActiveTab] = useState<DetailTab>("traces");
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
   const [selectedAnnotationId, setSelectedAnnotationId] = useState("");
   const [statusFilter, setStatusFilter] = useState<ContinuousEvalRunStatus | "">("");
+  const [testDialogOpen, setTestDialogOpen] = useState(false);
 
   const filters = [
     { name: "continuous_eval_id", operator: Operators.IN, value: [evalId!] },
@@ -82,7 +93,7 @@ export const LiveEvalDetail = () => {
       pagination: { page: pagination.pageIndex, page_size: pagination.pageSize },
       filters,
     }),
-    enabled: !!task?.id && !!evalId,
+    enabled: !!task?.id && !!evalId && activeTab === "traces",
   });
 
   const handleStatusChange = (value: ContinuousEvalRunStatus | "") => {
@@ -94,7 +105,10 @@ export const LiveEvalDetail = () => {
   const transform = useTransform(liveEval?.transform_id);
   const hasVariableMappings = liveEval?.transform_variable_mapping && liveEval.transform_variable_mapping.length > 0;
 
-  const columns = useMemo(() => createColumns({ taskId: task?.id ?? "" }), [task?.id]);
+  const columns = useMemo(
+    () => createColumns({ taskId: task?.id ?? "", defaultCurrency, timezone, use24Hour }),
+    [task?.id, defaultCurrency, timezone, use24Hour]
+  );
 
   const table = useMaterialReactTable({
     columns,
@@ -161,7 +175,7 @@ export const LiveEvalDetail = () => {
             <Stack direction="row" gap={2} alignItems="center">
               <CopyableChip label={evalId ?? liveEval.id} sx={{ fontFamily: "monospace", fontSize: "0.75rem" }} />
               <Typography variant="body2" color="text.secondary">
-                Created {formatDate(liveEval.created_at)}
+                Created {formatDateInTimezone(liveEval.created_at, timezone, { hour12: !use24Hour })}
               </Typography>
             </Stack>
           </Stack>
@@ -186,7 +200,7 @@ export const LiveEvalDetail = () => {
                     variant="body1"
                     fontWeight={500}
                     component={Link}
-                    to={`/tasks/${liveEval.task_id}/evaluators/${liveEval.llm_eval_name}/versions/${liveEval.llm_eval_version}`}
+                    to={`/tasks/${liveEval.task_id}/evaluators/${encodeURIComponent(liveEval.llm_eval_name)}/versions/${liveEval.llm_eval_version}`}
                   >
                     {liveEval.llm_eval_name}
                   </MuiLink>
@@ -218,7 +232,7 @@ export const LiveEvalDetail = () => {
                   </Typography>
                   <Table size="small">
                     <TableHead>
-                      <TableRow sx={{ backgroundColor: (theme) => (theme.palette.mode === "dark" ? "grey.800" : "grey.50") }}>
+                      <TableRow>
                         <TableCell sx={{ fontWeight: 600 }}>Eval Variable</TableCell>
                         <TableCell sx={{ width: 40 }} />
                         <TableCell sx={{ fontWeight: 600 }}>Transform Variable</TableCell>
@@ -245,38 +259,61 @@ export const LiveEvalDetail = () => {
             )}
           </Paper>
 
-          {/* Evaluated Traces */}
-          <Paper variant="outlined" sx={{ overflow: "hidden" }}>
-            <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: "divider" }}>
-              <Stack direction="row" alignItems="center" justifyContent="space-between">
-                <Stack>
-                  <Typography variant="h6" fontWeight={600}>
-                    Evaluated Traces
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Real-time evaluation results as traces are processed
-                  </Typography>
+          {/* Tabs */}
+          <Stack direction="row" alignItems="center" sx={{ borderBottom: 1, borderColor: "divider" }}>
+            <Tabs value={activeTab} onChange={(_, value) => setActiveTab(value)} sx={{ flex: 1 }}>
+              <Tab label="Evaluated Traces" value="traces" />
+              <Tab label="Test Runs" value="test-runs" />
+            </Tabs>
+            <Button variant="outlined" size="small" startIcon={<ScienceOutlinedIcon />} onClick={() => setTestDialogOpen(true)} sx={{ mr: 1 }}>
+              Test Eval
+            </Button>
+          </Stack>
+
+          {/* Tab content */}
+          {activeTab === "traces" && (
+            <Paper variant="outlined" sx={{ overflow: "hidden" }}>
+              <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: "divider" }}>
+                <Stack direction="row" alignItems="center" justifyContent="space-between">
+                  <Stack>
+                    <Typography variant="h6" fontWeight={600}>
+                      Evaluated Traces
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Real-time evaluation results as traces are processed
+                    </Typography>
+                  </Stack>
+                  <FormControl size="small" sx={{ minWidth: 140 }}>
+                    <InputLabel>Status</InputLabel>
+                    <Select value={statusFilter} label="Status" onChange={(e) => handleStatusChange(e.target.value as ContinuousEvalRunStatus | "")}>
+                      {STATUS_OPTIONS.map((opt) => (
+                        <MenuItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Stack>
-                <FormControl size="small" sx={{ minWidth: 140 }}>
-                  <InputLabel>Status</InputLabel>
-                  <Select value={statusFilter} label="Status" onChange={(e) => handleStatusChange(e.target.value as ContinuousEvalRunStatus | "")}>
-                    {STATUS_OPTIONS.map((opt) => (
-                      <MenuItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Stack>
-            </Box>
-            <MaterialReactTable table={table} />
-          </Paper>
+              </Box>
+              <MaterialReactTable table={table} />
+            </Paper>
+          )}
+
+          {activeTab === "test-runs" && <TestRunsHistory evalId={evalId!} taskId={task?.id ?? ""} />}
         </Stack>
       </Box>
 
       <Dialog open={!!selectedAnnotationId} onClose={() => setSelectedAnnotationId("")} maxWidth="xl" fullWidth>
         <Details annotationId={selectedAnnotationId || undefined} onClose={() => setSelectedAnnotationId("")} onRerunComplete={() => {}} />
       </Dialog>
+
+      <TestRunDialog
+        open={testDialogOpen}
+        onClose={() => setTestDialogOpen(false)}
+        evalId={evalId!}
+        evalName={liveEval.name}
+        taskId={task?.id ?? ""}
+      />
     </Stack>
   );
 };

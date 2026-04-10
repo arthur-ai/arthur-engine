@@ -16,22 +16,31 @@ import {
   TextField,
   InputAdornment,
 } from "@mui/material";
-import React, { useState, useEffect } from "react";
+import { alpha } from "@mui/material/styles";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { CreateExperimentModal, ExperimentFormData } from "./CreateExperimentModal";
+import { CreateExperimentModal } from "./create-experiment-modal";
 import { PromptExperimentsEmptyState } from "./PromptExperimentsEmptyState";
 import { PromptExperimentsTable, PromptExperiment, PromptConfig } from "./PromptExperimentsTable";
 import { PromptExperimentsViewHeader } from "./PromptExperimentsViewHeader";
 
 import { getContentHeight } from "@/constants/layout";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import { usePromptExperiments, useCreateExperiment, usePromptExperiment } from "@/hooks/usePromptExperiments";
+import { usePromptExperiments } from "@/hooks/usePromptExperiments";
+import { formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
-export const PromptExperimentsView: React.FC = () => {
+interface PromptExperimentsViewProps {
+  onRegisterCreate?: (fn: () => void) => void;
+  onRegisterCreateFromExisting?: (fn: () => void) => void;
+}
+
+export const PromptExperimentsView: React.FC<PromptExperimentsViewProps> = ({ onRegisterCreate, onRegisterCreateFromExisting }) => {
   const { id: taskId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { defaultCurrency } = useDisplaySettings();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSelectExistingModalOpen, setIsSelectExistingModalOpen] = useState(false);
   const [selectedExperimentId, setSelectedExperimentId] = useState<string | null>(null);
@@ -48,11 +57,6 @@ export const PromptExperimentsView: React.FC = () => {
     error,
     refetch,
   } = usePromptExperiments(taskId, page, rowsPerPage, debouncedSearchText || undefined);
-  const createExperiment = useCreateExperiment(taskId);
-
-  // Fetch full experiment details when cloning
-  const { experiment: experimentToClone, isLoading: isLoadingExperiment } = usePromptExperiment(selectedExperimentId || undefined);
-
   // Refetch data when window gains focus
   useEffect(() => {
     const handleFocus = () => {
@@ -94,6 +98,13 @@ export const PromptExperimentsView: React.FC = () => {
     setIsSelectExistingModalOpen(true);
   };
 
+  const onRegisterCreateRef = useRef(onRegisterCreate);
+  const onRegisterCreateFromExistingRef = useRef(onRegisterCreateFromExisting);
+  useEffect(() => {
+    onRegisterCreateRef.current?.(handleCreateExperiment);
+    onRegisterCreateFromExistingRef.current?.(handleCreateFromExisting);
+  }, []);
+
   const handleSelectExistingExperiment = (experiment: PromptExperiment) => {
     setSelectedExperimentId(experiment.id);
     setIsSelectExistingModalOpen(false);
@@ -109,85 +120,6 @@ export const PromptExperimentsView: React.FC = () => {
   const handleCloseSelectExistingModal = () => {
     setIsSelectExistingModalOpen(false);
     setModalSearchText("");
-  };
-
-  const handleSubmitExperiment = async (data: ExperimentFormData): Promise<{ id: string }> => {
-    // Validate that datasetVersion is a number
-    if (typeof data.datasetVersion !== "number") {
-      throw new Error("Dataset version must be selected");
-    }
-
-    try {
-      // Transform prompt variable mappings to API format
-      const promptVariableMapping = Object.entries(data.promptVariableMappings || {}).map(([varName, columnName]) => ({
-        variable_name: varName,
-        source: {
-          type: "dataset_column" as const,
-          dataset_column: {
-            name: columnName,
-          },
-        },
-      }));
-
-      // Transform eval variable mappings to API format
-      const evalList = data.evaluators.map((evaluator) => {
-        const evalMapping = data.evalVariableMappings?.find((m) => m.evalName === evaluator.name && m.evalVersion === evaluator.version);
-
-        const variableMapping = evalMapping
-          ? Object.entries(evalMapping.mappings).map(([varName, mapping]) => {
-              if (mapping.sourceType === "dataset_column") {
-                return {
-                  variable_name: varName,
-                  source: {
-                    type: "dataset_column" as const,
-                    dataset_column: {
-                      name: mapping.datasetColumn || "",
-                    },
-                  },
-                };
-              } else {
-                return {
-                  variable_name: varName,
-                  source: {
-                    type: "experiment_output" as const,
-                    experiment_output: {
-                      json_path: mapping.jsonPath || null,
-                    },
-                  },
-                };
-              }
-            })
-          : [];
-
-        return {
-          name: evaluator.name,
-          version: evaluator.version,
-          variable_mapping: variableMapping,
-        };
-      });
-
-      const result = await createExperiment.mutateAsync({
-        name: data.name,
-        description: data.description,
-        dataset_ref: {
-          id: data.datasetId,
-          version: data.datasetVersion,
-        },
-        prompt_configs: data.promptVersions.map((pv) => ({
-          type: "saved" as const,
-          name: pv.promptName,
-          version: pv.version,
-        })),
-        prompt_variable_mapping: promptVariableMapping,
-        eval_list: evalList,
-        dataset_row_filter: data.datasetRowFilter && data.datasetRowFilter.length > 0 ? data.datasetRowFilter : undefined,
-      });
-      handleCloseModal();
-      return { id: result.id };
-    } catch (err) {
-      console.error("Failed to create experiment:", err);
-      throw err;
-    }
   };
 
   const handleRowClick = (experiment: PromptExperiment) => {
@@ -211,23 +143,56 @@ export const PromptExperimentsView: React.FC = () => {
   return (
     <>
       <Box className="w-full grid overflow-hidden" style={{ height: getContentHeight(), gridTemplateRows: "auto 1fr" }}>
-        <Box className="px-6 pt-6 pb-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-          <PromptExperimentsViewHeader
-            onCreateExperiment={handleCreateExperiment}
-            onCreateFromExisting={handleCreateFromExisting}
-            searchValue={searchText}
-            onSearchChange={handleSearchChange}
-          />
-        </Box>
+        {onRegisterCreate ? (
+          <Box
+            sx={{
+              px: 3,
+              py: 2,
+              borderBottom: 1,
+              borderColor: "divider",
+              backgroundColor: "background.paper",
+            }}
+          >
+            <TextField
+              placeholder="Search experiments by name, description, prompt, or dataset..."
+              value={searchText}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              fullWidth
+              size="small"
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+          </Box>
+        ) : (
+          <Box className="px-6 pt-6 pb-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+            <PromptExperimentsViewHeader
+              onCreateExperiment={handleCreateExperiment}
+              onCreateFromExisting={handleCreateFromExisting}
+              searchValue={searchText}
+              onSearchChange={handleSearchChange}
+            />
+          </Box>
+        )}
 
         <Box className="overflow-auto min-h-0">
           {isLoading ? (
             <Box className="flex items-center justify-center h-full">
-              <p className="text-gray-600">Loading experiments...</p>
+              <Typography variant="body2" color="text.secondary">
+                Loading experiments...
+              </Typography>
             </Box>
           ) : error ? (
             <Box className="flex items-center justify-center h-full">
-              <p className="text-red-600">{error.message}</p>
+              <Typography variant="body2" color="error.main">
+                {error.message}
+              </Typography>
             </Box>
           ) : experiments.length === 0 ? (
             <PromptExperimentsEmptyState onCreateExperiment={handleCreateExperiment} />
@@ -253,7 +218,7 @@ export const PromptExperimentsView: React.FC = () => {
             <Typography variant="h6" className="font-semibold mb-1">
               Select an Existing Experiment
             </Typography>
-            <Typography variant="body2" className="text-gray-600">
+            <Typography variant="body2" color="text.secondary">
               Choose an experiment to use as a template. All settings will be copied to your new experiment.
             </Typography>
           </Box>
@@ -265,6 +230,7 @@ export const PromptExperimentsView: React.FC = () => {
               value={modalSearchText}
               onChange={(e) => setModalSearchText(e.target.value)}
               fullWidth
+              variant="filled"
               size="small"
               slotProps={{
                 input: {
@@ -302,7 +268,7 @@ export const PromptExperimentsView: React.FC = () => {
             if (filteredExperiments.length === 0) {
               return (
                 <Box className="py-8 text-center">
-                  <Typography variant="body2" className="text-gray-500 italic">
+                  <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic" }}>
                     {experiments.length === 0 ? "No experiments available to clone." : "No experiments match your search."}
                   </Typography>
                 </Box>
@@ -338,13 +304,13 @@ export const PromptExperimentsView: React.FC = () => {
                           secondary={
                             <Box>
                               {experiment.description && (
-                                <Typography variant="body2" className="text-gray-700 mb-2">
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                                   {experiment.description}
                                 </Typography>
                               )}
                               <Box className="flex flex-col gap-2">
                                 <Box className="flex flex-wrap gap-1">
-                                  <Typography variant="caption" className="text-gray-600 mr-2">
+                                  <Typography variant="caption" color="text.secondary" className="mr-2">
                                     <strong>Prompts:</strong>
                                   </Typography>
                                   {experiment.prompt_configs?.map((config: PromptConfig, idx: number) => (
@@ -356,25 +322,19 @@ export const PromptExperimentsView: React.FC = () => {
                                         height: "20px",
                                         fontSize: "0.688rem",
                                         backgroundColor: (theme) =>
-                                          config.type === "saved"
-                                            ? theme.palette.mode === "dark"
-                                              ? "rgba(33, 150, 243, 0.15)"
-                                              : "#e3f2fd"
-                                            : theme.palette.mode === "dark"
-                                              ? "rgba(255, 152, 0, 0.15)"
-                                              : "#fff3e0",
+                                          config.type === "saved" ? alpha(theme.palette.info.main, 0.12) : alpha(theme.palette.warning.main, 0.12),
                                         borderColor: config.type === "saved" ? "primary.main" : "warning.main",
                                       }}
                                     />
                                   ))}
                                 </Box>
                                 <Box className="flex gap-4 text-sm">
-                                  <Typography variant="caption" className="text-gray-600">
+                                  <Typography variant="caption" color="text.secondary">
                                     <strong>Rows:</strong> {experiment.total_rows}
                                   </Typography>
                                   {experiment.total_cost && (
-                                    <Typography variant="caption" className="text-gray-600">
-                                      <strong>Cost:</strong> ${parseFloat(experiment.total_cost).toFixed(4)}
+                                    <Typography variant="caption" color="text.secondary">
+                                      <strong>Cost:</strong> {formatCurrency(parseFloat(experiment.total_cost), defaultCurrency)}
                                     </Typography>
                                   )}
                                 </Box>
@@ -397,13 +357,7 @@ export const PromptExperimentsView: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      <CreateExperimentModal
-        open={isModalOpen}
-        onClose={handleCloseModal}
-        onSubmit={handleSubmitExperiment}
-        initialData={experimentToClone || undefined}
-        isLoadingInitialData={isLoadingExperiment}
-      />
+      <CreateExperimentModal templateId={selectedExperimentId ?? undefined} open={isModalOpen} onClose={handleCloseModal} />
     </>
   );
 };
