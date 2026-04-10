@@ -111,6 +111,72 @@
                 }
             }
         },
+        "/api/v2/configuration": {
+            "get": {
+                "summary": "Get Configuration",
+                "description": "Get application configuration settings.",
+                "operationId": "get_configuration_api_v2_configuration_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApplicationConfigurationResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            },
+            "post": {
+                "summary": "Update Configuration",
+                "description": "Update application configuration settings.",
+                "operationId": "update_configuration_api_v2_configuration_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ApplicationConfigurationUpdateRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApplicationConfigurationResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            }
+        },
         "/api/v2/feedback/{inference_id}": {
             "post": {
                 "tags": [
@@ -18725,6 +18791,124 @@
                 ],
                 "title": "ApiKeyResponse"
             },
+            "ApplicationConfigurationResponse": {
+                "properties": {
+                    "chat_task_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Chat Task Id"
+                    },
+                    "default_currency": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default Currency"
+                    },
+                    "document_storage_configuration": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/DocumentStorageConfigurationResponse"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "max_llm_rules_per_task_count": {
+                        "type": "integer",
+                        "title": "Max Llm Rules Per Task Count"
+                    },
+                    "trace_retention_days": {
+                        "type": "integer",
+                        "title": "Trace Retention Days"
+                    },
+                    "allowed_trace_retention_days": {
+                        "items": {
+                            "type": "integer"
+                        },
+                        "type": "array",
+                        "title": "Allowed Trace Retention Days",
+                        "default": []
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "max_llm_rules_per_task_count",
+                    "trace_retention_days"
+                ],
+                "title": "ApplicationConfigurationResponse"
+            },
+            "ApplicationConfigurationUpdateRequest": {
+                "properties": {
+                    "chat_task_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Chat Task Id"
+                    },
+                    "default_currency": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default Currency"
+                    },
+                    "document_storage_configuration": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/DocumentStorageConfigurationUpdateRequest"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "max_llm_rules_per_task_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Llm Rules Per Task Count"
+                    },
+                    "trace_retention_days": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Trace Retention Days"
+                    }
+                },
+                "type": "object",
+                "title": "ApplicationConfigurationUpdateRequest"
+            },
             "AuthUserRole": {
                 "properties": {
                     "id": {
@@ -20553,6 +20737,120 @@
                 "type": "object",
                 "title": "DisplaySettingsResponse",
                 "description": "Public display settings (e.g. default currency for cost formatting)."
+            },
+            "DocumentStorageConfigurationResponse": {
+                "properties": {
+                    "storage_environment": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Storage Environment"
+                    },
+                    "bucket_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Bucket Name"
+                    },
+                    "container_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Container Name"
+                    },
+                    "assumable_role_arn": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Assumable Role Arn"
+                    }
+                },
+                "type": "object",
+                "title": "DocumentStorageConfigurationResponse"
+            },
+            "DocumentStorageConfigurationUpdateRequest": {
+                "properties": {
+                    "environment": {
+                        "$ref": "#/components/schemas/DocumentStorageEnvironment"
+                    },
+                    "connection_string": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Connection String"
+                    },
+                    "container_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Container Name"
+                    },
+                    "bucket_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Bucket Name"
+                    },
+                    "assumable_role_arn": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Assumable Role Arn"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "environment"
+                ],
+                "title": "DocumentStorageConfigurationUpdateRequest"
+            },
+            "DocumentStorageEnvironment": {
+                "type": "string",
+                "enum": [
+                    "aws",
+                    "azure"
+                ],
+                "title": "DocumentStorageEnvironment"
             },
             "EnrichedTaskResponse": {
                 "properties": {
