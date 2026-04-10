@@ -146,13 +146,13 @@ class SyntheticDataService:
     ) -> Dict[str, Any]:
         """Build kwargs for LLM completion from config settings."""
         if not config:
-            return {"temperature": 0.7}  # Default temperature for creative generation
+            return {"temperature": 0.7, "drop_params": True}
 
-        kwargs = {}
+        kwargs: Dict[str, Any] = {"drop_params": True}
         if config.temperature is not None:
             kwargs["temperature"] = config.temperature
         else:
-            kwargs["temperature"] = 0.7  # Default for creative generation
+            kwargs["temperature"] = 0.7
 
         if config.max_tokens is not None:
             kwargs["max_tokens"] = config.max_tokens
