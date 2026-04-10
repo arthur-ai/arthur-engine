@@ -6,7 +6,7 @@ from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
 from arthur_common.models.task_eval_schemas import TraceTransformDefinition
 from fastapi import HTTPException
-from sqlalchemy import String, and_, asc, cast, desc, func
+from sqlalchemy import String, asc, cast, desc, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -79,10 +79,7 @@ class TraceTransformRepository:
 
         return db_transform
 
-    def _get_latest_definition(
-        self,
-        transform_id: UUID,
-    ) -> TraceTransformDefinition:
+    def _get_latest_definition(self, transform_id: UUID) -> TraceTransformDefinition:
         """Return the definition from the highest-numbered version of a transform."""
         version = (
             self.db_session.query(DatabaseTraceTransformVersion)
@@ -98,8 +95,7 @@ class TraceTransformRepository:
         if not db_transform:
             return None
 
-        definition = self._get_latest_definition(transform_id)
-        return TraceTransform.from_db_model(db_transform, definition)
+        return TraceTransform.from_db_model(db_transform)
 
     def list_transforms(
         self,
@@ -133,47 +129,7 @@ class TraceTransformRepository:
 
         db_transforms = base_query.all()
 
-        if not db_transforms:
-            return []
-
-        # Batch-load the latest version definition for each transform in one query
-        transform_ids = [t.id for t in db_transforms]
-        latest_version_subquery = (
-            self.db_session.query(
-                DatabaseTraceTransformVersion.transform_id,
-                func.max(DatabaseTraceTransformVersion.version_number).label(
-                    "max_version",
-                ),
-            )
-            .filter(DatabaseTraceTransformVersion.transform_id.in_(transform_ids))
-            .group_by(DatabaseTraceTransformVersion.transform_id)
-            .subquery()
-        )
-        version_rows = (
-            self.db_session.query(
-                DatabaseTraceTransformVersion.transform_id,
-                DatabaseTraceTransformVersion.definition,
-            )
-            .join(
-                latest_version_subquery,
-                and_(
-                    DatabaseTraceTransformVersion.transform_id
-                    == latest_version_subquery.c.transform_id,
-                    DatabaseTraceTransformVersion.version_number
-                    == latest_version_subquery.c.max_version,
-                ),
-            )
-            .all()
-        )
-        definitions_by_id = {
-            row.transform_id: TraceTransformDefinition.model_validate(row.definition)
-            for row in version_rows
-        }
-
-        return [
-            TraceTransform.from_db_model(t, definitions_by_id[t.id])
-            for t in db_transforms
-        ]
+        return [TraceTransform.from_db_model(t) for t in db_transforms]
 
     def _create_version(
         self,
@@ -219,7 +175,7 @@ class TraceTransformRepository:
         try:
             self.db_session.add(db_transform)
             self.db_session.flush()
-            self._create_version(db_transform, trace_transform.definition)
+            self._create_version(db_transform, transform.definition)
             self.db_session.commit()
             self.db_session.refresh(db_transform)
         except IntegrityError:
@@ -230,7 +186,7 @@ class TraceTransformRepository:
                 headers={"full_stacktrace": "false"},
             )
 
-        return TraceTransform.from_db_model(db_transform, trace_transform.definition)
+        return TraceTransform.from_db_model(db_transform)
 
     def update_transform(
         self,
@@ -266,10 +222,8 @@ class TraceTransformRepository:
             self._create_version(db_transform, new_definition)
             self.db_session.commit()
             self.db_session.refresh(db_transform)
-            return TraceTransform.from_db_model(db_transform, new_definition)
 
-        definition = self._get_latest_definition(db_transform.id)
-        return TraceTransform.from_db_model(db_transform, definition)
+        return TraceTransform.from_db_model(db_transform)
 
     def list_versions(self, transform_id: UUID) -> ListTraceTransformVersionsResponse:
         """List all versions for a transform ordered by version_number descending."""

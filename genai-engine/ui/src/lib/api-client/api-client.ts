@@ -2374,6 +2374,10 @@ export type DeleteTransformApiV1TracesTransformsTransformIdDeleteData = any;
 
 export type DeleteTransformApiV1TracesTransformsTransformIdDeleteError = HTTPValidationError;
 
+export type DeleteTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdDeleteData = any;
+
+export type DeleteTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdDeleteError = HTTPValidationError;
+
 export type DeleteUserUsersUserIdDeleteData = any;
 
 export type DeleteUserUsersUserIdDeleteError = HTTPValidationError;
@@ -11359,8 +11363,6 @@ export interface TraceTransformResponse {
    * @format date-time
    */
   created_at: string;
-  /** Transform definition specifying extraction rules. */
-  definition: TraceTransformDefinition;
   /**
    * Description
    * Description of the transform.
@@ -14143,6 +14145,30 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     deleteTransformApiV1TracesTransformsTransformIdDelete: (transformId: string, params: RequestParams = {}) =>
       this.request<DeleteTransformApiV1TracesTransformsTransformIdDeleteData, DeleteTransformApiV1TracesTransformsTransformIdDeleteError>({
         path: `/api/v1/traces/transforms/${transformId}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Delete a specific version of a transform. Returns 409 if it is the only version or is pinned by a continuous eval.
+     *
+     * @tags Transforms
+     * @name DeleteTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdDelete
+     * @summary Delete Transform Version
+     * @request DELETE:/api/v1/traces/transforms/{transform_id}/versions/{version_id}
+     * @secure
+     */
+    deleteTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdDelete: (
+      transformId: string,
+      versionId: string,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        DeleteTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdDeleteData,
+        DeleteTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdDeleteError
+      >({
+        path: `/api/v1/traces/transforms/${transformId}/versions/${versionId}`,
         method: "DELETE",
         secure: true,
         ...params,

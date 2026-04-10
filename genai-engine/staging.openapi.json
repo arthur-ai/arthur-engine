@@ -14757,6 +14757,63 @@
                         }
                     }
                 }
+            },
+            "delete": {
+                "tags": [
+                    "Transforms"
+                ],
+                "summary": "Delete Transform Version",
+                "description": "Delete a specific version of a transform. Returns 409 if it is the only version or is pinned by a continuous eval.",
+                "operationId": "delete_transform_version_api_v1_traces_transforms__transform_id__versions__version_id__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "transform_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the transform.",
+                            "title": "Transform Id"
+                        },
+                        "description": "ID of the transform."
+                    },
+                    {
+                        "name": "version_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the version to delete.",
+                            "title": "Version Id"
+                        },
+                        "description": "ID of the version to delete."
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "409": {
+                        "description": "Version is the only one remaining or is pinned by a continuous eval."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/v1/traces/{trace_id}/transforms/{transform_id}/extractions": {
@@ -31199,10 +31256,6 @@
                         "title": "Description",
                         "description": "Description of the transform."
                     },
-                    "definition": {
-                        "$ref": "#/components/schemas/TraceTransformDefinition",
-                        "description": "Transform definition specifying extraction rules."
-                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
@@ -31221,7 +31274,6 @@
                     "id",
                     "task_id",
                     "name",
-                    "definition",
                     "created_at",
                     "updated_at"
                 ],

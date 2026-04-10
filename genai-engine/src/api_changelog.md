@@ -2,6 +2,13 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 04/10/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  removed the required property 'transforms/items/definition' from the response with the '200' status
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  removed the required property 'definition' from the response with the '200' status
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  removed the required property 'definition' from the response with the '200' status
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  removed the required property 'definition' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  endpoint added
+
 # 04/09/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}/restore  api path removed without deprecation
 

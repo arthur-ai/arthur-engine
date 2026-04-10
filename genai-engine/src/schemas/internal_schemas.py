@@ -75,7 +75,6 @@ from arthur_common.models.response_schemas import (
 from arthur_common.models.task_eval_schemas import (
     ContinuousEvalResponse,
     ContinuousEvalTransformVariableMappingResponse,
-    TraceTransformDefinition,
     TraceTransformResponse,
 )
 from fastapi import HTTPException
@@ -2524,7 +2523,6 @@ class TraceTransform(BaseModel):
     task_id: str
     name: str
     description: Optional[str]
-    definition: TraceTransformDefinition
     created_at: datetime
     updated_at: datetime
 
@@ -2534,7 +2532,6 @@ class TraceTransform(BaseModel):
             task_id=self.task_id,
             name=self.name,
             description=self.description,
-            definition=self.definition,
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
@@ -2560,22 +2557,17 @@ class TraceTransform(BaseModel):
             task_id=task_id,
             name=request.name,
             description=request.description,
-            definition=request.definition,
             created_at=curr_time,
             updated_at=curr_time,
         )
 
     @staticmethod
-    def from_db_model(
-        db_transform: DatabaseTraceTransform,
-        definition: TraceTransformDefinition,
-    ) -> "TraceTransform":
+    def from_db_model(db_transform: DatabaseTraceTransform) -> "TraceTransform":
         return TraceTransform(
             id=db_transform.id,
             task_id=db_transform.task_id,
             name=db_transform.name,
             description=db_transform.description,
-            definition=definition,
             created_at=db_transform.created_at,
             updated_at=db_transform.updated_at,
         )

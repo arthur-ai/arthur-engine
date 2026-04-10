@@ -340,10 +340,18 @@ def execute_trace_transform_extraction(
                 detail=f"Trace with ID {trace_id} not found",
             )
 
+        # Fetch the latest version to get the transform definition
+        versions = trace_transform_repo.list_versions(transform_id).versions
+        if not versions:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No versions found for transform {transform_id}",
+            )
+
         # Execute the transform
         return execute_transform(
             trace=trace,
-            transform_definition=trace_transform.definition,
+            transform_definition=versions[0].definition,
         )
 
     except ValueError as e:
