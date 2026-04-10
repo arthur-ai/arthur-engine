@@ -1,0 +1,887 @@
+================================================================================
+  BUZZ: ARTHUR GENAI ENGINE ONBOARDING AGENT
+  Technical Design Document
+================================================================================
+
+Reference: specifications.txt
+Inspirations: https://posthog.com/wizard, https://vercel.com/docs/cli
+
+--------------------------------------------------------------------------------
+1. OVERVIEW
+--------------------------------------------------------------------------------
+
+Buzz is an interactive CLI onboarding wizard that installs and configures
+Arthur GenAI Engine for any agentic application by analyzing its Git
+repository. The tool is idempotent — safe to run multiple times without side
+effects from previous runs.
+
+Buzz guides the user through 7 sequential steps:
+  1. Verify pre-requisites
+  2. Ensure Arthur GenAI Engine is available
+  3. Set up a dedicated Arthur task ID
+  4. Instrument Python agentic applications
+  5. Instrument Mastra TypeScript applications
+  6. Instrument other agentic applications (OpenInference)
+  7. Verify that traces are flowing to Arthur
+
+--------------------------------------------------------------------------------
+2. ARCHITECTURE DECISIONS
+--------------------------------------------------------------------------------
+
+2.1 Claude Agent SDK vs Claude Code CLI
+----------------------------------------
+
+Decision: USE THE CLAUDE AGENT SDK (@anthropic-ai/claude-agent-sdk)
+
+The Claude Agent SDK and the Claude Code CLI share the same underlying
+reasoning engine and tool ecosystem. The decision is about how to embed
+Claude's capabilities into Buzz's workflow.
+
+  Factor                | Claude Code CLI        | Claude Agent SDK
+  ----------------------|------------------------|-----------------------------
+  Programmatic control  | None — interactive only | query() async generator
+  Embedding in workflow | Cannot embed (new proc) | Imported TypeScript library
+  Tool access           | Full (Bash, Read, etc.) | Full (same via allowedTools)
+  Reliability loop      | Built-in: runs tests    | Same — Bash tool enabled
+  Working directory     | User's CWD              | Configurable cwd per call
+  Output control        | Raw terminal output     | Structured message stream
+  Result parsing        | Must scrape text        | message.type === 'result'
+  UX control            | Claude's own persona    | Full control — Buzz persona
+
+Why the SDK is BETTER for reliability (not worse):
+
+  The Claude Agent SDK gives Claude the SAME Bash tool the CLI uses. By
+  including Bash in allowedTools, Claude can:
+  - Run pytest / npm test after making changes
+  - Install new dependencies (pip install, npm install)
+  - Run import checks to confirm instrumentation loads
+  - Iterate on test failures without human intervention
+
+  Additionally, we parse message.type === 'result' to know programmatically
+  whether the task succeeded, surface failures in Buzz's UI with structured
+  formatting, and implement orchestration-level retries.
+
+  The specifications' references to "/plan" and "ultrathink" are prompting
+  strategies — text instructions inside our query() prompt — that work
+  identically in the SDK.
+
+
+2.2 CLI Library Selection
+--------------------------
+
+  Library           | Purpose
+  ------------------|--------------------------------------------------
+  @clack/prompts    | Primary interactive prompts (select, confirm, text)
+  chalk             | Terminal colors for Buzz persona and status output
+  ora               | Spinners during async operations
+  figlet            | ASCII banner for Buzz's intro screen
+  boxen             | Bordered boxes for Buzz's speech bubbles
+  execa             | Shell command execution (git, claude, install scripts)
+
+NOT using Ink (React for CLI): @clack/prompts is simpler and sufficient for
+a step-by-step wizard. Ink is better for complex reactive dashboards.
+
+
+2.3 Mastra Integration Strategy
+---------------------------------
+
+Mastra serves as the CODE INTELLIGENCE LAYER — not the workflow orchestrator.
+
+  Mastra's role in Buzz:
+  - CodeAnalysisAgent: Analyzes the user's repo to determine language,
+    framework, and whether Arthur instrumentation is already present
+  - Tools: readFileTool, listDirectoryTool, searchPatternTool,
+    checkDependenciesTool
+  - Model: Claude (via @ai-sdk/anthropic)
+
+  Mastra does NOT:
+  - Handle the step-by-step workflow (plain TypeScript orchestration)
+  - Make code changes (that's the Claude Agent SDK)
+  - Provide the UI (that's @clack/prompts + chalk)
+
+  Mastra agents can be called programmatically from a CLI script without
+  spinning up a server. The Mastra instance is initialized once and the
+  agent's generate() method is called directly.
+
+
+--------------------------------------------------------------------------------
+3. TECH STACK
+--------------------------------------------------------------------------------
+
+  Runtime:        Node.js 20+
+  Language:       TypeScript 5.x
+  Build:          tsup (fast ESM bundling)
+  Distribution:   npm package with `buzz` binary
+
+  Core Dependencies:
+    @mastra/core: ^0.24.0             Agent framework
+    @anthropic-ai/claude-agent-sdk    Claude Agent SDK for code modification
+    @ai-sdk/anthropic                 Anthropic model adapter for Mastra
+    @clack/prompts: ^0.10            Modern CLI prompts
+    chalk: ^5                         Terminal colors
+    ora: ^8                           Spinners
+    figlet: ^1.8                      ASCII art
+    boxen: ^8                         Speech bubble boxes
+    execa: ^9                         Shell execution
+    dotenv: ^16                       .env file management
+
+  Dev Dependencies:
+    typescript: ^5.x
+    tsx: ^4                           TypeScript dev runner
+    vitest: ^2                        Test framework
+    @types/node, @types/figlet
+
+
+--------------------------------------------------------------------------------
+4. PROJECT STRUCTURE
+--------------------------------------------------------------------------------
+
+  onboarding/
+  ├── src/
+  │   ├── index.ts                      Entry point — `buzz` binary
+  │   ├── ui/
+  │   │   ├── avatar.ts                 Buzz ASCII astronaut + animation frames
+  │   │   ├── prompts.ts                @clack wrappers + astronaut phrases
+  │   │   └── theme.ts                  chalk color palette
+  │   ├── workflow/
+  │   │   ├── orchestrator.ts           Sequential step runner + shared state
+  │   │   └── steps/
+  │   │       ├── 01-prereqs.ts         Verify git, Claude Code, auth
+  │   │       ├── 02-arthur-engine.ts   Install/connect Arthur Engine
+  │   │       ├── 03-task.ts            Task ID selection/creation
+  │   │       ├── 04-python.ts          Python instrumentation
+  │   │       ├── 05-mastra.ts          Mastra instrumentation
+  │   │       ├── 06-other.ts           OpenInference instrumentation
+  │   │       └── 07-verify.ts          Trace verification
+  │   ├── mastra/
+  │   │   ├── index.ts                  Mastra instance initialization
+  │   │   ├── agent.ts                  BuzzCodeAnalysisAgent definition
+  │   │   └── tools/
+  │   │       ├── code-analysis.ts      readFile, listDir, searchPattern, checkDeps
+  │   │       └── system.ts             checkOS, checkPath, checkCommand
+  │   ├── claude-code/
+  │   │   └── sdk.ts                    Claude Agent SDK wrapper for instrumentation
+  │   ├── arthur/
+  │   │   └── client.ts                 Arthur Engine HTTP API client
+  │   └── config/
+  │       └── env.ts                    ~/.arthur-engine/local-stack/buzz/.env manager
+  ├── test/
+  │   └── fixtures/
+  │       ├── python-langchain-app/     Minimal uninstrumented Python app
+  │       ├── mastra-app/               Minimal uninstrumented Mastra app
+  │       └── openai-js-app/            Minimal uninstrumented OpenAI JS app
+  ├── package.json
+  ├── tsconfig.json
+  └── README.md
+
+
+--------------------------------------------------------------------------------
+5. MODULE DESIGN
+--------------------------------------------------------------------------------
+
+5.1 CLI Entry & Avatar  (src/index.ts, src/ui/avatar.ts)
+----------------------------------------------------------
+
+Entry point flow:
+  1. Render Buzz ASCII banner via figlet
+  2. Start avatar animation (idle state)
+  3. Print intro message in astronaut persona
+  4. Run workflow orchestrator
+  5. Print success/failure outro
+
+Avatar design (ASCII astronaut helmet):
+
+  IDLE — visor blink (alternates between frames at 800ms interval):
+
+    Frame 1:          Frame 2:
+      .-""-.            .-""-.
+     / .-. \           / .-. \
+    |(  o  )|         |(  O  )|
+     \ '-' /           \ '-' /
+      '---'             '---'
+      |   |             |   |
+      |___|             |___|
+
+  THINKING — antenna rotate (cycles - \ | / at 200ms):
+
+    .---.  .---.  .---.  .---.
+    | - |  | \ |  | | |  | / |
+
+  SUCCESS — signal burst:
+
+         *
+        \|/
+        -O-
+        /|\
+         *
+
+  ERROR — X visor:
+
+      .-""-.
+     / .-. \
+    |(  X  )|
+     \ '-' /
+
+Animation implementation: chalk color cycling + setInterval frame swapping
+with ANSI cursor-up to overwrite the previous frame in place.
+Avatar is rendered in a chalk.cyan boxen box, 22 chars wide.
+Speech content is delivered via a boxen speech bubble below the avatar.
+
+Astronaut persona phrase templates:
+
+  greeting:  "10-4, do you copy? Buzz here. Ready for takeoff."
+  checking:  "Running diagnostics on {item}..."
+  success:   "All systems nominal. {item} confirmed."
+  error:     "Houston, we have a problem. {detail}"
+  install:   "Initiating {item} launch sequence..."
+  waiting:   "Standing by for your input, astronaut."
+  confirm:   "Do you copy? {question}"
+  complete:  "Mission accomplished. We are go for science!"
+  notMac:    "This mission requires Mac OS hardware. Returning to base."
+  dirty:     "Cannot proceed — uncommitted work in progress detected."
+
+
+5.2 Workflow Orchestrator  (src/workflow/orchestrator.ts)
+----------------------------------------------------------
+
+Holds shared state and runs steps sequentially. Each step mutates state.
+
+  interface WorkflowState {
+    repoPath: string;           // User's repo path (process.cwd())
+    engineUrl: string | null;   // Arthur Engine base URL
+    apiKey: string | null;      // Arthur API key
+    taskId: string | null;      // Arthur task ID
+    repoLanguage: 'python' | 'typescript-mastra' | 'other' | null;
+  }
+
+  async function runBuzzWorkflow(repoPath: string): Promise<void> {
+    const state = { repoPath, engineUrl: null, ... };
+
+    await step1_VerifyPrereqs(state);
+    await step2_EnsureArthurEngine(state);
+    await step3_EnsureTaskId(state);
+
+    // Exactly one of steps 4-6 runs (first that matches the repo type)
+    await step4_InstrumentPython(state)   ||
+    await step5_InstrumentMastra(state)   ||
+    await step6_InstrumentOther(state);
+
+    await step7_VerifyInstrumentation(state);
+  }
+
+
+5.3 Mastra Code Analysis Agent  (src/mastra/agent.ts)
+------------------------------------------------------
+
+  const buzzCodeAnalysisAgent = new Agent({
+    name: 'buzz-code-analysis',
+    instructions: `Analyze code repositories to:
+      1. Identify the primary programming language (Python, TypeScript, other)
+      2. Detect frameworks (Mastra, LangChain, OpenAI, Anthropic, CrewAI, etc.)
+      3. Check if Arthur observability instrumentation is already present
+      Return structured JSON only. Be concise.`,
+    model: anthropic('claude-3-5-haiku-20241022'),
+    tools: { readFileTool, listDirectoryTool, searchPatternTool, checkDependenciesTool },
+  });
+
+Tools in src/mastra/tools/code-analysis.ts:
+  - readFileTool: reads a file (scoped to repoPath)
+  - listDirectoryTool: lists directory contents (scoped to repoPath)
+  - searchPatternTool: regex search across repo files
+  - checkDependenciesTool: reads package.json or requirements.txt
+
+Usage within instrumentation steps:
+  const result = await buzzCodeAnalysisAgent.generate([{
+    role: 'user',
+    content: `Analyze the repository at ${state.repoPath}.
+      Determine: (1) primary language, (2) framework, (3) Arthur instrumentation status.
+      Return JSON: { language, framework, isInstrumented, instrumentationType }`
+  }]);
+
+
+5.4 Claude Agent SDK Integration  (src/claude-code/sdk.ts)
+-----------------------------------------------------------
+
+Used for code MODIFICATION AND VALIDATION in steps 4-6.
+
+  interface InstrumentationRequest {
+    repoPath: string;
+    type: 'python-arthur-sdk' | 'mastra-arthur-exporter' | 'openinference';
+    arthurEngineUrl: string;
+    taskId: string;
+    apiKey: string;
+  }
+
+  interface InstrumentationResult {
+    success: boolean;
+    testsPassed: boolean;
+    summary: string;
+  }
+
+  async function instrumentCodeWithClaude(
+    req: InstrumentationRequest,
+    onProgress: (msg: string) => void
+  ): Promise<InstrumentationResult>
+
+SDK is invoked with full tool access for reliability:
+
+  query({
+    prompt: buildInstrumentationPrompt(req),
+    options: {
+      cwd: req.repoPath,
+      allowedTools: ['Read', 'Glob', 'Grep', 'Edit', 'Write', 'Bash'],
+      permissionMode: 'acceptEdits',
+      systemPrompt: '...',
+    }
+  })
+
+Bash is included so Claude can run tests, install deps, and fix failures.
+
+Prompts include mandatory reliability validation steps (see section 6).
+
+
+5.5 Arthur Engine API Client  (src/arthur/client.ts)
+-----------------------------------------------------
+
+  class ArthurEngineClient {
+    constructor(baseUrl: string, apiKey: string)
+
+    verifyConnection(): Promise<boolean>
+      // GET /api/v2/tasks?page=0&page_size=1
+      // Returns true if 200 or 401 (engine is up, regardless of auth status)
+
+    login(): Promise<boolean>
+      // GET /api/v2/tasks?page=0&page_size=1 with auth header
+      // Returns true if 200 (auth valid)
+
+    getTasks(): Promise<Task[]>
+      // GET /api/v2/tasks
+
+    createTask(name: string): Promise<Task>
+      // POST /api/v2/tasks { name }
+
+    getTraces(taskId: string): Promise<Trace[]>
+      // GET /api/v1/traces?task_id={taskId}&page_size=5
+  }
+
+Authentication: Authorization: Bearer {apiKey} on all requests.
+
+Arthur Engine API endpoints used:
+  GET  /api/v2/tasks              List all tasks
+  POST /api/v2/tasks              Create a task
+  GET  /api/v1/traces             List traces (filtered by task_id)
+
+
+5.6 Configuration Management  (src/config/env.ts)
+--------------------------------------------------
+
+Manages ~/.arthur-engine/local-stack/buzz/.env
+
+  interface BuzzConfig {
+    ARTHUR_ENGINE_URL?: string;
+    ARTHUR_API_KEY?: string;
+    ARTHUR_TASK_ID?: string;
+  }
+
+  readBuzzConfig(): BuzzConfig
+    // Returns empty object if file does not exist
+
+  writeBuzzConfig(config: Partial<BuzzConfig>): void
+    // Creates parent directories, merges with existing values
+
+File contents format:
+  ARTHUR_ENGINE_URL=http://localhost:3030
+  ARTHUR_API_KEY=your-admin-key-here
+  ARTHUR_TASK_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+
+--------------------------------------------------------------------------------
+6. USE CASE IMPLEMENTATION DETAILS
+--------------------------------------------------------------------------------
+
+STEP 1: Verify Prerequisites
+------------------------------
+
+Checks (in order):
+  1. git status --porcelain (cwd: repoPath) → must return empty output
+  2. which claude → must find the Claude Code binary
+  3. claude --version → confirms the binary works
+  4. ANTHROPIC_API_KEY env var or claude auth check → confirms authentication
+
+Errors:
+  - Dirty git:          fatal — throw BuzzError (cannot instrument dirty repo)
+  - Claude not found:   fatal — show install URL, exit
+  - Claude not authed:  fatal — show "claude auth login", exit
+
+Key implementation:
+  const { stdout } = await execa('git', ['status', '--porcelain'], { cwd: state.repoPath });
+  if (stdout.trim()) throw new BuzzError(buzzPhrases.dirty);
+
+
+STEP 2: Ensure Arthur Engine is Available
+------------------------------------------
+
+Decision tree:
+
+  Is process.platform === 'darwin'?
+  └─ No  → buzzError(notMac) → process.exit(1)
+  └─ Yes → Does ~/.arthur-engine/local-stack/genai-engine/docker-compose.yml exist?
+            └─ Yes → Ask: "Use existing local engine at {GENAI_ENGINE_INGRESS_URI}?"
+                      ├─ Yes → verify URL reachable → set state.engineUrl, state.apiKey
+                      └─ No  → [fall to install/remote choice]
+            └─ No  → Ask: "Install local Arthur Engine or connect to remote?"
+                      ├─ Local  → execa('bash <(curl -sSL https://get-genai-engine.arthur.ai/mac)')
+                      │            → wait for completion → verify reachable → set state
+                      └─ Remote → p.text({ message: 'Engine URL?' })
+                                   p.text({ message: 'API key?' })
+                                   → verify reachable → save to buzz/.env → set state
+
+Reachability check: fetch(url + '/api/v2/tasks?page_size=1', { headers })
+  - 200 or 401 = engine is up (URL is valid)
+  - Network error = not reachable
+
+Engine URL source (local install):
+  dotenv.config({ path: '~/.arthur-engine/local-stack/genai-engine/.env' })
+  use: process.env.GENAI_ENGINE_INGRESS_URI
+
+Login verification:
+  arthurClient.login() — must return true before proceeding
+
+
+STEP 3: Ensure Task ID
+-----------------------
+
+  1. Read ARTHUR_TASK_ID from buzz/.env
+     - If present → p.confirm("Is task ID {id} the correct one?")
+       - Yes → state.taskId = id → proceed to step 4
+
+  2. arthurClient.getTasks() → get list of active tasks
+
+  3. If tasks.length > 0:
+     options = tasks.map(t => ({ value: t.id, label: `${t.name} (${t.id})` }))
+     options.push({ value: '__new__', label: 'Create a new task' })
+     const selected = await p.select({ message: 'Which task?', options })
+
+  4. If selected === '__new__' or tasks.length === 0:
+     const name = await p.text({ message: 'Task name for your application?' })
+     const task = await arthurClient.createTask(name)
+     state.taskId = task.id
+
+  5. writeBuzzConfig({ ARTHUR_TASK_ID: state.taskId })
+     p.log.success(`Task ID ${state.taskId} saved.`)
+
+
+STEP 4: Python Instrumentation
+--------------------------------
+
+  1. Mastra agent analyzes repo → { language, framework, isInstrumented }
+  2. If language !== 'python' → return false (skip, try step 5)
+  3. If isInstrumented → p.log.success("Already instrumented.") → return true
+  4. p.confirm("May I instrument your Python app with the Arthur SDK?")
+     - No → return true (user declined, skip instrumentation)
+  5. instrumentCodeWithClaude({ type: 'python-arthur-sdk', ... })
+  6. return true
+
+Instrumentation detection (by Mastra agent):
+  - Check requirements.txt / pyproject.toml for 'arthur-observability-sdk'
+  - Check Python source files for 'from arthur_observability_sdk import Arthur'
+
+Claude SDK prompt (python-arthur-sdk) includes:
+  - Arthur Engine URL and Task ID
+  - Reference: github.com/arthur-ai/arthur-engine/tree/main/arthur-observability-sdk
+  - Instruction to use ultrathink for careful implementation
+  - MANDATORY RELIABILITY VALIDATION:
+    a. pip install -e . (or pip install -r requirements.txt)
+    b. python -c "from arthur_observability_sdk import Arthur; print('OK')"
+    c. Run existing test suite (pytest or discovered test command)
+    d. Fix any failures before reporting success
+    e. Return { success, testsPassed, summary }
+
+
+STEP 5: Mastra Instrumentation
+--------------------------------
+
+  1. Mastra agent checks package.json for '@mastra/core' or 'mastra' dependency
+  2. If not found → return false (skip, try step 6)
+  3. Mastra agent checks for 'ArthurExporter' in source files
+  4. If found → p.log.success("Mastra Arthur exporter already configured.") → return true
+  5. p.confirm("May I add the Arthur exporter to your Mastra app?")
+     - No → return true
+  6. instrumentCodeWithClaude({ type: 'mastra-arthur-exporter', ... })
+  7. return true
+
+IMPORTANT: The ArthurExporter class is NOT published as a standalone npm
+package. It is a custom implementation. Claude Agent SDK will copy the
+pattern from the customer-support-agent example into the user's codebase:
+  genai-engine/examples/agents/customer-support-agent/src/mastra/observability/arthur/
+
+The implementation requires:
+  @opentelemetry/exporter-trace-otlp-proto
+  @opentelemetry/sdk-trace-node
+  @opentelemetry/sdk-trace-base
+  @arizeai/openinference-core
+
+Claude SDK prompt (mastra-arthur-exporter) includes:
+  - Reference: mastra.ai/docs/observability/tracing/exporters/arthur
+  - Reference example: customer-support-agent in arthur-engine repo
+  - MANDATORY RELIABILITY VALIDATION:
+    a. npm install (or yarn install)
+    b. npx tsc --noEmit (TypeScript compilation check)
+    c. Run existing test suite (npm test / vitest run)
+    d. Fix any failures before reporting success
+
+
+STEP 6: Other Instrumentation (OpenInference)
+----------------------------------------------
+
+  1. Mastra agent checks for OpenInference packages:
+     '@arizeai/openinference-*' or 'openinference-instrumentation-*'
+  2. If already present → p.log.success("OpenInference already configured.") → return true
+  3. p.confirm("May I instrument your app with OpenInference for Arthur?")
+     - No → return true
+  4. instrumentCodeWithClaude({ type: 'openinference', ... })
+  5. return true
+
+Claude SDK prompt (openinference) includes:
+  - Detect specific framework (LangChain, OpenAI, CrewAI, etc.)
+  - Set up OTLP exporter to {arthurEngineUrl}/api/v1/traces
+  - Add appropriate OpenInference instrumentor
+  - Reference: genai-engine/examples/agents/ in arthur-engine repo
+  - MANDATORY RELIABILITY VALIDATION (install, import check, test suite)
+
+
+STEP 7: Verify Instrumentation
+--------------------------------
+
+  1. p.note("Start your agent to send traces. Press Enter when done.")
+     await p.text({ message: 'Press Enter to continue...' })
+
+  2. Poll for traces (up to 30s, every 3s):
+     const traces = await arthurClient.getTraces(state.taskId)
+     if (traces.length > 0) → success
+
+  3. If traces found:
+     p.log.success("We have signal! Traces confirmed in Arthur.")
+     p.note(`
+       Login to Arthur GenAI Engine at:
+       ${state.engineUrl}
+
+       ${state.engineUrl.includes('localhost')
+         ? 'Find your API key in ~/.arthur-engine/local-stack/genai-engine/.env'
+         : 'Use your remote engine API key'}
+     `)
+
+  4. If no traces after 30s:
+     p.log.warn("No traces detected. Check that your agent ran with the new instrumentation.")
+     const retry = await p.confirm("Try again?")
+     if (retry) → repeat step 7
+
+
+--------------------------------------------------------------------------------
+7. RELIABILITY VALIDATION STRATEGY
+--------------------------------------------------------------------------------
+
+After Claude Agent SDK modifies the user's code, Buzz checks the result:
+
+  const result = await instrumentCodeWithClaude(req, onProgress);
+
+  if (!result.success) {
+    p.log.error(buzzSay(`Houston, we have a problem: ${result.summary}`));
+    const abort = await p.confirm({ message: 'Abort mission?' });
+    if (abort) throw new BuzzError('Instrumentation failed');
+  }
+
+  if (!result.testsPassed) {
+    // Non-fatal: user may have pre-existing test failures
+    p.log.warn(`Tests not fully passing: ${result.summary}`);
+    p.note('Verify the test failures are pre-existing and not caused by instrumentation.');
+  }
+
+Validation gates in every Claude SDK prompt:
+  1. Dependency installation succeeds (pip install or npm install exit code 0)
+  2. Import check passes (python import or tsc --noEmit)
+  3. Existing test suite runs to completion (if tests existed before)
+  4. Claude iterates on failures and fixes them before reporting done
+  5. Final structured report: { success, testsPassed, summary }
+
+The Bash tool in allowedTools enables the full reliability loop that makes
+the Claude Code CLI reliable, now embedded within Buzz's programmatic flow.
+
+
+--------------------------------------------------------------------------------
+8. UX DESIGN
+--------------------------------------------------------------------------------
+
+All user-facing output flows through:
+  buzzSay(template, vars) → returns formatted string with astronaut persona
+  p.log.success / p.log.error / p.log.warn / p.note → @clack structured output
+  ora().start() / .succeed() / .fail() → spinner for async operations
+  p.select / p.confirm / p.text → @clack interactive prompts
+
+NO raw console.log() for user messages.
+
+Error handling UX:
+  Non-fatal (network timeout, user decline):
+    → p.note() with info box
+    → p.confirm() with retry option
+
+  Fatal (not Mac, dirty git, Claude not found):
+    → p.outro() with error message
+    → process.exit(1)
+
+
+--------------------------------------------------------------------------------
+9. CONFIGURATION
+--------------------------------------------------------------------------------
+
+Buzz config file: ~/.arthur-engine/local-stack/buzz/.env
+  ARTHUR_ENGINE_URL=http://localhost:3030
+  ARTHUR_API_KEY=<admin-key>
+  ARTHUR_TASK_ID=<uuid>
+
+Genai-engine config (read-only):
+  ~/.arthur-engine/local-stack/genai-engine/.env
+  Key read: GENAI_ENGINE_INGRESS_URI
+
+package.json bin entry:
+  {
+    "name": "@arthur-ai/buzz",
+    "version": "1.0.0",
+    "type": "module",
+    "bin": { "buzz": "./dist/index.js" },
+    "scripts": {
+      "dev": "tsx src/index.ts",
+      "build": "tsup src/index.ts --format esm --target node20",
+      "test": "vitest run",
+      "test:watch": "vitest"
+    }
+  }
+
+Note on authentication:
+  The Claude Agent SDK requires ANTHROPIC_API_KEY (same credential used by
+  Claude Code CLI — they share the credential store). Step 1 confirms Claude
+  Code is authenticated, which guarantees the SDK will also work.
+
+Note on Arthur Engine API key:
+  The admin key (GENAI_ENGINE_ADMIN_KEY in docker-compose .env.template)
+  is used as ARTHUR_API_KEY in Buzz. The default setting
+  ALLOW_ADMIN_KEY_GENERAL_ACCESS=enabled permits this key for all endpoints.
+
+
+--------------------------------------------------------------------------------
+10. TEST PLAN
+--------------------------------------------------------------------------------
+
+10.1 Unit Tests (Vitest)
+-------------------------
+
+  src/arthur/client.test.ts
+    - Mock fetch: test getTasks, createTask, getTraces, verifyConnection, login
+    - Test 401 → login returns false
+    - Test network error → verifyConnection returns false
+    - Test task creation with name
+
+  src/config/env.test.ts
+    - Read with missing file → empty object
+    - Read with existing file → parses correctly
+    - Write → creates file, correct content
+    - Write with partial update → merges (does not overwrite unrelated keys)
+    - Write creates parent directories with mkdirSync recursive
+
+  src/workflow/steps/01-prereqs.test.ts
+    - Mock execa: git dirty stdout → throws BuzzError with dirty message
+    - Mock execa: git clean → no error
+    - Mock execa: 'which claude' not found → throws with install note
+    - Mock execa: claude auth not ok → throws with auth note
+    - Happy path → all checks pass
+
+  src/workflow/steps/02-arthur-engine.test.ts
+    - Mock process.platform: 'win32' → throws notMac error
+    - Mock fs.existsSync: local engine found → prompts to use existing
+    - Mock fs.existsSync: local engine not found → prompts install vs remote
+    - Mock fetch: engine reachable → proceed
+    - Mock fetch: engine not reachable → show error, retry
+
+  src/workflow/steps/03-task.test.ts
+    - Mock readBuzzConfig: existing task ID → confirm prompt shown
+    - Mock arthur client getTasks: 0 tasks → create new offered
+    - Mock arthur client getTasks: N tasks → select shown with N+1 options
+    - Mock p.select: user creates new → createTask called
+
+  src/workflow/steps/04-python.test.ts
+    - Mock Mastra agent: language !== 'python' → returns false
+    - Mock Mastra agent: isInstrumented true → skip, return true
+    - Mock p.confirm: user declines → return true without SDK call
+    - Mock Claude SDK: success result → p.log.success called
+
+  src/workflow/steps/05-mastra.test.ts
+    - Mock Mastra agent: no @mastra/core → return false
+    - Mock Mastra agent: ArthurExporter present → skip, return true
+    - Mock Claude SDK: testsPassed false → warning shown (non-fatal)
+
+  src/ui/avatar.test.ts
+    - buzzSay template substitution with {item} → replaces correctly
+    - buzzSay with missing var → no crash (leaves placeholder)
+    - Frame cycling → returns next frame in sequence
+
+  src/claude-code/sdk.test.ts
+    - Mock query: success result → parseInstrumentationResult returns { success: true }
+    - Mock query: failure result → returns { success: false }
+    - onProgress called for each assistant text block
+
+
+10.2 Integration Tests
+-----------------------
+
+  Arthur API client (requires running Arthur Engine at http://localhost:3030):
+    - verifyConnection() → true
+    - login() with valid key → true
+    - getTasks() → returns array
+    - createTask('buzz-test-task') → returns task with id
+    - getTraces(taskId) → returns array (may be empty)
+    - Cleanup: delete test task after test
+
+  Mastra agent analysis:
+    - Point agent at genai-engine/examples/agents/customer-support-agent
+      → detects language=typescript, framework=mastra, isInstrumented=true
+    - Point agent at test/fixtures/python-langchain-app
+      → detects language=python, framework=langchain, isInstrumented=false
+    - Point agent at test/fixtures/mastra-app
+      → detects language=typescript, framework=mastra, isInstrumented=false
+
+
+10.3 End-to-End Tests
+----------------------
+
+Fixture repos in test/fixtures/:
+  python-langchain-app/   Minimal LangChain Python app, no Arthur SDK
+  mastra-app/             Minimal Mastra TypeScript app, no ArthurExporter
+  openai-js-app/          Minimal OpenAI JS app, no OpenInference
+
+E2E Scenario 1: Python app instrumentation
+  1. Run buzz in test/fixtures/python-langchain-app
+  2. Assert: requirements.txt contains 'arthur-observability-sdk'
+  3. Assert: entry point contains Arthur() initialization
+  4. Assert: pip install completes without error
+  5. Assert: python import check passes
+  6. Run buzz again → assert idempotent (no duplicate instrumentation added)
+
+E2E Scenario 2: Mastra app instrumentation
+  1. Run buzz in test/fixtures/mastra-app
+  2. Assert: ArthurExporter class file created in src/mastra/observability/
+  3. Assert: Mastra instance registers the exporter in observability config
+  4. Assert: .env.example includes ARTHUR_BASE_URL, ARTHUR_API_KEY, ARTHUR_TASK_ID
+  5. Assert: tsc --noEmit passes
+
+E2E Scenario 3: Remote engine configuration
+  1. Run buzz, select "Remote" engine
+  2. Enter mock URL and API key
+  3. Assert: ~/.arthur-engine/local-stack/buzz/.env contains correct values
+
+E2E Scenario 4: Idempotency
+  1. Run buzz on an already-instrumented app
+  2. Assert: no code changes made (Mastra agent detects existing instrumentation)
+  3. Assert: task ID not overwritten if already correct
+
+
+10.4 Instrumentation Reliability Validation
+--------------------------------------------
+
+After each code modification, Buzz checks InstrumentationResult:
+
+  result.success === false    → p.log.error → p.confirm abort/retry
+  result.testsPassed === false → p.log.warn (non-fatal, pre-existing failures)
+  result.success === true     → p.log.success, proceed to step 7
+
+Validation gates embedded in every Claude SDK prompt:
+  1. Dependency installation: exit code must be 0
+  2. Import check: must succeed without ModuleNotFoundError / import error
+  3. Existing test suite: run if detected; fix failures before reporting done
+  4. Claude self-corrects on failures; reports structured result at end
+
+
+10.5 Manual Test Scenarios
+---------------------------
+
+  #   Scenario                              Expected
+  ──  ────────────────────────────────────  ──────────────────────────────────────
+  1   Fresh Mac, no Arthur Engine           Offers install or remote; installs OK
+  2   Existing local engine running         Detects and uses existing installation
+  3   Remote engine                         Prompts URL+key, verifies reachability
+  4   Dirty git repo                        Immediate abort with clear message
+  5   Claude Code not installed             Clear error + install instructions
+  6   Claude Code not authenticated         Clear error + auth instructions
+  7   Already-instrumented Python app       Detects, skips, moves to verify
+  8   Already-instrumented Mastra app       Detects, skips, moves to verify
+  9   Run twice on same repo                No duplicate changes (idempotent)
+  10  Network failure during install        Graceful error + retry option
+  11  0 tasks in Arthur Engine              Offers to create new task
+  12  No traces after instrumentation       Clear guidance to run agent
+  13  User declines instrumentation         Gracefully skips to next step
+
+
+--------------------------------------------------------------------------------
+11. KEY IMPLEMENTATION NOTES
+--------------------------------------------------------------------------------
+
+Idempotency
+  - Step 2: Check engine presence before installing
+  - Step 3: Check ARTHUR_TASK_ID in buzz/.env before prompting
+  - Steps 4-6: Mastra agent checks for existing instrumentation before modifying
+  - Code changes only made on explicit user confirmation
+
+ArthurExporter — Not a Published Package
+  The ArthurExporter class in customer-support-agent is NOT on npm. When
+  instrumenting Mastra apps (Step 5), Claude Agent SDK writes the exporter
+  implementation directly into the user's codebase. Reference implementation:
+    genai-engine/examples/agents/customer-support-agent/src/mastra/observability/arthur/
+  Key dependencies required in user's package.json:
+    @opentelemetry/exporter-trace-otlp-proto
+    @opentelemetry/sdk-trace-node
+    @opentelemetry/sdk-trace-base
+    @arizeai/openinference-core
+
+Claude Agent SDK vs ANTHROPIC_API_KEY
+  The SDK uses ANTHROPIC_API_KEY (same credential store as Claude Code CLI).
+  Step 1 verifies Claude Code authentication → SDK auth is also guaranteed.
+
+Arthur Engine Admin Key
+  GENAI_ENGINE_ADMIN_KEY from the genai-engine .env is used as ARTHUR_API_KEY.
+  Requires ALLOW_ADMIN_KEY_GENERAL_ACCESS=enabled (default in docker-compose).
+
+Arthur Traces API for Step 7 Verification
+  GET /api/v1/traces?task_id={taskId}&page_size=5
+  Returns traces array. Non-empty = instrumentation is working.
+
+
+--------------------------------------------------------------------------------
+12. FILES TO CREATE
+--------------------------------------------------------------------------------
+
+  File                                     Purpose
+  ───────────────────────────────────────  ──────────────────────────────────────
+  onboarding/package.json                  Project setup, `buzz` binary, deps
+  onboarding/tsconfig.json                 TypeScript config (ESM, Node20)
+  onboarding/src/index.ts                  CLI entry point, banner, workflow call
+  onboarding/src/ui/avatar.ts              ASCII astronaut + animation engine
+  onboarding/src/ui/prompts.ts             Clack wrappers + buzzSay() + phrases
+  onboarding/src/ui/theme.ts               Chalk color palette constants
+  onboarding/src/workflow/orchestrator.ts  WorkflowState + runBuzzWorkflow()
+  onboarding/src/workflow/steps/01-prereqs.ts      Git, Claude, auth checks
+  onboarding/src/workflow/steps/02-arthur-engine.ts Engine setup decision tree
+  onboarding/src/workflow/steps/03-task.ts         Task ID select/create/save
+  onboarding/src/workflow/steps/04-python.ts       Python instrumentation
+  onboarding/src/workflow/steps/05-mastra.ts       Mastra instrumentation
+  onboarding/src/workflow/steps/06-other.ts        OpenInference instrumentation
+  onboarding/src/workflow/steps/07-verify.ts       Trace polling + login guide
+  onboarding/src/mastra/index.ts           Mastra instance (no server)
+  onboarding/src/mastra/agent.ts           BuzzCodeAnalysisAgent
+  onboarding/src/mastra/tools/code-analysis.ts  readFile, listDir, searchPattern
+  onboarding/src/claude-code/sdk.ts        instrumentCodeWithClaude() + prompts
+  onboarding/src/arthur/client.ts          ArthurEngineClient HTTP wrapper
+  onboarding/src/config/env.ts             readBuzzConfig / writeBuzzConfig
+  onboarding/test/fixtures/python-langchain-app/   E2E test fixture
+  onboarding/test/fixtures/mastra-app/             E2E test fixture
+  onboarding/test/fixtures/openai-js-app/          E2E test fixture
+
+================================================================================
