@@ -150,6 +150,9 @@ function heuristicAnalysis(repoPath: string): CodeAnalysisResult {
  * Falls back to file-system heuristics if the agent call fails.
  */
 export async function analyzeRepository(repoPath: string): Promise<CodeAnalysisResult> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return heuristicAnalysis(repoPath);
+  }
   try {
     const result = await buzzCodeAnalysisAgent.generate([
       {

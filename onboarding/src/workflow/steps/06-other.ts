@@ -1,4 +1,3 @@
-import ora from 'ora';
 import {
   p,
   buzzSay,
@@ -7,7 +6,6 @@ import {
   note,
   confirm,
 } from '../../ui/prompts.js';
-import { analyzeRepository } from '../../mastra/index.js';
 import { instrumentCodeWithClaude, makeProgressHandler } from '../../claude-code/sdk.js';
 import type { WorkflowState } from '../orchestrator.js';
 
@@ -17,9 +15,7 @@ import type { WorkflowState } from '../orchestrator.js';
  * Always returns true (this is the catch-all step).
  */
 export async function step6_InstrumentOther(state: WorkflowState): Promise<boolean> {
-  const spinner = ora({ text: buzzSay('Analyzing repository for instrumentation options...'), color: 'cyan' }).start();
-  const analysis = await analyzeRepository(state.repoPath);
-  spinner.stop();
+  const analysis = state.analysis!;
 
   p.log.info(
     buzzSay(

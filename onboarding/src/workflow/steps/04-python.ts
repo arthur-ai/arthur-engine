@@ -1,4 +1,3 @@
-import ora from 'ora';
 import {
   p,
   buzzSay,
@@ -7,7 +6,6 @@ import {
   note,
   confirm,
 } from '../../ui/prompts.js';
-import { analyzeRepository } from '../../mastra/index.js';
 import { instrumentCodeWithClaude, makeProgressHandler } from '../../claude-code/sdk.js';
 import type { WorkflowState } from '../orchestrator.js';
 
@@ -17,9 +15,7 @@ import type { WorkflowState } from '../orchestrator.js';
  * Returns false if the repo is not a Python application → try next step.
  */
 export async function step4_InstrumentPython(state: WorkflowState): Promise<boolean> {
-  const spinner = ora({ text: buzzSay('Analyzing repository language and framework...'), color: 'cyan' }).start();
-  const analysis = await analyzeRepository(state.repoPath);
-  spinner.stop();
+  const analysis = state.analysis!;
 
   // 1. Is this a Python application?
   if (analysis.language !== 'python') {

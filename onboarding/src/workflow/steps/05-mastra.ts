@@ -1,4 +1,3 @@
-import ora from 'ora';
 import {
   p,
   buzzSay,
@@ -7,7 +6,6 @@ import {
   note,
   confirm,
 } from '../../ui/prompts.js';
-import { analyzeRepository } from '../../mastra/index.js';
 import { instrumentCodeWithClaude, makeProgressHandler } from '../../claude-code/sdk.js';
 import type { WorkflowState } from '../orchestrator.js';
 
@@ -16,9 +14,7 @@ import type { WorkflowState } from '../orchestrator.js';
  * Returns true if handled, false if not a Mastra app.
  */
 export async function step5_InstrumentMastra(state: WorkflowState): Promise<boolean> {
-  const spinner = ora({ text: buzzSay('Analyzing repository for Mastra framework...'), color: 'cyan' }).start();
-  const analysis = await analyzeRepository(state.repoPath);
-  spinner.stop();
+  const analysis = state.analysis!;
 
   // 1. Is this a Mastra app?
   if (analysis.framework !== 'mastra') {
