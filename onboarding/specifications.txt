@@ -1,0 +1,76 @@
+# Buzz, the Arthur GenAI Engine onboarding agent
+
+## Overview
+Buzz is a helpful AI agent that installs and configures Arthur Engine for any Agentic application by analyzing the application's Git repository.
+
+Running Buzz on the user code repository is idempotent. You can run it multiple times without any side effect from the previous runs.
+The inspiration of this tool came from https://posthog.com/wizard and https://vercel.com/docs/cli so make sure they're used as reference.
+
+## Interface
+Buzz is a CLI tool with very modern look and feel. Make sure to research and leverage an open source CLI interface tool if appropriate.
+Buzz's language style is an astronaut: "10-4? Do you copy? It looks like your engine isn’t properly running. We are not cleared for takeoff."
+The user experience of the CLI tool is that the user is interacting with Buzz, an avatar. Create animated effect for the avatar on the CLI.
+
+## Tech stack
+* Programming language: TypeScript
+* Agent framework: https://mastra.ai/
+* Claude Code CLI or Claude Code SDK (https://platform.claude.com/docs/en/agent-sdk/overview): To be decided by Claude Code during the planning phase. Make sure to run deep research and ultrathink what the best approach is. Justify the decision in the plan.
+
+## Use case 1 (step 1): Verify that all pre-reqs are present
+1. Make sure that the tech stack and pre-reqs are available
+1.1. Buzz is started from a file system folder where an user's agentic application code Git repository is cloned
+1.2. Make sure `git status` reports there's no work in progress
+1.3. Claude Code is installed
+1.4. Make sure Claude Code is authenticated
+
+## Use case 2 (step 2): Make sure Arthur Engine is available
+1. Check to see if the machine is a Mac
+1.1. If no, inform the user that we're currently supporting Mac only at the moment and exit
+2. See if `~/.arthur-engine/local-stack/genai-engine` exists with `docker-compose.yml` and `.env` files
+2.1. If yes, ask if the user wants to use the local Arthur GenAI Engine already installed
+2.1.1. If yes, verify that the URL set as `GENAI_ENGINE_INGRESS_URI` in the `.env` file in the `genai-engine` folder is reachable
+2.2. If no, ask if the user wants to install Arthur GenAI Engine on the local machine or one remotely deployed
+2.2.1. If local machine, install the Arthur GenAI Engine on the local machine by running `bash <(curl -sSL https://get-genai-engine.arthur.ai/mac)` and make it completes
+2.2.1.1. Make sure the newly installed local engine is reachable
+2.2.2 If remote, ask which remote Arthur Engine to use and persist the engine's URL and API key in `~/.arthur-engine/local-stack/buzz/.env`
+2.2.2.1 Make sure the remote engine is reachable
+3. Verify Buzz can login with the API key to Arthur GenAI Engine.
+
+## Use case 3 (step 3): Make sure there's a dedicated Arthur GenAI Engine task ID for the user's agentic application
+1. Check to see if an Arthur GenAI Engine task ID exists in `~/.arthur-engine/local-stack/buzz/.env`.
+1.1. If yes, verify with the user that correct task ID is set.
+1.1.1. If the user confirms that it's the correct task ID, go to the next user case.
+2. Retrieve the list of active tasks from the Arthur GenAI Engine.
+2.1. If there is one or more active task(s), list them and ask which task the user wants to use. Also offer to create a new task.
+2.2. If the user selects one of the existing active tasks, record it in `~/.arthur-engine/local-stack/buzz/.env`
+2.2. If the user wants to create a new task, create a new task and record it in `~/.arthur-engine/local-stack/buzz/.env` then present the task ID to the user.
+
+## Use case 4 (step 4): Make sure the user's Python agentic application is instrumented to ship traces to Arthur
+1. Check the user's agentic application code repository to see if the application is a Python application. If not skip to the next use case.
+2. Check the user's agentic application code repository to see if the application is instrumented with Arthur Observability SDK - https://github.com/arthur-ai/arthur-engine/tree/main/arthur-observability-sdk
+2.1. If not, ask for the user's permission and make necessary code changes to instrument his/her application with Arthur Python Observability SDK.
+2.1.1. Make sure to prepare a plan with `/plan` first.
+2.1.2. Implement the plan with the keyword `ultrathink`
+2.2 Skip to the last use case.
+
+## Use case 5 (step 4): Make sure the user's Mastra agentic application is instrumented to ship traces to Arthur
+1. Check the user's agentic application code repository to see if the application is implemented with Mastra TypeScript framework. If not skip to the next use case.
+2. Check the user's agentic application code repository to see if the application is instrumented with Mastra Arthur exporter - https://mastra.ai/docs/observability/tracing/exporters/arthur
+2.1. If not, ask for the user's permission and make necessary code changes to instrument his/her application with Mastra Arthur exporter.
+2.1.1. Make sure to prepare a plan with `/plan` first.
+2.1.2. Implement the plan with the keyword `ultrathink`
+2.2 Skip to the last use case.
+
+## Use case 6 (step 4): Make sure the user's agentic application that's not Python or Mastra implementation is
+1. Check the user's agentic application code repository to see if the application is instrumented with OpenInference for Arthur GenAI Engine.
+1.1 If not, ask for the user's permission and make necessary code changes to instrument his/her application for Arthur GenAI Engine by referencing the examples - https://github.com/arthur-ai/arthur-engine/tree/dev/genai-engine/examples/agents
+1.1.1. Make sure to prepare a plan with `/plan` first.
+1.1.2. Implement the plan with the keyword `ultrathink`
+1.2 Skip to the last use case.
+
+## Use case 7 (step 5): Verify that Arthur GenAI Engine instrumentation is working
+1. Check to see if there is any traces in the user's agentic application's task on the Arthur GenAI Engine.
+1.1 If not, ask the user to run the agent with the Arthur GenAI Engine instrumentation code change to make sure traces get sent.
+2. Instruct the user to login to the Arthur GenAI Engine.
+2.1. Present the Arthur GenAI Engine URL
+2.2. If the engine is hosted on the loccal machine, let the user know how to find the API key
