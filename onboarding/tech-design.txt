@@ -510,20 +510,28 @@ STEP 5: Mastra Instrumentation
   6. instrumentCodeWithClaude({ type: 'mastra-arthur-exporter', ... })
   7. return true
 
-IMPORTANT: The ArthurExporter class is NOT published as a standalone npm
-package. It is a custom implementation. Claude Agent SDK will copy the
-pattern from the customer-support-agent example into the user's codebase:
-  genai-engine/examples/agents/customer-support-agent/src/mastra/observability/arthur/
+The ArthurExporter is published as @mastra/arthur (npm install @mastra/arthur).
+Claude Agent SDK adds this package and registers the exporter using:
 
-The implementation requires:
-  @opentelemetry/exporter-trace-otlp-proto
-  @opentelemetry/sdk-trace-node
-  @opentelemetry/sdk-trace-base
-  @arizeai/openinference-core
+  import { ArthurExporter } from '@mastra/arthur'
+  import { Observability } from '@mastra/observability'
+
+  new Mastra({
+    observability: new Observability({
+      configs: {
+        arthur: {
+          serviceName: '<app-name>',
+          exporters: [new ArthurExporter()],
+        },
+      },
+    }),
+  })
+
+The exporter reads ARTHUR_API_KEY, ARTHUR_BASE_URL, and ARTHUR_TASK_ID
+automatically from environment variables — no manual OTel wiring needed.
 
 Claude SDK prompt (mastra-arthur-exporter) includes:
   - Reference: mastra.ai/docs/observability/tracing/exporters/arthur
-  - Reference example: customer-support-agent in arthur-engine repo
   - MANDATORY RELIABILITY VALIDATION:
     a. npm install (or yarn install)
     b. npx tsc --noEmit (TypeScript compilation check)

@@ -88,7 +88,6 @@ ${base}`,
 Instrument this Mastra TypeScript application with the Arthur observability exporter.
 
 Reference: https://mastra.ai/docs/observability/tracing/exporters/arthur
-Reference implementation: https://github.com/arthur-ai/arthur-engine/tree/dev/genai-engine/examples/agents/customer-support-agent/src/mastra/observability/arthur
 
 Plan ultrathink — carefully examine all files first, then implement:
 
@@ -96,37 +95,32 @@ STEP 1 — ANALYSIS:
   - List all files to understand the project structure
   - Read package.json to see current dependencies
   - Find the Mastra instance initialization file (usually src/mastra/index.ts)
-  - Check if ArthurExporter is already registered (skip if yes)
+  - Check if @mastra/arthur is already installed and ArthurExporter is already registered (skip if yes)
 
 STEP 2 — IMPLEMENTATION (only if not already instrumented):
-  Create src/mastra/observability/arthur/tracing.ts with an ArthurExporter class that:
-  - Implements AITracingExporter from @mastra/core/ai-tracing
-  - Uses OTLPTraceExporter from @opentelemetry/exporter-trace-otlp-proto
-  - Sends traces to ${req.arthurEngineUrl}/api/v1/traces
-  - Sets resource attributes: service.name and arthur.task = "${req.taskId}"
+  Install the published Arthur exporter package:
+    npm install @mastra/arthur
 
-  Add to the Mastra instance (in the observability config):
-      observability: {
+  Import and register in the Mastra instance initialization file:
+    import { Mastra } from '@mastra/core'
+    import { Observability } from '@mastra/observability'
+    import { ArthurExporter } from '@mastra/arthur'
+
+    export const mastra = new Mastra({
+      observability: new Observability({
         configs: {
           arthur: {
-            serviceName: "ai",
-            exporters: [
-              new ArthurExporter({
-                serviceName: "<app-name>",
-                url: process.env.ARTHUR_BASE_URL || "${req.arthurEngineUrl}",
-                headers: { Authorization: \`Bearer \${process.env.ARTHUR_API_KEY}\` },
-                taskId: process.env.ARTHUR_TASK_ID || "${req.taskId}",
-              }),
-            ],
+            serviceName: '<app-name>',
+            exporters: [new ArthurExporter()],
           },
         },
-      },
+      }),
+    })
 
-  Add to package.json dependencies:
-    "@opentelemetry/exporter-trace-otlp-proto": "^0.57.0"
-    "@opentelemetry/sdk-trace-node": "^1.29.0"
-    "@opentelemetry/sdk-trace-base": "^1.29.0"
-    "@arizeai/openinference-core": "^1.0.7"
+  The ArthurExporter reads these env vars automatically (no constructor args needed):
+    ARTHUR_API_KEY   — required
+    ARTHUR_BASE_URL  — required (set to ${req.arthurEngineUrl})
+    ARTHUR_TASK_ID   — optional (set to ${req.taskId})
 
   Add to .env.example:
     ARTHUR_BASE_URL=${req.arthurEngineUrl}

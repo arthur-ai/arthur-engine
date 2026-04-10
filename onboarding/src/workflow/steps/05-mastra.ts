@@ -43,9 +43,8 @@ export async function step5_InstrumentMastra(state: WorkflowState): Promise<bool
   note(
     'Buzz will add the Mastra Arthur exporter to your application.\n\n' +
     'What will change:\n' +
-    '  • ArthurExporter class added to src/mastra/observability/arthur/\n' +
+    '  • @mastra/arthur package installed (npm install @mastra/arthur)\n' +
     '  • ArthurExporter registered in your Mastra instance observability config\n' +
-    '  • OpenTelemetry dependencies added to package.json\n' +
     '  • ARTHUR_BASE_URL, ARTHUR_API_KEY, ARTHUR_TASK_ID added to .env.example\n\n' +
     `Arthur Engine URL: ${state.engineUrl}\nTask ID: ${state.taskId}`,
     'Instrumentation plan',
