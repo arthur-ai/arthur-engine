@@ -152,6 +152,19 @@ class LLMClient:
 
         return kwargs
 
+    def calculate_cost(self, response: ModelResponse) -> str:
+        """Calculate the cost of an LLM response, returning '0.00' if cost data is unavailable."""
+        if self.provider == ModelProvider.VLLM:
+            logger.warning("Cost calculation is not supported for the VLLM provider")
+            return "0.00"
+        try:
+            cost_float = completion_cost(response)
+            return f"{cost_float:.6f}"
+        except Exception:
+            model_name = getattr(response, "model", "unknown")
+            logger.warning(f"Cost calculation not available for model={model_name}")
+            return "0.00"
+
     def completion(
         self,
         *args: Any,
@@ -220,18 +233,7 @@ class LLMClient:
                 detail=f"Unexpected error during completion: {str(e)}",
             )
 
-        if self.provider != ModelProvider.VLLM:
-            try:
-                cost_float = completion_cost(response)
-                cost = f"{cost_float:.6f}" if cost_float is not None else None
-            except Exception:
-                logger.warning(
-                    f"Cost calculation not available for model={kwargs.get('model', 'unknown')}"
-                )
-                cost = None
-        else:
-            cost = "0.00"
-            logger.warning("Cost calculation is not supported for this provider")
+        cost = self.calculate_cost(response)
 
         llm_model_response = LLMModelResponse(
             response=response,
