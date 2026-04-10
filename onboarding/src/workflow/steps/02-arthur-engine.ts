@@ -28,6 +28,16 @@ const DOCKER_COMPOSE_PATH = path.join(GENAI_ENGINE_DIR, 'docker-compose.yml');
 const ENV_PATH = path.join(GENAI_ENGINE_DIR, '.env');
 const INSTALL_SCRIPT = 'bash <(curl -sSL https://get-genai-engine.arthur.ai/mac)';
 
+/** Read GENAI_ENGINE_ADMIN_KEY from .env first, then fall back to docker-compose.yml environment block. */
+function readLocalAdminKey(): string {
+  const cfg = readGenaiEngineConfig();
+  if (cfg.GENAI_ENGINE_ADMIN_KEY) return cfg.GENAI_ENGINE_ADMIN_KEY;
+  if (!fs.existsSync(DOCKER_COMPOSE_PATH)) return '';
+  const content = fs.readFileSync(DOCKER_COMPOSE_PATH, 'utf-8');
+  const match = content.match(/^\s*-\s*GENAI_ENGINE_ADMIN_KEY=(.+)$/m);
+  return match ? match[1].trim() : '';
+}
+
 async function waitForEngine(url: string, apiKey: string, maxWaitMs = 120_000): Promise<boolean> {
   const client = new ArthurEngineClient(url, apiKey);
   const start = Date.now();
@@ -44,6 +54,33 @@ async function waitForEngine(url: string, apiKey: string, maxWaitMs = 120_000): 
 
   spinner.fail(buzzSay('Engine did not become ready in time.'));
   return false;
+}
+
+type LocalEngineStatus =
+  | { status: 'running'; url: string; apiKey: string }
+  | { status: 'down'; url: string; apiKey: string }
+  | { status: 'not-installed' };
+
+async function detectLocalArthurEngine(): Promise<LocalEngineStatus> {
+  if (!fs.existsSync(DOCKER_COMPOSE_PATH) || !fs.existsSync(ENV_PATH)) {
+    return { status: 'not-installed' };
+  }
+
+  const cfg = readGenaiEngineConfig();
+  const url = cfg.GENAI_ENGINE_INGRESS_URI ?? 'http://localhost:3030';
+  const apiKey = readLocalAdminKey();
+
+  try {
+    const { stdout } = await execa('docker', ['compose', '-f', DOCKER_COMPOSE_PATH, 'ps', '--status', 'running', '-q']);
+    if (!stdout.trim()) return { status: 'down', url, apiKey };
+  } catch {
+    return { status: 'down', url, apiKey };
+  }
+
+  const client = new ArthurEngineClient(url, apiKey);
+  if (!(await client.verifyConnection())) return { status: 'down', url, apiKey };
+
+  return { status: 'running', url, apiKey };
 }
 
 async function verifyAndLogin(url: string, apiKey: string): Promise<void> {
@@ -88,13 +125,14 @@ async function handleLocalInstall(state: WorkflowState): Promise<void> {
     throw new BuzzError(`Install script failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 
-  // Read the newly written .env
+  // Read the newly written config
   const cfg = readGenaiEngineConfig();
   const url = cfg.GENAI_ENGINE_INGRESS_URI ?? 'http://localhost:3030';
-  const apiKey = cfg.GENAI_ENGINE_ADMIN_KEY ?? '';
+  let apiKey = readLocalAdminKey();
 
   if (!apiKey) {
-    logWarn('Could not read API key from installed engine config. Using empty key for now.');
+    logWarn('Could not find API key in engine config files.');
+    apiKey = await password('Enter your Arthur Engine admin API key:');
   }
 
   const ready = await waitForEngine(url, apiKey);
@@ -140,6 +178,45 @@ export async function step2_EnsureArthurEngine(state: WorkflowState): Promise<vo
     }
   }
 
+  // Check for a local Arthur Engine installation
+  const local = await detectLocalArthurEngine();
+  if (local.status === 'running') {
+    const useLocal = await confirm(
+      `Detected Arthur Engine running at ${local.url}. Use this?`,
+    );
+    if (useLocal) {
+      await verifyAndLogin(local.url, local.apiKey);
+      writeBuzzConfig({ ARTHUR_ENGINE_URL: local.url, ARTHUR_API_KEY: local.apiKey });
+      state.engineUrl = local.url;
+      state.apiKey = local.apiKey;
+      return;
+    }
+  } else if (local.status === 'down') {
+    logWarn(`Found a local Arthur Engine installation at ${local.url} but it is not reachable.`);
+    const recovery = await select<'restart' | 'install'>(
+      'What would you like to do?',
+      [
+        { value: 'restart', label: "I'll bring it back up", hint: 'Buzz will wait until the engine is ready' },
+        { value: 'install', label: 'Run a fresh install', hint: 'Re-runs the install script' },
+      ],
+    );
+    if (recovery === 'restart') {
+      const ready = await waitForEngine(local.url, local.apiKey);
+      if (!ready) {
+        throw new BuzzError('Arthur Engine did not come back online in time. Check Docker logs.');
+      }
+      await verifyAndLogin(local.url, local.apiKey);
+      writeBuzzConfig({ ARTHUR_ENGINE_URL: local.url, ARTHUR_API_KEY: local.apiKey });
+      state.engineUrl = local.url;
+      state.apiKey = local.apiKey;
+      logSuccess(`All systems nominal. Arthur Engine back online at ${local.url}`);
+      return;
+    } else {
+      await handleLocalInstall(state);
+      return;
+    }
+  }
+
   // Check macOS
   if (process.platform !== 'darwin') {
     logError('This mission currently requires Mac OS hardware. Returning to base.');
@@ -148,27 +225,6 @@ export async function step2_EnsureArthurEngine(state: WorkflowState): Promise<vo
       'Mac only',
     );
     throw new BuzzError('Local Arthur Engine installation requires macOS.', true);
-  }
-
-  // Check if local engine already installed
-  const localInstalled = fs.existsSync(DOCKER_COMPOSE_PATH) && fs.existsSync(ENV_PATH);
-
-  if (localInstalled) {
-    const cfg = readGenaiEngineConfig();
-    const localUrl = cfg.GENAI_ENGINE_INGRESS_URI ?? 'http://localhost:3030';
-
-    const useLocal = await confirm(
-      `Found a local Arthur Engine installation at ${localUrl}. Use this?`,
-    );
-
-    if (useLocal) {
-      const apiKey = cfg.GENAI_ENGINE_ADMIN_KEY ?? '';
-      await verifyAndLogin(localUrl, apiKey);
-      writeBuzzConfig({ ARTHUR_ENGINE_URL: localUrl, ARTHUR_API_KEY: apiKey });
-      state.engineUrl = localUrl;
-      state.apiKey = apiKey;
-      return;
-    }
   }
 
   // Ask: local install or remote
