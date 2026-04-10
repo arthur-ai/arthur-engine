@@ -110,7 +110,12 @@ class CompliancePolicyCheckExecutor:
             str(assignment.id), status, alert_rule_results, attestation_results
         )
         self._write_compliance_metrics(
-            model_id, assignment, status, attestation_results, self._now
+            model_id,
+            assignment,
+            status,
+            attestation_results,
+            alert_rule_results,
+            self._now,
         )
 
     def _fetch_assignments(
@@ -329,6 +334,7 @@ class CompliancePolicyCheckExecutor:
         assignment: PolicyAssignment,
         status: ComplianceStatus,
         attestation_results: List[Tuple[PolicyAttestationRule, bool, str]],
+        alert_rule_results: List[Tuple[ClientAlertRule, bool, Optional[Alert]]],
         now: datetime,
     ) -> None:
         metric_ts = self._align_to_5min(now)
@@ -400,6 +406,51 @@ class CompliancePolicyCheckExecutor:
                                 ),
                                 Dimension(
                                     name="attestation_rule_name",
+                                    value=rule.name,
+                                ),
+                                Dimension(
+                                    name="status",
+                                    value="compliant" if passed else "non_compliant",
+                                ),
+                            ],
+                            values=[
+                                NumericPoint(timestamp=metric_ts, value=1.0),
+                            ],
+                        ),
+                    ],
+                )
+            )
+
+        # Per-alert-rule status metric (value=1 for counting, status in dimensions)
+        for rule, passed, _triggering_alert in alert_rule_results:
+            metrics.append(
+                NumericMetric(
+                    name="policy_alert_rule_check_count",
+                    numeric_series=[
+                        NumericTimeSeries(
+                            dimensions=[
+                                Dimension(
+                                    name="policy_id",
+                                    value=str(assignment.policy.id),
+                                ),
+                                Dimension(
+                                    name="policy_name",
+                                    value=assignment.policy.name,
+                                ),
+                                Dimension(
+                                    name="assignment_id",
+                                    value=str(assignment.id),
+                                ),
+                                Dimension(
+                                    name="model_name",
+                                    value=assignment.model.name,
+                                ),
+                                Dimension(
+                                    name="alert_rule_id",
+                                    value=str(rule.id),
+                                ),
+                                Dimension(
+                                    name="alert_rule_name",
                                     value=rule.name,
                                 ),
                                 Dimension(
