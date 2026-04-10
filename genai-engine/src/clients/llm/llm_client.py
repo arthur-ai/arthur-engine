@@ -221,8 +221,12 @@ class LLMClient:
             )
 
         if self.provider != ModelProvider.VLLM:
-            cost_float = completion_cost(response)
-            cost = f"{cost_float:.6f}" if cost_float is not None else None
+            try:
+                cost_float = completion_cost(response)
+                cost = f"{cost_float:.6f}" if cost_float is not None else None
+            except Exception:
+                logger.warning(f"Cost calculation not available for model={kwargs.get('model', 'unknown')}")
+                cost = None
         else:
             cost = "0.00"
             logger.warning("Cost calculation is not supported for this provider")
