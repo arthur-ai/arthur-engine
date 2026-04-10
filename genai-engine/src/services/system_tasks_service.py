@@ -102,11 +102,19 @@ def _ensure_prompt_with_production_tag(
             (SYNTHETIC_DATASET_TASK_ID, prompt_name, 1),
         )
         if existing_prompt:
-            stored_content = existing_prompt.messages[0].get("content", "") if existing_prompt.messages else ""
+            stored_content = (
+                existing_prompt.messages[0].get("content", "")
+                if existing_prompt.messages
+                else ""
+            )
             if stored_content != content:
-                existing_prompt.messages = [OpenAIMessage(role=role, content=content).model_dump()]
+                existing_prompt.messages = [
+                    OpenAIMessage(role=role, content=content).model_dump()
+                ]
                 db_session.commit()
-                logger.info(f"Updated content for prompt '{prompt_name}' (template changed)")
+                logger.info(
+                    f"Updated content for prompt '{prompt_name}' (template changed)"
+                )
         return
 
     # Check if version 1 already exists

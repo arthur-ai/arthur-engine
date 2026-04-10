@@ -76,11 +76,11 @@ from services.continuous_eval import (
     initialize_continuous_eval_queue_service,
     shutdown_continuous_eval_queue_service,
 )
-from services.system_tasks_service import initialize_system_tasks
 from services.currency import (
     initialize_currency_conversion_service,
     shutdown_currency_conversion_service,
 )
+from services.system_tasks_service import initialize_system_tasks
 from services.task import (
     initialize_global_agent_polling_service,
     shutdown_global_agent_polling_service,

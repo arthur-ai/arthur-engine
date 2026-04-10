@@ -140,7 +140,10 @@ def build_system_prompt(
     return (
         SYSTEM_PROMPT_TEMPLATE.replace("{dataset_purpose}", dataset_purpose)
         .replace("{column_definitions}", format_column_definitions(column_descriptions))
-        .replace("{reference_examples}", format_reference_examples(existing_rows, column_names))
+        .replace(
+            "{reference_examples}",
+            format_reference_examples(existing_rows, column_names),
+        )
     )
 
 
