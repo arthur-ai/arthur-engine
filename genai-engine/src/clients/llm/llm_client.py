@@ -9,7 +9,7 @@ from arthur_common.models.llm_model_providers import ModelProvider
 from fastapi import HTTPException
 from litellm import completion_cost, get_model_cost_map, model_cost_map_url
 from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
-from litellm.types.utils import ModelResponse
+from litellm.types.utils import ModelResponse, TextCompletionResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
@@ -152,8 +152,12 @@ class LLMClient:
 
         return kwargs
 
-    def calculate_cost(self, response: ModelResponse) -> str:
+    def calculate_cost(
+        self, response: Optional[Union[ModelResponse, TextCompletionResponse]]
+    ) -> str:
         """Calculate the cost of an LLM response, returning '0.00' if cost data is unavailable."""
+        if response is None:
+            return "0.00"
         if self.provider == ModelProvider.VLLM:
             logger.warning("Cost calculation is not supported for the VLLM provider")
             return "0.00"
