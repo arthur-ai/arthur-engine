@@ -45,14 +45,16 @@ async function waitForEngine(url: string, apiKey: string, maxWaitMs = 120_000): 
 
   while (Date.now() - start < maxWaitMs) {
     if (await client.verifyConnection()) {
-      spinner.succeed(buzzSay('Arthur Engine is online.'));
+      spinner.stop();
+      logSuccess('Arthur Engine is online.');
       return true;
     }
     await new Promise<void>(r => setTimeout(r, 5_000));
     spinner.text = buzzSay(`Waiting for engine... (${Math.round((Date.now() - start) / 1000)}s)`);
   }
 
-  spinner.fail(buzzSay('Engine did not become ready in time.'));
+  spinner.stop();
+  logError('Engine did not become ready in time.');
   return false;
 }
 
@@ -89,7 +91,7 @@ async function verifyAndLogin(url: string, apiKey: string): Promise<void> {
   const spinner = ora({ text: buzzSay('Verifying Arthur Engine connection...'), color: 'cyan' }).start();
   const reachable = await client.verifyConnection();
   if (!reachable) {
-    spinner.fail();
+    spinner.stop();
     logError(`Arthur Engine at ${url} is not reachable.`);
     throw new BuzzError(`Engine at ${url} is not reachable.`);
   }
@@ -97,12 +99,13 @@ async function verifyAndLogin(url: string, apiKey: string): Promise<void> {
 
   const loggedIn = await client.login();
   if (!loggedIn) {
-    spinner.fail();
+    spinner.stop();
     logError('API key is invalid. Cannot authenticate with Arthur Engine.');
     throw new BuzzError('Arthur Engine API key is invalid.');
   }
 
-  spinner.succeed(buzzSay('Arthur Engine connection and authentication verified.'));
+  spinner.stop();
+  logSuccess('Arthur Engine connection and authentication verified.');
 }
 
 async function handleLocalInstall(state: WorkflowState): Promise<void> {

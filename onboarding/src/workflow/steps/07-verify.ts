@@ -21,14 +21,16 @@ async function pollForTraces(client: ArthurEngineClient, taskId: string): Promis
   while (Date.now() - start < POLL_MAX_MS) {
     const traces = await client.getTraces(taskId);
     if (traces.length > 0) {
-      spinner.succeed(buzzSay(`We have signal! ${traces.length} trace(s) detected.`));
+      spinner.stop();
+      logSuccess(`We have signal! ${traces.length} trace(s) detected.`);
       return true;
     }
     await new Promise<void>(r => setTimeout(r, POLL_INTERVAL_MS));
     spinner.text = buzzSay(`Scanning for traces... (${Math.round((Date.now() - start) / 1000)}s)`);
   }
 
-  spinner.fail(buzzSay('No traces detected after 60 seconds.'));
+  spinner.stop();
+  logWarn('No traces detected after 60 seconds.');
   return false;
 }
 

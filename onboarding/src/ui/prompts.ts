@@ -89,5 +89,5 @@ export function logInfo(msg: string): void {
 }
 
 export function note(message: string, title?: string): void {
-  p.note(message, title ? buzzSay(title) : undefined);
+  p.note(message, title);
 }

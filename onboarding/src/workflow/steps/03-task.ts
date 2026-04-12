@@ -38,9 +38,10 @@ export async function step3_EnsureTaskId(state: WorkflowState): Promise<void> {
 
   try {
     tasks = await client.getTasks();
-    spinner.succeed(buzzSay(`Found ${tasks.length} active task(s).`));
+    spinner.stop();
+    logSuccess(`Found ${tasks.length} active task(s).`);
   } catch (err) {
-    spinner.fail();
+    spinner.stop();
     logError(`Failed to retrieve tasks: ${err instanceof Error ? err.message : String(err)}`);
     throw new BuzzError('Could not retrieve tasks from Arthur Engine.');
   }
@@ -75,12 +76,13 @@ export async function step3_EnsureTaskId(state: WorkflowState): Promise<void> {
   const createSpinner = ora({ text: buzzSay(`Creating task "${taskName}"...`), color: 'cyan' }).start();
   try {
     const newTask = await client.createTask(taskName);
-    createSpinner.succeed(buzzSay(`Task created: "${newTask.name}" (${newTask.id})`));
+    createSpinner.stop();
+    logSuccess(`Task created: "${newTask.name}" (${newTask.id})`);
     writeBuzzConfig({ ARTHUR_TASK_ID: newTask.id });
     state.taskId = newTask.id;
     note(`Task ID: ${newTask.id}\nThis has been saved to ~/.arthur-engine/local-stack/buzz/.env`, 'New task created');
   } catch (err) {
-    createSpinner.fail();
+    createSpinner.stop();
     logError(`Failed to create task: ${err instanceof Error ? err.message : String(err)}`);
     throw new BuzzError('Could not create a task in Arthur Engine.');
   }
