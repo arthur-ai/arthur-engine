@@ -7,7 +7,7 @@ import { useStore } from "@tanstack/react-form";
 import { withFieldGroup } from "../../filtering/hooks/form";
 import { MatchStatus, useMatchingVariables } from "../hooks/useMatchingVariables";
 
-import { useTransform } from "@/hooks/transforms/useTransform";
+import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
 import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
 
 const getStatusConfig = (theme: Theme, status: MatchStatus) => {
@@ -34,17 +34,18 @@ export const Matcher = withFieldGroup({
     const transformId = useStore(group.store, (state) => (state.values.transform === "manual" ? null : state.values.transform));
 
     const { latestVersion: dataset } = useDatasetLatestVersion(datasetId);
-    const { data: transform } = useTransform(transformId ?? undefined);
+    const { data: versions = [] } = useTransformVersions(transformId);
+    const definition = versions[0]?.definition;
 
     const { matchingNames, unmatchedTransform, matchStatus, matchCount } = useMatchingVariables({
       columnNames: dataset?.column_names ?? [],
-      variables: transform?.definition.variables ?? [],
+      variables: definition?.variables ?? [],
     });
 
     // We only show the matcher if a transform is selected
     if (!transformId) return null;
 
-    const totalTransformVars = transform?.definition.variables?.length ?? 0;
+    const totalTransformVars = definition?.variables?.length ?? 0;
 
     return (
       <Box

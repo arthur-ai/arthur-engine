@@ -12,6 +12,7 @@ from arthur_common.models.response_schemas import (
     TokenCountCostSchema,
     TraceResponse,
 )
+from arthur_common.models.task_eval_schemas import TraceTransformDefinition
 from litellm.types.utils import ChatCompletionMessageToolCall
 from pydantic import BaseModel, Field
 from pydantic_core import Url
@@ -803,7 +804,7 @@ class ContinuousEvalRerunResponse(BaseModel):
 class ContinuousEvalTestRunResponse(BaseModel):
     id: UUID = Field(description="ID of the test run.")
     continuous_eval_id: UUID = Field(
-        description="ID of the continuous eval being tested."
+        description="ID of the continuous eval being tested.",
     )
     task_id: str = Field(description="ID of the parent task.")
     status: TestRunStatus = Field(description="Status of the test run.")
@@ -884,6 +885,23 @@ class AgenticAnnotationAnalyticsResponse(BaseModel):
         description="Daily statistics ordered by date descending",
     )
     count: int = Field(description="Number of days with data")
+
+
+class TraceTransformVersionResponse(BaseModel):
+    id: UUID = Field(description="ID of the version.")
+    transform_id: UUID = Field(description="ID of the parent transform.")
+    version_number: int = Field(description="Monotonically increasing version number.")
+    definition: TraceTransformDefinition = Field(
+        description="Snapshot of the transform definition at the time of this version.",
+    )
+    created_at: datetime = Field(description="Timestamp when this version was created.")
+
+
+class ListTraceTransformVersionsResponse(BaseModel):
+    versions: List[TraceTransformVersionResponse] = Field(
+        description="List of versions for the transform, ordered by version_number descending.",
+    )
+    count: int = Field(description="Total number of versions.")
 
 
 class TransformDependentRef(BaseModel):
