@@ -4,13 +4,14 @@ import logging
 import os
 from typing import Any, Dict, Optional
 
-from arthur_observability_sdk._client import ArthurAPIClient
-from arthur_observability_sdk.telemetry import setup_telemetry
 from openinference.instrumentation import using_attributes, using_session, using_user
 from openinference.semconv.trace import OpenInferenceSpanKindValues, SpanAttributes
 from opentelemetry import trace
 from opentelemetry.context import get_value
 from opentelemetry.sdk.trace import TracerProvider
+
+from arthur_observability_sdk._client import ArthurAPIClient
+from arthur_observability_sdk.telemetry import setup_telemetry
 
 logger = logging.getLogger(__name__)
 

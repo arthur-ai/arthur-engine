@@ -2,8 +2,9 @@
 
 from unittest.mock import MagicMock
 
-import arthur_genai_client.models as _genai_models
 import pytest
+
+import arthur_genai_client.models as _genai_models
 from arthur_observability_sdk._client import ArthurAPIClient
 from arthur_observability_sdk.arthur import Arthur
 
