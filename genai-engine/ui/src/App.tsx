@@ -111,6 +111,7 @@ function App() {
                             <Route path="overview" element={<TaskOverview />} />
                             <Route path="model-providers" element={<Navigate to="/settings/model-providers" replace />} />
                             <Route path="api-keys" element={<Navigate to="/settings/api-keys" replace />} />
+                            <Route path="application-config" element={<Navigate to="/" replace />} />
                             <Route path="rag-configurations" element={<RagConfigurationsPage />} />
                             <Route path="rag-configurations/:configId" element={<RagConfigurationsPage />} />
                             <Route path="rag-configurations/:configId/versions/:version" element={<RagConfigurationsPage />} />

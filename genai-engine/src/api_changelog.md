@@ -2,82 +2,27 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
-# 04/10/2026
+# 04/13/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  removed the required property 'transforms/items/definition' from the response with the '200' status
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  removed the required property 'definition' from the response with the '200' status
 - **BREAKING CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  removed the required property 'definition' from the response with the '200' status
 - **BREAKING CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  removed the required property 'definition' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  endpoint added
-
-# 04/09/2026
-- **BREAKING CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}/restore  api path removed without deprecation
-
-# 04/09/2026
-- **BREAKING CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  removed the required property 'versions/items/config_snapshot' from the response with the '200' status
-- **BREAKING CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  removed the required property 'config_snapshot' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  removed the optional property 'versions/items/author' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  removed the optional property 'author' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  added the required property 'versions/items/definition' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  added the required property 'definition' to the response with the '200' status
-
-# 04/09/2026
 - **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property 'transform_version_id' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the new optional request property 'transform_version_id'
 - **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property 'transform_version_id' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property 'evals/items/transform_version_id' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional request property 'transform_version_id'
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property 'transform_version_id' to the response with the '200' status
-
-# 04/09/2026
 - **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  endpoint added
 - **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}/restore  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  endpoint added
+
+# 04/09/2026
+- **CHANGE** for **URL**: /api/v2/configuration  added the optional property 'trace_retention_days' to the request body
+- **CHANGE** for **URL**: /api/v2/configuration  added the optional property 'trace_retention_days' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/configuration  added the optional property 'allowed_trace_retention_days' to the response with the '200' status
 
 # 04/08/2026
-- **BREAKING CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  removed the required property 'versions/items/task_id' from the response with the '200' status
-- **BREAKING CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  removed the required property 'task_id' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  removed the optional property 'eval_type' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  removed the optional property 'ml_eval_name' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  removed the optional property 'ml_eval_version' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  removed the optional property 'eval_type' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  removed the optional property 'ml_eval_name' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  removed the optional property 'ml_eval_version' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  removed the optional property 'evals/items/eval_type' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  removed the optional property 'evals/items/ml_eval_name' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  removed the optional property 'evals/items/ml_eval_version' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  removed the optional property 'eval_type' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  removed the optional property 'ml_eval_name' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  removed the optional property 'ml_eval_version' from the response with the '200' status
-- **CHANGE** for **URL**: /api/chat/  endpoint added
-- **CHANGE** for **URL**: /api/chat/context/{inference_id}  endpoint added
-- **CHANGE** for **URL**: /api/chat/conversations  endpoint added
-- **CHANGE** for **URL**: /api/chat/default_task  endpoint added
-- **CHANGE** for **URL**: /api/chat/default_task  endpoint added
-- **CHANGE** for **URL**: /api/chat/feedback/{inference_id}  endpoint added
-- **CHANGE** for **URL**: /api/chat/files  endpoint added
-- **CHANGE** for **URL**: /api/chat/files  endpoint added
-- **CHANGE** for **URL**: /api/chat/files/{file_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'llm_eval_name' became required for the status '200'
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'llm_eval_version' became required for the status '200'
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  response property 'llm_eval_name' list-of-types was narrowed by removing types 'null' from media type 'application/json' of response '200'
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  response property 'llm_eval_version' list-of-types was narrowed by removing types 'null' from media type 'application/json' of response '200'
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'llm_eval_name' became required for the status '200'
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'llm_eval_version' became required for the status '200'
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  response property 'llm_eval_name' list-of-types was narrowed by removing types 'null' from media type 'application/json' of response '200'
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  response property 'llm_eval_version' list-of-types was narrowed by removing types 'null' from media type 'application/json' of response '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the response property 'evals/items/llm_eval_name' became required for the status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the response property 'evals/items/llm_eval_version' became required for the status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  response property 'evals/items/llm_eval_name' list-of-types was narrowed by removing types 'null' from media type 'application/json' of response '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  response property 'evals/items/llm_eval_version' list-of-types was narrowed by removing types 'null' from media type 'application/json' of response '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the response property 'llm_eval_name' became required for the status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the response property 'llm_eval_version' became required for the status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  response property 'llm_eval_name' list-of-types was narrowed by removing types 'null' from media type 'application/json' of response '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  response property 'llm_eval_version' list-of-types was narrowed by removing types 'null' from media type 'application/json' of response '200'
-- **CHANGE** for **URL**: /users  endpoint added
-- **CHANGE** for **URL**: /users  endpoint added
-- **CHANGE** for **URL**: /users/permissions/check  endpoint added
-- **CHANGE** for **URL**: /users/{user_id}  endpoint added
-- **CHANGE** for **URL**: /users/{user_id}/reset_password  endpoint added
 - **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}  added the new 'error' enum value to the 'status' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/continuous_evals/{eval_id}/test_runs
 - **CHANGE**warning [response-property-enum-value-added] at /vagrant/genai-engine/new.openapi.json
@@ -116,11 +61,6 @@ The intention of this changelog is to document API changes as they happen to eff
 # 03/26/2026
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals  added the new optional 'query' request parameter 'tags'
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  added the new optional 'query' request parameter 'tags'
-
-# 03/24/2026
-- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  added the required property 'versions/items/definition/variables' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  added the required property 'definition/variables' to the response with the '200' status
-- **INFO** for **TraceTransformVersionResponse**: `definition` field returns a typed `TraceTransformDefinition` object `{"variables": [...]}` instead of a generic object. The structure contains a `variables` array of extraction rules (`variable_name`, `span_name`, `attribute_path`, `fallback`). This is a backward-compatible refinement.
 
 # 03/19/2026
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/chatbot/stream  endpoint added

@@ -107,6 +107,7 @@ class DatabaseTraceMetadata(Base):
         Index("idx_traces_session_time", "session_id", "start_time"),
         Index("idx_traces_total_token_count", "total_token_count"),
         Index("idx_traces_total_token_cost", "total_token_cost"),
+        Index("idx_traces_end_time", "end_time"),
     )
 
 
