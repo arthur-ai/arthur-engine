@@ -2,6 +2,11 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 04/09/2026
+- **CHANGE** for **URL**: /api/v2/configuration  added the optional property 'trace_retention_days' to the request body
+- **CHANGE** for **URL**: /api/v2/configuration  added the optional property 'trace_retention_days' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/configuration  added the optional property 'allowed_trace_retention_days' to the response with the '200' status
+
 # 04/08/2026
 - **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}  added the new 'error' enum value to the 'status' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/continuous_evals/{eval_id}/test_runs
