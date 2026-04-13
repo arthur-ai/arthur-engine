@@ -22,7 +22,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { ArthurLogo } from "./common/ArthurLogo";
@@ -34,11 +34,16 @@ import { useApi } from "@/hooks/useApi";
 import { TaskResponse } from "@/lib/api";
 import { type InactiveDays, type SortBy, useTaskListStore } from "@/stores/task-list.store";
 
+const PAGE_SIZE = 50;
+
 export const AllTasks: React.FC = () => {
   const navigate = useNavigate();
   const api = useApi();
   const [tasks, setTasks] = useState<TaskResponse[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [archivedTasks, setArchivedTasks] = useState<TaskResponse[]>([]);
   const [isLoadingArchived, setIsLoadingArchived] = useState(false);
@@ -47,6 +52,9 @@ export const AllTasks: React.FC = () => {
   const [archivedDialogOpen, setArchivedDialogOpen] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const { hideSystemTasks, sortBy, inactiveDays, setHideSystemTasks, setSortBy, setInactiveDays } = useTaskListStore();
+
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const hasMore = tasks.length < totalCount;
 
   const filteredTasks = useMemo(() => {
     let result = [...tasks];
@@ -83,31 +91,44 @@ export const AllTasks: React.FC = () => {
     return result;
   }, [archivedTasks, hideSystemTasks, sortBy]);
 
-  const fetchActiveTasks = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
+  const fetchActiveTasks = useCallback(
+    async (page = 0) => {
+      try {
+        if (page === 0) {
+          setIsLoading(true);
+        } else {
+          setIsFetchingMore(true);
+        }
+        setError(null);
 
-      if (!api) {
-        throw new Error("API client not available");
+        if (!api) {
+          throw new Error("API client not available");
+        }
+
+        const response = await api.api.searchTasksApiV2TasksSearchPost(
+          {
+            page_size: PAGE_SIZE,
+            page,
+          },
+          {}
+        );
+
+        const incoming = response.data.tasks || [];
+        const count = response.data.count ?? 0;
+
+        setTotalCount(count);
+        setTasks((prev) => (page === 0 ? incoming : [...prev, ...incoming]));
+        setCurrentPage(page);
+      } catch (err) {
+        console.error("Failed to fetch tasks:", err);
+        setError("Failed to load tasks. Please check your authentication.");
+      } finally {
+        setIsLoading(false);
+        setIsFetchingMore(false);
       }
-
-      const response = await api.api.searchTasksApiV2TasksSearchPost(
-        {
-          page_size: 50,
-          page: 0,
-        },
-        {}
-      );
-
-      setTasks(response.data.tasks || []);
-    } catch (err) {
-      console.error("Failed to fetch tasks:", err);
-      setError("Failed to load tasks. Please check your authentication.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [api]);
+    },
+    [api]
+  );
 
   const fetchArchivedTasks = useCallback(async () => {
     try {
@@ -120,7 +141,7 @@ export const AllTasks: React.FC = () => {
 
       const response = await api.api.searchTasksApiV2TasksSearchPost(
         {
-          page_size: 50,
+          page_size: 500,
           page: 0,
         },
         {
@@ -139,7 +160,7 @@ export const AllTasks: React.FC = () => {
   }, [api]);
 
   const handleArchiveToggle = useCallback(async () => {
-    await fetchActiveTasks();
+    await fetchActiveTasks(0);
     if (archivedDialogOpen || archivedLoaded) {
       await fetchArchivedTasks();
     }
@@ -147,7 +168,7 @@ export const AllTasks: React.FC = () => {
 
   useEffect(() => {
     if (api) {
-      fetchActiveTasks();
+      fetchActiveTasks(0);
     }
   }, [api, fetchActiveTasks]);
 
@@ -158,8 +179,26 @@ export const AllTasks: React.FC = () => {
     }
   }, [api, archivedDialogOpen, archivedLoaded, fetchArchivedTasks]);
 
+  // Infinite scroll: observe the sentinel at the bottom of the task grid
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isFetchingMore && !isLoading) {
+          fetchActiveTasks(currentPage + 1);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, isFetchingMore, isLoading, currentPage, fetchActiveTasks]);
+
   const handleTaskCreated = async (taskId: string) => {
-    await fetchActiveTasks();
+    await fetchActiveTasks(0);
     navigate(`/tasks/${taskId}/overview`);
   };
 
@@ -256,10 +295,10 @@ export const AllTasks: React.FC = () => {
                 {/* Title + CTA */}
                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
                   <Box>
-                    <Typography variant="h6">Tasks ({tasks.length})</Typography>
+                    <Typography variant="h6">Tasks ({totalCount})</Typography>
                     <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
                       {filteredTasks.length < tasks.length
-                        ? `Showing ${filteredTasks.length} of ${tasks.length} tasks`
+                        ? `Showing ${filteredTasks.length} of ${tasks.length} loaded`
                         : "Click on any task to open the toolkit"}
                     </Typography>
                   </Box>
@@ -307,6 +346,23 @@ export const AllTasks: React.FC = () => {
                     {filteredTasks.map((task) => (
                       <TaskCard key={task.id} task={task} onArchiveToggle={handleArchiveToggle} />
                     ))}
+                  </Box>
+                )}
+
+                {/* Infinite scroll sentinel */}
+                <div ref={sentinelRef} style={{ height: 1 }} />
+
+                {/* Load-more feedback */}
+                {isFetchingMore && (
+                  <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+                    <CircularProgress size={24} />
+                  </Box>
+                )}
+                {!hasMore && tasks.length > 0 && (
+                  <Box sx={{ textAlign: "center", py: 2 }}>
+                    <Typography variant="caption" color="text.disabled">
+                      All {totalCount} tasks loaded
+                    </Typography>
                   </Box>
                 )}
               </>
