@@ -54,6 +54,8 @@ export const AllTasks: React.FC = () => {
   const { hideSystemTasks, sortBy, inactiveDays, setHideSystemTasks, setSortBy, setInactiveDays } = useTaskListStore();
 
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const tasksRef = useRef<TaskResponse[]>(tasks);
+  tasksRef.current = tasks;
   const hasMore = tasks.length < totalCount;
 
   const filteredTasks = useMemo(() => {
@@ -116,18 +118,14 @@ export const AllTasks: React.FC = () => {
         const incoming = response.data.tasks || [];
         const count = response.data.count ?? 0;
 
-        setTotalCount(count);
         if (page > 0 && incoming.length === 0) {
           // API returned empty despite count > 0 (tasks deleted mid-pagination).
-          // Clamp totalCount to what we actually have to stop infinite scroll.
-          setTasks((prev) => {
-            setTotalCount(prev.length);
-            return prev;
-          });
-          setCurrentPage(page);
-          return;
+          // Clamp totalCount to the number actually loaded so hasMore becomes false.
+          setTotalCount(tasksRef.current.length);
+        } else {
+          setTotalCount(count);
+          setTasks((prev) => (page === 0 ? incoming : [...prev, ...incoming]));
         }
-        setTasks((prev) => (page === 0 ? incoming : [...prev, ...incoming]));
         setCurrentPage(page);
       } catch (err) {
         console.error("Failed to fetch tasks:", err);
