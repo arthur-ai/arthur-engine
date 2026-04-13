@@ -2,9 +2,8 @@
 
 from unittest.mock import MagicMock
 
-import pytest
-
 import arthur_genai_client.models as _genai_models
+import pytest
 from arthur_observability_sdk._client import ArthurAPIClient
 from arthur_observability_sdk.arthur import Arthur
 
@@ -55,6 +54,51 @@ def test_arthur_requires_task_or_service_name():
 def test_arthur_accepts_task_id_only():
     arthur = Arthur(task_id="uuid-1234", api_key="test-key", enable_telemetry=False)
     assert arthur._task_id == "uuid-1234"
+    arthur.shutdown()
+
+
+# ---------------------------------------------------------------------------
+# arthur.task resource attribute auto-injection
+# ---------------------------------------------------------------------------
+
+
+def test_task_id_auto_added_to_resource_attributes():
+    """task_id is automatically included as 'arthur.task' in resource_attributes."""
+    arthur = Arthur(task_id="uuid-1234", api_key="test-key", enable_telemetry=False)
+    assert arthur._resource_attributes["arthur.task"] == "uuid-1234"
+    arthur.shutdown()
+
+
+def test_task_id_not_added_when_arthur_task_already_present():
+    """Explicit 'arthur.task' in resource_attributes is not overwritten by task_id."""
+    arthur = Arthur(
+        task_id="uuid-1234",
+        api_key="test-key",
+        enable_telemetry=False,
+        resource_attributes={"arthur.task": "explicit-task-id"},
+    )
+    assert arthur._resource_attributes["arthur.task"] == "explicit-task-id"
+    arthur.shutdown()
+
+
+def test_task_id_not_added_to_resource_attributes_when_absent():
+    """When no task_id is given, 'arthur.task' is not added to resource_attributes."""
+    arthur = Arthur(service_name="my-service", api_key="test-key", enable_telemetry=False)
+    assert "arthur.task" not in arthur._resource_attributes
+    arthur.shutdown()
+
+
+def test_existing_resource_attributes_preserved_with_task_id():
+    """Custom resource_attributes are preserved alongside the injected 'arthur.task'."""
+    arthur = Arthur(
+        task_id="uuid-1234",
+        api_key="test-key",
+        enable_telemetry=False,
+        resource_attributes={"deployment.environment": "staging", "team": "ml"},
+    )
+    assert arthur._resource_attributes["arthur.task"] == "uuid-1234"
+    assert arthur._resource_attributes["deployment.environment"] == "staging"
+    assert arthur._resource_attributes["team"] == "ml"
     arthur.shutdown()
 
 
@@ -176,7 +220,8 @@ def _make_api_client() -> ArthurAPIClient:
 def test_resolve_task_id_found_on_first_page():
     client = _make_api_client()
     client._tasks_api.search_tasks_api_v2_tasks_search_post.return_value = _make_search_result(
-        [_make_task("my-task", "uuid-1")], count=1
+        [_make_task("my-task", "uuid-1")],
+        count=1,
     )
     assert client.resolve_task_id("my-task") == "uuid-1"
     client._tasks_api.search_tasks_api_v2_tasks_search_post.assert_called_once()
@@ -199,7 +244,8 @@ def test_resolve_task_id_skips_substring_matches_on_first_page():
 def test_resolve_task_id_raises_when_not_found():
     client = _make_api_client()
     client._tasks_api.search_tasks_api_v2_tasks_search_post.return_value = _make_search_result(
-        [_make_task("my-task-v2", "uuid-1")], count=1
+        [_make_task("my-task-v2", "uuid-1")],
+        count=1,
     )
     with pytest.raises(ValueError, match="No task with an exact name match"):
         client.resolve_task_id("my-task")
@@ -208,7 +254,8 @@ def test_resolve_task_id_raises_when_not_found():
 def test_resolve_task_id_raises_includes_substring_count():
     client = _make_api_client()
     client._tasks_api.search_tasks_api_v2_tasks_search_post.return_value = _make_search_result(
-        [_make_task("my-task-v2", "uuid-1")], count=3
+        [_make_task("my-task-v2", "uuid-1")],
+        count=3,
     )
     with pytest.raises(ValueError, match="3 task"):
         client.resolve_task_id("my-task")
