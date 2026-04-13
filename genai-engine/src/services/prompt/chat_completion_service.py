@@ -5,7 +5,6 @@ from typing import Any, AsyncGenerator, Dict, List, Set, Tuple, Union, cast
 
 from arthur_common.models.llm_model_providers import (
     LLMResponseFormat,
-    ModelProvider,
     OpenAIMessage,
     OpenAIMessageType,
     ToolChoiceEnum,
@@ -16,7 +15,6 @@ from jinja2.sandbox import SandboxedEnvironment
 from litellm import (
     CustomStreamWrapper,
     Message,
-    completion_cost,
     stream_chunk_builder,
 )
 from litellm.types.utils import ModelResponse
@@ -371,12 +369,7 @@ class ChatCompletionService:
                 messages=completion_params.get("messages", []),
             )
 
-            if llm_client.provider != ModelProvider.VLLM:
-                cost_float = completion_cost(complete_response)
-                cost = f"{cost_float:.6f}" if cost_float is not None else None
-            else:
-                cost = "0.00"
-                logger.warning("Cost calculation is not supported for this provider")
+            cost = llm_client.calculate_cost(complete_response)
 
             if not complete_response:
                 yield format_sse_error("No response from model", wrap=False)

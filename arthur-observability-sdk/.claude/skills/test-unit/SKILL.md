@@ -22,20 +22,20 @@ Unit tests cover `Arthur` initialization, env-var resolution, prompt management,
 From the `arthur-observability-sdk/python/` directory:
 
 ```bash
-poetry run pytest tests -m unit_tests -v
+uv run pytest tests -m unit_tests -v
 ```
 
 ## Run a specific test file or test
 
 ```bash
-poetry run pytest tests/test_client.py -v
-poetry run pytest tests/test_client.py::test_arthur_requires_task_or_service_name -v
+uv run pytest tests/test_client.py -v
+uv run pytest tests/test_client.py::test_arthur_requires_task_or_service_name -v
 ```
 
 ## Run with keyword filter
 
 ```bash
-poetry run pytest tests -m unit_tests -k "env" -v
+uv run pytest tests -m unit_tests -k "env" -v
 ```
 
 ## Notes

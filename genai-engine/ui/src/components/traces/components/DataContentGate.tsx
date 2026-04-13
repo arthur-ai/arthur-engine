@@ -1,4 +1,4 @@
-import { Typography } from "@mui/material";
+import { Box, CircularProgress, Typography } from "@mui/material";
 import { useEffect } from "react";
 
 import { useWelcomeStore } from "../stores/welcome.store";
@@ -12,11 +12,12 @@ interface DataContentGateProps {
   welcomeDismissed: boolean;
   hasData: boolean;
   hasActiveFilters: boolean;
+  isLoading?: boolean;
   dataType: "traces" | "spans" | "sessions" | "users";
   children: React.ReactNode;
 }
 
-export const DataContentGate = ({ welcomeDismissed, hasData, hasActiveFilters, dataType, children }: DataContentGateProps) => {
+export const DataContentGate = ({ welcomeDismissed, hasData, hasActiveFilters, isLoading, dataType, children }: DataContentGateProps) => {
   // Show onboarding only if user hasn't dismissed it AND has no data AND no active filters
   // This ensures users with existing traces skip onboarding even if they never saw it before
   const { task } = useTask();
@@ -51,6 +52,15 @@ export const DataContentGate = ({ welcomeDismissed, hasData, hasActiveFilters, d
           </TracesEmptyState>
         )}
       </>
+    );
+  }
+
+  // Show loading spinner while the initial fetch is in progress
+  if (isLoading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", py: 8 }}>
+        <CircularProgress />
+      </Box>
     );
   }
 

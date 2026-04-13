@@ -18,7 +18,7 @@ export function ChatbotDrawer({ taskId }: ChatbotDrawerProps) {
   const { chatbotEnabled } = useDisplaySettings();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLElement>(null);
   const { messages, isStreaming, activeToolCall, sendMessage, clearConversation, abort } = useChatbot(taskId);
 
   useEffect(() => {
@@ -111,7 +111,7 @@ export function ChatbotDrawer({ taskId }: ChatbotDrawerProps) {
                   const last = [...messages].reverse().find((m) => m.role !== "tool_call");
                   return !last?.content || last.role === "user";
                 })() && <ThinkingIndicator />}
-              <div ref={messagesEndRef} />
+              <Box ref={messagesEndRef} />
             </Box>
 
             <Divider />

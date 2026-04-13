@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
 from arthur_common.models.common_schemas import VariableTemplateValue
@@ -47,6 +47,7 @@ from schemas.enums import (
     RagProviderEnum,
     RagSearchKind,
 )
+from utils.constants import ALLOWED_TRACE_RETENTION_DAYS
 
 
 class DocumentStorageConfigurationUpdateRequest(BaseModel):
@@ -88,6 +89,17 @@ class ApplicationConfigurationUpdateRequest(BaseModel):
         DocumentStorageConfigurationUpdateRequest
     ] = None
     max_llm_rules_per_task_count: Optional[int] = None
+    trace_retention_days: Optional[int] = None
+
+    @model_validator(mode="after")
+    def validate_trace_retention_days(self) -> "ApplicationConfigurationUpdateRequest":
+        if self.trace_retention_days is not None and (
+            self.trace_retention_days not in ALLOWED_TRACE_RETENTION_DAYS
+        ):
+            raise ValueError(
+                f"trace_retention_days must be one of {ALLOWED_TRACE_RETENTION_DAYS}"
+            )
+        return self
 
 
 class NewDatasetRequest(BaseModel):
@@ -723,6 +735,11 @@ class LLMGetAllFilterRequest(BaseModel):
         None,
         description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
     )
+    tags: Optional[list[Annotated[str, Field(max_length=200)]]] = Field(
+        None,
+        description="List of tags to filter for items that have any matching tag across any version.",
+        max_length=50,
+    )
 
 
 class LLMRequestConfigSettings(BaseModel):
@@ -925,6 +942,16 @@ class TransformListFilterRequest(BaseModel):
     created_before: Optional[datetime] = Field(
         None,
         description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    )
+
+
+class CreateTestRunRequest(BaseModel):
+    """Request schema for creating a continuous eval test run"""
+
+    trace_ids: List[str] = Field(
+        description="List of trace IDs to test the continuous eval against",
+        min_length=1,
+        max_length=50,
     )
 
 

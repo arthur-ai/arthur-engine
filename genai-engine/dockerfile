@@ -12,16 +12,23 @@ FROM python:3.12.8-slim-bookworm AS preinstall
 
 # Copy requirements files so this layer can be cached / reused when files are otherwise changed in the repo
 COPY pyproject.toml /app/
-COPY poetry.lock /app/
+COPY uv.lock /app/
 
 # Install Python dependencies
-RUN pip3 install poetry==1.8.5
+RUN pip3 install uv
 # Set working directory
 WORKDIR /app
 
-ENV PYTHONPATH="$PYTHONPATH:/app/src"
+ENV PYTHONPATH="/app/src"
 ENV PYTHONUNBUFFERED=1
-RUN poetry config virtualenvs.create false && poetry install --without dev,performance --no-ansi --no-root
+RUN uv export --frozen \
+    --no-group dev --no-group performance --no-group linters \
+    --no-emit-project \
+    -o /tmp/requirements.txt \
+    && uv pip install --system --no-cache \
+    --extra-index-url https://download.pytorch.org/whl/cpu \
+    --index-strategy unsafe-best-match \
+    -r /tmp/requirements.txt
 
 # install lsof for healthchecks
 RUN apt-get update && apt-get install -y lsof && apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -30,7 +37,7 @@ RUN apt-get update && apt-get install -y lsof && apt-get clean && rm -rf /var/li
 # GPU Install: Install PyTorch for GPU
 FROM preinstall AS gpu-install
 COPY requirements-gpu.txt /tmp/requirements-torch.txt
-RUN poetry run pip install --no-cache-dir --upgrade --force-reinstall -r /tmp/requirements-torch.txt
+RUN uv pip install --system --no-cache --reinstall -r /tmp/requirements-torch.txt
 
 
 # CPU Install: no-op for now
@@ -52,7 +59,13 @@ WORKDIR /app/ui
 COPY ui/ ./
 
 # Install UI dependencies (token only in this RUN, not persisted in image)
-RUN export GITLAB_UNIFY_FRONTEND_TOKEN="$GITLAB_UNIFY_FRONTEND_TOKEN" && corepack enable && yarn install --immutable
+RUN if [ -z "${GITLAB_UNIFY_FRONTEND_TOKEN}" ]; then \
+      echo "ERROR: GITLAB_UNIFY_FRONTEND_TOKEN build-arg is required for yarn install (private @arthur/* packages)." >&2; \
+      exit 1; \
+    fi \
+    && export GITLAB_UNIFY_FRONTEND_TOKEN="${GITLAB_UNIFY_FRONTEND_TOKEN}" \
+    && corepack enable \
+    && yarn install --immutable
 
 # Build the UI as static files
 ENV METICULOUS_RECORDING_TOKEN=${METICULOUS_RECORDING_TOKEN}
@@ -115,15 +128,11 @@ COPY --from=install /usr/local/lib/ /usr/local/lib/
 COPY --from=install /usr/local/bin/ /usr/local/bin/
 COPY --from=install /etc/ld.so.cache /etc/ld.so.cache
 COPY --from=install --chown=nonroot:nonroot /app/ /home/nonroot/app/
-COPY --from=install --chown=nonroot:nonroot /root/.cache/pypoetry/ /home/nonroot/.cache/pypoetry/
-COPY --from=install --chown=nonroot:nonroot /root/.config/pypoetry/ /home/nonroot/.config/pypoetry/
-# Copy models directory (created in install stage, owned by nonroot)
 COPY --from=install --chown=nonroot:nonroot /home/nonroot/models /home/nonroot/models
 
 ENV PATH="/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
-ENV PYTHONPATH="$PYTHONPATH:/home/nonroot/app/src"
-ENV POETRY_VIRTUALENVS_PATH="/home/nonroot/.cache/pypoetry/virtualenvs"
-ENV POETRY_CACHE_DIR="/home/nonroot/.cache/pypoetry"
+ENV PYTHONPATH="/home/nonroot/app/src"
+ENV UV_SYSTEM_PYTHON=1
 # Default model storage path for nonroot user
 ENV MODEL_STORAGE_PATH="/home/nonroot/models"
 
