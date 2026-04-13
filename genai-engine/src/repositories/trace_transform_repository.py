@@ -87,7 +87,16 @@ class TraceTransformRepository:
             .order_by(desc(DatabaseTraceTransformVersion.version_number))
             .first()
         )
+        if version is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No versions found for transform {transform_id}",
+            )
         return TraceTransformDefinition.model_validate(version.definition)
+
+    def get_latest_definition(self, transform_id: UUID) -> TraceTransformDefinition:
+        """Public accessor for the latest version's definition."""
+        return self._get_latest_definition(transform_id)
 
     def get_transform_by_id(self, transform_id: UUID) -> TraceTransform | None:
         db_transform = self._get_db_transform_by_id(transform_id)

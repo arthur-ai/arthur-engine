@@ -211,8 +211,9 @@ def get_continuous_eval_variables_and_mappings(
                 detail=f"Transform {transform_id} not found.",
             )
 
+        transform_definition = transform_repo.get_latest_definition(transform_id)
         eval_vars = set(llm_eval.variables)
-        transform_vars = {v.variable_name for v in transform.definition.variables}
+        transform_vars = {v.variable_name for v in transform_definition.variables}
         matching_vars = list(eval_vars & transform_vars)
 
         return ContinuousEvalVariableMappingResponse(
@@ -281,17 +282,19 @@ def create_continuous_eval(
 
         if create_request.transform_version_id is not None:
             # Validate version belongs to this transform (raises 404 if not found)
-            pinned_version = transform_repo.get_version_by_id(
+            validation_definition = transform_repo.get_version_by_id(
                 create_request.transform_id,
                 create_request.transform_version_id,
+            ).definition
+        else:
+            validation_definition = transform_repo.get_latest_definition(
+                create_request.transform_id,
             )
-            # Use the version snapshot for variable mapping validation
-            transform.definition = pinned_version.definition
 
         continuous_eval_repo = ContinuousEvalsRepository(db_session)
 
         continuous_eval_repo.validate_transform_variable_mapping(
-            transform,
+            validation_definition,
             llm_eval,
             create_request.transform_variable_mapping,
         )
@@ -403,11 +406,14 @@ def update_continuous_eval(
                 else existing_eval.transform_version_id
             )
             if effective_version_id is not None:
-                pinned_version = transform_repo.get_version_by_id(
+                validation_definition = transform_repo.get_version_by_id(
                     transform_id,
                     effective_version_id,
+                ).definition
+            else:
+                validation_definition = transform_repo.get_latest_definition(
+                    transform_id,
                 )
-                transform.definition = pinned_version.definition
 
             if llm_eval is None:
                 llm_eval_name = (
@@ -432,7 +438,7 @@ def update_continuous_eval(
                     )
 
             continuous_eval_repo.validate_transform_variable_mapping(
-                transform,
+                validation_definition,
                 llm_eval,
                 update_request.transform_variable_mapping,
             )

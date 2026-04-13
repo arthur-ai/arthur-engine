@@ -690,8 +690,9 @@ class AgenticExperimentExecutor(BaseExperimentExecutor):
                 logger.error(f"Transform {transform_id} not found")
                 return False
 
-            # Execute transform on trace
-            transform_results = execute_transform(trace, transform.definition)
+            # Execute transform on trace using the latest version's definition
+            transform_definition = transform_repo.get_latest_definition(transform_id)
+            transform_results = execute_transform(trace, transform_definition)
 
             # Build variable map from eval variable mappings
             variable_map = self._build_eval_variable_map(
