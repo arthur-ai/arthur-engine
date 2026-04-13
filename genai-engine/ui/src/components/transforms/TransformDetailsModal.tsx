@@ -3,6 +3,7 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography, IconButton, Tooltip, Divider } from "@mui/material";
 import { useState } from "react";
 
+import { useTransformVersions } from "./hooks/useTransformVersions";
 import TransformEditHistoryPanel from "./TransformEditHistoryPanel";
 import { TraceTransform } from "./types";
 
@@ -14,6 +15,8 @@ interface TransformDetailsModalProps {
 
 export const TransformDetailsModal: React.FC<TransformDetailsModalProps> = ({ open, onClose, transform }) => {
   const [copied, setCopied] = useState(false);
+  const { data: versions = [] } = useTransformVersions(transform?.id);
+  const definition = versions[0]?.definition;
 
   if (!transform) return null;
 
@@ -87,10 +90,10 @@ export const TransformDetailsModal: React.FC<TransformDetailsModalProps> = ({ op
 
           <Box sx={{ mb: 3 }}>
             <Typography variant="subtitle2" fontWeight="medium" gutterBottom>
-              Variable Mappings ({transform.definition.variables.length})
+              Variable Mappings ({definition?.variables.length ?? 0})
             </Typography>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 1 }}>
-              {transform.definition.variables.map((variable, idx) => (
+              {(definition?.variables ?? []).map((variable, idx) => (
                 <Box
                   key={idx}
                   sx={{
@@ -135,7 +138,7 @@ export const TransformDetailsModal: React.FC<TransformDetailsModalProps> = ({ op
                 m: 0,
               }}
             >
-              {JSON.stringify(transform.definition, null, 2)}
+              {JSON.stringify(definition, null, 2)}
             </Box>
           </Box>
 

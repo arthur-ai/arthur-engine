@@ -13,6 +13,8 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useState, useCallback } from "react";
 
+import { useTransformVersions } from "../hooks/useTransformVersions";
+
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { TraceTransformResponse, TraceTransformVersionResponse } from "@/lib/api-client/api-client";
 import { formatDateInTimezone } from "@/utils/formatters";
@@ -37,6 +39,8 @@ interface TransformDetailViewProps {
 const TransformDetailView = ({ transform, versionData, isVersionLoading, versionError, isLatest, onClose, onEdit }: TransformDetailViewProps) => {
   const [copied, setCopied] = useState(false);
   const { timezone, use24Hour } = useDisplaySettings();
+  // Fetch latest version to get definition when no specific version is selected
+  const { data: latestVersions = [] } = useTransformVersions(transform?.id);
 
   const handleCopyId = useCallback(async () => {
     if (!transform?.id) return;
@@ -73,10 +77,8 @@ const TransformDetailView = ({ transform, versionData, isVersionLoading, version
     );
   }
 
-  // Use the version snapshot if viewing a historical version, otherwise use current transform definition
-  const definition = versionData
-    ? (versionData.definition as { variables?: VariableDefinition[] })
-    : (transform.definition as { variables?: VariableDefinition[] });
+  // Use the pinned version snapshot, or fall back to latest version
+  const definition = (versionData?.definition ?? latestVersions[0]?.definition) as { variables?: VariableDefinition[] } | undefined;
   const variables = definition?.variables ?? [];
   const versionNumber = versionData?.version_number ?? null;
   const createdAt = versionData?.created_at ?? transform.created_at;
