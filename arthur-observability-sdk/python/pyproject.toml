@@ -112,6 +112,10 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/arthur_observability_sdk", "src/arthur_genai_client"]
 
+[tool.isort]
+profile = "black"
+known_first_party = ["arthur_observability_sdk"]
+
 [tool.black]
 line-length = 100
 target-version = ["py310"]
