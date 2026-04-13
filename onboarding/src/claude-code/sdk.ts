@@ -64,20 +64,23 @@ Plan ultrathink — carefully examine all files first, then implement:
 
 STEP 1 — ANALYSIS:
   - List all files to understand the project structure
-  - Read requirements.txt / pyproject.toml to see current dependencies
+  - Read requirements.txt / pyproject.toml to see current dependencies and note the package manager (uv/pip/poetry)
   - Find the application entry point (main.py, app.py, __main__.py, or similar)
   - Identify the LLM framework used (openai, langchain, anthropic, crewai, etc.)
   - Check if arthur_observability_sdk is already installed (skip if yes)
 
 STEP 2 — IMPLEMENTATION (only if not already instrumented):
-  - Add "arthur-observability-sdk" to requirements.txt (or pyproject.toml dependencies)
+  - Add "arthur-observability-sdk[<framework>]" to requirements.txt / pyproject.toml
+    where <framework> matches the detected LLM framework (e.g. langchain, openai, anthropic, crewai)
   - In the entry point, add:
       from arthur_observability_sdk import Arthur
+      task_id = os.environ.get("ARTHUR_TASK_ID", "${req.taskId}")
       arthur = Arthur(
           api_key=os.environ.get("ARTHUR_API_KEY"),
-          base_url="${req.arthurEngineUrl}",
-          task_id="${req.taskId}",
+          base_url=os.environ.get("ARTHUR_BASE_URL", "${req.arthurEngineUrl}"),
+          task_id=task_id,
           service_name="<app-name>",
+          resource_attributes={"arthur.task": task_id},
       )
   - Call arthur.instrument_<framework>() matching the detected LLM framework
   - Wrap the main execution with arthur.attributes() context manager if applicable
@@ -86,7 +89,8 @@ STEP 2 — IMPLEMENTATION (only if not already instrumented):
   - Add to .env.example: ARTHUR_API_KEY=your-api-key-here
 
 STEP 3 — VALIDATION:
-  - Run: pip install arthur-observability-sdk (or pip install -r requirements.txt)
+  - Run: pip install 'arthur-observability-sdk[<framework>]'
+    (or: uv sync if using uv)
   - Run: python -c "from arthur_observability_sdk import Arthur; print('import OK')"
   - Run the existing test suite if present (pytest, python -m pytest, or similar)
   - Fix any new test failures you introduced
