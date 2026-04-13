@@ -82,7 +82,7 @@ This ensures a consistent development experience across all platforms.
 
 ### Install the Python dependencies with uv
 
-1. Git clone the repo
+1. Git clone the repo.
 2. Install uv: uv is a Python dependency management tool. `pyproject.toml` is the descriptor.
    ```bash
    pip install uv
