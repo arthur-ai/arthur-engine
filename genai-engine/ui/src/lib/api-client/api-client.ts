@@ -1038,6 +1038,37 @@ export interface ApiKeyResponse {
   roles?: string[];
 }
 
+/** ApplicationConfigurationResponse */
+export interface ApplicationConfigurationResponse {
+  /**
+   * Allowed Trace Retention Days
+   * @default []
+   */
+  allowed_trace_retention_days?: number[];
+  /** Chat Task Id */
+  chat_task_id?: string | null;
+  /** Default Currency */
+  default_currency?: string | null;
+  document_storage_configuration?: DocumentStorageConfigurationResponse | null;
+  /** Max Llm Rules Per Task Count */
+  max_llm_rules_per_task_count: number;
+  /** Trace Retention Days */
+  trace_retention_days: number;
+}
+
+/** ApplicationConfigurationUpdateRequest */
+export interface ApplicationConfigurationUpdateRequest {
+  /** Chat Task Id */
+  chat_task_id?: string | null;
+  /** Default Currency */
+  default_currency?: string | null;
+  document_storage_configuration?: DocumentStorageConfigurationUpdateRequest | null;
+  /** Max Llm Rules Per Task Count */
+  max_llm_rules_per_task_count?: number | null;
+  /** Trace Retention Days */
+  trace_retention_days?: number | null;
+}
+
 export type ArchiveDefaultRuleApiV2DefaultRulesRuleIdDeleteData = any;
 
 export type ArchiveDefaultRuleApiV2DefaultRulesRuleIdDeleteError = HTTPValidationError;
@@ -2407,6 +2438,34 @@ export interface DisplaySettingsResponse {
   default_currency?: string;
 }
 
+/** DocumentStorageConfigurationResponse */
+export interface DocumentStorageConfigurationResponse {
+  /** Assumable Role Arn */
+  assumable_role_arn?: string | null;
+  /** Bucket Name */
+  bucket_name?: string | null;
+  /** Container Name */
+  container_name?: string | null;
+  /** Storage Environment */
+  storage_environment?: string | null;
+}
+
+/** DocumentStorageConfigurationUpdateRequest */
+export interface DocumentStorageConfigurationUpdateRequest {
+  /** Assumable Role Arn */
+  assumable_role_arn?: string | null;
+  /** Bucket Name */
+  bucket_name?: string | null;
+  /** Connection String */
+  connection_string?: string | null;
+  /** Container Name */
+  container_name?: string | null;
+  environment: DocumentStorageEnvironment;
+}
+
+/** DocumentStorageEnvironment */
+export type DocumentStorageEnvironment = "aws" | "azure";
+
 /**
  * EnrichedTaskResponse
  * Response model for agent-tasks endpoint with enriched metadata.
@@ -3407,6 +3466,8 @@ export type GetApiKeyAuthApiKeysApiKeyIdGetData = ApiKeyResponse;
 export type GetApiKeyAuthApiKeysApiKeyIdGetError = HTTPValidationError;
 
 export type GetChatbotConfigApiV1ChatbotConfigGetData = ChatbotConfigResponse;
+
+export type GetConfigurationApiV2ConfigurationGetData = ApplicationConfigurationResponse;
 
 export type GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetData = ContinuousEvalResponse;
 
@@ -11782,6 +11843,10 @@ export type UpdateChatbotConfigApiV1ChatbotConfigPutData = ChatbotConfigResponse
 
 export type UpdateChatbotConfigApiV1ChatbotConfigPutError = HTTPValidationError;
 
+export type UpdateConfigurationApiV2ConfigurationPostData = ApplicationConfigurationResponse;
+
+export type UpdateConfigurationApiV2ConfigurationPostError = HTTPValidationError;
+
 export type UpdateContinuousEvalApiV1ContinuousEvalsEvalIdPatchData = ContinuousEvalResponse;
 
 export type UpdateContinuousEvalApiV1ContinuousEvalsEvalIdPatchError = HTTPValidationError;
@@ -12949,7 +13014,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.505
+ * @version 2.1.508
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -14573,6 +14638,23 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getChatbotConfigApiV1ChatbotConfigGet: (params: RequestParams = {}) =>
       this.request<GetChatbotConfigApiV1ChatbotConfigGetData, any>({
         path: `/api/v1/chatbot/config`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get application configuration settings.
+     *
+     * @name GetConfigurationApiV2ConfigurationGet
+     * @summary Get Configuration
+     * @request GET:/api/v2/configuration
+     * @secure
+     */
+    getConfigurationApiV2ConfigurationGet: (params: RequestParams = {}) =>
+      this.request<GetConfigurationApiV2ConfigurationGetData, any>({
+        path: `/api/v2/configuration`,
         method: "GET",
         secure: true,
         format: "json",
@@ -16524,6 +16606,25 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       this.request<UpdateChatbotConfigApiV1ChatbotConfigPutData, UpdateChatbotConfigApiV1ChatbotConfigPutError>({
         path: `/api/v1/chatbot/config`,
         method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Update application configuration settings.
+     *
+     * @name UpdateConfigurationApiV2ConfigurationPost
+     * @summary Update Configuration
+     * @request POST:/api/v2/configuration
+     * @secure
+     */
+    updateConfigurationApiV2ConfigurationPost: (data: ApplicationConfigurationUpdateRequest, params: RequestParams = {}) =>
+      this.request<UpdateConfigurationApiV2ConfigurationPostData, UpdateConfigurationApiV2ConfigurationPostError>({
+        path: `/api/v2/configuration`,
+        method: "POST",
         body: data,
         secure: true,
         type: ContentType.Json,

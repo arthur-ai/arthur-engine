@@ -47,6 +47,7 @@ from schemas.enums import (
     RagProviderEnum,
     RagSearchKind,
 )
+from utils.constants import ALLOWED_TRACE_RETENTION_DAYS
 
 
 class DocumentStorageConfigurationUpdateRequest(BaseModel):
@@ -88,6 +89,17 @@ class ApplicationConfigurationUpdateRequest(BaseModel):
         DocumentStorageConfigurationUpdateRequest
     ] = None
     max_llm_rules_per_task_count: Optional[int] = None
+    trace_retention_days: Optional[int] = None
+
+    @model_validator(mode="after")
+    def validate_trace_retention_days(self) -> "ApplicationConfigurationUpdateRequest":
+        if self.trace_retention_days is not None and (
+            self.trace_retention_days not in ALLOWED_TRACE_RETENTION_DAYS
+        ):
+            raise ValueError(
+                f"trace_retention_days must be one of {ALLOWED_TRACE_RETENTION_DAYS}"
+            )
+        return self
 
 
 class NewDatasetRequest(BaseModel):

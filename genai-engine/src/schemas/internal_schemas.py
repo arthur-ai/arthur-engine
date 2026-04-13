@@ -1862,6 +1862,7 @@ class ApplicationConfiguration(BaseModel):
     default_currency: Optional[str] = None
     document_storage_configuration: Optional[DocumentStorageConfiguration] = None
     max_llm_rules_per_task_count: int
+    trace_retention_days: int
 
     @staticmethod
     def _from_database_model(
@@ -1918,6 +1919,14 @@ class ApplicationConfiguration(BaseModel):
             if config_value is not None:
                 max_llm_rules_per_task_count = int(config_value)
 
+        trace_retention_days = constants.DEFAULT_TRACE_RETENTION_DAYS
+        if ApplicationConfigurations.TRACE_RETENTION_DAYS in config_dict:
+            retention_value = config_if_exists(
+                ApplicationConfigurations.TRACE_RETENTION_DAYS,
+                configs,
+            )
+            if retention_value is not None:
+                trace_retention_days = int(retention_value)
         default_currency = config_if_exists(
             ApplicationConfigurations.DEFAULT_CURRENCY,
             configs,
@@ -1934,6 +1943,7 @@ class ApplicationConfiguration(BaseModel):
             default_currency=default_currency,
             document_storage_configuration=doc_storage,
             max_llm_rules_per_task_count=max_llm_rules_per_task_count,
+            trace_retention_days=trace_retention_days,
         )
 
     def _to_response_model(self) -> ApplicationConfigurationResponse:
@@ -1946,6 +1956,8 @@ class ApplicationConfiguration(BaseModel):
                 else None
             ),
             max_llm_rules_per_task_count=self.max_llm_rules_per_task_count,
+            trace_retention_days=self.trace_retention_days,
+            allowed_trace_retention_days=constants.ALLOWED_TRACE_RETENTION_DAYS,
         )
 
 
