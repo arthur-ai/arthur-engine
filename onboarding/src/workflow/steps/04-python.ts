@@ -42,7 +42,7 @@ export async function step4_InstrumentPython(state: WorkflowState): Promise<bool
     'What will change:\n' +
     '  • arthur-observability-sdk added to requirements.txt / pyproject.toml\n' +
     '  • Arthur initialization code added to your entry point\n' +
-    '  • ARTHUR_API_KEY added to .env.example\n\n' +
+    '  • ARTHUR_API_KEY added to .env (with actual key) and .env.example (placeholder)\n\n' +
     `Arthur Engine URL: ${state.engineUrl}\nTask ID: ${state.taskId}`,
     'Instrumentation plan',
   );
@@ -69,6 +69,7 @@ export async function step4_InstrumentPython(state: WorkflowState): Promise<bool
       type: 'python-arthur-sdk',
       arthurEngineUrl: state.engineUrl!,
       taskId: state.taskId!,
+      apiKey: state.apiKey!,
     },
     makeProgressHandler(),
   );

@@ -41,7 +41,7 @@ export async function step5_InstrumentMastra(state: WorkflowState): Promise<bool
     'What will change:\n' +
     '  • @mastra/arthur package installed (npm install @mastra/arthur)\n' +
     '  • ArthurExporter registered in your Mastra instance observability config\n' +
-    '  • ARTHUR_BASE_URL, ARTHUR_API_KEY, ARTHUR_TASK_ID added to .env.example\n\n' +
+    '  • ARTHUR_BASE_URL, ARTHUR_API_KEY, ARTHUR_TASK_ID added to .env (with actual values) and .env.example (placeholders)\n\n' +
     `Arthur Engine URL: ${state.engineUrl}\nTask ID: ${state.taskId}`,
     'Instrumentation plan',
   );
@@ -68,6 +68,7 @@ export async function step5_InstrumentMastra(state: WorkflowState): Promise<bool
       type: 'mastra-arthur-exporter',
       arthurEngineUrl: state.engineUrl!,
       taskId: state.taskId!,
+      apiKey: state.apiKey!,
     },
     makeProgressHandler(),
   );

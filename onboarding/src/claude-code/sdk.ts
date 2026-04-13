@@ -8,6 +8,7 @@ export interface InstrumentationRequest {
   type: 'python-arthur-sdk' | 'mastra-arthur-exporter' | 'openinference';
   arthurEngineUrl: string;
   taskId: string;
+  apiKey: string;
 }
 
 export interface InstrumentationResult {
@@ -31,8 +32,15 @@ Arthur Engine URL: ${req.arthurEngineUrl}
 Arthur Task ID: ${req.taskId}
 
 IMPORTANT RULES:
-- Do NOT hardcode API keys anywhere. Always read from environment variables (ARTHUR_API_KEY).
-- Add ARTHUR_API_KEY, ARTHUR_BASE_URL, and ARTHUR_TASK_ID to .env.example (not .env).
+- Do NOT hardcode API keys in source code. Always read from environment variables (ARTHUR_API_KEY).
+- Add these entries to .env (create if it does not exist; ensure .env is in .gitignore):
+    ARTHUR_API_KEY=${req.apiKey}
+    ARTHUR_BASE_URL=${req.arthurEngineUrl}
+    ARTHUR_TASK_ID=${req.taskId}
+- Also add placeholder entries to .env.example:
+    ARTHUR_API_KEY=your-api-key-here
+    ARTHUR_BASE_URL=${req.arthurEngineUrl}
+    ARTHUR_TASK_ID=${req.taskId}
 - Make the smallest possible changes — instrument, don't refactor.
 - The task is complete only when:
   1. All dependencies are installed (pip install or npm install).
@@ -73,6 +81,8 @@ STEP 2 — IMPLEMENTATION (only if not already instrumented):
       )
   - Call arthur.instrument_<framework>() matching the detected LLM framework
   - Wrap the main execution with arthur.attributes() context manager if applicable
+  - Add to .env (create if needed, ensure .env is in .gitignore):
+      ARTHUR_API_KEY=${req.apiKey}
   - Add to .env.example: ARTHUR_API_KEY=your-api-key-here
 
 STEP 3 — VALIDATION:
@@ -122,6 +132,10 @@ STEP 2 — IMPLEMENTATION (only if not already instrumented):
     ARTHUR_BASE_URL  — required (set to ${req.arthurEngineUrl})
     ARTHUR_TASK_ID   — optional (set to ${req.taskId})
 
+  Add to .env (create if needed, ensure .env is in .gitignore):
+    ARTHUR_BASE_URL=${req.arthurEngineUrl}
+    ARTHUR_API_KEY=${req.apiKey}
+    ARTHUR_TASK_ID=${req.taskId}
   Add to .env.example:
     ARTHUR_BASE_URL=${req.arthurEngineUrl}
     ARTHUR_API_KEY=your-api-key-here
@@ -177,6 +191,10 @@ STEP 2 — IMPLEMENTATION (only if not already instrumented):
     Follow the pattern from the customer-support-agent example, creating an OTLP exporter
     pointing to ${req.arthurEngineUrl}/api/v1/traces with Bearer auth.
 
+  Add to .env (create if needed, ensure .env is in .gitignore):
+    ARTHUR_BASE_URL=${req.arthurEngineUrl}
+    ARTHUR_API_KEY=${req.apiKey}
+    ARTHUR_TASK_ID=${req.taskId}
   Add to .env.example:
     ARTHUR_BASE_URL=${req.arthurEngineUrl}
     ARTHUR_API_KEY=your-api-key-here

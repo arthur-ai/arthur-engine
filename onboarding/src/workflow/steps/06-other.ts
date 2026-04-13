@@ -41,7 +41,7 @@ export async function step6_InstrumentOther(state: WorkflowState): Promise<boole
     'What will change:\n' +
     '  • OpenTelemetry OTLP exporter configured to send traces to Arthur\n' +
     '  • OpenInference instrumentor added for your detected LLM framework\n' +
-    '  • ARTHUR_BASE_URL, ARTHUR_API_KEY, ARTHUR_TASK_ID added to .env.example\n\n' +
+    '  • ARTHUR_BASE_URL, ARTHUR_API_KEY, ARTHUR_TASK_ID added to .env (with actual values) and .env.example (placeholders)\n\n' +
     `Arthur Engine URL: ${state.engineUrl}\nTask ID: ${state.taskId}\n\n` +
     'Reference: github.com/arthur-ai/arthur-engine/tree/dev/genai-engine/examples/agents',
     'Instrumentation plan (OpenInference)',
@@ -69,6 +69,7 @@ export async function step6_InstrumentOther(state: WorkflowState): Promise<boole
       type: 'openinference',
       arthurEngineUrl: state.engineUrl!,
       taskId: state.taskId!,
+      apiKey: state.apiKey!,
     },
     makeProgressHandler(),
   );
