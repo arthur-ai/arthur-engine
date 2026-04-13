@@ -117,6 +117,16 @@ export const AllTasks: React.FC = () => {
         const count = response.data.count ?? 0;
 
         setTotalCount(count);
+        if (page > 0 && incoming.length === 0) {
+          // API returned empty despite count > 0 (tasks deleted mid-pagination).
+          // Clamp totalCount to what we actually have to stop infinite scroll.
+          setTasks((prev) => {
+            setTotalCount(prev.length);
+            return prev;
+          });
+          setCurrentPage(page);
+          return;
+        }
         setTasks((prev) => (page === 0 ? incoming : [...prev, ...incoming]));
         setCurrentPage(page);
       } catch (err) {
@@ -186,7 +196,7 @@ export const AllTasks: React.FC = () => {
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isFetchingMore && !isLoading) {
+        if (entries[0].isIntersecting && hasMore && !isFetchingMore && !isLoading && !error) {
           fetchActiveTasks(currentPage + 1);
         }
       },
@@ -195,7 +205,7 @@ export const AllTasks: React.FC = () => {
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMore, isFetchingMore, isLoading, currentPage, fetchActiveTasks]);
+  }, [hasMore, isFetchingMore, isLoading, error, currentPage, fetchActiveTasks]);
 
   const handleTaskCreated = async (taskId: string) => {
     await fetchActiveTasks(0);
@@ -350,7 +360,7 @@ export const AllTasks: React.FC = () => {
                 )}
 
                 {/* Infinite scroll sentinel */}
-                <div ref={sentinelRef} style={{ height: 1 }} />
+                <Box ref={sentinelRef} sx={{ height: 1 }} />
 
                 {/* Load-more feedback */}
                 {isFetchingMore && (
