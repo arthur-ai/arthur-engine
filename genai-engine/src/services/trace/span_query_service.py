@@ -81,6 +81,11 @@ class SpanQueryService:
     SpanQueryService with single-query strategy. This implements the proposed optimizations for comparison.
     """
 
+    @staticmethod
+    def _escape_like(value: str) -> str:
+        """Escape special SQL LIKE/ILIKE wildcard characters in user input."""
+        return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
     def __init__(self, db_session: Session):
         self.db_session = db_session
         self.filter_service = FilterService(db_session)
@@ -247,7 +252,10 @@ class SpanQueryService:
             conditions.append(
                 or_(
                     *[
-                        DatabaseTraceMetadata.user_id.ilike(f"%{uid}%")
+                        DatabaseTraceMetadata.user_id.ilike(
+                            f"%{self._escape_like(uid)}%",
+                            escape="\\",
+                        )
                         for uid in filters.user_ids
                     ]
                 ),
@@ -808,7 +816,10 @@ class SpanQueryService:
             conditions.append(
                 or_(
                     *[
-                        DatabaseTraceMetadata.user_id.ilike(f"%{uid}%")
+                        DatabaseTraceMetadata.user_id.ilike(
+                            f"%{self._escape_like(uid)}%",
+                            escape="\\",
+                        )
                         for uid in filters.user_ids
                     ]
                 ),
@@ -1172,7 +1183,10 @@ class SpanQueryService:
             query = query.where(
                 or_(
                     *[
-                        DatabaseTraceMetadata.user_id.ilike(f"%{uid}%")
+                        DatabaseTraceMetadata.user_id.ilike(
+                            f"%{self._escape_like(uid)}%",
+                            escape="\\",
+                        )
                         for uid in user_ids
                     ]
                 ),
