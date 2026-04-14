@@ -92,7 +92,7 @@ export const RagExperimentsHeader: React.FC<RagExperimentsHeaderProps> = ({
           variant="text"
           startIcon={<ArrowBack />}
           color="inherit"
-          onClick={() => navigate(`/tasks/${taskId}/rag-notebooks`)}
+          onClick={() => navigate(`/tasks/${taskId}/rag`)}
           sx={{ color: "text.primary", alignSelf: "flex-start" }}
         >
           Back to Notebooks
