@@ -211,9 +211,12 @@ async function handleRemoteEngine(state: WorkflowState): Promise<void> {
 
   await verifyAndLogin(url, apiKey);
 
-  writeBuzzConfig({ ARTHUR_ENGINE_URL: url, ARTHUR_API_KEY: apiKey });
+  const taskId = await text('Arthur Engine task ID:', 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx');
+
+  writeBuzzConfig({ ARTHUR_ENGINE_URL: url, ARTHUR_API_KEY: apiKey, ARTHUR_TASK_ID: taskId });
   state.engineUrl = url;
   state.apiKey = apiKey;
+  state.taskId = taskId;
   logSuccess(`All systems nominal. Remote Arthur Engine configured at ${url}`);
 }
 
@@ -246,11 +249,12 @@ export async function step2_EnsureArthurEngine(state: WorkflowState): Promise<vo
       logWarn(`Arthur Engine at ${url} is not reachable.`);
 
       if (isLocalEngine(url)) {
-        const recovery = await select<'wait' | 'install'>(
+        const recovery = await select<'wait' | 'install' | 'remote'>(
           'What would you like to do?',
           [
             { value: 'wait', label: "I'll bring it back up", hint: 'Buzz will wait until the engine is ready' },
             { value: 'install', label: 'Rerun the Arthur GenAI Engine installer', hint: 'Re-runs the install script' },
+            { value: 'remote', label: 'Connect to a remote engine instead', hint: 'Need URL + API key + task ID' },
           ],
         );
         if (recovery === 'wait') {
@@ -261,8 +265,11 @@ export async function step2_EnsureArthurEngine(state: WorkflowState): Promise<vo
           state.apiKey = apiKey;
           logSuccess(`All systems nominal. Arthur Engine back online at ${url}`);
           return;
-        } else {
+        } else if (recovery === 'install') {
           await handleLocalInstall(state);
+          return;
+        } else {
+          await handleRemoteEngine(state);
           return;
         }
       } else {
@@ -301,11 +308,12 @@ export async function step2_EnsureArthurEngine(state: WorkflowState): Promise<vo
     }
   } else if (local.status === 'down') {
     logWarn(`Found a local Arthur Engine installation at ${local.url} but it is not reachable.`);
-    const recovery = await select<'restart' | 'install'>(
+    const recovery = await select<'restart' | 'install' | 'remote'>(
       'What would you like to do?',
       [
         { value: 'restart', label: "I'll bring it back up", hint: 'Buzz will wait until the engine is ready' },
         { value: 'install', label: 'Run a fresh install', hint: 'Re-runs the install script' },
+        { value: 'remote', label: 'Connect to a remote engine instead', hint: 'Need URL + API key + task ID' },
       ],
     );
     if (recovery === 'restart') {
@@ -319,8 +327,11 @@ export async function step2_EnsureArthurEngine(state: WorkflowState): Promise<vo
       state.apiKey = local.apiKey;
       logSuccess(`All systems nominal. Arthur Engine back online at ${local.url}`);
       return;
-    } else {
+    } else if (recovery === 'install') {
       await handleLocalInstall(state);
+      return;
+    } else {
+      await handleRemoteEngine(state);
       return;
     }
   }
