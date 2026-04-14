@@ -38,24 +38,75 @@ function readLocalAdminKey(): string {
   return match ? match[1].trim() : '';
 }
 
-async function waitForEngine(url: string, apiKey: string, maxWaitMs = 120_000): Promise<boolean> {
+async function waitForEngine(
+  url: string,
+  apiKey: string,
+  options: { watchDocker?: boolean } = {},
+): Promise<boolean> {
   const client = new ArthurEngineClient(url, apiKey);
   const start = Date.now();
-  const spinner = ora({ text: buzzSay('Waiting for Arthur Engine to become ready...'), color: 'cyan' }).start();
+  const watchDocker = options.watchDocker === true && fs.existsSync(DOCKER_COMPOSE_PATH);
 
-  while (Date.now() - start < maxWaitMs) {
-    if (await client.verifyConnection()) {
-      spinner.stop();
-      logSuccess('Arthur Engine is online.');
-      return true;
-    }
-    await new Promise<void>(r => setTimeout(r, 5_000));
-    spinner.text = buzzSay(`Waiting for engine... (${Math.round((Date.now() - start) / 1000)}s)`);
+  if (watchDocker) {
+    p.log.info(buzzSay('First-time startup may take several minutes while models are downloaded.'));
+    p.log.info(buzzSay('Subsequent startups will load them from the local cache on disk.'));
   }
 
-  spinner.stop();
-  logError('Engine did not become ready in time.');
-  return false;
+  const spinner = ora({ text: buzzSay('Waiting for Arthur Engine to become ready...'), color: 'cyan' }).start();
+
+  let recentLogLine = '';
+  const logsProcess = watchDocker
+    ? execa('docker', ['compose', '-f', DOCKER_COMPOSE_PATH, 'logs', '--follow', '--tail', '10', '--no-color'], {
+        all: true,
+        reject: false,
+      })
+    : null;
+
+  logsProcess?.all?.on('data', (chunk: Buffer) => {
+    const text = chunk.toString();
+    const lines = text.split('\n').filter(l => l.trim() && !l.includes('Attaching to'));
+    for (const line of lines) {
+      const stripped = line.replace(/^[\w-]+-\d+\s*\|\s*/, '').trim();
+      if (stripped) recentLogLine = stripped.slice(0, 120);
+    }
+  });
+
+  try {
+    while (true) {
+      if (await client.verifyConnection()) {
+        spinner.stop();
+        logSuccess('Arthur Engine is online.');
+        return true;
+      }
+
+      if (watchDocker) {
+        // Only give up if the container has stopped — model downloads can take a long time
+        try {
+          const { stdout } = await execa('docker', [
+            'compose', '-f', DOCKER_COMPOSE_PATH, 'ps', '--status', 'running', '-q',
+          ]);
+          if (!stdout.trim()) {
+            spinner.stop();
+            logError('Arthur Engine container has exited unexpectedly.');
+            return false;
+          }
+        } catch {
+          // Docker check failed — keep waiting
+        }
+      } else if (Date.now() - start >= 120_000) {
+        spinner.stop();
+        logError('Engine did not become ready in time.');
+        return false;
+      }
+
+      await new Promise<void>(r => setTimeout(r, 5_000));
+      const elapsed = Math.round((Date.now() - start) / 1000);
+      const logHint = recentLogLine ? `\n  ${recentLogLine}` : '';
+      spinner.text = buzzSay(`Engine starting up... (${elapsed}s elapsed)${logHint}`);
+    }
+  } finally {
+    logsProcess?.kill();
+  }
 }
 
 type LocalEngineStatus =
@@ -138,7 +189,7 @@ async function handleLocalInstall(state: WorkflowState): Promise<void> {
     apiKey = await password('Enter your Arthur Engine admin API key:');
   }
 
-  const ready = await waitForEngine(url, apiKey);
+  const ready = await waitForEngine(url, apiKey, { watchDocker: true });
   if (!ready) {
     throw new BuzzError('Arthur Engine did not start in time. Check Docker logs.');
   }
@@ -203,7 +254,7 @@ export async function step2_EnsureArthurEngine(state: WorkflowState): Promise<vo
           ],
         );
         if (recovery === 'wait') {
-          const ready = await waitForEngine(url, apiKey);
+          const ready = await waitForEngine(url, apiKey, { watchDocker: true });
           if (!ready) throw new BuzzError('Arthur Engine did not come back online in time. Check Docker logs.');
           await verifyAndLogin(url, apiKey);
           state.engineUrl = url;
@@ -258,7 +309,7 @@ export async function step2_EnsureArthurEngine(state: WorkflowState): Promise<vo
       ],
     );
     if (recovery === 'restart') {
-      const ready = await waitForEngine(local.url, local.apiKey);
+      const ready = await waitForEngine(local.url, local.apiKey, { watchDocker: true });
       if (!ready) {
         throw new BuzzError('Arthur Engine did not come back online in time. Check Docker logs.');
       }
