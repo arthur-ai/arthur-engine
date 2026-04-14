@@ -74,3 +74,25 @@ The user experience of the CLI tool is that the user is interacting with Buzz, a
 2. Instruct the user to login to the Arthur GenAI Engine.
 2.1. Present the Arthur GenAI Engine URL
 2.2. If the engine is hosted on the loccal machine, let the user know how to find the API key
+
+## Use case 8 (step 6): Configure continuous evals for the user's agentic application
+1. Check if a model provider is configured in the Arthur GenAI Engine (required to run LLM-based evals).
+1.1. If not, ask the user if Buzz should configure one now.
+1.1.1. If yes, present a choice of supported providers: OpenAI, Anthropic, Google Gemini.
+1.1.2. Prompt the user for their API key for the selected provider and configure it via the Arthur Engine API.
+1.1.3. If the user declines or setup fails, inform them they can configure a model provider in the Arthur Engine UI under Settings → Model Providers and skip to the end.
+2. Fetch a recent trace from the user's task on the Arthur GenAI Engine for analysis.
+2.1. If no traces are available, inform the user to run their agent first to generate trace data, then re-run Buzz for personalized recommendations.
+3. Analyze the trace with Claude to generate AI-powered eval recommendations tailored to the application.
+3.1. Detect whether the trace includes retrieval/RAG spans (e.g. span kind RETRIEVER, or span names matching retrieval patterns).
+3.2. Use the detected framework, language, and retrieval context to recommend the most relevant evals.
+4. Present the recommended evals to the user with a rationale for each.
+4.1. Ask the user to confirm whether Buzz should configure these evals on the task now.
+4.2. If the user declines, inform them they can configure evals manually in the Arthur Engine UI and exit.
+5. Create LLM eval rules on the task for each approved recommendation.
+5.1. If any eval fails to create, log the error and continue with the rest.
+6. Create a shared trace transform ("Buzz — Input/Output Extractor") that maps the top span's input and output attributes to eval variables.
+6.1. If the transform cannot be created, inform the user to link evals manually in the Arthur Engine UI.
+7. Create continuous evals that link each successfully created LLM eval rule to the shared transform.
+7.1. If any continuous eval fails to activate, log the error.
+7.2. On success, present a summary of how many continuous evals are now monitoring the application and provide the Arthur Engine URL for the user to view and manage them.
