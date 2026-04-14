@@ -166,6 +166,10 @@ async function handleRemoteEngine(state: WorkflowState): Promise<void> {
   logSuccess(`All systems nominal. Remote Arthur Engine configured at ${url}`);
 }
 
+function isLocalEngine(url: string): boolean {
+  return url.includes('localhost') || url.includes('127.0.0.1');
+}
+
 export async function step2_EnsureArthurEngine(state: WorkflowState): Promise<void> {
   // Check persisted config first
   const buzzCfg = readBuzzConfig();
@@ -174,10 +178,60 @@ export async function step2_EnsureArthurEngine(state: WorkflowState): Promise<vo
       `Found Arthur Engine config at ${buzzCfg.ARTHUR_ENGINE_URL}. Use this?`,
     );
     if (useExisting) {
-      await verifyAndLogin(buzzCfg.ARTHUR_ENGINE_URL, buzzCfg.ARTHUR_API_KEY);
-      state.engineUrl = buzzCfg.ARTHUR_ENGINE_URL;
-      state.apiKey = buzzCfg.ARTHUR_API_KEY;
-      return;
+      const url = buzzCfg.ARTHUR_ENGINE_URL;
+      const apiKey = buzzCfg.ARTHUR_API_KEY;
+
+      const spinner = ora({ text: buzzSay('Verifying Arthur Engine connection...'), color: 'cyan' }).start();
+      const reachable = await new ArthurEngineClient(url, apiKey).verifyConnection();
+      spinner.stop();
+
+      if (reachable) {
+        await verifyAndLogin(url, apiKey);
+        state.engineUrl = url;
+        state.apiKey = apiKey;
+        return;
+      }
+
+      logWarn(`Arthur Engine at ${url} is not reachable.`);
+
+      if (isLocalEngine(url)) {
+        const recovery = await select<'wait' | 'install'>(
+          'What would you like to do?',
+          [
+            { value: 'wait', label: "I'll bring it back up", hint: 'Buzz will wait until the engine is ready' },
+            { value: 'install', label: 'Rerun the Arthur GenAI Engine installer', hint: 'Re-runs the install script' },
+          ],
+        );
+        if (recovery === 'wait') {
+          const ready = await waitForEngine(url, apiKey);
+          if (!ready) throw new BuzzError('Arthur Engine did not come back online in time. Check Docker logs.');
+          await verifyAndLogin(url, apiKey);
+          state.engineUrl = url;
+          state.apiKey = apiKey;
+          logSuccess(`All systems nominal. Arthur Engine back online at ${url}`);
+          return;
+        } else {
+          await handleLocalInstall(state);
+          return;
+        }
+      } else {
+        const recovery = await select<'retry' | 'remote'>(
+          'What would you like to do?',
+          [
+            { value: 'retry', label: 'Check again', hint: 'Try reconnecting to the same URL' },
+            { value: 'remote', label: 'Connect to a different remote engine', hint: 'Need URL + API key' },
+          ],
+        );
+        if (recovery === 'retry') {
+          await verifyAndLogin(url, apiKey);
+          state.engineUrl = url;
+          state.apiKey = apiKey;
+          return;
+        } else {
+          await handleRemoteEngine(state);
+          return;
+        }
+      }
     }
   }
 
