@@ -106,7 +106,15 @@ export const InfoStep = withForm({
             <PromptSelector form={form} />
             <DatasetSelector form={form} />
             <DatasetRowFilterSection form={form} />
-            <form.Field name="info.evaluators" mode="array">
+            <form.Field
+              name="info.evaluators"
+              mode="array"
+              listeners={{
+                onChange: () => {
+                  form.setFieldValue("evalVariableMappings", []);
+                },
+              }}
+            >
               {(field) => {
                 return (
                   <EvaluatorsSelector
