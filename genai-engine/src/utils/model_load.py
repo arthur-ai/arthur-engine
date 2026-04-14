@@ -292,7 +292,9 @@ def get_claim_classifier_embedding_model() -> SentenceTransformer | None:
     global CLAIM_CLASSIFIER_EMBEDDING_MODEL
     if not CLAIM_CLASSIFIER_EMBEDDING_MODEL:
         model_path = get_local_model_path("sentence-transformers/all-MiniLM-L12-v2")
-        CLAIM_CLASSIFIER_EMBEDDING_MODEL = SentenceTransformer(model_path)
+        CLAIM_CLASSIFIER_EMBEDDING_MODEL = SentenceTransformer(
+            model_path, device=get_device()
+        )
     return CLAIM_CLASSIFIER_EMBEDDING_MODEL
 
 

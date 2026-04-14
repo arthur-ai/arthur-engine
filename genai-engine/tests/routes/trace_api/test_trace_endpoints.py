@@ -182,9 +182,9 @@ def test_list_traces_metadata_filtering_by_user_ids(
     client: GenaiEngineTestClientBase,
     comprehensive_test_data,
 ):
-    """Test filtering traces by user IDs."""
+    """Test filtering traces by user IDs with substring matching."""
 
-    # Filter traces by user1
+    # Exact user_id still works as a substring match
     status_code, data = client.trace_api_list_traces_metadata(
         task_ids=["api_task1"],
         user_ids=["user1"],
@@ -210,6 +210,27 @@ def test_list_traces_metadata_filtering_by_user_ids(
     # Verify we have traces from both users
     user_ids = {trace.user_id for trace in data.traces}
     assert user_ids == {"user1", "user2"}
+
+    # Substring match: "user" is a substring of both "user1" and "user2"
+    status_code, data = client.trace_api_list_traces_metadata(
+        task_ids=["api_task1", "api_task2"],
+        user_ids=["user"],
+    )
+    assert status_code == 200
+    assert data.count == 4  # matches both user1 (3 traces) and user2 (1 trace)
+    assert len(data.traces) == 4
+    matched_user_ids = {trace.user_id for trace in data.traces}
+    assert matched_user_ids == {"user1", "user2"}
+
+    # Case-insensitive match: "USER1" should match "user1"
+    status_code, data = client.trace_api_list_traces_metadata(
+        task_ids=["api_task1"],
+        user_ids=["USER1"],
+    )
+    assert status_code == 200
+    assert data.count == 3
+    for trace in data.traces:
+        assert trace.user_id == "user1"
 
     # Filter by non-existent user
     status_code, data = client.trace_api_list_traces_metadata(
