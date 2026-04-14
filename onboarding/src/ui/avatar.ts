@@ -3,84 +3,76 @@ import boxen from 'boxen';
 
 export type AvatarState = 'idle' | 'thinking' | 'success' | 'error';
 
-// ASCII helmet frames
+// Block-character helmet frames (11 chars wide, 6 lines tall)
 const HELMET_IDLE_A = [
-  '  .-""-.  ',
-  ' / .-. \\ ',
-  '|(  o  )|',
-  " \\ '-' / ",
-  "  '---'  ",
-  '  || ||  ',
-  '  \\_|_/  ',
+  ' ▗▛▀▀▀▀▀▙▖ ',
+  '▐█░     ░█▌',
+  '▐█       █▌',
+  '▐█████████▌',
+  '▝▛███████▙▘',
+  '  ▐▌   ▐▌  ',
 ];
 
 const HELMET_IDLE_B = [
-  '  .-""-.  ',
-  ' / .-. \\ ',
-  '|(  O  )|',
-  " \\ '-' / ",
-  "  '---'  ",
-  '  || ||  ',
-  '  \\_|_/  ',
+  ' ▗▛▀▀▀▀▀▙▖ ',
+  '▐█▄     ▄█▌',
+  '▐█       █▌',
+  '▐█████████▌',
+  '▝▛███████▙▘',
+  '  ▐▌   ▐▌  ',
 ];
 
 const HELMET_THINK_FRAMES = [
   [
-    '  .-""-.  ',
-    ' / .-. \\ ',
-    '|(  o  )|',
-    " \\ '-' / ",
-    "  '-|-'  ",
-    '   | |   ',
-    '  \\_|_/  ',
+    ' ▗▛▀▀▀▀▀▙▖ ',
+    '▐█░     ░█▌',
+    '▐█░      █▌',
+    '▐█████████▌',
+    '▝▛███████▙▘',
+    '  ▐▌   ▐▌  ',
   ],
   [
-    '  .-""-.  ',
-    ' / .\\. \\ ',
-    '|(  o  )|',
-    " \\ '-' / ",
-    "  '-|-'  ",
-    '   | |   ',
-    '  \\_|_/  ',
+    ' ▗▛▀▀▀▀▀▙▖ ',
+    '▐█▒     ▒█▌',
+    '▐█  ░    █▌',
+    '▐█████████▌',
+    '▝▛███████▙▘',
+    '  ▐▌   ▐▌  ',
   ],
   [
-    '  .-""-.  ',
-    ' / .-. \\ ',
-    '|(  o  )|',
-    " \\ '-' / ",
-    "  '-|-'  ",
-    '   | |   ',
-    '  \\_|_/  ',
+    ' ▗▛▀▀▀▀▀▙▖ ',
+    '▐█▓     ▓█▌',
+    '▐█    ░  █▌',
+    '▐█████████▌',
+    '▝▛███████▙▘',
+    '  ▐▌   ▐▌  ',
   ],
   [
-    '  .-""-.  ',
-    ' / /.-. \\ ',
-    '|(  o  )|',
-    " \\ '-' / ",
-    "  '-|-'  ",
-    '   | |   ',
-    '  \\_|_/  ',
+    ' ▗▛▀▀▀▀▀▙▖ ',
+    '▐█▒     ▒█▌',
+    '▐█       █▌',
+    '▐█████████▌',
+    '▝▛███████▙▘',
+    '  ▐▌   ▐▌  ',
   ],
 ];
 
 const HELMET_SUCCESS = [
-  '    *    ',
-  '   \\|/   ',
-  '  .-O-.  ',
-  '   /|\\   ',
-  '    *    ',
-  '  || ||  ',
-  '  \\_|_/  ',
+  ' ▗▛▀▀▀▀▀▙▖ ',
+  '▐█▀     ▀█▌',
+  '▐█       █▌',
+  '▐█████████▌',
+  '▝▛███████▙▘',
+  '  ▐▌   ▐▌  ',
 ];
 
 const HELMET_ERROR = [
-  '  .-""-.  ',
-  ' / .-. \\ ',
-  '|(  X  )|',
-  " \\ '-' / ",
-  "  '---'  ",
-  '  || ||  ',
-  '  \\_|_/  ',
+  ' ▗▛▀▀▀▀▀▙▖ ',
+  '▐█▗     ▖█▌',
+  '▐█       █▌',
+  '▐█████████▌',
+  '▝▛███████▙▘',
+  '  ▐▌   ▐▌  ',
 ];
 
 function renderFrame(lines: string[], colorFn: (s: string) => string): string {
@@ -106,7 +98,7 @@ export function printAvatar(state: AvatarState, message: string): void {
       break;
     default:
       frame = HELMET_IDLE_A;
-      colorFn = chalk.cyan;
+      colorFn = chalk.hex('#9B59B6');
   }
 
   console.log(renderFrame(frame, colorFn));
@@ -121,16 +113,22 @@ export function printAvatar(state: AvatarState, message: string): void {
   console.log();
 }
 
-export async function playStartupAnimation(): Promise<void> {
+export async function playStartupAnimation(sideLines?: string[]): Promise<void> {
   const frames = [HELMET_IDLE_A, HELMET_IDLE_B, HELMET_IDLE_A, HELMET_IDLE_B, HELMET_IDLE_A];
   const HEIGHT = HELMET_IDLE_A.length;
+  const GAP = '  ';
 
   for (let i = 0; i < frames.length; i++) {
     if (i > 0) {
       // Move cursor up to overwrite previous frame
       process.stdout.write(`\x1B[${HEIGHT}A`);
     }
-    process.stdout.write(renderFrame(frames[i], chalk.cyan) + '\n');
+    const colorFn = chalk.hex('#9B59B6');
+    const coloredLines = frames[i].map(l => colorFn(l));
+    const output = sideLines
+      ? coloredLines.map((l, j) => l + GAP + (sideLines[j] ?? '')).join('\n')
+      : coloredLines.join('\n');
+    process.stdout.write(output + '\n');
     await new Promise<void>(resolve => setTimeout(resolve, 350));
   }
 }

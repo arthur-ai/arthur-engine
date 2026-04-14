@@ -8,14 +8,11 @@ import { buzzSay } from './ui/prompts.js';
 import { BuzzError } from './errors.js';
 
 async function main(): Promise<void> {
-  // Banner
+  // Banner + animated avatar side by side
   const banner = figlet.textSync('BUZZ', { font: 'Big' });
-  console.log(chalk.cyan(banner));
+  const bannerLines = banner.split('\n').filter(l => l.length > 0).map(l => chalk.hex('#CE93D8').bold(l));
+  await playStartupAnimation(bannerLines);
   console.log(chalk.dim('  Arthur GenAI Engine Onboarding Agent'));
-  console.log();
-
-  // Animated startup
-  await playStartupAnimation();
   console.log();
 
   // Intro
