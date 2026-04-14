@@ -1,5 +1,6 @@
 import * as p from '@clack/prompts';
 import chalk from 'chalk';
+import { stripVTControlCharacters } from 'node:util';
 
 export { p };
 export const { isCancel, cancel } = p;
@@ -88,6 +89,22 @@ export function logInfo(msg: string): void {
   p.log.info(buzzSay(msg));
 }
 
-export function note(message: string, title?: string): void {
-  p.note(message, title);
+export function note(message: string, title = ''): void {
+  const lines = message.split('\n');
+  const titleLen = stripVTControlCharacters(title).length;
+  const r = Math.max(
+    lines.reduce((n, l) => Math.max(n, stripVTControlCharacters(l).length), 0),
+    titleLen,
+  ) + 2;
+
+  const bar = chalk.gray('│');
+  const contentLines = lines
+    .map(l => `${bar}  ${chalk.dim(l)}${' '.repeat(r - stripVTControlCharacters(l).length)}${bar}`)
+    .join('\n');
+
+  const topDashes = chalk.gray('─'.repeat(Math.max(r - titleLen - 1, 1)) + '╮');
+  const top = `${chalk.green('◇')}  ${chalk.reset(title)} ${topDashes}`;
+  const bottom = chalk.gray('├' + '─'.repeat(r + 2) + '╯');
+
+  process.stdout.write(`${chalk.gray('│')}\n${top}\n${contentLines}\n${bottom}\n`);
 }

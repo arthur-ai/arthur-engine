@@ -106,7 +106,7 @@ describe('ArthurEngineClient', () => {
 
   describe('getTraces', () => {
     it('returns traces array on success', async () => {
-      const traces = [{ id: 'trace-1' }];
+      const traces = [{ trace_id: 'trace-1' }];
       mockFetch.mockResolvedValue(makeResponse(200, { traces }));
       const result = await client.getTraces('task-123');
       expect(result).toEqual({ traces });

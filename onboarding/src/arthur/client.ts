@@ -6,7 +6,7 @@ export interface Task {
 }
 
 export interface Trace {
-  id: string;
+  trace_id: string;
   task_id?: string;
   created_at?: string;
 }
@@ -18,13 +18,15 @@ export interface TraceCheckResult {
 
 export interface SpanDetail {
   span_name: string | null;
+  span_kind?: string | null;
   input_content: string | null;
   output_content: string | null;
+  children?: SpanDetail[];
 }
 
 export interface TraceDetail {
-  id: string;
-  spans?: SpanDetail[];
+  trace_id: string;
+  root_spans?: SpanDetail[];
 }
 
 export interface ModelProviderInfo {

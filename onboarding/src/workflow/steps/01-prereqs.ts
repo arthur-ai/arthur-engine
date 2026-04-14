@@ -13,10 +13,19 @@ export async function step1_VerifyPrereqs(state: WorkflowState): Promise<void> {
     const { stdout } = await execa('git', ['status', '--porcelain'], {
       cwd: state.repoPath,
     });
-    if (stdout.trim()) {
+    const dirtyLines = stdout
+      .split('\n')
+      .filter(l => l.length > 0)
+      .filter(l => !(l[1] === ' ' && l[0] !== '?')); // cleanly-staged lines are fine
+
+    if (dirtyLines.length > 0) {
       spinner.stop();
       logError('Cannot proceed — uncommitted work in progress detected in your repository.');
-      note('Please commit or stash your changes and re-run Buzz.', 'git status is dirty');
+      note(
+        'Please commit or stash your unstaged changes and re-run Buzz.\n' +
+          '(Staged/added changes are fine.)',
+        'git status is dirty',
+      );
       throw new BuzzError('Git repository has uncommitted changes.');
     }
   } catch (err) {

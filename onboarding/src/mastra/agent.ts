@@ -1,13 +1,6 @@
-import { Agent } from '@mastra/core/agent';
-import { anthropic } from '@ai-sdk/anthropic';
+import { query } from '@anthropic-ai/claude-agent-sdk';
 import fs from 'node:fs';
 import path from 'node:path';
-import {
-  readFileTool,
-  listDirectoryTool,
-  searchPatternTool,
-  checkDependenciesTool,
-} from './tools/code-analysis.js';
 
 export interface CodeAnalysisResult {
   language: 'python' | 'typescript' | 'javascript' | 'other';
@@ -22,9 +15,9 @@ const INSTRUCTIONS = `You are Buzz's code analysis module. Your job is to analyz
 repository and return a structured JSON assessment.
 
 Always use your tools to examine the repository before drawing conclusions:
-1. Call listDirectory first to see all files
-2. Call checkDependencies to read manifests (package.json, requirements.txt, pyproject.toml)
-3. Call readFile or searchPattern as needed to verify findings
+1. Call Glob first to see all files
+2. Call Read to read manifests (package.json, requirements.txt, pyproject.toml)
+3. Call Grep or Read as needed to verify findings
 
 Return ONLY a JSON object with this exact structure (no markdown, no explanation, just raw JSON):
 {
@@ -48,19 +41,6 @@ Detection rules:
   OR @opentelemetry/exporter-trace-otlp-proto configured with Arthur URL
 - instrumentationType: "arthur-sdk" for Python SDK, "mastra-arthur-exporter" for Mastra, "openinference" for OTel/OpenInference`;
 
-export const buzzCodeAnalysisAgent = new Agent({
-  id: 'buzz-code-analysis',
-  name: 'buzz-code-analysis',
-  instructions: INSTRUCTIONS,
-  model: anthropic('claude-3-5-haiku-20241022'),
-  tools: {
-    readFileTool,
-    listDirectoryTool,
-    searchPatternTool,
-    checkDependenciesTool,
-  },
-});
-
 function extractJSON(text: string): string {
   // Strip markdown code blocks if present
   const blockMatch = text.match(/```(?:json)?\s*([\s\S]+?)```/);
@@ -71,7 +51,7 @@ function extractJSON(text: string): string {
   return text.trim();
 }
 
-/** Fast file-system heuristic — used as fallback when Mastra agent fails */
+/** Fast file-system heuristic — used as fallback when Claude agent fails */
 function heuristicAnalysis(repoPath: string): CodeAnalysisResult {
   const hasPyproject = fs.existsSync(path.join(repoPath, 'pyproject.toml'));
   const hasRequirements = fs.existsSync(path.join(repoPath, 'requirements.txt'));
@@ -146,27 +126,35 @@ function heuristicAnalysis(repoPath: string): CodeAnalysisResult {
 }
 
 /**
- * Analyze a repository using the Mastra code analysis agent.
+ * Analyze a repository using the Claude Code SSO session.
  * Falls back to file-system heuristics if the agent call fails.
  */
 export async function analyzeRepository(repoPath: string): Promise<CodeAnalysisResult> {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return heuristicAnalysis(repoPath);
-  }
   try {
-    const result = await buzzCodeAnalysisAgent.generate([
-      {
-        role: 'user',
-        content: `Analyze the agentic application repository at: ${repoPath}
-
-Use your tools to examine the files and return the JSON assessment.`,
+    const stream = query({
+      prompt: `Analyze the agentic application repository at: ${repoPath}\n\nUse your tools to examine the files and return the JSON assessment.`,
+      options: {
+        cwd: repoPath,
+        allowedTools: ['Read', 'Glob', 'Grep'],
+        systemPrompt: INSTRUCTIONS,
+        maxTurns: 3,
       },
-    ]);
+    });
 
-    const jsonText = extractJSON(result.text);
-    return JSON.parse(jsonText) as CodeAnalysisResult;
+    let fullOutput = '';
+    for await (const message of stream) {
+      if (message.type === 'assistant') {
+        const content = (message as { type: 'assistant'; message: { content: Array<{ type: string; text?: string }> } }).message?.content ?? [];
+        for (const block of content) {
+          if (block.type === 'text' && block.text) {
+            fullOutput += block.text;
+          }
+        }
+      }
+    }
+
+    return JSON.parse(extractJSON(fullOutput)) as CodeAnalysisResult;
   } catch {
-    // Silently fall back to heuristics
     return heuristicAnalysis(repoPath);
   }
 }

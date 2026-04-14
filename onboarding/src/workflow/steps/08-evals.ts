@@ -1,5 +1,6 @@
 import ora from 'ora';
 import {
+  p,
   buzzSay,
   logSuccess,
   logWarn,
@@ -13,7 +14,7 @@ import {
 import { ArthurEngineClient } from '../../arthur/client.js';
 import type { SpanDetail, TraceDetail, ModelProviderInfo } from '../../arthur/client.js';
 import { recommendEvals } from '../../mastra/eval-recommender.js';
-import type { EvalRecommendation } from '../../mastra/eval-recommender.js';
+import type { RecommendEvalsResult } from '../../mastra/eval-recommender.js';
 import type { WorkflowState } from '../orchestrator.js';
 
 const MODEL_DEFAULTS: Record<string, string> = {
@@ -37,14 +38,59 @@ function pickModel(providers: ModelProviderInfo[]): { provider: string; model: s
   return null;
 }
 
-function extractBestSpan(trace: TraceDetail): SpanDetail | null {
-  return trace.spans?.find(s => s.input_content || s.output_content) ?? null;
+const RETRIEVAL_SPAN_PATTERN = /retriev|search|fetch|document|rag/i;
+
+function isRetrievalSpan(span: SpanDetail): boolean {
+  return (
+    span.span_kind === 'RETRIEVER' ||
+    (span.span_name != null && RETRIEVAL_SPAN_PATTERN.test(span.span_name))
+  );
 }
 
-function buildTraceContent(span: SpanDetail): string {
+function flattenSpans(spans: SpanDetail[]): SpanDetail[] {
+  const result: SpanDetail[] = [];
+  for (const span of spans) {
+    result.push(span);
+    if (span.children?.length) {
+      result.push(...flattenSpans(span.children));
+    }
+  }
+  return result;
+}
+
+function extractBestSpan(trace: TraceDetail): SpanDetail | null {
+  const all = flattenSpans(trace.root_spans ?? []);
+  return all.find(s => s.input_content || s.output_content) ?? null;
+}
+
+function buildTraceContent(
+  span: SpanDetail,
+  trace: TraceDetail,
+): { content: string; hasRetrievalContext: boolean } {
   const input = span.input_content ? span.input_content.slice(0, 1500) : '(none)';
   const output = span.output_content ? span.output_content.slice(0, 1500) : '(none)';
-  return `INPUT:\n${input}\n\nOUTPUT:\n${output}`;
+
+  const allSpans = flattenSpans(trace.root_spans ?? []);
+  const retrievalSpans = allSpans.filter(isRetrievalSpan);
+  const hasRetrievalContext = retrievalSpans.length > 0;
+
+  let content = `INPUT:\n${input}\n\nOUTPUT:\n${output}`;
+
+  if (hasRetrievalContext) {
+    const contextParts = retrievalSpans
+      .map(s => {
+        const parts: string[] = [];
+        if (s.input_content) parts.push(`Query: ${s.input_content.slice(0, 500)}`);
+        if (s.output_content) parts.push(`Retrieved: ${s.output_content.slice(0, 1000)}`);
+        return parts.join('\n');
+      })
+      .filter(Boolean);
+    if (contextParts.length > 0) {
+      content += `\n\nRETRIEVAL CONTEXT:\n${contextParts.join('\n---\n')}`;
+    }
+  }
+
+  return { content, hasRetrievalContext };
 }
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -105,11 +151,6 @@ async function setupModelProvider(
   return { provider, model: MODEL_DEFAULTS[provider] };
 }
 
-function formatRecommendations(recs: EvalRecommendation[]): string {
-  return recs
-    .map((r, i) => `${i + 1}. ${r.displayName}\n   ${r.rationale}`)
-    .join('\n\n');
-}
 
 export async function step8_RecommendEvals(state: WorkflowState): Promise<void> {
   if (!state.engineUrl || !state.apiKey || !state.taskId) {
@@ -150,7 +191,7 @@ export async function step8_RecommendEvals(state: WorkflowState): Promise<void> 
     return;
   }
 
-  const traceDetail = await client.getTraceDetail(traceResult.traces[0].id);
+  const traceDetail = await client.getTraceDetail(traceResult.traces[0].trace_id);
   traceSpinner.stop();
 
   if (!traceDetail) {
@@ -170,26 +211,31 @@ export async function step8_RecommendEvals(state: WorkflowState): Promise<void> 
     color: 'cyan',
   }).start();
 
-  const recommendations = await recommendEvals(
-    buildTraceContent(bestSpan),
+  const { content: traceContent, hasRetrievalContext } = buildTraceContent(bestSpan, traceDetail);
+
+  const result: RecommendEvalsResult = await recommendEvals(
+    traceContent,
     bestSpan.span_name ?? 'unknown',
     state.analysis?.framework ?? null,
     state.analysis?.language ?? 'unknown',
     modelSelection.provider,
+    hasRetrievalContext,
   );
   analysisSpinner.stop();
 
-  if (!recommendations || recommendations.recommendations.length === 0) {
-    logWarn('Could not generate eval recommendations. Skipping.');
+  if (!result.ok) {
+    logWarn(`Could not generate eval recommendations: ${result.reason}`);
     return;
   }
 
+  const recommendations = result.recommendations;
+
   // Phase 4: Present recommendations and ask for confirmation
-  note(
-    'Based on your trace data, Buzz recommends these continuous evals:\n\n' +
-      formatRecommendations(recommendations.recommendations),
-    'Recommended evals for your application',
-  );
+  logInfo('Based on your trace data, Buzz recommends these continuous evals:');
+  for (const [i, rec] of recommendations.recommendations.entries()) {
+    p.log.message(`${i + 1}. ${rec.displayName}`);
+    p.log.message(`   ${rec.rationale}`);
+  }
 
   const approved = await confirm(
     'Should Buzz configure these continuous evals on your task now?',

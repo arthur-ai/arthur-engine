@@ -40,15 +40,10 @@ When Buzz asks you to run the agent for **trace verification (Step 7)**, run thi
 ```bash
 uv run python -c "
 from src.email_assistant.email_assistant import email_assistant
-result = email_assistant.invoke({
-    'email_input': {
-        'author': 'test@example.com',
-        'to': 'me@example.com',
-        'subject': 'Hello',
-        'email_thread': 'Hello, just checking in.'
-    }
-})
-print(result)
-```
+from src.email_assistant.eval.email_dataset import email_inputs, email_names
 
-**What this does:** It runs a single `email_assistant` invocation with a tiny fake thread so Arthur can capture a trace and Buzz can confirm the integration end-to-end.
+for name, email in zip(email_names, email_inputs):
+    result = email_assistant.invoke({'email_input': email})
+    print(f'{name}: {result[\"classification_decision\"]}')
+"
+```
