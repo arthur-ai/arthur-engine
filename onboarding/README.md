@@ -30,6 +30,16 @@ buzz
 
 > **Your repository must have no uncommitted changes before running Buzz.** Commit or stash your work first.
 
+## Local Development
+
+After making changes to the Buzz source code, rebuild and reinstall globally to test them:
+
+```bash
+npm run build && npm install -g .
+```
+
+This compiles the TypeScript source and replaces the globally installed `buzz` binary with your local build.
+
 ## What Buzz does
 
 Buzz walks you through 7 steps automatically:
