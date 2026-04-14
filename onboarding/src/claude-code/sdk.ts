@@ -238,9 +238,20 @@ function parseResult(text: string): InstrumentationResult {
 
 export async function instrumentCodeWithClaude(
   req: InstrumentationRequest,
-  onProgress: (msg: string) => void,
 ): Promise<InstrumentationResult> {
   const spinner = ora({ text: buzzSay('Analyzing codebase and applying instrumentation...'), color: 'cyan' }).start();
+
+  // Progress handler with access to spinner so it can clear the spinner line
+  // before writing — this prevents progress text from being appended to the
+  // spinner's line (a collision caused by ora's \r-based rendering).
+  const onProgress = (msg: string) => {
+    const clean = msg.replace(/\x1B\[[0-9;]*m/g, '').trim();
+    if (clean) {
+      spinner.clear(); // Erase spinner from current line; cursor stays at line start
+      process.stdout.write(chalk.dim('  › ') + clean + '\n');
+      // ora redraws the spinner on the next timer tick at the new cursor position
+    }
+  };
 
   let fullOutput = '';
   let finalResult: InstrumentationResult | null = null;
@@ -263,10 +274,10 @@ export async function instrumentCodeWithClaude(
         for (const block of content) {
           if (block.type === 'text' && block.text) {
             fullOutput += block.text;
-            // Show last meaningful line to user
+            // Show last meaningful line to user (no spinner.text update — avoids
+            // duplicating the same content in both spinner and progress line)
             const lastLine = block.text.split('\n').filter(Boolean).at(-1);
             if (lastLine) {
-              spinner.text = buzzSay(lastLine.slice(0, 80));
               onProgress(lastLine);
             }
           }
@@ -292,14 +303,4 @@ export async function instrumentCodeWithClaude(
   }
 
   return finalResult ?? parseResult(fullOutput);
-}
-
-/** Display Claude's progress output inline (strips ANSI, truncates long lines) */
-export function makeProgressHandler(): (msg: string) => void {
-  return (msg: string) => {
-    const clean = msg.replace(/\x1B\[[0-9;]*m/g, '').trim();
-    if (clean && clean.length < 200) {
-      process.stdout.write(chalk.dim('  › ') + clean + '\n');
-    }
-  };
 }

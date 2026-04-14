@@ -6,7 +6,7 @@ import {
   note,
   confirm,
 } from '../../ui/prompts.js';
-import { instrumentCodeWithClaude, makeProgressHandler } from '../../claude-code/sdk.js';
+import { instrumentCodeWithClaude } from '../../claude-code/sdk.js';
 import type { WorkflowState } from '../orchestrator.js';
 
 /**
@@ -70,7 +70,6 @@ export async function step5_InstrumentMastra(state: WorkflowState): Promise<bool
       taskId: state.taskId!,
       apiKey: state.apiKey!,
     },
-    makeProgressHandler(),
   );
 
   console.log();
