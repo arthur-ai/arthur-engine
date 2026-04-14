@@ -14,16 +14,23 @@ import type { WorkflowState } from '../orchestrator.js';
 const POLL_INTERVAL_MS = 3_000;
 const POLL_MAX_MS = 60_000;
 
-async function pollForTraces(client: ArthurEngineClient, taskId: string): Promise<boolean> {
+async function pollForTraces(
+  client: ArthurEngineClient,
+  taskId: string,
+): Promise<{ found: boolean; lastError?: string }> {
   const spinner = ora({ text: buzzSay('Checking for traces in Arthur...'), color: 'cyan' }).start();
   const start = Date.now();
+  let lastError: string | undefined;
 
   while (Date.now() - start < POLL_MAX_MS) {
-    const traces = await client.getTraces(taskId);
-    if (traces.length > 0) {
+    const result = await client.getTraces(taskId);
+    if (result.traces.length > 0) {
       spinner.stop();
-      logSuccess(`We have signal! ${traces.length} trace(s) detected.`);
-      return true;
+      logSuccess(`We have signal! ${result.traces.length} trace(s) detected.`);
+      return { found: true };
+    }
+    if (result.error) {
+      lastError = result.error;
     }
     await new Promise<void>(r => setTimeout(r, POLL_INTERVAL_MS));
     spinner.text = buzzSay(`Scanning for traces... (${Math.round((Date.now() - start) / 1000)}s)`);
@@ -31,7 +38,7 @@ async function pollForTraces(client: ArthurEngineClient, taskId: string): Promis
 
   spinner.stop();
   logWarn('No traces detected after 60 seconds.');
-  return false;
+  return { found: false, lastError };
 }
 
 export async function step7_VerifyInstrumentation(state: WorkflowState): Promise<void> {
@@ -54,7 +61,7 @@ export async function step7_VerifyInstrumentation(state: WorkflowState): Promise
   }
 
   // Poll for traces
-  const traced = await pollForTraces(client, state.taskId!);
+  const { found: traced, lastError } = await pollForTraces(client, state.taskId!);
 
   if (traced) {
     // Success!
@@ -73,19 +80,21 @@ export async function step7_VerifyInstrumentation(state: WorkflowState): Promise
     // No traces found — give guidance
     logWarn('No traces detected. Instrumentation may not be sending data yet.');
 
+    const errorHint = lastError ? `\n\nLast error from engine:\n  ${lastError}` : '';
     note(
       'Troubleshooting checklist:\n' +
       '  1. Did your application run and make at least one LLM call?\n' +
       '  2. Is ARTHUR_API_KEY set correctly in your environment?\n' +
       '  3. Is ARTHUR_BASE_URL pointing to: ' + state.engineUrl + '?\n' +
       '  4. Is ARTHUR_TASK_ID set to: ' + state.taskId + '?\n' +
-      '  5. Check your application logs for any OpenTelemetry export errors.',
+      '  5. Check your application logs for any OpenTelemetry export errors.' +
+      errorHint,
       'No traces detected',
     );
 
     const retry = await confirm('Would you like to check for traces again?');
     if (retry) {
-      const retried = await pollForTraces(client, state.taskId!);
+      const { found: retried, lastError: retryError } = await pollForTraces(client, state.taskId!);
       if (retried) {
         logSuccess('Instrumentation confirmed. Your traces are flowing to Arthur.');
         note(
@@ -94,8 +103,9 @@ export async function step7_VerifyInstrumentation(state: WorkflowState): Promise
         );
       } else {
         logWarn('Still no traces. Please review the troubleshooting checklist above.');
+        const retryErrorHint = retryError ? `\n\nLast error from engine:\n  ${retryError}` : '';
         note(
-          `Arthur Engine URL: ${state.engineUrl}\nTask ID: ${state.taskId}`,
+          `Arthur Engine URL: ${state.engineUrl}\nTask ID: ${state.taskId}` + retryErrorHint,
           'Manual verification needed',
         );
       }

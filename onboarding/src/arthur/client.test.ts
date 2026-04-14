@@ -105,30 +105,32 @@ describe('ArthurEngineClient', () => {
   });
 
   describe('getTraces', () => {
-    it('returns traces array', async () => {
+    it('returns traces array on success', async () => {
       const traces = [{ id: 'trace-1' }];
       mockFetch.mockResolvedValue(makeResponse(200, { traces }));
       const result = await client.getTraces('task-123');
-      expect(result).toEqual(traces);
+      expect(result).toEqual({ traces });
     });
 
-    it('returns empty array on error', async () => {
+    it('returns error message on network failure', async () => {
       mockFetch.mockRejectedValue(new Error('Network error'));
       const result = await client.getTraces('task-123');
-      expect(result).toEqual([]);
+      expect(result.traces).toEqual([]);
+      expect(result.error).toContain('Network error');
     });
 
-    it('returns empty array for non-200', async () => {
+    it('returns error message for non-200', async () => {
       mockFetch.mockResolvedValue(makeResponse(404, {}));
       const result = await client.getTraces('task-123');
-      expect(result).toEqual([]);
+      expect(result.traces).toEqual([]);
+      expect(result.error).toContain('HTTP 404');
     });
 
-    it('encodes taskId in URL', async () => {
+    it('encodes taskId in URL using task_ids param', async () => {
       mockFetch.mockResolvedValue(makeResponse(200, { traces: [] }));
       await client.getTraces('task with spaces');
       const [url] = mockFetch.mock.calls[0] as [string, RequestInit];
-      expect(url).toContain('task_id=task%20with%20spaces');
+      expect(url).toContain('task_ids=task%20with%20spaces');
     });
   });
 

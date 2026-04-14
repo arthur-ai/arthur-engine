@@ -11,6 +11,11 @@ export interface Trace {
   created_at?: string;
 }
 
+export interface TraceCheckResult {
+  traces: Trace[];
+  error?: string;
+}
+
 interface TaskListResponse {
   tasks?: Task[];
   data?: Task[];
@@ -92,20 +97,23 @@ export class ArthurEngineClient {
     return (await res.json()) as Task;
   }
 
-  async getTraces(taskId: string): Promise<Trace[]> {
+  async getTraces(taskId: string): Promise<TraceCheckResult> {
     try {
       const res = await fetch(
-        `${this.baseUrl}/api/v1/traces?task_id=${encodeURIComponent(taskId)}&page_size=5`,
+        `${this.baseUrl}/api/v1/traces?task_ids=${encodeURIComponent(taskId)}&page_size=5`,
         {
           headers: this.headers,
           signal: AbortSignal.timeout(15_000),
         },
       );
-      if (!res.ok) return [];
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        return { traces: [], error: `HTTP ${res.status}: ${body}` };
+      }
       const data = (await res.json()) as TraceListResponse;
-      return data.traces ?? data.data ?? [];
-    } catch {
-      return [];
+      return { traces: data.traces ?? data.data ?? [] };
+    } catch (err) {
+      return { traces: [], error: err instanceof Error ? err.message : String(err) };
     }
   }
 }
