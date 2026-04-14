@@ -7,6 +7,8 @@ import {
   logError,
   note,
   confirm,
+  select,
+  password,
 } from '../../ui/prompts.js';
 import { ArthurEngineClient } from '../../arthur/client.js';
 import type { SpanDetail, TraceDetail, ModelProviderInfo } from '../../arthur/client.js';
@@ -45,6 +47,64 @@ function buildTraceContent(span: SpanDetail): string {
   return `INPUT:\n${input}\n\nOUTPUT:\n${output}`;
 }
 
+const PROVIDER_LABELS: Record<string, string> = {
+  openai: 'OpenAI',
+  anthropic: 'Anthropic',
+  gemini: 'Google Gemini (AI Studio)',
+};
+
+async function setupModelProvider(
+  client: ArthurEngineClient,
+): Promise<{ provider: string; model: string } | null> {
+  const wantsSetup = await confirm(
+    'No model provider is configured. Would you like Buzz to set one up now?',
+  );
+  if (!wantsSetup) {
+    note(
+      'You can configure a model provider in the Arthur Engine UI under Settings → Model Providers,\n' +
+        'then re-run Buzz to get personalized eval recommendations.',
+      'Model provider setup skipped',
+    );
+    return null;
+  }
+
+  const provider = await select<string>(
+    'Which LLM provider would you like to configure?',
+    [
+      { value: 'openai',    label: 'OpenAI',        hint: 'gpt-4o, gpt-4o-mini, ...' },
+      { value: 'anthropic', label: 'Anthropic',     hint: 'claude-3-5-haiku, claude-3-5-sonnet, ...' },
+      { value: 'gemini',    label: 'Google Gemini', hint: 'gemini-1.5-flash, gemini-1.5-pro, ...' },
+      { value: 'skip',      label: 'Skip for now',  hint: 'Configure manually in the Arthur Engine UI' },
+    ],
+  );
+
+  if (provider === 'skip') {
+    note(
+      'You can configure a model provider in the Arthur Engine UI under Settings → Model Providers.',
+      'Model provider setup skipped',
+    );
+    return null;
+  }
+
+  const apiKey = await password(`Enter your ${PROVIDER_LABELS[provider]} API key`);
+
+  const spinner = ora({ text: buzzSay('Configuring model provider...'), color: 'cyan' }).start();
+  const result = await client.configureModelProvider(provider, { api_key: apiKey });
+  spinner.stop();
+
+  if (!result.success) {
+    logError(`Failed to configure ${PROVIDER_LABELS[provider]}: ${result.error}`);
+    note(
+      'You can configure a model provider manually in the Arthur Engine UI under Settings → Model Providers.',
+      'Model provider setup failed',
+    );
+    return null;
+  }
+
+  logSuccess(`${PROVIDER_LABELS[provider]} configured successfully.`);
+  return { provider, model: MODEL_DEFAULTS[provider] };
+}
+
 function formatRecommendations(recs: EvalRecommendation[]): string {
   return recs
     .map((r, i) => `${i + 1}. ${r.displayName}\n   ${r.rationale}`)
@@ -67,15 +127,10 @@ export async function step8_RecommendEvals(state: WorkflowState): Promise<void> 
   const providers = await client.getModelProviders();
   providersSpinner.stop();
 
-  const modelSelection = pickModel(providers);
+  let modelSelection = pickModel(providers);
   if (!modelSelection) {
-    note(
-      'To configure continuous evals, Arthur Engine needs a model provider configured.\n\n' +
-        'Set up a provider in the Arthur Engine UI under Settings → Model Providers,\n' +
-        'then re-run Buzz to get personalized eval recommendations.',
-      'No model provider configured',
-    );
-    return;
+    modelSelection = await setupModelProvider(client);
+    if (!modelSelection) return;
   }
 
   // Phase 2: Fetch a recent trace for analysis

@@ -271,4 +271,28 @@ export class ArthurEngineClient {
       return { error: err instanceof Error ? err.message : String(err) };
     }
   }
+
+  async configureModelProvider(
+    provider: string,
+    credentials: { api_key: string },
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const res = await fetch(
+        `${this.baseUrl}/api/v1/model_providers/${encodeURIComponent(provider)}`,
+        {
+          method: 'PUT',
+          headers: this.headers,
+          body: JSON.stringify({ api_key: credentials.api_key }),
+          signal: AbortSignal.timeout(15_000),
+        },
+      );
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        return { success: false, error: `HTTP ${res.status}: ${text}` };
+      }
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  }
 }
