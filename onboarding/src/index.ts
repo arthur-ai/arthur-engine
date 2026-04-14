@@ -3,8 +3,7 @@ import figlet from 'figlet';
 import chalk from 'chalk';
 import { intro, outro } from '@clack/prompts';
 import { runBuzzWorkflow } from './workflow/orchestrator.js';
-import { playStartupAnimation, printAvatar } from './ui/avatar.js';
-import { buzzSay } from './ui/prompts.js';
+import { playStartupAnimation } from './ui/avatar.js';
 import { BuzzError } from './errors.js';
 
 async function main(): Promise<void> {
@@ -24,17 +23,13 @@ async function main(): Promise<void> {
     await runBuzzWorkflow(repoPath);
 
     console.log();
-    printAvatar('success', buzzSay('Mission accomplished. We are go for science!'));
     outro(chalk.green.bold('Your application is now connected to Arthur GenAI Engine.'));
   } catch (err) {
     console.log();
 
     if (err instanceof BuzzError) {
-      printAvatar('error', buzzSay(`Houston, we have a problem. ${err.message}`));
       outro(chalk.red('Mission aborted. Check the messages above for guidance.'));
     } else {
-      const msg = err instanceof Error ? err.message : String(err);
-      printAvatar('error', buzzSay(`Unexpected error: ${msg}`));
       outro(chalk.red('Mission aborted due to an unexpected error.'));
     }
 
