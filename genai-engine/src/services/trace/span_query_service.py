@@ -244,7 +244,14 @@ class SpanQueryService:
         if filters.end_time:
             conditions.append(DatabaseTraceMetadata.end_time <= filters.end_time)
         if filters.user_ids:
-            conditions.append(DatabaseTraceMetadata.user_id.in_(filters.user_ids))
+            conditions.append(
+                or_(
+                    *[
+                        DatabaseTraceMetadata.user_id.ilike(f"%{uid}%")
+                        for uid in filters.user_ids
+                    ]
+                ),
+            )
         if filters.session_ids:
             conditions.append(DatabaseTraceMetadata.session_id.in_(filters.session_ids))
         if not filters.include_experiment_traces:
@@ -798,7 +805,14 @@ class SpanQueryService:
         if filters.end_time:
             conditions.append(DatabaseTraceMetadata.end_time <= filters.end_time)
         if filters.user_ids:
-            conditions.append(DatabaseTraceMetadata.user_id.in_(filters.user_ids))
+            conditions.append(
+                or_(
+                    *[
+                        DatabaseTraceMetadata.user_id.ilike(f"%{uid}%")
+                        for uid in filters.user_ids
+                    ]
+                ),
+            )
         if filters.session_ids:
             conditions.append(DatabaseTraceMetadata.session_id.in_(filters.session_ids))
 
@@ -1153,9 +1167,16 @@ class SpanQueryService:
                 ),
             )
 
-        # Apply user filtering
+        # Apply user filtering (case-insensitive substring match)
         if user_ids:
-            query = query.where(DatabaseTraceMetadata.user_id.in_(user_ids))
+            query = query.where(
+                or_(
+                    *[
+                        DatabaseTraceMetadata.user_id.ilike(f"%{uid}%")
+                        for uid in user_ids
+                    ]
+                ),
+            )
 
         # Group by session_id, task_id, and user_id to ensure proper session boundaries
         query = query.group_by(
