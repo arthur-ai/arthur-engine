@@ -1,0 +1,249 @@
+import ora from 'ora';
+import {
+  buzzSay,
+  logSuccess,
+  logWarn,
+  logInfo,
+  logError,
+  note,
+  confirm,
+} from '../../ui/prompts.js';
+import { ArthurEngineClient } from '../../arthur/client.js';
+import type { SpanDetail, TraceDetail, ModelProviderInfo } from '../../arthur/client.js';
+import { recommendEvals } from '../../mastra/eval-recommender.js';
+import type { EvalRecommendation } from '../../mastra/eval-recommender.js';
+import type { WorkflowState } from '../orchestrator.js';
+
+const MODEL_DEFAULTS: Record<string, string> = {
+  openai: 'gpt-4o',
+  anthropic: 'claude-3-5-haiku-20241022',
+  gemini: 'gemini-1.5-flash',
+  bedrock: 'anthropic.claude-3-haiku-20240307-v1:0',
+  vertex_ai: 'gemini-1.5-flash',
+};
+
+const PROVIDER_PRIORITY = ['openai', 'anthropic', 'gemini', 'bedrock', 'vertex_ai'];
+
+function pickModel(providers: ModelProviderInfo[]): { provider: string; model: string } | null {
+  const enabled = providers.filter(p => p.enabled);
+  for (const providerName of PROVIDER_PRIORITY) {
+    const match = enabled.find(e => e.provider === providerName);
+    if (match && MODEL_DEFAULTS[providerName]) {
+      return { provider: providerName, model: MODEL_DEFAULTS[providerName] };
+    }
+  }
+  return null;
+}
+
+function extractBestSpan(trace: TraceDetail): SpanDetail | null {
+  return trace.spans?.find(s => s.input_content || s.output_content) ?? null;
+}
+
+function buildTraceContent(span: SpanDetail): string {
+  const input = span.input_content ? span.input_content.slice(0, 1500) : '(none)';
+  const output = span.output_content ? span.output_content.slice(0, 1500) : '(none)';
+  return `INPUT:\n${input}\n\nOUTPUT:\n${output}`;
+}
+
+function formatRecommendations(recs: EvalRecommendation[]): string {
+  return recs
+    .map((r, i) => `${i + 1}. ${r.displayName}\n   ${r.rationale}`)
+    .join('\n\n');
+}
+
+export async function step8_RecommendEvals(state: WorkflowState): Promise<void> {
+  if (!state.engineUrl || !state.apiKey || !state.taskId) {
+    logWarn('Skipping eval recommendations — engine connection not established.');
+    return;
+  }
+
+  const client = new ArthurEngineClient(state.engineUrl, state.apiKey);
+
+  // Phase 1: Discover which model provider is available for running evals
+  const providersSpinner = ora({
+    text: buzzSay('Checking available model providers...'),
+    color: 'cyan',
+  }).start();
+  const providers = await client.getModelProviders();
+  providersSpinner.stop();
+
+  const modelSelection = pickModel(providers);
+  if (!modelSelection) {
+    note(
+      'To configure continuous evals, Arthur Engine needs a model provider configured.\n\n' +
+        'Set up a provider in the Arthur Engine UI under Settings → Model Providers,\n' +
+        'then re-run Buzz to get personalized eval recommendations.',
+      'No model provider configured',
+    );
+    return;
+  }
+
+  // Phase 2: Fetch a recent trace for analysis
+  const traceSpinner = ora({
+    text: buzzSay('Fetching trace data for deep scan...'),
+    color: 'cyan',
+  }).start();
+  const traceResult = await client.getTraces(state.taskId);
+
+  if (traceResult.traces.length === 0) {
+    traceSpinner.stop();
+    note(
+      'Once your application has sent traces to Arthur, re-run Buzz\n' +
+        'to get personalized eval recommendations based on your real trace data.',
+      'No traces available for analysis',
+    );
+    return;
+  }
+
+  const traceDetail = await client.getTraceDetail(traceResult.traces[0].id);
+  traceSpinner.stop();
+
+  if (!traceDetail) {
+    logWarn('Could not fetch trace details. Skipping eval recommendations.');
+    return;
+  }
+
+  const bestSpan = extractBestSpan(traceDetail);
+  if (!bestSpan) {
+    logWarn('No span content found in trace. Skipping eval recommendations.');
+    return;
+  }
+
+  // Phase 3: Analyze trace with Claude to generate eval recommendations
+  const analysisSpinner = ora({
+    text: buzzSay('Deep scanning your application traces with Claude...'),
+    color: 'cyan',
+  }).start();
+
+  const recommendations = await recommendEvals(
+    buildTraceContent(bestSpan),
+    bestSpan.span_name ?? 'unknown',
+    state.analysis?.framework ?? null,
+    state.analysis?.language ?? 'unknown',
+    modelSelection.provider,
+  );
+  analysisSpinner.stop();
+
+  if (!recommendations || recommendations.recommendations.length === 0) {
+    logWarn('Could not generate eval recommendations. Skipping.');
+    return;
+  }
+
+  // Phase 4: Present recommendations and ask for confirmation
+  note(
+    'Based on your trace data, Buzz recommends these continuous evals:\n\n' +
+      formatRecommendations(recommendations.recommendations),
+    'Recommended evals for your application',
+  );
+
+  const approved = await confirm(
+    'Should Buzz configure these continuous evals on your task now?',
+  );
+  if (!approved) {
+    logInfo(
+      'Eval configuration skipped. You can configure evals manually in the Arthur Engine UI.',
+    );
+    return;
+  }
+
+  // Phase 5: Create LLM evals
+  const createdEvalSlugs: string[] = [];
+  for (const rec of recommendations.recommendations) {
+    const spinner = ora({
+      text: buzzSay(`Creating LLM eval: ${rec.displayName}...`),
+      color: 'cyan',
+    }).start();
+    const result = await client.createLlmEval(state.taskId, rec.slug, {
+      model_name: modelSelection.model,
+      model_provider: modelSelection.provider,
+      instructions: rec.instructions,
+    });
+    spinner.stop();
+    if (result.error) {
+      logError(`Failed to create eval "${rec.displayName}": ${result.error}`);
+    } else {
+      logSuccess(`Created LLM eval: ${rec.displayName}`);
+      createdEvalSlugs.push(rec.slug);
+    }
+  }
+
+  if (createdEvalSlugs.length === 0) {
+    logWarn('No LLM evals were created. Skipping transform and continuous eval setup.');
+    return;
+  }
+
+  // Phase 6: Create one shared transform
+  const transformSpinner = ora({
+    text: buzzSay('Creating trace transform...'),
+    color: 'cyan',
+  }).start();
+  const transformResult = await client.createTransform(state.taskId, {
+    name: 'Buzz — Input/Output Extractor',
+    definition: {
+      variables: [
+        {
+          variable_name: 'input',
+          span_name: bestSpan.span_name ?? '',
+          attribute_path: 'attributes.input.value',
+          fallback: '',
+        },
+        {
+          variable_name: 'output',
+          span_name: bestSpan.span_name ?? '',
+          attribute_path: 'attributes.output.value',
+          fallback: '',
+        },
+      ],
+    },
+  });
+  transformSpinner.stop();
+
+  if (transformResult.error || !transformResult.transform) {
+    logError(`Failed to create transform: ${transformResult.error ?? 'unknown error'}`);
+    logWarn('Continuous evals could not be linked without a transform. Configure them manually in the Arthur Engine UI.');
+    return;
+  }
+  logSuccess('Created trace transform');
+
+  // Phase 7: Create continuous evals (one per successfully created LLM eval)
+  const VARIABLE_MAPPING = [
+    { transform_variable: 'input', eval_variable: 'input' },
+    { transform_variable: 'output', eval_variable: 'output' },
+  ];
+
+  let continuousEvalCount = 0;
+  for (const slug of createdEvalSlugs) {
+    const rec = recommendations.recommendations.find(r => r.slug === slug)!;
+    const spinner = ora({
+      text: buzzSay(`Activating continuous eval: ${rec.displayName}...`),
+      color: 'cyan',
+    }).start();
+    const result = await client.createContinuousEval(state.taskId, {
+      name: rec.displayName,
+      llm_eval_name: slug,
+      llm_eval_version: 'latest',
+      transform_id: transformResult.transform.id,
+      transform_variable_mapping: VARIABLE_MAPPING,
+      enabled: true,
+    });
+    spinner.stop();
+    if (result.error) {
+      logError(`Failed to activate "${rec.displayName}": ${result.error}`);
+    } else {
+      logSuccess(`Activated: ${rec.displayName}`);
+      continuousEvalCount++;
+    }
+  }
+
+  if (continuousEvalCount > 0) {
+    logSuccess(
+      `${continuousEvalCount} continuous eval(s) are now monitoring your application.`,
+    );
+    note(
+      `View and manage your evals in Arthur Engine:\n  ${state.engineUrl}`,
+      'Continuous evals configured',
+    );
+  } else {
+    logWarn('No continuous evals were activated. Configure them manually in the Arthur Engine UI.');
+  }
+}
