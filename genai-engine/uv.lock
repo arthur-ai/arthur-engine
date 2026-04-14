@@ -12,6 +12,7 @@ exclude-newer = "2026-04-14T14:03:06.638339Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
+arthur-common = false
 torch = false
 
 [[package]]
@@ -135,7 +136,7 @@ wheels = [
 
 [[package]]
 name = "arthur-common"
-version = "2.4.53"
+version = "2.4.54"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datasketches" },
@@ -151,9 +152,9 @@ dependencies = [
     { name = "types-requests" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/77/0e/9c27e29059d1b2676868149bc94095a74e717103db3fc79a0816cb4217bb/arthur_common-2.4.53.tar.gz", hash = "sha256:953064ab0d7b09649565d5412b6d7bb235a893c6c56616ef00a8484153e5f27d", size = 59100, upload-time = "2026-03-24T19:09:08.964Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a3/11/51e26f49a8dc88bca7f57a142846e51182f5220196b229ef6f56e7f993df/arthur_common-2.4.54.tar.gz", hash = "sha256:4663b2bcdae265e4fafc14a975f3b8bcfcca681b974dbaefd320b080d940c749", size = 14635305, upload-time = "2026-04-09T15:47:11.195Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b4/b6/e260b1eb58dd46e8352347e92112f6a58d089fad908e879baae4d7f95640/arthur_common-2.4.53-py3-none-any.whl", hash = "sha256:74e948644c137db560f53a1dee2fc642dc2eef6fb54ef2c24f2d5e3d94147c50", size = 85191, upload-time = "2026-03-24T19:09:07.621Z" },
+    { url = "https://files.pythonhosted.org/packages/0c/c6/f9ae4acc9a3896681455a4abfb05545b6750bc76f9d9911f871113f2d605/arthur_common-2.4.54-py3-none-any.whl", hash = "sha256:04518c511478ca671acec8c2597dc2082fcb82101a9e756f959f6e7f1e4d505f", size = 85870, upload-time = "2026-04-09T15:46:56.046Z" },
 ]
 
 [[package]]
@@ -250,7 +251,7 @@ performance = [
 requires-dist = [
     { name = "alembic", specifier = "==1.17.2" },
     { name = "amplitude-analytics", specifier = ">=1.1.5,<2" },
-    { name = "arthur-common", specifier = "==2.4.53" },
+    { name = "arthur-common", specifier = "==2.4.54" },
     { name = "authlib", specifier = "==1.6.9" },
     { name = "azure-storage-blob", specifier = "==12.27.1" },
     { name = "bcrypt", specifier = "==4.3.0" },

@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import Depends
+from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
@@ -24,6 +24,7 @@ class MultiMethodValidator:
     # Unused creds variable enables the authorization of requests on the docs site through some FastAPI magic, don't remove it
     async def validate_api_multi_auth(
         self,
+        request: Request,
         jwk_client: JWKClient = Depends(get_jwk_client),
         token: str = Depends(get_bearer_access_token_from_cookie_or_header),
         api_key_validator_client: APIKeyValidatorClient = Depends(
@@ -53,6 +54,7 @@ class MultiMethodValidator:
                 token,
                 db_session,
             ):
+                request.state.user_id = user.id
                 return user
         except Exception as e:
             logger.warning(
@@ -64,6 +66,7 @@ class MultiMethodValidator:
         # If API key validation fails, try oauth validation
         try:
             if jwk_client and (user := jwk_client.validate(token)):
+                request.state.user_id = user.id
                 return user
         except Exception as oauth_error:
             raise oauth_error
