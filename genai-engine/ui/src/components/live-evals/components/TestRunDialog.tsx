@@ -75,11 +75,14 @@ export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId, initial
     if (open && initialTraceIds && initialTraceIds.length > 0 && !testRunId && !autoStarted.current) {
       autoStarted.current = true;
       const unique = [...new Set(initialTraceIds)].slice(0, MAX_TRACES);
-      createMutation.mutateAsync(unique).then((result) => {
-        setTestRunId(result.id);
-      }).catch(() => {
-        autoStarted.current = false;
-      });
+      createMutation
+        .mutateAsync(unique)
+        .then((result) => {
+          setTestRunId(result.id);
+        })
+        .catch(() => {
+          autoStarted.current = false;
+        });
     }
   }, [open, initialTraceIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
