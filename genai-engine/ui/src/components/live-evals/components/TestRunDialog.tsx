@@ -77,6 +77,8 @@ export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId, initial
       const unique = [...new Set(initialTraceIds)].slice(0, MAX_TRACES);
       createMutation.mutateAsync(unique).then((result) => {
         setTestRunId(result.id);
+      }).catch(() => {
+        autoStarted.current = false;
       });
     }
   }, [open, initialTraceIds]); // eslint-disable-line react-hooks/exhaustive-deps
