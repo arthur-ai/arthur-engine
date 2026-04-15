@@ -287,16 +287,14 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
 
       <EvalPickerDialog open={evalPickerOpen} onClose={() => setEvalPickerOpen(false)} onSelect={handleEvalSelected} />
 
-      {testRunConfig && (
-        <TestRunDialog
-          open
-          onClose={handleTestRunClose}
-          evalId={testRunConfig.evalId}
-          evalName={testRunConfig.evalName}
-          taskId={task?.id ?? ""}
-          testRunId={testRunConfig.testRunId}
-        />
-      )}
+      <TestRunDialog
+        open={!!testRunConfig}
+        onClose={handleTestRunClose}
+        evalId={testRunConfig?.evalId ?? ""}
+        evalName={testRunConfig?.evalName ?? ""}
+        taskId={task?.id ?? ""}
+        testRunId={testRunConfig?.testRunId}
+      />
     </Stack>
   );
 });
