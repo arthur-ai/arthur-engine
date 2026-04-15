@@ -144,10 +144,12 @@ def list_continuous_eval_run_results(
 ) -> ListAgenticAnnotationsResponse:
     try:
         continuous_eval_repo = ContinuousEvalsRepository(db_session)
-        agentic_annotations, total_count = continuous_eval_repo.list_continuous_eval_run_results(
-            task.id,
-            pagination_parameters,
-            filter_request,
+        agentic_annotations, total_count = (
+            continuous_eval_repo.list_continuous_eval_run_results(
+                task.id,
+                pagination_parameters,
+                filter_request,
+            )
         )
         return ListAgenticAnnotationsResponse(
             annotations=[
