@@ -11,6 +11,10 @@ export const BUZZ_ENV_PATH = path.join(
   '.env',
 );
 
+export function getBuzzEnvPath(repoPath: string): string {
+  return path.join(os.homedir(), '.arthur-engine', 'local-stack', 'buzz', path.basename(repoPath), '.env');
+}
+
 export const GENAI_ENGINE_ENV_PATH = path.join(
   os.homedir(),
   '.arthur-engine',

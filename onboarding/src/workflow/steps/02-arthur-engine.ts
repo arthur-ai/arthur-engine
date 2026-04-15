@@ -194,7 +194,7 @@ async function handleLocalInstall(state: WorkflowState): Promise<void> {
     throw new BuzzError('Arthur Engine did not start in time. Check Docker logs.');
   }
 
-  writeBuzzConfig({ ARTHUR_ENGINE_URL: url, ARTHUR_API_KEY: apiKey });
+  writeBuzzConfig({ ARTHUR_ENGINE_URL: url, ARTHUR_API_KEY: apiKey }, state.buzzEnvPath);
   state.engineUrl = url;
   state.apiKey = apiKey;
   logSuccess(`All systems nominal. Local Arthur Engine ready at ${url}`);
@@ -213,7 +213,7 @@ async function handleRemoteEngine(state: WorkflowState): Promise<void> {
 
   const taskId = await text('Arthur Engine task ID:', 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx');
 
-  writeBuzzConfig({ ARTHUR_ENGINE_URL: url, ARTHUR_API_KEY: apiKey, ARTHUR_TASK_ID: taskId });
+  writeBuzzConfig({ ARTHUR_ENGINE_URL: url, ARTHUR_API_KEY: apiKey, ARTHUR_TASK_ID: taskId }, state.buzzEnvPath);
   state.engineUrl = url;
   state.apiKey = apiKey;
   state.taskId = taskId;
@@ -226,7 +226,7 @@ function isLocalEngine(url: string): boolean {
 
 export async function step2_EnsureArthurEngine(state: WorkflowState): Promise<void> {
   // Check persisted config first
-  const buzzCfg = readBuzzConfig();
+  const buzzCfg = readBuzzConfig(state.buzzEnvPath);
   if (buzzCfg.ARTHUR_ENGINE_URL && buzzCfg.ARTHUR_API_KEY) {
     const useExisting = await confirm(
       `Found Arthur Engine config at ${buzzCfg.ARTHUR_ENGINE_URL}. Use this?`,
@@ -301,7 +301,7 @@ export async function step2_EnsureArthurEngine(state: WorkflowState): Promise<vo
     );
     if (useLocal) {
       await verifyAndLogin(local.url, local.apiKey);
-      writeBuzzConfig({ ARTHUR_ENGINE_URL: local.url, ARTHUR_API_KEY: local.apiKey });
+      writeBuzzConfig({ ARTHUR_ENGINE_URL: local.url, ARTHUR_API_KEY: local.apiKey }, state.buzzEnvPath);
       state.engineUrl = local.url;
       state.apiKey = local.apiKey;
       return;
@@ -322,7 +322,7 @@ export async function step2_EnsureArthurEngine(state: WorkflowState): Promise<vo
         throw new BuzzError('Arthur Engine did not come back online in time. Check Docker logs.');
       }
       await verifyAndLogin(local.url, local.apiKey);
-      writeBuzzConfig({ ARTHUR_ENGINE_URL: local.url, ARTHUR_API_KEY: local.apiKey });
+      writeBuzzConfig({ ARTHUR_ENGINE_URL: local.url, ARTHUR_API_KEY: local.apiKey }, state.buzzEnvPath);
       state.engineUrl = local.url;
       state.apiKey = local.apiKey;
       logSuccess(`All systems nominal. Arthur Engine back online at ${local.url}`);

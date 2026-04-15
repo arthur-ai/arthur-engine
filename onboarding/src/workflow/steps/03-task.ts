@@ -16,7 +16,7 @@ import type { WorkflowState } from '../orchestrator.js';
 
 export async function step3_EnsureTaskId(state: WorkflowState): Promise<void> {
   const client = new ArthurEngineClient(state.engineUrl!, state.apiKey!);
-  const buzzCfg = readBuzzConfig();
+  const buzzCfg = readBuzzConfig(state.buzzEnvPath);
 
   // 1. Check if task ID already persisted
   if (buzzCfg.ARTHUR_TASK_ID) {
@@ -58,7 +58,7 @@ export async function step3_EnsureTaskId(state: WorkflowState): Promise<void> {
     const selected = await select('Which Arthur task should we use for this application?', options);
 
     if (selected !== '__new__') {
-      writeBuzzConfig({ ARTHUR_TASK_ID: selected });
+      writeBuzzConfig({ ARTHUR_TASK_ID: selected }, state.buzzEnvPath);
       state.taskId = selected;
       logSuccess(`Task selected: ${selected}`);
       return;
@@ -78,9 +78,9 @@ export async function step3_EnsureTaskId(state: WorkflowState): Promise<void> {
     const newTask = await client.createTask(taskName);
     createSpinner.stop();
     logSuccess(`Task created: "${newTask.name}" (${newTask.id})`);
-    writeBuzzConfig({ ARTHUR_TASK_ID: newTask.id });
+    writeBuzzConfig({ ARTHUR_TASK_ID: newTask.id }, state.buzzEnvPath);
     state.taskId = newTask.id;
-    note(`Task ID: ${newTask.id}\nThis has been saved to ~/.arthur-engine/local-stack/buzz/.env`, 'New task created');
+    note(`Task ID: ${newTask.id}\nThis has been saved to ${state.buzzEnvPath}`, 'New task created');
   } catch (err) {
     createSpinner.stop();
     logError(`Failed to create task: ${err instanceof Error ? err.message : String(err)}`);

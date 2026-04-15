@@ -2,11 +2,39 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { readBuzzConfig, writeBuzzConfig } from './env.js';
+import { readBuzzConfig, writeBuzzConfig, getBuzzEnvPath } from './env.js';
 
 // Use an isolated temp directory so tests don't touch the real ~/.arthur-engine
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'buzz-env-test-'));
 const tmpEnvPath = path.join(tmpDir, 'buzz-test.env');
+
+describe('getBuzzEnvPath', () => {
+  it('returns a path inside ~/.arthur-engine/local-stack/buzz/', () => {
+    const result = getBuzzEnvPath('/home/user/projects/my-app');
+    expect(result).toContain(path.join('.arthur-engine', 'local-stack', 'buzz'));
+  });
+
+  it('uses the basename of the repo path as the subdirectory', () => {
+    const result = getBuzzEnvPath('/home/user/projects/my-app');
+    expect(result).toContain(path.join('buzz', 'my-app', '.env'));
+  });
+
+  it('different repo basenames produce different paths', () => {
+    const path1 = getBuzzEnvPath('/projects/app-one');
+    const path2 = getBuzzEnvPath('/projects/app-two');
+    expect(path1).not.toBe(path2);
+  });
+
+  it('path ends with .env', () => {
+    const result = getBuzzEnvPath('/projects/my-agent');
+    expect(result.endsWith('.env')).toBe(true);
+  });
+
+  it('is rooted in the home directory', () => {
+    const result = getBuzzEnvPath('/projects/my-agent');
+    expect(result.startsWith(os.homedir())).toBe(true);
+  });
+});
 
 describe('readBuzzConfig', () => {
   beforeEach(() => {

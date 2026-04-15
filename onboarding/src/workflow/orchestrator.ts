@@ -7,11 +7,13 @@ import { step6_InstrumentOther } from './steps/06-other.js';
 import { step7_VerifyInstrumentation } from './steps/07-verify.js';
 import { step8_RecommendEvals } from './steps/08-evals.js';
 import { analyzeRepository, type CodeAnalysisResult } from '../mastra/index.js';
+import { getBuzzEnvPath } from '../config/env.js';
 import { p, buzzSay } from '../ui/prompts.js';
 import ora from 'ora';
 
 export interface WorkflowState {
   repoPath: string;
+  buzzEnvPath: string;
   engineUrl: string | null;
   apiKey: string | null;
   taskId: string | null;
@@ -25,6 +27,7 @@ function stepBanner(n: number, title: string): void {
 export async function runBuzzWorkflow(repoPath: string): Promise<void> {
   const state: WorkflowState = {
     repoPath,
+    buzzEnvPath: getBuzzEnvPath(repoPath),
     engineUrl: null,
     apiKey: null,
     taskId: null,
