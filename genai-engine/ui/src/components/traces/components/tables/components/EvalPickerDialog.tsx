@@ -43,7 +43,7 @@ export const EvalPickerDialog = ({ open, onClose, onSelect }: EvalPickerDialogPr
   const [searchInput, setSearchInput] = useState("");
   const [filters, setFilters] = useState<IncomingFilter[]>([]);
   const [selected, setSelected] = useState<{ id: string; name: string } | null>(null);
-  const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
+  const debounceTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const { data, isLoading } = useContinuousEvals({
     pagination: { page: pagination.page, page_size: pagination.rowsPerPage },
