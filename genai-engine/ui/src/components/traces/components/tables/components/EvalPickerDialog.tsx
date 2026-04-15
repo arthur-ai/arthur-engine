@@ -1,7 +1,6 @@
 import { type IncomingFilter, TextOperators } from "@arthur/shared-components";
 import LiveTvOutlinedIcon from "@mui/icons-material/LiveTvOutlined";
 import {
-  Box,
   Button,
   Chip,
   Dialog,
@@ -76,6 +75,9 @@ export const EvalPickerDialog = ({ open, onClose, onSelect }: EvalPickerDialogPr
 
   const handleRun = () => {
     if (selected) {
+      setSearchInput("");
+      setFilters([]);
+      pagination.resetPage();
       onSelect(selected);
       setSelected(null);
     }
@@ -100,16 +102,7 @@ export const EvalPickerDialog = ({ open, onClose, onSelect }: EvalPickerDialogPr
           />
 
           {!isLoading && evals.length === 0 ? (
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                py: 6,
-                textAlign: "center",
-              }}
-            >
+            <Stack alignItems="center" justifyContent="center" sx={{ py: 6, textAlign: "center" }}>
               <LiveTvOutlinedIcon sx={{ fontSize: 48, color: "text.secondary", mb: 2 }} />
               <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
                 No continuous evals configured for this task
@@ -117,7 +110,7 @@ export const EvalPickerDialog = ({ open, onClose, onSelect }: EvalPickerDialogPr
               <Button variant="contained" size="small" component={Link} to={`/tasks/${task?.id}/continuous-evals/new`} onClick={handleClose}>
                 Create Continuous Eval
               </Button>
-            </Box>
+            </Stack>
           ) : (
             <>
               <TableContainer>

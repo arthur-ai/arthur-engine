@@ -59,6 +59,7 @@ export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId, initial
   const [testRunId, setTestRunId] = useState<string | undefined>();
   const [selectedAnnotationId, setSelectedAnnotationId] = useState("");
   const autoStarted = useRef(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   const createMutation = useCreateTestRun(evalId);
   const testRunQuery = useTestRun(testRunId);
@@ -84,7 +85,7 @@ export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId, initial
           autoStarted.current = false;
         });
     }
-  }, [open, initialTraceIds]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, initialTraceIds, retryCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRun = useCallback(async () => {
     const unique = [...new Set(parsedIds)];
@@ -96,6 +97,7 @@ export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId, initial
     setTraceIdsInput("");
     setTestRunId(undefined);
     setSelectedAnnotationId("");
+    setRetryCount(0);
     autoStarted.current = false;
     onClose();
   };
@@ -193,10 +195,31 @@ export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId, initial
         <DialogContent>
           {initialTraceIds && !testRunId ? (
             <Stack spacing={2} sx={{ mt: 1 }} alignItems="center" justifyContent="center" minHeight={120}>
-              <LinearProgress sx={{ width: "100%", borderRadius: 1, height: 6 }} />
-              <Typography variant="body2" color="text.secondary">
-                Starting test run with {Math.min(initialTraceIds.length, MAX_TRACES)} trace{initialTraceIds.length !== 1 ? "s" : ""}...
-              </Typography>
+              {createMutation.isError ? (
+                <>
+                  <Alert severity="error" sx={{ width: "100%" }}>
+                    Failed to start test run. Please try again.
+                  </Alert>
+                  <Button
+                    variant="outlined"
+                    onClick={() => {
+                      autoStarted.current = false;
+                      createMutation.reset();
+                      setRetryCount((c) => c + 1);
+                    }}
+                  >
+                    Retry
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <LinearProgress sx={{ width: "100%", borderRadius: 1, height: 6 }} />
+                  <Typography variant="body2" color="text.secondary">
+                    Starting test run with {Math.min(initialTraceIds.length, MAX_TRACES)} trace
+                    {initialTraceIds.length !== 1 ? "s" : ""}...
+                  </Typography>
+                </>
+              )}
             </Stack>
           ) : isSetupPhase ? (
             <Stack spacing={2} sx={{ mt: 1 }}>
