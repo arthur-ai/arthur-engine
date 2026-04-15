@@ -104,7 +104,7 @@ def list_continuous_evals(
 ) -> ListContinuousEvalsResponse:
     try:
         continuous_eval_repo = ContinuousEvalsRepository(db_session)
-        continuous_evals = continuous_eval_repo.list_continuous_evals(
+        continuous_evals, total_count = continuous_eval_repo.list_continuous_evals(
             task.id,
             pagination_parameters,
             filter_request,
@@ -114,7 +114,7 @@ def list_continuous_evals(
                 continuous_eval.to_response_model()
                 for continuous_eval in continuous_evals
             ],
-            count=len(continuous_evals),
+            count=total_count,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -144,16 +144,18 @@ def list_continuous_eval_run_results(
 ) -> ListAgenticAnnotationsResponse:
     try:
         continuous_eval_repo = ContinuousEvalsRepository(db_session)
-        agentic_annotations = continuous_eval_repo.list_continuous_eval_run_results(
-            task.id,
-            pagination_parameters,
-            filter_request,
+        agentic_annotations, total_count = (
+            continuous_eval_repo.list_continuous_eval_run_results(
+                task.id,
+                pagination_parameters,
+                filter_request,
+            )
         )
         return ListAgenticAnnotationsResponse(
             annotations=[
                 annotation.to_response_model() for annotation in agentic_annotations
             ],
-            count=len(agentic_annotations),
+            count=total_count,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
