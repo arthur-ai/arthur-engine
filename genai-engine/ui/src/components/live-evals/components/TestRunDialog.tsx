@@ -18,7 +18,7 @@ import {
   Typography,
 } from "@mui/material";
 import { createMRTColumnHelper, MaterialReactTable, useMaterialReactTable } from "material-react-table";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { useCreateTestRun, useTestRun, useTestRunResults } from "../hooks/useTestRun";
@@ -41,6 +41,7 @@ type Props = {
   evalId: string;
   evalName: string;
   taskId: string;
+  initialTraceIds?: string[];
 };
 
 function parseTraceIds(raw: string): string[] {
@@ -50,13 +51,14 @@ function parseTraceIds(raw: string): string[] {
     .filter(Boolean);
 }
 
-export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId }: Props) => {
+export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId, initialTraceIds }: Props) => {
   const { defaultCurrency } = useDisplaySettings();
 
   // Setup phase state
   const [traceIdsInput, setTraceIdsInput] = useState("");
   const [testRunId, setTestRunId] = useState<string | undefined>();
   const [selectedAnnotationId, setSelectedAnnotationId] = useState("");
+  const autoStarted = useRef(false);
 
   const createMutation = useCreateTestRun(evalId);
   const testRunQuery = useTestRun(testRunId);
@@ -68,6 +70,17 @@ export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId }: Props
   const tooMany = parsedIds.length > MAX_TRACES;
   const isEmpty = parsedIds.length === 0;
 
+  // Auto-start when initialTraceIds are provided
+  useEffect(() => {
+    if (open && initialTraceIds && initialTraceIds.length > 0 && !testRunId && !autoStarted.current) {
+      autoStarted.current = true;
+      const unique = [...new Set(initialTraceIds)].slice(0, MAX_TRACES);
+      createMutation.mutateAsync(unique).then((result) => {
+        setTestRunId(result.id);
+      });
+    }
+  }, [open, initialTraceIds]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleRun = useCallback(async () => {
     const unique = [...new Set(parsedIds)];
     const result = await createMutation.mutateAsync(unique);
@@ -78,6 +91,7 @@ export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId }: Props
     setTraceIdsInput("");
     setTestRunId(undefined);
     setSelectedAnnotationId("");
+    autoStarted.current = false;
     onClose();
   };
 
@@ -165,14 +179,21 @@ export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId }: Props
     }),
   });
 
-  const isSetupPhase = !testRunId;
+  const isSetupPhase = !testRunId && !initialTraceIds;
 
   return (
     <>
       <Dialog open={open} onClose={handleClose} maxWidth="lg" fullWidth>
         <DialogTitle>Test: {evalName}</DialogTitle>
         <DialogContent>
-          {isSetupPhase ? (
+          {initialTraceIds && !testRunId ? (
+            <Stack spacing={2} sx={{ mt: 1 }} alignItems="center" justifyContent="center" minHeight={120}>
+              <LinearProgress sx={{ width: "100%", borderRadius: 1, height: 6 }} />
+              <Typography variant="body2" color="text.secondary">
+                Starting test run with {Math.min(initialTraceIds.length, MAX_TRACES)} trace{initialTraceIds.length !== 1 ? "s" : ""}...
+              </Typography>
+            </Stack>
+          ) : isSetupPhase ? (
             <Stack spacing={2} sx={{ mt: 1 }}>
               <Typography variant="body2" color="text.secondary">
                 Paste trace IDs to test this eval against. Results are stored separately and won't affect production annotations.

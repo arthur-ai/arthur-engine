@@ -10,9 +10,9 @@ import {
 import { Search } from "@mui/icons-material";
 import { Alert, Box, Button, Paper, Stack, TextField } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { SortingState } from "@tanstack/react-table";
+import { type RowSelectionState, SortingState } from "@tanstack/react-table";
 import type { MRT_ColumnDef } from "material-react-table";
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 
 import { TokenCostTooltip, TokenCountTooltip } from "../../data/common";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
@@ -24,8 +24,11 @@ import { AnnotationCell } from "../AnnotationCell";
 import { DataContentGate } from "../DataContentGate";
 import { TraceContentCell } from "../TraceContentCell";
 
+import { EvalPickerDialog } from "./components/EvalPickerDialog";
+import { SelectionActionBar } from "./components/SelectionActionBar";
 import { TracingFilterModal } from "./components/TracingFilterModal";
 
+import { TestRunDialog } from "@/components/live-evals/components/TestRunDialog";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
@@ -69,6 +72,9 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
   const api = useApi()!;
 
   const [sorting, setSorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [evalPickerOpen, setEvalPickerOpen] = useState(false);
+  const [testRunConfig, setTestRunConfig] = useState<{ evalId: string; evalName: string } | null>(null);
 
   const sort: "asc" | "desc" = sorting[0]?.desc === false ? "asc" : "desc";
   const sortBy = SORTABLE_COLUMN_MAP[sorting[0]?.id] ?? "start_time";
@@ -92,6 +98,31 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
     placeholderData: keepPreviousData,
     queryFn: () => getFilteredTraces(api, params),
   });
+
+  const selectedTraceIds = useMemo(() => Object.keys(rowSelection).filter((k) => rowSelection[k]), [rowSelection]);
+
+  // Clear selection when pagination, filters, sorting, or time range change
+  useEffect(() => {
+    setRowSelection({});
+  }, [pagination.pageIndex, pagination.pageSize, filters, timeRange, sorting]);
+
+  const handleRunEvalClick = useCallback(() => {
+    setEvalPickerOpen(true);
+  }, []);
+
+  const handleEvalSelected = useCallback((eval_: { id: string; name: string }) => {
+    setEvalPickerOpen(false);
+    setTestRunConfig({ evalId: eval_.id, evalName: eval_.name });
+  }, []);
+
+  const handleTestRunClose = useCallback(() => {
+    setTestRunConfig(null);
+    setRowSelection({});
+  }, []);
+
+  const handleClearSelection = useCallback(() => {
+    setRowSelection({});
+  }, []);
 
   const handleRowClick = useCallback(
     (row: TraceMetadataResponse) => {
@@ -199,24 +230,41 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
           </Box>
         )}
 
+        <SelectionActionBar selectedCount={selectedTraceIds.length} onRunEval={handleRunEvalClick} onClearSelection={handleClearSelection} />
+
         {hasData && (
-          <>
-            <BucketProvider thresholds={thresholds}>
-              <TracesTable
-                data={data?.traces ?? DEFAULT_DATA}
-                columns={columns as MRT_ColumnDef<TraceMetadataResponse, unknown>[]}
-                rowCount={data?.count ?? 0}
-                pagination={pagination}
-                onPaginationChange={props.onPaginationChange}
-                isLoading={isLoading}
-                onRowClick={handleRowClick}
-                sorting={sorting}
-                onSortingChange={setSorting}
-              />
-            </BucketProvider>
-          </>
+          <BucketProvider thresholds={thresholds}>
+            <TracesTable
+              data={data?.traces ?? DEFAULT_DATA}
+              columns={columns as MRT_ColumnDef<TraceMetadataResponse, unknown>[]}
+              rowCount={data?.count ?? 0}
+              pagination={pagination}
+              onPaginationChange={props.onPaginationChange}
+              isLoading={isLoading}
+              onRowClick={handleRowClick}
+              sorting={sorting}
+              onSortingChange={setSorting}
+              enableRowSelection
+              rowSelection={rowSelection}
+              onRowSelectionChange={setRowSelection}
+              getRowId={(row) => row.trace_id}
+            />
+          </BucketProvider>
         )}
       </DataContentGate>
+
+      <EvalPickerDialog open={evalPickerOpen} onClose={() => setEvalPickerOpen(false)} onSelect={handleEvalSelected} />
+
+      {testRunConfig && (
+        <TestRunDialog
+          open={!!testRunConfig}
+          onClose={handleTestRunClose}
+          evalId={testRunConfig.evalId}
+          evalName={testRunConfig.evalName}
+          taskId={task?.id ?? ""}
+          initialTraceIds={selectedTraceIds.slice(0, 50)}
+        />
+      )}
     </Stack>
   );
 });
