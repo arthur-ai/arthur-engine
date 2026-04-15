@@ -18,7 +18,7 @@ import {
   Typography,
 } from "@mui/material";
 import { createMRTColumnHelper, MaterialReactTable, useMaterialReactTable } from "material-react-table";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { useCreateTestRun, useTestRun, useTestRunResults } from "../hooks/useTestRun";
@@ -28,10 +28,9 @@ import { Details } from "@/components/live-evals/components/results/components/d
 import { serializeDrawerTarget } from "@/components/traces/hooks/useDrawerTarget";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import type { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
+import { MAX_TRACES_PER_TEST_RUN } from "@/lib/constants";
 import { formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
-
-const MAX_TRACES = 50;
 
 const columnHelper = createMRTColumnHelper<AgenticAnnotationResponse>();
 
@@ -41,7 +40,7 @@ type Props = {
   evalId: string;
   evalName: string;
   taskId: string;
-  initialTraceIds?: string[];
+  testRunId?: string;
 };
 
 function parseTraceIds(raw: string): string[] {
@@ -51,15 +50,15 @@ function parseTraceIds(raw: string): string[] {
     .filter(Boolean);
 }
 
-export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId, initialTraceIds }: Props) => {
+export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId, testRunId: externalTestRunId }: Props) => {
   const { defaultCurrency } = useDisplaySettings();
 
   // Setup phase state
   const [traceIdsInput, setTraceIdsInput] = useState("");
-  const [testRunId, setTestRunId] = useState<string | undefined>();
+  const [internalTestRunId, setInternalTestRunId] = useState<string | undefined>();
   const [selectedAnnotationId, setSelectedAnnotationId] = useState("");
-  const autoStarted = useRef(false);
-  const [retryCount, setRetryCount] = useState(0);
+
+  const testRunId = externalTestRunId ?? internalTestRunId;
 
   const createMutation = useCreateTestRun(evalId);
   const testRunQuery = useTestRun(testRunId);
@@ -68,37 +67,19 @@ export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId, initial
   const resultsQuery = useTestRunResults(testRunId);
 
   const parsedIds = useMemo(() => parseTraceIds(traceIdsInput), [traceIdsInput]);
-  const tooMany = parsedIds.length > MAX_TRACES;
+  const tooMany = parsedIds.length > MAX_TRACES_PER_TEST_RUN;
   const isEmpty = parsedIds.length === 0;
-
-  // Auto-start when initialTraceIds are provided
-  useEffect(() => {
-    if (open && initialTraceIds && initialTraceIds.length > 0 && !testRunId && !autoStarted.current) {
-      autoStarted.current = true;
-      const unique = [...new Set(initialTraceIds)].slice(0, MAX_TRACES);
-      createMutation
-        .mutateAsync(unique)
-        .then((result) => {
-          setTestRunId(result.id);
-        })
-        .catch(() => {
-          autoStarted.current = false;
-        });
-    }
-  }, [open, initialTraceIds, retryCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRun = useCallback(async () => {
     const unique = [...new Set(parsedIds)];
     const result = await createMutation.mutateAsync(unique);
-    setTestRunId(result.id);
+    setInternalTestRunId(result.id);
   }, [parsedIds, createMutation]);
 
   const handleClose = () => {
     setTraceIdsInput("");
-    setTestRunId(undefined);
+    setInternalTestRunId(undefined);
     setSelectedAnnotationId("");
-    setRetryCount(0);
-    autoStarted.current = false;
     onClose();
   };
 
@@ -186,42 +167,14 @@ export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId, initial
     }),
   });
 
-  const isSetupPhase = !testRunId && !initialTraceIds;
+  const isSetupPhase = !testRunId;
 
   return (
     <>
       <Dialog open={open} onClose={handleClose} maxWidth="lg" fullWidth>
         <DialogTitle>Test: {evalName}</DialogTitle>
         <DialogContent>
-          {initialTraceIds && !testRunId ? (
-            <Stack spacing={2} sx={{ mt: 1 }} alignItems="center" justifyContent="center" minHeight={120}>
-              {createMutation.isError ? (
-                <>
-                  <Alert severity="error" sx={{ width: "100%" }}>
-                    Failed to start test run. Please try again.
-                  </Alert>
-                  <Button
-                    variant="outlined"
-                    onClick={() => {
-                      autoStarted.current = false;
-                      createMutation.reset();
-                      setRetryCount((c) => c + 1);
-                    }}
-                  >
-                    Retry
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <LinearProgress sx={{ width: "100%", borderRadius: 1, height: 6 }} />
-                  <Typography variant="body2" color="text.secondary">
-                    Starting test run with {Math.min(initialTraceIds.length, MAX_TRACES)} trace
-                    {initialTraceIds.length !== 1 ? "s" : ""}...
-                  </Typography>
-                </>
-              )}
-            </Stack>
-          ) : isSetupPhase ? (
+          {isSetupPhase ? (
             <Stack spacing={2} sx={{ mt: 1 }}>
               <Typography variant="body2" color="text.secondary">
                 Paste trace IDs to test this eval against. Results are stored separately and won't affect production annotations.
@@ -238,8 +191,8 @@ export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId, initial
                 error={tooMany}
                 helperText={
                   tooMany
-                    ? `Maximum ${MAX_TRACES} traces allowed`
-                    : `${parsedIds.length} trace${parsedIds.length !== 1 ? "s" : ""} (max ${MAX_TRACES})`
+                    ? `Maximum ${MAX_TRACES_PER_TEST_RUN} traces allowed`
+                    : `${parsedIds.length} trace${parsedIds.length !== 1 ? "s" : ""} (max ${MAX_TRACES_PER_TEST_RUN})`
                 }
               />
             </Stack>

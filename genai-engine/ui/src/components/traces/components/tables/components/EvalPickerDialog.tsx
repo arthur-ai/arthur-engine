@@ -1,4 +1,4 @@
-import { type IncomingFilter, TextOperators } from "@arthur/shared-components";
+import { TextOperators } from "@arthur/shared-components";
 import LiveTvOutlinedIcon from "@mui/icons-material/LiveTvOutlined";
 import {
   Button,
@@ -19,16 +19,15 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useEffect, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { useContinuousEvals } from "@/components/live-evals/hooks/useContinuousEvals";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { usePagination } from "@/hooks/usePagination";
 import { useTask } from "@/hooks/useTask";
 import { formatDateInTimezone } from "@/utils/formatters";
-
-const DEBOUNCE_MS = 300;
 
 type EvalPickerDialogProps = {
   open: boolean;
@@ -41,33 +40,27 @@ export const EvalPickerDialog = ({ open, onClose, onSelect }: EvalPickerDialogPr
   const { timezone, use24Hour } = useDisplaySettings();
   const pagination = usePagination(10);
   const [searchInput, setSearchInput] = useState("");
-  const [filters, setFilters] = useState<IncomingFilter[]>([]);
   const [selected, setSelected] = useState<{ id: string; name: string } | null>(null);
-  const debounceTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const debouncedSearch = useDebouncedValue(searchInput, 300);
+
+  const filters = useMemo(() => {
+    const trimmed = debouncedSearch.trim();
+    return trimmed ? [{ name: "name", operator: TextOperators.CONTAINS, value: trimmed }] : [];
+  }, [debouncedSearch]);
 
   const { data, isLoading } = useContinuousEvals({
     pagination: { page: pagination.page, page_size: pagination.rowsPerPage },
     filters,
   });
 
-  // Debounced search: update filters after user stops typing
-  useEffect(() => {
-    debounceTimer.current = setTimeout(() => {
-      const trimmed = searchInput.trim();
-      if (trimmed) {
-        setFilters([{ name: "name", operator: TextOperators.CONTAINS, value: trimmed }]);
-      } else {
-        setFilters([]);
-      }
-      pagination.resetPage();
-    }, DEBOUNCE_MS);
-
-    return () => clearTimeout(debounceTimer.current);
-  }, [searchInput]); // eslint-disable-line react-hooks/exhaustive-deps
+  const handleSearchChange = (value: string) => {
+    setSearchInput(value);
+    pagination.resetPage();
+  };
 
   const handleClose = () => {
     setSearchInput("");
-    setFilters([]);
     setSelected(null);
     pagination.resetPage();
     onClose();
@@ -76,7 +69,6 @@ export const EvalPickerDialog = ({ open, onClose, onSelect }: EvalPickerDialogPr
   const handleRun = () => {
     if (selected) {
       setSearchInput("");
-      setFilters([]);
       pagination.resetPage();
       onSelect(selected);
       setSelected(null);
@@ -97,7 +89,7 @@ export const EvalPickerDialog = ({ open, onClose, onSelect }: EvalPickerDialogPr
             hiddenLabel
             placeholder="Search by name"
             value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             sx={{ width: "100%" }}
           />
 

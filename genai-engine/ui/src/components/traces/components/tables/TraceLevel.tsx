@@ -10,9 +10,9 @@ import {
 import { Search } from "@mui/icons-material";
 import { Alert, Box, Button, Paper, Stack, TextField } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { type RowSelectionState, SortingState } from "@tanstack/react-table";
+import { type OnChangeFn, type PaginationState, type RowSelectionState, SortingState } from "@tanstack/react-table";
 import type { MRT_ColumnDef } from "material-react-table";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 
 import { TokenCostTooltip, TokenCountTooltip } from "../../data/common";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
@@ -34,7 +34,7 @@ import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
 import type { TraceSortBy, TraceMetadataResponse } from "@/lib/api-client/api-client";
-import { FETCH_SIZE } from "@/lib/constants";
+import { FETCH_SIZE, MAX_TRACES_PER_TEST_RUN } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { EVENT_NAMES, track } from "@/services/amplitude";
 import { getFilteredTraces } from "@/services/tracing";
@@ -74,7 +74,30 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
   const [sorting, setSorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [evalPickerOpen, setEvalPickerOpen] = useState(false);
-  const [testRunConfig, setTestRunConfig] = useState<{ evalId: string; evalName: string } | null>(null);
+  const [testRunConfig, setTestRunConfig] = useState<{ evalId: string; evalName: string; testRunId: string } | null>(null);
+
+  // Clear selection when sorting or pagination changes (owned setters)
+  const handleSortingChange = useCallback<OnChangeFn<SortingState>>((updater) => {
+    setSorting(updater);
+    setRowSelection({});
+  }, []);
+
+  const handlePaginationChange = useCallback<OnChangeFn<PaginationState>>(
+    (updater) => {
+      props.onPaginationChange(updater);
+      setRowSelection({});
+    },
+    [props]
+  );
+
+  // Clear selection when filters or timeRange change (zustand store — not our setters)
+  const [prevFilters, setPrevFilters] = useState(filters);
+  const [prevTimeRange, setPrevTimeRange] = useState(timeRange);
+  if (prevFilters !== filters || prevTimeRange !== timeRange) {
+    setPrevFilters(filters);
+    setPrevTimeRange(timeRange);
+    setRowSelection({});
+  }
 
   const sort: "asc" | "desc" = sorting[0]?.desc === false ? "asc" : "desc";
   const sortBy = SORTABLE_COLUMN_MAP[sorting[0]?.id] ?? "start_time";
@@ -101,19 +124,28 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
 
   const selectedTraceIds = useMemo(() => Object.keys(rowSelection).filter((k) => rowSelection[k]), [rowSelection]);
 
-  // Clear selection when pagination, filters, sorting, or time range change
-  useEffect(() => {
-    setRowSelection({});
-  }, [pagination.pageIndex, pagination.pageSize, filters, timeRange, sorting]);
-
   const handleRunEvalClick = useCallback(() => {
     setEvalPickerOpen(true);
   }, []);
 
-  const handleEvalSelected = useCallback((eval_: { id: string; name: string }) => {
-    setEvalPickerOpen(false);
-    setTestRunConfig({ evalId: eval_.id, evalName: eval_.name });
-  }, []);
+  // Hoist the mutation: fire it in the click handler, pass testRunId down
+  const handleEvalSelected = useCallback(
+    async (eval_: { id: string; name: string }) => {
+      setEvalPickerOpen(false);
+      const unique = [...new Set(selectedTraceIds)].slice(0, MAX_TRACES_PER_TEST_RUN);
+      if (unique.length === 0) return;
+      try {
+        const createTestRun = api.api.createTestRunApiV1ContinuousEvalsEvalIdTestRunsPost(eval_.id, {
+          trace_ids: unique,
+        });
+        const result = await createTestRun;
+        setTestRunConfig({ evalId: eval_.id, evalName: eval_.name, testRunId: result.data.id });
+      } catch {
+        // error is surfaced by the API interceptor / snackbar
+      }
+    },
+    [selectedTraceIds, api]
+  );
 
   const handleTestRunClose = useCallback(() => {
     setTestRunConfig(null);
@@ -239,11 +271,11 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
               columns={columns as MRT_ColumnDef<TraceMetadataResponse, unknown>[]}
               rowCount={data?.count ?? 0}
               pagination={pagination}
-              onPaginationChange={props.onPaginationChange}
+              onPaginationChange={handlePaginationChange}
               isLoading={isLoading}
               onRowClick={handleRowClick}
               sorting={sorting}
-              onSortingChange={setSorting}
+              onSortingChange={handleSortingChange}
               enableRowSelection
               rowSelection={rowSelection}
               onRowSelectionChange={setRowSelection}
@@ -257,12 +289,12 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
 
       {testRunConfig && (
         <TestRunDialog
-          open={!!testRunConfig}
+          open
           onClose={handleTestRunClose}
           evalId={testRunConfig.evalId}
           evalName={testRunConfig.evalName}
           taskId={task?.id ?? ""}
-          initialTraceIds={selectedTraceIds.slice(0, 50)}
+          testRunId={testRunConfig.testRunId}
         />
       )}
     </Stack>

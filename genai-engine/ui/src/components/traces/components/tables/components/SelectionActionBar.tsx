@@ -1,7 +1,7 @@
 import { Close, PlayArrow } from "@mui/icons-material";
 import { Button, Chip, Collapse, Paper, Stack, Typography } from "@mui/material";
 
-const MAX_TRACES = 50;
+import { MAX_TRACES_PER_TEST_RUN } from "@/lib/constants";
 
 type SelectionActionBarProps = {
   selectedCount: number;
@@ -24,7 +24,9 @@ export const SelectionActionBar = ({ selectedCount, onRunEval, onClearSelection 
             {selectedCount} trace{selectedCount !== 1 ? "s" : ""} selected
           </Typography>
 
-          {selectedCount > MAX_TRACES && <Chip label={`Max ${MAX_TRACES} per test run`} size="small" color="warning" variant="outlined" />}
+          {selectedCount > MAX_TRACES_PER_TEST_RUN && (
+            <Chip label={`Max ${MAX_TRACES_PER_TEST_RUN} per test run`} size="small" color="warning" variant="outlined" />
+          )}
 
           <Stack direction="row" spacing={1} sx={{ ml: "auto !important" }}>
             <Button size="small" variant="outlined" startIcon={<Close />} onClick={onClearSelection}>
