@@ -91,7 +91,8 @@ export const EvalPickerDialog = ({ open, onClose, onSelect }: EvalPickerDialogPr
         <Stack spacing={2} sx={{ mt: 1 }}>
           <TextField
             size="small"
-            variant="outlined"
+            variant="filled"
+            hiddenLabel
             placeholder="Search by name"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
