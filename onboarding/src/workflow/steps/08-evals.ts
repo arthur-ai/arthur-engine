@@ -103,11 +103,11 @@ async function setupModelProvider(
   client: ArthurEngineClient,
 ): Promise<{ provider: string; model: string } | null> {
   const wantsSetup = await confirm(
-    'No model provider is configured. Would you like Buzz to set one up now?',
+    'No model provider is configured on your Arthur GenAI Engine yet. Would you like Buzz to set one up now?',
   );
   if (!wantsSetup) {
     note(
-      'You can configure a model provider in the Arthur Engine UI under Settings → Model Providers,\n' +
+      'You can configure a model provider in the Arthur GenAI Engine UI under Settings → Model Providers,\n' +
         'then re-run Buzz to get personalized eval recommendations.',
       'Model provider setup skipped',
     );
