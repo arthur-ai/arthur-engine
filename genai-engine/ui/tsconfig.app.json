@@ -19,7 +19,11 @@
     /* Path mapping */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "material-react-table": ["./node_modules/material-react-table"],
+      "@tanstack/react-table": ["./node_modules/@tanstack/react-table"],
+      "@tanstack/react-form": ["./node_modules/@tanstack/react-form"],
+      "@tanstack/react-query": ["./node_modules/@tanstack/react-query"]
     },
 
     /* Linting */
