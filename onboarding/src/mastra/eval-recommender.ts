@@ -27,6 +27,8 @@ If the trace only shows a user input and a model response with no reference mate
 recommend hallucination or faithfulness evals — they cannot be evaluated correctly without a
 reference context to compare against.
 
+If the user already has evals covering the main quality dimensions, it is acceptable to return an empty recommendations array if no additional high-value evals remain.
+
 Consider these common eval types and adapt them to the application's context:
 - Relevance: does the output address what the input asked?
 - Faithfulness / Hallucination: does the output contain unsupported claims? (ONLY if retrieval context is available)
@@ -71,10 +73,24 @@ export async function recommendEvals(
   language: string,
   modelProvider: string,
   hasRetrievalContext: boolean,
+  existingEvals: Array<{ name: string; instructions?: string }> = [],
 ): Promise<RecommendEvalsResult> {
   const frameworkNote = framework
     ? `Framework: ${framework} (${language})`
     : `Language: ${language}`;
+
+  const existingEvalsNote =
+    existingEvals.length > 0
+      ? `\nExisting evals already configured (DO NOT recommend these or any functionally equivalent eval):\n` +
+        existingEvals
+          .map(e =>
+            e.instructions
+              ? `- ${e.name}\n  Instructions: ${e.instructions.slice(0, 300)}`
+              : `- ${e.name}`,
+          )
+          .join('\n') +
+        '\n'
+      : '';
 
   const prompt = `Analyze this trace and recommend the most impactful continuous evals:
 
@@ -82,7 +98,7 @@ ${frameworkNote}
 Eval model provider available: ${modelProvider}
 Span name: ${spanName}
 Retrieval context available: ${hasRetrievalContext ? 'YES' : 'NO'}
-
+${existingEvalsNote}
 Trace content:
 ${traceContent}`;
 
@@ -111,7 +127,7 @@ ${traceContent}`;
     const jsonText = extractJSON(fullOutput);
     const parsed = JSON.parse(jsonText) as EvalRecommendations;
 
-    if (!Array.isArray(parsed.recommendations) || parsed.recommendations.length === 0) {
+    if (!Array.isArray(parsed.recommendations)) {
       return { ok: false, reason: 'Claude returned no eval recommendations for this trace.' };
     }
 

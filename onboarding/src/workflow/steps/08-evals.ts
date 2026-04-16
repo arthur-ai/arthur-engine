@@ -12,7 +12,7 @@ import {
   password,
 } from '../../ui/prompts.js';
 import { ArthurEngineClient } from '../../arthur/client.js';
-import type { SpanDetail, TraceDetail, ModelProviderInfo } from '../../arthur/client.js';
+import type { SpanDetail, TraceDetail, ModelProviderInfo, ExistingLlmEval, ExistingContinuousEval } from '../../arthur/client.js';
 import { recommendEvals } from '../../mastra/eval-recommender.js';
 import type { RecommendEvalsResult } from '../../mastra/eval-recommender.js';
 import type { WorkflowState } from '../orchestrator.js';
@@ -160,6 +160,39 @@ export async function step8_RecommendEvals(state: WorkflowState): Promise<void> 
 
   const client = new ArthurEngineClient(state.engineUrl, state.apiKey);
 
+  // Phase 0: Query existing evals
+  const existingSpinner = ora({
+    text: buzzSay('Checking existing evals...'),
+    color: 'cyan',
+  }).start();
+  const [existingContinuousEvals, existingLlmEvals]: [ExistingContinuousEval[], ExistingLlmEval[]] =
+    await Promise.all([
+      client.getContinuousEvals(state.taskId),
+      client.getLlmEvals(state.taskId),
+    ]);
+  existingSpinner.stop();
+
+  if (existingContinuousEvals.length > 0) {
+    logInfo(
+      `You already have ${existingContinuousEvals.length} continuous eval(s) configured on this task:`,
+    );
+    for (const e of existingContinuousEvals) {
+      p.log.message(`  • ${e.name}`);
+    }
+    const wantsMore = await confirm(
+      'Would you like Buzz to analyze your traces and recommend additional evals?',
+    );
+    if (!wantsMore) {
+      logSuccess('Your existing evals look great — no changes needed.');
+      return;
+    }
+  }
+
+  const existingEvals = existingContinuousEvals.map(ce => ({
+    name: ce.name,
+    instructions: existingLlmEvals.find(e => e.name === ce.llm_eval_name)?.instructions,
+  }));
+
   // Phase 1: Discover which model provider is available for running evals
   const providersSpinner = ora({
     text: buzzSay('Checking available model providers...'),
@@ -220,6 +253,7 @@ export async function step8_RecommendEvals(state: WorkflowState): Promise<void> 
     state.analysis?.language ?? 'unknown',
     modelSelection.provider,
     hasRetrievalContext,
+    existingEvals,
   );
   analysisSpinner.stop();
 
@@ -229,6 +263,13 @@ export async function step8_RecommendEvals(state: WorkflowState): Promise<void> 
   }
 
   const recommendations = result.recommendations;
+
+  if (recommendations.recommendations.length === 0) {
+    logSuccess(
+      'Your existing evals already cover the key quality dimensions — no additional evals recommended at this time.',
+    );
+    return;
+  }
 
   // Phase 4: Present recommendations and ask for confirmation
   logInfo('Based on your trace data, Buzz recommends these continuous evals:');

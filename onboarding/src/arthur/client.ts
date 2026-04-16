@@ -49,6 +49,16 @@ export interface CreatedContinuousEval {
   name: string;
 }
 
+export interface ExistingLlmEval {
+  name: string;
+  instructions?: string;
+}
+
+export interface ExistingContinuousEval {
+  name: string;
+  llm_eval_name?: string;
+}
+
 interface TaskListResponse {
   tasks?: Task[];
   data?: Task[];
@@ -271,6 +281,40 @@ export class ArthurEngineClient {
       return { continuousEval: (await res.json()) as CreatedContinuousEval };
     } catch (err) {
       return { error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
+  async getLlmEvals(taskId: string): Promise<ExistingLlmEval[]> {
+    try {
+      const res = await fetch(
+        `${this.baseUrl}/api/v1/tasks/${encodeURIComponent(taskId)}/llm_evals?page=0&page_size=100`,
+        {
+          headers: this.headers,
+          signal: AbortSignal.timeout(15_000),
+        },
+      );
+      if (!res.ok) return [];
+      const data = (await res.json()) as { evals?: ExistingLlmEval[]; items?: ExistingLlmEval[] };
+      return data.evals ?? data.items ?? [];
+    } catch {
+      return [];
+    }
+  }
+
+  async getContinuousEvals(taskId: string): Promise<ExistingContinuousEval[]> {
+    try {
+      const res = await fetch(
+        `${this.baseUrl}/api/v1/tasks/${encodeURIComponent(taskId)}/continuous_evals?page=0&page_size=100`,
+        {
+          headers: this.headers,
+          signal: AbortSignal.timeout(15_000),
+        },
+      );
+      if (!res.ok) return [];
+      const data = (await res.json()) as { evals?: ExistingContinuousEval[] };
+      return data.evals ?? [];
+    } catch {
+      return [];
     }
   }
 
