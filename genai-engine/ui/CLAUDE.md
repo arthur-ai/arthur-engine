@@ -80,6 +80,22 @@ yarn generate-api:clean
 - Request/response interceptors handle authentication headers
 - Error handling via React Query's error boundaries
 
+### useEffect Discipline
+
+Before writing a `useEffect`, ask: **"Is this synchronizing with an external system?"** If not, you probably don't need it. See [You Might Not Need an Effect](https://react.dev/learn/you-might-not-need-an-effect).
+
+**Do NOT use `useEffect` to:**
+
+- **Derive or transform state** from props/state — compute it during rendering (`const x = a + b`)
+- **Cache expensive calculations** — use `useMemo` instead
+- **Reset state when a prop changes** — pass a `key` to the component instead
+- **Run event-specific logic** (form submits, button clicks) — put it in the event handler
+- **Notify parent components of state changes** — call parent callbacks directly in event handlers
+- **Chain effects** that set state to trigger other effects — batch updates in a single event handler or compute during render
+- **Fetch data** — use TanStack Query (`useQuery`/`useMutation`) which handles caching, race conditions, and loading states; raw `useEffect` fetches are error-prone
+
+**Legitimate `useEffect` uses:** synchronizing with browser APIs or third-party libraries, analytics on mount, subscriptions to external stores (prefer `useSyncExternalStore`).
+
 ### TanStack Form
 
 The codebase uses TanStack Form via custom wrappers in `src/components/traces/components/filtering/hooks/form.tsx`.
