@@ -126,6 +126,11 @@
                         "fetchRawDataEnabled": {
                             "type": "boolean",
                             "description": "Whether to fetch raw data from the data plane."
+                        },
+                        "genaiEngineMaxPageSize": {
+                            "type": "integer",
+                            "description": "Max page size for fetching data from the GenAI Engine.",
+                            "default": 1500
                         }
                     },
                     "required": [

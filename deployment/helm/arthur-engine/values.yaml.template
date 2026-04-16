@@ -163,6 +163,7 @@ arthur-ml-engine:
       # This should be the same as the genaiEngineIngressURL in the arthur-genai-engine chart
       genaiEngineInternalIngressHost: ""
       fetchRawDataEnabled: true
+      genaiEngineMaxPageSize: 1500
 
       ###################################
       ## Advanced - General
