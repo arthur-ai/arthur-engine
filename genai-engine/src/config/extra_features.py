@@ -7,11 +7,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class ExtraFeaturesSettings(BaseSettings):
     CHAT_ENABLED: bool = Field(default=False, alias="CHAT_ENABLED")
     CHATBOT_ENABLED: bool = Field(default=True, alias="CHATBOT_ENABLED")
-    TRANSFER_ENCODING_MIDDLEWARE_ENABLED: bool = Field(
-        default=False,
-        alias="TRANSFER_ENCODING_MIDDLEWARE_ENABLED",
-    )
-
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -22,7 +17,6 @@ class ExtraFeaturesSettings(BaseSettings):
     @field_validator(
         "CHAT_ENABLED",
         "CHATBOT_ENABLED",
-        "TRANSFER_ENCODING_MIDDLEWARE_ENABLED",
         mode="before",
     )
     def validate_feature_flag(cls, v: Any) -> bool:
