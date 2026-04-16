@@ -47,8 +47,20 @@ export default defineConfig(({ mode }) => {
       host: true, // Allow external connections
     },
     resolve: {
+      dedupe: [
+        "react",
+        "react-dom",
+        "@mui/material",
+        "@mui/system",
+        "@emotion/react",
+        "@emotion/styled",
+        "material-react-table",
+        "@tanstack/react-table",
+        "@tanstack/react-query",
+      ],
       alias: {
         "@": fileURLToPath(new URL("./src", import.meta.url)),
+        "@tanstack/react-form": fileURLToPath(new URL("./node_modules/@tanstack/react-form", import.meta.url)),
       },
     },
     build: {
