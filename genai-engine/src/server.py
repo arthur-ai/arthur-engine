@@ -276,6 +276,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     shutdown_global_agent_polling_service()
 
 
+class TransferEncodingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: RequestResponseEndpoint,
+    ) -> Response:
+        response = await call_next(request)
+        response.headers["Transfer-Encoding"] = "chunked"
+        if "content-length" in response.headers:
+            del response.headers["content-length"]
+        return response
+
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     def __get_default_csp_header_list(self, keycloak_uri: str) -> list[str]:
         headers = [
@@ -482,6 +495,9 @@ def get_app_with_routes() -> FastAPI:
 def get_test_app() -> FastAPI:
     app = get_base_app()
     # app.add_middleware(SecurityHeadersMiddleware)
+    if extra_feature_config.TRANSFER_ENCODING_MIDDLEWARE_ENABLED:
+        app.add_middleware(TransferEncodingMiddleware)
+
     app.add_middleware(SessionMiddleware, secret_key=Config.app_secret_key())
     add_routers(
         app,
@@ -530,6 +546,9 @@ def get_test_app() -> FastAPI:
 def get_app() -> FastAPI:
     app = get_base_app()
     # app.add_middleware(SecurityHeadersMiddleware)
+    if extra_feature_config.TRANSFER_ENCODING_MIDDLEWARE_ENABLED:
+        app.add_middleware(TransferEncodingMiddleware)
+
     app.add_middleware(SessionMiddleware, secret_key=Config.app_secret_key())
     if new_relic_enabled():
         setup_newrelic(app)
