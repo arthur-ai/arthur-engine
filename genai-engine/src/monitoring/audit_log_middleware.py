@@ -2,6 +2,7 @@ import json
 import logging
 import logging.handlers
 import os
+import re
 import uuid
 from datetime import datetime, timezone
 from typing import Any, List, Optional, Union, get_args, get_origin
@@ -25,10 +26,18 @@ from starlette.responses import Response
 from starlette.types import ASGIApp
 
 from config.config import Config
+from schemas.audit_log_schemas import RouteInfo
 
 logger = logging.getLogger(__name__)
 
-SKIP_PATHS = {"/health", "/docs", "/openapi.json", "/redoc"}
+SKIP_PATHS = {
+    r"^/health$",
+    r"^/docs$",
+    r"^/openapi\.json$",
+    r"^/redoc$",
+    r".*/tasks/[^/]+/chatbot/stream$",
+    r".*/completions$",
+}
 
 AUDIT_LOGGER = logging.getLogger("audit")
 
@@ -67,8 +76,14 @@ ENDPOINT_OVERRIDES: dict[str, tuple[str | None, str | None]] = {
     "RagExperimentListResponse": ("data", None),
     "SearchRagProviderConfigurationsResponse": ("rag_provider_configurations", None),
     "SearchRagProviderCollectionsResponse": ("rag_provider_collections", "identifier"),
-    "ListRagSearchSettingConfigurationsResponse": ("rag_provider_setting_configurations", None),
-    "ListRagSearchSettingConfigurationVersionsResponse": ("rag_provider_setting_configurations", "setting_configuration_id"),
+    "ListRagSearchSettingConfigurationsResponse": (
+        "rag_provider_setting_configurations",
+        None,
+    ),
+    "ListRagSearchSettingConfigurationVersionsResponse": (
+        "rag_provider_setting_configurations",
+        "setting_configuration_id",
+    ),
     # Model provider
     "ModelProviderList": ("providers", "provider"),
     # Continuous Eval
@@ -100,17 +115,17 @@ def _get_list_inner_type_name(annotation: Any) -> str | None:
     """Extract T.__name__ from list[T]"""
     if get_origin(annotation) is not list:
         return None
-    
+
     args = get_args(annotation)
     if args and isinstance(args[0], type):
         return args[0].__name__
-    
+
     return None
 
 
 def build_route_response_model_map(
     app: FastAPI,
-) -> dict[str, dict[str, str | None]]:
+) -> dict[str, RouteInfo]:
     """Build a lookup map from path template to response ID extraction info.
 
     For wrapper models in LIST_ENDPOINT_OVERRIDES, extracts the inner type name
@@ -119,7 +134,7 @@ def build_route_response_model_map(
 
     Call once at startup after all routes are registered.
     """
-    result: dict[str, dict[str, str | None]] = {}
+    result: dict[str, RouteInfo] = {}
 
     for route in app.routes:
         if not isinstance(route, APIRoute) or not route.response_model:
@@ -133,11 +148,11 @@ def build_route_response_model_map(
             override = ENDPOINT_OVERRIDES.get(resource_name)
             id_field = (override[1] if override else None) or "id"
             for method in route.methods or []:
-                result[f"{method}:{route.path}"] = {
-                    "resource_name": resource_name,
-                    "collection_field": None,
-                    "id_field": id_field,
-                }
+                result[f"{method}:{route.path}"] = RouteInfo(
+                    resource_name=resource_name,
+                    collection_field=None,
+                    id_field=id_field,
+                )
             continue
 
         if not isinstance(model, type):
@@ -146,24 +161,30 @@ def build_route_response_model_map(
         model_name = model.__name__
 
         if model_name in ENDPOINT_OVERRIDES:
-            collection_field, id_field = ENDPOINT_OVERRIDES[model_name]
-            id_field = id_field or "id"
+            collection_field, id_field_override = ENDPOINT_OVERRIDES[model_name]
+            id_field = id_field_override or "id"
             # Extract T.__name__ from the collection field's annotation
-            field_info = model.model_fields.get(collection_field)
-            inner_name = _get_list_inner_type_name(field_info.annotation) if field_info else None
+            field_info = (
+                model.model_fields.get(collection_field)
+                if hasattr(model, "model_fields")
+                else None
+            )
+            inner_name = (
+                _get_list_inner_type_name(field_info.annotation) if field_info else None
+            )
             for method in route.methods or []:
-                result[f"{method}:{route.path}"] = {
-                    "resource_name": inner_name or model_name,
-                    "collection_field": collection_field,
-                    "id_field": id_field,
-                }
+                result[f"{method}:{route.path}"] = RouteInfo(
+                    resource_name=inner_name or model_name,
+                    collection_field=collection_field,
+                    id_field=id_field,
+                )
         else:
             for method in route.methods or []:
-                result[f"{method}:{route.path}"] = {
-                    "resource_name": model_name,
-                    "collection_field": None,
-                    "id_field": "id",
-                }
+                result[f"{method}:{route.path}"] = RouteInfo(
+                    resource_name=model_name,
+                    collection_field=None,
+                    id_field="id",
+                )
 
     return result
 
@@ -171,14 +192,19 @@ def build_route_response_model_map(
 class AuditLogMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp, dispatch: DispatchFunction | None = None) -> None:
         super().__init__(app, dispatch)
-        self.route_map: dict[str, dict[str, str | None]] | None = None
+        self.route_map: dict[str, RouteInfo] | None = None
 
     async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
+        self,
+        request: Request,
+        call_next: RequestResponseEndpoint,
     ) -> Response:
         response = await call_next(request)
 
-        if request.url.path in SKIP_PATHS or not hasattr(request.state, "user_id"):
+        if any(re.match(p, request.url.path) for p in SKIP_PATHS) or not hasattr(
+            request.state,
+            "user_id",
+        ):
             return response
 
         try:
@@ -201,13 +227,15 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
             AUDIT_LOGGER.info(entry.model_dump_json(exclude_none=True))
         except Exception:
             logger.error(
-                f"Failed to write audit log entry {request.url.path}", exc_info=True
+                f"Failed to write audit log entry {request.url.path}",
+                exc_info=True,
             )
 
         return response
 
     def _get_path_parameters(
-        self, path_params: dict[str, str]
+        self,
+        path_params: dict[str, str],
     ) -> List[AuditLogPathParameter]:
         result = []
 
@@ -217,7 +245,9 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
         return result
 
     async def _get_response_ids(
-        self, request: Request, response: Response
+        self,
+        request: Request,
+        response: Response,
     ) -> List[AuditLogResponseID]:
         if not (200 <= response.status_code < 300):
             return []
@@ -232,7 +262,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
 
         return self._extract_ids(data, route_info)
 
-    def _get_route_info(self, request: Request) -> dict[str, str | None] | None:
+    def _get_route_info(self, request: Request) -> RouteInfo | None:
         route = request.scope.get("route")
         if not route or not hasattr(route, "path"):
             return None
@@ -244,7 +274,8 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
         return self.route_map.get(key)
 
     async def _read_response_body(
-        self, response: Response
+        self,
+        response: Response,
     ) -> Optional[Union[dict[str, Any], list[Any]]]:
         if not hasattr(response, "body_iterator"):
             return None
@@ -266,11 +297,11 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
     @staticmethod
     def _extract_ids(
         data: Union[dict[str, Any], list[Any]],
-        route_info: dict[str, str | None],
+        route_info: RouteInfo,
     ) -> List[AuditLogResponseID]:
-        resource_name = route_info["resource_name"]
-        collection_field = route_info["collection_field"]
-        id_field = route_info["id_field"]
+        resource_name = route_info.resource_name
+        collection_field = route_info.collection_field
+        id_field = route_info.id_field
 
         if collection_field and isinstance(data, dict):
             items = data.get(collection_field, [])
@@ -282,7 +313,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
                     response_type=resource_name,
                     response_id=data[id_field],
                     id_field=id_field,
-                )
+                ),
             ]
         else:
             return []
