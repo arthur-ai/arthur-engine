@@ -131,6 +131,14 @@
             ],
             "description": "Enable GenAI Engine API-only mode without the UI components"
         },
+        "transferEncodingMiddlewareEnabled": {
+            "type": "string",
+            "enum": [
+                "enabled",
+                "disabled"
+            ],
+            "description": "Set to enabled to add Transfer-Encoding: chunked header and strip Content-Length from all responses"
+        },
         "genaiEngineReplicaCount": {
             "type": "integer",
             "minimum": 1,
