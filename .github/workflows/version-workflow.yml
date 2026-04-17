@@ -50,7 +50,7 @@ jobs:
       - name: Sync main into dev
         run: |
           git fetch origin main
-          git merge origin/main -X ours --no-edit
+          git merge origin/main --no-edit
       - name: Bump Arthur Engine Version
         env:
           ARTHUR_ENGINE_CFT_CPU_HTML_PATH: "deployment/cloudformation/start-cpu-stack.html"
