@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-04-13T15:45:02.733168Z"
+exclude-newer = "2026-04-14T03:07:28.624049Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -158,7 +158,7 @@ wheels = [
 
 [[package]]
 name = "arthur-genai-engine"
-version = "2.1.522"
+version = "2.1.523"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
@@ -234,13 +234,13 @@ dev = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
+    { name = "types-cachetools" },
 ]
 linters = [
     { name = "autoflake" },
     { name = "black" },
     { name = "isort" },
     { name = "mypy" },
-    { name = "types-cachetools" },
 ]
 performance = [
     { name = "locust" },
@@ -321,13 +321,13 @@ dev = [
     { name = "pytest", specifier = "==8.4.2" },
     { name = "pytest-asyncio", specifier = "==1.2.0" },
     { name = "pytest-cov", specifier = "==6.3.0" },
+    { name = "types-cachetools", specifier = ">=6.2.0.20251022" },
 ]
 linters = [
     { name = "autoflake", specifier = ">=2.3.1,<3" },
     { name = "black", specifier = "==25.12.0" },
     { name = "isort", specifier = ">=7.0.0" },
     { name = "mypy", specifier = ">=1.13.0,<2" },
-    { name = "types-cachetools", specifier = ">=6.2.0.20251022" },
 ]
 performance = [{ name = "locust", specifier = "==2.43.3" }]
 
