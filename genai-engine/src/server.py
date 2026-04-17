@@ -505,11 +505,11 @@ def get_test_app() -> FastAPI:
         app.add_middleware(TransferEncodingMiddleware)
 
     app.add_middleware(SessionMiddleware, secret_key=Config.app_secret_key())
-    
+
     if Config.audit_log_enabled():
         setup_audit_logger()
         app.add_middleware(AuditLogMiddleware)
-    
+
     add_routers(
         app,
         [
@@ -561,11 +561,11 @@ def get_app() -> FastAPI:
         app.add_middleware(TransferEncodingMiddleware)
 
     app.add_middleware(SessionMiddleware, secret_key=Config.app_secret_key())
-    
+
     if Config.audit_log_enabled():
         setup_audit_logger()
         app.add_middleware(AuditLogMiddleware)
-    
+
     if new_relic_enabled():
         setup_newrelic(app)
 

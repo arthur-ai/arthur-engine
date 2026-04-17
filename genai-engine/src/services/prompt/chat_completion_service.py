@@ -17,7 +17,7 @@ from litellm import (
     Message,
     stream_chunk_builder,
 )
-from litellm.types.utils import ModelResponse
+from litellm.types.utils import ModelResponse, ModelResponseStream
 
 from clients.llm.llm_client import LLMClient, LLMModelResponse
 from schemas.agentic_prompt_schemas import AgenticPrompt
@@ -352,7 +352,7 @@ class ChatCompletionService:
             )
             response = await llm_client.acompletion(model=model, **completion_params)
 
-            collected_chunks: list[ModelResponse | CustomStreamWrapper] = []
+            collected_chunks: list[ModelResponse | ModelResponseStream | CustomStreamWrapper] = []
             if isinstance(response, CustomStreamWrapper):
                 async for chunk in response:
                     collected_chunks.append(chunk)

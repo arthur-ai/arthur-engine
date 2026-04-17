@@ -1,5 +1,5 @@
-import uuid
 import os
+import uuid
 from logging import _nameToLevel as allowed_log_levels
 
 from dotenv import load_dotenv
@@ -51,23 +51,28 @@ class Config:
         if not log_level or log_level.upper() not in allowed_log_levels.keys():
             return "INFO"
         return log_level.upper()
-        
+
     @classmethod
     def audit_log_enabled(cls) -> bool:
-        audit_log_enabled = get_env_var(constants.AUDIT_LOG_ENABLED_ENV_VAR, default="true")
+        audit_log_enabled = get_env_var(
+            constants.AUDIT_LOG_ENABLED_ENV_VAR, default="true"
+        )
         return audit_log_enabled.lower() == "true"
 
     @classmethod
     def audit_log_retention_days(cls) -> int:
-        audit_log_retention_days = get_env_var(constants.AUDIT_LOG_RETENTION_DAYS_ENV_VAR, default="365")
+        audit_log_retention_days = get_env_var(
+            constants.AUDIT_LOG_RETENTION_DAYS_ENV_VAR, default="365"
+        )
         return int(audit_log_retention_days)
 
     @classmethod
     def audit_log_dir(cls) -> str:
-        override = get_env_var(constants.AUDIT_LOG_OVERRIDE_PATH_ENV_VAR, none_on_missing=True)
+        override = get_env_var(
+            constants.AUDIT_LOG_OVERRIDE_PATH_ENV_VAR, none_on_missing=True
+        )
 
         if override is not None:
             return str(override)
-    
-        return os.path.join(os.path.dirname(__file__), "..", "..", "audit_logs")
 
+        return os.path.join(os.path.dirname(__file__), "..", "..", "audit_logs")
