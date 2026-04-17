@@ -410,7 +410,7 @@ def get_base_app(
         title="Arthur GenAI Engine",
         version=version,
         openapi_tags=tags_metadata,
-        **kwargs,  # type: ignore
+        **kwargs,  # type: ignore[arg-type]
     )
     origins = [
         "http://localhost",
