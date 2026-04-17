@@ -242,7 +242,7 @@ class ContinuousEvalsRepository:
         task_id: str,
         pagination_parameters: Optional[PaginationParameters] = None,
         filter_request: Optional[ContinuousEvalListFilterRequest] = None,
-    ) -> List[ContinuousEval]:
+    ) -> tuple[List[ContinuousEval], int]:
         base_query = self.db_session.query(DatabaseContinuousEval).filter(
             DatabaseContinuousEval.task_id == task_id,
         )
@@ -294,6 +294,8 @@ class ContinuousEvalsRepository:
                     DatabaseContinuousEval.id.in_(filter_request.continuous_eval_ids),
                 )
 
+        total_count = base_query.count()
+
         if pagination_parameters:
             base_query = self._apply_sorting_and_pagination(
                 base_query,
@@ -306,14 +308,14 @@ class ContinuousEvalsRepository:
         return [
             ContinuousEval.from_db_model(db_continuous_eval)
             for db_continuous_eval in db_continuous_evals
-        ]
+        ], total_count
 
     def list_continuous_eval_run_results(
         self,
         task_id: str,
         pagination_parameters: Optional[PaginationParameters] = None,
         filter_request: Optional[ContinuousEvalRunResultsListFilterRequest] = None,
-    ) -> List[AgenticAnnotation]:
+    ) -> tuple[List[AgenticAnnotation], int]:
         base_query = (
             self.db_session.query(DatabaseAgenticAnnotation)
             .join(
@@ -384,6 +386,8 @@ class ContinuousEvalsRepository:
                     == filter_request.continuous_eval_enabled,
                 )
 
+        total_count = base_query.count()
+
         if pagination_parameters:
             base_query = self._apply_sorting_and_pagination(
                 base_query,
@@ -396,7 +400,7 @@ class ContinuousEvalsRepository:
         return [
             AgenticAnnotation.from_db_model(db_agentic_annotation)
             for db_agentic_annotation in db_agentic_annotations
-        ]
+        ], total_count
 
     def delete_continuous_eval(
         self,

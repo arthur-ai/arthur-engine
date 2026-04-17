@@ -47,6 +47,10 @@ jobs:
           fetch-depth: 0
           token: ${{ steps.generate-token.outputs.token }}
       - uses: ./.github/workflows/composite-actions/setup-git
+      - name: Sync main into dev
+        run: |
+          git fetch origin main
+          git merge origin/main --no-edit
       - name: Bump Arthur Engine Version
         env:
           ARTHUR_ENGINE_CFT_CPU_HTML_PATH: "deployment/cloudformation/start-cpu-stack.html"

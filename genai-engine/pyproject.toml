@@ -1,6 +1,6 @@
 [project]
 name = "arthur-genai-engine"
-version = "2.1.516"
+version = "2.1.529"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 readme = "README.md"
@@ -85,12 +85,12 @@ dev = [
   "pytest-asyncio==1.2.0",
   "pytest-cov==6.3.0",
   "pre-commit==4.5.1",
+  "types-cachetools>=6.2.0.20251022",
 ]
 performance = [
   "locust==2.43.3",
 ]
 linters = [
-  "types-cachetools>=6.2.0.20251022",
   "black==25.12.0",
   "mypy>=1.13.0,<2",
   "isort>=7.0.0",
@@ -139,6 +139,7 @@ implicit_reexport = true
 explicit_package_bases = true
 mypy_path = "src"
 namespace_packages = true
+disable_error_code = ["untyped-decorator"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
