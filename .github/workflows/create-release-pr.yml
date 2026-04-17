@@ -46,10 +46,10 @@ jobs:
             exit 1
           fi
 
+          BODY="Production release PR. Merging this PR will trigger the production build and deployment pipeline."
+
           gh pr create \
             --base main \
             --head dev \
             --title "Increment arthur-engine version" \
-            --body "Production release PR. Dev is at \`${DEV_VERSION}\`, main is at \`${MAIN_VERSION}\`.
-
-Merging this PR will trigger the production build and deployment pipeline."
+            --body "$BODY"
