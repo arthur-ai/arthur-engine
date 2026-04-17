@@ -269,7 +269,16 @@ Draft Response:
 3. Select scope: `public_repo` (for public repositories)
 4. Copy the token
 
-### 5. Start the development server
+### 5. Configure Guardrails (optional)
+
+   The customer support agent can use [Arthur Engine Guardrails](https://docs.arthur.ai) to validate responses for toxicity, PII, and hallucination before returning them to the user. This is controlled by two environment variables:
+
+   | Variable | Default | Description |
+   |---|---|---|
+   | `ARTHUR_GUARDRAILS_ENABLED` | `false` | Enables Arthur guardrail validation on agent responses |
+   | `SIMULATE_INCORRECT_RESPONSE` | `false` | Injects a simulated toxicity or PII violation on the first attempt to demonstrate guardrail detection (demo only) |
+
+### 6. Start the development server
 
 ```bash
 yarn dev
