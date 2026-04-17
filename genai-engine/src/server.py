@@ -284,6 +284,10 @@ class TransferEncodingMiddleware(BaseHTTPMiddleware):
         call_next: RequestResponseEndpoint,
     ) -> Response:
         response = await call_next(request)
+        # RFC 7230 §3.3.1 / RFC 9112 §6.1: must not send Transfer-Encoding
+        # in 1xx or 204 responses
+        if 100 <= response.status_code < 200 or response.status_code == 204:
+            return response
         response.headers["Transfer-Encoding"] = "chunked"
         if "content-length" in response.headers:
             del response.headers["content-length"]
