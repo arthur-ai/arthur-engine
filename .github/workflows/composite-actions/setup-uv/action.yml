@@ -15,7 +15,7 @@ runs:
   steps:
     - name: "Install uv"
       shell: bash
-      run: curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
+      run: curl -LsSf https://astral.sh/uv/0.11.7/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
     - name: "Install dependencies"
       shell: bash
       run: |
