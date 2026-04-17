@@ -430,3 +430,10 @@ MAX_DATASET_ROWS = 250
 AGENT_EXPERIMENT_SESSION_PREFIX = "arthur-exp"
 
 ##################################################################
+
+# Audit log constants
+AUDIT_LOG_ENABLED_ENV_VAR = "AUDIT_LOG_ENABLED"
+AUDIT_LOG_RETENTION_DAYS_ENV_VAR = "AUDIT_LOG_RETENTION_DAYS"
+AUDIT_LOG_OVERRIDE_PATH_ENV_VAR = "AUDIT_LOG_OVERRIDE_PATH"
+
+##################################################################
