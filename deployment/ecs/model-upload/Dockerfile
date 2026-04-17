@@ -11,7 +11,7 @@ FROM python:3.12-slim AS downloader
 WORKDIR /app
 
 # Install uv
-RUN pip install --no-cache-dir uv
+RUN pip install --no-cache-dir uv==0.11.7
 
 # Copy project files
 COPY pyproject.toml uv.lock* ./
@@ -37,7 +37,7 @@ FROM python:3.12-slim AS builder
 WORKDIR /app
 
 # Install uv
-RUN pip install --no-cache-dir uv
+RUN pip install --no-cache-dir uv==0.11.7
 
 # Copy project files
 COPY pyproject.toml uv.lock* ./
