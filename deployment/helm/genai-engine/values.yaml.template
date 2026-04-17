@@ -92,7 +92,7 @@ ingress:
 ## Advanced - GenAI Engine
 ###################################
 # GenAI Engine version
-genaiEngineVersion: '2.1.525'
+genaiEngineVersion: '2.1.526'
 # Max number of tokens GenAI Engine can process against LLM for hallucination data checks
 genaiEngineHallucinationCheckMaxTokenLimit: 3000
 # Max number of tokens GenAI Engine can process against LLM for sensitive data checks
@@ -105,6 +105,8 @@ genaiEngineUsePIIModelV2: "true"
 genaiEngineCacheTaskRulesCacheEnabled: true
 # Task rules cache TTL in seconds
 genaiEngineCacheTaskRulesCacheTTL: 60
+# Set to enabled to add Transfer-Encoding: chunked header and strip Content-Length from all responses
+transferEncodingMiddlewareEnabled: "enabled"
 # Number of replicas of GenAI Engine pod running in k8s cluster (This is automatically overridden if the GenAI Engine HPA is enabled)
 genaiEngineReplicaCount: 2
 # CPU requests value for GenAI Engine

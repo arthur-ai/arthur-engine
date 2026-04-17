@@ -97,6 +97,7 @@ from utils.utils import (
     is_agentic_ui_enabled,
     is_api_only_mode_enabled,
     is_local_environment,
+    is_transfer_encoding_middleware_enabled,
     new_relic_enabled,
     relevance_models_enabled,
 )
@@ -495,7 +496,8 @@ def get_app_with_routes() -> FastAPI:
 def get_test_app() -> FastAPI:
     app = get_base_app()
     # app.add_middleware(SecurityHeadersMiddleware)
-    app.add_middleware(TransferEncodingMiddleware)
+    if is_transfer_encoding_middleware_enabled():
+        app.add_middleware(TransferEncodingMiddleware)
 
     app.add_middleware(SessionMiddleware, secret_key=Config.app_secret_key())
     add_routers(
@@ -545,7 +547,8 @@ def get_test_app() -> FastAPI:
 def get_app() -> FastAPI:
     app = get_base_app()
     # app.add_middleware(SecurityHeadersMiddleware)
-    app.add_middleware(TransferEncodingMiddleware)
+    if is_transfer_encoding_middleware_enabled():
+        app.add_middleware(TransferEncodingMiddleware)
 
     app.add_middleware(SessionMiddleware, secret_key=Config.app_secret_key())
     if new_relic_enabled():
