@@ -311,7 +311,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
             return [
                 AuditLogResponseID(
                     response_type=resource_name,
-                    response_id=data[id_field],
+                    response_id=str(data[id_field]),
                     id_field=id_field,
                 ),
             ]
@@ -321,7 +321,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
         return [
             AuditLogResponseID(
                 response_type=resource_name,
-                response_id=item[id_field],
+                response_id=str(item[id_field]),
                 id_field=id_field,
             )
             for item in items

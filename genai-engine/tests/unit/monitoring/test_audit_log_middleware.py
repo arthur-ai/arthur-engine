@@ -119,3 +119,38 @@ def test_extract_ids_for_override(override_key, collection_field, id_field_overr
     assert result[0].response_id == fake_id
     assert result[0].response_type == override_key
     assert result[0].id_field == id_field
+
+
+@pytest.mark.unit_tests
+def test_extract_ids_with_integer_id_field():
+    """
+    Endpoints like LLMEvalsVersionListResponse use integer version numbers
+    as the id_field. Verify _extract_ids coerces them to strings so
+    AuditLogResponseID validation doesn't fail.
+    """
+    # Collection response
+    route_info = RouteInfo(
+        resource_name="LLMEvalsVersionListResponse",
+        collection_field="versions",
+        id_field="version",
+    )
+    data = {"versions": [{"version": 1, "name": "Tone"}], "count": 1}
+
+    result = AuditLogMiddleware._extract_ids(data, route_info)
+
+    assert len(result) == 1
+    assert result[0].response_id == "1"
+    assert result[0].id_field == "version"
+
+    # Single dict response
+    route_info_single = RouteInfo(
+        resource_name="SomeVersionResponse",
+        collection_field=None,
+        id_field="version",
+    )
+    data_single = {"version": 3, "name": "test"}
+
+    result_single = AuditLogMiddleware._extract_ids(data_single, route_info_single)
+
+    assert len(result_single) == 1
+    assert result_single[0].response_id == "3"
