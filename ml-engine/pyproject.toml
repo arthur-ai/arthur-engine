@@ -1,65 +1,75 @@
-[tool.poetry]
+[project]
 name = "ml-engine"
-version = "2.1.499"
+version = "2.1.526"
 description = ""
-authors = ["Arthur <engineering@arthur.ai>"]
+authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 license = "MIT"
 readme = "README.md"
+requires-python = "==3.13.*"
 
-[tool.poetry.dependencies]
-python = "3.13.*"
-croniter = "6.0.0"
-oracledb = "^2.5.0"
-flask = "3.1.3"
-gcsfs = "2025.9.0"
-google-cloud-bigquery = "3.40.1"
-google-cloud-trace = "^1.13.0"
-google-cloud-aiplatform = "^1.68.0"
-pandas = "2.3.3"
-psycopg = {extras = ["binary"], version = "3.2.13"}
-pymysql = "1.1.2"
-pyodbc = "5.2.0"
-pyyaml = "6.0.3"
-requests = "2.32.5"
-s3fs = "2025.9.0"
-simple-settings = "1.2.0"
-httpx = "0.28.1"
-duckdb = "1.4.4"
-fsspec = "2025.9.0"
-datasketches = "5.2.0"
-numpy = "2.3.2"
-types-croniter = "6.0.0.20250809"
-types-psutil = "7.0.0.20251116"
-types-requests = "2.32.4.20260324"
-psutil = "7.0.0"
-pyarrow = "21.0.0"
-arthur-common = "2.4.53"
-gunicorn = "^23.0.0"
-sqlalchemy = "2.0.48"
-snowflake-sqlalchemy = "1.7.7"
-databricks-sqlalchemy = "^2.0"
-databricks-sdk = "^0.84.0"
-arthur-client = "1.4.1972"
+dependencies = [
+  "croniter==6.0.0",
+  "oracledb>=2.5.0,<3",
+  "flask==3.1.3",
+  "gcsfs==2025.9.0",
+  "google-cloud-bigquery==3.40.1",
+  "google-cloud-trace>=1.13.0,<2",
+  "google-cloud-aiplatform>=1.68.0,<2",
+  "pandas==2.3.3",
+  "psycopg[binary]==3.2.13",
+  "pymysql==1.1.2",
+  "pyodbc==5.2.0",
+  "pyyaml==6.0.3",
+  "requests==2.32.5",
+  "s3fs==2025.9.0",
+  "simple-settings==1.2.0",
+  "httpx==0.28.1",
+  "duckdb==1.4.4",
+  "fsspec==2025.9.0",
+  "datasketches==5.2.0",
+  "numpy==2.3.2",
+  "types-croniter==6.0.0.20250809",
+  "types-psutil==7.0.0.20251116",
+  "types-requests==2.32.4.20260324",
+  "psutil==7.0.0",
+  "pyarrow==21.0.0",
+  "arthur-common==2.4.53",
+  "gunicorn>=23.0.0,<24",
+  "sqlalchemy==2.0.48",
+  "snowflake-sqlalchemy==1.7.7",
+  "databricks-sqlalchemy>=2.0,<3",
+  "databricks-sdk>=0.84.0,<1",
+  "arthur-client==1.4.2007",
+]
 
+[dependency-groups]
+dev = [
+  "pytest==8.4.2",
+  "responses==0.25.8",
+  "pytest-httpserver==1.1.5",
+  "pytest-asyncio==1.2.0",
+  "pytest-httpx==0.35.0",
+  "pre-commit==4.5.1",
+  "types-pytz>=2025.2.0.20250516",
+  "lazy-imports==1.2.0",
+]
+linters = [
+  "mypy>=1.16.1,<2",
+  "isort>=6.0.1,<7",
+  "autoflake>=2.3.1,<3",
+  "black==25.12.0",
+]
 
-[tool.poetry.group.dev.dependencies]
-pytest = "8.4.2"
-responses = "0.25.8"
-pytest-httpserver = "1.1.5"
-pytest-asyncio = "1.2.0"
-pytest-httpx = "0.35.0"
-pre-commit = "4.5.1"
-types-pytz = "^2025.2.0.20250516"
-lazy-imports = "1.2.0"
+[tool.uv]
+exclude-newer = "3 days"
+exclude-newer-package = { arthur-client = false }
 
-[tool.poetry.group.linters]
-optional = true
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.poetry.group.linters.dependencies]
-mypy = "^1.16.1"
-isort = "^6.0.1"
-autoflake = "^2.3.1"
-black = "25.12.0"
+[tool.hatch.build.targets.wheel]
+packages = ["src/ml_engine"]
 
 [tool.mypy]
 python_version = "3.13"
@@ -81,12 +91,3 @@ testpaths = ["tests"]
 markers = [
     "integration_tests: mark a test as an integration test (requires real backend credentials via env vars)",
 ]
-
-[tool.setuptools.packages.find]
-where = ["src"]
-
-[tool.setuptools.package-data]
-"pkgname" = ["py.typed"]
-
-[tool.setuptools.dynamic]
-version = {attr = "src.__version__.__version__"}

@@ -6,7 +6,7 @@ export const POLL_INTERVAL = {
 } as const;
 
 /** Terminal states that indicate processing is complete */
-const FINAL_STATES = new Set(["completed", "failed", "passed", "skipped", "error"]);
+const FINAL_STATES = new Set(["completed", "failed", "passed", "skipped", "error", "partial_failure"]);
 
 /**
  * Checks if a status indicates work is still in progress.

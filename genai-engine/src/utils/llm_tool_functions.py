@@ -1,5 +1,5 @@
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 ALLOWED_TAGS = {
     "Transforms",
@@ -26,6 +26,8 @@ ALLOWED_DELETE_PATTERNS = [
     re.compile(r"^/api/v1/tasks/[^/]+/prompts/[^/]+/versions/[^/]+/tags/[^/]+$"),
 ]
 
+ALLOWED_PATH_PATTERNS: List[re.Pattern[str]] = []
+
 
 def resolve_ref(spec: Dict[str, Any], ref: str) -> Dict[str, Any]:
     parts = ref.lstrip("#/").split("/")
@@ -51,7 +53,13 @@ def get_required_body_fields(
     return list(schema.get("required", []))
 
 
-def is_blacklisted(path: str, blacklist: List[str]) -> bool:
+def is_blacklisted(path: str, blacklist: Optional[List[str]] = None) -> bool:
+    if ALLOWED_PATH_PATTERNS and not any(p.match(path) for p in ALLOWED_PATH_PATTERNS):
+        return True
+
+    if not blacklist:
+        return False
+
     for entry in blacklist:
         # Strip method prefix and description (e.g. "GET /api/v1/... - description" -> "/api/v1/...")
         parts = entry.split(" ", 1)
@@ -72,6 +80,7 @@ def build_condensed_index(
     blacklist: Optional[List[str]] = None,
 ) -> List[str]:
     lines = []
+    allowed_paths_seen: Set[str] = set()
     paths = openapi_spec.get("paths", {})
     for path, path_item in sorted(paths.items()):
         if blacklist and is_blacklisted(path, blacklist):
@@ -85,6 +94,13 @@ def build_condensed_index(
             tags = operation.get("tags", [])
             if not any(t in ALLOWED_TAGS for t in tags):
                 continue
+            if path not in allowed_paths_seen:
+                allowed_paths_seen.add(path)
+                segments = re.split(r"(\{[^}]+\})", path)
+                regex = "".join(
+                    "[^/]+" if s.startswith("{") else re.escape(s) for s in segments
+                )
+                ALLOWED_PATH_PATTERNS.append(re.compile(f"^{regex}$"))
             summary = operation.get("summary", "")
             param_parts = []
             for p in operation.get("parameters", []):

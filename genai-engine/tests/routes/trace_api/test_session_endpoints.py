@@ -122,7 +122,7 @@ def test_list_sessions_metadata_filtering_by_user_ids(
     client: GenaiEngineTestClientBase,
     comprehensive_test_data,
 ):
-    """Test filtering sessions by user IDs."""
+    """Test filtering sessions by user IDs with substring matching."""
 
     # Filter sessions by user1
     status_code, data = client.trace_api_list_sessions_metadata(
@@ -151,6 +151,25 @@ def test_list_sessions_metadata_filtering_by_user_ids(
     # Verify we have sessions from both users
     user_ids = {session.user_id for session in data.sessions}
     assert user_ids == {"user1", "user2"}
+
+    # Substring match: "user" matches both "user1" and "user2"
+    status_code, data = client.trace_api_list_sessions_metadata(
+        task_ids=["api_task1", "api_task2"],
+        user_ids=["user"],
+    )
+    assert status_code == 200
+    assert data.count == 2
+    matched_user_ids = {session.user_id for session in data.sessions}
+    assert matched_user_ids == {"user1", "user2"}
+
+    # Case-insensitive match: "USER1" should match "user1"
+    status_code, data = client.trace_api_list_sessions_metadata(
+        task_ids=["api_task1"],
+        user_ids=["USER1"],
+    )
+    assert status_code == 200
+    assert data.count == 1
+    assert data.sessions[0].user_id == "user1"
 
     # Filter by non-existent user
     status_code, data = client.trace_api_list_sessions_metadata(

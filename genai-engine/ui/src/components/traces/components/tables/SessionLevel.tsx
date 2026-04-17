@@ -113,7 +113,13 @@ export const SessionLevel = ({ welcomeDismissed }: SessionLevelProps) => {
 
   return (
     <Stack gap={1} overflow="hidden">
-      <DataContentGate welcomeDismissed={welcomeDismissed} hasData={hasData} hasActiveFilters={hasActiveFilters} dataType="sessions">
+      <DataContentGate
+        welcomeDismissed={welcomeDismissed}
+        hasData={hasData}
+        hasActiveFilters={hasActiveFilters}
+        isLoading={isLoading}
+        dataType="sessions"
+      >
         {/* Filter button */}
         {(hasData || hasActiveFilters || error) && (
           <Paper variant="outlined" sx={{ p: 2 }}>

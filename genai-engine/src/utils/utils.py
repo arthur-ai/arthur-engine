@@ -187,13 +187,17 @@ def seed_database(db_session: Session) -> None:
 
 @overload
 def get_env_var(
-    env_var: str, none_on_missing: Literal[True], default: str | None = ...
+    env_var: str,
+    none_on_missing: Literal[True],
+    default: str | None = ...,
 ) -> str | None: ...
 
 
 @overload
 def get_env_var(
-    env_var: str, none_on_missing: Literal[False] = ..., default: str | None = ...
+    env_var: str,
+    none_on_missing: Literal[False] = ...,
+    default: str | None = ...,
 ) -> str: ...
 
 
@@ -270,6 +274,16 @@ def is_agentic_ui_enabled() -> bool:
         == "enabled"
     )
     return agentic_ui_enabled
+
+
+def is_transfer_encoding_middleware_enabled() -> bool:
+    return (
+        get_env_var(
+            constants.TRANSFER_ENCODING_MIDDLEWARE_ENABLED_ENV_VAR,
+            default="enabled",
+        )
+        == "enabled"
+    )
 
 
 def internal_features_enabled() -> bool:

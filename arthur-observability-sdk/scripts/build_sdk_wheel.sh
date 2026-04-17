@@ -7,9 +7,9 @@
 # to stdout on success.
 #
 # Why the temp-copy approach:
-#   Poetry uses `git ls-files` when building inside a git repository, which
+#   Build tools can use `git ls-files` when building inside a git repository, which
 #   silently excludes gitignored files — including python/src/arthur_genai_client/.
-#   By copying the SDK to a directory with no .git ancestor, poetry falls back
+#   By copying the SDK to a directory with no .git ancestor, uv falls back
 #   to pure filesystem discovery and includes all files listed under [packages].
 
 set -euo pipefail
@@ -43,7 +43,7 @@ shutil.copytree(
 PYEOF
 
 # Build the wheel inside the git-free copy.
-poetry -C "$BUILD_DIR/python" build -q --format wheel
+uv build --project "$BUILD_DIR/python" --wheel -q
 
 # Locate the newest wheel in the build output.
 WHEEL=$(ls -t "$BUILD_DIR/python/dist/"*.whl 2>/dev/null | head -1)

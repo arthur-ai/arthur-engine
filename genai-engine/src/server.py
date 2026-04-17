@@ -83,6 +83,10 @@ from services.task import (
     initialize_global_agent_polling_service,
     shutdown_global_agent_polling_service,
 )
+from services.trace_retention_service import (
+    initialize_trace_retention_service,
+    shutdown_trace_retention_service,
+)
 from utils import constants as constants
 from utils import model_load
 from utils.classifiers import get_device
@@ -93,6 +97,7 @@ from utils.utils import (
     is_agentic_ui_enabled,
     is_api_only_mode_enabled,
     is_local_environment,
+    is_transfer_encoding_middleware_enabled,
     new_relic_enabled,
     relevance_models_enabled,
 )
@@ -237,6 +242,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         initialize_currency_conversion_service()
     except Exception as e:
         logger.error(f"Error initializing currency conversion service: {e}")
+
+    # Initialize trace retention service (deletes trace data older than configured retention)
+    try:
+        initialize_trace_retention_service()
+    except Exception as e:
+        logger.error(f"Error initializing trace retention service: {e}")
+
     # Initialize global agent polling service
     try:
         initialize_global_agent_polling_service(num_workers=4)
@@ -259,9 +271,23 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
     cleanup_cuda_cache()
+    shutdown_trace_retention_service()
     shutdown_currency_conversion_service()
     shutdown_continuous_eval_queue_service()
     shutdown_global_agent_polling_service()
+
+
+class TransferEncodingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: RequestResponseEndpoint,
+    ) -> Response:
+        response = await call_next(request)
+        response.headers["Transfer-Encoding"] = "chunked"
+        if "content-length" in response.headers:
+            del response.headers["content-length"]
+        return response
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -385,7 +411,7 @@ def get_base_app(
         title="Arthur GenAI Engine",
         version=version,
         openapi_tags=tags_metadata,
-        **kwargs,  # type: ignore
+        **kwargs,  # type: ignore[arg-type]
     )
     origins = [
         "http://localhost",
@@ -402,6 +428,12 @@ def get_base_app(
         none_on_missing=True,
     ):
         origins.append(ingress_url)
+
+    if cors_extra := get_env_var(
+        constants.CORS_EXTRA_ORIGINS_ENV_VAR,
+        none_on_missing=True,
+    ):
+        origins.extend(o.strip() for o in cors_extra.split(",") if o.strip())
 
     arthur_allowed_origins = r"https://.*\.arthur\.ai"
 
@@ -464,6 +496,9 @@ def get_app_with_routes() -> FastAPI:
 def get_test_app() -> FastAPI:
     app = get_base_app()
     # app.add_middleware(SecurityHeadersMiddleware)
+    if is_transfer_encoding_middleware_enabled():
+        app.add_middleware(TransferEncodingMiddleware)
+
     app.add_middleware(SessionMiddleware, secret_key=Config.app_secret_key())
     add_routers(
         app,
@@ -512,6 +547,9 @@ def get_test_app() -> FastAPI:
 def get_app() -> FastAPI:
     app = get_base_app()
     # app.add_middleware(SecurityHeadersMiddleware)
+    if is_transfer_encoding_middleware_enabled():
+        app.add_middleware(TransferEncodingMiddleware)
+
     app.add_middleware(SessionMiddleware, secret_key=Config.app_secret_key())
     if new_relic_enabled():
         setup_newrelic(app)
@@ -570,7 +608,8 @@ def get_app() -> FastAPI:
 def start() -> None:
     send_telemetry_event(TelemetryEventTypes.SERVER_START_INITIATED)
     app = get_app()
-    uvicorn.run(app, host="0.0.0.0", port=3030)
+    port = int(get_env_var(constants.GENAI_ENGINE_PORT_ENV_VAR, default="3030"))
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 
 if __name__ == "__main__":
