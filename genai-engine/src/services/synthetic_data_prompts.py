@@ -31,18 +31,18 @@ IMPORTANT: You must respond with valid JSON containing:
 - "message": A brief explanation of what you did
 
 Example response format:
-{{
+{
     "rows": [
-        {{
+        {
             "id": "row_1",
             "data": [
-                {{"column_name": "col1", "column_value": "value1"}},
-                {{"column_name": "col2", "column_value": "value2"}}
+                {"column_name": "col1", "column_value": "value1"},
+                {"column_name": "col2", "column_value": "value2"}
             ]
-        }}
+        }
     ],
     "message": "Generated 5 new rows with diverse values..."
-}}"""
+}"""
 
 
 INITIAL_GENERATION_USER_PROMPT_TEMPLATE = """Generate {num_rows} new rows for this dataset.
@@ -137,10 +137,13 @@ def build_system_prompt(
     column_names: List[str],
 ) -> str:
     """Build the complete system prompt for synthetic data generation."""
-    return SYSTEM_PROMPT_TEMPLATE.format(
-        dataset_purpose=dataset_purpose,
-        column_definitions=format_column_definitions(column_descriptions),
-        reference_examples=format_reference_examples(existing_rows, column_names),
+    return (
+        SYSTEM_PROMPT_TEMPLATE.replace("{dataset_purpose}", dataset_purpose)
+        .replace("{column_definitions}", format_column_definitions(column_descriptions))
+        .replace(
+            "{reference_examples}",
+            format_reference_examples(existing_rows, column_names),
+        )
     )
 
 

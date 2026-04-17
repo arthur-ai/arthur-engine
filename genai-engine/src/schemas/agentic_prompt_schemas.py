@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Literal, Optional, Union
 
 from arthur_common.models.llm_model_providers import (
     LLMConfigSettings,
@@ -8,6 +8,8 @@ from arthur_common.models.llm_model_providers import (
     OpenAIMessage,
 )
 from pydantic import BaseModel, ConfigDict, Field
+
+from utils.constants import EMPTY_MODEL_PROVIDER
 
 
 class AgenticPrompt(BaseModel):
@@ -20,8 +22,9 @@ class AgenticPrompt(BaseModel):
     model_name: str = Field(
         description="Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')",
     )
-    model_provider: ModelProvider = Field(
-        description="Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')",
+    model_provider: Union[ModelProvider, Literal["empty"]] = Field(
+        description="Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). "
+        f"The sentinel value '{EMPTY_MODEL_PROVIDER}' indicates the system default placeholder has not been configured.",
     )
     version: int = Field(default=1, description="Version of the agentic prompt")
     tools: Optional[List[LLMTool]] = Field(
