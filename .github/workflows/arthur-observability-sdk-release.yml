@@ -22,7 +22,7 @@ jobs:
   generate-client:
     if: |
       (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main') &&
-      startsWith(github.event.head_commit.message, 'Increment arthur-engine version to')
+      startsWith(github.event.head_commit.message, 'Increment arthur-engine version')
     runs-on: ubuntu-latest
     env:
       GIT_DEPTH: 100
@@ -115,7 +115,7 @@ jobs:
   # ── create git tag (stable releases only) ─────────────────────────────────
   create-git-tag:
     needs: publish-pypi
-    if: github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'Increment arthur-engine version to')
+    if: github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'Increment arthur-engine version')
     runs-on: ubuntu-latest
     environment: shared-protected-branch-secrets
     steps:
