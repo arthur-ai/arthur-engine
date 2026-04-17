@@ -62,6 +62,10 @@ Parameters:
     Type: Number
     Default: 2048
     Description: 'Memory value for AWS Fargate per ML Engine ECS task'
+  GenaiEngineMaxPageSize:
+    Type: Number
+    Default: 1500
+    Description: 'Max page size for fetching data from the GenAI Engine'
 
 Conditions:
   IsContainerRepositoryCredentialRequired: !Equals [ !Ref ContainerRepositoryCredentialRequired, 'true' ]
@@ -102,6 +106,8 @@ Resources:
               Value: !Ref GenaiEngineInternalIngressHost
             - Name: 'GENAI_ENGINE_INTERNAL_INGRESS_HOST'
               Value: !Ref GenaiEngineInternalIngressHost
+            - Name: 'GENAI_ENGINE_MAX_PAGE_SIZE'
+              Value: !Ref GenaiEngineMaxPageSize
           Secrets:
             - Name: 'ARTHUR_CLIENT_ID'
               ValueFrom: !Sub '${MLEngineClientCredentialsSecretARN}:client_id::'
