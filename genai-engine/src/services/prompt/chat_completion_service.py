@@ -352,7 +352,9 @@ class ChatCompletionService:
             )
             response = await llm_client.acompletion(model=model, **completion_params)
 
-            collected_chunks: list[ModelResponse | ModelResponseStream | CustomStreamWrapper] = []
+            collected_chunks: list[
+                ModelResponse | ModelResponseStream | CustomStreamWrapper
+            ] = []
             if isinstance(response, CustomStreamWrapper):
                 async for chunk in response:
                     collected_chunks.append(chunk)
