@@ -1,7 +1,7 @@
 FROM --platform=linux/amd64 python:3.13-slim-bookworm AS install
 
 # install uv and wget
-RUN pip install uv && \
+RUN pip install uv==0.11.7 && \
     apt-get update && \
     apt-get install -y wget curl gnupg apt-transport-https && \
     rm -rf /var/lib/apt/lists/*
