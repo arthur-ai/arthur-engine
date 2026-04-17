@@ -6,6 +6,10 @@ resolution-markers = [
     "python_full_version < '3.11'",
 ]
 
+[options]
+exclude-newer = "2026-04-10T15:23:41.523006Z"
+exclude-newer-span = "P3D"
+
 [[package]]
 name = "aiofiles"
 version = "24.1.0"
@@ -156,7 +160,7 @@ wheels = [
 
 [[package]]
 name = "arthur-observability-sdk"
-version = "2.1.501"
+version = "2.1.511"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },

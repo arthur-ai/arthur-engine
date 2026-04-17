@@ -170,7 +170,7 @@ def trace_query_parameters(
     ),
     user_ids: list[str] = Query(
         None,
-        description="User IDs to filter on. Optional.",
+        description="User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.",
     ),
     span_name: str = Query(
         None,

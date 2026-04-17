@@ -46,6 +46,8 @@ class ApplicationConfigurationResponse(BaseModel):
         None
     )
     max_llm_rules_per_task_count: int
+    trace_retention_days: int
+    allowed_trace_retention_days: tuple[int, ...] = ()
 
 
 class DisplaySettingsResponse(BaseModel):

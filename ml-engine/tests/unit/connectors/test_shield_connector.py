@@ -5,6 +5,7 @@ import uuid
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
+from unittest.mock import patch
 from urllib import parse
 from uuid import uuid4
 
@@ -23,13 +24,14 @@ from arthur_client.api_bindings import (
 from arthur_common.models.connectors import ConnectorPaginationOptions
 from arthur_common.models.enums import ModelProblemType
 from arthur_common.models.request_schemas import NewRuleRequest
+from pydantic import ValidationError
+
 from config.config import Config
 from connectors.shield_connector import (
     EngineInternalConnector,
     ShieldBaseConnector,
     ShieldConnector,
 )
-from pydantic import ValidationError
 from tools.agentic_filters import SHIELD_SORT_DESC, SHIELD_SORT_FILTER
 
 logger = logging.getLogger("job_logger")
@@ -695,8 +697,9 @@ def test_agentic_dataset_validation_error_handling(urllib3_mock: Urllib3Mock):
     assert "query_relevance_gt" in error_str  # Exact field name should be mentioned
     assert "1.5" in error_str  # Actual failing value should be shown
     # The error message format comes from pydantic validation in TracesApi
-    assert ("less than or equal to 1" in error_str.lower() or
-            "must be" in error_str.lower())  # Validation constraint
+    assert (
+        "less than or equal to 1" in error_str.lower() or "must be" in error_str.lower()
+    )  # Validation constraint
 
 
 @pytest.mark.parametrize(
@@ -789,6 +792,42 @@ def test_agentic_dataset_filter_parameter_mapping(
     urllib3_mock.assert_all_responses_called()
 
 
+def test_shield_connector_respects_max_page_size(urllib3_mock: Urllib3Mock) -> None:
+    """Connector must use GENAI_ENGINE_MAX_PAGE_SIZE from config when no pagination options given."""
+    end_timestamp = datetime.now(timezone.utc)
+    start_timestamp = end_timestamp - timedelta(days=7)
+    avail_dataset = AvailableDataset.model_validate(MOCK_SHIELD_AVAILABLE_DATASET)
+    spec = ConnectorSpec.model_validate(mock_shield_connector_spec(MOCK_SHIELD_HOST))
+    conn = ShieldConnector(spec, logger)
+
+    custom_page_size = 500
+    total_inferences = 1000
+
+    mock_shield_data(
+        urllib3_mock,
+        total_inferences,
+        start_timestamp,
+        end_timestamp,
+        page_size=custom_page_size,
+        task_ids=MOCK_SHIELD_TASK_ID,
+        **{SHIELD_SORT_FILTER: SHIELD_SORT_DESC},
+    )
+
+    with patch.object(
+        Config,
+        "genai_engine_max_page_size",
+        return_value=custom_page_size,
+    ):
+        rows = conn.read(
+            avail_dataset,
+            start_time=start_timestamp,
+            end_time=end_timestamp,
+        )
+
+    assert len(rows) == total_inferences
+    urllib3_mock.assert_all_responses_called()
+
+
 def test_shield_read_raises_for_static_dataset():
     """Shield connector must raise ValueError when dataset.is_static is True."""
     spec = ConnectorSpec.model_validate(mock_shield_connector_spec(MOCK_SHIELD_HOST))
@@ -800,5 +839,8 @@ def test_shield_read_raises_for_static_dataset():
     start = datetime(2024, 1, 1, tzinfo=timezone.utc)
     end = datetime(2024, 1, 2, tzinfo=timezone.utc)
 
-    with pytest.raises(ValueError, match="Static datasets are not supported by the Shield connector"):
+    with pytest.raises(
+        ValueError,
+        match="Static datasets are not supported by the Shield connector",
+    ):
         conn.read(static_dataset, start_time=start, end_time=end)
