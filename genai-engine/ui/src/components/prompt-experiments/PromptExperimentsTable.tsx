@@ -5,6 +5,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TableSortLabel,
   Paper,
   Box,
   Chip,
@@ -12,7 +13,7 @@ import {
   LinearProgress,
   CircularProgress,
 } from "@mui/material";
-import React from "react";
+import React, { useMemo, useState } from "react";
 
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { SavedPromptConfig, UnsavedPromptConfig } from "@/lib/api-client/api-client";
@@ -66,6 +67,45 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
   loading = false,
 }) => {
   const { defaultCurrency, timezone, use24Hour } = useDisplaySettings();
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+  };
+
+  const sortedExperiments = useMemo(() => {
+    if (!sortColumn) return experiments;
+    return [...experiments].sort((a, b) => {
+      let aVal: string | number;
+      let bVal: string | number;
+      switch (sortColumn) {
+        case "name":
+          aVal = a.name.toLowerCase();
+          bVal = b.name.toLowerCase();
+          break;
+        case "status":
+          aVal = a.status;
+          bVal = b.status;
+          break;
+        case "created_at":
+          aVal = new Date(a.created_at).getTime();
+          bVal = new Date(b.created_at).getTime();
+          break;
+        default:
+          return 0;
+      }
+      if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
+      if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [experiments, sortColumn, sortDirection]);
+
   const formatPromptName = (config: PromptConfig): string => {
     if (config.type === "saved") {
       return `${config.name} (v${config.version})`;
@@ -82,59 +122,84 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
           <TableHead>
             <TableRow>
               <TableCell>
-                <Box component="span" className="font-semibold">
-                  Experiment Name
-                </Box>
+                <TableSortLabel
+                  active={sortColumn === "name"}
+                  direction={sortColumn === "name" ? sortDirection : "asc"}
+                  onClick={() => handleSort("name")}
+                >
+                  <Box component="span" sx={{ fontWeight: 600 }}>
+                    Experiment Name
+                  </Box>
+                </TableSortLabel>
               </TableCell>
               <TableCell>
-                <Box component="span" className="font-semibold">
+                <Box component="span" sx={{ fontWeight: 600 }}>
                   Description
                 </Box>
               </TableCell>
               <TableCell>
-                <Box component="span" className="font-semibold">
+                <Box component="span" sx={{ fontWeight: 600 }}>
                   Prompts
                 </Box>
               </TableCell>
               <TableCell>
-                <Box component="span" className="font-semibold">
+                <Box component="span" sx={{ fontWeight: 600 }}>
                   Dataset (Version)
                 </Box>
               </TableCell>
               <TableCell>
-                <Box component="span" className="font-semibold">
+                <Box component="span" sx={{ fontWeight: 600 }}>
                   Test Cases
                 </Box>
               </TableCell>
               <TableCell>
-                <Box component="span" className="font-semibold">
-                  Status
-                </Box>
+                <TableSortLabel
+                  active={sortColumn === "status"}
+                  direction={sortColumn === "status" ? sortDirection : "asc"}
+                  onClick={() => handleSort("status")}
+                >
+                  <Box component="span" sx={{ fontWeight: 600 }}>
+                    Status
+                  </Box>
+                </TableSortLabel>
               </TableCell>
               <TableCell>
-                <Box component="span" className="font-semibold">
-                  Created At
-                </Box>
+                <TableSortLabel
+                  active={sortColumn === "created_at"}
+                  direction={sortColumn === "created_at" ? sortDirection : "asc"}
+                  onClick={() => handleSort("created_at")}
+                >
+                  <Box component="span" sx={{ fontWeight: 600 }}>
+                    Created At
+                  </Box>
+                </TableSortLabel>
               </TableCell>
               <TableCell>
-                <Box component="span" className="font-semibold">
+                <Box component="span" sx={{ fontWeight: 600 }}>
                   Finished At
                 </Box>
               </TableCell>
               <TableCell>
-                <Box component="span" className="font-semibold">
+                <Box component="span" sx={{ fontWeight: 600 }}>
                   Duration
                 </Box>
               </TableCell>
               <TableCell>
-                <Box component="span" className="font-semibold">
+                <Box component="span" sx={{ fontWeight: 600 }}>
                   Total Cost
                 </Box>
               </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {experiments.map((experiment) => (
+            {sortedExperiments.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={10} sx={{ textAlign: "center", py: 6, color: "text.secondary" }}>
+                  No experiments found.
+                </TableCell>
+              </TableRow>
+            )}
+            {sortedExperiments.map((experiment) => (
               <TableRow key={experiment.id} hover onClick={() => onRowClick(experiment)} sx={{ cursor: "pointer" }}>
                 <TableCell component="th" scope="row">
                   <Box className="font-medium">{experiment.name}</Box>

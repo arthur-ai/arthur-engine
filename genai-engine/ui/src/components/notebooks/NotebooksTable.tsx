@@ -4,12 +4,6 @@ import LaunchIcon from "@mui/icons-material/Launch";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
-import CircularProgress from "@mui/material/CircularProgress";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogContentText from "@mui/material/DialogContentText";
-import DialogTitle from "@mui/material/DialogTitle";
 import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
 import Table from "@mui/material/Table";
@@ -25,6 +19,7 @@ import React, { useState } from "react";
 
 import type { NotebooksTableProps } from "./types";
 
+import { DeleteConfirmDialog } from "@/components/common";
 import { NotebookSummary } from "@/lib/api-client/api-client";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
@@ -70,7 +65,7 @@ const NotebooksTable: React.FC<NotebooksTableProps> = ({
 
   return (
     <>
-      <TableContainer component={Paper} elevation={1} sx={{ overflow: "auto", height: "100%" }}>
+      <TableContainer component={Paper} elevation={1}>
         <Table stickyHeader>
           <TableHead>
             <TableRow>
@@ -79,52 +74,69 @@ const NotebooksTable: React.FC<NotebooksTableProps> = ({
                   active={sortColumn === "name"}
                   direction={sortColumn === "name" ? sortDirection : "asc"}
                   onClick={() => onSort("name")}
+                  sx={{ width: "100%" }}
                 >
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                  <Box component="span" sx={{ fontWeight: 600 }}>
                     Name
-                  </Typography>
+                  </Box>
                 </TableSortLabel>
               </TableCell>
               <TableCell>
-                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                <Box component="span" sx={{ fontWeight: 600 }}>
                   Description
-                </Typography>
+                </Box>
               </TableCell>
               <TableCell>
                 <TableSortLabel
                   active={sortColumn === "run_count"}
                   direction={sortColumn === "run_count" ? sortDirection : "desc"}
                   onClick={() => onSort("run_count")}
+                  sx={{ width: "100%" }}
                 >
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                  <Box component="span" sx={{ fontWeight: 600 }}>
                     Runs
-                  </Typography>
+                  </Box>
                 </TableSortLabel>
               </TableCell>
               <TableCell>
-                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                  Latest Run
-                </Typography>
+                <TableSortLabel
+                  active={sortColumn === "latest_run_status"}
+                  direction={sortColumn === "latest_run_status" ? sortDirection : "asc"}
+                  onClick={() => onSort("latest_run_status")}
+                  sx={{ width: "100%" }}
+                >
+                  <Box component="span" sx={{ fontWeight: 600 }}>
+                    Latest Run
+                  </Box>
+                </TableSortLabel>
               </TableCell>
               <TableCell>
                 <TableSortLabel
                   active={sortColumn === "updated_at"}
                   direction={sortColumn === "updated_at" ? sortDirection : "desc"}
                   onClick={() => onSort("updated_at")}
+                  sx={{ width: "100%" }}
                 >
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                  <Box component="span" sx={{ fontWeight: 600 }}>
                     Updated
-                  </Typography>
+                  </Box>
                 </TableSortLabel>
               </TableCell>
               <TableCell>
-                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                <Box component="span" sx={{ fontWeight: 600 }}>
                   Actions
-                </Typography>
+                </Box>
               </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
+            {notebooks.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} sx={{ textAlign: "center", py: 6, color: "text.secondary" }}>
+                  No notebooks found.
+                </TableCell>
+              </TableRow>
+            )}
             {notebooks.map((notebook) => (
               <TableRow key={notebook.id} hover onClick={() => onRowClick(notebook.id)} sx={{ cursor: "pointer" }}>
                 <TableCell>
@@ -196,36 +208,19 @@ const NotebooksTable: React.FC<NotebooksTableProps> = ({
         </Table>
       </TableContainer>
 
-      <Dialog
+      <DeleteConfirmDialog
         open={deleteDialogOpen}
         onClose={handleDeleteCancel}
-        aria-labelledby="delete-notebook-dialog-title"
-        aria-describedby="delete-notebook-dialog-description"
-      >
-        <DialogTitle id="delete-notebook-dialog-title">Delete Notebook?</DialogTitle>
-        <DialogContent>
-          <DialogContentText id="delete-notebook-dialog-description">
+        onConfirm={handleDeleteConfirm}
+        title="Delete Notebook?"
+        description={
+          <>
             Are you sure you want to delete <strong>{notebookToDelete?.name}</strong>?
-          </DialogContentText>
-          <Box sx={{ mt: 2, p: 2, bgcolor: "info.lighter", borderRadius: 1 }}>
-            <strong>Note:</strong> Experiments created from this notebook will be preserved but will no longer be linked to the notebook.
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={handleDeleteCancel} disabled={isDeleting}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleDeleteConfirm}
-            color="error"
-            variant="contained"
-            disabled={isDeleting}
-            startIcon={isDeleting ? <CircularProgress size={16} /> : null}
-          >
-            {isDeleting ? "Deleting..." : "Delete"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+          </>
+        }
+        noteText="Experiments created from this notebook will be preserved but will no longer be linked to the notebook."
+        isDeleting={isDeleting}
+      />
     </>
   );
 };

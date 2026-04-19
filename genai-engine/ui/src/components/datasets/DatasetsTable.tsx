@@ -1,43 +1,26 @@
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TableSortLabel,
-  Paper,
-  Box,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
-  Button,
-  CircularProgress,
-  Chip,
-} from "@mui/material";
-import React, { useCallback, useState } from "react";
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, Paper, Box, IconButton, Chip, LinearProgress } from "@mui/material";
+import React, { useCallback, useMemo, useState } from "react";
 
+import { DeleteConfirmDialog } from "@/components/common";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import type { DatasetResponse } from "@/lib/api-client/api-client";
 import { EVENT_NAMES, track } from "@/services/amplitude";
-import type { SortOrder } from "@/types/dataset";
 import { formatDateInTimezone } from "@/utils/formatters";
 
 interface DatasetsTableProps {
   datasets: DatasetResponse[];
-  sortOrder: SortOrder;
-  onSort: () => void;
+  sortColumn: string | null;
+  sortDirection: "asc" | "desc";
+  onSort: (column: string) => void;
   onRowClick: (dataset: DatasetResponse) => void;
   onEdit?: (dataset: DatasetResponse) => void;
   onDelete?: (datasetId: string) => Promise<void>;
+  loading?: boolean;
 }
 
-export const DatasetsTable: React.FC<DatasetsTableProps> = ({ datasets, sortOrder, onSort, onRowClick, onEdit, onDelete }) => {
+export const DatasetsTable: React.FC<DatasetsTableProps> = ({ datasets, sortColumn, sortDirection, onSort, onRowClick, onEdit, onDelete, loading = false }) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [datasetToDelete, setDatasetToDelete] = useState<DatasetResponse | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -70,35 +53,60 @@ export const DatasetsTable: React.FC<DatasetsTableProps> = ({ datasets, sortOrde
     setDatasetToDelete(null);
   }, []);
 
+  // Client-side sort for columns the server doesn't sort by (server sorts by updated_at only)
+  const sortedDatasets = useMemo(() => {
+    if (sortColumn !== "name" && sortColumn !== "created_at") return datasets;
+    return [...datasets].sort((a, b) => {
+      const aVal = sortColumn === "name" ? a.name.toLowerCase() : new Date(a.created_at).getTime();
+      const bVal = sortColumn === "name" ? b.name.toLowerCase() : new Date(b.created_at).getTime();
+      if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
+      if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [datasets, sortColumn, sortDirection]);
+
   return (
     <>
-      <TableContainer
-        component={Paper}
-        elevation={1}
-        sx={{
-          overflow: "auto",
-          height: "100%",
-        }}
-      >
+      <TableContainer component={Paper} elevation={1}>
+        {loading && <LinearProgress />}
         <Table sx={{ minWidth: 650 }} aria-label="datasets table" stickyHeader>
           <TableHead>
             <TableRow>
               <TableCell>
-                <Box component="span" sx={{ fontWeight: 600 }}>
-                  Dataset Name
-                </Box>
+                <TableSortLabel
+                  active={sortColumn === "name"}
+                  direction={sortColumn === "name" ? sortDirection : "asc"}
+                  onClick={() => onSort("name")}
+                  sx={{ width: "100%" }}
+                >
+                  <Box component="span" sx={{ fontWeight: 600 }}>
+                    Dataset Name
+                  </Box>
+                </TableSortLabel>
               </TableCell>
               <TableCell>
-                <TableSortLabel active={true} direction={sortOrder} onClick={onSort}>
+                <TableSortLabel
+                  active={sortColumn === "updated_at"}
+                  direction={sortColumn === "updated_at" ? sortDirection : "desc"}
+                  onClick={() => onSort("updated_at")}
+                  sx={{ width: "100%" }}
+                >
                   <Box component="span" sx={{ fontWeight: 600 }}>
                     Last Modified
                   </Box>
                 </TableSortLabel>
               </TableCell>
               <TableCell>
-                <Box component="span" sx={{ fontWeight: 600 }}>
-                  Created At
-                </Box>
+                <TableSortLabel
+                  active={sortColumn === "created_at"}
+                  direction={sortColumn === "created_at" ? sortDirection : "asc"}
+                  onClick={() => onSort("created_at")}
+                  sx={{ width: "100%" }}
+                >
+                  <Box component="span" sx={{ fontWeight: 600 }}>
+                    Created At
+                  </Box>
+                </TableSortLabel>
               </TableCell>
               <TableCell align="center">
                 <Box component="span" sx={{ fontWeight: 600 }}>
@@ -108,18 +116,15 @@ export const DatasetsTable: React.FC<DatasetsTableProps> = ({ datasets, sortOrde
             </TableRow>
           </TableHead>
           <TableBody>
-            {datasets.map((dataset) => (
-              <TableRow
-                key={dataset.id}
-                hover
-                onClick={() => onRowClick(dataset)}
-                sx={{
-                  cursor: "pointer",
-                  "&:hover": {
-                    backgroundColor: "action.hover",
-                  },
-                }}
-              >
+            {sortedDatasets.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={4} sx={{ textAlign: "center", py: 6, color: "text.secondary" }}>
+                  No datasets found.
+                </TableCell>
+              </TableRow>
+            )}
+            {sortedDatasets.map((dataset) => (
+              <TableRow key={dataset.id} hover onClick={() => onRowClick(dataset)} sx={{ cursor: "pointer" }}>
                 <TableCell component="th" scope="row">
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <Box sx={{ fontWeight: 500 }}>{dataset.name}</Box>
@@ -169,31 +174,19 @@ export const DatasetsTable: React.FC<DatasetsTableProps> = ({ datasets, sortOrde
         </Table>
       </TableContainer>
 
-      <Dialog open={deleteDialogOpen} onClose={handleDeleteCancel} aria-labelledby="delete-dialog-title" aria-describedby="delete-dialog-description">
-        <DialogTitle id="delete-dialog-title">Delete Dataset?</DialogTitle>
-        <DialogContent>
-          <DialogContentText id="delete-dialog-description">
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Dataset?"
+        description={
+          <>
             Are you sure you want to delete <strong>{datasetToDelete?.name}</strong>?
-          </DialogContentText>
-          <Box sx={{ mt: 2, p: 2, bgcolor: "warning.lighter", borderRadius: 1 }}>
-            <strong>Warning:</strong> This will permanently delete the dataset and its entire version history. This action cannot be undone.
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={handleDeleteCancel} disabled={isDeleting}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleDeleteConfirm}
-            color="error"
-            variant="contained"
-            disabled={isDeleting}
-            startIcon={isDeleting ? <CircularProgress size={16} /> : null}
-          >
-            {isDeleting ? "Deleting..." : "Delete"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+          </>
+        }
+        warningText="This will permanently delete the dataset and its entire version history. This action cannot be undone."
+        isDeleting={isDeleting}
+      />
     </>
   );
 };

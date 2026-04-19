@@ -20,6 +20,7 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  TableSortLabel,
   Tooltip,
   Typography,
 } from "@mui/material";
@@ -49,6 +50,28 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [evalToDelete, setEvalToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [sortColumn, setSortColumn] = useState<"name" | "latest_version_created_at" | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+
+  const handleSort = (column: "name" | "latest_version_created_at") => {
+    if (sortColumn === column) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+  };
+
+  const sortedEvals = useMemo(() => {
+    if (!sortColumn) return evals;
+    return [...evals].sort((a, b) => {
+      const aVal = sortColumn === "name" ? a.name.toLowerCase() : new Date(a.latest_version_created_at).getTime();
+      const bVal = sortColumn === "name" ? b.name.toLowerCase() : new Date(b.latest_version_created_at).getTime();
+      if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
+      if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [evals, sortColumn, sortDirection]);
 
   // Fetch all CEs for this task once and group by evaluator name
   const { data: allCEsData } = useQuery(
@@ -105,14 +128,26 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
         <TableHead>
           <TableRow>
             <TableCell>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                Name
-              </Typography>
+              <TableSortLabel
+                active={sortColumn === "name"}
+                direction={sortColumn === "name" ? sortDirection : "asc"}
+                onClick={() => handleSort("name")}
+              >
+                <Box component="span" sx={{ fontWeight: 600 }}>
+                  Name
+                </Box>
+              </TableSortLabel>
             </TableCell>
             <TableCell sx={{ width: 220 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                Last Updated
-              </Typography>
+              <TableSortLabel
+                active={sortColumn === "latest_version_created_at"}
+                direction={sortColumn === "latest_version_created_at" ? sortDirection : "asc"}
+                onClick={() => handleSort("latest_version_created_at")}
+              >
+                <Box component="span" sx={{ fontWeight: 600 }}>
+                  Last Updated
+                </Box>
+              </TableSortLabel>
             </TableCell>
             <TableCell sx={{ width: 96 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
@@ -123,7 +158,7 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
         </TableHead>
       </Table>
 
-      {evals.map((evalMeta) => {
+      {sortedEvals.map((evalMeta) => {
         const pipelines = cesByEval.get(evalMeta.name) ?? [];
         const activePipelines = pipelines.filter((ce) => ce.enabled).length;
         const stalePipelines = pipelines.filter((ce) => ce.llm_eval_version < evalMeta.versions).length;

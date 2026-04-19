@@ -159,10 +159,11 @@ export const DatasetsView: React.FC = () => {
         ) : (
           <DatasetsTable
             datasets={datasets}
-            sortOrder={sorting.sortOrder}
-            onSort={() => {
+            sortColumn={sorting.sortColumn}
+            sortDirection={sorting.sortDirection}
+            onSort={(column) => {
               track(EVENT_NAMES.DATASET_SORT_CHANGED, { task_id: task?.id });
-              sorting.handleSort();
+              sorting.handleSort(column);
             }}
             onRowClick={handleRowClick}
             onEdit={(dataset) => {
@@ -170,6 +171,7 @@ export const DatasetsView: React.FC = () => {
               modals.openEditModal(dataset);
             }}
             onDelete={deleteMutation.mutateAsync}
+            loading={isLoading}
           />
         )}
       </Box>

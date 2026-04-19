@@ -1,14 +1,8 @@
 import DeleteIcon from "@mui/icons-material/Delete";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
-import CircularProgress from "@mui/material/CircularProgress";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogContentText from "@mui/material/DialogContentText";
-import DialogTitle from "@mui/material/DialogTitle";
 import IconButton from "@mui/material/IconButton";
+import LinearProgress from "@mui/material/LinearProgress";
 import Paper from "@mui/material/Paper";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -22,12 +16,13 @@ import React, { useCallback, useMemo, useState } from "react";
 
 import type { PromptsTableProps } from "../types";
 
+import { DeleteConfirmDialog } from "@/components/common";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { formatDateInTimezone } from "@/utils/formatters";
 
 type SortableColumn = "name" | "created_at" | "latest_version_created_at";
 
-const PromptsTable = ({ prompts, sortColumn, sortDirection, onSort, onExpandToFullScreen, onDelete }: PromptsTableProps) => {
+const PromptsTable = ({ prompts, sortColumn, sortDirection, onSort, onExpandToFullScreen, onDelete, loading = false }: PromptsTableProps) => {
   const { timezone, use24Hour } = useDisplaySettings();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [promptToDelete, setPromptToDelete] = useState<string | null>(null);
@@ -105,27 +100,29 @@ const PromptsTable = ({ prompts, sortColumn, sortDirection, onSort, onExpandToFu
 
   return (
     <>
-      <TableContainer
-        component={Paper}
-        elevation={1}
-        sx={{
-          overflow: "auto",
-          height: "100%",
-        }}
-      >
+      <TableContainer component={Paper} elevation={1}>
+        {loading && <LinearProgress />}
         <Table sx={{ minWidth: 650 }} aria-label="prompts table" stickyHeader>
           <TableHead>
             <TableRow>
               <TableCell>
-                <Box component="span" sx={{ fontWeight: 600 }}>
-                  Name
-                </Box>
+                <TableSortLabel
+                  active={sortColumn === "name"}
+                  direction={sortColumn === "name" ? sortDirection : "asc"}
+                  onClick={() => handleSort("name")}
+                  sx={{ width: "100%" }}
+                >
+                  <Box component="span" sx={{ fontWeight: 600 }}>
+                    Name
+                  </Box>
+                </TableSortLabel>
               </TableCell>
               <TableCell>
                 <TableSortLabel
                   active={sortColumn === "created_at"}
                   direction={sortColumn === "created_at" ? sortDirection : "asc"}
                   onClick={() => handleSort("created_at")}
+                  sx={{ width: "100%" }}
                 >
                   <Box component="span" sx={{ fontWeight: 600 }}>
                     Created At
@@ -137,6 +134,7 @@ const PromptsTable = ({ prompts, sortColumn, sortDirection, onSort, onExpandToFu
                   active={sortColumn === "latest_version_created_at"}
                   direction={sortColumn === "latest_version_created_at" ? sortDirection : "asc"}
                   onClick={() => handleSort("latest_version_created_at")}
+                  sx={{ width: "100%" }}
                 >
                   <Box component="span" sx={{ fontWeight: 600 }}>
                     Latest Version Created At
@@ -161,6 +159,13 @@ const PromptsTable = ({ prompts, sortColumn, sortDirection, onSort, onExpandToFu
             </TableRow>
           </TableHead>
           <TableBody>
+            {sortedPrompts.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} sx={{ textAlign: "center", py: 6, color: "text.secondary" }}>
+                  No prompts found.
+                </TableCell>
+              </TableRow>
+            )}
             {sortedPrompts.map((promptMetadata) => {
               const tags = promptMetadata.tags ?? [];
               const productionTag = tags.find((tag) => tag.toLowerCase() === "production");
@@ -175,17 +180,7 @@ const PromptsTable = ({ prompts, sortColumn, sortDirection, onSort, onExpandToFu
               const hiddenTagCount = hiddenTags.length;
 
               return (
-                <TableRow
-                  key={promptMetadata.name}
-                  hover
-                  onClick={() => handleRowClick(promptMetadata.name)}
-                  sx={{
-                    cursor: "pointer",
-                    "&:hover": {
-                      backgroundColor: "action.hover",
-                    },
-                  }}
-                >
+                <TableRow key={promptMetadata.name} hover onClick={() => handleRowClick(promptMetadata.name)} sx={{ cursor: "pointer" }}>
                   <TableCell component="th" scope="row">
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                       <Box sx={{ fontWeight: 500 }}>{promptMetadata.name}</Box>
@@ -241,31 +236,19 @@ const PromptsTable = ({ prompts, sortColumn, sortDirection, onSort, onExpandToFu
         </Table>
       </TableContainer>
 
-      <Dialog open={deleteDialogOpen} onClose={handleDeleteCancel} aria-labelledby="delete-dialog-title" aria-describedby="delete-dialog-description">
-        <DialogTitle id="delete-dialog-title">Delete Prompt?</DialogTitle>
-        <DialogContent>
-          <DialogContentText id="delete-dialog-description">
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Prompt?"
+        description={
+          <>
             Are you sure you want to delete <strong>{promptToDelete}</strong>?
-          </DialogContentText>
-          <Box sx={{ mt: 2, p: 2, bgcolor: "warning.lighter", borderRadius: 1 }}>
-            <strong>Warning:</strong> This will permanently delete the prompt and its entire version history. This action cannot be undone.
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={handleDeleteCancel} disabled={isDeleting}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleDeleteConfirm}
-            color="error"
-            variant="contained"
-            disabled={isDeleting}
-            startIcon={isDeleting ? <CircularProgress size={16} /> : null}
-          >
-            {isDeleting ? "Deleting..." : "Delete"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+          </>
+        }
+        warningText="This will permanently delete the prompt and its entire version history. This action cannot be undone."
+        isDeleting={isDeleting}
+      />
     </>
   );
 };
