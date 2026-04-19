@@ -20,7 +20,7 @@ export const TestView = () => {
 
   const [activeTab, setActiveTab] = useQueryState(
     "section",
-    parseAsStringEnum<TestTab>(["agent-experiments", "agentic-notebooks"]).withDefault("agent-experiments")
+    parseAsStringEnum<TestTab>(["agent-experiments", "agentic-notebooks"]).withDefault("agentic-notebooks")
   );
 
   return (
@@ -72,8 +72,8 @@ export const TestView = () => {
         onChange={(_, value) => setActiveTab(value)}
         sx={{ backgroundColor: "background.paper", borderBottom: 1, borderColor: "divider" }}
       >
-        <Tab label="Experiments" value="agent-experiments" />
         <Tab label="Notebooks" value="agentic-notebooks" />
+        <Tab label="Experiments" value="agent-experiments" />
       </Tabs>
 
       <Box sx={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>

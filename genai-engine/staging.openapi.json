@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.445"
+        "version": "2.1.514"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -87,6 +87,94 @@
                         }
                     }
                 }
+            }
+        },
+        "/api/v2/display-settings": {
+            "get": {
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Get Display Settings",
+                "description": "Get display settings (e.g. default currency for cost formatting).",
+                "operationId": "get_display_settings_api_v2_display_settings_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DisplaySettingsResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/configuration": {
+            "get": {
+                "summary": "Get Configuration",
+                "description": "Get application configuration settings.",
+                "operationId": "get_configuration_api_v2_configuration_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApplicationConfigurationResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            },
+            "post": {
+                "summary": "Update Configuration",
+                "description": "Update application configuration settings.",
+                "operationId": "update_configuration_api_v2_configuration_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ApplicationConfigurationUpdateRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApplicationConfigurationResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
             }
         },
         "/api/v2/feedback/{inference_id}": {
@@ -2369,6 +2457,17 @@
                 ],
                 "parameters": [
                     {
+                        "name": "sort_by",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/TraceSortBy",
+                            "description": "Column to sort results by.",
+                            "default": "start_time"
+                        },
+                        "description": "Column to sort results by."
+                    },
+                    {
                         "name": "sort",
                         "in": "query",
                         "required": false,
@@ -2819,6 +2918,246 @@
                             "title": "Trace Duration Lte"
                         },
                         "description": "Duration less than or equal to this value (seconds)."
+                    },
+                    {
+                        "name": "total_token_count_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Total token count exactly equal to this value.",
+                            "title": "Total Token Count Eq"
+                        },
+                        "description": "Total token count exactly equal to this value."
+                    },
+                    {
+                        "name": "total_token_count_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Total token count greater than this value.",
+                            "title": "Total Token Count Gt"
+                        },
+                        "description": "Total token count greater than this value."
+                    },
+                    {
+                        "name": "total_token_count_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Total token count greater than or equal to this value.",
+                            "title": "Total Token Count Gte"
+                        },
+                        "description": "Total token count greater than or equal to this value."
+                    },
+                    {
+                        "name": "total_token_count_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Total token count less than this value.",
+                            "title": "Total Token Count Lt"
+                        },
+                        "description": "Total token count less than this value."
+                    },
+                    {
+                        "name": "total_token_count_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Total token count less than or equal to this value.",
+                            "title": "Total Token Count Lte"
+                        },
+                        "description": "Total token count less than or equal to this value."
+                    },
+                    {
+                        "name": "prompt_token_count_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Prompt token count exactly equal to this value.",
+                            "title": "Prompt Token Count Eq"
+                        },
+                        "description": "Prompt token count exactly equal to this value."
+                    },
+                    {
+                        "name": "prompt_token_count_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Prompt token count greater than this value.",
+                            "title": "Prompt Token Count Gt"
+                        },
+                        "description": "Prompt token count greater than this value."
+                    },
+                    {
+                        "name": "prompt_token_count_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Prompt token count greater than or equal to this value.",
+                            "title": "Prompt Token Count Gte"
+                        },
+                        "description": "Prompt token count greater than or equal to this value."
+                    },
+                    {
+                        "name": "prompt_token_count_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Prompt token count less than this value.",
+                            "title": "Prompt Token Count Lt"
+                        },
+                        "description": "Prompt token count less than this value."
+                    },
+                    {
+                        "name": "prompt_token_count_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Prompt token count less than or equal to this value.",
+                            "title": "Prompt Token Count Lte"
+                        },
+                        "description": "Prompt token count less than or equal to this value."
+                    },
+                    {
+                        "name": "completion_token_count_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Completion token count exactly equal to this value.",
+                            "title": "Completion Token Count Eq"
+                        },
+                        "description": "Completion token count exactly equal to this value."
+                    },
+                    {
+                        "name": "completion_token_count_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Completion token count greater than this value.",
+                            "title": "Completion Token Count Gt"
+                        },
+                        "description": "Completion token count greater than this value."
+                    },
+                    {
+                        "name": "completion_token_count_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Completion token count greater than or equal to this value.",
+                            "title": "Completion Token Count Gte"
+                        },
+                        "description": "Completion token count greater than or equal to this value."
+                    },
+                    {
+                        "name": "completion_token_count_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Completion token count less than this value.",
+                            "title": "Completion Token Count Lt"
+                        },
+                        "description": "Completion token count less than this value."
+                    },
+                    {
+                        "name": "completion_token_count_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Completion token count less than or equal to this value.",
+                            "title": "Completion Token Count Lte"
+                        },
+                        "description": "Completion token count less than or equal to this value."
+                    },
+                    {
+                        "name": "span_count_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count exactly equal to this value.",
+                            "title": "Span Count Eq"
+                        },
+                        "description": "Span count exactly equal to this value."
+                    },
+                    {
+                        "name": "span_count_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count greater than this value.",
+                            "title": "Span Count Gt"
+                        },
+                        "description": "Span count greater than this value."
+                    },
+                    {
+                        "name": "span_count_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count greater than or equal to this value.",
+                            "title": "Span Count Gte"
+                        },
+                        "description": "Span count greater than or equal to this value."
+                    },
+                    {
+                        "name": "span_count_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count less than this value.",
+                            "title": "Span Count Lt"
+                        },
+                        "description": "Span count less than this value."
+                    },
+                    {
+                        "name": "span_count_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count less than or equal to this value.",
+                            "title": "Span Count Lte"
+                        },
+                        "description": "Span count less than or equal to this value."
                     },
                     {
                         "name": "include_experiment_traces",
@@ -2873,6 +3212,17 @@
                 ],
                 "parameters": [
                     {
+                        "name": "sort_by",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/TraceSortBy",
+                            "description": "Column to sort results by.",
+                            "default": "start_time"
+                        },
+                        "description": "Column to sort results by."
+                    },
+                    {
                         "name": "sort",
                         "in": "query",
                         "required": false,
@@ -3323,6 +3673,246 @@
                             "title": "Trace Duration Lte"
                         },
                         "description": "Duration less than or equal to this value (seconds)."
+                    },
+                    {
+                        "name": "total_token_count_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Total token count exactly equal to this value.",
+                            "title": "Total Token Count Eq"
+                        },
+                        "description": "Total token count exactly equal to this value."
+                    },
+                    {
+                        "name": "total_token_count_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Total token count greater than this value.",
+                            "title": "Total Token Count Gt"
+                        },
+                        "description": "Total token count greater than this value."
+                    },
+                    {
+                        "name": "total_token_count_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Total token count greater than or equal to this value.",
+                            "title": "Total Token Count Gte"
+                        },
+                        "description": "Total token count greater than or equal to this value."
+                    },
+                    {
+                        "name": "total_token_count_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Total token count less than this value.",
+                            "title": "Total Token Count Lt"
+                        },
+                        "description": "Total token count less than this value."
+                    },
+                    {
+                        "name": "total_token_count_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Total token count less than or equal to this value.",
+                            "title": "Total Token Count Lte"
+                        },
+                        "description": "Total token count less than or equal to this value."
+                    },
+                    {
+                        "name": "prompt_token_count_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Prompt token count exactly equal to this value.",
+                            "title": "Prompt Token Count Eq"
+                        },
+                        "description": "Prompt token count exactly equal to this value."
+                    },
+                    {
+                        "name": "prompt_token_count_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Prompt token count greater than this value.",
+                            "title": "Prompt Token Count Gt"
+                        },
+                        "description": "Prompt token count greater than this value."
+                    },
+                    {
+                        "name": "prompt_token_count_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Prompt token count greater than or equal to this value.",
+                            "title": "Prompt Token Count Gte"
+                        },
+                        "description": "Prompt token count greater than or equal to this value."
+                    },
+                    {
+                        "name": "prompt_token_count_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Prompt token count less than this value.",
+                            "title": "Prompt Token Count Lt"
+                        },
+                        "description": "Prompt token count less than this value."
+                    },
+                    {
+                        "name": "prompt_token_count_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Prompt token count less than or equal to this value.",
+                            "title": "Prompt Token Count Lte"
+                        },
+                        "description": "Prompt token count less than or equal to this value."
+                    },
+                    {
+                        "name": "completion_token_count_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Completion token count exactly equal to this value.",
+                            "title": "Completion Token Count Eq"
+                        },
+                        "description": "Completion token count exactly equal to this value."
+                    },
+                    {
+                        "name": "completion_token_count_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Completion token count greater than this value.",
+                            "title": "Completion Token Count Gt"
+                        },
+                        "description": "Completion token count greater than this value."
+                    },
+                    {
+                        "name": "completion_token_count_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Completion token count greater than or equal to this value.",
+                            "title": "Completion Token Count Gte"
+                        },
+                        "description": "Completion token count greater than or equal to this value."
+                    },
+                    {
+                        "name": "completion_token_count_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Completion token count less than this value.",
+                            "title": "Completion Token Count Lt"
+                        },
+                        "description": "Completion token count less than this value."
+                    },
+                    {
+                        "name": "completion_token_count_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Completion token count less than or equal to this value.",
+                            "title": "Completion Token Count Lte"
+                        },
+                        "description": "Completion token count less than or equal to this value."
+                    },
+                    {
+                        "name": "span_count_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count exactly equal to this value.",
+                            "title": "Span Count Eq"
+                        },
+                        "description": "Span count exactly equal to this value."
+                    },
+                    {
+                        "name": "span_count_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count greater than this value.",
+                            "title": "Span Count Gt"
+                        },
+                        "description": "Span count greater than this value."
+                    },
+                    {
+                        "name": "span_count_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count greater than or equal to this value.",
+                            "title": "Span Count Gte"
+                        },
+                        "description": "Span count greater than or equal to this value."
+                    },
+                    {
+                        "name": "span_count_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count less than this value.",
+                            "title": "Span Count Lt"
+                        },
+                        "description": "Span count less than this value."
+                    },
+                    {
+                        "name": "span_count_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count less than or equal to this value.",
+                            "title": "Span Count Lte"
+                        },
+                        "description": "Span count less than or equal to this value."
                     },
                     {
                         "name": "include_experiment_traces",
@@ -3603,6 +4193,17 @@
                     }
                 ],
                 "parameters": [
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/TraceSortBy",
+                            "description": "Column to sort results by.",
+                            "default": "start_time"
+                        },
+                        "description": "Column to sort results by."
+                    },
                     {
                         "name": "include_spans",
                         "in": "query",
@@ -4068,6 +4669,246 @@
                         "description": "Duration less than or equal to this value (seconds)."
                     },
                     {
+                        "name": "total_token_count_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Total token count exactly equal to this value.",
+                            "title": "Total Token Count Eq"
+                        },
+                        "description": "Total token count exactly equal to this value."
+                    },
+                    {
+                        "name": "total_token_count_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Total token count greater than this value.",
+                            "title": "Total Token Count Gt"
+                        },
+                        "description": "Total token count greater than this value."
+                    },
+                    {
+                        "name": "total_token_count_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Total token count greater than or equal to this value.",
+                            "title": "Total Token Count Gte"
+                        },
+                        "description": "Total token count greater than or equal to this value."
+                    },
+                    {
+                        "name": "total_token_count_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Total token count less than this value.",
+                            "title": "Total Token Count Lt"
+                        },
+                        "description": "Total token count less than this value."
+                    },
+                    {
+                        "name": "total_token_count_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Total token count less than or equal to this value.",
+                            "title": "Total Token Count Lte"
+                        },
+                        "description": "Total token count less than or equal to this value."
+                    },
+                    {
+                        "name": "prompt_token_count_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Prompt token count exactly equal to this value.",
+                            "title": "Prompt Token Count Eq"
+                        },
+                        "description": "Prompt token count exactly equal to this value."
+                    },
+                    {
+                        "name": "prompt_token_count_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Prompt token count greater than this value.",
+                            "title": "Prompt Token Count Gt"
+                        },
+                        "description": "Prompt token count greater than this value."
+                    },
+                    {
+                        "name": "prompt_token_count_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Prompt token count greater than or equal to this value.",
+                            "title": "Prompt Token Count Gte"
+                        },
+                        "description": "Prompt token count greater than or equal to this value."
+                    },
+                    {
+                        "name": "prompt_token_count_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Prompt token count less than this value.",
+                            "title": "Prompt Token Count Lt"
+                        },
+                        "description": "Prompt token count less than this value."
+                    },
+                    {
+                        "name": "prompt_token_count_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Prompt token count less than or equal to this value.",
+                            "title": "Prompt Token Count Lte"
+                        },
+                        "description": "Prompt token count less than or equal to this value."
+                    },
+                    {
+                        "name": "completion_token_count_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Completion token count exactly equal to this value.",
+                            "title": "Completion Token Count Eq"
+                        },
+                        "description": "Completion token count exactly equal to this value."
+                    },
+                    {
+                        "name": "completion_token_count_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Completion token count greater than this value.",
+                            "title": "Completion Token Count Gt"
+                        },
+                        "description": "Completion token count greater than this value."
+                    },
+                    {
+                        "name": "completion_token_count_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Completion token count greater than or equal to this value.",
+                            "title": "Completion Token Count Gte"
+                        },
+                        "description": "Completion token count greater than or equal to this value."
+                    },
+                    {
+                        "name": "completion_token_count_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Completion token count less than this value.",
+                            "title": "Completion Token Count Lt"
+                        },
+                        "description": "Completion token count less than this value."
+                    },
+                    {
+                        "name": "completion_token_count_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Completion token count less than or equal to this value.",
+                            "title": "Completion Token Count Lte"
+                        },
+                        "description": "Completion token count less than or equal to this value."
+                    },
+                    {
+                        "name": "span_count_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count exactly equal to this value.",
+                            "title": "Span Count Eq"
+                        },
+                        "description": "Span count exactly equal to this value."
+                    },
+                    {
+                        "name": "span_count_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count greater than this value.",
+                            "title": "Span Count Gt"
+                        },
+                        "description": "Span count greater than this value."
+                    },
+                    {
+                        "name": "span_count_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count greater than or equal to this value.",
+                            "title": "Span Count Gte"
+                        },
+                        "description": "Span count greater than or equal to this value."
+                    },
+                    {
+                        "name": "span_count_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count less than this value.",
+                            "title": "Span Count Lt"
+                        },
+                        "description": "Span count less than this value."
+                    },
+                    {
+                        "name": "span_count_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count less than or equal to this value.",
+                            "title": "Span Count Lte"
+                        },
+                        "description": "Span count less than or equal to this value."
+                    },
+                    {
                         "name": "include_experiment_traces",
                         "in": "query",
                         "required": false,
@@ -4118,6 +4959,17 @@
                     }
                 ],
                 "parameters": [
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/TraceSortBy",
+                            "description": "Column to sort results by.",
+                            "default": "start_time"
+                        },
+                        "description": "Column to sort results by."
+                    },
                     {
                         "name": "sort",
                         "in": "query",
@@ -4569,6 +5421,246 @@
                             "title": "Trace Duration Lte"
                         },
                         "description": "Duration less than or equal to this value (seconds)."
+                    },
+                    {
+                        "name": "total_token_count_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Total token count exactly equal to this value.",
+                            "title": "Total Token Count Eq"
+                        },
+                        "description": "Total token count exactly equal to this value."
+                    },
+                    {
+                        "name": "total_token_count_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Total token count greater than this value.",
+                            "title": "Total Token Count Gt"
+                        },
+                        "description": "Total token count greater than this value."
+                    },
+                    {
+                        "name": "total_token_count_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Total token count greater than or equal to this value.",
+                            "title": "Total Token Count Gte"
+                        },
+                        "description": "Total token count greater than or equal to this value."
+                    },
+                    {
+                        "name": "total_token_count_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Total token count less than this value.",
+                            "title": "Total Token Count Lt"
+                        },
+                        "description": "Total token count less than this value."
+                    },
+                    {
+                        "name": "total_token_count_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Total token count less than or equal to this value.",
+                            "title": "Total Token Count Lte"
+                        },
+                        "description": "Total token count less than or equal to this value."
+                    },
+                    {
+                        "name": "prompt_token_count_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Prompt token count exactly equal to this value.",
+                            "title": "Prompt Token Count Eq"
+                        },
+                        "description": "Prompt token count exactly equal to this value."
+                    },
+                    {
+                        "name": "prompt_token_count_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Prompt token count greater than this value.",
+                            "title": "Prompt Token Count Gt"
+                        },
+                        "description": "Prompt token count greater than this value."
+                    },
+                    {
+                        "name": "prompt_token_count_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Prompt token count greater than or equal to this value.",
+                            "title": "Prompt Token Count Gte"
+                        },
+                        "description": "Prompt token count greater than or equal to this value."
+                    },
+                    {
+                        "name": "prompt_token_count_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Prompt token count less than this value.",
+                            "title": "Prompt Token Count Lt"
+                        },
+                        "description": "Prompt token count less than this value."
+                    },
+                    {
+                        "name": "prompt_token_count_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Prompt token count less than or equal to this value.",
+                            "title": "Prompt Token Count Lte"
+                        },
+                        "description": "Prompt token count less than or equal to this value."
+                    },
+                    {
+                        "name": "completion_token_count_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Completion token count exactly equal to this value.",
+                            "title": "Completion Token Count Eq"
+                        },
+                        "description": "Completion token count exactly equal to this value."
+                    },
+                    {
+                        "name": "completion_token_count_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Completion token count greater than this value.",
+                            "title": "Completion Token Count Gt"
+                        },
+                        "description": "Completion token count greater than this value."
+                    },
+                    {
+                        "name": "completion_token_count_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Completion token count greater than or equal to this value.",
+                            "title": "Completion Token Count Gte"
+                        },
+                        "description": "Completion token count greater than or equal to this value."
+                    },
+                    {
+                        "name": "completion_token_count_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Completion token count less than this value.",
+                            "title": "Completion Token Count Lt"
+                        },
+                        "description": "Completion token count less than this value."
+                    },
+                    {
+                        "name": "completion_token_count_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Completion token count less than or equal to this value.",
+                            "title": "Completion Token Count Lte"
+                        },
+                        "description": "Completion token count less than or equal to this value."
+                    },
+                    {
+                        "name": "span_count_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count exactly equal to this value.",
+                            "title": "Span Count Eq"
+                        },
+                        "description": "Span count exactly equal to this value."
+                    },
+                    {
+                        "name": "span_count_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count greater than this value.",
+                            "title": "Span Count Gt"
+                        },
+                        "description": "Span count greater than this value."
+                    },
+                    {
+                        "name": "span_count_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count greater than or equal to this value.",
+                            "title": "Span Count Gte"
+                        },
+                        "description": "Span count greater than or equal to this value."
+                    },
+                    {
+                        "name": "span_count_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count less than this value.",
+                            "title": "Span Count Lt"
+                        },
+                        "description": "Span count less than this value."
+                    },
+                    {
+                        "name": "span_count_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Span count less than or equal to this value.",
+                            "title": "Span Count Lte"
+                        },
+                        "description": "Span count less than or equal to this value."
                     },
                     {
                         "name": "include_experiment_traces",
@@ -5733,10 +6825,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to retrieve."
-                        },
-                        "description": "The name of the prompt to retrieve."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "prompt_version",
@@ -5802,10 +6892,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to delete."
-                        },
-                        "description": "The name of the prompt to delete."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "prompt_version",
@@ -5997,6 +7085,27 @@
                             "title": "Created Before"
                         },
                         "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "tags",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "List of tags to filter for items that have any matching tag across any version.",
+                            "title": "Tags"
+                        },
+                        "description": "List of tags to filter for items that have any matching tag across any version."
                     }
                 ],
                 "responses": {
@@ -6043,10 +7152,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to retrieve."
-                        },
-                        "description": "The name of the prompt to retrieve."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -6407,10 +7514,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to run."
-                        },
-                        "description": "The name of the prompt to run."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "prompt_version",
@@ -6498,10 +7603,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to render."
-                        },
-                        "description": "The name of the prompt to render."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "prompt_version",
@@ -6584,10 +7687,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to save."
-                        },
-                        "description": "The name of the prompt to save."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -6652,10 +7753,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to delete."
-                        },
-                        "description": "The name of the prompt to delete."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -6705,10 +7804,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to retrieve."
-                        },
-                        "description": "The name of the prompt to retrieve."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "tag",
@@ -6716,10 +7813,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Tag",
-                            "description": "The tag of the prompt to retrieve."
-                        },
-                        "description": "The tag of the prompt to retrieve."
+                            "title": "Tag"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -6776,10 +7871,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to retrieve."
-                        },
-                        "description": "The name of the prompt to retrieve."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "prompt_version",
@@ -6857,10 +7950,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt to retrieve."
-                        },
-                        "description": "The name of the prompt to retrieve."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "prompt_version",
@@ -6879,10 +7970,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Tag",
-                            "description": "The tag to remove from the prompt version."
-                        },
-                        "description": "The tag to remove from the prompt version."
+                            "title": "Tag"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -9308,10 +10397,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "description": "Tag to fetch the version by.",
                             "title": "Tag"
-                        },
-                        "description": "Tag to fetch the version by."
+                        }
                     }
                 ],
                 "responses": {
@@ -9358,10 +10445,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to retrieve."
-                        },
-                        "description": "The name of the llm eval to retrieve."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "eval_version",
@@ -9427,10 +10512,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to delete."
-                        },
-                        "description": "The name of the llm eval to delete."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "eval_version",
@@ -9491,10 +10574,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to retrieve."
-                        },
-                        "description": "The name of the llm eval to retrieve."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -9839,6 +10920,27 @@
                             "title": "Created Before"
                         },
                         "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "tags",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "List of tags to filter for items that have any matching tag across any version.",
+                            "title": "Tags"
+                        },
+                        "description": "List of tags to filter for items that have any matching tag across any version."
                     }
                 ],
                 "responses": {
@@ -9885,10 +10987,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to run."
-                        },
-                        "description": "The name of the llm eval to run."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "eval_version",
@@ -9966,10 +11066,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to save."
-                        },
-                        "description": "The name of the llm eval to save."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -10034,10 +11132,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to delete."
-                        },
-                        "description": "The name of the llm eval to delete."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -10087,10 +11183,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to retrieve."
-                        },
-                        "description": "The name of the llm eval to retrieve."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "tag",
@@ -10098,10 +11192,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Tag",
-                            "description": "The tag of the llm eval to retrieve."
-                        },
-                        "description": "The tag of the llm eval to retrieve."
+                            "title": "Tag"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -10158,10 +11250,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to retrieve."
-                        },
-                        "description": "The name of the llm eval to retrieve."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "eval_version",
@@ -10239,10 +11329,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to retrieve."
-                        },
-                        "description": "The name of the llm eval to retrieve."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "eval_version",
@@ -10261,10 +11349,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Tag",
-                            "description": "The tag to remove from the llm eval version."
-                        },
-                        "description": "The tag to remove from the llm eval version."
+                            "title": "Tag"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -13533,7 +14619,7 @@
                     "Transforms"
                 ],
                 "summary": "Delete Transform",
-                "description": "Delete a transform.",
+                "description": "Delete a transform. Returns 409 if the transform is referenced by continuous evals, agentic experiments, or agentic notebooks.",
                 "operationId": "delete_transform_api_v1_traces_transforms__transform_id__delete",
                 "security": [
                     {
@@ -13557,6 +14643,60 @@
                 "responses": {
                     "204": {
                         "description": "Successful Response"
+                    },
+                    "409": {
+                        "description": "Transform has dependent resources that must be removed first."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/traces/transforms/{transform_id}/dependents": {
+            "get": {
+                "tags": [
+                    "Transforms"
+                ],
+                "summary": "Get Transform Dependents",
+                "description": "Get resources that depend on this transform.",
+                "operationId": "get_transform_dependents_api_v1_traces_transforms__transform_id__dependents_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "transform_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the transform.",
+                            "title": "Transform Id"
+                        },
+                        "description": "ID of the transform."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TransformDependents"
+                                }
+                            }
+                        }
                     },
                     "422": {
                         "description": "Validation Error",
@@ -13954,6 +15094,42 @@
                             "title": "Continuous Eval Ids"
                         },
                         "description": "List of continuous eval IDs to filter on."
+                    },
+                    {
+                        "name": "llm_eval_name_exact",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Exact LLM eval name to filter on (case-sensitive exact match).",
+                            "title": "Llm Eval Name Exact"
+                        },
+                        "description": "Exact LLM eval name to filter on (case-sensitive exact match)."
+                    },
+                    {
+                        "name": "llm_eval_version",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "LLM eval version to filter on.",
+                            "title": "Llm Eval Version"
+                        },
+                        "description": "LLM eval version to filter on."
                     }
                 ],
                 "responses": {
@@ -14324,10 +15500,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to get the continuous eval variables and mappings for."
-                        },
-                        "description": "The name of the llm eval to get the continuous eval variables and mappings for."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "eval_version",
@@ -14513,6 +15687,330 @@
                 }
             }
         },
+        "/api/v1/continuous_evals/{eval_id}/test_runs": {
+            "post": {
+                "tags": [
+                    "Continuous Eval Test Runs"
+                ],
+                "summary": "Create and start a test run for a continuous eval",
+                "description": "Run a continuous eval against specific traces as a test. Results are stored separately from production annotations.",
+                "operationId": "create_test_run_api_v1_continuous_evals__eval_id__test_runs_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "eval_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Continuous Eval ID",
+                            "description": "The id of the continuous eval to test."
+                        },
+                        "description": "The id of the continuous eval to test."
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateTestRunRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ContinuousEvalTestRunResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "tags": [
+                    "Continuous Eval Test Runs"
+                ],
+                "summary": "List test runs for a continuous eval",
+                "description": "Get all test runs for a specific continuous eval.",
+                "operationId": "list_test_runs_api_v1_continuous_evals__eval_id__test_runs_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "eval_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Continuous Eval ID",
+                            "description": "The id of the continuous eval."
+                        },
+                        "description": "The id of the continuous eval."
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListContinuousEvalTestRunsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/continuous_evals/test_runs/{test_run_id}": {
+            "get": {
+                "tags": [
+                    "Continuous Eval Test Runs"
+                ],
+                "summary": "Get a test run by id",
+                "description": "Get the status and counters for a specific test run. Use this endpoint for polling progress.",
+                "operationId": "get_test_run_api_v1_continuous_evals_test_runs__test_run_id__get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "test_run_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Test Run ID",
+                            "description": "The id of the test run."
+                        },
+                        "description": "The id of the test run."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ContinuousEvalTestRunResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Continuous Eval Test Runs"
+                ],
+                "summary": "Delete a test run",
+                "description": "Delete a test run and all its associated annotation results.",
+                "operationId": "delete_test_run_api_v1_continuous_evals_test_runs__test_run_id__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "test_run_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Test Run ID",
+                            "description": "The id of the test run to delete."
+                        },
+                        "description": "The id of the test run to delete."
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Test run deleted."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/continuous_evals/test_runs/{test_run_id}/results": {
+            "get": {
+                "tags": [
+                    "Continuous Eval Test Runs"
+                ],
+                "summary": "Get individual test case results for a test run",
+                "description": "Get the per-trace results of a test run, including scores, reasons, and input variables.",
+                "operationId": "get_test_run_results_api_v1_continuous_evals_test_runs__test_run_id__results_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "test_run_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Test Run ID",
+                            "description": "The id of the test run."
+                        },
+                        "description": "The id of the test run."
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListAgenticAnnotationsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tasks/{task_id}/agent-polling/execute": {
             "post": {
                 "tags": [
@@ -14611,6 +16109,180 @@
                                 "schema": {
                                     "$ref": "#/components/schemas/DiscoverAndPollResponse"
                                 }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks/{task_id}/chatbot/stream": {
+            "post": {
+                "tags": [
+                    "Chatbot"
+                ],
+                "summary": "Stream a chatbot response",
+                "description": "Send a message to the Arthur AI chatbot and receive a streaming response. The chatbot can call Arthur Engine API endpoints on your behalf.",
+                "operationId": "stream_chatbot_api_v1_tasks__task_id__chatbot_stream_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChatbotRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/chatbot/config": {
+            "get": {
+                "tags": [
+                    "Chatbot"
+                ],
+                "summary": "Get chatbot model configuration",
+                "description": "Returns the model provider, model name, blacklisted endpoints, and available endpoints.",
+                "operationId": "get_chatbot_config_api_v1_chatbot_config_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatbotConfigResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Chatbot"
+                ],
+                "summary": "Update chatbot model configuration",
+                "description": "Saves a new version of the chatbot prompt with the specified model provider and model name, and tags it as production.",
+                "operationId": "update_chatbot_config_api_v1_chatbot_config_put",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChatbotConfigUpdateRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatbotConfigResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/chatbot/history/{conversation_id}": {
+            "delete": {
+                "tags": [
+                    "Chatbot"
+                ],
+                "summary": "Clear chatbot conversation history",
+                "operationId": "clear_chatbot_history_api_v1_chatbot_history__conversation_id__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "conversation_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Conversation Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
                             }
                         }
                     },
@@ -17119,6 +18791,124 @@
                 ],
                 "title": "ApiKeyResponse"
             },
+            "ApplicationConfigurationResponse": {
+                "properties": {
+                    "chat_task_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Chat Task Id"
+                    },
+                    "default_currency": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default Currency"
+                    },
+                    "document_storage_configuration": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/DocumentStorageConfigurationResponse"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "max_llm_rules_per_task_count": {
+                        "type": "integer",
+                        "title": "Max Llm Rules Per Task Count"
+                    },
+                    "trace_retention_days": {
+                        "type": "integer",
+                        "title": "Trace Retention Days"
+                    },
+                    "allowed_trace_retention_days": {
+                        "items": {
+                            "type": "integer"
+                        },
+                        "type": "array",
+                        "title": "Allowed Trace Retention Days",
+                        "default": []
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "max_llm_rules_per_task_count",
+                    "trace_retention_days"
+                ],
+                "title": "ApplicationConfigurationResponse"
+            },
+            "ApplicationConfigurationUpdateRequest": {
+                "properties": {
+                    "chat_task_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Chat Task Id"
+                    },
+                    "default_currency": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default Currency"
+                    },
+                    "document_storage_configuration": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/DocumentStorageConfigurationUpdateRequest"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "max_llm_rules_per_task_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Llm Rules Per Task Count"
+                    },
+                    "trace_retention_days": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Trace Retention Days"
+                    }
+                },
+                "type": "object",
+                "title": "ApplicationConfigurationUpdateRequest"
+            },
             "AuthUserRole": {
                 "properties": {
                     "id": {
@@ -17405,6 +19195,98 @@
                 ],
                 "title": "ChatResponse"
             },
+            "ChatbotConfigResponse": {
+                "properties": {
+                    "model_provider": {
+                        "$ref": "#/components/schemas/ModelProvider"
+                    },
+                    "model_name": {
+                        "type": "string",
+                        "title": "Model Name"
+                    },
+                    "blacklist_endpoints": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Blacklist Endpoints",
+                        "default": []
+                    },
+                    "available_endpoints": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Available Endpoints",
+                        "default": []
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "model_provider",
+                    "model_name"
+                ],
+                "title": "ChatbotConfigResponse"
+            },
+            "ChatbotConfigUpdateRequest": {
+                "properties": {
+                    "model_provider": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ModelProvider"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "model_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Model Name"
+                    },
+                    "blacklist_endpoints": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Blacklist Endpoints"
+                    }
+                },
+                "type": "object",
+                "title": "ChatbotConfigUpdateRequest"
+            },
+            "ChatbotRequest": {
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "conversation_id": {
+                        "type": "string",
+                        "title": "Conversation Id"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "message",
+                    "conversation_id"
+                ],
+                "title": "ChatbotRequest"
+            },
             "CompletionRequest": {
                 "properties": {
                     "messages": {
@@ -17683,6 +19565,89 @@
                     "error"
                 ],
                 "title": "ContinuousEvalRunStatus"
+            },
+            "ContinuousEvalTestRunResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id",
+                        "description": "ID of the test run."
+                    },
+                    "continuous_eval_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Continuous Eval Id",
+                        "description": "ID of the continuous eval being tested."
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "ID of the parent task."
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/TestRunStatus",
+                        "description": "Status of the test run."
+                    },
+                    "total_count": {
+                        "type": "integer",
+                        "title": "Total Count",
+                        "description": "Total number of traces in the test run."
+                    },
+                    "completed_count": {
+                        "type": "integer",
+                        "title": "Completed Count",
+                        "description": "Number of completed test cases."
+                    },
+                    "passed_count": {
+                        "type": "integer",
+                        "title": "Passed Count",
+                        "description": "Number of test cases that passed."
+                    },
+                    "failed_count": {
+                        "type": "integer",
+                        "title": "Failed Count",
+                        "description": "Number of test cases that failed."
+                    },
+                    "error_count": {
+                        "type": "integer",
+                        "title": "Error Count",
+                        "description": "Number of test cases that errored."
+                    },
+                    "skipped_count": {
+                        "type": "integer",
+                        "title": "Skipped Count",
+                        "description": "Number of test cases that were skipped."
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "When the test run was created."
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At",
+                        "description": "When the test run was last updated."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "continuous_eval_id",
+                    "task_id",
+                    "status",
+                    "total_count",
+                    "completed_count",
+                    "passed_count",
+                    "failed_count",
+                    "error_count",
+                    "skipped_count",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "ContinuousEvalTestRunResponse"
             },
             "ContinuousEvalTransformVariableMappingRequest": {
                 "properties": {
@@ -18234,6 +20199,26 @@
                 "title": "CreateRagNotebookRequest",
                 "description": "Request to create a new RAG notebook"
             },
+            "CreateTestRunRequest": {
+                "properties": {
+                    "trace_ids": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "maxItems": 50,
+                        "minItems": 1,
+                        "title": "Trace Ids",
+                        "description": "List of trace IDs to test the continuous eval against"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "trace_ids"
+                ],
+                "title": "CreateTestRunRequest",
+                "description": "Request schema for creating a continuous eval test run"
+            },
             "CreateUserRequest": {
                 "properties": {
                     "email": {
@@ -18735,6 +20720,137 @@
                 ],
                 "title": "DiscoverAndPollResponse",
                 "description": "Response model for the execute-all agent polling endpoint."
+            },
+            "DisplaySettingsResponse": {
+                "properties": {
+                    "default_currency": {
+                        "type": "string",
+                        "title": "Default Currency",
+                        "default": "USD"
+                    },
+                    "chatbot_enabled": {
+                        "type": "boolean",
+                        "title": "Chatbot Enabled",
+                        "default": true
+                    }
+                },
+                "type": "object",
+                "title": "DisplaySettingsResponse",
+                "description": "Public display settings (e.g. default currency for cost formatting)."
+            },
+            "DocumentStorageConfigurationResponse": {
+                "properties": {
+                    "storage_environment": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Storage Environment"
+                    },
+                    "bucket_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Bucket Name"
+                    },
+                    "container_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Container Name"
+                    },
+                    "assumable_role_arn": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Assumable Role Arn"
+                    }
+                },
+                "type": "object",
+                "title": "DocumentStorageConfigurationResponse"
+            },
+            "DocumentStorageConfigurationUpdateRequest": {
+                "properties": {
+                    "environment": {
+                        "$ref": "#/components/schemas/DocumentStorageEnvironment"
+                    },
+                    "connection_string": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Connection String"
+                    },
+                    "container_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Container Name"
+                    },
+                    "bucket_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Bucket Name"
+                    },
+                    "assumable_role_arn": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Assumable Role Arn"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "environment"
+                ],
+                "title": "DocumentStorageConfigurationUpdateRequest"
+            },
+            "DocumentStorageEnvironment": {
+                "type": "string",
+                "enum": [
+                    "aws",
+                    "azure"
+                ],
+                "title": "DocumentStorageEnvironment"
             },
             "EnrichedTaskResponse": {
                 "properties": {
@@ -21612,6 +23728,29 @@
                     "count"
                 ],
                 "title": "ListAgenticAnnotationsResponse"
+            },
+            "ListContinuousEvalTestRunsResponse": {
+                "properties": {
+                    "test_runs": {
+                        "items": {
+                            "$ref": "#/components/schemas/ContinuousEvalTestRunResponse"
+                        },
+                        "type": "array",
+                        "title": "Test Runs",
+                        "description": "List of test runs."
+                    },
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "Total number of test runs."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "test_runs",
+                    "count"
+                ],
+                "title": "ListContinuousEvalTestRunsResponse"
             },
             "ListContinuousEvalsResponse": {
                 "properties": {
@@ -27016,6 +29155,18 @@
                         "title": "Count",
                         "description": "Total number of sessions matching filters"
                     },
+                    "display_currency": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Display Currency",
+                        "description": "Currency code for cost fields"
+                    },
                     "sessions": {
                         "items": {
                             "$ref": "#/components/schemas/SessionMetadataResponse"
@@ -27191,6 +29342,18 @@
                         "title": "Count",
                         "description": "Number of traces in this session"
                     },
+                    "display_currency": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Display Currency",
+                        "description": "Currency code for cost fields"
+                    },
                     "traces": {
                         "items": {
                             "$ref": "#/components/schemas/TraceResponse"
@@ -27257,6 +29420,18 @@
                         "type": "integer",
                         "title": "Count",
                         "description": "Total number of spans matching filters"
+                    },
+                    "display_currency": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Display Currency",
+                        "description": "Currency code for cost fields"
                     },
                     "spans": {
                         "items": {
@@ -28316,6 +30491,16 @@
                 "title": "TestCaseStatus",
                 "description": "Status of a test case"
             },
+            "TestRunStatus": {
+                "type": "string",
+                "enum": [
+                    "running",
+                    "completed",
+                    "partial_failure",
+                    "error"
+                ],
+                "title": "TestRunStatus"
+            },
             "TokenUsageCount": {
                 "properties": {
                     "inference": {
@@ -28703,6 +30888,18 @@
                         "title": "Count",
                         "description": "Total number of traces matching filters"
                     },
+                    "display_currency": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Display Currency",
+                        "description": "Currency code for cost fields"
+                    },
                     "traces": {
                         "items": {
                             "$ref": "#/components/schemas/TraceMetadataResponse"
@@ -29080,6 +31277,16 @@
                 "title": "TraceResponse",
                 "description": "Response model for a single trace containing nested spans"
             },
+            "TraceSortBy": {
+                "type": "string",
+                "enum": [
+                    "start_time",
+                    "total_token_count",
+                    "total_token_cost",
+                    "span_count"
+                ],
+                "title": "TraceSortBy"
+            },
             "TraceTransformDefinition": {
                 "properties": {
                     "variables": {
@@ -29241,6 +31448,18 @@
                         "title": "Count",
                         "description": "Total number of users matching filters"
                     },
+                    "display_currency": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Display Currency",
+                        "description": "Currency code for cost fields"
+                    },
                     "users": {
                         "items": {
                             "$ref": "#/components/schemas/TraceUserMetadataResponse"
@@ -29400,6 +31619,56 @@
                 ],
                 "title": "TraceUserMetadataResponse",
                 "description": "User summary metadata in trace context"
+            },
+            "TransformDependentRef": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "ID of the dependent resource."
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the dependent resource."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name"
+                ],
+                "title": "TransformDependentRef"
+            },
+            "TransformDependents": {
+                "properties": {
+                    "continuous_evals": {
+                        "items": {
+                            "$ref": "#/components/schemas/TransformDependentRef"
+                        },
+                        "type": "array",
+                        "title": "Continuous Evals",
+                        "description": "Continuous evals that reference this transform."
+                    },
+                    "agentic_experiments": {
+                        "items": {
+                            "$ref": "#/components/schemas/TransformDependentRef"
+                        },
+                        "type": "array",
+                        "title": "Agentic Experiments",
+                        "description": "Agentic experiments that reference this transform."
+                    },
+                    "agentic_notebooks": {
+                        "items": {
+                            "$ref": "#/components/schemas/TransformDependentRef"
+                        },
+                        "type": "array",
+                        "title": "Agentic Notebooks",
+                        "description": "Agentic notebooks that reference this transform."
+                    }
+                },
+                "type": "object",
+                "title": "TransformDependents"
             },
             "TransformExtractionResponseList": {
                 "properties": {

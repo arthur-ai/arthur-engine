@@ -21,8 +21,10 @@ import Typography from "@mui/material/Typography";
 import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useRagNotebookHistoryWithPolling } from "@/hooks/useRagNotebooks";
 import type { RagExperimentSummary } from "@/lib/api-client/api-client";
+import { formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 interface RagExperimentHistorySidebarProps {
@@ -34,10 +36,7 @@ interface RagExperimentHistorySidebarProps {
 
 const DRAWER_WIDTH = 360;
 
-/**
- * Format relative time (e.g., "2 hours ago")
- */
-function formatRelativeTime(dateString: string): string {
+function formatRelativeTime(dateString: string, timezone: string): string {
   const date = new Date(dateString);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -49,20 +48,19 @@ function formatRelativeTime(dateString: string): string {
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
-  return date.toLocaleDateString();
+  return new Intl.DateTimeFormat("en-US", { timeZone: timezone, month: "short", day: "numeric", year: "numeric" }).format(date);
 }
 
-/**
- * Experiment item component with expandable details
- */
 interface ExperimentItemProps {
   experiment: RagExperimentSummary;
   isExpanded: boolean;
   onToggle: () => void;
   onNavigate: () => void;
+  defaultCurrency: string;
+  timezone: string;
 }
 
-const ExperimentItem: React.FC<ExperimentItemProps> = ({ experiment, isExpanded, onToggle, onNavigate }) => {
+const ExperimentItem: React.FC<ExperimentItemProps> = ({ experiment, isExpanded, onToggle, onNavigate, defaultCurrency, timezone }) => {
   const isRunning = experiment.status === "running" || experiment.status === "queued";
   const progress = experiment.total_rows > 0 ? Math.round((experiment.completed_rows / experiment.total_rows) * 100) : 0;
 
@@ -94,7 +92,7 @@ const ExperimentItem: React.FC<ExperimentItemProps> = ({ experiment, isExpanded,
             secondary={
               <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5 }}>
                 <Typography variant="caption" color="text.secondary">
-                  {formatRelativeTime(experiment.created_at)}
+                  {formatRelativeTime(experiment.created_at, timezone)}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
                   •
@@ -149,7 +147,7 @@ const ExperimentItem: React.FC<ExperimentItemProps> = ({ experiment, isExpanded,
                   Total Cost
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                  ${experiment.total_cost}
+                  {formatCurrency(parseFloat(experiment.total_cost), defaultCurrency)}
                 </Typography>
               </Box>
             )}
@@ -189,6 +187,7 @@ const ExperimentItem: React.FC<ExperimentItemProps> = ({ experiment, isExpanded,
 export const RagExperimentHistorySidebar: React.FC<RagExperimentHistorySidebarProps> = ({ open, onClose, notebookId, onExperimentSelect }) => {
   const navigate = useNavigate();
   const { id: taskId } = useParams<{ id: string }>();
+  const { defaultCurrency, timezone } = useDisplaySettings();
   const { experiments, hasRunningExperiments, isLoading, refetch } = useRagNotebookHistoryWithPolling(notebookId ?? undefined);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -275,6 +274,8 @@ export const RagExperimentHistorySidebar: React.FC<RagExperimentHistorySidebarPr
               isExpanded={expandedId === experiment.id}
               onToggle={() => handleToggleExpand(experiment.id)}
               onNavigate={() => handleNavigateToExperiment(experiment.id)}
+              defaultCurrency={defaultCurrency}
+              timezone={timezone}
             />
           ))}
         </List>

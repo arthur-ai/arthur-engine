@@ -90,6 +90,7 @@ from weaviate.collections.classes.grpc import (
 )
 from weaviate.types import INCLUDE_VECTOR
 
+from config.currency_config import currency_config
 from db_models import (
     DatabaseAgenticAnnotation,
     DatabaseAgenticNotebook,
@@ -125,6 +126,7 @@ from db_models import (
     DatabaseTraceMetadata,
     DatabaseUser,
 )
+from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTestRun
 from db_models.dataset_models import (
     DatabaseDatasetVersion,
     DatabaseDatasetVersionRow,
@@ -162,6 +164,7 @@ from schemas.enums import (
     RuleDataType,
     RuleScoringMethod,
     SecretType,
+    TestRunStatus,
 )
 from schemas.metric_schemas import MetricScoreDetails
 from schemas.rag_experiment_schemas import (
@@ -883,7 +886,7 @@ class TraceMetadata(TokenCountCostSchema):
 
     @staticmethod
     def _from_database_model(x: DatabaseTraceMetadata) -> "TraceMetadata":
-        # Add formatted annotations
+        # Add formatted annotations (test run annotations excluded by relationship filter)
         annotations = [
             AgenticAnnotation.from_db_model(annotation) for annotation in x.annotations
         ]
@@ -1856,8 +1859,10 @@ class DocumentStorageConfiguration(BaseModel):
 
 class ApplicationConfiguration(BaseModel):
     chat_task_id: Optional[str] = None
+    default_currency: Optional[str] = None
     document_storage_configuration: Optional[DocumentStorageConfiguration] = None
     max_llm_rules_per_task_count: int
+    trace_retention_days: int
 
     @staticmethod
     def _from_database_model(
@@ -1914,24 +1919,45 @@ class ApplicationConfiguration(BaseModel):
             if config_value is not None:
                 max_llm_rules_per_task_count = int(config_value)
 
+        trace_retention_days = constants.DEFAULT_TRACE_RETENTION_DAYS
+        if ApplicationConfigurations.TRACE_RETENTION_DAYS in config_dict:
+            retention_value = config_if_exists(
+                ApplicationConfigurations.TRACE_RETENTION_DAYS,
+                configs,
+            )
+            if retention_value is not None:
+                trace_retention_days = int(retention_value)
+        default_currency = config_if_exists(
+            ApplicationConfigurations.DEFAULT_CURRENCY,
+            configs,
+        )
+        if not default_currency or not default_currency.strip():
+            default_currency = currency_config.DEFAULT_CURRENCY or "USD"
+        default_currency = default_currency.strip().upper()
+
         return ApplicationConfiguration(
             chat_task_id=config_if_exists(
                 ApplicationConfigurations.CHAT_TASK_ID,
                 configs,
             ),
+            default_currency=default_currency,
             document_storage_configuration=doc_storage,
             max_llm_rules_per_task_count=max_llm_rules_per_task_count,
+            trace_retention_days=trace_retention_days,
         )
 
     def _to_response_model(self) -> ApplicationConfigurationResponse:
         return ApplicationConfigurationResponse(
             chat_task_id=self.chat_task_id,
+            default_currency=self.default_currency,
             document_storage_configuration=(
                 self.document_storage_configuration._to_response_model()
                 if self.document_storage_configuration is not None
                 else None
             ),
             max_llm_rules_per_task_count=self.max_llm_rules_per_task_count,
+            trace_retention_days=self.trace_retention_days,
+            allowed_trace_retention_days=constants.ALLOWED_TRACE_RETENTION_DAYS,
         )
 
 
@@ -2343,6 +2369,10 @@ class TraceQuerySchema(BaseModel):
     query_relevance_filters: Optional[list[FloatRangeFilter]] = None
     response_relevance_filters: Optional[list[FloatRangeFilter]] = None
     trace_duration_filters: Optional[list[FloatRangeFilter]] = None
+    total_token_count_filters: Optional[list[FloatRangeFilter]] = None
+    prompt_token_count_filters: Optional[list[FloatRangeFilter]] = None
+    completion_token_count_filters: Optional[list[FloatRangeFilter]] = None
+    span_count_filters: Optional[list[FloatRangeFilter]] = None
     user_ids: Optional[list[str]] = Field(
         None,
         description="User IDs to filter on. Optional.",
@@ -2402,6 +2432,10 @@ class TraceQuerySchema(BaseModel):
         query_relevance = resolve_filters("query_relevance")
         response_relevance = resolve_filters("response_relevance")
         trace_duration = resolve_filters("trace_duration")
+        total_token_count = resolve_filters("total_token_count")
+        prompt_token_count = resolve_filters("prompt_token_count")
+        completion_token_count = resolve_filters("completion_token_count")
+        span_count = resolve_filters("span_count")
 
         return TraceQuerySchema(
             task_ids=request.task_ids,
@@ -2419,6 +2453,10 @@ class TraceQuerySchema(BaseModel):
             query_relevance_filters=query_relevance,
             response_relevance_filters=response_relevance,
             trace_duration_filters=trace_duration,
+            total_token_count_filters=total_token_count,
+            prompt_token_count_filters=prompt_token_count,
+            completion_token_count_filters=completion_token_count,
+            span_count_filters=span_count,
             user_ids=request.user_ids,
             session_ids=request.session_ids,
             span_ids=request.span_ids,
@@ -3883,6 +3921,40 @@ class ContinuousEval(BaseModel):
             updated_at=self.updated_at,
             transform_variable_mapping=transform_variable_mapping,
             enabled=self.enabled,
+        )
+
+
+class ContinuousEvalTestRun(BaseModel):
+    id: uuid.UUID
+    continuous_eval_id: uuid.UUID
+    task_id: str
+    status: TestRunStatus
+    total_count: int
+    completed_count: int = 0
+    passed_count: int = 0
+    failed_count: int = 0
+    error_count: int = 0
+    skipped_count: int = 0
+    created_at: datetime
+    updated_at: datetime
+
+    @staticmethod
+    def from_db_model(
+        db_test_run: DatabaseContinuousEvalTestRun,
+    ) -> "ContinuousEvalTestRun":
+        return ContinuousEvalTestRun(
+            id=db_test_run.id,
+            continuous_eval_id=db_test_run.continuous_eval_id,
+            task_id=db_test_run.task_id,
+            status=TestRunStatus(db_test_run.status),
+            total_count=db_test_run.total_count,
+            completed_count=db_test_run.completed_count,
+            passed_count=db_test_run.passed_count,
+            failed_count=db_test_run.failed_count,
+            error_count=db_test_run.error_count,
+            skipped_count=db_test_run.skipped_count,
+            created_at=db_test_run.created_at,
+            updated_at=db_test_run.updated_at,
         )
 
 

@@ -2,8 +2,11 @@ import type { GetFilteredSpansParams, GetFilteredTracesParams, GetSessionsParams
 import type { TimeInterval } from "@/utils/timeWindows";
 
 export const queryKeys = {
+  prompts: {
+    variables: (name: string, versions: number[]) => ["promptsVariables", { name, versions }] as const,
+  },
   metrics: {
-    overview: (taskId: string, interval: TimeInterval) => ["taskOverviewMetrics", { taskId, interval }] as const,
+    overview: (taskId: string, interval: TimeInterval, timezone?: string) => ["taskOverviewMetrics", { taskId, interval, timezone }] as const,
   },
   datasets: {
     search: {
@@ -58,6 +61,11 @@ export const queryKeys = {
         "getContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvalsTransformsTransformIdLlmEvalsEvalNameVersionsEvalVersionVariablesGet",
         { taskId, transformId, evalName, evalVersion },
       ] as const,
+    testRuns: {
+      byEval: (evalId: string) => ["listTestRunsApiV1ContinuousEvalsEvalIdTestRunsGet", { evalId }] as const,
+      byId: (testRunId: string) => ["getTestRunApiV1ContinuousEvalsTestRunsTestRunIdGet", { testRunId }] as const,
+      results: (testRunId: string) => ["getTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGet", { testRunId }] as const,
+    },
   },
   transforms: {
     list: (taskId: string) => ["listTransformsApiV1TasksTaskIdTracesTransformsGet", { taskId }] as const,

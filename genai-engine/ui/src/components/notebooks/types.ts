@@ -11,5 +11,6 @@ export interface NotebooksTableProps {
   onSort: (column: string) => void;
   onRowClick: (notebookId: string) => void;
   onLaunchNotebook: (notebookId: string) => void;
+  onViewLastRun: (experimentId: string) => void;
   onDelete: (notebookId: string) => Promise<void>;
 }

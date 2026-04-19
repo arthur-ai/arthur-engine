@@ -1038,6 +1038,37 @@ export interface ApiKeyResponse {
   roles?: string[];
 }
 
+/** ApplicationConfigurationResponse */
+export interface ApplicationConfigurationResponse {
+  /**
+   * Allowed Trace Retention Days
+   * @default []
+   */
+  allowed_trace_retention_days?: number[];
+  /** Chat Task Id */
+  chat_task_id?: string | null;
+  /** Default Currency */
+  default_currency?: string | null;
+  document_storage_configuration?: DocumentStorageConfigurationResponse | null;
+  /** Max Llm Rules Per Task Count */
+  max_llm_rules_per_task_count: number;
+  /** Trace Retention Days */
+  trace_retention_days: number;
+}
+
+/** ApplicationConfigurationUpdateRequest */
+export interface ApplicationConfigurationUpdateRequest {
+  /** Chat Task Id */
+  chat_task_id?: string | null;
+  /** Default Currency */
+  default_currency?: string | null;
+  document_storage_configuration?: DocumentStorageConfigurationUpdateRequest | null;
+  /** Max Llm Rules Per Task Count */
+  max_llm_rules_per_task_count?: number | null;
+  /** Trace Retention Days */
+  trace_retention_days?: number | null;
+}
+
 export type ArchiveDefaultRuleApiV2DefaultRulesRuleIdDeleteData = any;
 
 export type ArchiveDefaultRuleApiV2DefaultRulesRuleIdDeleteError = HTTPValidationError;
@@ -1257,6 +1288,40 @@ export interface ChatResponse {
   timestamp: number;
 }
 
+/** ChatbotConfigResponse */
+export interface ChatbotConfigResponse {
+  /**
+   * Available Endpoints
+   * @default []
+   */
+  available_endpoints?: string[];
+  /**
+   * Blacklist Endpoints
+   * @default []
+   */
+  blacklist_endpoints?: string[];
+  /** Model Name */
+  model_name: string;
+  model_provider: ModelProvider;
+}
+
+/** ChatbotConfigUpdateRequest */
+export interface ChatbotConfigUpdateRequest {
+  /** Blacklist Endpoints */
+  blacklist_endpoints?: string[] | null;
+  /** Model Name */
+  model_name?: string | null;
+  model_provider?: ModelProvider | null;
+}
+
+/** ChatbotRequest */
+export interface ChatbotRequest {
+  /** Conversation Id */
+  conversation_id: string;
+  /** Message */
+  message: string;
+}
+
 export type CheckUserPermissionUsersPermissionsCheckGetData = any;
 
 export type CheckUserPermissionUsersPermissionsCheckGetError = HTTPValidationError;
@@ -1267,6 +1332,10 @@ export interface CheckUserPermissionUsersPermissionsCheckGetParams {
   /** Resource to check permissions of. */
   resource?: UserPermissionResource;
 }
+
+export type ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteData = any;
+
+export type ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteError = HTTPValidationError;
 
 /**
  * CompletionRequest
@@ -1473,6 +1542,71 @@ export interface ContinuousEvalResponse {
 
 /** ContinuousEvalRunStatus */
 export type ContinuousEvalRunStatus = "pending" | "passed" | "running" | "failed" | "skipped" | "error";
+
+/** ContinuousEvalTestRunResponse */
+export interface ContinuousEvalTestRunResponse {
+  /**
+   * Completed Count
+   * Number of completed test cases.
+   */
+  completed_count: number;
+  /**
+   * Continuous Eval Id
+   * ID of the continuous eval being tested.
+   * @format uuid
+   */
+  continuous_eval_id: string;
+  /**
+   * Created At
+   * When the test run was created.
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Error Count
+   * Number of test cases that errored.
+   */
+  error_count: number;
+  /**
+   * Failed Count
+   * Number of test cases that failed.
+   */
+  failed_count: number;
+  /**
+   * Id
+   * ID of the test run.
+   * @format uuid
+   */
+  id: string;
+  /**
+   * Passed Count
+   * Number of test cases that passed.
+   */
+  passed_count: number;
+  /**
+   * Skipped Count
+   * Number of test cases that were skipped.
+   */
+  skipped_count: number;
+  /** Status of the test run. */
+  status: TestRunStatus;
+  /**
+   * Task Id
+   * ID of the parent task.
+   */
+  task_id: string;
+  /**
+   * Total Count
+   * Total number of traces in the test run.
+   */
+  total_count: number;
+  /**
+   * Updated At
+   * When the test run was last updated.
+   * @format date-time
+   */
+  updated_at: string;
+}
 
 /** ContinuousEvalTransformVariableMappingRequest */
 export interface ContinuousEvalTransformVariableMappingRequest {
@@ -1825,6 +1959,24 @@ export type CreateTaskMetricApiV2TasksTaskIdMetricsPostError = HTTPValidationErr
 export type CreateTaskRuleApiV2TasksTaskIdRulesPostData = RuleResponse;
 
 export type CreateTaskRuleApiV2TasksTaskIdRulesPostError = HTTPValidationError;
+
+export type CreateTestRunApiV1ContinuousEvalsEvalIdTestRunsPostData = ContinuousEvalTestRunResponse;
+
+export type CreateTestRunApiV1ContinuousEvalsEvalIdTestRunsPostError = HTTPValidationError;
+
+/**
+ * CreateTestRunRequest
+ * Request schema for creating a continuous eval test run
+ */
+export interface CreateTestRunRequest {
+  /**
+   * Trace Ids
+   * List of trace IDs to test the continuous eval against
+   * @maxItems 50
+   * @minItems 1
+   */
+  trace_ids: string[];
+}
 
 export type CreateTransformForTaskApiV1TasksTaskIdTracesTransformsPostData = TraceTransformResponse;
 
@@ -2235,6 +2387,10 @@ export type DeleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsE
 
 export type DeleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsTagDeleteError = HTTPValidationError;
 
+export type DeleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDeleteData = any;
+
+export type DeleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDeleteError = HTTPValidationError;
+
 export type DeleteTransformApiV1TracesTransformsTransformIdDeleteData = any;
 
 export type DeleteTransformApiV1TracesTransformsTransformIdDeleteError = HTTPValidationError;
@@ -2264,6 +2420,51 @@ export interface DiscoverAndPollResponse {
    */
   traces_fetched: number;
 }
+
+/**
+ * DisplaySettingsResponse
+ * Public display settings (e.g. default currency for cost formatting).
+ */
+export interface DisplaySettingsResponse {
+  /**
+   * Chatbot Enabled
+   * @default true
+   */
+  chatbot_enabled?: boolean;
+  /**
+   * Default Currency
+   * @default "USD"
+   */
+  default_currency?: string;
+}
+
+/** DocumentStorageConfigurationResponse */
+export interface DocumentStorageConfigurationResponse {
+  /** Assumable Role Arn */
+  assumable_role_arn?: string | null;
+  /** Bucket Name */
+  bucket_name?: string | null;
+  /** Container Name */
+  container_name?: string | null;
+  /** Storage Environment */
+  storage_environment?: string | null;
+}
+
+/** DocumentStorageConfigurationUpdateRequest */
+export interface DocumentStorageConfigurationUpdateRequest {
+  /** Assumable Role Arn */
+  assumable_role_arn?: string | null;
+  /** Bucket Name */
+  bucket_name?: string | null;
+  /** Connection String */
+  connection_string?: string | null;
+  /** Container Name */
+  container_name?: string | null;
+  environment: DocumentStorageEnvironment;
+}
+
+/** DocumentStorageEnvironment */
+export type DocumentStorageEnvironment = "aws" | "azure";
 
 /**
  * EnrichedTaskResponse
@@ -3054,10 +3255,7 @@ export interface GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVer
    * @default 10
    */
   page_size?: number;
-  /**
-   * Prompt Name
-   * The name of the prompt to retrieve.
-   */
+  /** Prompt Name */
   promptName: string;
   /**
    * Sort the results (asc/desc)
@@ -3119,6 +3317,11 @@ export interface GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Tags
+   * List of tags to filter for items that have any matching tag across any version.
+   */
+  tags?: string[] | null;
+  /**
    * Task Id
    * @format uuid
    */
@@ -3140,10 +3343,7 @@ export interface GetAllLlmEvalVersionsApiV1TasksTaskIdLlmEvalsEvalNameVersionsGe
    * Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).
    */
   created_before?: string | null;
-  /**
-   * LLM Eval Name
-   * The name of the llm eval to retrieve.
-   */
+  /** Eval Name */
   evalName: string;
   /**
    * Exclude Deleted
@@ -3243,6 +3443,11 @@ export interface GetAllLlmEvalsApiV1TasksTaskIdLlmEvalsGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Tags
+   * List of tags to filter for items that have any matching tag across any version.
+   */
+  tags?: string[] | null;
+  /**
    * Task Id
    * @format uuid
    */
@@ -3259,6 +3464,10 @@ export type GetAnnotationByIdApiV1TracesAnnotationsAnnotationIdGetError = HTTPVa
 export type GetApiKeyAuthApiKeysApiKeyIdGetData = ApiKeyResponse;
 
 export type GetApiKeyAuthApiKeysApiKeyIdGetError = HTTPValidationError;
+
+export type GetChatbotConfigApiV1ChatbotConfigGetData = ChatbotConfigResponse;
+
+export type GetConfigurationApiV2ConfigurationGetData = ApplicationConfigurationResponse;
 
 export type GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetData = ContinuousEvalResponse;
 
@@ -3439,6 +3648,8 @@ export interface GetDatasetsApiV2TasksTaskIdDatasetsSearchGetParams {
 export type GetDefaultRulesApiV2DefaultRulesGetData = RuleResponse[];
 
 export type GetDefaultTaskApiChatDefaultTaskGetData = ChatDefaultTaskResponse;
+
+export type GetDisplaySettingsApiV2DisplaySettingsGetData = DisplaySettingsResponse;
 
 export type GetExperimentTestCasesApiV1PromptExperimentsExperimentIdTestCasesGetData = TestCaseListResponse;
 
@@ -3846,6 +4057,40 @@ export interface GetTaskRagSearchSettingsApiV1TasksTaskIdRagSearchSettingsGetPar
   taskId: string;
 }
 
+export type GetTestRunApiV1ContinuousEvalsTestRunsTestRunIdGetData = ContinuousEvalTestRunResponse;
+
+export type GetTestRunApiV1ContinuousEvalsTestRunsTestRunIdGetError = HTTPValidationError;
+
+export type GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGetData = ListAgenticAnnotationsResponse;
+
+export type GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGetError = HTTPValidationError;
+
+export interface GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGetParams {
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Test Run ID
+   * The id of the test run.
+   * @format uuid
+   */
+  testRunId: string;
+}
+
 /** Response Get Token Usage Api V2 Usage Tokens Get */
 export type GetTokenUsageApiV2UsageTokensGetData = TokenUsageResponse[];
 
@@ -3879,6 +4124,10 @@ export type GetTraceByIdApiV1TracesTraceIdGetError = HTTPValidationError;
 export type GetTransformApiV1TracesTransformsTransformIdGetData = TraceTransformResponse;
 
 export type GetTransformApiV1TracesTransformsTransformIdGetError = HTTPValidationError;
+
+export type GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGetData = TransformDependents;
+
+export type GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGetError = HTTPValidationError;
 
 export type GetUnregisteredRootSpansApiV1TracesSpansUnregisteredGetData = UnregisteredRootSpansResponse;
 
@@ -4951,6 +5200,20 @@ export interface ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResu
   trace_ids?: string[] | null;
 }
 
+/** ListContinuousEvalTestRunsResponse */
+export interface ListContinuousEvalTestRunsResponse {
+  /**
+   * Count
+   * Total number of test runs.
+   */
+  count: number;
+  /**
+   * Test Runs
+   * List of test runs.
+   */
+  test_runs: ContinuousEvalTestRunResponse[];
+}
+
 export type ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetData = ListContinuousEvalsResponse;
 
 export type ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetError = HTTPValidationError;
@@ -4981,6 +5244,16 @@ export interface ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetParams {
    * Name of the llm eval to filter on
    */
   llm_eval_name?: string | null;
+  /**
+   * Llm Eval Name Exact
+   * Exact LLM eval name to filter on (case-sensitive exact match).
+   */
+  llm_eval_name_exact?: string | null;
+  /**
+   * Llm Eval Version
+   * LLM eval version to filter on.
+   */
+  llm_eval_version?: number | null;
   /**
    * Name
    * Name of the continuous eval to filter on.
@@ -5293,6 +5566,36 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
   /** Filter by trace annotation type (i.e. 'human' or 'continuous_eval'). */
   annotation_type?: AgenticAnnotationType;
   /**
+   * Completion Token Count Eq
+   * Completion token count exactly equal to this value.
+   * @min 0
+   */
+  completion_token_count_eq?: number;
+  /**
+   * Completion Token Count Gt
+   * Completion token count greater than this value.
+   * @min 0
+   */
+  completion_token_count_gt?: number;
+  /**
+   * Completion Token Count Gte
+   * Completion token count greater than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_gte?: number;
+  /**
+   * Completion Token Count Lt
+   * Completion token count less than this value.
+   * @min 0
+   */
+  completion_token_count_lt?: number;
+  /**
+   * Completion Token Count Lte
+   * Completion token count less than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_lte?: number;
+  /**
    * Continuous Eval Name
    * Filter by continuous eval name.
    */
@@ -5323,6 +5626,36 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
    * @default 10
    */
   page_size?: number;
+  /**
+   * Prompt Token Count Eq
+   * Prompt token count exactly equal to this value.
+   * @min 0
+   */
+  prompt_token_count_eq?: number;
+  /**
+   * Prompt Token Count Gt
+   * Prompt token count greater than this value.
+   * @min 0
+   */
+  prompt_token_count_gt?: number;
+  /**
+   * Prompt Token Count Gte
+   * Prompt token count greater than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_gte?: number;
+  /**
+   * Prompt Token Count Lt
+   * Prompt token count less than this value.
+   * @min 0
+   */
+  prompt_token_count_lt?: number;
+  /**
+   * Prompt Token Count Lte
+   * Prompt token count less than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_lte?: number;
   /**
    * Query Relevance Eq
    * Equal to this value.
@@ -5404,6 +5737,41 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Column to sort results by.
+   * @default "start_time"
+   */
+  sort_by?: TraceSortBy;
+  /**
+   * Span Count Eq
+   * Span count exactly equal to this value.
+   * @min 1
+   */
+  span_count_eq?: number;
+  /**
+   * Span Count Gt
+   * Span count greater than this value.
+   * @min 1
+   */
+  span_count_gt?: number;
+  /**
+   * Span Count Gte
+   * Span count greater than or equal to this value.
+   * @min 1
+   */
+  span_count_gte?: number;
+  /**
+   * Span Count Lt
+   * Span count less than this value.
+   * @min 1
+   */
+  span_count_lt?: number;
+  /**
+   * Span Count Lte
+   * Span count less than or equal to this value.
+   * @min 1
+   */
+  span_count_lte?: number;
+  /**
    * Span Ids
    * Span IDs to filter on. Optional.
    */
@@ -5449,6 +5817,36 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
   tool_selection?: ToolClassEnum;
   /** Tool usage evaluation result. */
   tool_usage?: ToolClassEnum;
+  /**
+   * Total Token Count Eq
+   * Total token count exactly equal to this value.
+   * @min 0
+   */
+  total_token_count_eq?: number;
+  /**
+   * Total Token Count Gt
+   * Total token count greater than this value.
+   * @min 0
+   */
+  total_token_count_gt?: number;
+  /**
+   * Total Token Count Gte
+   * Total token count greater than or equal to this value.
+   * @min 0
+   */
+  total_token_count_gte?: number;
+  /**
+   * Total Token Count Lt
+   * Total token count less than this value.
+   * @min 0
+   */
+  total_token_count_lt?: number;
+  /**
+   * Total Token Count Lte
+   * Total token count less than or equal to this value.
+   * @min 0
+   */
+  total_token_count_lte?: number;
   /**
    * Trace Duration Eq
    * Duration exactly equal to this value (seconds).
@@ -5491,6 +5889,36 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
   user_ids?: string[];
 }
 
+export type ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGetData = ListContinuousEvalTestRunsResponse;
+
+export type ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGetError = HTTPValidationError;
+
+export interface ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGetParams {
+  /**
+   * Continuous Eval ID
+   * The id of the continuous eval.
+   * @format uuid
+   */
+  evalId: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+}
+
 /** ListTraceTransformsResponse */
 export interface ListTraceTransformsResponse {
   /**
@@ -5519,6 +5947,36 @@ export interface ListTracesMetadataApiV1TracesGetParams {
   annotation_score?: number;
   /** Filter by trace annotation type (i.e. 'human' or 'continuous_eval'). */
   annotation_type?: AgenticAnnotationType;
+  /**
+   * Completion Token Count Eq
+   * Completion token count exactly equal to this value.
+   * @min 0
+   */
+  completion_token_count_eq?: number;
+  /**
+   * Completion Token Count Gt
+   * Completion token count greater than this value.
+   * @min 0
+   */
+  completion_token_count_gt?: number;
+  /**
+   * Completion Token Count Gte
+   * Completion token count greater than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_gte?: number;
+  /**
+   * Completion Token Count Lt
+   * Completion token count less than this value.
+   * @min 0
+   */
+  completion_token_count_lt?: number;
+  /**
+   * Completion Token Count Lte
+   * Completion token count less than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_lte?: number;
   /**
    * Continuous Eval Name
    * Filter by continuous eval name.
@@ -5556,6 +6014,36 @@ export interface ListTracesMetadataApiV1TracesGetParams {
    * @default 10
    */
   page_size?: number;
+  /**
+   * Prompt Token Count Eq
+   * Prompt token count exactly equal to this value.
+   * @min 0
+   */
+  prompt_token_count_eq?: number;
+  /**
+   * Prompt Token Count Gt
+   * Prompt token count greater than this value.
+   * @min 0
+   */
+  prompt_token_count_gt?: number;
+  /**
+   * Prompt Token Count Gte
+   * Prompt token count greater than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_gte?: number;
+  /**
+   * Prompt Token Count Lt
+   * Prompt token count less than this value.
+   * @min 0
+   */
+  prompt_token_count_lt?: number;
+  /**
+   * Prompt Token Count Lte
+   * Prompt token count less than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_lte?: number;
   /**
    * Query Relevance Eq
    * Equal to this value.
@@ -5637,6 +6125,41 @@ export interface ListTracesMetadataApiV1TracesGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Column to sort results by.
+   * @default "start_time"
+   */
+  sort_by?: TraceSortBy;
+  /**
+   * Span Count Eq
+   * Span count exactly equal to this value.
+   * @min 1
+   */
+  span_count_eq?: number;
+  /**
+   * Span Count Gt
+   * Span count greater than this value.
+   * @min 1
+   */
+  span_count_gt?: number;
+  /**
+   * Span Count Gte
+   * Span count greater than or equal to this value.
+   * @min 1
+   */
+  span_count_gte?: number;
+  /**
+   * Span Count Lt
+   * Span count less than this value.
+   * @min 1
+   */
+  span_count_lt?: number;
+  /**
+   * Span Count Lte
+   * Span count less than or equal to this value.
+   * @min 1
+   */
+  span_count_lte?: number;
+  /**
    * Span Ids
    * Span IDs to filter on. Optional.
    */
@@ -5682,6 +6205,36 @@ export interface ListTracesMetadataApiV1TracesGetParams {
   tool_selection?: ToolClassEnum;
   /** Tool usage evaluation result. */
   tool_usage?: ToolClassEnum;
+  /**
+   * Total Token Count Eq
+   * Total token count exactly equal to this value.
+   * @min 0
+   */
+  total_token_count_eq?: number;
+  /**
+   * Total Token Count Gt
+   * Total token count greater than this value.
+   * @min 0
+   */
+  total_token_count_gt?: number;
+  /**
+   * Total Token Count Gte
+   * Total token count greater than or equal to this value.
+   * @min 0
+   */
+  total_token_count_gte?: number;
+  /**
+   * Total Token Count Lt
+   * Total token count less than this value.
+   * @min 0
+   */
+  total_token_count_lt?: number;
+  /**
+   * Total Token Count Lte
+   * Total token count less than or equal to this value.
+   * @min 0
+   */
+  total_token_count_lte?: number;
   /**
    * Trace Duration Eq
    * Duration exactly equal to this value (seconds).
@@ -7514,6 +8067,36 @@ export interface QuerySpansV1TracesQueryGetParams {
   /** Filter by trace annotation type (i.e. 'human' or 'continuous_eval'). */
   annotation_type?: AgenticAnnotationType;
   /**
+   * Completion Token Count Eq
+   * Completion token count exactly equal to this value.
+   * @min 0
+   */
+  completion_token_count_eq?: number;
+  /**
+   * Completion Token Count Gt
+   * Completion token count greater than this value.
+   * @min 0
+   */
+  completion_token_count_gt?: number;
+  /**
+   * Completion Token Count Gte
+   * Completion token count greater than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_gte?: number;
+  /**
+   * Completion Token Count Lt
+   * Completion token count less than this value.
+   * @min 0
+   */
+  completion_token_count_lt?: number;
+  /**
+   * Completion Token Count Lte
+   * Completion token count less than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_lte?: number;
+  /**
    * Continuous Eval Name
    * Filter by continuous eval name.
    */
@@ -7544,6 +8127,36 @@ export interface QuerySpansV1TracesQueryGetParams {
    * @default 10
    */
   page_size?: number;
+  /**
+   * Prompt Token Count Eq
+   * Prompt token count exactly equal to this value.
+   * @min 0
+   */
+  prompt_token_count_eq?: number;
+  /**
+   * Prompt Token Count Gt
+   * Prompt token count greater than this value.
+   * @min 0
+   */
+  prompt_token_count_gt?: number;
+  /**
+   * Prompt Token Count Gte
+   * Prompt token count greater than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_gte?: number;
+  /**
+   * Prompt Token Count Lt
+   * Prompt token count less than this value.
+   * @min 0
+   */
+  prompt_token_count_lt?: number;
+  /**
+   * Prompt Token Count Lte
+   * Prompt token count less than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_lte?: number;
   /**
    * Query Relevance Eq
    * Equal to this value.
@@ -7625,6 +8238,41 @@ export interface QuerySpansV1TracesQueryGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Column to sort results by.
+   * @default "start_time"
+   */
+  sort_by?: TraceSortBy;
+  /**
+   * Span Count Eq
+   * Span count exactly equal to this value.
+   * @min 1
+   */
+  span_count_eq?: number;
+  /**
+   * Span Count Gt
+   * Span count greater than this value.
+   * @min 1
+   */
+  span_count_gt?: number;
+  /**
+   * Span Count Gte
+   * Span count greater than or equal to this value.
+   * @min 1
+   */
+  span_count_gte?: number;
+  /**
+   * Span Count Lt
+   * Span count less than this value.
+   * @min 1
+   */
+  span_count_lt?: number;
+  /**
+   * Span Count Lte
+   * Span count less than or equal to this value.
+   * @min 1
+   */
+  span_count_lte?: number;
+  /**
    * Span Ids
    * Span IDs to filter on. Optional.
    */
@@ -7670,6 +8318,36 @@ export interface QuerySpansV1TracesQueryGetParams {
   tool_selection?: ToolClassEnum;
   /** Tool usage evaluation result. */
   tool_usage?: ToolClassEnum;
+  /**
+   * Total Token Count Eq
+   * Total token count exactly equal to this value.
+   * @min 0
+   */
+  total_token_count_eq?: number;
+  /**
+   * Total Token Count Gt
+   * Total token count greater than this value.
+   * @min 0
+   */
+  total_token_count_gt?: number;
+  /**
+   * Total Token Count Gte
+   * Total token count greater than or equal to this value.
+   * @min 0
+   */
+  total_token_count_gte?: number;
+  /**
+   * Total Token Count Lt
+   * Total token count less than this value.
+   * @min 0
+   */
+  total_token_count_lt?: number;
+  /**
+   * Total Token Count Lte
+   * Total token count less than or equal to this value.
+   * @min 0
+   */
+  total_token_count_lte?: number;
   /**
    * Trace Duration Eq
    * Duration exactly equal to this value (seconds).
@@ -7727,6 +8405,36 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
   /** Filter by trace annotation type (i.e. 'human' or 'continuous_eval'). */
   annotation_type?: AgenticAnnotationType;
   /**
+   * Completion Token Count Eq
+   * Completion token count exactly equal to this value.
+   * @min 0
+   */
+  completion_token_count_eq?: number;
+  /**
+   * Completion Token Count Gt
+   * Completion token count greater than this value.
+   * @min 0
+   */
+  completion_token_count_gt?: number;
+  /**
+   * Completion Token Count Gte
+   * Completion token count greater than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_gte?: number;
+  /**
+   * Completion Token Count Lt
+   * Completion token count less than this value.
+   * @min 0
+   */
+  completion_token_count_lt?: number;
+  /**
+   * Completion Token Count Lte
+   * Completion token count less than or equal to this value.
+   * @min 0
+   */
+  completion_token_count_lte?: number;
+  /**
    * Continuous Eval Name
    * Filter by continuous eval name.
    */
@@ -7757,6 +8465,36 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
    * @default 10
    */
   page_size?: number;
+  /**
+   * Prompt Token Count Eq
+   * Prompt token count exactly equal to this value.
+   * @min 0
+   */
+  prompt_token_count_eq?: number;
+  /**
+   * Prompt Token Count Gt
+   * Prompt token count greater than this value.
+   * @min 0
+   */
+  prompt_token_count_gt?: number;
+  /**
+   * Prompt Token Count Gte
+   * Prompt token count greater than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_gte?: number;
+  /**
+   * Prompt Token Count Lt
+   * Prompt token count less than this value.
+   * @min 0
+   */
+  prompt_token_count_lt?: number;
+  /**
+   * Prompt Token Count Lte
+   * Prompt token count less than or equal to this value.
+   * @min 0
+   */
+  prompt_token_count_lte?: number;
   /**
    * Query Relevance Eq
    * Equal to this value.
@@ -7838,6 +8576,41 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Column to sort results by.
+   * @default "start_time"
+   */
+  sort_by?: TraceSortBy;
+  /**
+   * Span Count Eq
+   * Span count exactly equal to this value.
+   * @min 1
+   */
+  span_count_eq?: number;
+  /**
+   * Span Count Gt
+   * Span count greater than this value.
+   * @min 1
+   */
+  span_count_gt?: number;
+  /**
+   * Span Count Gte
+   * Span count greater than or equal to this value.
+   * @min 1
+   */
+  span_count_gte?: number;
+  /**
+   * Span Count Lt
+   * Span count less than this value.
+   * @min 1
+   */
+  span_count_lt?: number;
+  /**
+   * Span Count Lte
+   * Span count less than or equal to this value.
+   * @min 1
+   */
+  span_count_lte?: number;
+  /**
    * Span Ids
    * Span IDs to filter on. Optional.
    */
@@ -7883,6 +8656,36 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
   tool_selection?: ToolClassEnum;
   /** Tool usage evaluation result. */
   tool_usage?: ToolClassEnum;
+  /**
+   * Total Token Count Eq
+   * Total token count exactly equal to this value.
+   * @min 0
+   */
+  total_token_count_eq?: number;
+  /**
+   * Total Token Count Gt
+   * Total token count greater than this value.
+   * @min 0
+   */
+  total_token_count_gt?: number;
+  /**
+   * Total Token Count Gte
+   * Total token count greater than or equal to this value.
+   * @min 0
+   */
+  total_token_count_gte?: number;
+  /**
+   * Total Token Count Lt
+   * Total token count less than this value.
+   * @min 0
+   */
+  total_token_count_lt?: number;
+  /**
+   * Total Token Count Lte
+   * Total token count less than or equal to this value.
+   * @min 0
+   */
+  total_token_count_lte?: number;
   /**
    * Trace Duration Eq
    * Duration exactly equal to this value (seconds).
@@ -9382,6 +10185,11 @@ export interface SessionListResponse {
    */
   count: number;
   /**
+   * Display Currency
+   * Currency code for cost fields
+   */
+  display_currency?: string | null;
+  /**
    * Sessions
    * List of session metadata
    */
@@ -9483,6 +10291,11 @@ export interface SessionTracesResponse {
    */
   count: number;
   /**
+   * Display Currency
+   * Currency code for cost fields
+   */
+  display_currency?: string | null;
+  /**
    * Session Id
    * Session identifier
    */
@@ -9551,6 +10364,11 @@ export interface SpanListResponse {
    * Total number of spans matching filters
    */
   count: number;
+  /**
+   * Display Currency
+   * Currency code for cost fields
+   */
+  display_currency?: string | null;
   /**
    * Spans
    * List of span metadata
@@ -9781,6 +10599,10 @@ export interface SpanWithMetricsResponse {
 
 /** StatusCodeEnum */
 export type StatusCodeEnum = "Ok" | "Error" | "Unset";
+
+export type StreamChatbotApiV1TasksTaskIdChatbotStreamPostData = any;
+
+export type StreamChatbotApiV1TasksTaskIdChatbotStreamPostError = HTTPValidationError;
 
 /** StreamOptions */
 export interface StreamOptions {
@@ -10135,6 +10957,9 @@ export type TestRagProviderConnectionApiV1TasksTaskIdRagProvidersTestConnectionP
 
 export type TestRagProviderConnectionApiV1TasksTaskIdRagProvidersTestConnectionPostError = HTTPValidationError;
 
+/** TestRunStatus */
+export type TestRunStatus = "running" | "completed" | "partial_failure" | "error";
+
 /** TokenUsageCount */
 export interface TokenUsageCount {
   /**
@@ -10346,6 +11171,11 @@ export interface TraceListResponse {
    */
   count: number;
   /**
+   * Display Currency
+   * Currency code for cost fields
+   */
+  display_currency?: string | null;
+  /**
    * Traces
    * List of trace metadata
    */
@@ -10538,6 +11368,9 @@ export interface TraceResponse {
   trace_id: string;
 }
 
+/** TraceSortBy */
+export type TraceSortBy = "start_time" | "total_token_count" | "total_token_cost" | "span_count";
+
 /** TraceTransformDefinition */
 export interface TraceTransformDefinition {
   /**
@@ -10637,6 +11470,11 @@ export interface TraceUserListResponse {
    */
   count: number;
   /**
+   * Display Currency
+   * Currency code for cost fields
+   */
+  display_currency?: string | null;
+  /**
    * Users
    * List of user metadata
    */
@@ -10725,6 +11563,39 @@ export interface TraceUserMetadataResponse {
    * User identifier
    */
   user_id: string;
+}
+
+/** TransformDependentRef */
+export interface TransformDependentRef {
+  /**
+   * Id
+   * ID of the dependent resource.
+   */
+  id: string;
+  /**
+   * Name
+   * Name of the dependent resource.
+   */
+  name: string;
+}
+
+/** TransformDependents */
+export interface TransformDependents {
+  /**
+   * Agentic Experiments
+   * Agentic experiments that reference this transform.
+   */
+  agentic_experiments?: TransformDependentRef[];
+  /**
+   * Agentic Notebooks
+   * Agentic notebooks that reference this transform.
+   */
+  agentic_notebooks?: TransformDependentRef[];
+  /**
+   * Continuous Evals
+   * Continuous evals that reference this transform.
+   */
+  continuous_evals?: TransformDependentRef[];
 }
 
 /** TransformExtractionResponseList */
@@ -10967,6 +11838,14 @@ export interface UpdateAgenticNotebookRequest {
    */
   name?: string | null;
 }
+
+export type UpdateChatbotConfigApiV1ChatbotConfigPutData = ChatbotConfigResponse;
+
+export type UpdateChatbotConfigApiV1ChatbotConfigPutError = HTTPValidationError;
+
+export type UpdateConfigurationApiV2ConfigurationPostData = ApplicationConfigurationResponse;
+
+export type UpdateConfigurationApiV2ConfigurationPostError = HTTPValidationError;
 
 export type UpdateContinuousEvalApiV1ContinuousEvalsEvalIdPatchData = ContinuousEvalResponse;
 
@@ -12135,7 +13014,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.437
+ * @version 2.1.508
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -12378,6 +13257,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         method: "POST",
         body: data,
         type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Chatbot
+     * @name ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDelete
+     * @summary Clear chatbot conversation history
+     * @request DELETE:/api/v1/chatbot/history/{conversation_id}
+     * @secure
+     */
+    clearChatbotHistoryApiV1ChatbotHistoryConversationIdDelete: (conversationId: string, params: RequestParams = {}) =>
+      this.request<ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteData, ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteError>({
+        path: `/api/v1/chatbot/history/${conversationId}`,
+        method: "DELETE",
+        secure: true,
         format: "json",
         ...params,
       }),
@@ -12767,6 +13664,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     createTaskRuleApiV2TasksTaskIdRulesPost: (taskId: string, data: NewRuleRequest, params: RequestParams = {}) =>
       this.request<CreateTaskRuleApiV2TasksTaskIdRulesPostData, CreateTaskRuleApiV2TasksTaskIdRulesPostError>({
         path: `/api/v2/tasks/${taskId}/rules`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Run a continuous eval against specific traces as a test. Results are stored separately from production annotations.
+     *
+     * @tags Continuous Eval Test Runs
+     * @name CreateTestRunApiV1ContinuousEvalsEvalIdTestRunsPost
+     * @summary Create and start a test run for a continuous eval
+     * @request POST:/api/v1/continuous_evals/{eval_id}/test_runs
+     * @secure
+     */
+    createTestRunApiV1ContinuousEvalsEvalIdTestRunsPost: (evalId: string, data: CreateTestRunRequest, params: RequestParams = {}) =>
+      this.request<CreateTestRunApiV1ContinuousEvalsEvalIdTestRunsPostData, CreateTestRunApiV1ContinuousEvalsEvalIdTestRunsPostError>({
+        path: `/api/v1/continuous_evals/${evalId}/test_runs`,
         method: "POST",
         body: data,
         secure: true,
@@ -13197,7 +14114,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Delete a transform.
+     * @description Delete a test run and all its associated annotation results.
+     *
+     * @tags Continuous Eval Test Runs
+     * @name DeleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDelete
+     * @summary Delete a test run
+     * @request DELETE:/api/v1/continuous_evals/test_runs/{test_run_id}
+     * @secure
+     */
+    deleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDelete: (testRunId: string, params: RequestParams = {}) =>
+      this.request<DeleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDeleteData, DeleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDeleteError>({
+        path: `/api/v1/continuous_evals/test_runs/${testRunId}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Delete a transform. Returns 409 if the transform is referenced by continuous evals, agentic experiments, or agentic notebooks.
      *
      * @tags Transforms
      * @name DeleteTransformApiV1TracesTransformsTransformIdDelete
@@ -13693,6 +14627,41 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Returns the model provider, model name, blacklisted endpoints, and available endpoints.
+     *
+     * @tags Chatbot
+     * @name GetChatbotConfigApiV1ChatbotConfigGet
+     * @summary Get chatbot model configuration
+     * @request GET:/api/v1/chatbot/config
+     * @secure
+     */
+    getChatbotConfigApiV1ChatbotConfigGet: (params: RequestParams = {}) =>
+      this.request<GetChatbotConfigApiV1ChatbotConfigGetData, any>({
+        path: `/api/v1/chatbot/config`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get application configuration settings.
+     *
+     * @name GetConfigurationApiV2ConfigurationGet
+     * @summary Get Configuration
+     * @request GET:/api/v2/configuration
+     * @secure
+     */
+    getConfigurationApiV2ConfigurationGet: (params: RequestParams = {}) =>
+      this.request<GetConfigurationApiV2ConfigurationGetData, any>({
+        path: `/api/v2/configuration`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get a continuous eval by id
      *
      * @tags Continuous Evals
@@ -13921,6 +14890,22 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getDefaultTaskApiChatDefaultTaskGet: (params: RequestParams = {}) =>
       this.request<GetDefaultTaskApiChatDefaultTaskGetData, any>({
         path: `/api/chat/default_task`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get display settings (e.g. default currency for cost formatting).
+     *
+     * @tags Settings
+     * @name GetDisplaySettingsApiV2DisplaySettingsGet
+     * @summary Get Display Settings
+     * @request GET:/api/v2/display-settings
+     */
+    getDisplaySettingsApiV2DisplaySettingsGet: (params: RequestParams = {}) =>
+      this.request<GetDisplaySettingsApiV2DisplaySettingsGetData, any>({
+        path: `/api/v2/display-settings`,
         method: "GET",
         format: "json",
         ...params,
@@ -14499,6 +15484,49 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Get the status and counters for a specific test run. Use this endpoint for polling progress.
+     *
+     * @tags Continuous Eval Test Runs
+     * @name GetTestRunApiV1ContinuousEvalsTestRunsTestRunIdGet
+     * @summary Get a test run by id
+     * @request GET:/api/v1/continuous_evals/test_runs/{test_run_id}
+     * @secure
+     */
+    getTestRunApiV1ContinuousEvalsTestRunsTestRunIdGet: (testRunId: string, params: RequestParams = {}) =>
+      this.request<GetTestRunApiV1ContinuousEvalsTestRunsTestRunIdGetData, GetTestRunApiV1ContinuousEvalsTestRunsTestRunIdGetError>({
+        path: `/api/v1/continuous_evals/test_runs/${testRunId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get the per-trace results of a test run, including scores, reasons, and input variables.
+     *
+     * @tags Continuous Eval Test Runs
+     * @name GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGet
+     * @summary Get individual test case results for a test run
+     * @request GET:/api/v1/continuous_evals/test_runs/{test_run_id}/results
+     * @secure
+     */
+    getTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGet: (
+      { testRunId, ...query }: GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGetData,
+        GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGetError
+      >({
+        path: `/api/v1/continuous_evals/test_runs/${testRunId}/results`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get token usage.
      *
      * @tags Usage
@@ -14547,6 +15575,27 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getTransformApiV1TracesTransformsTransformIdGet: (transformId: string, params: RequestParams = {}) =>
       this.request<GetTransformApiV1TracesTransformsTransformIdGetData, GetTransformApiV1TracesTransformsTransformIdGetError>({
         path: `/api/v1/traces/transforms/${transformId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get resources that depend on this transform.
+     *
+     * @tags Transforms
+     * @name GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGet
+     * @summary Get Transform Dependents
+     * @request GET:/api/v1/traces/transforms/{transform_id}/dependents
+     * @secure
+     */
+    getTransformDependentsApiV1TracesTransformsTransformIdDependentsGet: (transformId: string, params: RequestParams = {}) =>
+      this.request<
+        GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGetData,
+        GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGetError
+      >({
+        path: `/api/v1/traces/transforms/${transformId}/dependents`,
         method: "GET",
         secure: true,
         format: "json",
@@ -14866,6 +15915,28 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     listSpansMetadataApiV1TracesSpansGet: (query: ListSpansMetadataApiV1TracesSpansGetParams, params: RequestParams = {}) =>
       this.request<ListSpansMetadataApiV1TracesSpansGetData, ListSpansMetadataApiV1TracesSpansGetError>({
         path: `/api/v1/traces/spans`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get all test runs for a specific continuous eval.
+     *
+     * @tags Continuous Eval Test Runs
+     * @name ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGet
+     * @summary List test runs for a continuous eval
+     * @request GET:/api/v1/continuous_evals/{eval_id}/test_runs
+     * @secure
+     */
+    listTestRunsApiV1ContinuousEvalsEvalIdTestRunsGet: (
+      { evalId, ...query }: ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGetData, ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGetError>({
+        path: `/api/v1/continuous_evals/${evalId}/test_runs`,
         method: "GET",
         query: query,
         secure: true,
@@ -15438,6 +16509,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Send a message to the Arthur AI chatbot and receive a streaming response. The chatbot can call Arthur Engine API endpoints on your behalf.
+     *
+     * @tags Chatbot
+     * @name StreamChatbotApiV1TasksTaskIdChatbotStreamPost
+     * @summary Stream a chatbot response
+     * @request POST:/api/v1/tasks/{task_id}/chatbot/stream
+     * @secure
+     */
+    streamChatbotApiV1TasksTaskIdChatbotStreamPost: (taskId: string, data: ChatbotRequest, params: RequestParams = {}) =>
+      this.request<StreamChatbotApiV1TasksTaskIdChatbotStreamPostData, StreamChatbotApiV1TasksTaskIdChatbotStreamPostError>({
+        path: `/api/v1/tasks/${taskId}/chatbot/stream`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Test a new RAG provider connection configuration.
      *
      * @tags RAG Providers
@@ -15495,6 +16586,45 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       this.request<UpdateAgenticNotebookApiV1AgenticNotebooksNotebookIdPutData, UpdateAgenticNotebookApiV1AgenticNotebooksNotebookIdPutError>({
         path: `/api/v1/agentic_notebooks/${notebookId}`,
         method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Saves a new version of the chatbot prompt with the specified model provider and model name, and tags it as production.
+     *
+     * @tags Chatbot
+     * @name UpdateChatbotConfigApiV1ChatbotConfigPut
+     * @summary Update chatbot model configuration
+     * @request PUT:/api/v1/chatbot/config
+     * @secure
+     */
+    updateChatbotConfigApiV1ChatbotConfigPut: (data: ChatbotConfigUpdateRequest, params: RequestParams = {}) =>
+      this.request<UpdateChatbotConfigApiV1ChatbotConfigPutData, UpdateChatbotConfigApiV1ChatbotConfigPutError>({
+        path: `/api/v1/chatbot/config`,
+        method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Update application configuration settings.
+     *
+     * @name UpdateConfigurationApiV2ConfigurationPost
+     * @summary Update Configuration
+     * @request POST:/api/v2/configuration
+     * @secure
+     */
+    updateConfigurationApiV2ConfigurationPost: (data: ApplicationConfigurationUpdateRequest, params: RequestParams = {}) =>
+      this.request<UpdateConfigurationApiV2ConfigurationPostData, UpdateConfigurationApiV2ConfigurationPostError>({
+        path: `/api/v2/configuration`,
+        method: "POST",
         body: data,
         secure: true,
         type: ContentType.Json,

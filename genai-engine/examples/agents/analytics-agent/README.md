@@ -29,6 +29,10 @@ This is a starter template for building AI agents using [Mastra](https://mastra.
    ARTHUR_API_KEY=your-arthur-api-key-here
    ARTHUR_TASK_ID=your-arthur-task-id-here
 
+   # Guardrails (optional — see "Hallucination Guardrails" section below)
+   ARTHUR_GUARDRAILS_ENABLED=false
+   SIMULATE_HALLUCINATION=false
+
    # Logging Configuration (optional)
    LOG_LEVEL=info
    ```
@@ -86,7 +90,16 @@ This is a starter template for building AI agents using [Mastra](https://mastra.
    - `investigationTask`: The user's natural language query
    - `golden_queries`: Example queries for context (automatically provided)
 
-4. **Start the development server**
+4. **Configure Hallucination Guardrails (optional)**
+
+   The analytics agent uses [Arthur Engine Guardrails](https://docs.arthur.ai/docs/hallucination) for hallucination detection on SQL result summaries. This is controlled by two environment variables:
+
+   | Variable | Default | Description |
+   |---|---|---|
+   | `ARTHUR_GUARDRAILS_ENABLED` | `false` | Enables Arthur guardrail validation on SQL result summaries |
+   | `SIMULATE_HALLUCINATION` | `false` | Inflates numeric values on the first attempt to simulate a hallucinating model (demo only) |
+
+5. **Start the development server**
 
    ```bash
    yarn dev

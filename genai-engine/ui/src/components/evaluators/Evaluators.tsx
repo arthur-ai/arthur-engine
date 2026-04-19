@@ -10,12 +10,12 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
 import EvalFormModal from "./EvalFormModal";
+import { EvaluatorAccordionList } from "./EvaluatorAccordionList";
 import EvaluatorsHeader from "./EvaluatorsHeader";
 import EvalFullScreenView from "./fullscreen/EvalFullScreenView";
 import { useCreateEvalMutation } from "./hooks/useCreateEvalMutation";
 import { useDeleteEvalMutation } from "./hooks/useDeleteEvalMutation";
 import { useEvals } from "./hooks/useEvals";
-import EvalsTable from "./table/EvalsTable";
 
 import { SearchBar } from "@/components/common/SearchBar";
 import { getContentHeight } from "@/constants/layout";
@@ -37,8 +37,6 @@ const Evaluators: React.FC<EvaluatorsProps> = ({ embedded = false, isCreateModal
   const { id: taskId, evaluatorName: urlEvaluatorName, version: urlVersion } = useParams<{ id: string; evaluatorName?: string; version?: string }>();
   const navigate = useNavigate();
   const [fullScreenEval, setFullScreenEval] = useState<string | null>(null);
-  const [sortColumn, setSortColumn] = useState<string | null>("latest_version_created_at");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [internalOpen, setInternalOpen] = useState(false);
@@ -76,9 +74,9 @@ const Evaluators: React.FC<EvaluatorsProps> = ({ embedded = false, isCreateModal
     () => ({
       page: debouncedSearchQuery ? 0 : page,
       pageSize: debouncedSearchQuery ? 5000 : pageSize,
-      sort: sortDirection,
+      sort: "desc" as const,
     }),
-    [page, pageSize, sortDirection, debouncedSearchQuery]
+    [page, pageSize, debouncedSearchQuery]
   );
 
   const { evals, count, error, isLoading, refetch } = useEvals(task?.id, filters);
@@ -93,7 +91,7 @@ const Evaluators: React.FC<EvaluatorsProps> = ({ embedded = false, isCreateModal
     setIsCreateModalOpen(false);
     refetch();
     // Navigate to the newly created eval's detail page
-    navigate(`/tasks/${taskId}/evaluators/${evalData.name}/versions/${evalData.version}`);
+    navigate(`/tasks/${taskId}/evaluators/${encodeURIComponent(evalData.name)}/versions/${evalData.version}`);
   });
 
   const deleteMutation = useDeleteEvalMutation(task?.id, () => {
@@ -111,7 +109,7 @@ const Evaluators: React.FC<EvaluatorsProps> = ({ embedded = false, isCreateModal
     (evalName: string) => {
       setFullScreenEval(evalName);
       // Update URL to reflect the selected evaluator
-      navigate(`/tasks/${taskId}/evaluators/${evalName}`);
+      navigate(`/tasks/${taskId}/evaluators/${encodeURIComponent(evalName)}`);
     },
     [taskId, navigate]
   );
@@ -121,18 +119,6 @@ const Evaluators: React.FC<EvaluatorsProps> = ({ embedded = false, isCreateModal
     // Navigate back to the combined Evaluate view
     navigate(`/tasks/${taskId}/evaluate`);
   }, [taskId, navigate]);
-
-  const handleSort = useCallback(
-    (column: string) => {
-      if (sortColumn === column) {
-        setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
-      } else {
-        setSortColumn(column);
-        setSortDirection("desc");
-      }
-    },
-    [sortColumn]
-  );
 
   const handlePageChange = useCallback((_event: unknown, newPage: number) => {
     setPage(newPage);
@@ -253,11 +239,9 @@ const Evaluators: React.FC<EvaluatorsProps> = ({ embedded = false, isCreateModal
             )}
           </Box>
         ) : (
-          <EvalsTable
+          <EvaluatorAccordionList
             evals={filteredEvals}
-            sortColumn={sortColumn}
-            sortDirection={sortDirection}
-            onSort={handleSort}
+            taskId={taskId!}
             onExpandToFullScreen={handleExpandToFullScreen}
             onDelete={deleteMutation.mutateAsync}
           />

@@ -23,6 +23,14 @@ class ConfigurationRepository:
             )
             self.db_session.add(chat_config)
 
+        if request.default_currency is not None:
+            default_currency_row = update_or_create_config(
+                ApplicationConfigurations.DEFAULT_CURRENCY,
+                request.default_currency.strip().upper(),
+                existing_configurations,
+            )
+            self.db_session.add(default_currency_row)
+
         if request.document_storage_configuration:
             rows = []
             config = request.document_storage_configuration
@@ -75,6 +83,14 @@ class ConfigurationRepository:
                 existing_configurations,
             )
             self.db_session.add(max_llm_rules)
+
+        if request.trace_retention_days is not None:
+            trace_retention = update_or_create_config(
+                ApplicationConfigurations.TRACE_RETENTION_DAYS,
+                str(request.trace_retention_days),
+                existing_configurations,
+            )
+            self.db_session.add(trace_retention)
 
         self.db_session.commit()
         return self.get_configurations()

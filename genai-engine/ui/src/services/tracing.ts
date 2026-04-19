@@ -1,6 +1,8 @@
-import { getStartDate, IncomingFilter, mapFiltersToRequest, type TimeRange } from "@arthur/shared-components";
+import { type IncomingFilter, type TimeRange } from "@arthur/shared-components";
 
+import { getStartDate, mapFiltersToRequest } from "@/components/traces/components/filtering/mapper";
 import { Api } from "@/lib/api";
+import type { TraceSortBy } from "@/lib/api-client/api-client";
 
 type CommonParams = {
   taskId: string;
@@ -9,13 +11,17 @@ type CommonParams = {
   filters: IncomingFilter[];
   timeRange: TimeRange;
   sort?: "asc" | "desc";
+  sortBy?: TraceSortBy;
 };
 
 // Traces
 
 export type GetFilteredTracesParams = CommonParams;
 
-export async function getFilteredTraces(api: Api<unknown>, { taskId, page, pageSize, filters, timeRange, sort = "desc" }: GetFilteredTracesParams) {
+export async function getFilteredTraces(
+  api: Api<unknown>,
+  { taskId, page, pageSize, filters, timeRange, sort = "desc", sortBy }: GetFilteredTracesParams
+) {
   const startTime = getStartDate(timeRange);
 
   const response = await api.api.listTracesMetadataApiV1TracesGet({
@@ -23,6 +29,7 @@ export async function getFilteredTraces(api: Api<unknown>, { taskId, page, pageS
     page,
     page_size: pageSize,
     sort,
+    ...(sortBy && { sort_by: sortBy }),
     start_time: startTime.toISOString(),
     ...mapFiltersToRequest(filters),
   });
@@ -49,12 +56,16 @@ export async function computeTraceMetrics(api: Api<unknown>, { traceId }: GetTra
 
 export type GetFilteredSpansParams = CommonParams;
 
-export async function getFilteredSpans(api: Api<unknown>, { taskId, page, pageSize, filters, timeRange, sort = "desc" }: GetFilteredSpansParams) {
+export async function getFilteredSpans(
+  api: Api<unknown>,
+  { taskId, page, pageSize, filters, timeRange, sort = "desc", sortBy }: GetFilteredSpansParams
+) {
   const response = await api.api.listSpansMetadataApiV1TracesSpansGet({
     task_ids: [taskId],
     page,
     page_size: pageSize,
     sort,
+    ...(sortBy && { sort_by: sortBy }),
     start_time: getStartDate(timeRange).toISOString(),
     ...mapFiltersToRequest(filters),
   });

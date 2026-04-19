@@ -122,7 +122,7 @@ class FilterService:
 
     def build_comparison_condition(
         self,
-        column: ColumnElement[Any],
+        column: ColumnElement[Any] | InstrumentedAttribute[Any],
         filter_item: FloatRangeFilter,
     ) -> ColumnElement[bool]:
         """Build comparison condition for various operators."""

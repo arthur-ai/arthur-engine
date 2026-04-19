@@ -10,35 +10,35 @@ A FastAPI-based service for LLM evaluation, guardrails, and monitoring. Provides
 
 ```bash
 # Install dependencies
-poetry install
+uv sync
 
 # Run development server
-poetry run serve
+uv run serve
 # or: uvicorn src.server:get_app --reload
 
 # Run tests (unit tests only)
-poetry run pytest -m "unit_tests"
+uv run pytest -m "unit_tests"
 
 # Run tests with coverage (79% minimum required)
-poetry run pytest -m "unit_tests" --cov=src --cov-fail-under=79
+uv run pytest -m "unit_tests" --cov=src --cov-fail-under=79
 
 # Run integration tests
 ./tests/test_remote.sh
 
 # Linting and formatting
-poetry run black src/
-poetry run isort src/
-poetry run mypy src/
+uv run black src/
+uv run isort src/
+uv run mypy src/
 
 # Database migrations
-poetry run alembic upgrade head
-poetry run alembic revision --autogenerate -m "description"
+uv run alembic upgrade head
+uv run alembic revision --autogenerate -m "description"
 
 # Generate changelog
-poetry run generate_changelog
+uv run generate_changelog
 
 # Performance testing (requires separate install)
-poetry install --only performance
+uv sync --group performance
 # See locust/README.md for details
 ```
 

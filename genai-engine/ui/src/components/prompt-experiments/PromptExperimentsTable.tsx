@@ -14,8 +14,9 @@ import {
 } from "@mui/material";
 import React from "react";
 
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { SavedPromptConfig, UnsavedPromptConfig } from "@/lib/api-client/api-client";
-import { formatUTCTimestamp, formatTimestampDuration, formatCurrency } from "@/utils/formatters";
+import { formatDateInTimezone, formatTimestampDuration, formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 export type PromptConfig = ({ type: "saved" } & SavedPromptConfig) | ({ type: "unsaved" } & UnsavedPromptConfig);
@@ -64,6 +65,7 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
   onRowsPerPageChange,
   loading = false,
 }) => {
+  const { defaultCurrency, timezone, use24Hour } = useDisplaySettings();
   const formatPromptName = (config: PromptConfig): string => {
     if (config.type === "saved") {
       return `${config.name} (v${config.version})`;
@@ -166,10 +168,10 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
                     {(experiment.status === "running" || experiment.status === "queued") && <CircularProgress size={16} />}
                   </Box>
                 </TableCell>
-                <TableCell>{formatUTCTimestamp(experiment.created_at)}</TableCell>
-                <TableCell>{formatUTCTimestamp(experiment.finished_at)}</TableCell>
+                <TableCell>{formatDateInTimezone(experiment.created_at, timezone, { hour12: !use24Hour })}</TableCell>
+                <TableCell>{formatDateInTimezone(experiment.finished_at, timezone, { hour12: !use24Hour })}</TableCell>
                 <TableCell>{experiment.finished_at ? formatTimestampDuration(experiment.created_at, experiment.finished_at) : "-"}</TableCell>
-                <TableCell>{experiment.total_cost ? formatCurrency(parseFloat(experiment.total_cost)) : "-"}</TableCell>
+                <TableCell>{experiment.total_cost ? formatCurrency(parseFloat(experiment.total_cost), defaultCurrency) : "-"}</TableCell>
               </TableRow>
             ))}
           </TableBody>

@@ -80,6 +80,42 @@ yarn generate-api:clean
 - Request/response interceptors handle authentication headers
 - Error handling via React Query's error boundaries
 
+### TanStack Form
+
+The codebase uses TanStack Form via custom wrappers in `src/components/traces/components/filtering/hooks/form.tsx`.
+
+**Core hooks:**
+
+- `useAppForm(options)` — creates a form with typed field components. Options: `defaultValues`, `validators`, `onSubmit`
+- `withForm({ ...formOpts, props?, render })` — HOC for child components receiving the form. `props` declares extra props (with defaults) passed to render alongside `form`. Use named functions for render to satisfy ESLint hook rules. Prefer `withForm` over `withFieldGroup` for sub-components that need to display validation errors (proper error types via form-level validators).
+- `withFieldGroup({ defaultValues, props?, render })` — HOC for reusable field groups. Render receives `group` with scoped `AppField`. **Caveat:** error types resolve to `never` — no `.message` property. Use `withForm` with absolute field paths instead when error display is needed.
+
+**Field rendering:**
+
+- `form.AppField name="path"` — typed field; children receive `field` with `state.value`, `handleChange`, `handleBlur`, `state.meta.errors`
+- `form.Subscribe selector={fn}` — reactive subscription for conditional rendering
+- `useStore(form.store, selector)` — direct store read (import from `@tanstack/react-form`)
+
+**Validation:**
+
+- Zod v4 schemas — use `{ error: "..." }` for custom messages (not `{ message: "..." }`). Use `path: ["field"]` on `.refine()` to target a specific nested field.
+- `formApi.parseValuesWithSchema(schema)` (form-level) or `fieldApi.parseValueWithSchema(schema)` (field-level)
+- Form-level validators can return `{ fields: { "path": error }, form: { key: error } }` — field errors auto-propagate to `field.state.meta.errors`
+- Display: `error={field.state.meta.errors.length > 0}` + `helperText={field.state.meta.errors[0]?.message}` on MUI TextField
+- **Clearing stale form-level errors:** `resetField()` does NOT clear errors from form-level validators (`parseValuesWithSchema`). Use `setFieldMeta` to explicitly clear `errorMap.onSubmit`:
+  ```tsx
+  form.setFieldMeta(path, (prev) => ({ ...prev, errorMap: { ...prev.errorMap, onSubmit: undefined } }));
+  ```
+
+**Form state:**
+
+- `form.state.isDirty` — persistent dirty (true once any field changed, even if reverted)
+- `form.state.isSubmitting`, `form.state.canSubmit`, `form.state.isValid`
+
+**Multi-step pattern:**
+
+- A `section` field tracks the current step. Forward navigation uses `form.handleSubmit()` (triggers validation). Back navigation sets section directly via `form.setFieldValue("section", prev)` (skips validation).
+
 ### Before Committing (REQUIRED - CI Enforced)
 
 Always run and ensure these pass before committing UI changes:

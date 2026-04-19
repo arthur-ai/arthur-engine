@@ -38,6 +38,7 @@ from dependencies import (
     get_oauth_client,
     get_scorer_client,
 )
+from repositories.system_task_repository import SystemTaskRepository
 from routers.api_key_routes import api_keys_routes
 from routers.auth_routes import auth_routes
 from routers.chat_routes import app_chat_routes
@@ -47,6 +48,7 @@ from routers.v1.agent_polling_routes import agent_polling_routes
 from routers.v1.agentic_experiment_routes import agentic_experiment_routes
 from routers.v1.agentic_notebook_routes import agentic_notebook_routes
 from routers.v1.agentic_prompt_routes import agentic_prompt_routes
+from routers.v1.chatbot_routes import chatbot_routes
 from routers.v1.continuous_eval_routes import continuous_eval_routes
 from routers.v1.legacy_span_routes import span_routes
 from routers.v1.llm_eval_routes import llm_eval_routes
@@ -80,6 +82,10 @@ from services.currency import (
 from services.task import (
     initialize_global_agent_polling_service,
     shutdown_global_agent_polling_service,
+)
+from services.trace_retention_service import (
+    initialize_trace_retention_service,
+    shutdown_trace_retention_service,
 )
 from utils import constants as constants
 from utils import model_load
@@ -193,7 +199,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info(f"Using device: {device.type}")
 
     try:
-        db = get_db_session()
+        db = next(get_db_session())
+
+        # Initialize system task
+        SystemTaskRepository(db).initialize_system_tasks()
+
         db.close()
     except HTTPException as e:
         raise ConnectionError(f"Error connecting to database: {e}") from None
@@ -231,6 +241,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         initialize_currency_conversion_service()
     except Exception as e:
         logger.error(f"Error initializing currency conversion service: {e}")
+
+    # Initialize trace retention service (deletes trace data older than configured retention)
+    try:
+        initialize_trace_retention_service()
+    except Exception as e:
+        logger.error(f"Error initializing trace retention service: {e}")
+
     # Initialize global agent polling service
     try:
         initialize_global_agent_polling_service(num_workers=4)
@@ -253,6 +270,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
     cleanup_cuda_cache()
+    shutdown_trace_retention_service()
     shutdown_currency_conversion_service()
     shutdown_continuous_eval_queue_service()
     shutdown_global_agent_polling_service()
@@ -397,6 +415,12 @@ def get_base_app(
     ):
         origins.append(ingress_url)
 
+    if cors_extra := get_env_var(
+        constants.CORS_EXTRA_ORIGINS_ENV_VAR,
+        none_on_missing=True,
+    ):
+        origins.extend(o.strip() for o in cors_extra.split(",") if o.strip())
+
     arthur_allowed_origins = r"https://.*\.arthur\.ai"
 
     app.add_middleware(
@@ -448,6 +472,8 @@ def get_app_with_routes() -> FastAPI:
             agent_polling_routes,
         ],
     )
+    if extra_feature_config.CHATBOT_ENABLED:
+        add_routers(app, [chatbot_routes])
     add_routers(app, [auth_routes, user_management_routes])
     add_routers(app, [app_chat_routes])
     return app
@@ -486,6 +512,7 @@ def get_test_app() -> FastAPI:
             transform_routes,
             continuous_eval_routes,
             agent_polling_routes,
+            chatbot_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -538,6 +565,8 @@ def get_app() -> FastAPI:
             agent_polling_routes,
         ],
     )
+    if extra_feature_config.CHATBOT_ENABLED:
+        add_routers(app, [chatbot_routes])
     if extra_feature_config.CHAT_ENABLED:
         add_routers(app, [app_chat_routes])
     if not is_api_only_mode_enabled():
@@ -559,7 +588,8 @@ def get_app() -> FastAPI:
 def start() -> None:
     send_telemetry_event(TelemetryEventTypes.SERVER_START_INITIATED)
     app = get_app()
-    uvicorn.run(app, host="0.0.0.0", port=3030)
+    port = int(get_env_var(constants.GENAI_ENGINE_PORT_ENV_VAR, default="3030"))
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 
 if __name__ == "__main__":

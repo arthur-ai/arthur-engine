@@ -1,3 +1,4 @@
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -15,13 +16,15 @@ import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
+import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useMemo, useState, useCallback, useEffect } from "react";
 
 import { useEvalVersions } from "../hooks/useEvalVersions";
 import type { EvalVersionDrawerProps } from "../types";
 
-import { formatDate } from "@/utils/formatters";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { formatDateInTimezone } from "@/utils/formatters";
 
 const EvalVersionDrawer = ({
   open,
@@ -35,13 +38,15 @@ const EvalVersionDrawer = ({
   onRefetchTrigger,
 }: EvalVersionDrawerProps) => {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [excludeDeleted, setExcludeDeleted] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [versionToDelete, setVersionToDelete] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const { timezone, use24Hour } = useDisplaySettings();
   const { versions, isLoading, error, refetch } = useEvalVersions(taskId, evalName, {
     sort: sortOrder,
-    exclude_deleted: false,
+    exclude_deleted: excludeDeleted,
   });
 
   // Refetch versions when the trigger changes (e.g., when a new version is created)
@@ -116,16 +121,31 @@ const EvalVersionDrawer = ({
       }}
     >
       <Box sx={{ p: 2, display: "flex", flexDirection: "column", height: "100%" }}>
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-          Versions: {evalName}
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+          <Tooltip title="Go back">
+            <IconButton onClick={onClose} size="small" aria-label="Go back">
+              <ArrowBackIcon />
+            </IconButton>
+          </Tooltip>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            Versions: {evalName}
+          </Typography>
+        </Box>
 
-        <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+        <Box sx={{ display: "flex", gap: 1, mb: 2, flexWrap: "wrap" }}>
           <Chip
             label={`Sort: ${sortOrder === "asc" ? "Oldest First" : "Newest First"}`}
             onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
             clickable
             size="small"
+          />
+          <Chip
+            label={excludeDeleted ? "Hide Deleted" : "Show Deleted"}
+            onClick={() => setExcludeDeleted((prev) => !prev)}
+            clickable
+            size="small"
+            color={excludeDeleted ? "default" : "warning"}
+            variant={excludeDeleted ? "filled" : "outlined"}
           />
         </Box>
 
@@ -244,7 +264,7 @@ const EvalVersionDrawer = ({
                               color: isDeleted ? "text.disabled" : "text.secondary",
                             }}
                           >
-                            {formatDate(version.created_at)}
+                            {formatDateInTimezone(version.created_at, timezone, { hour12: !use24Hour })}
                           </Typography>
                           {isDeleted && version.deleted_at && (
                             <Typography
@@ -256,7 +276,7 @@ const EvalVersionDrawer = ({
                                 color: "text.disabled",
                               }}
                             >
-                              Deleted at: {formatDate(version.deleted_at)}
+                              Deleted at: {formatDateInTimezone(version.deleted_at, timezone, { hour12: !use24Hour })}
                             </Typography>
                           )}
                         </Box>

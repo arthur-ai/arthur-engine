@@ -57,6 +57,7 @@ from db_models.agentic_prompt_models import (
     DatabaseAgenticPromptVersionTag,
 )
 from db_models.secret_storage_models import DatabaseSecretStorage
+from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTestRun
 from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
 from db_models.notebook_models import DatabaseNotebook
 from db_models.rag_notebook_models import DatabaseRagNotebook
@@ -133,6 +134,8 @@ __all__ = [
     "DatabaseServiceNameTaskMapping",
     # Annotation models
     "DatabaseAgenticAnnotation",
+    # Test run models
+    "DatabaseContinuousEvalTestRun",
     # Agentic Prompt models
     "DatabaseAgenticPrompt",
     "DatabaseAgenticPromptVersionTag",

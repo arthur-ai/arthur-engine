@@ -31,9 +31,10 @@ import { Link as RouterLink } from "react-router-dom";
 import { PromptResultDetailModal, EvalInputsDialog } from "./PromptResultDetailModal";
 
 import { usePrompt } from "@/components/prompts-management/hooks/usePrompt";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { usePromptVersionResults } from "@/hooks/usePromptExperiments";
 import { EvalExecution, OpenAIMessageInput, LLMToolInput } from "@/lib/api-client/api-client";
-import { formatUTCTimestamp } from "@/utils/formatters";
+import { formatCurrency, formatDateInTimezone } from "@/utils/formatters";
 
 interface EvalResult {
   eval_name: string;
@@ -83,6 +84,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
   datasetId,
   datasetVersion,
 }) => {
+  const { defaultCurrency, timezone, use24Hour } = useDisplaySettings();
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
@@ -262,7 +264,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   promptDetails.prompt_version && (
                     <Link
                       component={RouterLink}
-                      to={`/tasks/${taskId}/prompts/${promptDetails.prompt_name}/versions/${promptDetails.prompt_version}`}
+                      to={`/tasks/${taskId}/prompts/${encodeURIComponent(promptDetails.prompt_name)}/versions/${promptDetails.prompt_version}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-1 text-sm"
@@ -299,7 +301,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                     Created At
                   </Typography>
                   <Typography variant="body2" className="text-gray-900 dark:text-gray-100">
-                    {prompt.created_at ? formatUTCTimestamp(prompt.created_at) : "N/A"}
+                    {prompt.created_at ? formatDateInTimezone(prompt.created_at, timezone, { hour12: !use24Hour }) : "N/A"}
                   </Typography>
                 </Box>
                 <Box>
@@ -349,7 +351,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   <Box className="flex justify-between items-center mb-2">
                     <Link
                       component={RouterLink}
-                      to={`/tasks/${taskId}/evaluators/${evalResult.eval_name}/versions/${evalResult.eval_version}`}
+                      to={`/tasks/${taskId}/evaluators/${encodeURIComponent(evalResult.eval_name)}/versions/${evalResult.eval_version}`}
                       sx={{ textDecoration: "none", "&:hover": { textDecoration: "underline" } }}
                     >
                       <Typography variant="subtitle2" className="font-medium text-gray-800 dark:text-gray-200">
@@ -514,7 +516,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                             </TableCell>
                             <TableCell align="right">
                               <Typography variant="body2" className="font-mono text-xs">
-                                ${result.total_cost || "0.00"}
+                                {formatCurrency(parseFloat(result.total_cost || "0"), defaultCurrency)}
                               </Typography>
                             </TableCell>
                           </TableRow>

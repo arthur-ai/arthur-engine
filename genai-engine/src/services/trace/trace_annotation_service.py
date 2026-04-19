@@ -124,7 +124,10 @@ class TraceAnnotationService:
     def get_annotations_by_trace_id(self, trace_id: str) -> List[AgenticAnnotation]:
         db_annotations = (
             self.db_session.query(DatabaseAgenticAnnotation)
-            .filter(DatabaseAgenticAnnotation.trace_id == trace_id)
+            .filter(
+                DatabaseAgenticAnnotation.trace_id == trace_id,
+                DatabaseAgenticAnnotation.test_run_id.is_(None),
+            )
             .all()
         )
 
@@ -141,6 +144,7 @@ class TraceAnnotationService:
     ) -> List[AgenticAnnotation]:
         base_query = self.db_session.query(DatabaseAgenticAnnotation).filter(
             DatabaseAgenticAnnotation.trace_id == trace_id,
+            DatabaseAgenticAnnotation.test_run_id.is_(None),
         )
 
         if filter_request:

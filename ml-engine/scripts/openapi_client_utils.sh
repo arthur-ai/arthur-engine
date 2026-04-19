@@ -19,9 +19,8 @@ install_or_update_openapi_gen() {
     npm install -g @openapitools/openapi-generator-cli
     openapi-generator-cli version-manager set $OPENAPI_GENERATOR_VERSION
   else
-    # use auto-updating linux scripts to install OpenAPI Generator on local CI server
-    curl https://raw.githubusercontent.com/OpenAPITools/openapi-generator/master/bin/utils/openapi-generator-cli.sh > /usr/local/bin/openapi-generator-cli
-    chmod u+x /usr/local/bin/openapi-generator-cli
+    npm install -g @openapitools/openapi-generator-cli
+    openapi-generator-cli version-manager set $OPENAPI_GENERATOR_VERSION
   fi
 }
 
@@ -52,5 +51,5 @@ fi
 
 if [ "$purpose" == "install" ]; then
   echo "Installing the newly generated $runtime client"
-  poetry run pip install ../src/genai_client -vvv
+  uv pip install ../src/genai_client -vvv
 fi

@@ -20,7 +20,7 @@
     "@ag-ui/proto": "^0.0.41",
     "@ai-sdk/openai": "^2.0.42",
     "@arizeai/openinference-core": "^1.0.7",
-    "@browserbasehq/stagehand": "^3.0.1",
+    "@browserbasehq/stagehand": "^3.2.0",
     "@copilotkit/react-core": "^1.10.6",
     "@copilotkit/react-ui": "^1.10.6",
     "@copilotkit/runtime": "^1.10.6",

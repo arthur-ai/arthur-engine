@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any, Dict, Union
 
 import httpx
+from arthur_common.models.agent_governance_schemas import EnrichedTaskResponse
 from arthur_common.models.common_schemas import (
     ExamplesConfig,
     KeywordsConfig,
@@ -62,7 +63,7 @@ from arthur_common.models.task_eval_schemas import (
     TraceTransformResponse,
 )
 from pydantic import TypeAdapter
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from weaviate.collections.classes.grpc import HybridFusion, TargetVectorJoinType
 
 from config.database_config import DatabaseConfig
@@ -72,7 +73,6 @@ from schemas.enums import (
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
 )
-from arthur_common.models.agent_governance_schemas import EnrichedTaskResponse
 from schemas.internal_schemas import AgenticAnnotation
 from schemas.request_schemas import (
     AgenticAnnotationRequest,
@@ -109,6 +109,8 @@ from schemas.response_schemas import (
     AgenticAnnotationAnalyticsResponse,
     ConnectionCheckResult,
     ContinuousEvalRerunResponse,
+    ContinuousEvalTestRunResponse,
+    ListContinuousEvalTestRunsResponse,
     DatasetResponse,
     DatasetVersionResponse,
     DatasetVersionRowResponse,
@@ -160,6 +162,7 @@ os.environ[constants.TELEMETRY_ENABLED_ENV_VAR] = "False"
 MASTER_KEY_AUTHORIZED_HEADERS = {"Authorization": "Bearer %s" % MASTER_API_KEY}
 AUTHORIZED_CHAT_HEADERS = {"Authorization": "Bearer %s" % "user_0"}
 DATABASE_ENGINE = None
+SYSTEM_TASK_INITIALIZED = False
 
 
 def override_get_scorer_client():
@@ -174,7 +177,7 @@ def override_get_keycloak_client():
     return MockAuthClient()
 
 
-def override_get_db_session():
+def override_get_db_session() -> Session:
     global DATABASE_ENGINE
     if DATABASE_ENGINE is None:
         DATABASE_ENGINE = get_db_engine(DatabaseConfig(TEST_DATABASE=True))
@@ -196,6 +199,7 @@ from dependencies import (
     get_oauth_client,
     get_scorer_client,
 )
+from repositories.system_task_repository import SystemTaskRepository
 from server import get_test_app
 
 app = get_test_app()
@@ -223,6 +227,13 @@ class GenaiEngineTestClientBase(httpx.Client):
         self.authorized_org_admin_api_key_headers: dict = {
             "Authorization": "Bearer admin_0",
         }
+
+        global SYSTEM_TASK_INITIALIZED
+        if not SYSTEM_TASK_INITIALIZED:
+            db = override_get_db_session()
+            SystemTaskRepository(db).initialize_system_tasks()
+            db.close()
+            SYSTEM_TASK_INITIALIZED = True
 
         if create_user_key:
             # Clear existing keys, create a new one to avoid hitting user key limits
@@ -361,9 +372,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         """
         path = "api/v2/agent-tasks"
 
-        resp = self.base_client.get(
-            path, headers=self.authorized_user_api_key_headers
-        )
+        resp = self.base_client.get(path, headers=self.authorized_user_api_key_headers)
         log_response(resp)
 
         return (
@@ -1124,6 +1133,16 @@ class GenaiEngineTestClientBase(httpx.Client):
             ),
         )
 
+    def get_transform_dependents(self, transform_id: str) -> tuple[int, Any]:
+        resp = self.base_client.get(
+            f"/api/v1/traces/transforms/{transform_id}/dependents",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code, resp.json()
+
     def list_transforms(
         self,
         task_id: str,
@@ -1593,6 +1612,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         page: int | None = None,
         page_size: int | None = None,
         sort: str | None = None,
+        sort_by: str | None = None,
         tool_name: str | None = None,
         span_types: list | None = None,
         # Query relevance filters
@@ -1616,6 +1636,28 @@ class GenaiEngineTestClientBase(httpx.Client):
         trace_duration_gte: float | None = None,
         trace_duration_lt: float | None = None,
         trace_duration_lte: float | None = None,
+        # Token count filters
+        total_token_count_eq: int | None = None,
+        total_token_count_gt: int | None = None,
+        total_token_count_gte: int | None = None,
+        total_token_count_lt: int | None = None,
+        total_token_count_lte: int | None = None,
+        prompt_token_count_eq: int | None = None,
+        prompt_token_count_gt: int | None = None,
+        prompt_token_count_gte: int | None = None,
+        prompt_token_count_lt: int | None = None,
+        prompt_token_count_lte: int | None = None,
+        completion_token_count_eq: int | None = None,
+        completion_token_count_gt: int | None = None,
+        completion_token_count_gte: int | None = None,
+        completion_token_count_lt: int | None = None,
+        completion_token_count_lte: int | None = None,
+        # Span count filters
+        span_count_eq: int | None = None,
+        span_count_gt: int | None = None,
+        span_count_gte: int | None = None,
+        span_count_lt: int | None = None,
+        span_count_lte: int | None = None,
     ) -> tuple[int, QueryTracesWithMetricsResponse | str]:
         """Query traces with metrics for specified task IDs. Computes metrics for all LLM spans in the traces.
 
@@ -1627,6 +1669,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             page: Page number for pagination
             page_size: Number of items per page
             sort: Sort order ("asc" or "desc")
+            sort_by: Column to sort by (e.g. "start_time", "total_token_count", "total_token_cost", "span_count")
             tool_name: Return only results with this tool name
             span_types: Span types to filter on (optional)
             query_relevance_eq: Query relevance equal to this value
@@ -1646,6 +1689,10 @@ class GenaiEngineTestClientBase(httpx.Client):
             trace_duration_gte: Duration greater than or equal to this value (seconds)
             trace_duration_lt: Duration less than this value (seconds)
             trace_duration_lte: Duration less than or equal to this value (seconds)
+            total_token_count_eq/gt/gte/lt/lte: Total token count filters
+            prompt_token_count_eq/gt/gte/lt/lte: Prompt token count filters
+            completion_token_count_eq/gt/gte/lt/lte: Completion token count filters
+            span_count_eq/gt/gte/lt/lte: Span count filters
 
         Returns:
             tuple[int, QueryTracesWithMetricsResponse | str]: Status code and response
@@ -1663,6 +1710,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["page_size"] = page_size
         if sort is not None:
             params["sort"] = sort
+        if sort_by is not None:
+            params["sort_by"] = sort_by
         if tool_name is not None:
             params["tool_name"] = tool_name
         if span_types is not None:
@@ -1705,6 +1754,32 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["trace_duration_lt"] = trace_duration_lt
         if trace_duration_lte is not None:
             params["trace_duration_lte"] = trace_duration_lte
+        # Token count and span count filters
+        for numeric_param in [
+            "total_token_count_eq",
+            "total_token_count_gt",
+            "total_token_count_gte",
+            "total_token_count_lt",
+            "total_token_count_lte",
+            "prompt_token_count_eq",
+            "prompt_token_count_gt",
+            "prompt_token_count_gte",
+            "prompt_token_count_lt",
+            "prompt_token_count_lte",
+            "completion_token_count_eq",
+            "completion_token_count_gt",
+            "completion_token_count_gte",
+            "completion_token_count_lt",
+            "completion_token_count_lte",
+            "span_count_eq",
+            "span_count_gt",
+            "span_count_gte",
+            "span_count_lt",
+            "span_count_lte",
+        ]:
+            val = locals()[numeric_param]
+            if val is not None:
+                params[numeric_param] = val
 
         resp = self.base_client.get(
             f"/v1/traces/metrics/?{urllib.parse.urlencode(params, doseq=True)}",
@@ -1730,6 +1805,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         page: int | None = None,
         page_size: int | None = None,
         sort: str | None = None,
+        sort_by: str | None = None,
         tool_name: str | None = None,
         span_types: list | None = None,
         # Query relevance filters
@@ -1753,6 +1829,28 @@ class GenaiEngineTestClientBase(httpx.Client):
         trace_duration_gte: float | None = None,
         trace_duration_lt: float | None = None,
         trace_duration_lte: float | None = None,
+        # Token count filters
+        total_token_count_eq: int | None = None,
+        total_token_count_gt: int | None = None,
+        total_token_count_gte: int | None = None,
+        total_token_count_lt: int | None = None,
+        total_token_count_lte: int | None = None,
+        prompt_token_count_eq: int | None = None,
+        prompt_token_count_gt: int | None = None,
+        prompt_token_count_gte: int | None = None,
+        prompt_token_count_lt: int | None = None,
+        prompt_token_count_lte: int | None = None,
+        completion_token_count_eq: int | None = None,
+        completion_token_count_gt: int | None = None,
+        completion_token_count_gte: int | None = None,
+        completion_token_count_lt: int | None = None,
+        completion_token_count_lte: int | None = None,
+        # Span count filters
+        span_count_eq: int | None = None,
+        span_count_gt: int | None = None,
+        span_count_gte: int | None = None,
+        span_count_lt: int | None = None,
+        span_count_lte: int | None = None,
     ) -> tuple[int, QueryTracesWithMetricsResponse | str]:
         """Query traces with filters. Task IDs are required. Returns traces with any existing metrics but does not compute new ones.
 
@@ -1764,6 +1862,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             page: Page number for pagination
             page_size: Number of items per page
             sort: Sort order ("asc" or "desc")
+            sort_by: Column to sort by (e.g. "start_time", "total_token_count", "total_token_cost", "span_count")
             tool_name: Return only results with this tool name
             span_types: Span types to filter on (optional)
             query_relevance_eq: Query relevance equal to this value
@@ -1783,6 +1882,10 @@ class GenaiEngineTestClientBase(httpx.Client):
             trace_duration_gte: Duration greater than or equal to this value (seconds)
             trace_duration_lt: Duration less than this value (seconds)
             trace_duration_lte: Duration less than or equal to this value (seconds)
+            total_token_count_eq/gt/gte/lt/lte: Total token count filters
+            prompt_token_count_eq/gt/gte/lt/lte: Prompt token count filters
+            completion_token_count_eq/gt/gte/lt/lte: Completion token count filters
+            span_count_eq/gt/gte/lt/lte: Span count filters
 
         Returns:
             tuple[int, QueryTracesWithMetricsResponse | str]: Status code and response
@@ -1800,6 +1903,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["page_size"] = page_size
         if sort is not None:
             params["sort"] = sort
+        if sort_by is not None:
+            params["sort_by"] = sort_by
         if tool_name is not None:
             params["tool_name"] = tool_name
         if span_types is not None:
@@ -1842,6 +1947,32 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["trace_duration_lt"] = trace_duration_lt
         if trace_duration_lte is not None:
             params["trace_duration_lte"] = trace_duration_lte
+        # Token count and span count filters
+        for numeric_param in [
+            "total_token_count_eq",
+            "total_token_count_gt",
+            "total_token_count_gte",
+            "total_token_count_lt",
+            "total_token_count_lte",
+            "prompt_token_count_eq",
+            "prompt_token_count_gt",
+            "prompt_token_count_gte",
+            "prompt_token_count_lt",
+            "prompt_token_count_lte",
+            "completion_token_count_eq",
+            "completion_token_count_gt",
+            "completion_token_count_gte",
+            "completion_token_count_lt",
+            "completion_token_count_lte",
+            "span_count_eq",
+            "span_count_gt",
+            "span_count_gte",
+            "span_count_lt",
+            "span_count_lte",
+        ]:
+            val = locals()[numeric_param]
+            if val is not None:
+                params[numeric_param] = val
 
         resp = self.base_client.get(
             f"/v1/traces/query?{urllib.parse.urlencode(params, doseq=True)}",
@@ -3912,6 +4043,113 @@ class GenaiEngineTestClientBase(httpx.Client):
         """Delete a continuous eval."""
         resp = self.base_client.delete(
             f"/api/v1/continuous_evals/{continuous_eval_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        if resp.status_code == 204:
+            return resp.status_code, None
+
+        return resp.status_code, resp.json() if resp.content else None
+
+    # ========================================================================
+    # Continuous Eval Test Runs
+    # ========================================================================
+
+    def create_test_run(
+        self,
+        eval_id: str,
+        trace_ids: list[str],
+    ) -> tuple[int, ContinuousEvalTestRunResponse]:
+        """Create a test run for a continuous eval."""
+        resp = self.base_client.post(
+            f"/api/v1/continuous_evals/{eval_id}/test_runs",
+            json={"trace_ids": trace_ids},
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ContinuousEvalTestRunResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def get_test_run(
+        self,
+        test_run_id: str,
+    ) -> tuple[int, ContinuousEvalTestRunResponse]:
+        """Get a test run by id."""
+        resp = self.base_client.get(
+            f"/api/v1/continuous_evals/test_runs/{test_run_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ContinuousEvalTestRunResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def list_test_runs(
+        self,
+        eval_id: str,
+    ) -> tuple[int, ListContinuousEvalTestRunsResponse]:
+        """List test runs for a continuous eval."""
+        resp = self.base_client.get(
+            f"/api/v1/continuous_evals/{eval_id}/test_runs",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ListContinuousEvalTestRunsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def get_test_run_results(
+        self,
+        test_run_id: str,
+    ) -> tuple[int, ListAgenticAnnotationsResponse]:
+        """Get results for a test run."""
+        resp = self.base_client.get(
+            f"/api/v1/continuous_evals/test_runs/{test_run_id}/results",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ListAgenticAnnotationsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def delete_test_run(
+        self,
+        test_run_id: str,
+    ) -> tuple[int, Any]:
+        """Delete a test run."""
+        resp = self.base_client.delete(
+            f"/api/v1/continuous_evals/test_runs/{test_run_id}",
             headers=self.authorized_user_api_key_headers,
         )
 

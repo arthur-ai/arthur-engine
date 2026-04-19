@@ -23,8 +23,9 @@ import { CopyableChip } from "@/components/common";
 import { useEval } from "@/components/evaluators/hooks/useEval";
 import { useAnnotation } from "@/components/live-evals/hooks/useAnnotation";
 import { useRerunContinuousEval } from "@/components/live-evals/hooks/useRerunContinuousEval";
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useTask } from "@/hooks/useTask";
-import { formatDate } from "@/utils/formatters";
+import { formatCurrency, formatDateInTimezone } from "@/utils/formatters";
 
 type Props = {
   annotationId?: string;
@@ -35,6 +36,7 @@ type Props = {
 
 export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunComplete }: Props) => {
   const { task } = useTask();
+  const { defaultCurrency, timezone, use24Hour } = useDisplaySettings();
 
   const { data, isLoading } = useAnnotation(annotationId!);
 
@@ -260,7 +262,7 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
                       Cost
                     </Typography>
                     <Typography variant="body1" fontWeight={600}>
-                      ${data.cost?.toFixed(6) ?? "N/A"}
+                      {data.cost != null ? formatCurrency(data.cost, defaultCurrency) : "N/A"}
                     </Typography>
                   </Box>
                 </Paper>
@@ -272,7 +274,7 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
                       Created
                     </Typography>
                     <Typography variant="body2" fontWeight={500}>
-                      {data.created_at ? formatDate(data.created_at) : "N/A"}
+                      {data.created_at ? formatDateInTimezone(data.created_at, timezone, { hour12: !use24Hour }) : "N/A"}
                     </Typography>
                   </Box>
                 </Paper>
@@ -284,7 +286,7 @@ export const Details = ({ annotationId, onClose, rerunOnMount = false, onRerunCo
                       Updated
                     </Typography>
                     <Typography variant="body2" fontWeight={500}>
-                      {data.updated_at ? formatDate(data.updated_at) : "N/A"}
+                      {data.updated_at ? formatDateInTimezone(data.updated_at, timezone, { hour12: !use24Hour }) : "N/A"}
                     </Typography>
                   </Box>
                 </Paper>

@@ -19,7 +19,8 @@ import Typography from "@mui/material/Typography";
 import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { useRagNotebook, useRagNotebookHistoryWithPolling } from "@/hooks/useRagNotebooks";
+import { EditableTitle } from "@/components/common";
+import { useRagNotebook, useRagNotebookHistoryWithPolling, useUpdateRagNotebookMutation } from "@/hooks/useRagNotebooks";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
 
 interface RagNotebookDetailModalProps {
@@ -33,6 +34,7 @@ const RagNotebookDetailModal: React.FC<RagNotebookDetailModalProps> = ({ open, n
   const { id: taskId } = useParams<{ id: string }>();
   const { notebook, isLoading: isLoadingNotebook } = useRagNotebook(notebookId ?? undefined);
   const { experiments, isLoading: isLoadingHistory } = useRagNotebookHistoryWithPolling(notebookId ?? undefined);
+  const updateMutation = useUpdateRagNotebookMutation();
 
   const handleLaunchNotebook = () => {
     if (taskId && notebookId) {
@@ -46,11 +48,17 @@ const RagNotebookDetailModal: React.FC<RagNotebookDetailModalProps> = ({ open, n
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth aria-labelledby="rag-notebook-detail-dialog-title">
       <DialogTitle id="rag-notebook-detail-dialog-title" sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          <Typography variant="h6" component="span">
-            {notebook?.name || "RAG Notebook Details"}
-          </Typography>
-        </Box>
+        <EditableTitle
+          value={notebook?.name ?? ""}
+          onSave={async (newName) => {
+            if (notebookId) {
+              await updateMutation.mutateAsync({ notebookId, request: { name: newName, description: notebook?.description } });
+            }
+          }}
+          isPending={updateMutation.isPending}
+          fallbackText="RAG Notebook Details"
+          showEditButton={!!notebook}
+        />
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <Button variant="contained" size="small" startIcon={<LaunchIcon />} onClick={handleLaunchNotebook} disabled={!notebookId}>
             Launch

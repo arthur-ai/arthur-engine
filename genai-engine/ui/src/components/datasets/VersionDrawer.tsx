@@ -2,8 +2,10 @@ import CloseIcon from "@mui/icons-material/Close";
 import { Box, Button, Chip, CircularProgress, IconButton, Stack, Typography } from "@mui/material";
 import React, { useCallback } from "react";
 
+import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useDatasetVersionHistory } from "@/hooks/useDatasetVersionHistory";
 import { DatasetVersionMetadataResponse } from "@/lib/api-client/api-client";
+import { formatDateInTimezone } from "@/utils/formatters";
 
 interface VersionDrawerProps {
   taskId: string;
@@ -28,6 +30,7 @@ export const VersionDrawer: React.FC<VersionDrawerProps> = ({
   onVersionSelect,
 }) => {
   const { versions, totalCount, isLoading, error } = useDatasetVersionHistory(datasetId);
+  const { timezone, use24Hour } = useDisplaySettings();
 
   const handleVersionClick = useCallback(
     (version: DatasetVersionMetadataResponse) => {
@@ -44,18 +47,6 @@ export const VersionDrawer: React.FC<VersionDrawerProps> = ({
     },
     [onVersionSelect]
   );
-
-  const formatDate = (timestamp: number): string => {
-    const date = new Date(timestamp);
-    return date.toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-  };
 
   return (
     <Box
@@ -171,7 +162,7 @@ export const VersionDrawer: React.FC<VersionDrawerProps> = ({
                     </Stack>
 
                     <Typography variant="caption" color="text.secondary">
-                      {formatDate(version.created_at)}
+                      {formatDateInTimezone(version.created_at, timezone, { hour12: !use24Hour })}
                     </Typography>
 
                     {isSelected && !isViewing && (

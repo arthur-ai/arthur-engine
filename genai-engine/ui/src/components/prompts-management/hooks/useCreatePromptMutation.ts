@@ -1,6 +1,7 @@
 import { useApi } from "@/hooks/useApi";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import type { CreateAgenticPromptRequest, AgenticPrompt } from "@/lib/api-client/api-client";
+import { encodePathParam } from "@/utils/url";
 
 export const useCreatePromptMutation = (taskId: string | undefined, onSuccess?: (promptData: AgenticPrompt) => void) => {
   const api = useApi();
@@ -9,7 +10,7 @@ export const useCreatePromptMutation = (taskId: string | undefined, onSuccess?: 
     mutationFn: async ({ promptName, data }) => {
       if (!api || !taskId) throw new Error("API or task not available");
 
-      const response = await api.api.saveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePost(promptName, taskId, data);
+      const response = await api.api.saveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePost(encodePathParam(promptName), taskId, data);
 
       return response.data;
     },

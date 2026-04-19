@@ -1,0 +1,2 @@
+arthur-observability-sdk[openai]
+openai
