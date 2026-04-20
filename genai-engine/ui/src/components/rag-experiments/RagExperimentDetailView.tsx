@@ -53,7 +53,7 @@ export const RagExperimentDetailView: React.FC = () => {
     try {
       await deleteExperiment.mutateAsync(experimentId);
       setIsDeleteDialogOpen(false);
-      navigate(`/tasks/${taskId}/rag-experiments`);
+      navigate(`/tasks/${taskId}/rag?tab=rag-experiments`);
     } catch {
       // Error handling is done by the mutation's error state
     }
@@ -87,7 +87,7 @@ export const RagExperimentDetailView: React.FC = () => {
         <Box className="mb-4">
           <Box
             className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 cursor-pointer w-fit"
-            onClick={() => navigate(`/tasks/${taskId}/rag-experiments`)}
+            onClick={() => navigate(`/tasks/${taskId}/rag?tab=rag-experiments`)}
           >
             <ArrowBackIcon fontSize="small" />
             <Typography variant="body2" className="font-medium">
