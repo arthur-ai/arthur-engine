@@ -15,12 +15,12 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 
 import type { GenerationConfig } from "./types";
 
-import { useApi } from "@/hooks/useApi";
-import type { DatasetVersionRowResponse, ModelProvider, ModelProviderResponse, SyntheticDataPromptStatus } from "@/lib/api-client/api-client";
+import { useApiQuery } from "@/hooks/useApiQuery";
+import type { DatasetVersionRowResponse, ModelProvider } from "@/lib/api-client/api-client";
 
 interface SyntheticDataConfigFormProps {
   columns: string[];
@@ -42,101 +42,63 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
   onCancel,
   isLoading,
 }) => {
-  const api = useApi();
-
   // Form state
   const [datasetPurpose, setDatasetPurpose] = useState("");
   const [columnDescriptions, setColumnDescriptions] = useState<ColumnDescription[]>(columns.map((col) => ({ columnName: col, description: "" })));
   const [numRows, setNumRows] = useState(10);
-  const [modelProvider, setModelProvider] = useState<ModelProvider | null>(null);
-  const [modelName, setModelName] = useState<string | null>(null);
   const [editExisting, setEditExisting] = useState(false);
 
-  // Prompt status state (placeholder vs real model)
-  const [promptStatus, setPromptStatus] = useState<SyntheticDataPromptStatus | null>(null);
+  // User's explicit model selection (only used in placeholder mode). When null,
+  // we fall back to the first enabled provider / no model until the user picks.
+  const [selectedProvider, setSelectedProvider] = useState<ModelProvider | null>(null);
+  const [selectedModelName, setSelectedModelName] = useState<string | null>(null);
 
-  // Provider/model loading state
-  const [providers, setProviders] = useState<ModelProviderResponse[]>([]);
-  const [availableModels, setAvailableModels] = useState<string[]>([]);
-  const [isLoadingProviders, setIsLoadingProviders] = useState(true);
-  const [isLoadingModels, setIsLoadingModels] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { data: promptStatus, isLoading: isLoadingPromptStatus } =
+    useApiQuery<"getSyntheticDataPromptStatusApiV2DatasetsSyntheticDataPromptStatusGet">({
+      method: "getSyntheticDataPromptStatusApiV2DatasetsSyntheticDataPromptStatusGet",
+      args: [] as const,
+      queryOptions: { staleTime: 60000, refetchOnWindowFocus: false },
+    });
 
-  // Load providers on mount
-  useEffect(() => {
-    const fetchProviders = async () => {
-      if (!api) return;
+  // When the stored prompt already has a real model, the selection UI is hidden
+  // and the form submits the stored values directly.
+  const usesStoredModel = promptStatus?.is_placeholder === false;
 
-      try {
-        setIsLoadingProviders(true);
-        const response = await api.api.getModelProvidersApiV1ModelProvidersGet();
-        const enabledProviders = (response.data.providers || []).filter((p) => p.enabled);
-        setProviders(enabledProviders);
+  const { data: providersResponse, isLoading: isLoadingProviders } = useApiQuery<"getModelProvidersApiV1ModelProvidersGet">({
+    method: "getModelProvidersApiV1ModelProvidersGet",
+    args: [] as const,
+    enabled: promptStatus !== undefined && promptStatus.is_placeholder,
+    queryOptions: { staleTime: 60000, refetchOnWindowFocus: false },
+  });
 
-        // Auto-select first enabled provider
-        if (enabledProviders.length > 0) {
-          setModelProvider(enabledProviders[0].provider);
-        }
-      } catch (err) {
-        console.error("Failed to fetch model providers:", err);
-        setError("Failed to load model providers");
-      } finally {
-        setIsLoadingProviders(false);
-      }
-    };
+  const enabledProviders = (providersResponse?.providers ?? []).filter((p) => p.enabled);
 
-    fetchProviders();
-  }, [api]);
+  // Derive the provider to use: user's choice > auto-selected first enabled > none.
+  const activeProvider: ModelProvider | null = selectedProvider ?? enabledProviders[0]?.provider ?? null;
 
-  // Fetch prompt status on mount; pre-populate model if a real model is stored
-  useEffect(() => {
-    if (!api) return;
-    api.api
-      .getSyntheticDataPromptStatusApiV2DatasetsSyntheticDataPromptStatusGet()
-      .then((res) => {
-        setPromptStatus(res.data);
-        if (!res.data.is_placeholder) {
-          setModelProvider(res.data.model_provider as ModelProvider);
-          setModelName(res.data.model_name);
-        }
-      })
-      .catch(() => {}); // best-effort; don't block the form
-  }, [api]);
+  const { data: availableModelsResponse, isLoading: isLoadingModels } =
+    useApiQuery<"getModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailableModelsGet">({
+      method: "getModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailableModelsGet",
+      // TS needs the tuple shape even when the query is disabled.
+      args: [activeProvider as ModelProvider] as const,
+      enabled: !!activeProvider && promptStatus?.is_placeholder === true,
+      queryOptions: { staleTime: 60000, refetchOnWindowFocus: false },
+    });
 
-  // Load models when provider changes
-  useEffect(() => {
-    const fetchModels = async () => {
-      if (!api || !modelProvider) {
-        setAvailableModels([]);
-        return;
-      }
+  const availableModels = availableModelsResponse?.available_models ?? [];
 
-      try {
-        setIsLoadingModels(true);
-        setModelName(null);
-        const response = await api.api.getModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailableModelsGet(modelProvider);
-        setAvailableModels(response.data.available_models || []);
-      } catch (err) {
-        console.error("Failed to fetch available models:", err);
-        setAvailableModels([]);
-      } finally {
-        setIsLoadingModels(false);
-      }
-    };
-
-    fetchModels();
-  }, [api, modelProvider]);
+  // Coerce stale model selections to null when the list changes — avoids the
+  // setState-inside-useEffect pattern the old code used.
+  const activeModelName: string | null = selectedModelName && availableModels.includes(selectedModelName) ? selectedModelName : null;
 
   const handleColumnDescriptionChange = useCallback((columnName: string, description: string) => {
     setColumnDescriptions((prev) => prev.map((col) => (col.columnName === columnName ? { ...col, description } : col)));
   }, []);
 
-  // When the stored prompt already has a real model, the selection UI is hidden
-  // and the form should use those values instead of the editable state (which can
-  // race with the provider-change effect below and end up cleared).
-  const usesStoredModel = promptStatus?.is_placeholder === false;
-  const effectiveModelProvider = usesStoredModel ? (promptStatus.model_provider as ModelProvider) : modelProvider;
-  const effectiveModelName = usesStoredModel ? promptStatus.model_name : modelName;
+  // Effective values used for submission: stored prompt values when non-placeholder,
+  // otherwise the in-form user selection (falling back to auto-select for provider).
+  const effectiveModelProvider: ModelProvider | null = usesStoredModel ? (promptStatus.model_provider as ModelProvider) : activeProvider;
+  const effectiveModelName: string | null = usesStoredModel ? promptStatus.model_name : activeModelName;
 
   const handleSubmit = useCallback(() => {
     if (!effectiveModelProvider || !effectiveModelName) return;
@@ -151,13 +113,12 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
     });
   }, [datasetPurpose, columnDescriptions, numRows, effectiveModelProvider, effectiveModelName, editExisting, onSubmit]);
 
-  const enabledProviders = providers.filter((p) => p.enabled);
   const canSubmit =
     datasetPurpose.trim() && effectiveModelProvider && effectiveModelName && columnDescriptions.every((col) => col.description.trim());
 
-  // Only block on providers loading when the user needs to pick a model (placeholder case)
-  // When promptStatus is not yet loaded, wait for it first
-  if (isLoadingProviders && promptStatus?.is_placeholder !== false) {
+  // Wait for prompt status and (when relevant) providers before rendering the form.
+  const waitingForInitialLoad = isLoadingPromptStatus || (promptStatus?.is_placeholder && isLoadingProviders);
+  if (waitingForInitialLoad) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
         <CircularProgress />
@@ -180,8 +141,6 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3, py: 1 }}>
-      {error && <Alert severity="error">{error}</Alert>}
-
       {promptStatus?.is_placeholder && (
         <Alert severity="warning">
           <AlertTitle>Prompts not configured</AlertTitle>
@@ -232,7 +191,14 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
         <Box sx={{ display: "flex", gap: 2 }}>
           <FormControl fullWidth size="small">
             <InputLabel>Model Provider</InputLabel>
-            <Select value={modelProvider || ""} label="Model Provider" onChange={(e) => setModelProvider(e.target.value as ModelProvider)}>
+            <Select
+              value={activeProvider ?? ""}
+              label="Model Provider"
+              onChange={(e) => {
+                setSelectedProvider(e.target.value as ModelProvider);
+                setSelectedModelName(null);
+              }}
+            >
               {enabledProviders.map((provider) => (
                 <MenuItem key={provider.provider} value={provider.provider}>
                   {provider.provider.charAt(0).toUpperCase() + provider.provider.slice(1)}
@@ -245,10 +211,10 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
             fullWidth
             size="small"
             options={availableModels}
-            value={modelName}
-            onChange={(_, newValue) => setModelName(newValue)}
+            value={activeModelName}
+            onChange={(_, newValue) => setSelectedModelName(newValue)}
             loading={isLoadingModels}
-            disabled={!modelProvider || isLoadingModels}
+            disabled={!activeProvider || isLoadingModels}
             renderInput={(params) => (
               <TextField
                 {...params}
