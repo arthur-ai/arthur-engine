@@ -1,4 +1,5 @@
 import os
+import shutil
 from typing import Generator
 
 import pytest
@@ -19,7 +20,7 @@ from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
 from schemas.internal_schemas import InferencePrompt, Rule, Task
 from scorer.llm_client import LLMExecutor
-from tests.clients.base_test_client import override_get_db_session
+from tests.clients.base_test_client import TEST_AUDIT_LOG_DIR, override_get_db_session
 
 
 def pytest_configure(config):
@@ -298,3 +299,10 @@ def openai_executor(
     llm_config = request.param
     llm_client = LLMExecutor(llm_config)
     yield llm_client
+
+
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_test_audit_logs():
+    yield
+    if os.path.exists(TEST_AUDIT_LOG_DIR):
+        shutil.rmtree(TEST_AUDIT_LOG_DIR)
