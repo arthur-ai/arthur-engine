@@ -39,6 +39,7 @@ from dependencies import (
     get_oauth_client,
     get_scorer_client,
 )
+from monitoring.audit_log_middleware import AuditLogMiddleware, setup_audit_logger
 from repositories.system_task_repository import SystemTaskRepository
 from routers.api_key_routes import api_keys_routes
 from routers.auth_routes import auth_routes
@@ -292,6 +293,10 @@ class TransferEncodingMiddleware(BaseHTTPMiddleware):
         call_next: RequestResponseEndpoint,
     ) -> Response:
         response = await call_next(request)
+        # RFC 7230 §3.3.1 / RFC 9112 §6.1: must not send Transfer-Encoding
+        # in 1xx or 204 responses
+        if 100 <= response.status_code < 200 or response.status_code == 204:
+            return response
         response.headers["Transfer-Encoding"] = "chunked"
         if "content-length" in response.headers:
             del response.headers["content-length"]
@@ -508,6 +513,11 @@ def get_test_app() -> FastAPI:
         app.add_middleware(TransferEncodingMiddleware)
 
     app.add_middleware(SessionMiddleware, secret_key=Config.app_secret_key())
+
+    if Config.audit_log_enabled():
+        setup_audit_logger()
+        app.add_middleware(AuditLogMiddleware)
+
     add_routers(
         app,
         [
@@ -559,6 +569,11 @@ def get_app() -> FastAPI:
         app.add_middleware(TransferEncodingMiddleware)
 
     app.add_middleware(SessionMiddleware, secret_key=Config.app_secret_key())
+
+    if Config.audit_log_enabled():
+        setup_audit_logger()
+        app.add_middleware(AuditLogMiddleware)
+
     if new_relic_enabled():
         setup_newrelic(app)
 

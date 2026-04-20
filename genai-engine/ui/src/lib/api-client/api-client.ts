@@ -928,12 +928,26 @@ export type AnnotateTraceApiV1TracesTraceIdAnnotationsPostData = AgenticAnnotati
 export type AnnotateTraceApiV1TracesTraceIdAnnotationsPostError = HTTPValidationError;
 
 /** AnthropicThinkingParam */
-export interface AnthropicThinkingParam {
+export interface AnthropicThinkingParamInput {
   /** Budget Tokens */
   budget_tokens?: number;
   /** Type */
-  type?: "enabled";
+  type?: AnthropicThinkingParamInputTypeEnum;
 }
+
+/** Type */
+export type AnthropicThinkingParamInputTypeEnum = "enabled" | "adaptive";
+
+/** AnthropicThinkingParam */
+export interface AnthropicThinkingParamOutput {
+  /** Budget Tokens */
+  budget_tokens?: number;
+  /** Type */
+  type?: AnthropicThinkingParamOutputTypeEnum;
+}
+
+/** Type */
+export type AnthropicThinkingParamOutputTypeEnum = "enabled" | "adaptive";
 
 /** ApiKeyRagAuthenticationConfigRequest */
 export interface ApiKeyRagAuthenticationConfigRequest {
@@ -4485,7 +4499,7 @@ export interface LLMBaseConfigSettings {
    */
   temperature?: number | null;
   /** Anthropic-specific thinking parameter for Claude models */
-  thinking?: AnthropicThinkingParam | null;
+  thinking?: AnthropicThinkingParamOutput | null;
   /**
    * Timeout
    * Request timeout in seconds
@@ -4560,7 +4574,7 @@ export interface LLMConfigSettings {
    */
   temperature?: number | null;
   /** Anthropic-specific thinking parameter for Claude models */
-  thinking?: AnthropicThinkingParam | null;
+  thinking?: AnthropicThinkingParamOutput | null;
   /**
    * Timeout
    * Request timeout in seconds
@@ -4782,7 +4796,7 @@ export interface LLMPromptRequestConfigSettings {
    */
   temperature?: number | null;
   /** Anthropic-specific thinking parameter for Claude models */
-  thinking?: AnthropicThinkingParam | null;
+  thinking?: AnthropicThinkingParamInput | null;
   /**
    * Timeout
    * Request timeout in seconds
@@ -4855,7 +4869,7 @@ export interface LLMRequestConfigSettings {
    */
   temperature?: number | null;
   /** Anthropic-specific thinking parameter for Claude models */
-  thinking?: AnthropicThinkingParam | null;
+  thinking?: AnthropicThinkingParamInput | null;
   /**
    * Timeout
    * Request timeout in seconds
@@ -5895,7 +5909,7 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
   trace_ids?: string[];
   /**
    * User Ids
-   * User IDs to filter on. Optional.
+   * User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.
    */
   user_ids?: string[];
 }
@@ -6283,7 +6297,7 @@ export interface ListTracesMetadataApiV1TracesGetParams {
   trace_ids?: string[];
   /**
    * User Ids
-   * User IDs to filter on. Optional.
+   * User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.
    */
   user_ids?: string[];
 }
@@ -8396,7 +8410,7 @@ export interface QuerySpansV1TracesQueryGetParams {
   trace_ids?: string[];
   /**
    * User Ids
-   * User IDs to filter on. Optional.
+   * User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.
    */
   user_ids?: string[];
 }
@@ -8734,7 +8748,7 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
   trace_ids?: string[];
   /**
    * User Ids
-   * User IDs to filter on. Optional.
+   * User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.
    */
   user_ids?: string[];
 }
@@ -13044,7 +13058,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.508
+ * @version 2.1.530
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {

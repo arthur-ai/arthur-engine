@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.526"
+        "version": "2.1.534"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -2661,10 +2661,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "User IDs to filter on. Optional.",
+                            "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.",
                             "title": "User Ids"
                         },
-                        "description": "User IDs to filter on. Optional."
+                        "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional."
                     },
                     {
                         "name": "span_name",
@@ -3416,10 +3416,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "User IDs to filter on. Optional.",
+                            "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.",
                             "title": "User Ids"
                         },
-                        "description": "User IDs to filter on. Optional."
+                        "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional."
                     },
                     {
                         "name": "span_name",
@@ -4410,10 +4410,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "User IDs to filter on. Optional.",
+                            "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.",
                             "title": "User Ids"
                         },
-                        "description": "User IDs to filter on. Optional."
+                        "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional."
                     },
                     {
                         "name": "span_name",
@@ -5164,10 +5164,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "User IDs to filter on. Optional.",
+                            "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.",
                             "title": "User Ids"
                         },
-                        "description": "User IDs to filter on. Optional."
+                        "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional."
                     },
                     {
                         "name": "span_name",
@@ -18622,11 +18622,14 @@
                 "title": "AgenticTestCaseListResponse",
                 "description": "Paginated list of agentic test cases"
             },
-            "AnthropicThinkingParam": {
+            "AnthropicThinkingParam-Input": {
                 "properties": {
                     "type": {
                         "type": "string",
-                        "const": "enabled",
+                        "enum": [
+                            "enabled",
+                            "adaptive"
+                        ],
                         "title": "Type"
                     },
                     "budget_tokens": {
@@ -18634,6 +18637,25 @@
                         "title": "Budget Tokens"
                     }
                 },
+                "type": "object",
+                "title": "AnthropicThinkingParam"
+            },
+            "AnthropicThinkingParam-Output": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "enabled",
+                            "adaptive"
+                        ],
+                        "title": "Type"
+                    },
+                    "budget_tokens": {
+                        "type": "integer",
+                        "title": "Budget Tokens"
+                    }
+                },
+                "additionalProperties": false,
                 "type": "object",
                 "title": "AnthropicThinkingParam"
             },
@@ -22646,7 +22668,7 @@
                     "thinking": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/AnthropicThinkingParam"
+                                "$ref": "#/components/schemas/AnthropicThinkingParam-Output"
                             },
                             {
                                 "type": "null"
@@ -22822,7 +22844,7 @@
                     "thinking": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/AnthropicThinkingParam"
+                                "$ref": "#/components/schemas/AnthropicThinkingParam-Output"
                             },
                             {
                                 "type": "null"
@@ -23259,7 +23281,7 @@
                     "thinking": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/AnthropicThinkingParam"
+                                "$ref": "#/components/schemas/AnthropicThinkingParam-Input"
                             },
                             {
                                 "type": "null"
@@ -23471,7 +23493,7 @@
                     "thinking": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/AnthropicThinkingParam"
+                                "$ref": "#/components/schemas/AnthropicThinkingParam-Input"
                             },
                             {
                                 "type": "null"

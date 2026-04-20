@@ -4,7 +4,7 @@ import {
   MessageRole,
   LogitBiasItem,
   StreamOptions,
-  AnthropicThinkingParam,
+  AnthropicThinkingParamInput,
   ToolChoiceEnum,
   LLMToolInput,
   ToolChoice,
@@ -136,7 +136,7 @@ type ModelParametersType = {
   logprobs?: boolean | null; //Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.
   top_logprobs?: number | null; //An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability. logprobs must be set to true if this parameter is used.
   logit_bias?: LogitBiasItem[] | null;
-  thinking?: AnthropicThinkingParam | null;
+  thinking?: AnthropicThinkingParamInput | null;
 };
 
 type PromptType = {
