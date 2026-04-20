@@ -228,9 +228,9 @@ class SyntheticDataService:
         user_prompt = build_initial_generation_prompt(num_rows=request.num_rows)
 
         # Build messages
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
+        messages: List[OpenAIMessage] = [
+            OpenAIMessage(role=MessageRole.SYSTEM, content=system_prompt),
+            OpenAIMessage(role=MessageRole.USER, content=user_prompt),
         ]
 
         # Build config kwargs
@@ -259,7 +259,7 @@ class SyntheticDataService:
         try:
             response = client.completion(
                 model=request.model_name,
-                messages=messages,
+                messages=[m.model_dump(exclude_none=True) for m in messages],
                 response_format=SyntheticDataLLMOutput,
                 **config_kwargs,
             )
@@ -377,24 +377,11 @@ class SyntheticDataService:
         )
 
         # Build messages including conversation history
-        messages = [{"role": "system", "content": system_prompt}]
-
-        # Add conversation history
-        for msg in request.conversation_history:
-            role = msg.role.value if isinstance(msg.role, MessageRole) else msg.role
-            messages.append(
-                {
-                    "role": role,
-                    "content": (
-                        msg.content
-                        if isinstance(msg.content, str)
-                        else str(msg.content)
-                    ),
-                }
-            )
-
-        # Add current user message
-        messages.append({"role": "user", "content": user_prompt})
+        messages: List[OpenAIMessage] = [
+            OpenAIMessage(role=MessageRole.SYSTEM, content=system_prompt),
+            *request.conversation_history,
+            OpenAIMessage(role=MessageRole.USER, content=user_prompt),
+        ]
 
         # Build config kwargs
         config_kwargs = self._build_config_kwargs(request.config)
@@ -423,7 +410,7 @@ class SyntheticDataService:
         try:
             response = client.completion(
                 model=request.model_name,
-                messages=messages,
+                messages=[m.model_dump(exclude_none=True) for m in messages],
                 response_format=SyntheticDataLLMOutput,
                 **config_kwargs,
             )

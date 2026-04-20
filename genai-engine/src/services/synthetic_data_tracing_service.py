@@ -118,20 +118,21 @@ class SyntheticDataTracingService:
     def set_llm_input_messages(
         self,
         span: SyntheticDataSpanBuilder,
-        messages: List[Dict[str, str]],
+        messages: List[OpenAIMessage],
     ) -> None:
         input_parts = []
         for i, msg in enumerate(messages):
-            role = msg.get("role", "")
-            content = msg.get("content", "")
             prefix = f"{SpanAttributes.LLM_INPUT_MESSAGES}.{i}"
-            span.set_attribute(f"{prefix}.{MessageAttributes.MESSAGE_ROLE}", role)
-            if content:
+            span.set_attribute(f"{prefix}.{MessageAttributes.MESSAGE_ROLE}", msg.role)
+            if msg.content:
+                content = (
+                    msg.content if isinstance(msg.content, str) else str(msg.content)
+                )
                 span.set_attribute(
                     f"{prefix}.{MessageAttributes.MESSAGE_CONTENT}",
                     content,
                 )
-                input_parts.append({"role": role, "content": content})
+                input_parts.append({"role": str(msg.role), "content": content})
         span.set_attribute(
             SpanAttributes.INPUT_VALUE,
             json.dumps({"messages": input_parts}),
@@ -194,31 +195,6 @@ class SyntheticDataTracingService:
         error: str,
     ) -> None:
         span.end_with_error(error)
-
-    @staticmethod
-    def messages_for_tracing(
-        messages: List[Dict[str, str]],
-    ) -> List[Dict[str, str]]:
-        """Coerce message dicts to plain role/content pairs for span attributes."""
-        return [
-            {
-                "role": str(m.get("role", "")),
-                "content": str(m.get("content", "")),
-            }
-            for m in messages
-        ]
-
-    @staticmethod
-    def openai_messages_to_dicts(
-        messages: List[OpenAIMessage],
-    ) -> List[Dict[str, str]]:
-        return [
-            {
-                "role": m.role if isinstance(m.role, str) else m.role.value,
-                "content": m.content if isinstance(m.content, str) else str(m.content),
-            }
-            for m in messages
-        ]
 
     def flush(self) -> None:
         if not self.spans:
