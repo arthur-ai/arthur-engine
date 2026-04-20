@@ -1,0 +1,55 @@
+name: Create Release PR
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create-release-pr:
+    environment: shared-protected-branch-secrets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Arthur GitHub Automator App Token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_ID }}
+          private-key: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ steps.generate-token.outputs.token }}
+
+      - name: Check versions and create PR
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run: |
+          set -e
+
+          git fetch origin dev main
+
+          DEV_VERSION=$(git show origin/dev:version)
+          MAIN_VERSION=$(git show origin/main:version)
+
+          echo "Dev version:  ${DEV_VERSION}"
+          echo "Main version: ${MAIN_VERSION}"
+
+          if [ "$DEV_VERSION" = "$MAIN_VERSION" ]; then
+            echo "Error: dev and main are already at the same version (${DEV_VERSION}). Nothing to release."
+            exit 1
+          fi
+
+          EXISTING_PR=$(gh pr list --base main --head dev --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING_PR" ]; then
+            echo "Error: a dev→main PR already exists: #${EXISTING_PR}"
+            echo "$(gh pr view $EXISTING_PR --json url --jq '.url')"
+            exit 1
+          fi
+
+          BODY="Production release PR. Merging this PR will trigger the production build and deployment pipeline."
+
+          gh pr create \
+            --base main \
+            --head dev \
+            --title "Increment arthur-engine version" \
+            --body "$BODY"

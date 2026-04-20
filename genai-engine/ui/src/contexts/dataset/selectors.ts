@@ -26,7 +26,7 @@ export function selectFilteredRows(state: DatasetState): DatasetVersionRowRespon
     if (!pendingAddedIds.has(row.id)) {
       return true;
     }
-    return row.data.some((col) => col.column_value?.toLowerCase().includes(lower));
+    return row.id.toLowerCase().includes(lower) || row.data.some((col) => col.column_value?.toLowerCase().includes(lower));
   });
 }
 

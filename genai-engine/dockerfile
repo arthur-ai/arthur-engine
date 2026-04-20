@@ -15,7 +15,7 @@ COPY pyproject.toml /app/
 COPY uv.lock /app/
 
 # Install Python dependencies
-RUN pip3 install uv
+RUN pip3 install uv==0.11.7
 # Set working directory
 WORKDIR /app
 

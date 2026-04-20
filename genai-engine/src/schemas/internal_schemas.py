@@ -2375,7 +2375,7 @@ class TraceQuerySchema(BaseModel):
     span_count_filters: Optional[list[FloatRangeFilter]] = None
     user_ids: Optional[list[str]] = Field(
         None,
-        description="User IDs to filter on. Optional.",
+        description="User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.",
     )
     annotation_score: Optional[int] = Field(
         None,

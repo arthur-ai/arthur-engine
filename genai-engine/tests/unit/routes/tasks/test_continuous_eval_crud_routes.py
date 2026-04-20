@@ -870,7 +870,7 @@ def test_list_continuous_evals_pagination(client: GenaiEngineTestClientBase):
         )
         assert status_code == 200
         assert len(received_continuous_evals.evals) == len(transforms) // 2
-        assert received_continuous_evals.count == len(transforms) // 2
+        assert received_continuous_evals.count == len(transforms)
         for i in range(len(received_continuous_evals.evals) // 2):
             assert received_continuous_evals.evals[i].id == continuous_evals[i].id
             assert (
@@ -901,7 +901,7 @@ def test_list_continuous_evals_pagination(client: GenaiEngineTestClientBase):
         )
         assert status_code == 200
         assert len(received_continuous_evals.evals) == 0
-        assert received_continuous_evals.count == 0
+        assert received_continuous_evals.count == len(transforms)
     finally:
         client.delete_task(agentic_task.id)
 
@@ -1370,7 +1370,7 @@ def test_list_continuous_eval_run_results_pagination(client: GenaiEngineTestClie
             len(received_run_results.annotations)
             == len(continuous_eval_annotations) // 2
         )
-        assert received_run_results.count == len(continuous_eval_annotations) // 2
+        assert received_run_results.count == len(continuous_eval_annotations)
         for i in range(len(received_run_results.annotations) // 2):
             assert received_run_results.annotations[i].id == str(
                 continuous_eval_annotations[i].id,
@@ -1397,7 +1397,7 @@ def test_list_continuous_eval_run_results_pagination(client: GenaiEngineTestClie
         )
         assert status_code == 200
         assert len(received_run_results.annotations) == 0
-        assert received_run_results.count == 0
+        assert received_run_results.count == len(continuous_eval_annotations)
     finally:
         client.delete_transform(transform.id)
         client.delete_llm_eval(task_id, llm_eval.name)

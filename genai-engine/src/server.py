@@ -97,6 +97,7 @@ from utils.utils import (
     is_agentic_ui_enabled,
     is_api_only_mode_enabled,
     is_local_environment,
+    is_transfer_encoding_middleware_enabled,
     new_relic_enabled,
     relevance_models_enabled,
 )
@@ -276,6 +277,23 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     shutdown_global_agent_polling_service()
 
 
+class TransferEncodingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: RequestResponseEndpoint,
+    ) -> Response:
+        response = await call_next(request)
+        # RFC 7230 §3.3.1 / RFC 9112 §6.1: must not send Transfer-Encoding
+        # in 1xx or 204 responses
+        if 100 <= response.status_code < 200 or response.status_code == 204:
+            return response
+        response.headers["Transfer-Encoding"] = "chunked"
+        if "content-length" in response.headers:
+            del response.headers["content-length"]
+        return response
+
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     def __get_default_csp_header_list(self, keycloak_uri: str) -> list[str]:
         headers = [
@@ -397,7 +415,7 @@ def get_base_app(
         title="Arthur GenAI Engine",
         version=version,
         openapi_tags=tags_metadata,
-        **kwargs,  # type: ignore
+        **kwargs,  # type: ignore[arg-type]
     )
     origins = [
         "http://localhost",
@@ -482,6 +500,9 @@ def get_app_with_routes() -> FastAPI:
 def get_test_app() -> FastAPI:
     app = get_base_app()
     # app.add_middleware(SecurityHeadersMiddleware)
+    if is_transfer_encoding_middleware_enabled():
+        app.add_middleware(TransferEncodingMiddleware)
+
     app.add_middleware(SessionMiddleware, secret_key=Config.app_secret_key())
     add_routers(
         app,
@@ -530,6 +551,9 @@ def get_test_app() -> FastAPI:
 def get_app() -> FastAPI:
     app = get_base_app()
     # app.add_middleware(SecurityHeadersMiddleware)
+    if is_transfer_encoding_middleware_enabled():
+        app.add_middleware(TransferEncodingMiddleware)
+
     app.add_middleware(SessionMiddleware, secret_key=Config.app_secret_key())
     if new_relic_enabled():
         setup_newrelic(app)

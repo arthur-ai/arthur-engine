@@ -11,6 +11,7 @@ mlEngine:
     # This should be the same as the genaiEngineIngressURL in the arthur-genai-engine chart
     genaiEngineInternalIngressHost: ""
     fetchRawDataEnabled: true
+    genaiEngineMaxPageSize: 1500
 
     ###################################
     ## Advanced - General
@@ -24,7 +25,7 @@ mlEngine:
       create: false
       name: ""
     containerImageName: "ml-engine"
-    containerImageVersion: "2.1.514"
+    containerImageVersion: "2.1.533"
     containerMemoryRequests: "16Gi"
     containerCPURequests: "7"
     containerMemoryLimits: "16Gi"
