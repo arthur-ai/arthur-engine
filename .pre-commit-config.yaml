@@ -64,7 +64,7 @@ repos:
         files: ^genai-engine/src/
       - id: genai-engine-pytest-check
         name: "genai-engine: pytest unit tests and coverage"
-        entry: bash -c "export GENAI_ENGINE_SECRET_STORE_KEY=changeme_secret_store_key && uv run --project genai-engine pytest genai-engine/tests/ -m \"unit_tests\" --cov=genai_engine --cov-fail-under=79"
+        entry: bash -c "export GENAI_ENGINE_SECRET_STORE_KEY=changeme_secret_store_key && uv run --directory genai-engine pytest tests/ -m \"unit_tests\" --cov=src --cov-fail-under=79"
         language: system
         types: [python]
         pass_filenames: false

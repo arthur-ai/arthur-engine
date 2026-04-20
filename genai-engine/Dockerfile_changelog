@@ -14,7 +14,7 @@ WORKDIR /app
 COPY . /app/genai-engine/
 
 # Install uv
-RUN pip3 install uv
+RUN pip3 install uv==0.11.7
 
 # Set environment variables
 ENV PYTHONPATH="$PYTHONPATH:/app/genai-engine/src"

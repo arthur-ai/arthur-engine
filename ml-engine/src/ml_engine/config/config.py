@@ -40,3 +40,10 @@ class Config:
             settings.ML_ENGINE_AGGREGATION_TIMEOUT,
             "ML_ENGINE_AGGREGATION_TIMEOUT",
         )
+
+    @staticmethod
+    def genai_engine_max_page_size() -> int:
+        return arthur_common_config.convert_to_int(
+            settings.GENAI_ENGINE_MAX_PAGE_SIZE,
+            "GENAI_ENGINE_MAX_PAGE_SIZE",
+        )

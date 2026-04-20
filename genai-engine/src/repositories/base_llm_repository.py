@@ -10,7 +10,7 @@ from arthur_common.models.enums import PaginationSortMethod
 from pydantic import BaseModel
 from sqlalchemy import asc, delete, desc, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Query, Session
 from sqlalchemy.sql import exists, or_
 
 from custom_types import QueryT
@@ -18,7 +18,6 @@ from schemas.request_schemas import LLMGetAllFilterRequest, LLMGetVersionsFilter
 from schemas.response_schemas import (
     LLMGetAllMetadataListResponse,
     LLMGetAllMetadataResponse,
-    LLMVersionResponse,
 )
 from services.prompt.chat_completion_service import ChatCompletionService
 
@@ -103,14 +102,14 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
     # Query helpers
     # ------------------------------------------------------------------
 
-    def _build_name_query(self, task_id: str, item_name: str) -> QueryT:
+    def _build_name_query(self, task_id: str, item_name: str) -> "Query[DBModelT]":
         """Base query scoped to (task_id, item_name) and optional eval_type filter."""
-        query = self.db_session.query(self.db_model).filter(
+        query: Query[DBModelT] = self.db_session.query(self.db_model).filter(
             self.db_model.task_id == task_id,
             self.db_model.name == item_name,
         )
         if self.eval_types is not None:
-            query = query.filter(self.db_model.eval_type.in_(self.eval_types))
+            query = query.filter(self.db_model.eval_type.in_(self.eval_types))  # type: ignore[attr-defined]
         return query
 
     def _get_all_tags_for_item_version(self, db_item: DBModelT) -> List[str]:
@@ -143,7 +142,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         raise NotImplementedError("Subclasses must implement this method.")
 
     @abstractmethod
-    def _to_versions_reponse_item(self, db_item: DBModelT) -> LLMVersionResponse:
+    def _to_versions_reponse_item(self, db_item: DBModelT) -> BaseModel:
         raise NotImplementedError("Subclasses must implement this method.")
 
     @abstractmethod
@@ -530,7 +529,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
             LLMGetAllMetadataListResponse - list of metadata objects with total count
         """
         # Start with aggregated query
-        base_query = self.db_session.query(
+        base_query: Any = self.db_session.query(
             self.db_model.name.label("name"),
             sa.func.count(self.db_model.version).label("versions"),
             sa.func.min(self.db_model.created_at).label("created_at"),
@@ -544,7 +543,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         # Apply eval_type filter so each repo subclass only sees its own types
         if self.eval_types is not None:
             base_query = base_query.filter(
-                self.db_model.eval_type.in_(self.eval_types),
+                self.db_model.eval_type.in_(self.eval_types),  # type: ignore[attr-defined]
             )
 
         # Apply filters BEFORE grouping
@@ -575,9 +574,6 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         llm_metadata = []
         for row in results:
             # get the deleted versions (scoped to this repo's eval_types)
-            deleted_versions_query = self._build_name_query(task_id, row.name).filter(
-                self.db_model.deleted_at.isnot(None),
-            )
             deleted_versions = (
                 self.db_session.query(self.db_model.version)
                 .filter(
@@ -585,7 +581,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
                     self.db_model.name == row.name,
                     self.db_model.deleted_at.isnot(None),
                     *(
-                        [self.db_model.eval_type.in_(self.eval_types)]
+                        [self.db_model.eval_type.in_(self.eval_types)]  # type: ignore[attr-defined]
                         if self.eval_types is not None
                         else []
                     ),
@@ -626,7 +622,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         Otherwise, start at version 1.
         """
         # Check for existing versions of this item (scoped to this repo's eval_types)
-        version_query = self.db_session.query(
+        version_query: Any = self.db_session.query(
             sa.func.max(self.db_model.version),
         ).filter(
             self.db_model.task_id == task_id,
@@ -634,7 +630,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         )
         if self.eval_types is not None:
             version_query = version_query.filter(
-                self.db_model.eval_type.in_(self.eval_types),
+                self.db_model.eval_type.in_(self.eval_types),  # type: ignore[attr-defined]
             )
         latest_version = version_query.scalar()
 

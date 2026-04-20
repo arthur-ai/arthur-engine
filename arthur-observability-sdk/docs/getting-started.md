@@ -48,7 +48,7 @@ arthur = Arthur(
 | `task_id` | `str \| None` | `None` | Arthur task UUID. Used for prompt fetching. |
 | `task_name` | `str \| None` | `None` | Task name — resolved lazily to a UUID via the API on the first prompt call. |
 | `service_name` | `str \| None` | `None` | OTel `service.name` resource attribute. Defaults to `task_name` or `task_id` when omitted. |
-| `resource_attributes` | `dict \| None` | `None` | Additional OTel resource attributes merged into the `TracerProvider`. |
+| `resource_attributes` | `dict \| None` | `None` | Additional OTel resource attributes merged into the `TracerProvider`. If `task_id` is provided and `arthur.task` is not explicitly set, it defaults to `task_id`. |
 | `enable_telemetry` | `bool` | `True` | When `False`, no `TracerProvider` is created (useful for prompt-only usage). |
 | `otlp_endpoint` | `str \| None` | `None` | OTLP HTTP traces endpoint. Defaults to `{base_url}/api/v1/traces`. |
 

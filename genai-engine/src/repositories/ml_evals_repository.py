@@ -116,8 +116,8 @@ class MLEvalsRepository(
         self,
         task_id: str,
         eval_name: str,
-        pagination_parameters,
-        filter_request=None,
+        pagination_parameters: Any,
+        filter_request: Any = None,
     ) -> MLEvalsVersionListResponse:
         return cast(
             MLEvalsVersionListResponse,

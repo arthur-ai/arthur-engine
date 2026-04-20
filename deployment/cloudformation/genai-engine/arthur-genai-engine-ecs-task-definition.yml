@@ -115,6 +115,13 @@ Parameters:
       - 'enabled'
       - 'disabled'
     Default: 'enabled'
+  TransferEncodingMiddlewareEnabled:
+    Type: String
+    Description: 'Set to enabled to add Transfer-Encoding: chunked header and strip Content-Length from all responses'
+    AllowedValues:
+      - 'enabled'
+      - 'disabled'
+    Default: 'enabled'
   GenaiEngineSensitiveDataCheckMaxTokenLimit:
     Type: Number
     Description: 'Max number of tokens GenAI Engine can process against LLM for sensitive data checks'
@@ -164,7 +171,7 @@ Parameters:
     AllowedValues:
       - 'Azure'
       - 'OpenAI'
-    Default: "OpenAI"
+    Default: "Azure"
     Description: 'Provider of OpenAI LLMs'
   GenaiEngineCacheTaskRulesCacheEnabled:
     Type: String
@@ -246,6 +253,8 @@ Resources:
               Value: !Ref GenaiEnginePostgresSSLCertDownloadURL
             - Name: 'GENAI_ENGINE_API_ONLY_MODE_ENABLED'
               Value: !Ref GenaiEngineAPIOnlyModeEnabled
+            - Name: 'TRANSFER_ENCODING_MIDDLEWARE_ENABLED'
+              Value: !Ref TransferEncodingMiddlewareEnabled
             - Name: 'GENAI_ENGINE_SENSITIVE_DATA_CHECK_MAX_TOKEN_LIMIT'
               Value: !Ref GenaiEngineSensitiveDataCheckMaxTokenLimit
             - Name: 'GENAI_ENGINE_HALLUCINATION_CHECK_MAX_TOKEN_LIMIT'

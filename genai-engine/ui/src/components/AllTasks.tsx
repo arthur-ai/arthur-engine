@@ -1,10 +1,6 @@
 import AddIcon from "@mui/icons-material/Add";
-import AppsOutlined from "@mui/icons-material/AppsOutlined";
 import CloseIcon from "@mui/icons-material/Close";
 import InventoryIcon from "@mui/icons-material/Inventory";
-import KeyOutlined from "@mui/icons-material/KeyOutlined";
-import LogoutOutlined from "@mui/icons-material/LogoutOutlined";
-import SettingsIcon from "@mui/icons-material/Settings";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
 import SortIcon from "@mui/icons-material/Sort";
 import VisibilityIcon from "@mui/icons-material/Visibility";
@@ -18,60 +14,49 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
-  Divider,
   FormControl,
   IconButton,
-  ListItemIcon,
-  ListItemText,
-  Menu,
   MenuItem,
   Select,
   Stack,
   Tooltip,
   Typography,
 } from "@mui/material";
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { ArthurLogo } from "./common/ArthurLogo";
-import { ThemeToggle } from "./common/ThemeToggle";
 import { CreateTaskForm } from "./CreateTaskForm";
 import { TaskCard } from "./TaskCard";
 
-import { UserSettingsModal } from "@/components/UserSettingsModal";
-import { useAuth } from "@/contexts/AuthContext";
-import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { SettingsMenuButton } from "@/components/settings/SettingsMenuButton";
 import { useApi } from "@/hooks/useApi";
-import { useAvailableModels, useModelProviders } from "@/hooks/useModelProviders";
 import { TaskResponse } from "@/lib/api";
-import type { ModelProvider } from "@/lib/api-client/api-client";
 import { type InactiveDays, type SortBy, useTaskListStore } from "@/stores/task-list.store";
+
+const PAGE_SIZE = 50;
 
 export const AllTasks: React.FC = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
   const api = useApi();
   const [tasks, setTasks] = useState<TaskResponse[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [archivedTasks, setArchivedTasks] = useState<TaskResponse[]>([]);
   const [isLoadingArchived, setIsLoadingArchived] = useState(false);
   const [archivedError, setArchivedError] = useState<string | null>(null);
   const [archivedLoaded, setArchivedLoaded] = useState(false);
   const [archivedDialogOpen, setArchivedDialogOpen] = useState(false);
-  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
-  const isMenuOpen = Boolean(menuAnchorEl);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [userSettingsModalOpen, setUserSettingsModalOpen] = useState(false);
   const { hideSystemTasks, sortBy, inactiveDays, setHideSystemTasks, setSortBy, setInactiveDays } = useTaskListStore();
-  const { timezone, setTimezone, use24Hour, setUse24Hour, serverChatbotEnabled, enableChatbot, setEnableChatbot } = useDisplaySettings();
-  const { providers: enabledProviders } = useModelProviders();
-  const { availableModels: availableModelsMap } = useAvailableModels(enabledProviders);
-  const [chatbotModelProvider, setChatbotModelProvider] = useState<ModelProvider | "">("");
-  const [chatbotModelName, setChatbotModelName] = useState<string>("");
-  const [blacklistEndpoints, setBlacklistEndpoints] = useState<string[]>([]);
-  const [availableEndpoints, setAvailableEndpoints] = useState<string[]>([]);
-  const [isSavingSettings, setIsSavingSettings] = useState(false);
+
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const tasksRef = useRef<TaskResponse[]>(tasks);
+  tasksRef.current = tasks;
+  const hasMore = tasks.length < totalCount;
 
   const filteredTasks = useMemo(() => {
     let result = [...tasks];
@@ -108,31 +93,50 @@ export const AllTasks: React.FC = () => {
     return result;
   }, [archivedTasks, hideSystemTasks, sortBy]);
 
-  const fetchActiveTasks = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
+  const fetchActiveTasks = useCallback(
+    async (page = 0) => {
+      try {
+        if (page === 0) {
+          setIsLoading(true);
+        } else {
+          setIsFetchingMore(true);
+        }
+        setError(null);
 
-      if (!api) {
-        throw new Error("API client not available");
+        if (!api) {
+          throw new Error("API client not available");
+        }
+
+        const response = await api.api.searchTasksApiV2TasksSearchPost(
+          {
+            page_size: PAGE_SIZE,
+            page,
+          },
+          {}
+        );
+
+        const incoming = response.data.tasks || [];
+        const count = response.data.count ?? 0;
+
+        if (page > 0 && incoming.length === 0) {
+          // API returned empty despite count > 0 (tasks deleted mid-pagination).
+          // Clamp totalCount to the number actually loaded so hasMore becomes false.
+          setTotalCount(tasksRef.current.length);
+        } else {
+          setTotalCount(count);
+          setTasks((prev) => (page === 0 ? incoming : [...prev, ...incoming]));
+        }
+        setCurrentPage(page);
+      } catch (err) {
+        console.error("Failed to fetch tasks:", err);
+        setError("Failed to load tasks. Please check your authentication.");
+      } finally {
+        setIsLoading(false);
+        setIsFetchingMore(false);
       }
-
-      const response = await api.api.searchTasksApiV2TasksSearchPost(
-        {
-          page_size: 50,
-          page: 0,
-        },
-        {}
-      );
-
-      setTasks(response.data.tasks || []);
-    } catch (err) {
-      console.error("Failed to fetch tasks:", err);
-      setError("Failed to load tasks. Please check your authentication.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [api]);
+    },
+    [api]
+  );
 
   const fetchArchivedTasks = useCallback(async () => {
     try {
@@ -145,7 +149,7 @@ export const AllTasks: React.FC = () => {
 
       const response = await api.api.searchTasksApiV2TasksSearchPost(
         {
-          page_size: 50,
+          page_size: 500,
           page: 0,
         },
         {
@@ -164,7 +168,7 @@ export const AllTasks: React.FC = () => {
   }, [api]);
 
   const handleArchiveToggle = useCallback(async () => {
-    await fetchActiveTasks();
+    await fetchActiveTasks(0);
     if (archivedDialogOpen || archivedLoaded) {
       await fetchArchivedTasks();
     }
@@ -172,26 +176,9 @@ export const AllTasks: React.FC = () => {
 
   useEffect(() => {
     if (api) {
-      fetchActiveTasks();
+      fetchActiveTasks(0);
     }
   }, [api, fetchActiveTasks]);
-
-  // Fetch chatbot config when settings modal opens
-  useEffect(() => {
-    if (api && userSettingsModalOpen) {
-      api.api
-        .getChatbotConfigApiV1ChatbotConfigGet()
-        .then((res) => {
-          setChatbotModelProvider(res.data.model_provider);
-          setChatbotModelName(res.data.model_name);
-          setBlacklistEndpoints(res.data.blacklist_endpoints ?? []);
-          setAvailableEndpoints(res.data.available_endpoints ?? []);
-        })
-        .catch(() => {
-          // Chatbot config not available (e.g. feature disabled)
-        });
-    }
-  }, [api, userSettingsModalOpen]);
 
   // Lazy-load archived tasks the first time the dialog is opened
   useEffect(() => {
@@ -200,16 +187,26 @@ export const AllTasks: React.FC = () => {
     }
   }, [api, archivedDialogOpen, archivedLoaded, fetchArchivedTasks]);
 
-  const handleMenuClose = () => {
-    setMenuAnchorEl(null);
-  };
+  // Infinite scroll: observe the sentinel at the bottom of the task grid
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
 
-  const handleLogout = () => {
-    logout();
-  };
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isFetchingMore && !isLoading && !error) {
+          fetchActiveTasks(currentPage + 1);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, isFetchingMore, isLoading, error, currentPage, fetchActiveTasks]);
 
   const handleTaskCreated = async (taskId: string) => {
-    await fetchActiveTasks();
+    await fetchActiveTasks(0);
     navigate(`/tasks/${taskId}/overview`);
   };
 
@@ -276,73 +273,7 @@ export const AllTasks: React.FC = () => {
                 <ArthurLogo className="h-20 -ml-5 text-black dark:text-white" />
               </div>
               <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                <IconButton
-                  aria-label="settings"
-                  onClick={(e) => setMenuAnchorEl(e.currentTarget)}
-                  sx={{
-                    bgcolor: "background.paper",
-                    border: 1,
-                    borderColor: "divider",
-                    borderRadius: "4px",
-                    padding: "8px",
-                    width: "40px",
-                    height: "40px",
-                  }}
-                >
-                  <SettingsIcon />
-                </IconButton>
-                <Menu
-                  anchorEl={menuAnchorEl}
-                  open={isMenuOpen}
-                  onClose={handleMenuClose}
-                  anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-                  transformOrigin={{ vertical: "top", horizontal: "right" }}
-                >
-                  <MenuItem
-                    onClick={() => {
-                      handleMenuClose();
-                      setUserSettingsModalOpen(true);
-                    }}
-                  >
-                    <ListItemIcon>
-                      <SettingsIcon />
-                    </ListItemIcon>
-                    <ListItemText>User settings</ListItemText>
-                  </MenuItem>
-                  <MenuItem
-                    onClick={() => {
-                      handleMenuClose();
-                      navigate("/settings/model-providers");
-                    }}
-                  >
-                    <ListItemIcon>
-                      <AppsOutlined />
-                    </ListItemIcon>
-                    <ListItemText>Model Providers</ListItemText>
-                  </MenuItem>
-                  <MenuItem
-                    onClick={() => {
-                      handleMenuClose();
-                      navigate("/settings/api-keys");
-                    }}
-                  >
-                    <ListItemIcon>
-                      <KeyOutlined />
-                    </ListItemIcon>
-                    <ListItemText>API Keys</ListItemText>
-                  </MenuItem>
-                  <Divider />
-                  <Box sx={{ px: 2, py: 1 }}>
-                    <ThemeToggle />
-                  </Box>
-                  <Divider />
-                  <MenuItem onClick={handleLogout}>
-                    <ListItemIcon>
-                      <LogoutOutlined />
-                    </ListItemIcon>
-                    <ListItemText>Logout</ListItemText>
-                  </MenuItem>
-                </Menu>
+                <SettingsMenuButton />
               </Box>
             </div>
           </div>
@@ -372,10 +303,10 @@ export const AllTasks: React.FC = () => {
                 {/* Title + CTA */}
                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
                   <Box>
-                    <Typography variant="h6">Tasks ({tasks.length})</Typography>
+                    <Typography variant="h6">Tasks ({totalCount})</Typography>
                     <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
                       {filteredTasks.length < tasks.length
-                        ? `Showing ${filteredTasks.length} of ${tasks.length} tasks`
+                        ? `Showing ${filteredTasks.length} of ${tasks.length} loaded`
                         : "Click on any task to open the toolkit"}
                     </Typography>
                   </Box>
@@ -423,6 +354,23 @@ export const AllTasks: React.FC = () => {
                     {filteredTasks.map((task) => (
                       <TaskCard key={task.id} task={task} onArchiveToggle={handleArchiveToggle} />
                     ))}
+                  </Box>
+                )}
+
+                {/* Infinite scroll sentinel */}
+                <Box ref={sentinelRef} sx={{ height: 1 }} />
+
+                {/* Load-more feedback */}
+                {isFetchingMore && (
+                  <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+                    <CircularProgress size={24} />
+                  </Box>
+                )}
+                {!hasMore && tasks.length > 0 && (
+                  <Box sx={{ textAlign: "center", py: 2 }}>
+                    <Typography variant="caption" color="text.disabled">
+                      All {totalCount} tasks loaded
+                    </Typography>
                   </Box>
                 )}
               </>
@@ -484,53 +432,6 @@ export const AllTasks: React.FC = () => {
             handleTaskCreated(taskId);
           }}
           onCancel={() => setShowCreateForm(false)}
-        />
-
-        {/* User Settings Modal */}
-        <UserSettingsModal
-          open={userSettingsModalOpen}
-          onClose={() => setUserSettingsModalOpen(false)}
-          initialSettings={{ timezone, use24Hour, enableChatbot, chatbotModelProvider, chatbotModelName, blacklistEndpoints }}
-          chatbotEnabled={serverChatbotEnabled}
-          enabledProviders={enabledProviders}
-          availableModelsMap={availableModelsMap}
-          availableEndpoints={availableEndpoints}
-          isSaving={isSavingSettings}
-          onSave={async (settings) => {
-            setTimezone(settings.timezone ?? timezone);
-            if (settings.use24Hour !== undefined) setUse24Hour(settings.use24Hour);
-            if (settings.enableChatbot !== undefined) setEnableChatbot(settings.enableChatbot);
-
-            const providerChanged = settings.chatbotModelProvider && settings.chatbotModelProvider !== chatbotModelProvider;
-            const modelChanged = settings.chatbotModelName && settings.chatbotModelName !== chatbotModelName;
-            const blacklistChanged = JSON.stringify(settings.blacklistEndpoints ?? []) !== JSON.stringify(blacklistEndpoints);
-
-            if (api && (providerChanged || modelChanged || blacklistChanged)) {
-              const prevProvider = chatbotModelProvider;
-              const prevModel = chatbotModelName;
-              const prevBlacklist = blacklistEndpoints;
-              if (settings.chatbotModelProvider) setChatbotModelProvider(settings.chatbotModelProvider as ModelProvider);
-              if (settings.chatbotModelName) setChatbotModelName(settings.chatbotModelName);
-              if (settings.blacklistEndpoints) setBlacklistEndpoints(settings.blacklistEndpoints);
-              setIsSavingSettings(true);
-              try {
-                await api.api.updateChatbotConfigApiV1ChatbotConfigPut({
-                  model_provider: (settings.chatbotModelProvider || chatbotModelProvider) as ModelProvider,
-                  model_name: settings.chatbotModelName || chatbotModelName,
-                  blacklist_endpoints: settings.blacklistEndpoints,
-                });
-              } catch (err) {
-                console.error("Failed to update chatbot config:", err);
-                setChatbotModelProvider(prevProvider);
-                setChatbotModelName(prevModel);
-                setBlacklistEndpoints(prevBlacklist);
-              } finally {
-                setIsSavingSettings(false);
-              }
-            }
-
-            setUserSettingsModalOpen(false);
-          }}
         />
       </div>
     </>

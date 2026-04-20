@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Any, Union
 
 import jinja2
 from arthur_common.models.common_schemas import PaginationParameters
@@ -58,14 +58,17 @@ eval_routes = APIRouter(
 # ---------------------------------------------------------------------------
 
 
-def _get_repo(eval_type: str, db_session: Session):
+def _get_repo(
+    eval_type: str,
+    db_session: Session,
+) -> Union[MLEvalsRepository, LLMEvalsRepository]:
     """Return the right repository for the given eval_type."""
     if eval_type in ML_EVAL_TYPES:
         return MLEvalsRepository(db_session)
     return LLMEvalsRepository(db_session)
 
 
-def _to_eval_response(obj) -> EvalResponse:
+def _to_eval_response(obj: Any) -> EvalResponse:
     """Convert a LLMEval or MLEval domain object into a unified EvalResponse."""
     return EvalResponse(
         name=obj.name,
@@ -182,22 +185,23 @@ def save_eval(
     task: Task = Depends(get_validated_task),
 ) -> EvalResponse:
     try:
+        result: Any
         if eval_config.eval_type == "llm_as_a_judge":
-            repo = LLMEvalsRepository(db_session)
+            llm_repo = LLMEvalsRepository(db_session)
             create_req = CreateEvalRequest(
-                model_name=eval_config.model_name,
+                model_name=eval_config.model_name or "",
                 model_provider=ModelProvider(eval_config.model_provider),
-                instructions=eval_config.instructions,
+                instructions=eval_config.instructions or "",
                 config=eval_config.config,
             )
-            result = repo.save_llm_item(task.id, eval_name, create_req)
+            result = llm_repo.save_llm_item(task.id, eval_name, create_req)
         else:
-            repo = MLEvalsRepository(db_session)
-            create_req = CreateMLEvalRequest(
+            ml_repo = MLEvalsRepository(db_session)
+            ml_create_req = CreateMLEvalRequest(
                 eval_type=eval_config.eval_type,
                 config=eval_config.config,
             )
-            result = repo.save_ml_eval(task.id, eval_name, create_req)
+            result = ml_repo.save_ml_eval(task.id, eval_name, ml_create_req)
         return _to_eval_response(result)
     except jinja2.exceptions.TemplateSyntaxError as e:
         raise HTTPException(
@@ -321,7 +325,7 @@ def get_eval_versions(
 ) -> EvalVersionsListResponse:
     try:
         repo = _get_repo(eval_type, db_session)
-        raw = repo.get_llm_item_versions(
+        raw: Any = repo.get_llm_item_versions(
             task.id,
             eval_name,
             pagination_parameters,

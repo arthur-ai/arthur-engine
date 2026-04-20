@@ -56,9 +56,9 @@ class LLMEvalsRepository(
 
         return LLMEval(
             name=db_eval.name,
-            model_name=db_eval.model_name,
+            model_name=db_eval.model_name or "",
             model_provider=ModelProvider(db_eval.model_provider),
-            instructions=db_eval.instructions,
+            instructions=db_eval.instructions or "",
             variables=db_eval.variables,
             tags=tags,
             config=db_eval.config if db_eval.config else None,
@@ -79,7 +79,7 @@ class LLMEvalsRepository(
             created_at=db_item.created_at,
             deleted_at=db_item.deleted_at,
             model_provider=ModelProvider(db_item.model_provider),
-            model_name=db_item.model_name,
+            model_name=db_item.model_name or "",
             tags=tags,
         )
 

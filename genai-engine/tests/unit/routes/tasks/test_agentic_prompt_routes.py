@@ -516,7 +516,7 @@ def test_agentic_prompt_routes_with_malformed_data(client: GenaiEngineTestClient
 
 
 @pytest.mark.unit_tests
-@patch("services.prompt.chat_completion_service.completion_cost")
+@patch("clients.llm.llm_client.completion_cost")
 @patch(
     "services.prompt.chat_completion_service.ChatCompletionService.stream_chat_completion",
 )

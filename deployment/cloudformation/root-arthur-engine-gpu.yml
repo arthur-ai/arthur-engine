@@ -273,7 +273,7 @@ Parameters:
     AllowedValues:
       - 'Azure'
       - 'OpenAI'
-    Default: "OpenAI"
+    Default: "Azure"
     Description: 'Provider of OpenAI LLMs'
   GenaiEngineECSClusterGPUInstanceScheduledScaleInCron:
     Type: String
@@ -464,6 +464,10 @@ Parameters:
     Type: Number
     Default: 4096
     Description: 'Memory value for AWS Fargate per ML Engine ECS task'
+  GenaiEngineMaxPageSize:
+    Type: Number
+    Default: 1500
+    Description: 'Max page size for fetching data from the GenAI Engine'
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -587,6 +591,7 @@ Metadata:
           - MLEngineBYOAppSecurityGroupIDs
           - MLEngineFargateTaskCPUValue
           - MLEngineFargateTaskMemoryValue
+          - GenaiEngineMaxPageSize
       - Label:
           default: 'Advanced ML Engine (IAM)'
         Parameters:
@@ -802,6 +807,8 @@ Metadata:
         default: 'ML Engine ECS CPU Value. Must be compatible with ECS Memory Value'
       MLEngineFargateTaskMemoryValue:
         default: 'ML Engine ECS Memory Value. Must be compatible with ECS CPU Value'
+      GenaiEngineMaxPageSize:
+        default: 'GenAI Engine Max Page Size'
 Conditions:
   ContainerRepositoryCredentialRequired:
     !Not [ !Equals [ !Ref ContainerRepositoryUsername, '' ] ]
@@ -1009,6 +1016,7 @@ Resources:
         GenaiEngineInternalIngressHost: !Ref GenaiEngineIngressURL
         MLEngineFargateTaskCPUValue: !Ref MLEngineFargateTaskCPUValue
         MLEngineFargateTaskMemoryValue: !Ref MLEngineFargateTaskMemoryValue
+        GenaiEngineMaxPageSize: !Ref GenaiEngineMaxPageSize
       TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/ml-engine/arthur-ml-engine-ecs-task-definition.yml"
   GenaiEngineLBStack:
     Type: AWS::CloudFormation::Stack

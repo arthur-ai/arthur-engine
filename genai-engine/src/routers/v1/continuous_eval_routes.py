@@ -17,6 +17,9 @@ from dependencies import (
     get_db_session,
     get_validated_task,
 )
+from repositories.continuous_eval_test_run_repository import (
+    ContinuousEvalTestRunRepository,
+)
 from repositories.continuous_evals_repository import ContinuousEvalsRepository
 from repositories.llm_evals_repository import LLMEvalsRepository
 from repositories.trace_transform_repository import TraceTransformRepository
@@ -28,11 +31,14 @@ from schemas.request_schemas import (
     ContinuousEvalCreateRequest,
     ContinuousEvalListFilterRequest,
     ContinuousEvalRunResultsListFilterRequest,
+    CreateTestRunRequest,
     UpdateContinuousEvalRequest,
 )
 from schemas.response_schemas import (
     AgenticAnnotationAnalyticsResponse,
     ContinuousEvalRerunResponse,
+    ContinuousEvalTestRunResponse,
+    ListContinuousEvalTestRunsResponse,
 )
 from utils.url_encoding import decode_path_param
 from utils.users import permission_checker
@@ -98,7 +104,7 @@ def list_continuous_evals(
 ) -> ListContinuousEvalsResponse:
     try:
         continuous_eval_repo = ContinuousEvalsRepository(db_session)
-        continuous_evals = continuous_eval_repo.list_continuous_evals(
+        continuous_evals, total_count = continuous_eval_repo.list_continuous_evals(
             task.id,
             pagination_parameters,
             filter_request,
@@ -108,7 +114,7 @@ def list_continuous_evals(
                 continuous_eval.to_response_model()
                 for continuous_eval in continuous_evals
             ],
-            count=len(continuous_evals),
+            count=total_count,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -138,16 +144,18 @@ def list_continuous_eval_run_results(
 ) -> ListAgenticAnnotationsResponse:
     try:
         continuous_eval_repo = ContinuousEvalsRepository(db_session)
-        agentic_annotations = continuous_eval_repo.list_continuous_eval_run_results(
-            task.id,
-            pagination_parameters,
-            filter_request,
+        agentic_annotations, total_count = (
+            continuous_eval_repo.list_continuous_eval_run_results(
+                task.id,
+                pagination_parameters,
+                filter_request,
+            )
         )
         return ListAgenticAnnotationsResponse(
             annotations=[
                 annotation.to_response_model() for annotation in agentic_annotations
             ],
-            count=len(agentic_annotations),
+            count=total_count,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -249,8 +257,8 @@ def create_continuous_eval(
         llm_eval_repo = LLMEvalsRepository(db_session)
         llm_eval_version = (
             str(create_request.llm_eval_version)
-            if isinstance(create_request.llm_eval_version, int)
-            else create_request.llm_eval_version
+            if create_request.llm_eval_version is not None
+            else "latest"
         )
         llm_eval = llm_eval_repo.get_llm_item(
             task.id,
@@ -507,6 +515,225 @@ def get_daily_annotation_analytics(
             stats=stats,
             count=len(stats),
         )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# Test Run Endpoints
+# ============================================================================
+
+
+@continuous_eval_routes.post(
+    "/continuous_evals/{eval_id}/test_runs",
+    summary="Create and start a test run for a continuous eval",
+    description="Run a continuous eval against specific traces as a test. Results are stored separately from production annotations.",
+    response_model=ContinuousEvalTestRunResponse,
+    response_model_exclude_none=True,
+    tags=["Continuous Eval Test Runs"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+def create_test_run(
+    create_request: CreateTestRunRequest,
+    eval_id: UUID = Path(
+        ...,
+        description="The id of the continuous eval to test.",
+        title="Continuous Eval ID",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> ContinuousEvalTestRunResponse:
+    try:
+        # Look up the continuous eval to get its task_id
+        continuous_eval_repo = ContinuousEvalsRepository(db_session)
+        continuous_eval = continuous_eval_repo.get_continuous_eval_by_id(eval_id)
+
+        test_run_repo = ContinuousEvalTestRunRepository(db_session)
+        test_run = test_run_repo.create_test_run(
+            continuous_eval_id=eval_id,
+            task_id=continuous_eval.task_id,
+            trace_ids=create_request.trace_ids,
+        )
+        return ContinuousEvalTestRunResponse(
+            id=test_run.id,
+            continuous_eval_id=test_run.continuous_eval_id,
+            task_id=test_run.task_id,
+            status=test_run.status,
+            total_count=test_run.total_count,
+            completed_count=test_run.completed_count,
+            passed_count=test_run.passed_count,
+            failed_count=test_run.failed_count,
+            error_count=test_run.error_count,
+            skipped_count=test_run.skipped_count,
+            created_at=test_run.created_at,
+            updated_at=test_run.updated_at,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@continuous_eval_routes.get(
+    "/continuous_evals/{eval_id}/test_runs",
+    summary="List test runs for a continuous eval",
+    description="Get all test runs for a specific continuous eval.",
+    response_model=ListContinuousEvalTestRunsResponse,
+    response_model_exclude_none=True,
+    tags=["Continuous Eval Test Runs"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def list_test_runs(
+    pagination_parameters: Annotated[
+        PaginationParameters,
+        Depends(common_pagination_parameters),
+    ],
+    eval_id: UUID = Path(
+        ...,
+        description="The id of the continuous eval.",
+        title="Continuous Eval ID",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> ListContinuousEvalTestRunsResponse:
+    try:
+        test_run_repo = ContinuousEvalTestRunRepository(db_session)
+        test_runs = test_run_repo.list_test_runs(
+            continuous_eval_id=eval_id,
+            pagination_parameters=pagination_parameters,
+        )
+        count = test_run_repo.count_test_runs(eval_id)
+        return ListContinuousEvalTestRunsResponse(
+            test_runs=[
+                ContinuousEvalTestRunResponse(
+                    id=tr.id,
+                    continuous_eval_id=tr.continuous_eval_id,
+                    task_id=tr.task_id,
+                    status=tr.status,
+                    total_count=tr.total_count,
+                    completed_count=tr.completed_count,
+                    passed_count=tr.passed_count,
+                    failed_count=tr.failed_count,
+                    error_count=tr.error_count,
+                    skipped_count=tr.skipped_count,
+                    created_at=tr.created_at,
+                    updated_at=tr.updated_at,
+                )
+                for tr in test_runs
+            ],
+            count=count,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@continuous_eval_routes.get(
+    "/continuous_evals/test_runs/{test_run_id}",
+    summary="Get a test run by id",
+    description="Get the status and counters for a specific test run. Use this endpoint for polling progress.",
+    response_model=ContinuousEvalTestRunResponse,
+    response_model_exclude_none=True,
+    tags=["Continuous Eval Test Runs"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def get_test_run(
+    test_run_id: UUID = Path(
+        ...,
+        description="The id of the test run.",
+        title="Test Run ID",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> ContinuousEvalTestRunResponse:
+    try:
+        test_run_repo = ContinuousEvalTestRunRepository(db_session)
+        test_run = test_run_repo.get_test_run(test_run_id)
+        return ContinuousEvalTestRunResponse(
+            id=test_run.id,
+            continuous_eval_id=test_run.continuous_eval_id,
+            task_id=test_run.task_id,
+            status=test_run.status,
+            total_count=test_run.total_count,
+            completed_count=test_run.completed_count,
+            passed_count=test_run.passed_count,
+            failed_count=test_run.failed_count,
+            error_count=test_run.error_count,
+            skipped_count=test_run.skipped_count,
+            created_at=test_run.created_at,
+            updated_at=test_run.updated_at,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@continuous_eval_routes.get(
+    "/continuous_evals/test_runs/{test_run_id}/results",
+    summary="Get individual test case results for a test run",
+    description="Get the per-trace results of a test run, including scores, reasons, and input variables.",
+    response_model=ListAgenticAnnotationsResponse,
+    response_model_exclude_none=True,
+    tags=["Continuous Eval Test Runs"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def get_test_run_results(
+    pagination_parameters: Annotated[
+        PaginationParameters,
+        Depends(common_pagination_parameters),
+    ],
+    test_run_id: UUID = Path(
+        ...,
+        description="The id of the test run.",
+        title="Test Run ID",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> ListAgenticAnnotationsResponse:
+    try:
+        test_run_repo = ContinuousEvalTestRunRepository(db_session)
+        annotations = test_run_repo.get_test_run_results(
+            test_run_id=test_run_id,
+            pagination_parameters=pagination_parameters,
+        )
+        count = test_run_repo.count_test_run_results(test_run_id)
+        return ListAgenticAnnotationsResponse(
+            annotations=[annotation.to_response_model() for annotation in annotations],
+            count=count,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@continuous_eval_routes.delete(
+    "/continuous_evals/test_runs/{test_run_id}",
+    summary="Delete a test run",
+    description="Delete a test run and all its associated annotation results.",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        status.HTTP_204_NO_CONTENT: {"description": "Test run deleted."},
+    },
+    tags=["Continuous Eval Test Runs"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+def delete_test_run(
+    test_run_id: UUID = Path(
+        ...,
+        description="The id of the test run to delete.",
+        title="Test Run ID",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> None:
+    try:
+        test_run_repo = ContinuousEvalTestRunRepository(db_session)
+        test_run_repo.delete_test_run(test_run_id)
     except HTTPException:
         raise
     except Exception as e:
