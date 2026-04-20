@@ -1,4 +1,4 @@
-from typing import Annotated, List, Optional
+from typing import Annotated, List, Optional, cast
 from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
@@ -7,15 +7,13 @@ from sqlalchemy.orm import Session
 from starlette.responses import Response
 from starlette.status import HTTP_204_NO_CONTENT
 
-from db_models.agentic_prompt_models import (
-    DatabaseAgenticPrompt,
-    DatabaseAgenticPromptVersionTag,
-)
 from dependencies import get_db_session, get_validated_task
+from repositories.agentic_prompts_repository import AgenticPromptRepository
 from repositories.datasets_repository import DatasetRepository
 from repositories.model_provider_repository import ModelProviderRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
+from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Dataset, Task, User
 from schemas.request_schemas import (
@@ -327,42 +325,38 @@ def get_synthetic_data_prompt_status(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> SyntheticDataPromptStatus:
-    tag_row = (
-        db_session.query(DatabaseAgenticPromptVersionTag)
-        .filter(
-            DatabaseAgenticPromptVersionTag.task_id == SYNTHETIC_DATASET_TASK_ID,
-            DatabaseAgenticPromptVersionTag.name == SYNTHETIC_DATA_SYSTEM_PROMPT_NAME,
-            DatabaseAgenticPromptVersionTag.tag == PRODUCTION_TAG,
+    prompt_repo = AgenticPromptRepository(db_session)
+    try:
+        prompt = cast(
+            AgenticPrompt,
+            prompt_repo.get_llm_item_by_tag(
+                task_id=SYNTHETIC_DATASET_TASK_ID,
+                item_name=SYNTHETIC_DATA_SYSTEM_PROMPT_NAME,
+                tag=PRODUCTION_TAG,
+            ),
         )
-        .first()
-    )
-    if tag_row is None:
+    except ValueError:
         # Not bootstrapped yet
-        return SyntheticDataPromptStatus(
-            model_provider=EMPTY_MODEL_PROVIDER,
-            model_name=EMPTY_MODEL_NAME,
-            is_placeholder=True,
-        )
-
-    prompt = db_session.get(
-        DatabaseAgenticPrompt,
-        (SYNTHETIC_DATASET_TASK_ID, SYNTHETIC_DATA_SYSTEM_PROMPT_NAME, tag_row.version),
-    )
-    if prompt is None:
-        return SyntheticDataPromptStatus(
-            model_provider=EMPTY_MODEL_PROVIDER,
-            model_name=EMPTY_MODEL_NAME,
-            is_placeholder=True,
+        return SyntheticDataPromptStatus.model_validate(
+            {
+                "model_provider": EMPTY_MODEL_PROVIDER,
+                "model_name": EMPTY_MODEL_NAME,
+                "is_placeholder": True,
+            }
         )
 
     is_placeholder = (
-        str(prompt.model_provider) == EMPTY_MODEL_PROVIDER
-        or str(prompt.model_name) == EMPTY_MODEL_NAME
+        prompt.model_provider == EMPTY_MODEL_PROVIDER
+        or prompt.model_name == EMPTY_MODEL_NAME
     )
-    return SyntheticDataPromptStatus(
-        model_provider=str(prompt.model_provider),
-        model_name=str(prompt.model_name),
-        is_placeholder=is_placeholder,
+    # Pydantic coerces the string sentinel ("empty") or enum value back into the
+    # Union[ModelProvider, Literal["empty"]] at construction time.
+    return SyntheticDataPromptStatus.model_validate(
+        {
+            "model_provider": prompt.model_provider,
+            "model_name": prompt.model_name,
+            "is_placeholder": is_placeholder,
+        }
     )
 
 

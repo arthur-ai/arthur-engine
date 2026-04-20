@@ -41,7 +41,9 @@ def initialize_system_tasks(db_session: Session) -> None:
 
 def _ensure_synthetic_dataset_task(db_session: Session) -> None:
     """Create the Synthetic Dataset Generation system task if it doesn't exist."""
-    # 1. Create task if missing
+    # 1. Create task if missing. Protect against a concurrent peer instance
+    #    winning the insert race so a single losing replica doesn't abort
+    #    the whole bootstrap.
     existing = db_session.get(DatabaseTask, SYNTHETIC_DATASET_TASK_ID)
     if not existing:
         logger.info(f"Creating system task: {SYNTHETIC_DATASET_TASK_NAME}")
@@ -55,7 +57,14 @@ def _ensure_synthetic_dataset_task(db_session: Session) -> None:
             is_autocreated=False,
         )
         db_session.add(db_task)
-        db_session.commit()
+        try:
+            db_session.commit()
+        except IntegrityError:
+            db_session.rollback()
+            logger.info(
+                f"System task {SYNTHETIC_DATASET_TASK_NAME} already created "
+                "by a concurrent instance; continuing.",
+            )
 
     # 2. Seed prompts (idempotent — check production tag first)
     _ensure_prompt_with_production_tag(
@@ -84,8 +93,14 @@ def _ensure_prompt_with_production_tag(
     role: MessageRole,
     content: str,
 ) -> None:
-    """Create prompt version 1 and tag it 'production', only if no production tag exists."""
-    # Check if production tag already exists
+    """Seed prompt version 1 with the 'production' tag, only if no production tag exists.
+
+    Once the production tag exists, this function is a no-op — it does not
+    overwrite stored content. Users can promote new versions via the UI and
+    their edits must survive server restarts.
+    """
+    # Check if production tag already exists — if so, this prompt is already
+    # seeded (possibly pointing to a user-edited version). Do not touch it.
     existing_tag = (
         db_session.query(DatabaseAgenticPromptVersionTag)
         .filter(
@@ -96,25 +111,6 @@ def _ensure_prompt_with_production_tag(
         .first()
     )
     if existing_tag:
-        # Prompt is already seeded; update content if the template has changed
-        existing_prompt = db_session.get(
-            DatabaseAgenticPrompt,
-            (SYNTHETIC_DATASET_TASK_ID, prompt_name, 1),
-        )
-        if existing_prompt:
-            stored_content = (
-                existing_prompt.messages[0].get("content", "")
-                if existing_prompt.messages
-                else ""
-            )
-            if stored_content != content:
-                existing_prompt.messages = [
-                    OpenAIMessage(role=role, content=content).model_dump()
-                ]
-                db_session.commit()
-                logger.info(
-                    f"Updated content for prompt '{prompt_name}' (template changed)"
-                )
         return
 
     # Check if version 1 already exists

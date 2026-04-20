@@ -136,14 +136,22 @@ def build_system_prompt(
     existing_rows: List[Dict[str, str]],
     column_names: List[str],
 ) -> str:
-    """Build the complete system prompt for synthetic data generation."""
+    """Build the complete system prompt for synthetic data generation.
+
+    User-controlled `dataset_purpose` is substituted LAST so that any
+    literal placeholder strings inside it (e.g. ``{column_definitions}``)
+    are not re-expanded by a subsequent `.replace()` call.
+    """
     return (
-        SYSTEM_PROMPT_TEMPLATE.replace("{dataset_purpose}", dataset_purpose)
-        .replace("{column_definitions}", format_column_definitions(column_descriptions))
+        SYSTEM_PROMPT_TEMPLATE.replace(
+            "{column_definitions}",
+            format_column_definitions(column_descriptions),
+        )
         .replace(
             "{reference_examples}",
             format_reference_examples(existing_rows, column_names),
         )
+        .replace("{dataset_purpose}", dataset_purpose)
     )
 
 
