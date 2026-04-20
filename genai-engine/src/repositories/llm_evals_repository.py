@@ -43,6 +43,8 @@ class LLMEvalsRepository(
     db_model: Type[DatabaseLLMEval] = DatabaseLLMEval
     tag_db_model: Type[DatabaseLLMEvalVersionTag] = DatabaseLLMEvalVersionTag
     version_list_response_model: Type[BaseModel] = LLMEvalsVersionListResponse
+    eval_types = ["llm_as_a_judge"]
+    default_eval_type = "llm_as_a_judge"
 
     def __init__(self, db_session: Session):
         super().__init__(db_session)
@@ -132,6 +134,8 @@ class LLMEvalsRepository(
         item: CreateEvalRequest,
         commit: bool = True,
     ) -> LLMEval:
+        if item.model_name == "":
+            raise ValueError("Model name cannot be empty.")
         return cast(
             LLMEval,
             super().save_llm_item(task_id, item_name, item, commit=commit),

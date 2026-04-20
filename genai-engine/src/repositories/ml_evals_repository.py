@@ -1,299 +1,168 @@
-"""MLEvalsRepository — CRUD for DatabaseMLEval.
+from typing import Any, Dict, List, Optional, Type, cast
 
-MLEvaluator — BaseEvaluator implementation that dispatches to ML scorer wrappers.
-get_ml_scorer — per-type lazy scorer initialization.
-"""
-
-import logging
-from typing import List, Optional, Type
-
-from sqlalchemy import func
-
-from arthur_common.models.task_eval_schemas import MLEval
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from db_models.llm_eval_models import DatabaseMLEval, DatabaseMLEvalVersionTag, ML_EVAL_INPUT_VARIABLE
+from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
 from repositories.base_evaluator import BaseEvaluator
+from repositories.base_llm_repository import BaseLLMRepository
 from schemas.internal_schemas import ContinuousEvalTransformVariableMapping
+from schemas.llm_eval_schemas import MLEval
 from schemas.request_schemas import CreateMLEvalRequest
 from schemas.response_schemas import (
     EvalRunResponse,
     MLEvalsVersionListResponse,
-    MLGetAllMetadataListResponse,
-    MLGetAllMetadataResponse,
     MLVersionResponse,
 )
 
-logger = logging.getLogger(__name__)
+# Known ML eval types stored in the shared llm_evals table.
+# These are model-based evaluators that do not require an LLM-as-a-judge prompt.
+ML_EVAL_TYPES = ["pii", "toxicity", "prompt_injection"]
 
-# ---------------------------------------------------------------------------
-# Per-type lazy scorer registry
-# ---------------------------------------------------------------------------
+# The single input variable every ML eval expects.
+ML_EVAL_INPUT_VARIABLE = "input"
 
-_ML_SCORER_REGISTRY: dict = {}
+# Module-level scorer cache — scorers load heavyweight models on first use.
+_ML_SCORER_REGISTRY: Dict[str, Any] = {}
 
 
-def get_ml_scorer(ml_eval_type: str):  # type: ignore[return]
-    """Return (and lazily initialize) the scorer for a specific ml_eval_type.
-
-    Each scorer is instantiated at most once, only when first requested.
-    This avoids loading heavy model weights for types that are never used.
-    """
-    global _ML_SCORER_REGISTRY
-    if ml_eval_type in _ML_SCORER_REGISTRY:
-        return _ML_SCORER_REGISTRY[ml_eval_type]
-
-    from schemas.request_schemas import (
-        ML_EVAL_TYPE_PII_V1,
-        ML_EVAL_TYPE_PII_V2,
-        ML_EVAL_TYPE_PROMPT_INJECTION,
-        ML_EVAL_TYPE_TOXICITY,
-    )
-
-    if ml_eval_type == ML_EVAL_TYPE_PII_V2:
-        from scorer.ml_scorers import PIIScorerV2
-
-        scorer = PIIScorerV2()
-    elif ml_eval_type == ML_EVAL_TYPE_PII_V1:
-        from scorer.ml_scorers import PIIScorerV1
-
-        scorer = PIIScorerV1()
-    elif ml_eval_type == ML_EVAL_TYPE_TOXICITY:
-        from scorer.ml_scorers import ToxicityMLScorer
-
-        scorer = ToxicityMLScorer()
-    elif ml_eval_type == ML_EVAL_TYPE_PROMPT_INJECTION:
-        from scorer.ml_scorers import PromptInjectionMLScorer
-
-        scorer = PromptInjectionMLScorer()
-    else:
+def get_ml_scorer(eval_type: str) -> Optional[Any]:
+    """Return a cached BaseMLScorer for the given eval_type, or None if unknown."""
+    if eval_type not in ML_EVAL_TYPES:
         return None
+    if eval_type not in _ML_SCORER_REGISTRY:
+        if eval_type == "pii":
+            from scorer.ml_scorers import PIIScorerV2
 
-    _ML_SCORER_REGISTRY[ml_eval_type] = scorer
-    return scorer
+            _ML_SCORER_REGISTRY[eval_type] = PIIScorerV2()
+        elif eval_type == "toxicity":
+            from scorer.ml_scorers import ToxicityMLScorer
+
+            _ML_SCORER_REGISTRY[eval_type] = ToxicityMLScorer()
+        elif eval_type == "prompt_injection":
+            from scorer.ml_scorers import PromptInjectionMLScorer
+
+            _ML_SCORER_REGISTRY[eval_type] = PromptInjectionMLScorer()
+    return _ML_SCORER_REGISTRY.get(eval_type)
 
 
-# ---------------------------------------------------------------------------
-# MLEvalsRepository
-# ---------------------------------------------------------------------------
+class MLEvalsRepository(
+    BaseLLMRepository[DatabaseLLMEval, DatabaseLLMEvalVersionTag, CreateMLEvalRequest],
+):
+    db_model: Type[DatabaseLLMEval] = DatabaseLLMEval
+    tag_db_model: Type[DatabaseLLMEvalVersionTag] = DatabaseLLMEvalVersionTag
+    version_list_response_model: Type[BaseModel] = MLEvalsVersionListResponse
+    eval_types = ML_EVAL_TYPES
 
+    def __init__(self, db_session: Session):
+        super().__init__(db_session)
 
-class MLEvalsRepository:
-    """CRUD repository for DatabaseMLEval.
-
-    Intentionally does NOT inherit from BaseLLMRepository to avoid the
-    ChatCompletionService instantiation in that class's __init__.
-    """
-
-    db_model: Type[DatabaseMLEval] = DatabaseMLEval
-    tag_db_model: Type[DatabaseMLEvalVersionTag] = DatabaseMLEvalVersionTag
-
-    def __init__(self, db_session: Session) -> None:
-        self.db_session = db_session
-
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-
-    def _get_all_tags_for_item_version(self, db_item: DatabaseMLEval) -> List[str]:
-        tags = (
-            self.db_session.query(self.tag_db_model.tag)
-            .filter(
-                self.tag_db_model.task_id == db_item.task_id,
-                self.tag_db_model.name == db_item.name,
-                self.tag_db_model.version == db_item.version,
-            )
-            .order_by(self.tag_db_model.tag.asc())
-            .all()
-        )
-        return [t for (t,) in tags]
-
-    def _get_base_query(self, task_id: str, name: str):  # type: ignore[return]
-        return self.db_session.query(self.db_model).filter(
-            self.db_model.task_id == task_id,
-            self.db_model.name == name,
-        )
-
-    def _get_latest_db_item(self, task_id: str, name: str) -> Optional[DatabaseMLEval]:
-        return (
-            self._get_base_query(task_id, name)
-            .filter(self.db_model.deleted_at.is_(None))
-            .order_by(self.db_model.version.desc())
-            .first()
-        )
-
-    def _get_db_item_by_version(
-        self,
-        task_id: str,
-        name: str,
-        version: str,
-    ) -> Optional[DatabaseMLEval]:
-        if version == "latest":
-            return self._get_latest_db_item(task_id, name)
-        if version.isdigit():
-            return (
-                self._get_base_query(task_id, name)
-                .filter(self.db_model.version == int(version))
-                .first()
-            )
-        # Try tag lookup
-        return (
-            self._get_base_query(task_id, name)
-            .join(self.tag_db_model)
-            .filter(self.tag_db_model.tag == version)
-            .one_or_none()
-        )
-
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-
-    def from_db_model(self, db_eval: DatabaseMLEval) -> MLEval:
+    def from_db_model(self, db_eval: DatabaseLLMEval) -> MLEval:
         tags = self._get_all_tags_for_item_version(db_eval)
         return MLEval(
             name=db_eval.name,
-            ml_eval_type=db_eval.ml_eval_type,
-            model_provider=db_eval.model_provider,
+            eval_type=db_eval.eval_type,
             variables=db_eval.variables,
-            tags=tags,
             config=db_eval.config,
             created_at=db_eval.created_at,
             deleted_at=db_eval.deleted_at,
             version=db_eval.version,
+            tags=tags,
         )
+
+    def _to_versions_reponse_item(
+        self,
+        db_item: DatabaseLLMEval,
+        tags: Optional[List[str]] = None,
+    ) -> MLVersionResponse:
+        tags = self._get_all_tags_for_item_version(db_item)
+        return MLVersionResponse(
+            version=db_item.version,
+            eval_type=db_item.eval_type,
+            created_at=db_item.created_at,
+            deleted_at=db_item.deleted_at,
+            tags=tags,
+        )
+
+    def _clear_db_item_data(self, db_item: DatabaseLLMEval) -> None:
+        db_item.config = None
+
+    def _extract_variables_from_item(self, item: CreateMLEvalRequest) -> List[str]:
+        # Every ML eval expects a single "input" variable containing the text to score.
+        return [ML_EVAL_INPUT_VARIABLE]
 
     def save_ml_eval(
         self,
         task_id: str,
         eval_name: str,
-        request: CreateMLEvalRequest,
+        item: CreateMLEvalRequest,
     ) -> MLEval:
-        """Create a new version of an ML eval (increments version automatically)."""
-        latest = self._get_latest_db_item(task_id, eval_name)
-        next_version = 1 if latest is None else (latest.version + 1)
-
-        db_eval = DatabaseMLEval(
-            task_id=task_id,
-            name=eval_name,
-            version=next_version,
-            ml_eval_type=request.ml_eval_type,
-            config=request.config,
-        )
-        self.db_session.add(db_eval)
-        self.db_session.commit()
-        self.db_session.refresh(db_eval)
-        return self.from_db_model(db_eval)
+        if item.eval_type not in ML_EVAL_TYPES:
+            raise ValueError(
+                f"Unknown ML eval type '{item.eval_type}'. "
+                f"Supported types: {ML_EVAL_TYPES}",
+            )
+        return cast(MLEval, super().save_llm_item(task_id, eval_name, item))
 
     def get_ml_eval(
         self,
         task_id: str,
         eval_name: str,
-        version: str = "latest",
+        eval_version: str = "latest",
     ) -> MLEval:
-        db_eval = self._get_db_item_by_version(task_id, eval_name, version)
-        if db_eval is None:
-            raise ValueError(
-                f"ML eval '{eval_name}' version '{version}' not found for task '{task_id}'",
-            )
-        return self.from_db_model(db_eval)
+        return cast(MLEval, super().get_llm_item(task_id, eval_name, eval_version))
 
-    def list_versions(
+    def get_ml_eval_versions(
         self,
         task_id: str,
         eval_name: str,
+        pagination_parameters,
+        filter_request=None,
     ) -> MLEvalsVersionListResponse:
-        items = (
-            self.db_session.query(self.db_model)
-            .filter(
-                self.db_model.task_id == task_id,
-                self.db_model.name == eval_name,
-            )
-            .order_by(self.db_model.version.asc())
-            .all()
+        return cast(
+            MLEvalsVersionListResponse,
+            super().get_llm_item_versions(
+                task_id,
+                eval_name,
+                pagination_parameters,
+                filter_request,
+            ),
         )
-        versions = [
-            MLVersionResponse(
-                version=item.version,
-                created_at=item.created_at,
-                deleted_at=item.deleted_at,
-                ml_eval_type=item.ml_eval_type,
-                tags=self._get_all_tags_for_item_version(item),
-            )
-            for item in items
-        ]
-        return MLEvalsVersionListResponse(versions=versions, count=len(versions))
 
-    def get_all_metadata(self, task_id: str) -> MLGetAllMetadataListResponse:
-        """Return one metadata entry per distinct eval name for a task."""
-        rows = (
-            self.db_session.query(
-                self.db_model.name,
-                func.count(self.db_model.version).label("version_count"),
-                func.max(self.db_model.ml_eval_type).label("ml_eval_type"),
-                func.max(self.db_model.created_at).label("latest_version_created_at"),
-            )
-            .filter(self.db_model.task_id == task_id)
-            .group_by(self.db_model.name)
-            .all()
+    def delete_version(self, task_id: str, eval_name: str, version: str) -> MLEval:
+        """Soft-delete a specific version; returns the eval with deleted_at set."""
+        base_query = self._build_name_query(task_id, eval_name)
+        db_item = self._get_db_item_by_version(
+            base_query,
+            version,
+            err_message=f"No matching version of '{eval_name}' found for task '{task_id}'",
         )
-        metadata = [
-            MLGetAllMetadataResponse(
-                name=name,
-                versions=version_count,
-                ml_eval_type=ml_eval_type or "",
-                latest_version_created_at=latest_version_created_at,
-            )
-            for name, version_count, ml_eval_type, latest_version_created_at in rows
-        ]
-        return MLGetAllMetadataListResponse(ml_metadata=metadata, count=len(metadata))
-
-    def delete_version(
-        self,
-        task_id: str,
-        eval_name: str,
-        version: str,
-    ) -> MLEval:
-        """Soft-delete a specific version."""
-        from datetime import datetime
-
-        db_eval = self._get_db_item_by_version(task_id, eval_name, version)
-        if db_eval is None:
-            raise ValueError(
-                f"ML eval '{eval_name}' version '{version}' not found for task '{task_id}'",
-            )
-        db_eval.deleted_at = datetime.now()
-        self.db_session.commit()
-        self.db_session.refresh(db_eval)
-        return self.from_db_model(db_eval)
-
-    def delete_all_versions(
-        self,
-        task_id: str,
-        eval_name: str,
-    ) -> None:
-        """Hard-delete all versions of an ML eval by name."""
-        items = (
-            self.db_session.query(self.db_model)
-            .filter(
-                self.db_model.task_id == task_id,
-                self.db_model.name == eval_name,
-            )
-            .all()
+        actual_version_num = str(db_item.version)
+        self.soft_delete_llm_item_version(task_id, eval_name, version)
+        return cast(
+            MLEval,
+            super().get_llm_item(task_id, eval_name, actual_version_num),
         )
-        if not items:
-            raise ValueError(f"ML eval '{eval_name}' not found for task '{task_id}'")
-        for item in items:
-            self.db_session.delete(item)
-        self.db_session.commit()
 
+    def delete_all_versions(self, task_id: str, eval_name: str) -> None:
+        """Hard-delete all versions of an ML eval."""
+        self.delete_llm_item(task_id, eval_name)
 
-# ---------------------------------------------------------------------------
-# MLEvaluator
-# ---------------------------------------------------------------------------
+    def list_versions(self, task_id: str, eval_name: str) -> MLEvalsVersionListResponse:
+        """List all versions of an ML eval (first 100 ascending by version)."""
+        from arthur_common.models.common_schemas import PaginationParameters
+        from arthur_common.models.enums import PaginationSortMethod
+
+        pagination = PaginationParameters(
+            page=0,
+            page_size=100,
+            sort=PaginationSortMethod.ASCENDING,
+        )
+        return self.get_ml_eval_versions(task_id, eval_name, pagination)
 
 
 class MLEvaluator(BaseEvaluator):
-    """Runs ML-based evals using the scorer registry."""
+    """BaseEvaluator implementation for ML-type evals (pii, toxicity, prompt_injection)."""
 
     def __init__(self, db_session: Session) -> None:
         self._repo = MLEvalsRepository(db_session)
@@ -319,22 +188,22 @@ class MLEvaluator(BaseEvaluator):
 
         if ml_eval.deleted_at is not None:
             raise ValueError(
-                f"Cannot run this ml eval because it was deleted on: {ml_eval.deleted_at}",
+                f"Cannot run eval '{eval_name}' version {ml_eval.version}: it has been deleted.",
+            )
+
+        scorer = get_ml_scorer(ml_eval.eval_type)
+        if scorer is None:
+            raise ValueError(
+                f"No scorer registered for eval type '{ml_eval.eval_type}'. "
+                f"Supported types: {ML_EVAL_TYPES}",
             )
 
         text = resolved_variables.get(ML_EVAL_INPUT_VARIABLE, "")
-
-        scorer = get_ml_scorer(ml_eval.ml_eval_type)
-        if scorer is None:
-            raise ValueError(
-                f"No scorer registered for ml_eval_type '{ml_eval.ml_eval_type}'",
-            )
-
-        config = ml_eval.config or {}
+        config: dict[str, Any] = ml_eval.config or {}
         result = scorer.score(text=text, config=config)
 
         return EvalRunResponse(
             reason=result.reason,
-            score=result.passed,
+            score=int(result.passed),
             cost="",
         )
