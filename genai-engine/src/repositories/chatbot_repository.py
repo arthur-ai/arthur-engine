@@ -2,6 +2,7 @@ import json
 import logging
 from typing import List, cast
 
+from arthur_common.models.llm_model_providers import ModelProvider
 from fastapi import FastAPI
 from sqlalchemy.orm import Session
 from starlette.responses import StreamingResponse
@@ -117,8 +118,9 @@ class ChatbotRepository:
 
         history = get_conversation_history(user_id, request.conversation_id)
 
+        chatbot_model_provider = chatbot_prompt.require_configured_provider()
         llm_client = self.model_provider_repo.get_model_provider_client(
-            chatbot_prompt.model_provider,
+            chatbot_model_provider,
         )
 
         prompt = chatbot_service.build_prompt(
@@ -126,7 +128,7 @@ class ChatbotRepository:
             task_id=task_id,
             history=history,
             user_message=request.message,
-            model_provider=chatbot_prompt.model_provider,
+            model_provider=chatbot_model_provider,
             model_name=chatbot_prompt.model_name,
             blacklist=blacklist,
         )
@@ -153,7 +155,7 @@ class ChatbotRepository:
         blacklist = self.get_blacklist_endpoints()
         available = get_api_index(app)
         return ChatbotConfigResponse(
-            model_provider=chatbot_prompt.model_provider,
+            model_provider=chatbot_prompt.require_configured_provider(),
             model_name=chatbot_prompt.model_name,
             blacklist_endpoints=blacklist,
             available_endpoints=available,
@@ -173,7 +175,11 @@ class ChatbotRepository:
             ),
         )
 
-        model_provider = update.model_provider or chatbot_prompt.model_provider
+        model_provider: ModelProvider = (
+            update.model_provider
+            if update.model_provider is not None
+            else chatbot_prompt.require_configured_provider()
+        )
         model_name = update.model_name or chatbot_prompt.model_name
 
         if (

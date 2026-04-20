@@ -25,6 +25,7 @@ from utils.constants import (
     ARTHUR_SYSTEM_TASK_NAME,
     CHATBOT_PROMPT_NAME,
     CHATBOT_SUMMARIZER_PROMPT_NAME,
+    EMPTY_MODEL_PROVIDER,
 )
 
 logger = logging.getLogger(__name__)
@@ -58,7 +59,11 @@ class SystemTaskRepository:
                 ),
             )
 
-            model_provider = existing.model_provider
+            # Preserve the user's configured model. If the stored value is the
+            # "empty" SDG sentinel (shouldn't happen for chatbot), fall back to
+            # the default above.
+            if existing.model_provider != EMPTY_MODEL_PROVIDER:
+                model_provider = ModelProvider(existing.model_provider)
             model_name = existing.model_name
 
             self.agentic_prompt_repo.delete_llm_item(
@@ -105,7 +110,11 @@ class SystemTaskRepository:
                 ),
             )
 
-            model_provider = existing.model_provider
+            # Preserve the user's configured model. If the stored value is the
+            # "empty" SDG sentinel (shouldn't happen for chatbot), fall back to
+            # the default above.
+            if existing.model_provider != EMPTY_MODEL_PROVIDER:
+                model_provider = ModelProvider(existing.model_provider)
             model_name = existing.model_name
 
             self.agentic_prompt_repo.delete_llm_item(

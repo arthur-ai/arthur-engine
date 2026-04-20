@@ -7,6 +7,7 @@ from arthur_common.models.llm_model_providers import (
     ModelProvider,
     OpenAIMessage,
 )
+from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
 from utils.constants import EMPTY_MODEL_PROVIDER
@@ -54,3 +55,22 @@ class AgenticPrompt(BaseModel):
 
     def has_been_deleted(self) -> bool:
         return self.deleted_at is not None
+
+    def require_configured_provider(self) -> ModelProvider:
+        """Narrow ``model_provider`` to a concrete ``ModelProvider`` or raise.
+
+        ``model_provider`` is ``Union[ModelProvider, Literal["empty"]]`` to
+        support the SDG placeholder sentinel, but most downstream code paths
+        (LLM client, request/response schemas) require a real provider. Call
+        this at the boundary to fail early with a clear error.
+        """
+        if self.model_provider == EMPTY_MODEL_PROVIDER:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Prompt '{self.name}' has no model provider configured. "
+                    "Update the prompt to set a valid model provider before "
+                    "using it."
+                ),
+            )
+        return ModelProvider(self.model_provider)
