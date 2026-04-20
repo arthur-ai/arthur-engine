@@ -195,6 +195,21 @@ Parameters:
     Type: String
     Description: '(Optional) URL for internal model repository (S3 bucket). When set, GenAI Engine will download models from this location instead of the internet.'
     Default: ''
+  AuditLogRetentionPeriod:
+    Type: Number
+    Description: 'Number of days to retain audit logs in CloudWatch'
+    Default: "365"
+  AuditLogEnabled:
+    Type: String
+    Description: 'Enable audit logging'
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  AuditLogOverridePath:
+    Type: String
+    Description: 'Override path for audit log directory'
+    Default: 'null'
 
 Conditions:
   EnableAuthService: !Equals [ !Ref GenaiEngineAPIOnlyModeEnabled, 'disabled' ]
@@ -203,6 +218,7 @@ Conditions:
   ImportAuthServiceCertificate: !Not [ !Equals [ !Ref AuthLoadBalancerCertificateURL, '' ] ]
   ImportGenaiEngineSecretOpenAIEmbeddingModelNamesEndpointsKeysARN: !Not [ !Equals [ !Ref GenaiEngineSecretOpenAIEmbeddingModelNamesEndpointsKeysARN, '' ] ]
   UseInternalModelRepository: !Not [ !Equals [ !Ref GenaiEngineModelRepositoryURL, '' ] ]
+  IsAuditLogEnabled: !Equals [ !Ref AuditLogEnabled, 'true' ]
 
 Resources:
   GenaiEngineECSLogGroup:
@@ -211,6 +227,15 @@ Resources:
     Properties:
       LogGroupName: !Sub "/arthur/ecs/${ArthurResourceNamespace}-genai-engine${ArthurResourceNameSuffix}"
       RetentionInDays: 365
+
+  GenaiEngineAuditLogECSLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: IsAuditLogEnabled
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub "/arthur/ecs/${ArthurResourceNamespace}-genai-engine-audit-logs${ArthurResourceNameSuffix}"
+      RetentionInDays: !Ref AuditLogRetentionPeriod
 
   GenaiEngineECSTaskDefinition:
     Type: 'AWS::ECS::TaskDefinition'
@@ -224,7 +249,17 @@ Resources:
       Memory: !Ref GenaiEngineFargateTaskMemoryValue
       TaskRoleArn: !Ref GenaiEngineECSTaskRoleARN
       ExecutionRoleArn: !Ref GenaiEngineECSTaskExecutionRoleARN
+      Volumes:
+        - Name: 'audit-logs'
       ContainerDefinitions:
+        - Name: 'init-audit-logs'
+          Image: 'public.ecr.aws/docker/library/busybox:latest'
+          Command: [ "sh", "-c", "chmod 777 /audit_logs" ]
+          Essential: false
+          MountPoints:
+            - SourceVolume: 'audit-logs'
+              ContainerPath: '/audit_logs'
+              ReadOnly: false
         - Name: 'arthur-genai-engine'
           Image: !Sub "${GenaiEngineContainerImageLocation}:${GenaiEngineVersion}"
           RepositoryCredentials: !If
@@ -232,6 +267,13 @@ Resources:
             - CredentialsParameter: !Ref ContainerRepositoryCredentialsSecretARN
             - !Ref AWS::NoValue
           Essential: true
+          DependsOn:
+            - ContainerName: 'init-audit-logs'
+              Condition: 'SUCCESS'
+          MountPoints:
+            - SourceVolume: 'audit-logs'
+              ContainerPath: '/home/nonroot/audit_logs'
+              ReadOnly: false
           PortMappings:
             - ContainerPort: 3030
               HostPort: 3030
@@ -327,6 +369,12 @@ Resources:
               - Name: 'MODEL_REPOSITORY_URL'
                 Value: !Ref GenaiEngineModelRepositoryURL
               - !Ref AWS::NoValue
+            - Name: 'AUDIT_LOG_ENABLED'
+              Value: !Ref AuditLogEnabled
+            - Name: 'AUDIT_LOG_OVERRIDE_PATH'
+              Value: !Ref AuditLogOverridePath
+            - Name: 'AUDIT_LOG_RETENTION_DAYS'
+              Value: !Ref AuditLogRetentionPeriod
           Secrets:
             - Name: 'GENAI_ENGINE_ADMIN_KEY'
               ValueFrom: !Ref GenaiEngineSecretAPIKeyARN
@@ -369,6 +417,23 @@ Resources:
             Timeout: 5
             Retries: 3
             StartPeriod: 300
+        - !If
+          - IsAuditLogEnabled
+          - Name: 'audit-log-forwarder'
+            Image: 'public.ecr.aws/docker/library/busybox:latest'
+            Command: [ "sh", "-c", "tail -F /audit_logs/audit.log" ]
+            Essential: true
+            MountPoints:
+              - SourceVolume: 'audit-logs'
+                ContainerPath: '/audit_logs'
+                ReadOnly: true
+            LogConfiguration:
+              LogDriver: 'awslogs'
+              Options:
+                awslogs-group: !Sub "/arthur/ecs/${ArthurResourceNamespace}-genai-engine-audit-logs${ArthurResourceNameSuffix}"
+                awslogs-region: !Sub "${AWS::Region}"
+                awslogs-stream-prefix: 'ecs'
+          - !Ref AWS::NoValue
 Outputs:
   GenaiEngineECSTaskDefinitionOutput:
     Description: 'The task definition for Arthur GenAI Engine'
