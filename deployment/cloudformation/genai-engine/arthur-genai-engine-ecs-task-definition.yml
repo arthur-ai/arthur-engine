@@ -199,6 +199,7 @@ Parameters:
     Type: Number
     Description: 'Number of days to retain audit logs in CloudWatch'
     Default: "365"
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 365]
   AuditLogEnabled:
     Type: String
     Description: 'Enable audit logging'
@@ -209,7 +210,7 @@ Parameters:
   AuditLogOverridePath:
     Type: String
     Description: 'Override path for audit log directory'
-    Default: 'null'
+    Default: '/home/nonroot/audit_logs'
 
 Conditions:
   EnableAuthService: !Equals [ !Ref GenaiEngineAPIOnlyModeEnabled, 'disabled' ]
@@ -422,7 +423,10 @@ Resources:
           - Name: 'audit-log-forwarder'
             Image: 'public.ecr.aws/docker/library/busybox:latest'
             Command: [ "sh", "-c", "tail -F /audit_logs/audit.log" ]
-            Essential: true
+            Essential: false
+            DependsOn:
+              - ContainerName: 'init-audit-logs'
+                Condition: 'SUCCESS'
             MountPoints:
               - SourceVolume: 'audit-logs'
                 ContainerPath: '/audit_logs'
