@@ -131,21 +131,29 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
     setColumnDescriptions((prev) => prev.map((col) => (col.columnName === columnName ? { ...col, description } : col)));
   }, []);
 
+  // When the stored prompt already has a real model, the selection UI is hidden
+  // and the form should use those values instead of the editable state (which can
+  // race with the provider-change effect below and end up cleared).
+  const usesStoredModel = promptStatus?.is_placeholder === false;
+  const effectiveModelProvider = usesStoredModel ? (promptStatus.model_provider as ModelProvider) : modelProvider;
+  const effectiveModelName = usesStoredModel ? promptStatus.model_name : modelName;
+
   const handleSubmit = useCallback(() => {
-    if (!modelProvider || !modelName) return;
+    if (!effectiveModelProvider || !effectiveModelName) return;
 
     onSubmit({
       datasetPurpose,
       columnDescriptions,
       numRows,
-      modelProvider,
-      modelName,
+      modelProvider: effectiveModelProvider,
+      modelName: effectiveModelName,
       editExisting,
     });
-  }, [datasetPurpose, columnDescriptions, numRows, modelProvider, modelName, editExisting, onSubmit]);
+  }, [datasetPurpose, columnDescriptions, numRows, effectiveModelProvider, effectiveModelName, editExisting, onSubmit]);
 
   const enabledProviders = providers.filter((p) => p.enabled);
-  const canSubmit = datasetPurpose.trim() && modelProvider && modelName && columnDescriptions.every((col) => col.description.trim());
+  const canSubmit =
+    datasetPurpose.trim() && effectiveModelProvider && effectiveModelName && columnDescriptions.every((col) => col.description.trim());
 
   // Only block on providers loading when the user needs to pick a model (placeholder case)
   // When promptStatus is not yet loaded, wait for it first
