@@ -2847,8 +2847,7 @@ class DatasetVersion(DatasetVersionMetadata):
             created_at=db_dataset_version.created_at,
             dataset_id=db_dataset_version.dataset_id,
             rows=[
-                DatasetVersionRow._from_database_model(db_row)
-                for db_row in rows_source
+                DatasetVersionRow._from_database_model(db_row) for db_row in rows_source
             ],
             page=pagination_params.page,
             page_size=pagination_params.page_size,

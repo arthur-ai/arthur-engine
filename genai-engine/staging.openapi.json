@@ -30245,9 +30245,17 @@
             "SyntheticDataPromptStatus": {
                 "properties": {
                     "model_provider": {
-                        "type": "string",
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ModelProvider"
+                            },
+                            {
+                                "type": "string",
+                                "const": "empty"
+                            }
+                        ],
                         "title": "Model Provider",
-                        "description": "Model provider stored in the SDG system prompt"
+                        "description": "Model provider stored in the SDG system prompt. The sentinel 'empty' indicates the prompt has not yet been configured."
                     },
                     "model_name": {
                         "type": "string",
