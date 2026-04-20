@@ -75,7 +75,7 @@ class Config:
             none_on_missing=True,
         )
 
-        if override is not None and override.lower() != "null":
-            return str(override)
+        if override is not None and override.strip().lower() != "null":
+            return override.strip()
 
         return os.path.join(os.path.dirname(__file__), "..", "..", "audit_logs")
