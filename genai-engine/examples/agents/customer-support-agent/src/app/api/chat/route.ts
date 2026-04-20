@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { mastra } from "@/mastra";
 import { getTemplatedPrompt } from "@/mastra/lib/arthur-api-client";
+import {
+  checkArthurGuardrails,
+  injectSimulatedViolation,
+} from "@/mastra/lib/arthur-api-client/guardrail";
 import { resolveModelFromPrompt } from "@/mastra/lib/model-resolver";
 import { wrapMastra, getAITracing, AISpanType } from "@mastra/core/ai-tracing";
 import { z } from "zod";
+
+const GUARDRAILS_ENABLED =
+  process.env.ARTHUR_GUARDRAILS_ENABLED?.toLowerCase() === "true";
+const SIMULATE_INCORRECT_RESPONSE =
+  process.env.SIMULATE_INCORRECT_RESPONSE?.toLowerCase() === "true";
+const MAX_GUARDRAIL_RETRIES = 4;
 
 // Define schemas
 const PlanOutputSchema = z.object({
@@ -175,26 +185,90 @@ export async function POST(req: NextRequest) {
       });
       const draft = draftResult.object;
 
-      // Step 5: Review
-      console.log("Step 5: Reviewing and finalizing...");
-      const reviewPrompt = await getTemplatedPrompt({
-        promptName: "mastra-agent-support-review",
-        promptVersion: "production",
-        taskId: process.env.ARTHUR_TASK_ID!,
-        variables: [
-          { name: "userQuestion", value: message },
-          { name: "plan", value: plan.plan },
-          { name: "draftResponse", value: JSON.stringify(draft) },
-        ],
-        tracingContext,
+      // Ground-truth context for guardrail: the search results the response
+      // should be grounded in.
+      const groundTruthContext = JSON.stringify({
+        docsResults,
+        githubResults,
       });
 
-      const reviewAgent = tracedMastra.getAgent("reviewAgent");
-      const reviewResult = await reviewAgent.generate(reviewPrompt.messages, {
-        output: ReviewOutputSchema,
-        model: resolveModelFromPrompt(reviewPrompt),
-      });
-      const finalOutput = reviewResult.object;
+      // Steps 5+: Draft → Review → Guardrail retry loop.
+      // Each attempt re-drafts and re-reviews, feeding the blockedReason back
+      // so the agents can self-correct. Runs up to MAX_GUARDRAIL_RETRIES times.
+      let finalOutput: z.infer<typeof ReviewOutputSchema> | null = null;
+      let lastBlockedReason: string | undefined;
+
+      for (let attempt = 1; attempt <= MAX_GUARDRAIL_RETRIES; attempt++) {
+        // Step 5a: Review
+        console.log(`Step 5 (attempt ${attempt}): Reviewing and finalizing...`);
+        const reviewPrompt = await getTemplatedPrompt({
+          promptName: "mastra-agent-support-review",
+          promptVersion: "production",
+          taskId: process.env.ARTHUR_TASK_ID!,
+          variables: [
+            { name: "userQuestion", value: message },
+            { name: "plan", value: plan.plan },
+            {
+              name: "draftResponse",
+              value:
+                lastBlockedReason
+                  ? JSON.stringify({
+                      ...draft,
+                      correctionNote: `Your previous response was rejected: ${lastBlockedReason}. Please correct it.`,
+                    })
+                  : JSON.stringify(draft),
+            },
+          ],
+          tracingContext,
+        });
+
+        const reviewAgent = tracedMastra.getAgent("reviewAgent");
+        const reviewResult = await reviewAgent.generate(reviewPrompt.messages, {
+          output: ReviewOutputSchema,
+          model: resolveModelFromPrompt(reviewPrompt),
+        });
+        const candidate = reviewResult.object;
+
+        if (!GUARDRAILS_ENABLED) {
+          finalOutput = candidate;
+          break;
+        }
+
+        // Step 5b: Guardrail check
+        let responseToValidate = candidate.finalResponse;
+        if (SIMULATE_INCORRECT_RESPONSE && attempt === 1) {
+          const { response: injected, violationType } =
+            injectSimulatedViolation(responseToValidate);
+          responseToValidate = injected;
+          console.log(
+            `Guardrail simulation: injected ${violationType} violation`
+          );
+        }
+
+        const guardrailCheck = await checkArthurGuardrails(
+          message,
+          responseToValidate,
+          groundTruthContext,
+          tracingContext,
+          `Guardrail (attempt ${attempt})`
+        );
+
+        if (!guardrailCheck.blocked) {
+          finalOutput = candidate;
+          break;
+        }
+
+        console.log(
+          `Guardrail blocked attempt ${attempt}: ${guardrailCheck.blockedReason}`
+        );
+        lastBlockedReason = guardrailCheck.blockedReason;
+      }
+
+      // If all retries exhausted, use the last candidate anyway but surface
+      // the blocked reason in the response metadata.
+      if (!finalOutput) {
+        finalOutput = { finalResponse: "", completeness: "", sources: [] };
+      }
 
       console.log("Request completed");
 
@@ -219,6 +293,9 @@ export async function POST(req: NextRequest) {
             docs: plan.needsDocs,
             code: plan.needsCode,
           },
+          ...(lastBlockedReason
+            ? { guardrailBlocked: true, blockedReason: lastBlockedReason }
+            : {}),
         },
       });
     } catch (error) {

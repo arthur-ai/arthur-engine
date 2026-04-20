@@ -245,6 +245,14 @@ export function getOpenInferenceSpanKind(span: AnyExportedAISpan): string {
     return OpenInferenceSpanKind.RETRIEVER;
   }
 
+  // Map guardrail spans by name convention
+  if (
+    span.type === AISpanType.GENERIC &&
+    span.name.toLowerCase().includes("guardrail")
+  ) {
+    return OpenInferenceSpanKind.GUARDRAIL;
+  }
+
   switch (span.type) {
     case AISpanType.AGENT_RUN:
       return OpenInferenceSpanKind.AGENT;
