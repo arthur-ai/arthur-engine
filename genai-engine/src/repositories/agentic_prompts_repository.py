@@ -103,6 +103,8 @@ class AgenticPromptRepository(
         item_name: str,
         item: CreateAgenticPromptRequest,
     ) -> AgenticPrompt:
+        if item.model_name == "":
+            raise ValueError("Model name cannot be empty.")
         return cast(
             AgenticPrompt,
             super().save_llm_item(task_id, item_name, item),

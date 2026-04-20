@@ -48,8 +48,6 @@ class _TagProtocol(Protocol):
 class _LLMItemRequestProtocol(Protocol):
     """Protocol for request models that create LLM items."""
 
-    model_name: str
-
     def model_dump(
         self,
         *,
@@ -80,6 +78,14 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
     tag_db_model: Type[TagDBModelT]
     version_list_response_model: Type[BaseModel] = BaseModel
 
+    # Optional: restrict queries to specific eval_type values.
+    # None means no filter (all eval types). Set in subclasses to scope the repo.
+    eval_types: Optional[List[str]] = None
+
+    # Optional: the eval_type value to stamp on newly created items when the
+    # create request does not include an eval_type field.
+    default_eval_type: Optional[str] = None
+
     def __init__(self, db_session: Session):
         if self.db_model is None:
             raise ValueError("Subclasses must define a db_model class attribute.")
@@ -92,6 +98,20 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
 
         self.db_session = db_session
         self.chat_completion_service = ChatCompletionService()
+
+    # ------------------------------------------------------------------
+    # Query helpers
+    # ------------------------------------------------------------------
+
+    def _build_name_query(self, task_id: str, item_name: str) -> QueryT:
+        """Base query scoped to (task_id, item_name) and optional eval_type filter."""
+        query = self.db_session.query(self.db_model).filter(
+            self.db_model.task_id == task_id,
+            self.db_model.name == item_name,
+        )
+        if self.eval_types is not None:
+            query = query.filter(self.db_model.eval_type.in_(self.eval_types))
+        return query
 
     def _get_all_tags_for_item_version(self, db_item: DBModelT) -> List[str]:
         tags = (
@@ -396,10 +416,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         Returns:
             BaseModel - the llm item object
         """
-        base_query = self.db_session.query(self.db_model).filter(
-            self.db_model.task_id == task_id,
-            self.db_model.name == item_name,
-        )
+        base_query = self._build_name_query(task_id, item_name)
 
         # Version resolution
         err_msg = (
@@ -433,11 +450,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         if tag == "":
             raise ValueError("Tag cannot be empty.")
 
-        # Build base query with task_id and name filters
-        base_query = self.db_session.query(self.db_model).filter(
-            self.db_model.task_id == task_id,
-            self.db_model.name == item_name,
-        )
+        base_query = self._build_name_query(task_id, item_name)
 
         # Use the helper function to get by tag
         db_item = self._get_db_item_by_tag(base_query, tag)
@@ -467,11 +480,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         Returns:
             version_list_response_model - the list of version metadata objects with total count
         """
-        # Build base query
-        base_query = self.db_session.query(self.db_model).filter(
-            self.db_model.task_id == task_id,
-            self.db_model.name == item_name,
-        )
+        base_query = self._build_name_query(task_id, item_name)
 
         # Apply filters
         if filter_request is not None:
@@ -532,6 +541,12 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
             self.db_model.task_id == task_id,
         )
 
+        # Apply eval_type filter so each repo subclass only sees its own types
+        if self.eval_types is not None:
+            base_query = base_query.filter(
+                self.db_model.eval_type.in_(self.eval_types),
+            )
+
         # Apply filters BEFORE grouping
         if filter_request is not None:
             base_query = self._apply_get_all_filters_to_query(
@@ -559,13 +574,21 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
 
         llm_metadata = []
         for row in results:
-            # get the deleted versions
+            # get the deleted versions (scoped to this repo's eval_types)
+            deleted_versions_query = self._build_name_query(task_id, row.name).filter(
+                self.db_model.deleted_at.isnot(None),
+            )
             deleted_versions = (
                 self.db_session.query(self.db_model.version)
                 .filter(
                     self.db_model.task_id == task_id,
                     self.db_model.name == row.name,
                     self.db_model.deleted_at.isnot(None),
+                    *(
+                        [self.db_model.eval_type.in_(self.eval_types)]
+                        if self.eval_types is not None
+                        else []
+                    ),
                 )
                 .order_by(self.db_model.version.asc())
                 .all()
@@ -602,31 +625,37 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         If a llm item with the same name exists, increment version.
         Otherwise, start at version 1.
         """
-        if item.model_name == "":
-            raise ValueError("Model name cannot be empty.")
-
-        # Check for existing versions of this item
-        latest_version = (
-            self.db_session.query(sa.func.max(self.db_model.version))
-            .filter(
-                self.db_model.task_id == task_id,
-                self.db_model.name == item_name,
-            )
-            .scalar()
+        # Check for existing versions of this item (scoped to this repo's eval_types)
+        version_query = self.db_session.query(
+            sa.func.max(self.db_model.version),
+        ).filter(
+            self.db_model.task_id == task_id,
+            self.db_model.name == item_name,
         )
+        if self.eval_types is not None:
+            version_query = version_query.filter(
+                self.db_model.eval_type.in_(self.eval_types),
+            )
+        latest_version = version_query.scalar()
 
         # Assign version
         version = (latest_version + 1) if latest_version else 1
         variables = self._extract_variables_from_item(item)
 
-        db_item = cast(type, self.db_model)(
-            task_id=task_id,
-            name=item_name,
-            variables=variables,
-            version=version,
-            created_at=datetime.now(),
+        db_fields: dict[str, Any] = {
+            "task_id": task_id,
+            "name": item_name,
+            "variables": variables,
+            "version": version,
+            "created_at": datetime.now(),
             **item.model_dump(mode="python", exclude_none=True),
-        )
+        }
+
+        # Stamp eval_type from the class default when the request doesn't include it
+        if "eval_type" not in db_fields and self.default_eval_type is not None:
+            db_fields["eval_type"] = self.default_eval_type
+
+        db_item = cast(type, self.db_model)(**db_fields)
 
         try:
             self.db_session.add(db_item)
@@ -656,11 +685,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         elif tag.casefold().strip() == "latest":
             raise ValueError("'latest' is a reserved tag")
 
-        # Get the llm item by version
-        base_query = self.db_session.query(self.db_model).filter(
-            self.db_model.task_id == task_id,
-            self.db_model.name == item_name,
-        )
+        base_query = self._build_name_query(task_id, item_name)
 
         retrieved_db_item = self._get_db_item_by_version(
             base_query,
@@ -725,10 +750,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
             - item_version=<string number> (e.g. '1', '2', etc.) -> marks that version as deleted
             - item_version=<datetime> (YYYY-MM-DDTHH:MM:SS, checks to the second) -> marks version created at that time
         """
-        base_query = self.db_session.query(self.db_model).filter(
-            self.db_model.task_id == task_id,
-            self.db_model.name == item_name,
-        )
+        base_query = self._build_name_query(task_id, item_name)
 
         err_msg = f"No matching version of '{item_name}' found for task '{task_id}'"
         db_item = self._get_db_item_by_version(
@@ -764,14 +786,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
             task_id: str - the id of the task
             item_name: str - the name of the llm item
         """
-        db_items = (
-            self.db_session.query(self.db_model)
-            .filter(
-                self.db_model.task_id == task_id,
-                self.db_model.name == item_name,
-            )
-            .all()
-        )
+        db_items = self._build_name_query(task_id, item_name).all()
 
         if not db_items:
             raise ValueError(f"'{item_name}' not found for task '{task_id}'")
@@ -802,11 +817,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
             - item_version=<string number> (e.g. '1', '2', etc.) -> deletes a specific tag from that version number
             - item_version=<datetime> (YYYY-MM-DDTHH:MM:SS, checks to the second) -> deletes a specific tag from the version created at that time
         """
-        # Base query used for version lookup
-        base_query = self.db_session.query(self.db_model).filter(
-            self.db_model.task_id == task_id,
-            self.db_model.name == item_name,
-        )
+        base_query = self._build_name_query(task_id, item_name)
 
         # Resolve version using the same helper used everywhere else
         db_item = self._get_db_item_by_version(

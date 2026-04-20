@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from arthur_common.models.common_schemas import VariableTemplateValue
-from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus, EvalType
+from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
 from sqlalchemy.orm import Session
 
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
@@ -224,13 +224,32 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                 if variable.name in mapping_dict:
                     resolved_variables[mapping_dict[variable.name]] = variable.value
 
-            # Get the right evaluator (LLM or ML) via the factory
-            evaluator = get_evaluator(EvalType(continuous_eval.eval_type), db_session)
-            eval_name = continuous_eval.llm_eval_name or continuous_eval.ml_eval_name or ""
-            eval_version = str(continuous_eval.llm_eval_version or continuous_eval.ml_eval_version or "latest")
+            eval_name = continuous_eval.llm_eval_name
+            eval_version = str(continuous_eval.llm_eval_version)
+
+            # Look up eval_type from the llm_evals row so we dispatch to the right executor.
+            from db_models.llm_eval_models import DatabaseLLMEval
+
+            db_llm_eval = (
+                db_session.query(DatabaseLLMEval)
+                .filter(
+                    DatabaseLLMEval.task_id == continuous_eval.task_id,
+                    DatabaseLLMEval.name == eval_name,
+                    DatabaseLLMEval.version == int(eval_version),
+                )
+                .first()
+            )
+            eval_type = db_llm_eval.eval_type if db_llm_eval else "llm_as_a_judge"
+            evaluator = get_evaluator(db_session, eval_type)
 
             # Validate that the resolved eval vars match what the evaluator expects
-            expected_vars = set(evaluator.get_eval_variables(continuous_eval.task_id, eval_name, eval_version))
+            expected_vars = set(
+                evaluator.get_eval_variables(
+                    continuous_eval.task_id,
+                    eval_name,
+                    eval_version,
+                ),
+            )
             mapped_eval_vars = set(resolved_variables.keys())
             if mapped_eval_vars != expected_vars:
                 self._update_annotation_status(

@@ -815,6 +815,56 @@ class CreateEvalRequest(BaseModel):
     )
 
 
+class CreateMLEvalRequest(BaseModel):
+    eval_type: str = Field(
+        description="Type of ML eval (e.g. 'pii', 'toxicity', 'prompt_injection')",
+    )
+    config: Optional[Any] = Field(
+        default=None,
+        description="Optional configuration for the ML eval",
+    )
+
+
+class CreateAnyEvalRequest(BaseModel):
+    """Unified eval creation request used by the v2 /evals endpoints.
+
+    For llm_as_a_judge evals model_name, model_provider and instructions are required.
+    For ML evals (pii, toxicity, prompt_injection) only eval_type (and optionally config)
+    are needed.
+    """
+
+    eval_type: str = Field(
+        description="Type of eval: 'llm_as_a_judge', 'pii', 'toxicity', 'prompt_injection'",
+    )
+    model_name: Optional[str] = Field(
+        default=None,
+        description="LLM model name — required for llm_as_a_judge evals",
+    )
+    model_provider: Optional[ModelProvider] = Field(
+        default=None,
+        description="LLM model provider — required for llm_as_a_judge evals",
+    )
+    instructions: Optional[str] = Field(
+        default=None,
+        description="Eval instructions — required for llm_as_a_judge evals",
+    )
+    config: Optional[Any] = Field(
+        default=None,
+        description="Optional configuration (thresholds, LLM settings, etc.)",
+    )
+
+    @model_validator(mode="after")
+    def validate_for_type(self) -> "CreateAnyEvalRequest":
+        if self.eval_type == "llm_as_a_judge":
+            if not self.model_name:
+                raise ValueError("model_name is required for llm_as_a_judge evals")
+            if not self.model_provider:
+                raise ValueError("model_provider is required for llm_as_a_judge evals")
+            if not self.instructions:
+                raise ValueError("instructions is required for llm_as_a_judge evals")
+        return self
+
+
 class CreateAgenticPromptRequest(BaseModel):
     model_config = ConfigDict(use_enum_values=True)
 
@@ -933,34 +983,6 @@ class TransformListFilterRequest(BaseModel):
     )
 
 
-# Re-exported from db_models to avoid duplication — import from there directly when possible.
-from db_models.llm_eval_models import EVAL_TYPE_LLM_EVAL, EVAL_TYPE_ML_EVAL, ML_EVAL_INPUT_VARIABLE  # noqa: E402
-
-# ML eval type identifiers
-ML_EVAL_TYPE_PII_V2 = "pii"
-ML_EVAL_TYPE_PII_V1 = "pii_v1"
-ML_EVAL_TYPE_TOXICITY = "toxicity"
-ML_EVAL_TYPE_PROMPT_INJECTION = "prompt_injection"
-
-
-class CreateMLEvalRequest(BaseModel):
-    """Request schema for creating a new ML eval version."""
-
-    ml_eval_type: str = Field(
-        description="Type of built-in ML scorer (e.g. 'pii', 'toxicity', 'prompt_injection').",
-    )
-    config: Optional[Dict[str, Any]] = Field(
-        default=None,
-        description="Per-eval configuration (thresholds, entity lists, etc.).",
-    )
-
-
-class RunMLEvalRequest(BaseModel):
-    """Request schema for running an ML eval on a text input."""
-
-    text: str = Field(description="The text to evaluate.")
-
-
 class ContinuousEvalTransformVariableMappingRequest(BaseModel):
     transform_variable: str = Field(description="Name of the transform variable")
     eval_variable: str = Field(description="Name of the eval variable")
@@ -974,11 +996,6 @@ class ContinuousEvalCreateRequest(BaseModel):
         default=None,
         description="Description of the continuous eval",
     )
-    eval_type: str = Field(
-        default=EVAL_TYPE_LLM_EVAL,
-        description="Type of eval: 'llm_eval' or 'ml_eval'.",
-    )
-    # LLM eval fields (required when eval_type = "llm_eval")
     llm_eval_name: Optional[str] = Field(
         default=None,
         description="Name of the llm eval to create the continuous eval for",
@@ -986,15 +1003,6 @@ class ContinuousEvalCreateRequest(BaseModel):
     llm_eval_version: Optional[Union[str, int]] = Field(
         default=None,
         description="Version of the llm eval. Can be 'latest', a version number, an ISO datetime string, or a tag.",
-    )
-    # ML eval fields (required when eval_type = "ml_eval")
-    ml_eval_name: Optional[str] = Field(
-        default=None,
-        description="Name of the ML eval to create the continuous eval for",
-    )
-    ml_eval_version: Optional[Union[str, int]] = Field(
-        default=None,
-        description="Version of the ML eval. Can be 'latest', a version number, or a tag.",
     )
     transform_id: UUID = Field(
         description="ID of the transform to create the continuous eval for",
@@ -1011,20 +1019,8 @@ class ContinuousEvalCreateRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_eval_ref(self) -> "ContinuousEvalCreateRequest":
-        if self.eval_type == EVAL_TYPE_LLM_EVAL:
-            if not self.llm_eval_name or self.llm_eval_version is None:
-                raise ValueError(
-                    f"llm_eval_name and llm_eval_version are required when eval_type='{EVAL_TYPE_LLM_EVAL}'",
-                )
-        elif self.eval_type == EVAL_TYPE_ML_EVAL:
-            if not self.ml_eval_name or self.ml_eval_version is None:
-                raise ValueError(
-                    f"ml_eval_name and ml_eval_version are required when eval_type='{EVAL_TYPE_ML_EVAL}'",
-                )
-        else:
-            raise ValueError(
-                f"eval_type must be '{EVAL_TYPE_LLM_EVAL}' or '{EVAL_TYPE_ML_EVAL}', got '{self.eval_type}'",
-            )
+        if not self.llm_eval_name or self.llm_eval_version is None:
+            raise ValueError("llm_eval_name and llm_eval_version are required")
         return self
 
 

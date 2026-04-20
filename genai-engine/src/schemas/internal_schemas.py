@@ -740,7 +740,7 @@ class AgenticAnnotation(BaseModel):
     )
     eval_type: Optional[str] = Field(
         default=None,
-        description="Type of eval: 'llm_eval' or 'ml_eval'",
+        description="Type of eval",
     )
     eval_name: Optional[str] = Field(
         default=None,
@@ -805,12 +805,8 @@ class AgenticAnnotation(BaseModel):
         if db_annotation.continuous_eval_id and db_annotation.continuous_eval:
             continuous_eval_name = db_annotation.continuous_eval.name
             ce = db_annotation.continuous_eval
-            if ce.eval_type == "ml_eval":
-                eval_name = ce.ml_eval_name
-                eval_version = ce.ml_eval_version
-            else:
-                eval_name = ce.llm_eval_name
-                eval_version = ce.llm_eval_version
+            eval_name = ce.llm_eval_name
+            eval_version = ce.llm_eval_version
 
         return AgenticAnnotation(
             id=db_annotation.id,
@@ -818,11 +814,7 @@ class AgenticAnnotation(BaseModel):
             trace_id=db_annotation.trace_id or "",
             continuous_eval_id=db_annotation.continuous_eval_id,
             continuous_eval_name=continuous_eval_name,
-            eval_type=(
-                db_annotation.continuous_eval.eval_type
-                if db_annotation.continuous_eval
-                else None
-            ),
+            eval_type=None,
             eval_name=eval_name,
             eval_version=eval_version,
             annotation_score=db_annotation.annotation_score,
@@ -3843,11 +3835,8 @@ class ContinuousEval(BaseModel):
     name: str
     description: Optional[str]
     task_id: str
-    eval_type: str
-    llm_eval_name: Optional[str] = None
-    llm_eval_version: Optional[int] = None
-    ml_eval_name: Optional[str] = None
-    ml_eval_version: Optional[int] = None
+    llm_eval_name: str
+    llm_eval_version: int
     transform_id: uuid.UUID
     created_at: datetime
     updated_at: datetime
@@ -3871,11 +3860,8 @@ class ContinuousEval(BaseModel):
             name=self.name,
             description=self.description,
             task_id=self.task_id,
-            eval_type=self.eval_type,
             llm_eval_name=self.llm_eval_name,
             llm_eval_version=self.llm_eval_version,
-            ml_eval_name=self.ml_eval_name,
-            ml_eval_version=self.ml_eval_version,
             transform_id=self.transform_id,
             created_at=self.created_at,
             updated_at=self.updated_at,
@@ -3898,11 +3884,8 @@ class ContinuousEval(BaseModel):
             name=db_eval.name,
             description=db_eval.description,
             task_id=db_eval.task_id,
-            eval_type=db_eval.eval_type,
             llm_eval_name=db_eval.llm_eval_name,
             llm_eval_version=db_eval.llm_eval_version,
-            ml_eval_name=db_eval.ml_eval_name,
-            ml_eval_version=db_eval.ml_eval_version,
             transform_id=db_eval.transform_id,
             created_at=db_eval.created_at,
             updated_at=db_eval.updated_at,
@@ -3924,11 +3907,8 @@ class ContinuousEval(BaseModel):
             name=self.name,
             description=self.description,
             task_id=self.task_id,
-            eval_type=self.eval_type,
             llm_eval_name=self.llm_eval_name,
             llm_eval_version=self.llm_eval_version,
-            ml_eval_name=self.ml_eval_name,
-            ml_eval_version=self.ml_eval_version,
             transform_id=self.transform_id,
             created_at=self.created_at,
             updated_at=self.updated_at,

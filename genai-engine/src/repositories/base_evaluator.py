@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from arthur_common.models.enums import EvalType
 from sqlalchemy.orm import Session
 
 from schemas.internal_schemas import ContinuousEvalTransformVariableMapping
@@ -9,7 +8,7 @@ from schemas.response_schemas import EvalRunResponse
 
 
 class BaseEvaluator(ABC):
-    """Abstract base for all evaluator implementations (LLM and ML)."""
+    """Abstract base for all evaluator implementations."""
 
     @abstractmethod
     def get_eval_variables(
@@ -41,21 +40,21 @@ class BaseEvaluator(ABC):
                 eval_variable name.
 
         Returns:
-            EvalRunResponse with score (bool), reason, and cost.
+            EvalRunResponse with score (int 0/1), reason, and cost.
         """
         ...
 
 
-def get_evaluator(eval_type: EvalType, db_session: Session) -> "BaseEvaluator":
-    """Factory: return the appropriate evaluator for the given eval_type."""
-    # Import here to avoid circular imports at module load time
-    if eval_type == EvalType.LLM_EVAL:
-        from repositories.llm_evaluator import LLMEvaluator
+def get_evaluator(
+    db_session: Session,
+    eval_type: str = "llm_as_a_judge",
+) -> "BaseEvaluator":
+    """Factory: return the right evaluator for the given eval_type."""
+    from repositories.ml_evals_repository import ML_EVAL_TYPES, MLEvaluator
 
-        return LLMEvaluator(db_session)
-    elif eval_type == EvalType.ML_EVAL:
-        from repositories.ml_evals_repository import MLEvaluator
-
+    if eval_type in ML_EVAL_TYPES:
         return MLEvaluator(db_session)
-    else:
-        raise ValueError(f"Unknown eval_type: {eval_type}")
+
+    from repositories.llm_evaluator import LLMEvaluator
+
+    return LLMEvaluator(db_session)
