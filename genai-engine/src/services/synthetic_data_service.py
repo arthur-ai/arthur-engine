@@ -15,8 +15,9 @@ from arthur_common.models.llm_model_providers import (
     OpenAIMessage,
 )
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
-from clients.llm.llm_client import LLMClient
+from clients.llm.llm_client import LLMClient, LLMModelResponse
 from repositories.model_provider_repository import ModelProviderRepository
 from schemas.request_schemas import (
     LLMRequestConfigSettings,
@@ -34,6 +35,8 @@ from services.synthetic_data_prompts import (
     build_initial_generation_prompt,
     build_system_prompt,
 )
+from services.trace.internal_trace_service import InternalTraceService
+from utils.constants import SYNTHETIC_DATASET_TASK_ID
 
 
 class SyntheticDataColumn(BaseModel):
@@ -66,12 +69,35 @@ class SyntheticDataLLMOutput(BaseModel):
 class SyntheticDataService:
     """Service for generating and refining synthetic dataset rows."""
 
-    def __init__(self, model_provider_repo: ModelProviderRepository):
+    def __init__(
+        self,
+        model_provider_repo: ModelProviderRepository,
+        db_session: Session,
+    ):
         self.model_provider_repo = model_provider_repo
+        self.tracing = InternalTraceService(
+            db_session,
+            task_id=SYNTHETIC_DATASET_TASK_ID,
+            service_name="synthetic_data",
+        )
 
     def _get_llm_client(self, provider: ModelProvider) -> LLMClient:
         """Get configured LLM client from the model provider repository."""
         return self.model_provider_repo.get_model_provider_client(provider)
+
+    @staticmethod
+    def _extract_token_counts(
+        response: LLMModelResponse,
+    ) -> tuple[Optional[int], Optional[int], Optional[int]]:
+        raw = response.response
+        if raw is None or not hasattr(raw, "usage") or not raw.usage:
+            return None, None, None
+        usage = raw.usage
+        return (
+            getattr(usage, "prompt_tokens", None),
+            getattr(usage, "completion_tokens", None),
+            getattr(usage, "total_tokens", None),
+        )
 
     def _convert_column_descriptions_to_dicts(
         self,
@@ -146,13 +172,13 @@ class SyntheticDataService:
     ) -> Dict[str, Any]:
         """Build kwargs for LLM completion from config settings."""
         if not config:
-            return {"temperature": 0.7}  # Default temperature for creative generation
+            return {"temperature": 0.7, "drop_params": True}
 
-        kwargs = {}
+        kwargs: Dict[str, Any] = {"drop_params": True}
         if config.temperature is not None:
             kwargs["temperature"] = config.temperature
         else:
-            kwargs["temperature"] = 0.7  # Default for creative generation
+            kwargs["temperature"] = 0.7
 
         if config.max_tokens is not None:
             kwargs["max_tokens"] = config.max_tokens
@@ -172,6 +198,7 @@ class SyntheticDataService:
         request: SyntheticDataGenerationRequest,
         existing_rows: List[Dict[str, Any]],
         column_names: List[str],
+        session_id: str,
     ) -> SyntheticDataGenerationResponse:
         """
         Generate initial synthetic data based on the configuration.
@@ -180,6 +207,7 @@ class SyntheticDataService:
             request: The generation request with configuration
             existing_rows: Sample of existing dataset rows for reference
             column_names: List of column names in the dataset
+            session_id: Identifier linking spans from the same SDG session
 
         Returns:
             SyntheticDataGenerationResponse with generated rows
@@ -205,23 +233,62 @@ class SyntheticDataService:
         user_prompt = build_initial_generation_prompt(num_rows=request.num_rows)
 
         # Build messages
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
+        messages: List[OpenAIMessage] = [
+            OpenAIMessage(role=MessageRole.SYSTEM, content=system_prompt),
+            OpenAIMessage(role=MessageRole.USER, content=user_prompt),
         ]
 
         # Build config kwargs
         config_kwargs = self._build_config_kwargs(request.config)
 
-        # Call LLM with structured outputs
-        response = client.completion(
-            model=request.model_name,
-            messages=messages,
-            response_format=SyntheticDataLLMOutput,
-            **config_kwargs,
+        agent_span = self.tracing.start_agent_span(
+            name="synthetic_data.initial_generation",
+            agent_name="synthetic_data_generation",
+            session_id=session_id,
         )
+        self.tracing.set_input_json(
+            agent_span,
+            {
+                "dataset_purpose": request.dataset_purpose,
+                "num_rows": request.num_rows,
+                "column_names": column_names,
+            },
+        )
+        llm_span = self.tracing.start_llm_span(
+            agent_span,
+            request.model_name,
+            (
+                request.model_provider.value
+                if hasattr(request.model_provider, "value")
+                else str(request.model_provider)
+            ),
+        )
+        self.tracing.set_llm_input_messages(llm_span, messages)
+
+        try:
+            response = client.completion(
+                model=request.model_name,
+                messages=[m.model_dump(exclude_none=True) for m in messages],
+                response_format=SyntheticDataLLMOutput,
+                **config_kwargs,
+            )
+        except Exception as e:
+            self.tracing.end_span_with_error(llm_span, str(e))
+            self.tracing.end_span_with_error(agent_span, str(e))
+            self.tracing.flush()
+            raise
 
         llm_output = cast(SyntheticDataLLMOutput, response.structured_output_response)
+        input_tokens, output_tokens, total_tokens = self._extract_token_counts(response)
+        self.tracing.set_llm_response(
+            llm_span,
+            content=llm_output.model_dump_json(),
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            total_tokens=total_tokens,
+            output_envelope="raw",
+        )
+        self.tracing.end_span(llm_span)
 
         # Parse the response
         rows, rows_added, rows_modified, rows_removed = self._parse_llm_response(
@@ -234,6 +301,18 @@ class SyntheticDataService:
             role=MessageRole.AI,
             content=llm_output.message,
         )
+
+        self.tracing.set_output_json(
+            agent_span,
+            {
+                "message": llm_output.message,
+                "rows_added": rows_added,
+                "rows_modified": rows_modified,
+                "rows_removed": rows_removed,
+            },
+        )
+        self.tracing.end_span(agent_span)
+        self.tracing.flush()
 
         return SyntheticDataGenerationResponse(
             rows=rows,
@@ -248,6 +327,7 @@ class SyntheticDataService:
         request: SyntheticDataConversationRequest,
         existing_rows: List[Dict[str, Any]],
         column_names: List[str],
+        session_id: str,
     ) -> SyntheticDataGenerationResponse:
         """
         Continue the synthetic data generation conversation.
@@ -256,6 +336,7 @@ class SyntheticDataService:
             request: The conversation request with user message and current state
             existing_rows: Sample of existing dataset rows for reference
             column_names: List of column names in the dataset
+            session_id: Identifier linking spans from the same SDG session
 
         Returns:
             SyntheticDataGenerationResponse with updated rows
@@ -306,36 +387,64 @@ class SyntheticDataService:
         )
 
         # Build messages including conversation history
-        messages = [{"role": "system", "content": system_prompt}]
-
-        # Add conversation history
-        for msg in request.conversation_history:
-            messages.append(
-                {
-                    "role": msg.role.value,
-                    "content": (
-                        msg.content
-                        if isinstance(msg.content, str)
-                        else str(msg.content)
-                    ),
-                }
-            )
-
-        # Add current user message
-        messages.append({"role": "user", "content": user_prompt})
+        messages: List[OpenAIMessage] = [
+            OpenAIMessage(role=MessageRole.SYSTEM, content=system_prompt),
+            *request.conversation_history,
+            OpenAIMessage(role=MessageRole.USER, content=user_prompt),
+        ]
 
         # Build config kwargs
         config_kwargs = self._build_config_kwargs(request.config)
 
-        # Call LLM with structured outputs
-        response = client.completion(
-            model=request.model_name,
-            messages=messages,
-            response_format=SyntheticDataLLMOutput,
-            **config_kwargs,
+        agent_span = self.tracing.start_agent_span(
+            name="synthetic_data.conversation",
+            agent_name="synthetic_data_generation",
+            session_id=session_id,
         )
+        self.tracing.set_input_json(
+            agent_span,
+            {
+                "dataset_purpose": request.dataset_purpose,
+                "user_message": request.message,
+                "current_row_count": len(current_rows_internal),
+                "column_names": column_names,
+            },
+        )
+        llm_span = self.tracing.start_llm_span(
+            agent_span,
+            request.model_name,
+            (
+                request.model_provider.value
+                if hasattr(request.model_provider, "value")
+                else str(request.model_provider)
+            ),
+        )
+        self.tracing.set_llm_input_messages(llm_span, messages)
+
+        try:
+            response = client.completion(
+                model=request.model_name,
+                messages=[m.model_dump(exclude_none=True) for m in messages],
+                response_format=SyntheticDataLLMOutput,
+                **config_kwargs,
+            )
+        except Exception as e:
+            self.tracing.end_span_with_error(llm_span, str(e))
+            self.tracing.end_span_with_error(agent_span, str(e))
+            self.tracing.flush()
+            raise
 
         llm_output = cast(SyntheticDataLLMOutput, response.structured_output_response)
+        input_tokens, output_tokens, total_tokens = self._extract_token_counts(response)
+        self.tracing.set_llm_response(
+            llm_span,
+            content=llm_output.model_dump_json(),
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            total_tokens=total_tokens,
+            output_envelope="raw",
+        )
+        self.tracing.end_span(llm_span)
 
         # Parse the response
         rows, rows_added, rows_modified, rows_removed = self._parse_llm_response(
@@ -348,6 +457,18 @@ class SyntheticDataService:
             role=MessageRole.AI,
             content=llm_output.message,
         )
+
+        self.tracing.set_output_json(
+            agent_span,
+            {
+                "message": llm_output.message,
+                "rows_added": rows_added,
+                "rows_modified": rows_modified,
+                "rows_removed": rows_removed,
+            },
+        )
+        self.tracing.end_span(agent_span)
+        self.tracing.flush()
 
         return SyntheticDataGenerationResponse(
             rows=rows,

@@ -716,8 +716,11 @@ export interface AgenticPrompt {
    * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
    */
   model_name: string;
-  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
-  model_provider: ModelProvider;
+  /**
+   * Model Provider
+   * Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). The sentinel value 'empty' indicates the system default placeholder has not been configured.
+   */
+  model_provider: ModelProvider | "empty";
   /**
    * Name
    * Name of the agentic prompt
@@ -794,8 +797,11 @@ export interface AgenticPromptVersionResponse {
    * Model name chosen for this version of the llm eval
    */
   model_name: string;
-  /** Model provider chosen for this version of the llm eval */
-  model_provider: ModelProvider;
+  /**
+   * Model Provider
+   * Model provider chosen for this version of the llm eval
+   */
+  model_provider: ModelProvider | "empty";
   /**
    * Num Messages
    * Number of messages in the prompt
@@ -4027,6 +4033,8 @@ export type GetSpanByIdApiV1TracesSpansSpanIdGetData = SpanWithMetricsResponse;
 
 export type GetSpanByIdApiV1TracesSpansSpanIdGetError = HTTPValidationError;
 
+export type GetSyntheticDataPromptStatusApiV2DatasetsSyntheticDataPromptStatusGetData = SyntheticDataPromptStatus;
+
 export type GetTaskApiV2TasksTaskIdGetData = TaskResponse;
 
 export type GetTaskApiV2TasksTaskIdGetError = HTTPValidationError;
@@ -4992,8 +5000,11 @@ export interface LLMVersionResponse {
    * Model name chosen for this version of the llm eval
    */
   model_name: string;
-  /** Model provider chosen for this version of the llm eval */
-  model_provider: ModelProvider;
+  /**
+   * Model Provider
+   * Model provider chosen for this version of the llm eval
+   */
+  model_provider: ModelProvider | "empty";
   /**
    * Tags
    * List of tags for the llm asset
@@ -10772,6 +10783,25 @@ export interface SyntheticDataGenerationResponse {
   rows_removed?: string[];
 }
 
+/** SyntheticDataPromptStatus */
+export interface SyntheticDataPromptStatus {
+  /**
+   * Is Placeholder
+   * True when the prompt uses the empty placeholder model
+   */
+  is_placeholder: boolean;
+  /**
+   * Model Name
+   * Model name stored in the SDG system prompt
+   */
+  model_name: string;
+  /**
+   * Model Provider
+   * Model provider stored in the SDG system prompt
+   */
+  model_provider: string;
+}
+
 /**
  * SyntheticDataRowResponse
  * A single generated row with a temporary client-side ID for tracking.
@@ -15448,6 +15478,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getSpanByIdApiV1TracesSpansSpanIdGet: (spanId: string, params: RequestParams = {}) =>
       this.request<GetSpanByIdApiV1TracesSpansSpanIdGetData, GetSpanByIdApiV1TracesSpansSpanIdGetError>({
         path: `/api/v1/traces/spans/${spanId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Datasets
+     * @name GetSyntheticDataPromptStatusApiV2DatasetsSyntheticDataPromptStatusGet
+     * @summary Get the model configuration stored in the SDG system prompt.
+     * @request GET:/api/v2/datasets/synthetic-data/prompt-status
+     * @secure
+     */
+    getSyntheticDataPromptStatusApiV2DatasetsSyntheticDataPromptStatusGet: (params: RequestParams = {}) =>
+      this.request<GetSyntheticDataPromptStatusApiV2DatasetsSyntheticDataPromptStatusGetData, any>({
+        path: `/api/v2/datasets/synthetic-data/prompt-status`,
         method: "GET",
         secure: true,
         format: "json",
