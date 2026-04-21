@@ -35,7 +35,8 @@ from services.synthetic_data_prompts import (
     build_initial_generation_prompt,
     build_system_prompt,
 )
-from services.synthetic_data_tracing_service import SyntheticDataTracingService
+from services.trace.internal_trace_service import InternalTraceService
+from utils.constants import SYNTHETIC_DATASET_TASK_ID
 
 
 class SyntheticDataColumn(BaseModel):
@@ -74,7 +75,11 @@ class SyntheticDataService:
         db_session: Session,
     ):
         self.model_provider_repo = model_provider_repo
-        self.tracing = SyntheticDataTracingService(db_session)
+        self.tracing = InternalTraceService(
+            db_session,
+            task_id=SYNTHETIC_DATASET_TASK_ID,
+            service_name="synthetic_data",
+        )
 
     def _get_llm_client(self, provider: ModelProvider) -> LLMClient:
         """Get configured LLM client from the model provider repository."""
@@ -236,8 +241,12 @@ class SyntheticDataService:
         # Build config kwargs
         config_kwargs = self._build_config_kwargs(request.config)
 
-        agent_span = self.tracing.start_agent_span("initial_generation", session_id)
-        self.tracing.set_agent_input(
+        agent_span = self.tracing.start_agent_span(
+            name="synthetic_data.initial_generation",
+            agent_name="synthetic_data_generation",
+            session_id=session_id,
+        )
+        self.tracing.set_input_json(
             agent_span,
             {
                 "dataset_purpose": request.dataset_purpose,
@@ -277,6 +286,7 @@ class SyntheticDataService:
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             total_tokens=total_tokens,
+            output_envelope="raw",
         )
         self.tracing.end_span(llm_span)
 
@@ -292,7 +302,7 @@ class SyntheticDataService:
             content=llm_output.message,
         )
 
-        self.tracing.set_agent_output(
+        self.tracing.set_output_json(
             agent_span,
             {
                 "message": llm_output.message,
@@ -386,8 +396,12 @@ class SyntheticDataService:
         # Build config kwargs
         config_kwargs = self._build_config_kwargs(request.config)
 
-        agent_span = self.tracing.start_agent_span("conversation", session_id)
-        self.tracing.set_agent_input(
+        agent_span = self.tracing.start_agent_span(
+            name="synthetic_data.conversation",
+            agent_name="synthetic_data_generation",
+            session_id=session_id,
+        )
+        self.tracing.set_input_json(
             agent_span,
             {
                 "dataset_purpose": request.dataset_purpose,
@@ -428,6 +442,7 @@ class SyntheticDataService:
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             total_tokens=total_tokens,
+            output_envelope="raw",
         )
         self.tracing.end_span(llm_span)
 
@@ -443,7 +458,7 @@ class SyntheticDataService:
             content=llm_output.message,
         )
 
-        self.tracing.set_agent_output(
+        self.tracing.set_output_json(
             agent_span,
             {
                 "message": llm_output.message,
