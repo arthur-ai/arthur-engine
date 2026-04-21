@@ -23,6 +23,7 @@ from repositories.continuous_eval_test_run_repository import (
 )
 from repositories.continuous_evals_repository import ContinuousEvalsRepository
 from repositories.llm_evals_repository import LLMEvalsRepository
+from repositories.ml_evals_repository import MLEvalsRepository
 from repositories.trace_transform_repository import TraceTransformRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
@@ -290,28 +291,52 @@ def create_continuous_eval(
 
         continuous_eval_repo = ContinuousEvalsRepository(db_session)
 
-        llm_eval_repo = LLMEvalsRepository(db_session)
-        llm_eval_version = (
-            str(create_request.llm_eval_version)
-            if isinstance(create_request.llm_eval_version, int)
-            else create_request.llm_eval_version
-        )
-        llm_eval = llm_eval_repo.get_llm_item(
-            task.id,
-            create_request.llm_eval_name,  # type: ignore[arg-type]
-            llm_eval_version,
-        )
-        if llm_eval.deleted_at is not None:
-            raise HTTPException(
-                status_code=400,
-                detail=f"LLM Eval {llm_eval.name} (version {llm_eval.version}) has been deleted.",
+        if create_request.eval_type == "ml_eval":
+            ml_eval_repo = MLEvalsRepository(db_session)
+            ml_eval_version = (
+                str(create_request.ml_eval_version)
+                if create_request.ml_eval_version is not None
+                else "latest"
             )
-        create_request.llm_eval_version = llm_eval.version
-        continuous_eval_repo.validate_transform_variable_mapping(
-            validation_definition,
-            llm_eval,
-            create_request.transform_variable_mapping,
-        )
+            ml_eval = ml_eval_repo.get_ml_eval(
+                task.id,
+                create_request.ml_eval_name,  # type: ignore[arg-type]
+                ml_eval_version,
+            )
+            if ml_eval.deleted_at is not None:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"ML Eval {ml_eval.name} (version {ml_eval.version}) has been deleted.",
+                )
+            create_request.ml_eval_version = ml_eval.version
+            continuous_eval_repo.validate_transform_variable_mapping(
+                validation_definition,
+                ml_eval,
+                create_request.transform_variable_mapping,
+            )
+        else:
+            llm_eval_repo = LLMEvalsRepository(db_session)
+            llm_eval_version = (
+                str(create_request.llm_eval_version)
+                if create_request.llm_eval_version is not None
+                else "latest"
+            )
+            llm_eval = llm_eval_repo.get_llm_item(
+                task.id,
+                create_request.llm_eval_name,  # type: ignore[arg-type]
+                llm_eval_version,
+            )
+            if llm_eval.deleted_at is not None:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"LLM Eval {llm_eval.name} (version {llm_eval.version}) has been deleted.",
+                )
+            create_request.llm_eval_version = llm_eval.version
+            continuous_eval_repo.validate_transform_variable_mapping(
+                validation_definition,
+                llm_eval,
+                create_request.transform_variable_mapping,
+            )
 
         continuous_eval = continuous_eval_repo.create_continuous_eval(
             task.id,

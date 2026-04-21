@@ -3862,8 +3862,11 @@ class ContinuousEval(BaseModel):
     name: str
     description: Optional[str]
     task_id: str
-    llm_eval_name: str
-    llm_eval_version: int
+    eval_type: str = "llm_eval"
+    llm_eval_name: Optional[str] = None
+    llm_eval_version: Optional[int] = None
+    ml_eval_name: Optional[str] = None
+    ml_eval_version: Optional[int] = None
     transform_id: uuid.UUID
     transform_version_id: Optional[uuid.UUID] = None
     created_at: datetime
@@ -3876,27 +3879,6 @@ class ContinuousEval(BaseModel):
         default=True,
         description="Whether the continuous eval is enabled.",
     )
-
-    def to_db_model(self) -> DatabaseContinuousEval:
-        # Convert Pydantic models to dicts for JSON serialization
-        transform_variable_mapping_dicts = [
-            mapping.model_dump() for mapping in self.transform_variable_mapping
-        ]
-
-        return DatabaseContinuousEval(
-            id=self.id,
-            name=self.name,
-            description=self.description,
-            task_id=self.task_id,
-            llm_eval_name=self.llm_eval_name,
-            llm_eval_version=self.llm_eval_version,
-            transform_id=self.transform_id,
-            transform_version_id=self.transform_version_id,
-            created_at=self.created_at,
-            updated_at=self.updated_at,
-            transform_variable_mapping=transform_variable_mapping_dicts,
-            enabled=self.enabled,
-        )
 
     @staticmethod
     def from_db_model(
@@ -3913,8 +3895,11 @@ class ContinuousEval(BaseModel):
             name=db_eval.name,
             description=db_eval.description,
             task_id=db_eval.task_id,
+            eval_type=db_eval.eval_type,
             llm_eval_name=db_eval.llm_eval_name,
             llm_eval_version=db_eval.llm_eval_version,
+            ml_eval_name=db_eval.ml_eval_name,
+            ml_eval_version=db_eval.ml_eval_version,
             transform_id=db_eval.transform_id,
             transform_version_id=db_eval.transform_version_id,
             created_at=db_eval.created_at,
@@ -3937,8 +3922,11 @@ class ContinuousEval(BaseModel):
             name=self.name,
             description=self.description,
             task_id=self.task_id,
+            eval_type=self.eval_type,
             llm_eval_name=self.llm_eval_name,
             llm_eval_version=self.llm_eval_version,
+            ml_eval_name=self.ml_eval_name,
+            ml_eval_version=self.ml_eval_version,
             transform_id=self.transform_id,
             transform_version_id=self.transform_version_id,
             created_at=self.created_at,

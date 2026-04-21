@@ -182,6 +182,7 @@ export const EvaluatorSelector = withFieldGroup({
               renderInput={(params) => (
                 <TextField
                   {...params}
+                  variant="filled"
                   label="Evaluator"
                   slotProps={{
                     input: {
@@ -210,6 +211,7 @@ export const EvaluatorSelector = withFieldGroup({
                 renderInput={(params) => (
                   <TextField
                     {...params}
+                    variant="filled"
                     label="Version"
                     slotProps={{
                       input: {
@@ -239,6 +241,7 @@ export const EvaluatorSelector = withFieldGroup({
                 renderInput={(params) => (
                   <TextField
                     {...params}
+                    variant="filled"
                     label="Version"
                     slotProps={{
                       input: {
