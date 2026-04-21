@@ -290,7 +290,7 @@ def test_delete_all_versions_not_found_raises(ml_evals_repo, task_id):
 
 @pytest.mark.unit_tests
 def test_ml_repo_does_not_see_llm_as_a_judge_evals(task_id):
-    """LLM evals and ML evals in the same table must not bleed into each other."""
+    """ML repo must not surface llm_as_a_judge rows; LLM repo surfaces all eval types."""
     from arthur_common.models.llm_model_providers import ModelProvider
 
     from repositories.llm_evals_repository import LLMEvalsRepository
@@ -314,19 +314,21 @@ def test_ml_repo_does_not_see_llm_as_a_judge_evals(task_id):
     )
     ml_repo.save_ml_eval(task_id, ml_eval_name, CreateMLEvalRequest(eval_type="pii"))
 
-    # ML repo should not see the LLM eval
+    # ML repo should not see the LLM eval (MLEvalsRepository filters to ML types only)
     ml_result = ml_repo.get_ml_eval(task_id, ml_eval_name, "latest")
     assert ml_result.eval_type == "pii"
 
     with pytest.raises(ValueError, match="not found"):
         ml_repo.get_ml_eval(task_id, llm_eval_name, "latest")
 
-    # LLM repo should not see the ML eval
+    # LLM repo surfaces all eval types stored in llm_evals (including ML evals)
     llm_result = llm_repo.get_llm_item(task_id, llm_eval_name, "latest")
     assert llm_result.name == llm_eval_name
+    assert llm_result.eval_type == "llm_as_a_judge"
 
-    with pytest.raises(ValueError, match="not found"):
-        llm_repo.get_llm_item(task_id, ml_eval_name, "latest")
+    ml_via_llm_repo = llm_repo.get_llm_item(task_id, ml_eval_name, "latest")
+    assert ml_via_llm_repo.name == ml_eval_name
+    assert ml_via_llm_repo.eval_type == "pii"
 
     # Cleanup
     llm_repo.delete_llm_item(task_id, llm_eval_name)
