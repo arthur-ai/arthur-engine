@@ -252,7 +252,9 @@ const EvalVersionDrawer = ({
                             component="span"
                             sx={{ color: isDeleted ? "text.disabled" : "text.secondary" }}
                           >
-                            {version.model_provider} / {version.model_name}
+                            {version.model_provider && version.model_name
+                              ? `${version.model_provider} / ${version.model_name}`
+                              : version.eval_type ?? ""}
                           </Typography>
                           <Typography
                             variant="caption"

@@ -29,6 +29,7 @@ class _LLMItemProtocol(Protocol):
     task_id: Any
     name: Any
     version: Any
+    eval_type: Any
     created_at: Any
     deleted_at: Any
     model_provider: Any
@@ -528,15 +529,22 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         Returns:
             LLMGetAllMetadataListResponse - list of metadata objects with total count
         """
-        # Start with aggregated query
-        base_query: Any = self.db_session.query(
+        # Build the column list — include eval_type only when the model supports it
+        _has_eval_type = hasattr(self.db_model, "eval_type")
+        _select_cols: list[Any] = [
             self.db_model.name.label("name"),
             sa.func.count(self.db_model.version).label("versions"),
             sa.func.min(self.db_model.created_at).label("created_at"),
-            sa.func.max(self.db_model.created_at).label(
-                "latest_version_created_at",
-            ),
-        ).filter(
+            sa.func.max(self.db_model.created_at).label("latest_version_created_at"),
+        ]
+        if _has_eval_type:
+            _select_cols.insert(
+                1,
+                sa.func.max(self.db_model.eval_type).label("eval_type"),  # type: ignore[attr-defined]
+            )
+
+        # Start with aggregated query
+        base_query: Any = self.db_session.query(*_select_cols).filter(
             self.db_model.task_id == task_id,
         )
 
@@ -597,6 +605,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
             llm_metadata.append(
                 LLMGetAllMetadataResponse(
                     name=row.name,
+                    eval_type=row.eval_type if _has_eval_type else "llm_as_a_judge",
                     versions=row.versions,
                     created_at=row.created_at,
                     latest_version_created_at=row.latest_version_created_at,

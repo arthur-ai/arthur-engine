@@ -4579,17 +4579,26 @@ export interface LLMEval {
    */
   deleted_at?: string | null;
   /**
-   * Instructions
-   * Instructions for the llm eval
+   * Eval Type
+   * Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
+   * @default "llm_as_a_judge"
    */
-  instructions: string;
+  eval_type?: string;
+  /**
+   * Instructions
+   * Instructions for the llm eval. Null for ML evals.
+   */
+  instructions?: string | null;
   /**
    * Model Name
-   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
+   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet'). Null for ML evals.
    */
-  model_name: string;
-  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
-  model_provider: ModelProvider;
+  model_name?: string | null;
+  /**
+   * Model Provider
+   * Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). Null for ML evals.
+   */
+  model_provider?: ModelProvider | null;
   /**
    * Name
    * Name of the llm eval
@@ -4962,12 +4971,21 @@ export interface LLMVersionResponse {
    */
   deleted_at: string | null;
   /**
-   * Model Name
-   * Model name chosen for this version of the llm eval
+   * Eval Type
+   * Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
+   * @default "llm_as_a_judge"
    */
-  model_name: string;
-  /** Model provider chosen for this version of the llm eval */
-  model_provider: ModelProvider;
+  eval_type?: string;
+  /**
+   * Model Name
+   * Model name chosen for this version of the llm eval. Null for ML evals.
+   */
+  model_name?: string | null;
+  /**
+   * Model Provider
+   * Model provider chosen for this version of the llm eval. Null for ML evals.
+   */
+  model_provider?: ModelProvider | null;
   /**
    * Tags
    * List of tags for the llm asset

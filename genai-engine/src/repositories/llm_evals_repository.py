@@ -43,7 +43,7 @@ class LLMEvalsRepository(
     db_model: Type[DatabaseLLMEval] = DatabaseLLMEval
     tag_db_model: Type[DatabaseLLMEvalVersionTag] = DatabaseLLMEvalVersionTag
     version_list_response_model: Type[BaseModel] = LLMEvalsVersionListResponse
-    eval_types = ["llm_as_a_judge"]
+    # eval_types = None → no filter; this repo handles all types stored in llm_evals
     default_eval_type = "llm_as_a_judge"
 
     def __init__(self, db_session: Session):
@@ -56,9 +56,14 @@ class LLMEvalsRepository(
 
         return LLMEval(
             name=db_eval.name,
-            model_name=db_eval.model_name or "",
-            model_provider=ModelProvider(db_eval.model_provider),
-            instructions=db_eval.instructions or "",
+            eval_type=db_eval.eval_type or "llm_as_a_judge",
+            model_name=db_eval.model_name,
+            model_provider=(
+                ModelProvider(db_eval.model_provider)
+                if db_eval.model_provider
+                else None
+            ),
+            instructions=db_eval.instructions,
             variables=db_eval.variables,
             tags=tags,
             config=db_eval.config if db_eval.config else None,
@@ -76,10 +81,15 @@ class LLMEvalsRepository(
 
         return LLMVersionResponse(
             version=db_item.version,
+            eval_type=db_item.eval_type,
             created_at=db_item.created_at,
             deleted_at=db_item.deleted_at,
-            model_provider=ModelProvider(db_item.model_provider),
-            model_name=db_item.model_name or "",
+            model_provider=(
+                ModelProvider(db_item.model_provider)
+                if db_item.model_provider
+                else None
+            ),
+            model_name=db_item.model_name,
             tags=tags,
         )
 

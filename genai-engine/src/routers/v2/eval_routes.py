@@ -23,7 +23,10 @@ from dependencies import (
     llm_get_versions_filter_parameters,
 )
 from repositories.llm_evals_repository import LLMEvalsRepository
-from repositories.ml_evals_repository import ML_EVAL_TYPES, MLEvalsRepository
+from repositories.ml_evals_repository import (  # MLEvalsRepository used for dispatch by eval_type
+    ML_EVAL_TYPES,
+    MLEvalsRepository,
+)
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
@@ -117,18 +120,22 @@ def get_all_evals(
     task: Task = Depends(get_validated_task),
 ) -> AllEvalsMetadataListResponse:
     try:
-        items: list[EvalMetadataItem] = []
-
-        llm_repo = LLMEvalsRepository(db_session)
-        llm_list = llm_repo.get_all_llm_item_metadata(
+        # LLMEvalsRepository now returns all eval types (llm_as_a_judge + ML types)
+        # so a single query is sufficient.
+        repo = LLMEvalsRepository(db_session)
+        all_list = repo.get_all_llm_item_metadata(
             task.id,
             pagination_parameters,
             filter_request,
         )
-        for item in llm_list.llm_metadata:
+
+        items: list[EvalMetadataItem] = []
+        for item in all_list.llm_metadata:
+            is_ml = item.eval_type != "llm_as_a_judge"
             items.append(
                 EvalMetadataItem(
-                    eval_type="llm_as_a_judge",
+                    eval_type="ml" if is_ml else "llm_as_a_judge",
+                    ml_eval_type=item.eval_type if is_ml else None,
                     name=item.name,
                     versions=item.versions,
                     tags=item.tags,
@@ -138,22 +145,7 @@ def get_all_evals(
                 ),
             )
 
-        ml_repo = MLEvalsRepository(db_session)
-        ml_list = ml_repo.get_all_llm_item_metadata(task.id, pagination_parameters)
-        for item in ml_list.llm_metadata:
-            items.append(
-                EvalMetadataItem(
-                    eval_type="ml",
-                    name=item.name,
-                    versions=item.versions,
-                    tags=item.tags,
-                    created_at=item.created_at,
-                    latest_version_created_at=item.latest_version_created_at,
-                    deleted_versions=item.deleted_versions,
-                ),
-            )
-
-        return AllEvalsMetadataListResponse(evals=items, count=len(items))
+        return AllEvalsMetadataListResponse(evals=items, count=all_list.count)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
