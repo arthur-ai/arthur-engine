@@ -17,7 +17,7 @@ from schemas.response_schemas import (
 
 # Known ML eval types stored in the shared llm_evals table.
 # These are model-based evaluators that do not require an LLM-as-a-judge prompt.
-ML_EVAL_TYPES = ["pii", "toxicity", "prompt_injection"]
+ML_EVAL_TYPES = ["pii", "pii_v1", "toxicity", "prompt_injection"]
 
 # The single input variable every ML eval expects.
 ML_EVAL_INPUT_VARIABLE = "input"
@@ -35,6 +35,10 @@ def get_ml_scorer(eval_type: str) -> Optional[Any]:
             from scorer.ml_scorers import PIIScorerV2
 
             _ML_SCORER_REGISTRY[eval_type] = PIIScorerV2()
+        elif eval_type == "pii_v1":
+            from scorer.ml_scorers import PIIScorerV1
+
+            _ML_SCORER_REGISTRY[eval_type] = PIIScorerV1()
         elif eval_type == "toxicity":
             from scorer.ml_scorers import ToxicityMLScorer
 

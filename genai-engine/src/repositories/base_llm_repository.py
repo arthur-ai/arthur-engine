@@ -621,18 +621,20 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         If a llm item with the same name exists, increment version.
         Otherwise, start at version 1.
         """
-        # Check for existing versions of this item (scoped to this repo's eval_types)
-        version_query: Any = self.db_session.query(
-            sa.func.max(self.db_model.version),
-        ).filter(
-            self.db_model.task_id == task_id,
-            self.db_model.name == item_name,
-        )
-        if self.eval_types is not None:
-            version_query = version_query.filter(
-                self.db_model.eval_type.in_(self.eval_types),  # type: ignore[attr-defined]
+        # Check for existing versions of this item across ALL eval types.
+        # Intentionally NOT filtered by self.eval_types: the PK (task_id, name, version)
+        # is shared across LLM and ML eval types, so version numbers must be monotonically
+        # increasing regardless of type to avoid IntegrityError on cross-type name reuse.
+        latest_version: Any = (
+            self.db_session.query(
+                sa.func.max(self.db_model.version),
             )
-        latest_version = version_query.scalar()
+            .filter(
+                self.db_model.task_id == task_id,
+                self.db_model.name == item_name,
+            )
+            .scalar()
+        )
 
         # Assign version
         version = (latest_version + 1) if latest_version else 1

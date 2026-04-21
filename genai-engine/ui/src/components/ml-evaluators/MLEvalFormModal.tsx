@@ -111,7 +111,7 @@ const MLEvalFormModal = ({ open, onClose, onSubmit, isLoading = false, initialNa
 
     try {
       const data: CreateMLEvalRequest = {
-        ml_eval_type: mlEvalType,
+        eval_type: mlEvalType,
         config: buildConfig(),
       };
       await onSubmit(evalName.trim(), data);
@@ -151,6 +151,7 @@ const MLEvalFormModal = ({ open, onClose, onSubmit, isLoading = false, initialNa
                 </Typography>
               </FormLabel>
               <TextField
+                variant="filled"
                 value={evalName}
                 onChange={(e) => setEvalName(e.target.value)}
                 placeholder="Enter eval name..."
@@ -242,7 +243,7 @@ const MLEvalFormModal = ({ open, onClose, onSubmit, isLoading = false, initialNa
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={handleClose} disabled={isLoading}>
+          <Button variant="text" onClick={handleClose} disabled={isLoading}>
             Cancel
           </Button>
           <Button type="submit" variant="contained" disabled={isLoading || !evalName.trim()} sx={{ minWidth: 120 }}>

@@ -86,12 +86,12 @@ def test_save_ml_eval_stores_config(ml_evals_repo, task_id):
 
 @pytest.mark.unit_tests
 def test_save_ml_eval_rejects_unknown_type(ml_evals_repo, task_id):
-    with pytest.raises(ValueError, match="Unknown ML eval type"):
-        ml_evals_repo.save_ml_eval(
-            task_id,
-            "bad_eval",
-            CreateMLEvalRequest(eval_type="llm_as_a_judge"),
-        )
+    # CreateMLEvalRequest.eval_type is a Literal — invalid values are rejected
+    # at Pydantic parse time (ValidationError), before the repository is called.
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        CreateMLEvalRequest(eval_type="llm_as_a_judge")  # type: ignore[arg-type]
 
 
 # ---------------------------------------------------------------------------

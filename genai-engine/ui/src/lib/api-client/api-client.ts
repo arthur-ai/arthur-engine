@@ -1720,10 +1720,10 @@ export interface CreateMLEvalRequest {
    */
   config?: Record<string, any> | null;
   /**
-   * Ml Eval Type
+   * Eval Type
    * Type of ML evaluator. Supported values: ['pii', 'pii_v1', 'prompt_injection', 'toxicity']
    */
-  ml_eval_type: string;
+  eval_type: string;
 }
 
 export type CreateNotebookApiV1TasksTaskIdNotebooksPostData = NotebookDetail;

@@ -1,12 +1,12 @@
-import { Menu } from "@base-ui/react/menu";
-import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
-import { ListItemButton, ListItemIcon, ListItemText } from "@mui/material";
-import Button from "@mui/material/Button";
-import Divider from "@mui/material/Divider";
-import List from "@mui/material/List";
-import Paper from "@mui/material/Paper";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import IconButton from "@mui/material/IconButton";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import ListItemText from "@mui/material/ListItemText";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import { useState } from "react";
 
 import { useDeleteMlEvalMutation } from "./hooks/useDeleteMlEvalMutation";
 
@@ -17,35 +17,45 @@ type Props = {
 
 export const MLEvalActions = ({ evalName, onEdit }: Props) => {
   const deleteMlEval = useDeleteMlEvalMutation();
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+
+  const handleOpen = (e: React.MouseEvent<HTMLElement>) => {
+    e.stopPropagation();
+    setAnchorEl(e.currentTarget);
+  };
+
+  const handleClose = () => setAnchorEl(null);
+
+  const handleEdit = () => {
+    handleClose();
+    onEdit(evalName);
+  };
+
+  const handleDelete = () => {
+    handleClose();
+    deleteMlEval.mutate(evalName);
+  };
 
   return (
-    <Menu.Root>
-      <Menu.Trigger
-        onClick={(e) => e.stopPropagation()}
-        render={<Button variant="outlined" size="small" endIcon={<ArrowDropDownIcon />} loading={deleteMlEval.isPending} className="text-nowrap" />}
-      >
-        ML Eval
-      </Menu.Trigger>
-      <Menu.Portal keepMounted>
-        <Menu.Positioner sideOffset={8} side="bottom" align="center">
-          <Menu.Popup render={<List component={Paper} dense className="outline-none origin-(--transform-origin) min-w-(--anchor-width)" />}>
-            <Menu.Item render={<ListItemButton className="gap-4" onClick={() => onEdit(evalName)} />}>
-              <ListItemText primary="Edit" />
-              <ListItemIcon sx={{ minWidth: "min-content" }}>
-                <EditIcon color="action" fontSize="small" />
-              </ListItemIcon>
-            </Menu.Item>
-            <Menu.Separator render={<Divider sx={{ my: 1 }} />} />
-            <Menu.Item render={<ListItemButton sx={{ color: "error.main" }} className="gap-4" onClick={() => deleteMlEval.mutate(evalName)} />}>
-              <ListItemText primary="Delete" />
-              <ListItemIcon sx={{ minWidth: "min-content" }}>
-                <DeleteIcon color="error" fontSize="small" />
-              </ListItemIcon>
-            </Menu.Item>
-            <Menu.Separator />
-          </Menu.Popup>
-        </Menu.Positioner>
-      </Menu.Portal>
-    </Menu.Root>
+    <>
+      <IconButton size="small" onClick={handleOpen} disabled={deleteMlEval.isPending}>
+        <MoreVertIcon fontSize="small" />
+      </IconButton>
+      <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
+        <MenuItem onClick={handleEdit}>
+          <ListItemIcon>
+            <EditIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary="Edit" />
+        </MenuItem>
+        <MenuItem onClick={handleDelete} sx={{ color: "error.main" }}>
+          <ListItemIcon>
+            <DeleteIcon fontSize="small" color="error" />
+          </ListItemIcon>
+          <ListItemText primary="Delete" />
+        </MenuItem>
+      </Menu>
+    </>
   );
 };

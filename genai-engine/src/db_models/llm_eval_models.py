@@ -127,10 +127,23 @@ class DatabaseContinuousEval(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
-    # llm eval composite primary key
     task_id: Mapped[str] = mapped_column(String, nullable=False)
-    llm_eval_name: Mapped[str] = mapped_column(String, nullable=False)
-    llm_eval_version: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # Discriminator — "llm_eval" or "ml_eval"
+    eval_type: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        server_default="llm_eval",
+        default="llm_eval",
+    )
+
+    # LLM eval reference (nullable; set when eval_type="llm_eval")
+    llm_eval_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    llm_eval_version: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    # ML eval reference (nullable; set when eval_type="ml_eval")
+    ml_eval_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    ml_eval_version: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     transform_id: Mapped[uuid.UUID] = mapped_column(
         UUID,
@@ -156,12 +169,3 @@ class DatabaseContinuousEval(Base):
         nullable=False,
     )
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-
-    __table_args__ = (
-        ForeignKeyConstraint(
-            ["task_id", "llm_eval_name", "llm_eval_version"],
-            ["llm_evals.task_id", "llm_evals.name", "llm_evals.version"],
-            ondelete="CASCADE",
-            name="fk_llm_eval_transforms_eval",
-        ),
-    )

@@ -27,4 +27,3 @@ class BaseMLScorer(ABC):
         Returns:
             MLScoreResult with passed, reason, and optional details.
         """
-        ...

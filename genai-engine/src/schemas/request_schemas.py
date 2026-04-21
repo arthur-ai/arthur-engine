@@ -828,7 +828,7 @@ class CreateEvalRequest(BaseModel):
 
 
 class CreateMLEvalRequest(BaseModel):
-    eval_type: str = Field(
+    eval_type: Literal["pii", "pii_v1", "toxicity", "prompt_injection"] = Field(
         description="Type of ML eval (e.g. 'pii', 'toxicity', 'prompt_injection')",
     )
     config: Optional[Any] = Field(
@@ -845,8 +845,14 @@ class CreateAnyEvalRequest(BaseModel):
     are needed.
     """
 
-    eval_type: str = Field(
-        description="Type of eval: 'llm_as_a_judge', 'pii', 'toxicity', 'prompt_injection'",
+    eval_type: Literal[
+        "llm_as_a_judge",
+        "pii",
+        "pii_v1",
+        "toxicity",
+        "prompt_injection",
+    ] = Field(
+        description="Type of eval: 'llm_as_a_judge', 'pii', 'pii_v1', 'toxicity', 'prompt_injection'",
     )
     model_name: Optional[str] = Field(
         default=None,
@@ -1018,6 +1024,10 @@ class ContinuousEvalCreateRequest(BaseModel):
         default=None,
         description="Description of the continuous eval",
     )
+    eval_type: Literal["llm_eval", "ml_eval"] = Field(
+        default="llm_eval",
+        description="Type of evaluator: 'llm_eval' or 'ml_eval'.",
+    )
     llm_eval_name: Optional[str] = Field(
         default=None,
         description="Name of the llm eval to create the continuous eval for",
@@ -1025,6 +1035,14 @@ class ContinuousEvalCreateRequest(BaseModel):
     llm_eval_version: Optional[Union[str, int]] = Field(
         default=None,
         description="Version of the llm eval. Can be 'latest', a version number, an ISO datetime string, or a tag.",
+    )
+    ml_eval_name: Optional[str] = Field(
+        default=None,
+        description="Name of the ml eval to create the continuous eval for",
+    )
+    ml_eval_version: Optional[Union[str, int]] = Field(
+        default=None,
+        description="Version of the ml eval. Can be 'latest', a version number, an ISO datetime string, or a tag.",
     )
     transform_id: UUID = Field(
         description="ID of the transform to create the continuous eval for",
@@ -1041,8 +1059,14 @@ class ContinuousEvalCreateRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_eval_ref(self) -> "ContinuousEvalCreateRequest":
-        if not self.llm_eval_name or self.llm_eval_version is None:
-            raise ValueError("llm_eval_name and llm_eval_version are required")
+        if self.eval_type == "llm_eval":
+            if not self.llm_eval_name or self.llm_eval_version is None:
+                raise ValueError(
+                    "llm_eval_name and llm_eval_version are required when eval_type is 'llm_eval'",
+                )
+        elif self.eval_type == "ml_eval":
+            if not self.ml_eval_name:
+                raise ValueError("ml_eval_name is required when eval_type is 'ml_eval'")
         return self
 
 
