@@ -264,6 +264,13 @@ Parameters:
     Type: Number
     Default: 4096
     Description: 'Memory value for AWS Fargate for the Model Upload ECS task'
+  AuditLogEnabled:
+    Type: String
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
+    Description: 'Enable audit logging'
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -619,6 +626,7 @@ Resources:
           - UseInternalModelRepository
           - !GetAtt [ GenaiEngineModelUploadStack, Outputs.GenaiEngineModelRepositoryURL ]
           - ''
+        AuditLogEnabled: !Ref AuditLogEnabled
       TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/genai-engine/arthur-genai-engine-ecs-task-definition.yml"
   GenaiEngineLBStack:
     Type: AWS::CloudFormation::Stack
