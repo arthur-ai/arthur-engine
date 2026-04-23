@@ -14,10 +14,10 @@ export const useDeleteMlEvalMutation = (onSuccess?: () => void) => {
 
   return useMutation({
     mutationFn: async (evalName: string) => {
-      await api.api.deleteMlEvalApiV2TasksTaskIdMlEvalsEvalNameDelete(encodePathParam(evalName), task!.id);
+      await api.api.deleteLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameDelete(encodePathParam(evalName), task!.id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["getAllMlEvalsApiV2TasksTaskIdMlEvalsGet"] });
+      queryClient.invalidateQueries({ queryKey: ["getAllLlmEvalsApiV1TasksTaskIdLlmEvalsGet"] });
       enqueueSnackbar("ML eval deleted successfully", { variant: "success" });
       onSuccess?.();
     },

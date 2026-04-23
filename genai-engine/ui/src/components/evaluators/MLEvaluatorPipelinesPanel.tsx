@@ -86,7 +86,7 @@ export const MLEvaluatorPipelinesPanel = ({ taskId, evalName, pipelines }: MLEva
 
               <TableCell>
                 <Chip
-                  label={ce.ml_eval_version != null ? `v${ce.ml_eval_version}` : "latest"}
+                  label={ce.llm_eval_version != null ? `v${ce.llm_eval_version}` : "latest"}
                   size="small"
                   variant="outlined"
                   sx={{ height: 20, fontSize: "0.7rem" }}

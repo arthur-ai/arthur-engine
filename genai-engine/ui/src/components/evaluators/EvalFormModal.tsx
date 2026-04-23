@@ -234,9 +234,9 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
         const evalData: LLMEval = evalResponse.data;
 
         // Populate form with the eval data
-        setInstructions(evalData.instructions);
-        setModelProvider(evalData.model_provider);
-        setModelName(evalData.model_name);
+        setInstructions(evalData.instructions ?? "");
+        setModelProvider(evalData.model_provider ?? "");
+        setModelName(evalData.model_name ?? "");
       } catch (error) {
         console.error("Failed to fetch latest eval version:", error);
         // Don't show error to user, just fail silently

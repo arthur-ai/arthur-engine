@@ -14,7 +14,7 @@ export const useCreateMlEvalMutation = (taskId: string | undefined, onSuccess?: 
 
       return response.data;
     },
-    invalidateQueries: [{ queryKey: ["getAllMlEvalsApiV2TasksTaskIdMlEvalsGet"] }],
+    invalidateQueries: [{ queryKey: ["getAllLlmEvalsApiV1TasksTaskIdLlmEvalsGet"] }],
     onSuccess,
     onError: (err) => {
       console.error("Failed to create ML eval:", err);

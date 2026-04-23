@@ -9,9 +9,9 @@ export const useDeleteMLEvalMutation = (taskId: string | undefined, onSuccess?: 
     mutationFn: async (evalName: string) => {
       if (!api || !taskId) throw new Error("API or task not available");
 
-      await api.api.deleteMlEvalApiV2TasksTaskIdMlEvalsEvalNameDelete(encodePathParam(evalName), taskId);
+      await api.api.deleteLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameDelete(encodePathParam(evalName), taskId);
     },
-    invalidateQueries: [{ queryKey: ["getAllEvalsApiV2TasksTaskIdEvalsGet"] }],
+    invalidateQueries: [{ queryKey: ["getAllLlmEvalsApiV1TasksTaskIdLlmEvalsGet"] }],
     onSuccess,
     onError: (err) => {
       console.error("Failed to delete ML eval:", err);

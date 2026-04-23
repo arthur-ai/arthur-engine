@@ -120,7 +120,12 @@ class LLMEvalsRepository(
 
         config_dict = {}
         if llm_eval.config:
-            config_dict = llm_eval.config.model_dump(exclude_none=True)
+            if isinstance(llm_eval.config, dict):
+                config_dict = {
+                    k: v for k, v in llm_eval.config.items() if v is not None
+                }
+            else:
+                config_dict = llm_eval.config.model_dump(exclude_none=True)
 
         if response_format is not None:
             config_dict["response_format"] = response_format

@@ -121,6 +121,11 @@ export interface AgenticAnnotationResponse {
    */
   eval_name?: string | null;
   /**
+   * Eval Type
+   * Type of eval: 'llm_eval' or 'ml_eval'
+   */
+  eval_type?: string | null;
+  /**
    * Eval Version
    * Version of the eval the continuous eval used when scoring
    */
@@ -793,15 +798,18 @@ export interface AgenticPromptVersionResponse {
    */
   deleted_at: string | null;
   /**
-   * Model Name
-   * Model name chosen for this version of the llm eval
+   * Eval Type
+   * Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
+   * @default "llm_as_a_judge"
    */
-  model_name: string;
+  eval_type?: string;
   /**
-   * Model Provider
-   * Model provider chosen for this version of the llm eval
+   * Model Name
+   * Model name chosen for this version of the llm eval. None for ML evals.
    */
-  model_provider: ModelProvider | "empty";
+  model_name?: string | null;
+  /** Model provider chosen for this version of the llm eval. None for ML evals. */
+  model_provider?: ModelProvider | null;
   /**
    * Num Messages
    * Number of messages in the prompt
@@ -921,23 +929,6 @@ export interface AgenticTestCaseListResponse {
    * Total number of pages
    */
   total_pages: number;
-}
-
-/**
- * AllEvalsMetadataListResponse
- * Response for GET /api/v2/tasks/{task_id}/evals — all evaluator types combined.
- */
-export interface AllEvalsMetadataListResponse {
-  /**
-   * Count
-   * Total number of evaluators
-   */
-  count: number;
-  /**
-   * Evals
-   * List of all evaluators across all types
-   */
-  evals: EvalMetadataItem[];
 }
 
 export type AnnotateTraceApiV1TracesTraceIdAnnotationsPostData = AgenticAnnotationResponse;
@@ -1173,6 +1164,18 @@ export interface AttachNotebookToRagExperimentApiV1RagExperimentsExperimentIdNot
   notebook_id: string;
 }
 
+/** AuthUserRole */
+export interface AuthUserRole {
+  /** Composite */
+  composite: boolean;
+  /** Description */
+  description: string;
+  /** Id */
+  id?: string | null;
+  /** Name */
+  name: string;
+}
+
 /** BaseCompletionRequest */
 export interface BaseCompletionRequest {
   /**
@@ -1262,6 +1265,95 @@ export interface BuiltinValidationResponse {
 /** ChatCompletionMessageToolCall */
 export type ChatCompletionMessageToolCall = Record<string, any>;
 
+/** ChatDefaultTaskRequest */
+export interface ChatDefaultTaskRequest {
+  /** Task Id */
+  task_id: string;
+}
+
+/** ChatDefaultTaskResponse */
+export interface ChatDefaultTaskResponse {
+  /** Task Id */
+  task_id: string;
+}
+
+/** ChatDocumentContext */
+export interface ChatDocumentContext {
+  /** Context */
+  context: string;
+  /** Id */
+  id: string;
+  /** Seq Num */
+  seq_num: number;
+}
+
+/** ChatRequest */
+export interface ChatRequest {
+  /**
+   * Conversation Id
+   * Conversation ID
+   */
+  conversation_id: string;
+  /**
+   * File Ids
+   * list of file IDs to retrieve from during chat.
+   */
+  file_ids: string[];
+  /**
+   * User Prompt
+   * Prompt user wants to send to chat.
+   */
+  user_prompt: string;
+}
+
+export type ChatRequestData = ChatResponse;
+
+export type ChatRequestError = HTTPValidationError;
+
+/** ChatResponse */
+export interface ChatResponse {
+  /**
+   * Conversation Id
+   * ID of the conversation session
+   */
+  conversation_id: string;
+  /**
+   * Inference Id
+   * ID of the inference sent to the chat
+   */
+  inference_id: string;
+  /**
+   * Llm Response
+   * response from the LLM for the original user prompt
+   */
+  llm_response: string;
+  /**
+   * Model Name
+   * The model name and version used for this chat response (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro').
+   */
+  model_name?: string | null;
+  /**
+   * Prompt Results
+   * list of rule results for the user prompt
+   */
+  prompt_results: ExternalRuleResult[];
+  /**
+   * Response Results
+   * list of rule results for the llm response
+   */
+  response_results: ExternalRuleResult[];
+  /**
+   * Retrieved Context
+   * related sections of documents that were most relevant to the inference prompt. Formatted as a list of retrieved context chunks which include document name, seq num, and context.
+   */
+  retrieved_context: ChatDocumentContext[];
+  /**
+   * Timestamp
+   * Time the inference was made in unix milliseconds
+   */
+  timestamp: number;
+}
+
 /** ChatbotConfigResponse */
 export interface ChatbotConfigResponse {
   /**
@@ -1294,6 +1386,17 @@ export interface ChatbotRequest {
   history: OpenAIMessageInput[];
   /** Session Id */
   session_id?: string | null;
+}
+
+export type CheckUserPermissionUsersPermissionsCheckGetData = any;
+
+export type CheckUserPermissionUsersPermissionsCheckGetError = HTTPValidationError;
+
+export interface CheckUserPermissionUsersPermissionsCheckGetParams {
+  /** Action to check permissions of. */
+  action?: UserPermissionAction;
+  /** Resource to check permissions of. */
+  resource?: UserPermissionResource;
 }
 
 export type CheckUserPermissionUsersPermissionsCheckGetData = any;
@@ -1409,30 +1512,20 @@ export interface ContinuousEvalCreateRequest {
   enabled?: boolean;
   /**
    * Eval Type
-   * Type of evaluator: 'llm_eval' or 'ml_eval'
+   * Type of evaluator: 'llm_eval' or 'ml_eval'.
    * @default "llm_eval"
    */
-  eval_type?: string;
+  eval_type?: ContinuousEvalCreateRequestEvalTypeEnum;
   /**
    * Llm Eval Name
-   * Name of the llm eval (required when eval_type='llm_eval')
+   * Name of the eval to create the continuous eval for
    */
   llm_eval_name?: string | null;
   /**
    * Llm Eval Version
-   * Version of the llm eval (required when eval_type='llm_eval'). Can be 'latest', a version number, an ISO datetime string, or a tag.
+   * Version of the eval. Can be 'latest', a version number, an ISO datetime string, or a tag.
    */
   llm_eval_version?: string | number | null;
-  /**
-   * Ml Eval Name
-   * Name of the ml eval (required when eval_type='ml_eval')
-   */
-  ml_eval_name?: string | null;
-  /**
-   * Ml Eval Version
-   * Version of the ml eval (required when eval_type='ml_eval'). Can be 'latest' or a version number.
-   */
-  ml_eval_version?: string | number | null;
   /**
    * Name
    * Name of the continuous eval
@@ -1455,6 +1548,13 @@ export interface ContinuousEvalCreateRequest {
    */
   transform_version_id?: string | null;
 }
+
+/**
+ * Eval Type
+ * Type of evaluator: 'llm_eval' or 'ml_eval'.
+ * @default "llm_eval"
+ */
+export type ContinuousEvalCreateRequestEvalTypeEnum = "llm_eval" | "ml_eval";
 
 /** ContinuousEvalRerunResponse */
 export interface ContinuousEvalRerunResponse {
@@ -1504,24 +1604,14 @@ export interface ContinuousEvalResponse {
   id: string;
   /**
    * Llm Eval Name
-   * Name of the llm eval (set when eval_type='llm_eval').
+   * Name of the eval.
    */
   llm_eval_name?: string | null;
   /**
    * Llm Eval Version
-   * Version of the llm eval (set when eval_type='llm_eval').
+   * Version of the eval.
    */
   llm_eval_version?: number | null;
-  /**
-   * Ml Eval Name
-   * Name of the ml eval (set when eval_type='ml_eval').
-   */
-  ml_eval_name?: string | null;
-  /**
-   * Ml Eval Version
-   * Version of the ml eval (set when eval_type='ml_eval').
-   */
-  ml_eval_version?: number | null;
   /**
    * Name
    * Name of the continuous eval.
@@ -1671,6 +1761,17 @@ export interface ContinuousEvalVariableMappingResponse {
   transform_variables: string[];
 }
 
+/** ConversationBaseResponse */
+export interface ConversationBaseResponse {
+  /** Id */
+  id: string;
+  /**
+   * Updated At
+   * @format date-time
+   */
+  updated_at: string;
+}
+
 export type CreateAgenticExperimentApiV1TasksTaskIdAgenticExperimentsPostData = AgenticExperimentSummary;
 
 export type CreateAgenticExperimentApiV1TasksTaskIdAgenticExperimentsPostError = HTTPValidationError;
@@ -1804,15 +1905,21 @@ export interface CreateEvalRequest {
 export interface CreateMLEvalRequest {
   /**
    * Config
-   * Evaluator-specific configuration (e.g. toxicity_threshold, disabled_pii_entities). See PIIMLEvalConfig, ToxicityMLEvalConfig, PromptInjectionMLEvalConfig for valid fields.
+   * Optional configuration for the ML eval
    */
-  config?: Record<string, any> | null;
+  config?: null;
   /**
    * Eval Type
-   * Type of ML evaluator. Supported values: ['pii', 'pii_v1', 'prompt_injection', 'toxicity']
+   * Type of ML eval (e.g. 'pii', 'toxicity', 'prompt_injection')
    */
-  eval_type: string;
+  eval_type: CreateMlEvalRequestEvalTypeEnum;
 }
+
+/**
+ * Eval Type
+ * Type of ML eval (e.g. 'pii', 'toxicity', 'prompt_injection')
+ */
+export type CreateMlEvalRequestEvalTypeEnum = "pii" | "pii_v1" | "toxicity" | "prompt_injection";
 
 export type CreateNotebookApiV1TasksTaskIdNotebooksPostData = NotebookDetail;
 
@@ -2004,6 +2111,29 @@ export interface CreateTestRunRequest {
 export type CreateTransformForTaskApiV1TasksTaskIdTracesTransformsPostData = TraceTransformResponse;
 
 export type CreateTransformForTaskApiV1TasksTaskIdTracesTransformsPostError = HTTPValidationError;
+
+/** CreateUserRequest */
+export interface CreateUserRequest {
+  /** Email */
+  email: string;
+  /** Firstname */
+  firstName: string;
+  /** Lastname */
+  lastName: string;
+  /** Password */
+  password: string;
+  /** Roles */
+  roles: string[];
+  /**
+   * Temporary
+   * @default true
+   */
+  temporary?: boolean;
+}
+
+export type CreateUserUsersPostData = any;
+
+export type CreateUserUsersPostError = HTTPValidationError;
 
 /**
  * DailyAgenticAnnotationStats
@@ -2339,17 +2469,13 @@ export type DeleteDatasetApiV2DatasetsDatasetIdDeleteData = any;
 
 export type DeleteDatasetApiV2DatasetsDatasetIdDeleteError = HTTPValidationError;
 
+export type DeleteFileApiChatFilesFileIdDeleteData = any;
+
+export type DeleteFileApiChatFilesFileIdDeleteError = HTTPValidationError;
+
 export type DeleteLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameDeleteData = any;
 
 export type DeleteLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameDeleteError = HTTPValidationError;
-
-export type DeleteMlEvalApiV2TasksTaskIdMlEvalsEvalNameDeleteData = any;
-
-export type DeleteMlEvalApiV2TasksTaskIdMlEvalsEvalNameDeleteError = HTTPValidationError;
-
-export type DeleteMlEvalVersionApiV2TasksTaskIdMlEvalsEvalNameVersionsEvalVersionDeleteData = MLEval;
-
-export type DeleteMlEvalVersionApiV2TasksTaskIdMlEvalsEvalNameVersionsEvalVersionDeleteError = HTTPValidationError;
 
 export type DeleteModelProviderApiV1ModelProvidersProviderDeleteData = any;
 
@@ -2402,6 +2528,7 @@ export type DeleteTransformApiV1TracesTransformsTransformIdDeleteError = HTTPVal
 export type DeleteTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdDeleteData = any;
 
 export type DeleteTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdDeleteError = HTTPValidationError;
+
 
 export type DeleteUserUsersUserIdDeleteData = any;
 
@@ -2618,58 +2745,6 @@ export interface EvalExecutionResult {
 }
 
 /**
- * EvalMetadataItem
- * A single eval entry from the unified /evals endpoint.
- */
-export interface EvalMetadataItem {
-  /**
-   * Created At
-   * Creation timestamp (LLM evals only)
-   * @default null
-   */
-  created_at?: string | null;
-  /**
-   * Deleted Versions
-   * List of deleted version numbers (LLM evals only)
-   * @default null
-   */
-  deleted_versions?: number[] | null;
-  /**
-   * Eval Type
-   * Type of evaluator: 'llm' or 'ml'
-   */
-  eval_type: string;
-  /**
-   * Latest Version Created At
-   * Timestamp of the latest version
-   * @default null
-   */
-  latest_version_created_at?: string | null;
-  /**
-   * Ml Eval Type
-   * ML eval sub-type, e.g. 'pii', 'toxicity' (ML evals only)
-   * @default null
-   */
-  ml_eval_type?: string | null;
-  /**
-   * Name
-   * Name of the evaluator
-   */
-  name: string;
-  /**
-   * Tags
-   * Tags (LLM evals only)
-   * @default null
-   */
-  tags?: string[] | null;
-  /**
-   * Versions
-   * Number of versions
-   */
-  versions: number;
-}
-
-/**
  * EvalRef
  * Reference to an evaluation configuration
  */
@@ -2738,26 +2813,6 @@ export interface EvalResultSummary {
    * Total number of test cases evaluated
    */
   total_count: number;
-}
-
-/** EvalRunResponse */
-export interface EvalRunResponse {
-  /**
-   * Cost
-   * Cost of this evaluation (empty for ML evals)
-   * @default ""
-   */
-  cost?: string;
-  /**
-   * Reason
-   * Explanation for how the evaluator arrived at this result.
-   */
-  reason: string;
-  /**
-   * Score
-   * True if the eval passed, False if it failed
-   */
-  score: boolean;
 }
 
 /**
@@ -2923,6 +2978,18 @@ export interface ExperimentOutputVariableSource {
  */
 export type ExperimentStatus = "queued" | "running" | "failed" | "completed";
 
+/** ExternalDocument */
+export interface ExternalDocument {
+  /** Id */
+  id: string;
+  /** Name */
+  name: string;
+  /** Owner Id */
+  owner_id: string;
+  /** Type */
+  type: string;
+}
+
 /** ExternalInference */
 export interface ExternalInference {
   /** Conversation Id */
@@ -3045,6 +3112,20 @@ export interface FeedbackRequest {
   target: InferenceFeedbackTarget;
   /** User Id */
   user_id?: string | null;
+}
+
+/** FileUploadResult */
+export interface FileUploadResult {
+  /** Id */
+  id: string;
+  /** Name */
+  name: string;
+  /** Success */
+  success: boolean;
+  /** Type */
+  type: string;
+  /** Word Count */
+  word_count: number;
 }
 
 /**
@@ -3412,35 +3493,6 @@ export interface GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams {
   taskId: string;
 }
 
-export type GetAllEvalsApiV2TasksTaskIdEvalsGetData = AllEvalsMetadataListResponse;
-
-export type GetAllEvalsApiV2TasksTaskIdEvalsGetError = HTTPValidationError;
-
-export interface GetAllEvalsApiV2TasksTaskIdEvalsGetParams {
-  /**
-   * Name
-   * @default null
-   */
-  name?: string | null;
-  /**
-   * Page
-   * @default 0
-   */
-  page?: number;
-  /**
-   * Page Size
-   * @default 50
-   */
-  page_size?: number;
-  /**
-   * Sort
-   * @default "desc"
-   */
-  sort?: string | null;
-  /** Task Id */
-  taskId: string;
-}
-
 export type GetAllLlmEvalVersionsApiV1TasksTaskIdLlmEvalsEvalNameVersionsGetData = LLMEvalsVersionListResponse;
 
 export type GetAllLlmEvalVersionsApiV1TasksTaskIdLlmEvalsEvalNameVersionsGetError = HTTPValidationError;
@@ -3572,10 +3624,6 @@ export interface GetAllLlmEvalsApiV1TasksTaskIdLlmEvalsGetParams {
   taskId: string;
 }
 
-export type GetAllMlEvalsApiV2TasksTaskIdMlEvalsGetData = MLGetAllMetadataListResponse;
-
-export type GetAllMlEvalsApiV2TasksTaskIdMlEvalsGetError = HTTPValidationError;
-
 /** Response Get All Tasks Api V2 Tasks Get */
 export type GetAllTasksApiV2TasksGetData = TaskResponse[];
 
@@ -3601,31 +3649,24 @@ export type GetContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvals
 export type GetContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvalsTransformsTransformIdLlmEvalsEvalNameVersionsEvalVersionVariablesGetError =
   HTTPValidationError;
 
-export interface GetContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvalsTransformsTransformIdLlmEvalsEvalNameVersionsEvalVersionVariablesGetParams {
-  /** Eval Name */
-  evalName: string;
+export type GetConversationsApiChatConversationsGetData = PageConversationBaseResponse;
+
+export type GetConversationsApiChatConversationsGetError = HTTPValidationError;
+
+export interface GetConversationsApiChatConversationsGetParams {
   /**
-   * Eval Version
-   * The version of the eval to get the continuous eval variables and mappings for.
+   * Page
+   * @min 1
+   * @default 1
    */
-  evalVersion: string;
+  page?: number;
   /**
-   * Eval Type
-   * The type of evaluator: 'llm_eval' or 'ml_eval'.
-   * @default "llm_eval"
+   * Size
+   * @min 1
+   * @max 100
+   * @default 50
    */
-  eval_type?: string;
-  /**
-   * Task Id
-   * @format uuid
-   */
-  taskId: string;
-  /**
-   * Transform ID
-   * The id of the transform to get the continuous eval variables and mappings for.
-   * @format uuid
-   */
-  transformId: string;
+  size?: number;
 }
 
 export type GetDailyAnnotationAnalyticsApiV1TasksTaskIdContinuousEvalsAnalyticsDailyGetData = AgenticAnnotationAnalyticsResponse;
@@ -3776,6 +3817,8 @@ export interface GetDatasetsApiV2TasksTaskIdDatasetsSearchGetParams {
 /** Response Get Default Rules Api V2 Default Rules Get */
 export type GetDefaultRulesApiV2DefaultRulesGetData = RuleResponse[];
 
+export type GetDefaultTaskApiChatDefaultTaskGetData = ChatDefaultTaskResponse;
+
 export type GetDisplaySettingsApiV2DisplaySettingsGetData = DisplaySettingsResponse;
 
 export type GetEngineConfigApiV2EngineConfigGetData = EngineConfigResponse;
@@ -3809,6 +3852,14 @@ export interface GetExperimentTestCasesApiV1PromptExperimentsExperimentIdTestCas
   sort?: PaginationSortMethod;
 }
 
+/** Response Get Files Api Chat Files Get */
+export type GetFilesApiChatFilesGetData = ExternalDocument[];
+
+/** Response Get Inference Document Context Api Chat Context  Inference Id  Get */
+export type GetInferenceDocumentContextApiChatContextInferenceIdGetData = ChatDocumentContext[];
+
+export type GetInferenceDocumentContextApiChatContextInferenceIdGetError = HTTPValidationError;
+
 export type GetLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGetData = LLMEval;
 
 export type GetLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGetError = HTTPValidationError;
@@ -3822,6 +3873,7 @@ export type GetMeUsersMeGetData = MeResponse;
 export type GetMlEvalApiV2TasksTaskIdMlEvalsEvalNameVersionsEvalVersionGetData = MLEval;
 
 export type GetMlEvalApiV2TasksTaskIdMlEvalsEvalNameVersionsEvalVersionGetError = HTTPValidationError;
+
 
 export type GetModelProvidersApiV1ModelProvidersGetData = ModelProviderList;
 
@@ -4577,7 +4629,7 @@ export interface LLMBaseConfigSettings {
   frequency_penalty?: number | null;
   /**
    * Logit Bias
-   * Modify likelihood of specified tokens appearing in completion
+   * Modify likelihood of specified tokens appearing in combination
    */
   logit_bias?: LogitBiasItem[] | null;
   /**
@@ -4635,6 +4687,7 @@ export interface LLMBaseConfigSettings {
    */
   top_p?: number | null;
 }
+
 
 /** LLMConfigSettings */
 export interface LLMConfigSettings {
@@ -4718,8 +4771,11 @@ export interface LLMConfigSettings {
 
 /** LLMEval */
 export interface LLMEval {
-  /** LLM configurations for this eval (e.g. temperature, max_tokens, etc.) */
-  config?: LLMBaseConfigSettings | null;
+  /**
+   * Config
+   * Eval configuration. LLMBaseConfigSettings for LLM evals; type-specific dict for ML evals.
+   */
+  config?: null;
   /**
    * Created At
    * Timestamp when the llm eval was created.
@@ -4739,18 +4795,15 @@ export interface LLMEval {
   eval_type?: string;
   /**
    * Instructions
-   * Instructions for the llm eval. Null for ML evals.
+   * Instructions for the llm eval. None for ML evals.
    */
   instructions?: string | null;
   /**
    * Model Name
-   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet'). Null for ML evals.
+   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet'). None for ML evals.
    */
   model_name?: string | null;
-  /**
-   * Model Provider
-   * Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). Null for ML evals.
-   */
+  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). None for ML evals. */
   model_provider?: ModelProvider | null;
   /**
    * Name
@@ -4835,6 +4888,12 @@ export interface LLMGetAllMetadataResponse {
    * List of deleted versions of the llm asset
    */
   deleted_versions: number[];
+  /**
+   * Eval Type
+   * Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
+   * @default "llm_as_a_judge"
+   */
+  eval_type?: string;
   /**
    * Latest Version Created At
    * Timestamp when the last version of the llm asset was created
@@ -5137,13 +5196,10 @@ export interface LLMVersionResponse {
   eval_type?: string;
   /**
    * Model Name
-   * Model name chosen for this version of the llm eval. Null for ML evals.
+   * Model name chosen for this version of the llm eval. None for ML evals.
    */
   model_name?: string | null;
-  /**
-   * Model Provider
-   * Model provider chosen for this version of the llm eval. Null for ML evals.
-   */
+  /** Model provider chosen for this version of the llm eval. None for ML evals. */
   model_provider?: ModelProvider | null;
   /**
    * Tags
@@ -5490,10 +5546,6 @@ export interface ListDatasetVersionsResponse {
    */
   versions: DatasetVersionMetadataResponse[];
 }
-
-export type ListMlEvalVersionsApiV2TasksTaskIdMlEvalsEvalNameVersionsGetData = MLEvalsVersionListResponse;
-
-export type ListMlEvalVersionsApiV2TasksTaskIdMlEvalsEvalNameVersionsGetError = HTTPValidationError;
 
 export type ListNotebooksApiV1TasksTaskIdNotebooksGetData = NotebookListResponse;
 
@@ -6566,138 +6618,35 @@ export interface LogitBiasItem {
   token_id: number;
 }
 
-/** MLEval */
+/**
+ * MLEval
+ * Internal representation of an ML-type eval (pii, toxicity, prompt_injection, etc.).
+ */
 export interface MLEval {
-  /**
-   * Config
-   * Evaluator-specific configuration (thresholds, entity lists, etc.)
-   */
-  config?: Record<string, any> | null;
+  /** Config */
+  config?: null;
   /**
    * Created At
-   * Timestamp when the ml eval was created.
    * @format date-time
    */
   created_at: string;
-  /**
-   * Deleted At
-   * Time that this ml eval was deleted
-   */
+  /** Deleted At */
   deleted_at?: string | null;
-  /**
-   * Ml Eval Type
-   * Type of ML evaluator (e.g. pii, toxicity, prompt_injection)
-   */
-  ml_eval_type: string;
-  /**
-   * Model Provider
-   * Model provider — always 'arthur_builtin' for ML evals
-   * @default "arthur_builtin"
-   */
-  model_provider?: string;
-  /**
-   * Name
-   * Name of the ml eval
-   */
+  /** Eval Type */
+  eval_type: string;
+  /** Name */
   name: string;
   /**
    * Tags
-   * List of tags for this ml eval version
+   * @default []
    */
   tags?: string[];
   /**
    * Variables
-   * List of variable names for the ml eval
+   * @default []
    */
   variables?: string[];
-  /**
-   * Version
-   * Version of the ml eval
-   * @default 1
-   */
-  version?: number;
-}
-
-/** MLEvalsVersionListResponse */
-export interface MLEvalsVersionListResponse {
-  /**
-   * Count
-   * Total number of ml evals matching filters
-   */
-  count: number;
-  /**
-   * Versions
-   * List of ml eval version metadata
-   */
-  versions: MLVersionResponse[];
-}
-
-/** MLGetAllMetadataListResponse */
-export interface MLGetAllMetadataListResponse {
-  /**
-   * Count
-   * Total number of ml eval assets
-   */
-  count: number;
-  /**
-   * Ml Metadata
-   * List of ml eval asset metadata
-   */
-  ml_metadata: MLGetAllMetadataResponse[];
-}
-
-/** MLGetAllMetadataResponse */
-export interface MLGetAllMetadataResponse {
-  /**
-   * Latest Version Created At
-   * Timestamp of the latest version
-   * @default null
-   */
-  latest_version_created_at?: string | null;
-  /**
-   * Ml Eval Type
-   * Type of ML evaluator
-   */
-  ml_eval_type: string;
-  /**
-   * Name
-   * Name of the ml eval asset
-   */
-  name: string;
-  /**
-   * Versions
-   * Number of versions of the ml eval asset
-   */
-  versions: number;
-}
-
-/** MLVersionResponse */
-export interface MLVersionResponse {
-  /**
-   * Created At
-   * Timestamp when the ml eval version was created
-   * @format date-time
-   */
-  created_at: string;
-  /**
-   * Deleted At
-   * Timestamp when the ml eval version was deleted (None if not deleted)
-   */
-  deleted_at?: string | null;
-  /**
-   * Ml Eval Type
-   * Type of ML evaluator (e.g. pii, toxicity, prompt_injection)
-   */
-  ml_eval_type: string;
-  /**
-   * Tags
-   * List of tags for the ml eval asset
-   */
-  tags?: string[];
-  /**
-   * Version
-   * Version number of the ml eval
-   */
+  /** Version */
   version: number;
 }
 
@@ -7655,8 +7604,44 @@ export type PIIEntityTypes =
   | "US_PASSPORT"
   | "US_SSN";
 
+/** Page[ConversationBaseResponse] */
+export interface PageConversationBaseResponse {
+  /** Items */
+  items: ConversationBaseResponse[];
+  /**
+   * Page
+   * @min 1
+   */
+  page: number;
+  /**
+   * Pages
+   * @min 0
+   */
+  pages: number;
+  /**
+   * Size
+   * @min 1
+   */
+  size: number;
+  /**
+   * Total
+   * @min 0
+   */
+  total: number;
+}
+
 /** PaginationSortMethod */
 export type PaginationSortMethod = "asc" | "desc";
+
+/** PasswordResetRequest */
+export interface PasswordResetRequest {
+  /** Password */
+  password: string;
+}
+
+export type PostChatFeedbackApiChatFeedbackInferenceIdPostData = any;
+
+export type PostChatFeedbackApiChatFeedbackInferenceIdPostError = HTTPValidationError;
 
 export type PostFeedbackApiV2FeedbackInferenceIdPostData = InferenceFeedbackResponse;
 
@@ -10156,6 +10141,10 @@ export type RerunContinuousEvalApiV1ContinuousEvalsResultsRunIdRerunPostData = C
 
 export type RerunContinuousEvalApiV1ContinuousEvalsResultsRunIdRerunPostError = HTTPValidationError;
 
+export type ResetUserPasswordUsersUserIdResetPasswordPostData = any;
+
+export type ResetUserPasswordUsersUserIdResetPasswordPostError = HTTPValidationError;
+
 /** ResponseValidationRequest */
 export interface ResponseValidationRequest {
   /**
@@ -10244,13 +10233,6 @@ export type RuleType =
 export type RunAgenticPromptApiV1CompletionsPostData = AgenticPromptRunResponse;
 
 export type RunAgenticPromptApiV1CompletionsPostError = HTTPValidationError;
-
-export type RunMlEvalApiV2TasksTaskIdMlEvalsEvalNameVersionsEvalVersionRunPostData = EvalRunResponse;
-
-export type RunMlEvalApiV2TasksTaskIdMlEvalsEvalNameVersionsEvalVersionRunPostError = HTTPValidationError;
-
-/** Run Request */
-export type RunMlEvalApiV2TasksTaskIdMlEvalsEvalNameVersionsEvalVersionRunPostPayload = Record<string, any>;
 
 export type RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostData = AgenticPromptRunResponse;
 
@@ -10524,6 +10506,36 @@ export interface SearchTasksResponse {
    * List of tasks matching the search filters. Length is less than or equal to page_size parameter
    */
   tasks: TaskResponse[];
+}
+
+/** Response Search Users Users Get */
+export type SearchUsersUsersGetData = UserResponse[];
+
+export type SearchUsersUsersGetError = HTTPValidationError;
+
+export interface SearchUsersUsersGetParams {
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Search String
+   * Substring to match on. Will search first name, last name, email.
+   */
+  search_string?: string | null;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
 }
 
 export type SendSyntheticDataMessageApiV2DatasetsDatasetIdVersionsVersionNumberGenerateSyntheticMessagePostData = SyntheticDataGenerationResponse;
@@ -12455,7 +12467,7 @@ export type UpdateContinuousEvalApiV1ContinuousEvalsEvalIdPatchError = HTTPValid
 
 /**
  * UpdateContinuousEvalRequest
- * Request schema for updating a continuous eval
+ * Request schema for creating a continuous eval
  */
 export interface UpdateContinuousEvalRequest {
   /**
@@ -12469,30 +12481,15 @@ export interface UpdateContinuousEvalRequest {
    */
   enabled?: boolean | null;
   /**
-   * Eval Type
-   * Type of evaluator: 'llm_eval' or 'ml_eval'
-   */
-  eval_type?: string | null;
-  /**
    * Llm Eval Name
-   * Name of the llm eval to associate with
+   * Name of the llm eval to create the continuous eval for
    */
   llm_eval_name?: string | null;
   /**
    * Llm Eval Version
-   * Version of the llm eval. Can be 'latest', a version number, an ISO datetime string, or a tag.
+   * Version of the llm eval to create the continuous eval for. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.
    */
   llm_eval_version?: string | number | null;
-  /**
-   * Ml Eval Name
-   * Name of the ml eval to associate with
-   */
-  ml_eval_name?: string | null;
-  /**
-   * Ml Eval Version
-   * Version of the ml eval. Can be 'latest' or a version number.
-   */
-  ml_eval_version?: string | number | null;
   /**
    * Name
    * Name of the continuous eval
@@ -12500,7 +12497,7 @@ export interface UpdateContinuousEvalRequest {
   name?: string | null;
   /**
    * Transform Id
-   * ID of the transform to associate with
+   * ID of the transform to create the continuous eval for
    */
   transform_id?: string | null;
   /**
@@ -12518,6 +12515,10 @@ export interface UpdateContinuousEvalRequest {
 export type UpdateDatasetApiV2DatasetsDatasetIdPatchData = DatasetResponse;
 
 export type UpdateDatasetApiV2DatasetsDatasetIdPatchError = HTTPValidationError;
+
+export type UpdateDefaultTaskApiChatDefaultTaskPutData = ChatDefaultTaskResponse;
+
+export type UpdateDefaultTaskApiChatDefaultTaskPutError = HTTPValidationError;
 
 /** UpdateMetricRequest */
 export interface UpdateMetricRequest {
@@ -12603,6 +12604,38 @@ export type UpdateTaskRulesApiV2TasksTaskIdRulesRuleIdPatchError = HTTPValidatio
 export type UpdateTransformApiV1TracesTransformsTransformIdPatchData = TraceTransformResponse;
 
 export type UpdateTransformApiV1TracesTransformsTransformIdPatchError = HTTPValidationError;
+
+export type UploadEmbeddingsFileApiChatFilesPostData = FileUploadResult;
+
+export type UploadEmbeddingsFileApiChatFilesPostError = HTTPValidationError;
+
+export interface UploadEmbeddingsFileApiChatFilesPostParams {
+  /**
+   * Is Global
+   * @default false
+   */
+  is_global?: boolean;
+}
+
+/** UserPermissionAction */
+export type UserPermissionAction = "create" | "read";
+
+/** UserPermissionResource */
+export type UserPermissionResource = "prompts" | "responses" | "rules" | "tasks";
+
+/** UserResponse */
+export interface UserResponse {
+  /** Email */
+  email: string;
+  /** First Name */
+  first_name?: string | null;
+  /** Id */
+  id: string;
+  /** Last Name */
+  last_name?: string | null;
+  /** Roles */
+  roles: AuthUserRole[];
+}
 
 export type ValidatePromptEndpointApiV2TasksTaskIdValidatePromptPostData = ValidationResult;
 
@@ -13643,7 +13676,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Add a tag to an llm eval version
+     * No description
      *
      * @tags LLMEvals
      * @name AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPut
@@ -14503,7 +14536,23 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Deletes an entire llm eval
+     * @description Remove a file by ID. This action cannot be undone.
+     *
+     * @tags Chat
+     * @name DeleteFileApiChatFilesFileIdDelete
+     * @summary Delete File
+     * @request DELETE:/api/chat/files/{file_id}
+     */
+    deleteFileApiChatFilesFileIdDelete: (fileId: string, params: RequestParams = {}) =>
+      this.request<DeleteFileApiChatFilesFileIdDeleteData, DeleteFileApiChatFilesFileIdDeleteError>({
+        path: `/api/chat/files/${fileId}`,
+        method: "DELETE",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
      *
      * @tags LLMEvals
      * @name DeleteLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameDelete
@@ -14516,49 +14565,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v1/tasks/${taskId}/llm_evals/${evalName}`,
         method: "DELETE",
         secure: true,
-        ...params,
-      }),
-
-    /**
-     * @description Hard-delete all versions of an ML eval by name.
-     *
-     * @tags MLEvals
-     * @name DeleteMlEvalApiV2TasksTaskIdMlEvalsEvalNameDelete
-     * @summary Delete all versions of an ML eval
-     * @request DELETE:/api/v2/tasks/{task_id}/ml_evals/{eval_name}
-     * @secure
-     */
-    deleteMlEvalApiV2TasksTaskIdMlEvalsEvalNameDelete: (evalName: string, taskId: string, params: RequestParams = {}) =>
-      this.request<DeleteMlEvalApiV2TasksTaskIdMlEvalsEvalNameDeleteData, DeleteMlEvalApiV2TasksTaskIdMlEvalsEvalNameDeleteError>({
-        path: `/api/v2/tasks/${taskId}/ml_evals/${evalName}`,
-        method: "DELETE",
-        secure: true,
-        ...params,
-      }),
-
-    /**
-     * @description Soft-delete a specific version of an ML eval.
-     *
-     * @tags MLEvals
-     * @name DeleteMlEvalVersionApiV2TasksTaskIdMlEvalsEvalNameVersionsEvalVersionDelete
-     * @summary Delete an ML eval version
-     * @request DELETE:/api/v2/tasks/{task_id}/ml_evals/{eval_name}/versions/{eval_version}
-     * @secure
-     */
-    deleteMlEvalVersionApiV2TasksTaskIdMlEvalsEvalNameVersionsEvalVersionDelete: (
-      evalName: string,
-      evalVersion: string,
-      taskId: string,
-      params: RequestParams = {}
-    ) =>
-      this.request<
-        DeleteMlEvalVersionApiV2TasksTaskIdMlEvalsEvalNameVersionsEvalVersionDeleteData,
-        DeleteMlEvalVersionApiV2TasksTaskIdMlEvalsEvalNameVersionsEvalVersionDeleteError
-      >({
-        path: `/api/v2/tasks/${taskId}/ml_evals/${evalName}/versions/${evalVersion}`,
-        method: "DELETE",
-        secure: true,
-        format: "json",
         ...params,
       }),
 
@@ -14728,7 +14734,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Remove a tag from an llm eval version
+     * No description
      *
      * @tags LLMEvals
      * @name DeleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsTagDelete
@@ -15210,25 +15216,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Return metadata for every evaluator associated with a task — both LLM and ML evals — in a single list. The eval_type field on each item indicates the type ('llm' or 'ml').
-     *
-     * @tags Evals
-     * @name GetAllEvalsApiV2TasksTaskIdEvalsGet
-     * @summary Get all evaluators
-     * @request GET:/api/v2/tasks/{task_id}/evals
-     * @secure
-     */
-    getAllEvalsApiV2TasksTaskIdEvalsGet: ({ taskId, ...query }: GetAllEvalsApiV2TasksTaskIdEvalsGetParams, params: RequestParams = {}) =>
-      this.request<GetAllEvalsApiV2TasksTaskIdEvalsGetData, GetAllEvalsApiV2TasksTaskIdEvalsGetError>({
-        path: `/api/v2/tasks/${taskId}/evals`,
-        method: "GET",
-        query: query,
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
      * @description Get all llm evals for a given task with optional filtering.
      *
      * @tags LLMEvals
@@ -15267,24 +15254,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v1/tasks/${taskId}/llm_evals/${evalName}/versions`,
         method: "GET",
         query: query,
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Get metadata for all ML evals associated with a task.
-     *
-     * @tags MLEvals
-     * @name GetAllMlEvalsApiV2TasksTaskIdMlEvalsGet
-     * @summary Get all ML evals
-     * @request GET:/api/v2/tasks/{task_id}/ml_evals
-     * @secure
-     */
-    getAllMlEvalsApiV2TasksTaskIdMlEvalsGet: (taskId: string, params: RequestParams = {}) =>
-      this.request<GetAllMlEvalsApiV2TasksTaskIdMlEvalsGetData, GetAllMlEvalsApiV2TasksTaskIdMlEvalsGetError>({
-        path: `/api/v2/tasks/${taskId}/ml_evals`,
-        method: "GET",
         secure: true,
         format: "json",
         ...params,
@@ -15390,13 +15359,10 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     getContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvalsTransformsTransformIdLlmEvalsEvalNameVersionsEvalVersionVariablesGet: (
-      {
-        transformId,
-        evalName,
-        evalVersion,
-        taskId,
-        ...query
-      }: GetContinuousEvalVariablesAndMappingsApiV1TasksTaskIdContinuousEvalsTransformsTransformIdLlmEvalsEvalNameVersionsEvalVersionVariablesGetParams,
+      transformId: string,
+      evalName: string,
+      evalVersion: string,
+      taskId: string,
       params: RequestParams = {}
     ) =>
       this.request<
@@ -15405,8 +15371,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       >({
         path: `/api/v1/tasks/${taskId}/continuous_evals/transforms/${transformId}/llm_evals/${evalName}/versions/${evalVersion}/variables`,
         method: "GET",
-        query: query,
         secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get list of conversation IDs.
+     *
+     * @tags Chat
+     * @name GetConversationsApiChatConversationsGet
+     * @summary Get Conversations
+     * @request GET:/api/chat/conversations
+     */
+    getConversationsApiChatConversationsGet: (query: GetConversationsApiChatConversationsGetParams, params: RequestParams = {}) =>
+      this.request<GetConversationsApiChatConversationsGetData, GetConversationsApiChatConversationsGetError>({
+        path: `/api/chat/conversations`,
+        method: "GET",
+        query: query,
         format: "json",
         ...params,
       }),
@@ -15568,6 +15550,22 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Get the default task for Arthur Chat.
+     *
+     * @tags Chat
+     * @name GetDefaultTaskApiChatDefaultTaskGet
+     * @summary Get Default Task
+     * @request GET:/api/chat/default_task
+     */
+    getDefaultTaskApiChatDefaultTaskGet: (params: RequestParams = {}) =>
+      this.request<GetDefaultTaskApiChatDefaultTaskGetData, any>({
+        path: `/api/chat/default_task`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get display settings (e.g. default currency for cost formatting).
      *
      * @tags Settings
@@ -15625,6 +15623,38 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description List uploaded files. Only files that are global or owned by the caller are returned.
+     *
+     * @tags Chat
+     * @name GetFilesApiChatFilesGet
+     * @summary Get Files
+     * @request GET:/api/chat/files
+     */
+    getFilesApiChatFilesGet: (params: RequestParams = {}) =>
+      this.request<GetFilesApiChatFilesGetData, any>({
+        path: `/api/chat/files`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get document context used for a past inference ID.
+     *
+     * @tags Chat
+     * @name GetInferenceDocumentContextApiChatContextInferenceIdGet
+     * @summary Get Inference Document Context
+     * @request GET:/api/chat/context/{inference_id}
+     */
+    getInferenceDocumentContextApiChatContextInferenceIdGet: (inferenceId: string, params: RequestParams = {}) =>
+      this.request<GetInferenceDocumentContextApiChatContextInferenceIdGetData, GetInferenceDocumentContextApiChatContextInferenceIdGetError>({
+        path: `/api/chat/context/${inferenceId}`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get an llm eval by name and version
      *
      * @tags LLMEvals
@@ -15651,7 +15681,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Get an llm eval by name and tag
+     * No description
      *
      * @tags LLMEvals
      * @name GetLlmEvalByTagApiV1TasksTaskIdLlmEvalsEvalNameVersionsTagsTagGet
@@ -15665,32 +15695,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         GetLlmEvalByTagApiV1TasksTaskIdLlmEvalsEvalNameVersionsTagsTagGetError
       >({
         path: `/api/v1/tasks/${taskId}/llm_evals/${evalName}/versions/tags/${tag}`,
-        method: "GET",
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Get a specific version of an ML eval by name and version.
-     *
-     * @tags MLEvals
-     * @name GetMlEvalApiV2TasksTaskIdMlEvalsEvalNameVersionsEvalVersionGet
-     * @summary Get an ML eval
-     * @request GET:/api/v2/tasks/{task_id}/ml_evals/{eval_name}/versions/{eval_version}
-     * @secure
-     */
-    getMlEvalApiV2TasksTaskIdMlEvalsEvalNameVersionsEvalVersionGet: (
-      evalName: string,
-      evalVersion: string,
-      taskId: string,
-      params: RequestParams = {}
-    ) =>
-      this.request<
-        GetMlEvalApiV2TasksTaskIdMlEvalsEvalNameVersionsEvalVersionGetData,
-        GetMlEvalApiV2TasksTaskIdMlEvalsEvalNameVersionsEvalVersionGetError
-      >({
-        path: `/api/v2/tasks/${taskId}/ml_evals/${evalName}/versions/${evalVersion}`,
         method: "GET",
         secure: true,
         format: "json",
@@ -16540,27 +16544,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description List all versions of an ML eval.
-     *
-     * @tags MLEvals
-     * @name ListMlEvalVersionsApiV2TasksTaskIdMlEvalsEvalNameVersionsGet
-     * @summary List all versions of an ML eval
-     * @request GET:/api/v2/tasks/{task_id}/ml_evals/{eval_name}/versions
-     * @secure
-     */
-    listMlEvalVersionsApiV2TasksTaskIdMlEvalsEvalNameVersionsGet: (evalName: string, taskId: string, params: RequestParams = {}) =>
-      this.request<
-        ListMlEvalVersionsApiV2TasksTaskIdMlEvalsEvalNameVersionsGetData,
-        ListMlEvalVersionsApiV2TasksTaskIdMlEvalsEvalNameVersionsGetError
-      >({
-        path: `/api/v2/tasks/${taskId}/ml_evals/${evalName}/versions`,
-        method: "GET",
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
      * @description List all notebooks for a task with pagination and optional name search
      *
      * @tags Notebooks
@@ -16808,6 +16791,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Post feedback for Arthur Chat.
+     *
+     * @tags Chat, Chat
+     * @name PostChatFeedbackApiChatFeedbackInferenceIdPost
+     * @summary Post Chat Feedback
+     * @request POST:/api/chat/feedback/{inference_id}
+     */
+    postChatFeedbackApiChatFeedbackInferenceIdPost: (inferenceId: string, data: FeedbackRequest, params: RequestParams = {}) =>
+      this.request<PostChatFeedbackApiChatFeedbackInferenceIdPostData, PostChatFeedbackApiChatFeedbackInferenceIdPostError>({
+        path: `/api/chat/feedback/${inferenceId}`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Post feedback for LLM Application.
      *
      * @tags Feedback
@@ -17009,35 +17010,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Run a saved ML eval with provided input text.
-     *
-     * @tags MLEvals
-     * @name RunMlEvalApiV2TasksTaskIdMlEvalsEvalNameVersionsEvalVersionRunPost
-     * @summary Run an ML eval
-     * @request POST:/api/v2/tasks/{task_id}/ml_evals/{eval_name}/versions/{eval_version}/run
-     * @secure
-     */
-    runMlEvalApiV2TasksTaskIdMlEvalsEvalNameVersionsEvalVersionRunPost: (
-      evalName: string,
-      evalVersion: string,
-      taskId: string,
-      data: RunMlEvalApiV2TasksTaskIdMlEvalsEvalNameVersionsEvalVersionRunPostPayload,
-      params: RequestParams = {}
-    ) =>
-      this.request<
-        RunMlEvalApiV2TasksTaskIdMlEvalsEvalNameVersionsEvalVersionRunPostData,
-        RunMlEvalApiV2TasksTaskIdMlEvalsEvalNameVersionsEvalVersionRunPostError
-      >({
-        path: `/api/v2/tasks/${taskId}/ml_evals/${evalName}/versions/${evalVersion}/run`,
-        method: "POST",
-        body: data,
-        secure: true,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
      * @description Run or stream a specific version of an existing agentic prompt
      *
      * @tags Prompts
@@ -17067,7 +17039,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Run a saved llm eval
+     * No description
      *
      * @tags LLMEvals
      * @name RunSavedLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionCompletionsPost
@@ -17141,9 +17113,9 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Create a new version of an ML eval for a given task.
+     * @description Save an ML eval. If an eval with the same name exists, a new version is created.
      *
-     * @tags MLEvals
+     * @tags ML Evals
      * @name SaveMlEvalApiV2TasksTaskIdMlEvalsEvalNamePost
      * @summary Save an ML eval
      * @request POST:/api/v2/tasks/{task_id}/ml_evals/{eval_name}
@@ -17318,7 +17290,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Deletes a specific version of an llm eval
+     * No description
      *
      * @tags LLMEvals
      * @name SoftDeleteLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionDelete
@@ -17547,6 +17519,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Update the default task for Arthur Chat.
+     *
+     * @tags Chat
+     * @name UpdateDefaultTaskApiChatDefaultTaskPut
+     * @summary Update Default Task
+     * @request PUT:/api/chat/default_task
+     */
+    updateDefaultTaskApiChatDefaultTaskPut: (data: ChatDefaultTaskRequest, params: RequestParams = {}) =>
+      this.request<UpdateDefaultTaskApiChatDefaultTaskPutData, UpdateDefaultTaskApiChatDefaultTaskPutError>({
+        path: `/api/chat/default_task`,
+        method: "PUT",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Update notebook name or description (not the state)
      *
      * @tags Notebooks
@@ -17721,6 +17711,29 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         body: data,
         secure: true,
         type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Upload files via form-data. Only PDF, CSV, TXT types accepted.
+     *
+     * @tags Chat
+     * @name UploadEmbeddingsFileApiChatFilesPost
+     * @summary Upload Embeddings File
+     * @request POST:/api/chat/files
+     */
+    uploadEmbeddingsFileApiChatFilesPost: (
+      query: UploadEmbeddingsFileApiChatFilesPostParams,
+      data: BodyUploadEmbeddingsFileApiChatFilesPost,
+      params: RequestParams = {}
+    ) =>
+      this.request<UploadEmbeddingsFileApiChatFilesPostData, UploadEmbeddingsFileApiChatFilesPostError>({
+        path: `/api/chat/files`,
+        method: "POST",
+        query: query,
+        body: data,
+        type: ContentType.FormData,
         format: "json",
         ...params,
       }),

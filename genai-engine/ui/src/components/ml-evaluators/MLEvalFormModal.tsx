@@ -18,7 +18,7 @@ import Typography from "@mui/material/Typography";
 import { isAxiosError } from "axios";
 import React, { useEffect, useState } from "react";
 
-import type { CreateMLEvalRequest } from "@/lib/api-client/api-client";
+import type { CreateMLEvalRequest, CreateMlEvalRequestEvalTypeEnum } from "@/lib/api-client/api-client";
 
 const ML_EVAL_TYPES = [
   { value: "pii", label: "PII Detection (Strict)" },
@@ -56,11 +56,13 @@ interface MLEvalFormModalProps {
   initialName?: string;
   /** Pre-select the eval type (for adding a new version to an existing eval) */
   initialType?: string;
+  /** Pre-populate config fields from an existing eval version */
+  initialConfig?: Record<string, unknown> | null;
 }
 
-const MLEvalFormModal = ({ open, onClose, onSubmit, isLoading = false, initialName, initialType }: MLEvalFormModalProps) => {
+const MLEvalFormModal = ({ open, onClose, onSubmit, isLoading = false, initialName, initialType, initialConfig }: MLEvalFormModalProps) => {
   const [evalName, setEvalName] = useState(initialName ?? "");
-  const [mlEvalType, setMlEvalType] = useState(initialType ?? "pii");
+  const [mlEvalType, setMlEvalType] = useState<CreateMlEvalRequestEvalTypeEnum>((initialType ?? "pii") as CreateMlEvalRequestEvalTypeEnum);
   const [toxicityThreshold, setToxicityThreshold] = useState(0.5);
   // All entities enabled by default (none disabled)
   const [disabledEntities, setDisabledEntities] = useState<Set<string>>(new Set());
@@ -69,12 +71,12 @@ const MLEvalFormModal = ({ open, onClose, onSubmit, isLoading = false, initialNa
   useEffect(() => {
     if (open) {
       setEvalName(initialName ?? "");
-      setMlEvalType(initialType ?? "pii");
-      setToxicityThreshold(0.5);
-      setDisabledEntities(new Set());
+      setMlEvalType((initialType ?? "pii") as CreateMlEvalRequestEvalTypeEnum);
+      setToxicityThreshold(typeof initialConfig?.toxicity_threshold === "number" ? initialConfig.toxicity_threshold : 0.5);
+      setDisabledEntities(Array.isArray(initialConfig?.disabled_pii_entities) ? new Set(initialConfig.disabled_pii_entities as string[]) : new Set());
       setError(null);
     }
-  }, [open, initialName, initialType]);
+  }, [open, initialName, initialType, initialConfig]);
 
   const isPiiType = mlEvalType === "pii" || mlEvalType === "pii_v1";
 
@@ -112,7 +114,8 @@ const MLEvalFormModal = ({ open, onClose, onSubmit, isLoading = false, initialNa
     try {
       const data: CreateMLEvalRequest = {
         eval_type: mlEvalType,
-        config: buildConfig(),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        config: buildConfig() as any,
       };
       await onSubmit(evalName.trim(), data);
       handleClose();
@@ -169,7 +172,12 @@ const MLEvalFormModal = ({ open, onClose, onSubmit, isLoading = false, initialNa
                   Evaluator Type
                 </Typography>
               </FormLabel>
-              <Select value={mlEvalType} onChange={(e) => setMlEvalType(e.target.value)} size="small" disabled={isLoading}>
+              <Select
+                value={mlEvalType}
+                onChange={(e) => setMlEvalType(e.target.value as CreateMlEvalRequestEvalTypeEnum)}
+                size="small"
+                disabled={isLoading}
+              >
                 {ML_EVAL_TYPES.map((t) => (
                   <MenuItem key={t.value} value={t.value}>
                     {t.label}

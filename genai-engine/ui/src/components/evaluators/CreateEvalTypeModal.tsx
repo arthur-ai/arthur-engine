@@ -61,7 +61,9 @@ const CreateEvalTypeModal = ({ open, onClose, onSelectType }: CreateEvalTypeModa
           ))}
         </Box>
         <Box sx={{ display: "flex", justifyContent: "flex-end", pt: 1 }}>
-          <Button variant="text" onClick={onClose}>Cancel</Button>
+          <Button variant="text" onClick={onClose}>
+            Cancel
+          </Button>
         </Box>
       </DialogContent>
     </Dialog>

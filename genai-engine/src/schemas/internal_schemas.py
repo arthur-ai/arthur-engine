@@ -3865,8 +3865,6 @@ class ContinuousEval(BaseModel):
     eval_type: str = "llm_eval"
     llm_eval_name: Optional[str] = None
     llm_eval_version: Optional[int] = None
-    ml_eval_name: Optional[str] = None
-    ml_eval_version: Optional[int] = None
     transform_id: uuid.UUID
     transform_version_id: Optional[uuid.UUID] = None
     created_at: datetime
@@ -3898,8 +3896,6 @@ class ContinuousEval(BaseModel):
             eval_type=db_eval.eval_type,
             llm_eval_name=db_eval.llm_eval_name,
             llm_eval_version=db_eval.llm_eval_version,
-            ml_eval_name=db_eval.ml_eval_name,
-            ml_eval_version=db_eval.ml_eval_version,
             transform_id=db_eval.transform_id,
             transform_version_id=db_eval.transform_version_id,
             created_at=db_eval.created_at,
@@ -3925,8 +3921,6 @@ class ContinuousEval(BaseModel):
             eval_type=self.eval_type,
             llm_eval_name=self.llm_eval_name,
             llm_eval_version=self.llm_eval_version,
-            ml_eval_name=self.ml_eval_name,
-            ml_eval_version=self.ml_eval_version,
             transform_id=self.transform_id,
             transform_version_id=self.transform_version_id,
             created_at=self.created_at,
