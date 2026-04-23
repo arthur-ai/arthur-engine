@@ -137,7 +137,7 @@ class AgenticPromptRepository(
             prompt_version,
         )
         llm_client = self.model_provider_repo.get_model_provider_client(
-            provider=prompt.model_provider,
+            provider=prompt.require_configured_provider(),
         )
         return await self.chat_completion_service.execute_prompt_completion(
             llm_client,

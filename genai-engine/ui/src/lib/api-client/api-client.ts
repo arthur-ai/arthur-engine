@@ -716,8 +716,11 @@ export interface AgenticPrompt {
    * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
    */
   model_name: string;
-  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
-  model_provider: ModelProvider;
+  /**
+   * Model Provider
+   * Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). The sentinel value 'empty' indicates the system default placeholder has not been configured.
+   */
+  model_provider: ModelProvider | "empty";
   /**
    * Name
    * Name of the agentic prompt
@@ -794,8 +797,11 @@ export interface AgenticPromptVersionResponse {
    * Model name chosen for this version of the llm eval
    */
   model_name: string;
-  /** Model provider chosen for this version of the llm eval */
-  model_provider: ModelProvider;
+  /**
+   * Model Provider
+   * Model provider chosen for this version of the llm eval
+   */
+  model_provider: ModelProvider | "empty";
   /**
    * Num Messages
    * Number of messages in the prompt
@@ -922,12 +928,26 @@ export type AnnotateTraceApiV1TracesTraceIdAnnotationsPostData = AgenticAnnotati
 export type AnnotateTraceApiV1TracesTraceIdAnnotationsPostError = HTTPValidationError;
 
 /** AnthropicThinkingParam */
-export interface AnthropicThinkingParam {
+export interface AnthropicThinkingParamInput {
   /** Budget Tokens */
   budget_tokens?: number;
   /** Type */
-  type?: "enabled";
+  type?: AnthropicThinkingParamInputTypeEnum;
 }
+
+/** Type */
+export type AnthropicThinkingParamInputTypeEnum = "enabled" | "adaptive";
+
+/** AnthropicThinkingParam */
+export interface AnthropicThinkingParamOutput {
+  /** Budget Tokens */
+  budget_tokens?: number;
+  /** Type */
+  type?: AnthropicThinkingParamOutputTypeEnum;
+}
+
+/** Type */
+export type AnthropicThinkingParamOutputTypeEnum = "enabled" | "adaptive";
 
 /** ApiKeyRagAuthenticationConfigRequest */
 export interface ApiKeyRagAuthenticationConfigRequest {
@@ -4013,6 +4033,8 @@ export type GetSpanByIdApiV1TracesSpansSpanIdGetData = SpanWithMetricsResponse;
 
 export type GetSpanByIdApiV1TracesSpansSpanIdGetError = HTTPValidationError;
 
+export type GetSyntheticDataPromptStatusApiV2DatasetsSyntheticDataPromptStatusGetData = SyntheticDataPromptStatus;
+
 export type GetTaskApiV2TasksTaskIdGetData = TaskResponse;
 
 export type GetTaskApiV2TasksTaskIdGetError = HTTPValidationError;
@@ -4477,7 +4499,7 @@ export interface LLMBaseConfigSettings {
    */
   temperature?: number | null;
   /** Anthropic-specific thinking parameter for Claude models */
-  thinking?: AnthropicThinkingParam | null;
+  thinking?: AnthropicThinkingParamOutput | null;
   /**
    * Timeout
    * Request timeout in seconds
@@ -4552,7 +4574,7 @@ export interface LLMConfigSettings {
    */
   temperature?: number | null;
   /** Anthropic-specific thinking parameter for Claude models */
-  thinking?: AnthropicThinkingParam | null;
+  thinking?: AnthropicThinkingParamOutput | null;
   /**
    * Timeout
    * Request timeout in seconds
@@ -4774,7 +4796,7 @@ export interface LLMPromptRequestConfigSettings {
    */
   temperature?: number | null;
   /** Anthropic-specific thinking parameter for Claude models */
-  thinking?: AnthropicThinkingParam | null;
+  thinking?: AnthropicThinkingParamInput | null;
   /**
    * Timeout
    * Request timeout in seconds
@@ -4847,7 +4869,7 @@ export interface LLMRequestConfigSettings {
    */
   temperature?: number | null;
   /** Anthropic-specific thinking parameter for Claude models */
-  thinking?: AnthropicThinkingParam | null;
+  thinking?: AnthropicThinkingParamInput | null;
   /**
    * Timeout
    * Request timeout in seconds
@@ -4978,8 +5000,11 @@ export interface LLMVersionResponse {
    * Model name chosen for this version of the llm eval
    */
   model_name: string;
-  /** Model provider chosen for this version of the llm eval */
-  model_provider: ModelProvider;
+  /**
+   * Model Provider
+   * Model provider chosen for this version of the llm eval
+   */
+  model_provider: ModelProvider | "empty";
   /**
    * Tags
    * List of tags for the llm asset
@@ -5884,7 +5909,7 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
   trace_ids?: string[];
   /**
    * User Ids
-   * User IDs to filter on. Optional.
+   * User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.
    */
   user_ids?: string[];
 }
@@ -6272,7 +6297,7 @@ export interface ListTracesMetadataApiV1TracesGetParams {
   trace_ids?: string[];
   /**
    * User Ids
-   * User IDs to filter on. Optional.
+   * User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.
    */
   user_ids?: string[];
 }
@@ -8385,7 +8410,7 @@ export interface QuerySpansV1TracesQueryGetParams {
   trace_ids?: string[];
   /**
    * User Ids
-   * User IDs to filter on. Optional.
+   * User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.
    */
   user_ids?: string[];
 }
@@ -8723,7 +8748,7 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
   trace_ids?: string[];
   /**
    * User Ids
-   * User IDs to filter on. Optional.
+   * User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.
    */
   user_ids?: string[];
 }
@@ -10756,6 +10781,25 @@ export interface SyntheticDataGenerationResponse {
    * IDs of rows that were removed in this response.
    */
   rows_removed?: string[];
+}
+
+/** SyntheticDataPromptStatus */
+export interface SyntheticDataPromptStatus {
+  /**
+   * Is Placeholder
+   * True when the prompt uses the empty placeholder model
+   */
+  is_placeholder: boolean;
+  /**
+   * Model Name
+   * Model name stored in the SDG system prompt
+   */
+  model_name: string;
+  /**
+   * Model Provider
+   * Model provider stored in the SDG system prompt
+   */
+  model_provider: string;
 }
 
 /**
@@ -13014,7 +13058,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.508
+ * @version 2.1.530
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -15434,6 +15478,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getSpanByIdApiV1TracesSpansSpanIdGet: (spanId: string, params: RequestParams = {}) =>
       this.request<GetSpanByIdApiV1TracesSpansSpanIdGetData, GetSpanByIdApiV1TracesSpansSpanIdGetError>({
         path: `/api/v1/traces/spans/${spanId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Datasets
+     * @name GetSyntheticDataPromptStatusApiV2DatasetsSyntheticDataPromptStatusGet
+     * @summary Get the model configuration stored in the SDG system prompt.
+     * @request GET:/api/v2/datasets/synthetic-data/prompt-status
+     * @secure
+     */
+    getSyntheticDataPromptStatusApiV2DatasetsSyntheticDataPromptStatusGet: (params: RequestParams = {}) =>
+      this.request<GetSyntheticDataPromptStatusApiV2DatasetsSyntheticDataPromptStatusGetData, any>({
+        path: `/api/v2/datasets/synthetic-data/prompt-status`,
         method: "GET",
         secure: true,
         format: "json",
