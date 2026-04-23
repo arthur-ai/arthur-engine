@@ -74,6 +74,8 @@ const LiveEvalsNewForm = () => {
 
   const navigate = useNavigate();
 
+  const createContinuousEval = useCreateContinuousEval();
+
   const form = useAppForm({
     defaultValues: {
       name: "",
@@ -140,8 +142,6 @@ const LiveEvalsNewForm = () => {
       navigate(`/tasks/${task?.id}/continuous-evals/${id}`);
     },
   });
-
-  const createContinuousEval = useCreateContinuousEval();
 
   const evaluator = useStore(form.store, (state) => state.values.evaluator);
   const transform = useStore(form.store, (state) => state.values.transform);
@@ -283,9 +283,8 @@ export const DetailsFieldGroup = withFieldGroup({
   render: function Render({ group }) {
     return (
       <Stack gap={2}>
-        <group.AppField
-          name="name"
-          children={(field) => (
+        <group.AppField name="name">
+          {(field) => (
             <TextField
               autoFocus
               label="Eval Name"
@@ -296,14 +295,13 @@ export const DetailsFieldGroup = withFieldGroup({
               value={field.state.value}
               onChange={(e) => field.handleChange(e.target.value)}
               onBlur={field.handleBlur}
-              error={field.state.meta.errors.length > 0}
+              error={field.state.meta.isTouched && field.state.meta.errors.length > 0}
             />
           )}
-        />
+        </group.AppField>
 
-        <group.AppField
-          name="description"
-          children={(field) => (
+        <group.AppField name="description">
+          {(field) => (
             <TextField
               multiline
               rows={3}
@@ -314,10 +312,10 @@ export const DetailsFieldGroup = withFieldGroup({
               value={field.state.value}
               onChange={(e) => field.handleChange(e.target.value)}
               onBlur={field.handleBlur}
-              error={field.state.meta.errors.length > 0}
+              error={field.state.meta.isTouched && field.state.meta.errors.length > 0}
             />
           )}
-        />
+        </group.AppField>
       </Stack>
     );
   },
@@ -377,7 +375,8 @@ export const TransformSelector = withFieldGroup({
                   onSelectionChange?.();
                 },
               }}
-              children={(field) => {
+            >
+              {(field) => {
                 const selected = transforms.data?.find((transform) => transform.id === field.state.value);
 
                 return (
@@ -397,7 +396,7 @@ export const TransformSelector = withFieldGroup({
                   />
                 );
               }}
-            />
+            </group.AppField>
           </Stack>
         </Stack>
         <TransformFormModal
