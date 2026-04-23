@@ -17,7 +17,7 @@
     "generate-api:clean": "rm -rf src/lib/api-client && yarn generate-api"
   },
   "dependencies": {
-    "@amplitude/analytics-browser": "2.36.2",
+    "@amplitude/analytics-browser": "2.36.9",
     "@arizeai/openinference-semantic-conventions": "2.1.7",
     "@arthur/shared-components": "3.15.2",
     "@base-ui/react": "1.2.0",
