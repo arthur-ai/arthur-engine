@@ -126,6 +126,7 @@ class TraceRetentionService(BaseQueueService[TraceRetentionJob]):
 
     def _execute_job(self, job: TraceRetentionJob) -> None:
         """Run one retention pass: delete traces older than configured retention."""
+        logger.info("Trace retention run starting")
         total_deleted = 0
         batch_error = False
 
