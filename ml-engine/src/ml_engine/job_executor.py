@@ -9,7 +9,6 @@ from arthur_client.api_bindings import (
     AlertRulesV1Api,
     AlertsV1Api,
     ApiClient,
-    CompliancePolicyCheckJobSpec,
     ConnectorCheckJobSpec,
     ConnectorsV1Api,
     CreateModelLinkTaskJobSpec,
@@ -28,7 +27,6 @@ from arthur_client.api_bindings import (
     ModelsV1Api,
     PoliciesV1Api,
     RegenerateTaskValidationKeyJobSpec,
-    ScheduleComplianceJobsJobSpec,
     ScheduleJobsJobSpec,
     SchemaInspectionJobSpec,
     TasksV1Api,
@@ -49,7 +47,6 @@ from pydantic import StrictBytes
 
 from config import Config
 from job_executors.alert_check_executor import AlertCheckExecutor
-from job_executors.compliance_policy_check_executor import CompliancePolicyCheckExecutor
 from job_executors.connector_test_executor import ConnectorTestExecutor
 from job_executors.discover_agents_executor import DiscoverAgentsExecutor
 from job_executors.fetch_data_executor import FetchDataExecutor
@@ -57,9 +54,6 @@ from job_executors.list_datasets_executor import ListDatasetsExecutor
 from job_executors.metrics_calculation_executor import (
     CustomAggregationTestExecutor,
     MetricsCalculationExecutor,
-)
-from job_executors.schedule_compliance_jobs_executor import (
-    ScheduleComplianceJobsExecutor,
 )
 from job_executors.schedule_jobs_executor import ScheduleJobsExecutor
 from job_executors.schema_inference_executor import SchemaInferenceExecutor
@@ -249,6 +243,7 @@ class JobExecutor:
                             self.alert_rules_client,
                             self.jobs_client,
                             self.metrics_client,
+                            self.policies_client,
                             self.logger,
                         ).execute(job, job.job_spec.actual_instance)
                     case JobKind.SCHEDULE_JOBS:
@@ -384,35 +379,14 @@ class JobExecutor:
                             genai_engine_url,
                             genai_engine_api_key,
                         ).execute(job, job.job_spec.actual_instance)
-                    case JobKind.COMPLIANCE_POLICY_CHECK:
-                        if not isinstance(
-                            job.job_spec.actual_instance,
-                            CompliancePolicyCheckJobSpec,
-                        ):
-                            raise ValueError(
-                                f"Expected CompliancePolicyCheckJobSpec type, got {type(job.job_spec.actual_instance)}.",
-                            )
-                        CompliancePolicyCheckExecutor(
-                            self.policies_client,
-                            self.alert_rules_client,
-                            self.alerts_client,
-                            self.metrics_client,
-                            self.logger,
-                        ).execute(job, job.job_spec.actual_instance)
-                    case JobKind.SCHEDULE_COMPLIANCE_JOBS:
-                        if not isinstance(
-                            job.job_spec.actual_instance,
-                            ScheduleComplianceJobsJobSpec,
-                        ):
-                            raise ValueError(
-                                f"Expected ScheduleComplianceJobsJobSpec type, got {type(job.job_spec.actual_instance)}.",
-                            )
-                        ScheduleComplianceJobsExecutor(
-                            self.models_client,
-                            self.jobs_client,
-                            self.policies_client,
-                            self.logger,
-                        ).execute(job, job.job_spec.actual_instance)
+                    case (
+                        JobKind.COMPLIANCE_POLICY_CHECK
+                        | JobKind.SCHEDULE_COMPLIANCE_JOBS
+                    ):
+                        self.logger.info(
+                            f"Job {job.id} kind {job.kind} is no longer executed standalone; "
+                            "compliance checks now run as part of ALERT_CHECK."
+                        )
                     case _:
                         raise NotImplementedError(f"Job type {job.kind} not supported.")
                 self.logger.info(f"Job {job.id} - {job.kind} completed")

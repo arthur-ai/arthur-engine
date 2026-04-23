@@ -90,6 +90,7 @@ def test_alert_check_executor_fault_tolerance():
     alert_rules_client = Mock()
     jobs_client = Mock()
     metrics_client = Mock()
+    policies_client = Mock()
     logger = Mock()
 
     # Setup alert rules client to return our test rules
@@ -133,6 +134,7 @@ def test_alert_check_executor_fault_tolerance():
         alert_rules_client=alert_rules_client,
         jobs_client=jobs_client,
         metrics_client=metrics_client,
+        policies_client=policies_client,
         logger=logger,
     )
 

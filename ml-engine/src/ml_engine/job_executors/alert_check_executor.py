@@ -15,6 +15,7 @@ from arthur_client.api_bindings import (
     MetricsQueryResult,
     MetricsResultFilterOp,
     MetricsV1Api,
+    PoliciesV1Api,
     PostAlert,
     PostAlerts,
     PostMetricsQuery,
@@ -24,6 +25,8 @@ from arthur_client.api_bindings import (
     PostMetricsQueryTimeRange,
     ResultFilter,
 )
+
+from job_executors.compliance_policy_check_executor import CompliancePolicyCheckExecutor
 
 METRIC_TIMESTAMP_COLUMN_NAME = "metric_timestamp"
 METRIC_VALUE_COLUMN_NAME = "metric_value"
@@ -47,12 +50,14 @@ class AlertCheckExecutor:
         alert_rules_client: AlertRulesV1Api,
         jobs_client: JobsV1Api,
         metrics_client: MetricsV1Api,
+        policies_client: PoliciesV1Api,
         logger: logging.Logger,
     ) -> None:
         self.alerts_client = alerts_client
         self.alert_rules_client = alert_rules_client
         self.jobs_client = jobs_client
         self.metrics_client = metrics_client
+        self.policies_client = policies_client
         self.logger = logger
 
     def execute(self, job: Job, job_spec: AlertCheckJobSpec) -> None:
@@ -72,6 +77,18 @@ class AlertCheckExecutor:
         # re-raise error so job is marked as failed if any alert rule was not processed
         if processing_exc:
             raise processing_exc
+
+        CompliancePolicyCheckExecutor(
+            self.policies_client,
+            self.alert_rules_client,
+            self.alerts_client,
+            self.metrics_client,
+            self.logger,
+        ).run_compliance_checks(
+            model_id=job_spec.scope_model_id,
+            window_start=job_spec.check_range_start_timestamp,
+            window_end=job_spec.check_range_end_timestamp,
+        )
 
     def _get_all_alert_rules(self, model_id: str) -> List[AlertRule]:
         alert_rules: List[AlertRule] = []

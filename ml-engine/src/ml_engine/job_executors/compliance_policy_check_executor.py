@@ -53,11 +53,26 @@ class CompliancePolicyCheckExecutor:
         self.logger = logger
 
     def execute(self, job: Job, job_spec: CompliancePolicyCheckJobSpec) -> None:
-        model_id = job_spec.scope_model_id
-        self._now = datetime.now(timezone.utc)
-        self._alert_window_start = self._now - timedelta(hours=24)
+        now = datetime.now(timezone.utc)
+        self.run_compliance_checks(
+            model_id=job_spec.scope_model_id,
+            window_start=now - timedelta(hours=24),
+            window_end=now,
+            policy_assignment_id=(
+                str(job_spec.policy_assignment_id)
+                if job_spec.policy_assignment_id
+                else None
+            ),
+        )
 
-        assignments = self._fetch_assignments(model_id, job_spec.policy_assignment_id)
+    def run_compliance_checks(
+        self,
+        model_id: str,
+        window_start: datetime,
+        window_end: datetime,
+        policy_assignment_id: Optional[str] = None,
+    ) -> None:
+        assignments = self._fetch_assignments(model_id, policy_assignment_id)
         if not assignments:
             self.logger.info("No policy assignments found. Nothing to check.")
             return
@@ -68,7 +83,7 @@ class CompliancePolicyCheckExecutor:
         errors: list[Exception] = []
         for assignment in assignments:
             try:
-                self._process_assignment(assignment, model_id)
+                self._process_assignment(assignment, model_id, window_start, window_end)
             except Exception as e:
                 self.logger.error(
                     f"Error checking compliance for assignment {assignment.id}",
@@ -85,6 +100,8 @@ class CompliancePolicyCheckExecutor:
         self,
         assignment: PolicyAssignment,
         model_id: str,
+        window_start: datetime,
+        window_end: datetime,
     ) -> None:
         self.logger.info(
             f"Checking compliance for assignment {assignment.id} "
@@ -93,16 +110,18 @@ class CompliancePolicyCheckExecutor:
         policy = self.policies_client.get_policy(policy_id=assignment.policy.id)
 
         attestation_results = self._check_attestation_rules(
-            assignment, policy.attestation_rules, self._now
+            assignment, policy.attestation_rules, window_end
         )
-        alert_rule_results = self._check_alert_rules(assignment)
+        alert_rule_results = self._check_alert_rules(
+            assignment, window_start, window_end
+        )
 
         has_violations = any(not passed for _, passed, _ in attestation_results) or any(
             not passed for _, passed, _, _count in alert_rule_results
         )
 
         status = self._resolve_status(
-            has_violations, assignment.enforcement_starts_at, self._now
+            has_violations, assignment.enforcement_starts_at, window_end
         )
         self.logger.info(f"Assignment {assignment.id} resolved to {status.value}")
 
@@ -115,7 +134,7 @@ class CompliancePolicyCheckExecutor:
             status,
             attestation_results,
             alert_rule_results,
-            self._now,
+            window_end,
         )
 
     def _fetch_assignments(
@@ -194,6 +213,8 @@ class CompliancePolicyCheckExecutor:
     def _check_alert_rules(
         self,
         assignment: PolicyAssignment,
+        window_start: datetime,
+        window_end: datetime,
     ) -> List[Tuple[ClientAlertRule, bool, Optional[Alert], int]]:
         """Returns list of (alert_rule, passed, triggering_alert, violation_count) tuples."""
         self.logger.info(
@@ -234,8 +255,8 @@ class CompliancePolicyCheckExecutor:
             alerts_resp = self.alerts_client.get_model_alerts(
                 model_id=assignment.model.id,
                 alert_rule_ids=alert_rule_ids,
-                created_at_from=self._alert_window_start,
-                created_at_to=self._now,
+                created_at_from=window_start,
+                created_at_to=window_end,
                 page=page,
                 page_size=_PAGE_SIZE,
             )
