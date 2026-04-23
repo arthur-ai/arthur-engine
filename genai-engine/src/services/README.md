@@ -49,7 +49,7 @@ All log records below are emitted under the `services.trace_retention_service` l
 | `Trace retention interval: N hour(s)` | Once, when the background thread starts — confirms the resolved `TRACE_RETENTION_INTERVAL_HOURS`. | INFO |
 | `Acquired trace retention leader lock` | When this replica wins leader election. | INFO |
 | `Another replica holds the trace retention leader lock, standing by; next leadership check at <ISO>` | On a standby replica each time it fails to acquire the lock. | INFO |
-| `Next trace retention run scheduled at <ISO>` | After every successful enqueue (initial and subsequent). | INFO |
+| `Next trace retention enqueue scheduled at <ISO>` | After every successful enqueue (initial and subsequent). The timestamp is when the *next* enqueue will occur, one interval from now — the job just enqueued runs immediately. | INFO |
 | `Trace retention run complete: deleted N traces (cutoff=<ISO>, retention=N days)` | At the end of every run on the success path, **including runs that deleted zero traces**. The absence of this line for longer than the configured interval indicates the service is not running. | INFO |
 | `Trace retention batch failed after deleting N traces` | A batch raised; the run is rolled back and counted toward the circuit breaker. | ERROR |
 | `Trace retention run failed (N consecutive)` | The outer run raised (e.g. session acquisition failed). | ERROR |

@@ -428,11 +428,11 @@ def test_execute_job_logs_run_complete_when_traces_deleted(
 
 @pytest.mark.unit_tests
 @patch("services.trace_retention_service.get_db_session")
-def test_background_loop_logs_next_run_scheduled(
+def test_background_loop_logs_next_enqueue_scheduled(
     mock_get_db_session: MagicMock,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Leader logs the next scheduled run timestamp after the initial enqueue."""
+    """Leader logs the next scheduled enqueue timestamp after the initial enqueue."""
     mock_session = MagicMock()
     mock_session.execute.return_value.scalar.return_value = True
     mock_get_db_session.return_value = iter([mock_session])
@@ -451,7 +451,7 @@ def test_background_loop_logs_next_run_scheduled(
     mock_enqueue.assert_called_once()
     messages = [r.getMessage() for r in caplog.records]
     assert any(
-        "Next trace retention run scheduled at" in m for m in messages
+        "Next trace retention enqueue scheduled at" in m for m in messages
     ), messages
 
 

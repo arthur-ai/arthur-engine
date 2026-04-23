@@ -245,13 +245,13 @@ class TraceRetentionService(BaseQueueService[TraceRetentionJob]):
 
                 if not self.shutdown_event.is_set():
                     self.enqueue(TraceRetentionJob(delay_seconds=0))
-                    next_run = (
+                    next_enqueue = (
                         datetime.now(timezone.utc)
                         + timedelta(seconds=self._interval_seconds)
                     ).isoformat()
                     logger.info(
-                        "Next trace retention run scheduled at %s",
-                        next_run,
+                        "Next trace retention enqueue scheduled at %s",
+                        next_enqueue,
                     )
 
                 while not self.shutdown_event.is_set():
@@ -259,13 +259,13 @@ class TraceRetentionService(BaseQueueService[TraceRetentionJob]):
                         break
                     if not self.shutdown_event.is_set():
                         self.enqueue(TraceRetentionJob(delay_seconds=0))
-                        next_run = (
+                        next_enqueue = (
                             datetime.now(timezone.utc)
                             + timedelta(seconds=self._interval_seconds)
                         ).isoformat()
                         logger.info(
-                            "Next trace retention run scheduled at %s",
-                            next_run,
+                            "Next trace retention enqueue scheduled at %s",
+                            next_enqueue,
                         )
 
             except Exception as e:
