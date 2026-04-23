@@ -17,7 +17,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import z from "zod";
 
@@ -281,12 +281,21 @@ export const DetailsFieldGroup = withFieldGroup({
     description: "",
   },
   render: function Render({ group }) {
+    const nameInputRef = useRef<HTMLInputElement | null>(null);
+
+    useEffect(() => {
+      const raf = requestAnimationFrame(() => {
+        nameInputRef.current?.focus();
+      });
+      return () => cancelAnimationFrame(raf);
+    }, []);
+
     return (
       <Stack gap={2}>
         <group.AppField name="name">
           {(field) => (
             <TextField
-              autoFocus
+              inputRef={nameInputRef}
               label="Eval Name"
               type="text"
               fullWidth
