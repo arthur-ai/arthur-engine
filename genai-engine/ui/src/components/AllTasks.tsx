@@ -30,6 +30,7 @@ import { CreateTaskForm } from "./CreateTaskForm";
 import { TaskCard } from "./TaskCard";
 
 import { SettingsMenuButton } from "@/components/settings/SettingsMenuButton";
+import { useAllTasksActivity } from "@/hooks/tasks/useAllTasksActivity";
 import { useApi } from "@/hooks/useApi";
 import { TaskResponse } from "@/lib/api";
 import { type InactiveDays, type SortBy, useTaskListStore } from "@/stores/task-list.store";
@@ -53,6 +54,9 @@ export const AllTasks: React.FC = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const { hideSystemTasks, sortBy, inactiveDays, setHideSystemTasks, setSortBy, setInactiveDays } = useTaskListStore();
 
+  const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks]);
+  const { data: activityMap = {} } = useAllTasksActivity(taskIds);
+
   const sentinelRef = useRef<HTMLDivElement>(null);
   const tasksRef = useRef<TaskResponse[]>(tasks);
   tasksRef.current = tasks;
@@ -67,16 +71,18 @@ export const AllTasks: React.FC = () => {
 
     if (inactiveDays !== "archived" && inactiveDays > 0) {
       const cutoff = Date.now() - inactiveDays * 24 * 60 * 60 * 1000;
-      result = result.filter((t) => t.updated_at >= cutoff);
+      result = result.filter((t) => (activityMap[t.id] ?? t.created_at) >= cutoff);
     }
 
     result.sort((a, b) => {
-      const field = sortBy === "updated" ? "updated_at" : "created_at";
-      return b[field] - a[field];
+      if (sortBy === "updated") {
+        return (activityMap[b.id] ?? b.created_at) - (activityMap[a.id] ?? a.created_at);
+      }
+      return b.created_at - a.created_at;
     });
 
     return result;
-  }, [tasks, hideSystemTasks, sortBy, inactiveDays]);
+  }, [tasks, hideSystemTasks, sortBy, inactiveDays, activityMap]);
 
   const filteredArchivedTasks = useMemo(() => {
     let result = [...archivedTasks];
