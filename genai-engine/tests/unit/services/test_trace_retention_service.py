@@ -1,5 +1,6 @@
 """Unit tests for the trace retention service."""
 
+import logging
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
@@ -9,6 +10,7 @@ from schemas.internal_schemas import ApplicationConfiguration
 from services.trace_retention_service import (
     CIRCUIT_BREAKER_THRESHOLD,
     MAX_TRACES_PER_RUN,
+    ONE_DAY_SECONDS,
     TRACE_RETENTION_ADVISORY_LOCK_KEY,
     TraceRetentionJob,
     TraceRetentionService,
@@ -16,6 +18,7 @@ from services.trace_retention_service import (
     initialize_trace_retention_service,
     shutdown_trace_retention_service,
 )
+from utils import constants
 
 
 def _make_service() -> TraceRetentionService:
@@ -349,3 +352,189 @@ def test_initialize_and_shutdown_trace_retention_service() -> None:
     assert svc is not None
     shutdown_trace_retention_service()
     assert get_trace_retention_service() is None
+
+
+@pytest.mark.unit_tests
+@patch("services.trace_retention_service.delete_trace_batch")
+@patch("services.trace_retention_service.get_expired_trace_ids")
+@patch("services.trace_retention_service.db_session_context")
+@patch("services.trace_retention_service.ConfigurationRepository")
+def test_execute_job_logs_run_complete_when_zero_traces(
+    mock_config_repo_cls: MagicMock,
+    mock_db_session_ctx: MagicMock,
+    mock_get_expired_trace_ids: MagicMock,
+    mock_delete_trace_batch: MagicMock,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Run-complete log is emitted even when nothing was deleted (regression)."""
+    _mock_db_session_ctx(mock_db_session_ctx)
+    _mock_config_repo(mock_config_repo_cls, retention_days=30)
+    mock_get_expired_trace_ids.return_value = []
+
+    service = _make_service()
+    service.shutdown_event = MagicMock()
+    service.shutdown_event.wait = MagicMock(return_value=False)
+    service.shutdown_event.is_set = MagicMock(return_value=False)
+
+    with caplog.at_level(logging.INFO, logger="services.trace_retention_service"):
+        service._execute_job(TraceRetentionJob())
+
+    messages = [r.getMessage() for r in caplog.records]
+    assert any(
+        "Trace retention run complete" in m
+        and "deleted 0 traces" in m
+        and "retention=30 days" in m
+        for m in messages
+    ), messages
+    mock_delete_trace_batch.assert_not_called()
+
+
+@pytest.mark.unit_tests
+@patch("services.trace_retention_service.delete_trace_batch")
+@patch("services.trace_retention_service.get_expired_trace_ids")
+@patch("services.trace_retention_service.db_session_context")
+@patch("services.trace_retention_service.ConfigurationRepository")
+def test_execute_job_logs_run_complete_when_traces_deleted(
+    mock_config_repo_cls: MagicMock,
+    mock_db_session_ctx: MagicMock,
+    mock_get_expired_trace_ids: MagicMock,
+    mock_delete_trace_batch: MagicMock,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Run-complete log is emitted with the correct total_deleted when traces are deleted."""
+    _mock_db_session_ctx(mock_db_session_ctx)
+    _mock_config_repo(mock_config_repo_cls, retention_days=30)
+    mock_get_expired_trace_ids.side_effect = [
+        ["trace-1", "trace-2", "trace-3"],
+        [],
+    ]
+
+    service = _make_service()
+    service.shutdown_event = MagicMock()
+    service.shutdown_event.wait = MagicMock(return_value=False)
+    service.shutdown_event.is_set = MagicMock(return_value=False)
+
+    with caplog.at_level(logging.INFO, logger="services.trace_retention_service"):
+        service._execute_job(TraceRetentionJob())
+
+    messages = [r.getMessage() for r in caplog.records]
+    assert any(
+        "Trace retention run complete" in m
+        and "deleted 3 traces" in m
+        and "retention=30 days" in m
+        for m in messages
+    ), messages
+
+
+@pytest.mark.unit_tests
+@patch("services.trace_retention_service.get_db_session")
+def test_background_loop_logs_next_enqueue_scheduled(
+    mock_get_db_session: MagicMock,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Leader logs the next scheduled enqueue timestamp after the initial enqueue."""
+    mock_session = MagicMock()
+    mock_session.execute.return_value.scalar.return_value = True
+    mock_get_db_session.return_value = iter([mock_session])
+
+    service = _make_service()
+
+    is_set_calls = [False, False, False, True]
+    service.shutdown_event = MagicMock()
+    service.shutdown_event.is_set = MagicMock(side_effect=is_set_calls)
+    service.shutdown_event.wait = MagicMock(return_value=True)
+
+    with caplog.at_level(logging.INFO, logger="services.trace_retention_service"):
+        with patch.object(service, "enqueue") as mock_enqueue:
+            service._background_loop()
+
+    mock_enqueue.assert_called_once()
+    messages = [r.getMessage() for r in caplog.records]
+    assert any(
+        "Next trace retention enqueue scheduled at" in m for m in messages
+    ), messages
+
+
+@pytest.mark.unit_tests
+@patch("services.trace_retention_service.get_db_session")
+def test_background_loop_standby_log_includes_next_leadership_check(
+    mock_get_db_session: MagicMock,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Non-leader standby log includes the next leadership-check timestamp."""
+    mock_session = MagicMock()
+    mock_session.execute.return_value.scalar.return_value = False
+    mock_get_db_session.return_value = iter([mock_session])
+
+    service = _make_service()
+
+    is_set_calls = [False, True]
+    service.shutdown_event = MagicMock()
+    service.shutdown_event.is_set = MagicMock(side_effect=is_set_calls)
+    service.shutdown_event.wait = MagicMock(return_value=False)
+
+    with caplog.at_level(logging.INFO, logger="services.trace_retention_service"):
+        service._background_loop()
+
+    messages = [r.getMessage() for r in caplog.records]
+    assert any(
+        "Another replica holds the trace retention leader lock" in m
+        and "next leadership check at" in m
+        for m in messages
+    ), messages
+
+
+@pytest.mark.unit_tests
+def test_interval_defaults_to_one_day_when_env_unset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Without the env var, the service uses ONE_DAY_SECONDS as the interval."""
+    monkeypatch.delenv(
+        constants.TRACE_RETENTION_INTERVAL_HOURS_ENV_VAR, raising=False
+    )
+    service = _make_service()
+    assert service._interval_seconds == ONE_DAY_SECONDS
+
+
+@pytest.mark.unit_tests
+def test_interval_overridden_by_env_var(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A valid env var value (hours) overrides the default interval."""
+    monkeypatch.setenv(constants.TRACE_RETENTION_INTERVAL_HOURS_ENV_VAR, "1")
+    service = _make_service()
+    assert service._interval_seconds == 3600
+
+
+@pytest.mark.unit_tests
+def test_interval_clamps_to_minimum_when_env_too_small(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Values below the minimum floor are clamped up and a WARNING is logged."""
+    monkeypatch.setenv(constants.TRACE_RETENTION_INTERVAL_HOURS_ENV_VAR, "0")
+    with caplog.at_level(logging.WARNING, logger="services.trace_retention_service"):
+        service = _make_service()
+    assert (
+        service._interval_seconds
+        == constants.MIN_TRACE_RETENTION_INTERVAL_HOURS * 3600
+    )
+    assert any(
+        "below the minimum" in r.getMessage() for r in caplog.records
+    ), [r.getMessage() for r in caplog.records]
+
+
+@pytest.mark.unit_tests
+def test_interval_falls_back_to_default_on_invalid_env_var(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Non-integer env var values fall back to ONE_DAY_SECONDS with a WARNING log."""
+    monkeypatch.setenv(
+        constants.TRACE_RETENTION_INTERVAL_HOURS_ENV_VAR, "not-a-number"
+    )
+    with caplog.at_level(logging.WARNING, logger="services.trace_retention_service"):
+        service = _make_service()
+    assert service._interval_seconds == ONE_DAY_SECONDS
+    assert any(
+        "Invalid" in r.getMessage() and "not-a-number" in r.getMessage()
+        for r in caplog.records
+    ), [r.getMessage() for r in caplog.records]
