@@ -2,6 +2,75 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 04/20/2026
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/synthetic-data/prompt-status  the `model_provider` response's property type/format changed from `string`/`` to ``/`` for status `200`
+- **CHANGE** for **URL**: /api/v2/datasets/synthetic-data/prompt-status  added `#/components/schemas/ModelProvider, subschema #2` to the `model_provider` response property `anyOf` list for the response status `200`
+
+# 04/17/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMPromptRequestConfigSettings]/thinking' request property 'anyOf' list
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking' request property 'anyOf' list
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMPromptRequestConfigSettings]/thinking' request property 'anyOf' list
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking' request property 'anyOf' list
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking' request property 'anyOf' list
+- **CHANGE** for Component/Schema:  removed the schema 'AnthropicThinkingParam'
+- **CHANGE** for **URL**: /api/v1/completions  added '#/components/schemas/AnthropicThinkingParam-Input' to the 'config/anyOf[subschema #1: LLMPromptRequestConfigSettings]/thinking' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added '#/components/schemas/AnthropicThinkingParam-Input' to the 'config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added '#/components/schemas/AnthropicThinkingParam-Output' to the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  added '#/components/schemas/AnthropicThinkingParam-Output' to the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  added '#/components/schemas/AnthropicThinkingParam-Output' to the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  added '#/components/schemas/AnthropicThinkingParam-Output' to the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added '#/components/schemas/AnthropicThinkingParam-Input' to the 'config/anyOf[subschema #1: LLMPromptRequestConfigSettings]/thinking' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added '#/components/schemas/AnthropicThinkingParam-Output' to the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}  added '#/components/schemas/AnthropicThinkingParam-Output' to the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  added '#/components/schemas/AnthropicThinkingParam-Output' to the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added '#/components/schemas/AnthropicThinkingParam-Output' to the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags  added '#/components/schemas/AnthropicThinkingParam-Output' to the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic  added '#/components/schemas/AnthropicThinkingParam-Input' to the 'config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message  added '#/components/schemas/AnthropicThinkingParam-Input' to the 'config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking' request property 'anyOf' list
+
+# 04/09/2026
+- **CHANGE** for **URL**: /api/v2/configuration  added the optional property 'trace_retention_days' to the request body
+- **CHANGE** for **URL**: /api/v2/configuration  added the optional property 'trace_retention_days' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/configuration  added the optional property 'allowed_trace_retention_days' to the response with the '200' status
+
+# 04/08/2026
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}  added the new 'error' enum value to the 'status' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/continuous_evals/{eval_id}/test_runs
+- **CHANGE**warning [response-property-enum-value-added] at /vagrant/genai-engine/new.openapi.json 
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+
+# 04/07/2026
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}  added the new 'completed' enum value to the 'status' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/continuous_evals/test_runs/{test_run_id}
+- **CHANGE**warning [response-property-enum-value-added] at /vagrant/genai-engine/new.openapi.json 
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/test_runs  added the new 'completed' enum value to the 'test_runs/items/status' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/continuous_evals/{eval_id}/test_runs
+- **CHANGE**warning [response-property-enum-value-added] at /vagrant/genai-engine/new.openapi.json 
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/test_runs  added the new 'completed' enum value to the 'status' response property for the response status '200'
+- **CHANGE** in API POST /api/v1/continuous_evals/{eval_id}/test_runs
+- **CHANGE**warning [response-property-enum-value-added] at /vagrant/genai-engine/new.openapi.json 
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+
+# 04/07/2026
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}  endpoint added
+
+# 04/07/2026
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}/results  endpoint added
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/test_runs  endpoint added
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/test_runs  endpoint added
+
 # 04/06/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/chatbot/stream  for the 'path' request parameter 'task_id', the type/format was changed from 'string'/'' to 'string'/'uuid'
 

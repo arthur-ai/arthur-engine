@@ -58,6 +58,13 @@ class DatabaseAgenticAnnotation(Base):
     cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     run_status: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
+    test_run_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID,
+        ForeignKey("continuous_eval_test_runs.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
         default=datetime.now,

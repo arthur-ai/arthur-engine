@@ -23,6 +23,7 @@ from arthur_client.api_bindings import (
     JobTrigger,
     ModelSummary,
     Policy,
+    PolicyAlertRule,
     PolicyAssignment,
     PolicyAttestationRule,
     PolicySummary,
@@ -51,6 +52,7 @@ def _make_model_summary(model_id: str = None) -> ModelSummary:
     return ModelSummary(
         id=model_id or str(uuid4()),
         name="Test Model",
+        project_id=str(uuid4()),
     )
 
 
@@ -596,3 +598,139 @@ def test_metrics_uploaded_with_correct_dimensions(mock_datetime):
     assert "attestation_rule_name" in att_dim_names
     assert "policy_name" in att_dim_names
     assert "model_name" in att_dim_names
+
+
+@patch("job_executors.compliance_policy_check_executor.datetime")
+def test_alert_rule_metrics_uploaded_with_correct_dimensions(mock_datetime):
+    """Verify alert rule metrics include alert_rule_id, alert_rule_name, and status dimensions."""
+    mock_datetime.now.return_value = NOW
+    mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = _make_executor()
+
+    model_id = str(uuid4())
+    policy_id = str(uuid4())
+    policy_summary = _make_policy_summary(policy_id)
+    model_summary = _make_model_summary(model_id)
+    assignment = _make_assignment(
+        policy_summary=policy_summary,
+        model_summary=model_summary,
+    )
+
+    alert_rule = _make_alert_rule(rule_id="failing-rule", model_id=model_id)
+    alert = _make_alert(alert_rule_id="failing-rule", model_id=model_id)
+    policy_alert_rule = PolicyAlertRule(
+        id="failing-rule",
+        policy_id=policy_id,
+        name=alert_rule.name,
+        threshold=alert_rule.threshold,
+        bound=alert_rule.bound,
+        query=alert_rule.query,
+        metric_name=alert_rule.metric_name,
+        created_at=NOW,
+        updated_at=NOW,
+    )
+    policy = _make_policy(policy_id, alert_rules=[policy_alert_rule])
+
+    job, job_spec = _make_job_and_spec(model_id)
+
+    policies_client.list_model_policy_assignments.return_value = _paginated_response([assignment])
+    policies_client.get_policy.return_value = policy
+    policies_client.list_model_attestations.return_value = _paginated_response([])
+    alert_rules_client.get_model_alert_rules.return_value = _paginated_response([alert_rule])
+    alerts_client.get_model_alerts.return_value = _paginated_response([alert])
+
+    executor.execute(job, job_spec)
+
+    upload_call = metrics_client.post_model_metrics_by_version.call_args
+    upload = upload_call.kwargs["metrics_upload"]
+
+    # Should have 2 metrics: 1 compliance check + 1 alert rule check (no attestation rules)
+    assert len(upload.metrics) == 2
+
+    # First metric is the overall compliance check
+    compliance_metric = upload.metrics[0].actual_instance
+    assert compliance_metric.name == "policy_compliance_check_count"
+
+    # Second metric is the alert rule check
+    alert_metric = upload.metrics[1].actual_instance
+    assert alert_metric.name == "policy_alert_rule_check_count"
+    alert_dim_names = {d.name for d in alert_metric.numeric_series[0].dimensions}
+    assert "policy_id" in alert_dim_names
+    assert "policy_name" in alert_dim_names
+    assert "assignment_id" in alert_dim_names
+    assert "model_name" in alert_dim_names
+    assert "alert_rule_id" in alert_dim_names
+    assert "alert_rule_name" in alert_dim_names
+
+    # Verify violation count is 1 since one alert fired
+    assert alert_metric.numeric_series[0].values[0].value == 1.0
+
+
+@patch("job_executors.compliance_policy_check_executor.datetime")
+def test_alert_rule_metric_tracks_multiple_violations(mock_datetime):
+    """When multiple alerts fire for the same rule, the metric value reflects the count."""
+    mock_datetime.now.return_value = NOW
+    mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = _make_executor()
+
+    model_id = str(uuid4())
+    policy_id = str(uuid4())
+    assignment = _make_assignment(
+        policy_summary=_make_policy_summary(policy_id),
+        model_summary=_make_model_summary(model_id),
+    )
+    policy = _make_policy(policy_id)
+
+    alert_rule = _make_alert_rule(rule_id="multi-alert-rule", model_id=model_id)
+    alerts = [_make_alert(alert_rule_id="multi-alert-rule", model_id=model_id) for _ in range(3)]
+
+    job, job_spec = _make_job_and_spec(model_id)
+
+    policies_client.list_model_policy_assignments.return_value = _paginated_response([assignment])
+    policies_client.get_policy.return_value = policy
+    policies_client.list_model_attestations.return_value = _paginated_response([])
+    alert_rules_client.get_model_alert_rules.return_value = _paginated_response([alert_rule])
+    alerts_client.get_model_alerts.return_value = _paginated_response(alerts)
+
+    executor.execute(job, job_spec)
+
+    upload = metrics_client.post_model_metrics_by_version.call_args.kwargs["metrics_upload"]
+    alert_metric = upload.metrics[1].actual_instance
+    assert alert_metric.name == "policy_alert_rule_check_count"
+    assert alert_metric.numeric_series[0].values[0].value == 3.0
+
+
+@patch("job_executors.compliance_policy_check_executor.datetime")
+def test_alert_rule_metric_emits_zero_for_passing_rule(mock_datetime):
+    """A passing alert rule emits a violation count of 0."""
+    mock_datetime.now.return_value = NOW
+    mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = _make_executor()
+
+    model_id = str(uuid4())
+    policy_id = str(uuid4())
+    assignment = _make_assignment(
+        policy_summary=_make_policy_summary(policy_id),
+        model_summary=_make_model_summary(model_id),
+    )
+    policy = _make_policy(policy_id)
+
+    alert_rule = _make_alert_rule(rule_id="clean-rule", model_id=model_id)
+
+    job, job_spec = _make_job_and_spec(model_id)
+
+    policies_client.list_model_policy_assignments.return_value = _paginated_response([assignment])
+    policies_client.get_policy.return_value = policy
+    policies_client.list_model_attestations.return_value = _paginated_response([])
+    alert_rules_client.get_model_alert_rules.return_value = _paginated_response([alert_rule])
+    alerts_client.get_model_alerts.return_value = _paginated_response([])  # no alerts
+
+    executor.execute(job, job_spec)
+
+    upload = metrics_client.post_model_metrics_by_version.call_args.kwargs["metrics_upload"]
+    alert_metric = upload.metrics[1].actual_instance
+    assert alert_metric.name == "policy_alert_rule_check_count"
+    assert alert_metric.numeric_series[0].values[0].value == 0.0

@@ -8,24 +8,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Generate the API client first (requires Node.js + Java; python/src/arthur_genai_client/ is gitignored)
 ./scripts/generate_openapi_client.sh generate python
 
-# Install (runs poetry install, which picks up the generated client)
+# Install (runs uv sync, which picks up the generated client)
 ./scripts/generate_openapi_client.sh install python
 
 # Test (run from arthur-observability-sdk/python/)
 cd python
-poetry run pytest tests -v          # all tests (includes install/wheel smoke tests)
-poetry run pytest tests/test_client.py::test_arthur_requires_task_or_service_name  # single test
-poetry run pytest -k "telemetry"    # match expression
+uv run pytest tests -v          # all tests (includes install/wheel smoke tests)
+uv run pytest tests/test_client.py::test_arthur_requires_task_or_service_name  # single test
+uv run pytest -k "telemetry"    # match expression
 
 # Lint (all at once, run from arthur-observability-sdk/)
 ./scripts/lint.sh
 
 # Individually (run from arthur-observability-sdk/python/)
 cd python
-poetry run black src tests
-poetry run isort src tests --profile black
-poetry run autoflake --remove-all-unused-imports --in-place --recursive src tests
-poetry run mypy src/arthur_observability_sdk
+uv run black src tests
+uv run isort src tests --profile black
+uv run autoflake --remove-all-unused-imports --in-place --recursive src tests
+uv run mypy src/arthur_observability_sdk
 
 # Build wheel (run from arthur-observability-sdk/)
 ./scripts/build_sdk_wheel.sh
@@ -99,9 +99,8 @@ Use `*_with_http_info()` + `raw_data` whenever the response includes prompts, me
            "MyFrameworkInstrumentor",                      # class name
        )
    ```
-2. **`python/pyproject.toml`** — three additions:
-   - In `[tool.poetry.dependencies]`: `openinference-instrumentation-my-framework = { version = "*", optional = true }`
-   - In `[tool.poetry.extras]`: `my-framework = ["openinference-instrumentation-my-framework"]`
+2. **`python/pyproject.toml`** — two additions:
+   - In `[project.optional-dependencies]`: `my-framework = ["openinference-instrumentation-my-framework"]`
    - In the `all` extra list: `"openinference-instrumentation-my-framework"`
 3. **`README.md`** — add a row to the "Supported instrumentors" table.
 
