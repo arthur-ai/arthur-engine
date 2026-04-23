@@ -21,9 +21,9 @@ import { useUpdateContinuousEval } from "../../hooks/useUpdateContinuousEval";
 import { DetailsFieldGroup, EvaluatorSelector, TransformSelector } from "../../new";
 import { VariableMappingSection } from "../variable-mapping";
 
+import { CopyableChip } from "@/components/common";
 import { useMLEval } from "@/components/evaluators/hooks/useEval";
 import { useTransforms } from "@/components/transforms/hooks/useTransforms";
-import { CopyableChip } from "@/components/common";
 import type { ContinuousEvalResponse, ContinuousEvalTransformVariableMappingRequest } from "@/lib/api-client/api-client";
 
 type Props = {
@@ -66,8 +66,8 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
         transformId: data.transform_id,
       },
       evaluator: {
-        name: data.eval_type === "ml_eval" ? (data.ml_eval_name ?? null) : (data.llm_eval_name ?? null),
-        version: data.eval_type === "ml_eval" ? (data.ml_eval_version?.toString() ?? "latest") : (data.llm_eval_version ?? 1).toString(),
+        name: data.llm_eval_name ?? null,
+        version: data.llm_eval_version?.toString() ?? "latest",
         eval_type: data.eval_type === "ml_eval" ? "ml" : "llm",
       },
       variableMappings: initialMappings,
@@ -82,10 +82,8 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
         description: value.description?.trim() || undefined,
         enabled: value.enabled,
         transform_id: value.transform.transformId,
-        eval_type: isML ? "ml_eval" : "llm_eval",
-        ...(isML
-          ? { ml_eval_name: value.evaluator.name, ml_eval_version: "latest" }
-          : { llm_eval_name: value.evaluator.name, llm_eval_version: value.evaluator.version }),
+        llm_eval_name: value.evaluator.name,
+        llm_eval_version: value.evaluator.version ?? "latest",
         transform_variable_mapping: value.variableMappings,
       });
 

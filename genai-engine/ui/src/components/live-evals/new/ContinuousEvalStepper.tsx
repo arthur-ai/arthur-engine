@@ -186,9 +186,8 @@ export const ContinuousEvalStepper = ({
           name: evalName,
           enabled: true,
           eval_type: isMLEval ? "ml_eval" : "llm_eval",
-          ...(isMLEval
-            ? { ml_eval_name: value.evaluator.name!, ml_eval_version: "latest" }
-            : { llm_eval_name: value.evaluator.name!, llm_eval_version: value.evaluator.version! }),
+          llm_eval_name: value.evaluator.name!,
+          llm_eval_version: value.evaluator.version ?? "latest",
           transform_id: transformData.id,
           transform_variable_mapping: inlineVariables.map((v) => ({
             eval_variable: v.variable_name,
@@ -208,9 +207,8 @@ export const ContinuousEvalStepper = ({
           name: evalName,
           enabled: true,
           eval_type: isMLEvalSelect ? "ml_eval" : "llm_eval",
-          ...(isMLEvalSelect
-            ? { ml_eval_name: value.evaluator.name!, ml_eval_version: "latest" }
-            : { llm_eval_name: value.evaluator.name!, llm_eval_version: value.evaluator.version! }),
+          llm_eval_name: value.evaluator.name!,
+          llm_eval_version: value.evaluator.version ?? "latest",
           transform_id: value.transform.transformId!,
           transform_variable_mapping: value.variableMappings,
         });

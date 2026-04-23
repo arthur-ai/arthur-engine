@@ -10,12 +10,15 @@ import { useState } from "react";
 
 import { useDeleteMlEvalMutation } from "./hooks/useDeleteMlEvalMutation";
 
+const ML_EDITABLE_TYPES = ["pii", "pii_v1", "toxicity"];
+
 type Props = {
   evalName: string;
+  evalType: string;
   onEdit: (evalName: string) => void;
 };
 
-export const MLEvalActions = ({ evalName, onEdit }: Props) => {
+export const MLEvalActions = ({ evalName, evalType, onEdit }: Props) => {
   const deleteMlEval = useDeleteMlEvalMutation();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -43,12 +46,14 @@ export const MLEvalActions = ({ evalName, onEdit }: Props) => {
         <MoreVertIcon fontSize="small" />
       </IconButton>
       <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
-        <MenuItem onClick={handleEdit}>
-          <ListItemIcon>
-            <EditIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText primary="Edit" />
-        </MenuItem>
+        {ML_EDITABLE_TYPES.includes(evalType) && (
+          <MenuItem onClick={handleEdit}>
+            <ListItemIcon>
+              <EditIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText primary="Edit" />
+          </MenuItem>
+        )}
         <MenuItem onClick={handleDelete} sx={{ color: "error.main" }}>
           <ListItemIcon>
             <DeleteIcon fontSize="small" color="error" />

@@ -108,31 +108,6 @@ class MLEvalsRepository(
             )
         return cast(MLEval, super().save_llm_item(task_id, eval_name, item))
 
-    def get_ml_eval(
-        self,
-        task_id: str,
-        eval_name: str,
-        eval_version: str = "latest",
-    ) -> MLEval:
-        return cast(MLEval, super().get_llm_item(task_id, eval_name, eval_version))
-
-    def get_ml_eval_versions(
-        self,
-        task_id: str,
-        eval_name: str,
-        pagination_parameters: Any,
-        filter_request: Any = None,
-    ) -> MLEvalsVersionListResponse:
-        return cast(
-            MLEvalsVersionListResponse,
-            super().get_llm_item_versions(
-                task_id,
-                eval_name,
-                pagination_parameters,
-                filter_request,
-            ),
-        )
-
     def delete_version(self, task_id: str, eval_name: str, version: str) -> MLEval:
         """Soft-delete a specific version; returns the eval with deleted_at set."""
         base_query = self._build_name_query(task_id, eval_name)
@@ -148,22 +123,6 @@ class MLEvalsRepository(
             super().get_llm_item(task_id, eval_name, actual_version_num),
         )
 
-    def delete_all_versions(self, task_id: str, eval_name: str) -> None:
-        """Hard-delete all versions of an ML eval."""
-        self.delete_llm_item(task_id, eval_name)
-
-    def list_versions(self, task_id: str, eval_name: str) -> MLEvalsVersionListResponse:
-        """List all versions of an ML eval (first 100 ascending by version)."""
-        from arthur_common.models.common_schemas import PaginationParameters
-        from arthur_common.models.enums import PaginationSortMethod
-
-        pagination = PaginationParameters(
-            page=0,
-            page_size=100,
-            sort=PaginationSortMethod.ASCENDING,
-        )
-        return self.get_ml_eval_versions(task_id, eval_name, pagination)
-
 
 class MLEvaluator(BaseEvaluator):
     """BaseEvaluator implementation for ML-type evals (pii, toxicity, prompt_injection)."""
@@ -177,7 +136,7 @@ class MLEvaluator(BaseEvaluator):
         eval_name: str,
         eval_version: str,
     ) -> List[str]:
-        ml_eval = self._repo.get_ml_eval(task_id, eval_name, eval_version)
+        ml_eval = self._repo.get_llm_item(task_id, eval_name, eval_version)
         return ml_eval.variables
 
     def run(
@@ -188,7 +147,7 @@ class MLEvaluator(BaseEvaluator):
         variable_mapping: List[ContinuousEvalTransformVariableMapping],
         resolved_variables: dict[str, str],
     ) -> EvalRunResponse:
-        ml_eval = self._repo.get_ml_eval(task_id, eval_name, eval_version)
+        ml_eval = self._repo.get_llm_item(task_id, eval_name, eval_version)
 
         if ml_eval.deleted_at is not None:
             raise ValueError(

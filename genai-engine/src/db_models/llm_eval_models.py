@@ -137,13 +137,8 @@ class DatabaseContinuousEval(Base):
         default="llm_eval",
     )
 
-    # LLM eval reference (nullable; set when eval_type="llm_eval")
     llm_eval_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     llm_eval_version: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-
-    # ML eval reference (nullable; set when eval_type="ml_eval")
-    ml_eval_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    ml_eval_version: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     transform_id: Mapped[uuid.UUID] = mapped_column(
         UUID,

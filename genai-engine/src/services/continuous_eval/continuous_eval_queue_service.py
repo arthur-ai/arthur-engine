@@ -229,6 +229,15 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
             eval_name = continuous_eval.llm_eval_name
             eval_version = str(continuous_eval.llm_eval_version)
 
+            if eval_name is None:
+                raise ValueError(
+                    f"Continuous eval {continuous_eval.id} has no eval name configured",
+                )
+            if continuous_eval.llm_eval_version is None:
+                raise ValueError(
+                    f"Continuous eval {continuous_eval.id} has no eval version configured",
+                )
+
             # Look up eval_type from the llm_evals row so we dispatch to the right executor.
             from db_models.llm_eval_models import DatabaseLLMEval
 
@@ -237,7 +246,7 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                 .filter(
                     DatabaseLLMEval.task_id == continuous_eval.task_id,
                     DatabaseLLMEval.name == eval_name,
-                    DatabaseLLMEval.version == int(eval_version),
+                    DatabaseLLMEval.version == continuous_eval.llm_eval_version,
                 )
                 .first()
             )

@@ -26,7 +26,9 @@ from db_models.rag_experiment_models import (
     DatabaseRagExperimentTestCaseRagResult,
 )
 from dependencies import db_session_context
+from repositories.base_evaluator import get_evaluator
 from repositories.llm_evals_repository import LLMEvalsRepository
+from repositories.ml_evals_repository import MLEvaluator
 from repositories.model_provider_repository import ModelProviderRepository
 from schemas.agentic_experiment_schemas import RequestTimeParameter
 from schemas.base_experiment_schemas import (
@@ -690,29 +692,53 @@ class BaseExperimentExecutor(ABC):
                 for var in eval_score.eval_input_variables
             }
 
-            # Get LLM evals repository and set model_provider_repo (required by run_llm_eval)
-            model_provider_repo = ModelProviderRepository(db_session)
-            llm_evals_repo = LLMEvalsRepository(db_session)
-            llm_evals_repo.model_provider_repo = model_provider_repo
+            # Look up the eval's type so we can dispatch to the right evaluator.
+            from db_models.llm_eval_models import DatabaseLLMEval
 
-            # Create completion request with variables
-            completion_request = BaseCompletionRequest(
-                variables=[
-                    VariableTemplateValue(name=k, value=v)
-                    for k, v in variable_map.items()
-                ],
+            db_eval = (
+                db_session.query(DatabaseLLMEval)
+                .filter(
+                    DatabaseLLMEval.task_id == experiment.task_id,
+                    DatabaseLLMEval.name == eval_score.eval_name,
+                    DatabaseLLMEval.version == eval_score.eval_version,
+                )
+                .first()
+            )
+            eval_type = (
+                (db_eval.eval_type or "llm_as_a_judge") if db_eval else "llm_as_a_judge"
             )
 
-            # Use run_llm_eval which handles model support checking, structured outputs, and validation
+            evaluator = get_evaluator(db_session, eval_type)
+
             try:
-                eval_response = llm_evals_repo.run_llm_eval(
-                    task_id=experiment.task_id,
-                    eval_name=eval_score.eval_name,
-                    version=str(eval_score.eval_version),
-                    completion_request=completion_request,
-                )
+                if isinstance(evaluator, MLEvaluator):
+                    # ML evals (pii, toxicity, prompt_injection) run through the scorer directly.
+                    eval_response = evaluator.run(
+                        task_id=experiment.task_id,
+                        eval_name=eval_score.eval_name,
+                        eval_version=str(eval_score.eval_version),
+                        variable_mapping=[],
+                        resolved_variables=variable_map,
+                    )
+                else:
+                    # LLM-as-a-judge evals run through the chat completion pipeline.
+                    model_provider_repo = ModelProviderRepository(db_session)
+                    llm_evals_repo = LLMEvalsRepository(db_session)
+                    llm_evals_repo.model_provider_repo = model_provider_repo
+
+                    completion_request = BaseCompletionRequest(
+                        variables=[
+                            VariableTemplateValue(name=k, value=v)
+                            for k, v in variable_map.items()
+                        ],
+                    )
+                    eval_response = llm_evals_repo.run_llm_eval(
+                        task_id=experiment.task_id,
+                        eval_name=eval_score.eval_name,
+                        version=str(eval_score.eval_version),
+                        completion_request=completion_request,
+                    )
             except Exception as e:
-                # Handle model not supporting structured outputs, missing eval, or validation errors
                 logger.error(
                     f"Error executing eval {eval_score.eval_name} v{eval_score.eval_version}: {e}",
                 )

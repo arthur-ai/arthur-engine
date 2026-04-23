@@ -254,7 +254,7 @@ const EvalVersionDrawer = ({
                           >
                             {version.model_provider && version.model_name
                               ? `${version.model_provider} / ${version.model_name}`
-                              : version.eval_type ?? ""}
+                              : (version.eval_type ?? "")}
                           </Typography>
                           <Typography
                             variant="caption"

@@ -95,9 +95,8 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
         description: value.description?.trim() || undefined,
         enabled: value.enabled,
         eval_type: isML ? "ml_eval" : "llm_eval",
-        ...(isML
-          ? { ml_eval_name: value.evaluator.name!, ml_eval_version: "latest" }
-          : { llm_eval_name: value.evaluator.name!, llm_eval_version: value.evaluator.version! }),
+        llm_eval_name: value.evaluator.name!,
+        llm_eval_version: value.evaluator.version ?? "latest",
         transform_id: value.transform.transformId!,
         transform_variable_mapping: value.variableMappings,
       });

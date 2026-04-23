@@ -32,11 +32,11 @@ import { MLEvaluatorPipelinesPanel } from "./MLEvaluatorPipelinesPanel";
 import { continuousEvalsQueryOptions } from "@/components/live-evals/hooks/useContinuousEvals";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
-import type { ContinuousEvalResponse, EvalMetadataItem } from "@/lib/api-client/api-client";
+import type { ContinuousEvalResponse, LLMGetAllMetadataResponse } from "@/lib/api-client/api-client";
 import { formatDateInTimezone } from "@/utils/formatters";
 
 interface EvaluatorAccordionListProps {
-  evals: EvalMetadataItem[];
+  evals: LLMGetAllMetadataResponse[];
   taskId: string;
   onExpandToFullScreen: (evalName: string) => void;
   onDelete?: (evalName: string) => Promise<void>;
@@ -65,7 +65,7 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
     const map = new Map<string, ContinuousEvalResponse[]>();
     allCEsData?.evals.forEach((ce) => {
       // Key by the relevant eval name based on eval_type
-      const key = ce.eval_type === "ml_eval" ? (ce.ml_eval_name ?? "") : (ce.llm_eval_name ?? "");
+      const key = ce.llm_eval_name ?? "";
       if (!key) return;
       const existing = map.get(key) ?? [];
       map.set(key, [...existing, ce]);
@@ -130,7 +130,7 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
       {evals.map((evalMeta) => {
         const pipelines = cesByEval.get(evalMeta.name) ?? [];
         const activePipelines = pipelines.filter((ce) => ce.enabled).length;
-        const isLLM = evalMeta.eval_type !== "ml";
+        const isLLM = evalMeta.eval_type === "llm_as_a_judge";
         // Stale check only applies to LLM evals (version-controlled)
         const stalePipelines = isLLM ? pipelines.filter((ce) => (ce.llm_eval_version ?? 0) < evalMeta.versions).length : 0;
 
@@ -156,7 +156,7 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
                   py: 0,
                   minHeight: 56,
                   // Reserve space on the right so summary text doesn't overlap the action buttons
-                  pr: isLLM ? 14 : 10,
+                  pr: 14,
                   "& .MuiAccordionSummary-content": { my: 1.5, mr: 1 },
                 }}
               >
@@ -171,9 +171,7 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
                   ) : (
                     <Chip label="ML" size="small" color="secondary" variant="outlined" sx={{ height: 20, fontSize: "0.7rem", fontWeight: 600 }} />
                   )}
-                  {evalMeta.ml_eval_type && (
-                    <Chip label={evalMeta.ml_eval_type} size="small" variant="outlined" sx={{ height: 20, fontSize: "0.7rem" }} />
-                  )}
+                  {!isLLM && <Chip label={evalMeta.eval_type} size="small" variant="outlined" sx={{ height: 20, fontSize: "0.7rem" }} />}
                   <Chip label={`v${evalMeta.versions}`} size="small" variant="outlined" sx={{ height: 20, fontSize: "0.7rem", fontWeight: 600 }} />
                   {pipelines.length > 0 && (
                     <Chip
@@ -204,19 +202,26 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
             <Typography
               variant="caption"
               color="text.secondary"
-              sx={{ position: "absolute", top: 0, right: 100, height: 56, display: "flex", alignItems: "center", whiteSpace: "nowrap", pointerEvents: "none" }}
+              sx={{
+                position: "absolute",
+                top: 0,
+                right: 100,
+                height: 56,
+                display: "flex",
+                alignItems: "center",
+                whiteSpace: "nowrap",
+                pointerEvents: "none",
+              }}
             >
               Updated {formatDateInTimezone(evalMeta.latest_version_created_at ?? null, timezone, { hour12: !use24Hour })}
             </Typography>
             {/* Action icons — positioned outside AccordionSummary to avoid nested <button> elements */}
             <Stack direction="row" alignItems="center" gap={0.5} sx={{ position: "absolute", top: 0, right: 48, height: 56, zIndex: 2 }}>
-              {isLLM && (
-                <Tooltip title="View full details">
-                  <IconButton size="small" onClick={() => onExpandToFullScreen(evalMeta.name)} aria-label="View full details">
-                    <OpenInFullIcon sx={{ fontSize: 16 }} />
-                  </IconButton>
-                </Tooltip>
-              )}
+              <Tooltip title="View full details">
+                <IconButton size="small" onClick={() => onExpandToFullScreen(evalMeta.name)} aria-label="View full details">
+                  <OpenInFullIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
               <Tooltip title="Delete evaluator">
                 <IconButton
                   size="small"

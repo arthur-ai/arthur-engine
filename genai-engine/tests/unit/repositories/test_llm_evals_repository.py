@@ -136,7 +136,9 @@ def test_save_llm_eval_with_llm_eval_object(
     assert result.model_name == sample_llm_eval.model_name
     assert result.model_provider == sample_llm_eval.model_provider
     assert result.instructions == sample_llm_eval.instructions
-    assert result.config == sample_llm_eval.config
+    assert result.config == sample_create_eval_request.config.model_dump(
+        exclude_none=True,
+    )
     assert result.version == sample_llm_eval.version
     assert result.deleted_at is None
 
@@ -327,7 +329,9 @@ def test_get_eval_success(
     assert result.model_name == sample_db_llm_eval.model_name
     assert result.model_provider == sample_db_llm_eval.model_provider
     assert result.instructions == sample_db_llm_eval.instructions
-    assert result.config == sample_db_llm_eval.config
+    assert result.config == sample_create_eval_request.config.model_dump(
+        exclude_none=True,
+    )
     assert result.version == sample_db_llm_eval.version
     assert result.deleted_at is None
 
@@ -380,7 +384,9 @@ def test_get_eval_different_version_types_success(
         assert result.model_name == sample_db_llm_eval.model_name
         assert result.model_provider == sample_db_llm_eval.model_provider
         assert result.instructions == sample_db_llm_eval.instructions
-        assert result.config == sample_db_llm_eval.config
+        assert result.config == sample_create_eval_request.config.model_dump(
+            exclude_none=True,
+        )
         assert result.version == sample_db_llm_eval.version
         assert result.created_at == created_at_timestamp
         assert result.deleted_at is None

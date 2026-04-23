@@ -2,6 +2,177 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 04/23/2026
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  removed the optional property 'ml_eval_name' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  removed the optional property 'ml_eval_version' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  removed the optional property 'ml_eval_name' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  removed the optional property 'ml_eval_version' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  removed the optional property 'evals/items/ml_eval_name' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  removed the optional property 'evals/items/ml_eval_version' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  removed the request property 'ml_eval_name'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  removed the request property 'ml_eval_version'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  removed the optional property 'ml_eval_name' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  removed the optional property 'ml_eval_version' from the response with the '200' status
+
+# 04/22/2026
+- **BREAKING CHANGE** for **URL**: /api/v2/tasks/{task_id}/ml_evals  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/tasks/{task_id}/ml_evals/{eval_name}  api removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/tasks/{task_id}/ml_evals/{eval_name}/versions  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/tasks/{task_id}/ml_evals/{eval_name}/versions/{eval_version}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/tasks/{task_id}/ml_evals/{eval_name}/versions/{eval_version}  api path removed without deprecation
+- **CHANGE** for Component/Schema:  removed the schema 'LLMBaseConfigSettings'
+- **CHANGE** for Component/Schema:  removed the schema 'MLEvalsVersionListResponse'
+- **CHANGE** for Component/Schema:  removed the schema 'MLVersionResponse'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added 'subschema #1' to the 'config' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed '#/components/schemas/LLMBaseConfigSettings' from the 'config' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  added 'subschema #1' to the 'config' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  removed '#/components/schemas/LLMBaseConfigSettings' from the 'config' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  added 'subschema #1' to the 'config' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  removed '#/components/schemas/LLMBaseConfigSettings' from the 'config' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  added 'subschema #1' to the 'config' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  removed '#/components/schemas/LLMBaseConfigSettings' from the 'config' response property 'anyOf' list for the response status '200'
+
+# 04/22/2026
+- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'llm_eval_name' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'llm_eval_version' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  response property 'llm_eval_name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  response property 'llm_eval_version' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'llm_eval_name' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'llm_eval_version' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  response property 'llm_eval_name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  response property 'llm_eval_version' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the response property 'evals/items/llm_eval_name' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the response property 'evals/items/llm_eval_version' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  response property 'evals/items/llm_eval_name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  response property 'evals/items/llm_eval_version' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the response property 'llm_eval_name' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the response property 'llm_eval_version' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  response property 'llm_eval_name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  response property 'llm_eval_version' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  the response property 'instructions' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  the response property 'model_name' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  the response property 'model_provider' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  response property 'instructions' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  response property 'model_name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  response property 'model_provider' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions  the response property 'versions/items/model_name' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions  the response property 'versions/items/model_provider' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions  response property 'versions/items/model_name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions  response property 'versions/items/model_provider' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  the response property 'instructions' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  the response property 'model_name' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  the response property 'model_provider' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  response property 'instructions' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  response property 'model_name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  response property 'model_provider' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  the response property 'instructions' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  the response property 'model_name' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  the response property 'model_provider' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  response property 'instructions' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  response property 'model_name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  response property 'model_provider' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  the response property 'instructions' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  the response property 'model_name' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  the response property 'model_provider' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  response property 'instructions' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  response property 'model_name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  response property 'model_provider' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions  the response property 'versions/items/model_name' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions  the response property 'versions/items/model_provider' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions  response property 'versions/items/model_name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions  response property 'versions/items/model_provider' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}/results  added the optional property 'annotations/items/eval_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property 'eval_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property 'ml_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property 'ml_eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property 'eval_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property 'ml_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property 'ml_eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property 'evals/items/eval_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property 'evals/items/ml_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property 'evals/items/ml_eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional request property 'eval_type'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional request property 'ml_eval_name'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional request property 'ml_eval_version'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the request property 'llm_eval_name' became optional
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the request property 'llm_eval_version' became optional
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  request property 'llm_eval_name' list-of-types was widened by adding types 'null' to media type 'application/json'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  request property 'llm_eval_version' list-of-types was widened by adding types 'null' to media type 'application/json'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property 'eval_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property 'ml_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property 'ml_eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the optional property 'annotations/items/eval_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals  added the optional property 'llm_metadata/items/eval_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the optional property 'eval_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the 'anthropic' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the 'bedrock' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the 'gemini' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the 'hosted_vllm' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the 'openai' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the 'vertex_ai' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions  added the optional property 'versions/items/eval_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions  removed the 'anthropic' enum value from the 'versions/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions  removed the 'bedrock' enum value from the 'versions/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions  removed the 'gemini' enum value from the 'versions/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions  removed the 'hosted_vllm' enum value from the 'versions/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions  removed the 'openai' enum value from the 'versions/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions  removed the 'vertex_ai' enum value from the 'versions/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  added the optional property 'eval_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  removed the 'anthropic' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  removed the 'bedrock' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  removed the 'gemini' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  removed the 'hosted_vllm' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  removed the 'openai' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  removed the 'vertex_ai' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  added the optional property 'eval_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  removed the 'anthropic' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  removed the 'bedrock' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  removed the 'gemini' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  removed the 'hosted_vllm' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  removed the 'openai' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  removed the 'vertex_ai' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  added the optional property 'eval_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  removed the 'anthropic' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  removed the 'bedrock' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  removed the 'gemini' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  removed the 'hosted_vllm' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  removed the 'openai' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  removed the 'vertex_ai' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  added the optional property 'llm_metadata/items/eval_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions  added the optional property 'versions/items/eval_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions  removed the 'anthropic' enum value from the 'versions/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions  removed the 'bedrock' enum value from the 'versions/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions  removed the 'gemini' enum value from the 'versions/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions  removed the 'hosted_vllm' enum value from the 'versions/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions  removed the 'openai' enum value from the 'versions/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions  removed the 'vertex_ai' enum value from the 'versions/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/annotations/{annotation_id}  added the optional property 'eval_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'annotations/anyOf[subschema #1]/items/eval_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'annotations/items/eval_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'eval_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'annotations/anyOf[subschema #1]/items/eval_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/evals  endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/evals/{eval_name}  endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/evals/{eval_name}  endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/evals/{eval_name}/versions  endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/evals/{eval_name}/versions/tags/{tag}  endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/evals/{eval_name}/versions/{eval_version}  endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/evals/{eval_name}/versions/{eval_version}  endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/evals/{eval_name}/versions/{eval_version}/completions  endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/evals/{eval_name}/versions/{eval_version}/tags  endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/evals/{eval_name}/versions/{eval_version}/tags/{tag}  endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/ml_evals  endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/ml_evals/{eval_name}  endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/ml_evals/{eval_name}  endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/ml_evals/{eval_name}/versions  endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/ml_evals/{eval_name}/versions/{eval_version}  endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/ml_evals/{eval_name}/versions/{eval_version}  endpoint added
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' to the response with the '200' status
+
 # 04/09/2026
 - **CHANGE** for **URL**: /api/v2/configuration  added the optional property 'trace_retention_days' to the request body
 - **CHANGE** for **URL**: /api/v2/configuration  added the optional property 'trace_retention_days' to the response with the '200' status
@@ -10,21 +181,21 @@ The intention of this changelog is to document API changes as they happen to eff
 # 04/08/2026
 - **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}  added the new 'error' enum value to the 'status' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/continuous_evals/{eval_id}/test_runs
-- **CHANGE**warning [response-property-enum-value-added] at /vagrant/genai-engine/new.openapi.json 
+- **CHANGE**warning [response-property-enum-value-added] at /vagrant/genai-engine/new.openapi.json
 - **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
 
 # 04/07/2026
 - **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}  added the new 'completed' enum value to the 'status' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/continuous_evals/test_runs/{test_run_id}
-- **CHANGE**warning [response-property-enum-value-added] at /vagrant/genai-engine/new.openapi.json 
+- **CHANGE**warning [response-property-enum-value-added] at /vagrant/genai-engine/new.openapi.json
 - **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
 - **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/test_runs  added the new 'completed' enum value to the 'test_runs/items/status' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/continuous_evals/{eval_id}/test_runs
-- **CHANGE**warning [response-property-enum-value-added] at /vagrant/genai-engine/new.openapi.json 
+- **CHANGE**warning [response-property-enum-value-added] at /vagrant/genai-engine/new.openapi.json
 - **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
 - **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/test_runs  added the new 'completed' enum value to the 'status' response property for the response status '200'
 - **CHANGE** in API POST /api/v1/continuous_evals/{eval_id}/test_runs
-- **CHANGE**warning [response-property-enum-value-added] at /vagrant/genai-engine/new.openapi.json 
+- **CHANGE**warning [response-property-enum-value-added] at /vagrant/genai-engine/new.openapi.json
 - **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
 
 # 04/07/2026

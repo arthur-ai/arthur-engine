@@ -3,6 +3,8 @@
 from uuid import uuid4
 
 import pytest
+from arthur_common.models.common_schemas import PaginationParameters
+from arthur_common.models.enums import PaginationSortMethod
 
 from repositories.ml_evals_repository import MLEvalsRepository
 from schemas.llm_eval_schemas import MLEval
@@ -35,6 +37,20 @@ def toxicity_create_request():
     return CreateMLEvalRequest(eval_type="toxicity")
 
 
+def _list_versions(
+    repo: MLEvalsRepository,
+    task_id: str,
+    eval_name: str,
+) -> MLEvalsVersionListResponse:
+    """Helper: list all versions of an ML eval using the base class method (ascending order)."""
+    pagination = PaginationParameters(
+        page=0,
+        page_size=100,
+        sort=PaginationSortMethod.ASCENDING,
+    )
+    return repo.get_llm_item_versions(task_id, eval_name, pagination)
+
+
 # ---------------------------------------------------------------------------
 # MLEvalsRepository.save_ml_eval
 # ---------------------------------------------------------------------------
@@ -52,7 +68,7 @@ def test_save_ml_eval_creates_version_1(ml_evals_repo, task_id, pii_create_reque
     assert result.version == 1
     assert result.deleted_at is None
 
-    ml_evals_repo.delete_all_versions(task_id, eval_name)
+    ml_evals_repo.delete_llm_item(task_id, eval_name)
 
 
 @pytest.mark.unit_tests
@@ -69,7 +85,7 @@ def test_save_ml_eval_auto_increments_version(
     assert v1.version == 1
     assert v2.version == 2
 
-    ml_evals_repo.delete_all_versions(task_id, eval_name)
+    ml_evals_repo.delete_llm_item(task_id, eval_name)
 
 
 @pytest.mark.unit_tests
@@ -81,7 +97,7 @@ def test_save_ml_eval_stores_config(ml_evals_repo, task_id):
 
     assert result.config == {"threshold": 0.8}
 
-    ml_evals_repo.delete_all_versions(task_id, eval_name)
+    ml_evals_repo.delete_llm_item(task_id, eval_name)
 
 
 @pytest.mark.unit_tests
@@ -95,7 +111,7 @@ def test_save_ml_eval_rejects_unknown_type(ml_evals_repo, task_id):
 
 
 # ---------------------------------------------------------------------------
-# MLEvalsRepository.get_ml_eval
+# get_llm_item (base class method on MLEvalsRepository)
 # ---------------------------------------------------------------------------
 
 
@@ -105,10 +121,10 @@ def test_get_ml_eval_latest(ml_evals_repo, task_id, pii_create_request):
     ml_evals_repo.save_ml_eval(task_id, eval_name, pii_create_request)
     ml_evals_repo.save_ml_eval(task_id, eval_name, pii_create_request)
 
-    result = ml_evals_repo.get_ml_eval(task_id, eval_name, "latest")
+    result = ml_evals_repo.get_llm_item(task_id, eval_name, "latest")
     assert result.version == 2
 
-    ml_evals_repo.delete_all_versions(task_id, eval_name)
+    ml_evals_repo.delete_llm_item(task_id, eval_name)
 
 
 @pytest.mark.unit_tests
@@ -117,20 +133,20 @@ def test_get_ml_eval_by_version_number(ml_evals_repo, task_id, pii_create_reques
     ml_evals_repo.save_ml_eval(task_id, eval_name, pii_create_request)
     ml_evals_repo.save_ml_eval(task_id, eval_name, pii_create_request)
 
-    result = ml_evals_repo.get_ml_eval(task_id, eval_name, "1")
+    result = ml_evals_repo.get_llm_item(task_id, eval_name, "1")
     assert result.version == 1
 
-    ml_evals_repo.delete_all_versions(task_id, eval_name)
+    ml_evals_repo.delete_llm_item(task_id, eval_name)
 
 
 @pytest.mark.unit_tests
 def test_get_ml_eval_not_found_raises(ml_evals_repo):
     with pytest.raises(ValueError, match="not found"):
-        ml_evals_repo.get_ml_eval(str(uuid4()), "nonexistent_eval", "latest")
+        ml_evals_repo.get_llm_item(str(uuid4()), "nonexistent_eval", "latest")
 
 
 # ---------------------------------------------------------------------------
-# MLEvalsRepository.list_versions
+# get_llm_item_versions (base class method for listing versions)
 # ---------------------------------------------------------------------------
 
 
@@ -145,19 +161,19 @@ def test_list_versions_returns_all_in_ascending_order(
     ml_evals_repo.save_ml_eval(task_id, eval_name, pii_create_request)
     ml_evals_repo.save_ml_eval(task_id, eval_name, toxicity_create_request)
 
-    result = ml_evals_repo.list_versions(task_id, eval_name)
+    result = _list_versions(ml_evals_repo, task_id, eval_name)
 
     assert isinstance(result, MLEvalsVersionListResponse)
     assert result.count == 2
     version_numbers = [v.version for v in result.versions]
     assert version_numbers == sorted(version_numbers)
 
-    ml_evals_repo.delete_all_versions(task_id, eval_name)
+    ml_evals_repo.delete_llm_item(task_id, eval_name)
 
 
 @pytest.mark.unit_tests
 def test_list_versions_empty_for_unknown_name(ml_evals_repo, task_id):
-    result = ml_evals_repo.list_versions(task_id, "nonexistent_eval")
+    result = _list_versions(ml_evals_repo, task_id, "nonexistent_eval")
     assert result.count == 0
     assert result.versions == []
 
@@ -172,11 +188,11 @@ def test_list_versions_includes_soft_deleted(
     ml_evals_repo.save_ml_eval(task_id, eval_name, pii_create_request)
     ml_evals_repo.delete_version(task_id, eval_name, "latest")
 
-    result = ml_evals_repo.list_versions(task_id, eval_name)
+    result = _list_versions(ml_evals_repo, task_id, eval_name)
     assert result.count == 1
     assert result.versions[0].deleted_at is not None
 
-    ml_evals_repo.delete_all_versions(task_id, eval_name)
+    ml_evals_repo.delete_llm_item(task_id, eval_name)
 
 
 # ---------------------------------------------------------------------------
@@ -191,8 +207,6 @@ def test_get_all_metadata_returns_one_entry_per_name(
     pii_create_request,
     toxicity_create_request,
 ):
-    from arthur_common.models.common_schemas import PaginationParameters
-
     name_a = f"eval_a_{uuid4().hex[:8]}"
     name_b = f"eval_b_{uuid4().hex[:8]}"
 
@@ -211,14 +225,12 @@ def test_get_all_metadata_returns_one_entry_per_name(
     meta_a = next(m for m in result.llm_metadata if m.name == name_a)
     assert meta_a.versions == 2
 
-    ml_evals_repo.delete_all_versions(task_id, name_a)
-    ml_evals_repo.delete_all_versions(task_id, name_b)
+    ml_evals_repo.delete_llm_item(task_id, name_a)
+    ml_evals_repo.delete_llm_item(task_id, name_b)
 
 
 @pytest.mark.unit_tests
 def test_get_all_metadata_empty_task(ml_evals_repo):
-    from arthur_common.models.common_schemas import PaginationParameters
-
     pagination = PaginationParameters(page=0, page_size=100)
     result = ml_evals_repo.get_all_llm_item_metadata(str(uuid4()), pagination)
     assert result.count == 0
@@ -239,7 +251,7 @@ def test_delete_version_sets_deleted_at(ml_evals_repo, task_id, pii_create_reque
 
     assert result.deleted_at is not None
 
-    ml_evals_repo.delete_all_versions(task_id, eval_name)
+    ml_evals_repo.delete_llm_item(task_id, eval_name)
 
 
 @pytest.mark.unit_tests
@@ -249,9 +261,9 @@ def test_delete_version_hides_from_latest(ml_evals_repo, task_id, pii_create_req
     ml_evals_repo.delete_version(task_id, eval_name, "latest")
 
     with pytest.raises(ValueError, match="not found"):
-        ml_evals_repo.get_ml_eval(task_id, eval_name, "latest")
+        ml_evals_repo.get_llm_item(task_id, eval_name, "latest")
 
-    ml_evals_repo.delete_all_versions(task_id, eval_name)
+    ml_evals_repo.delete_llm_item(task_id, eval_name)
 
 
 @pytest.mark.unit_tests
@@ -261,7 +273,7 @@ def test_delete_version_not_found_raises(ml_evals_repo, task_id):
 
 
 # ---------------------------------------------------------------------------
-# MLEvalsRepository.delete_all_versions (hard delete)
+# delete_llm_item (hard delete all versions)
 # ---------------------------------------------------------------------------
 
 
@@ -271,16 +283,16 @@ def test_delete_all_versions_removes_all(ml_evals_repo, task_id, pii_create_requ
     ml_evals_repo.save_ml_eval(task_id, eval_name, pii_create_request)
     ml_evals_repo.save_ml_eval(task_id, eval_name, pii_create_request)
 
-    ml_evals_repo.delete_all_versions(task_id, eval_name)
+    ml_evals_repo.delete_llm_item(task_id, eval_name)
 
-    result = ml_evals_repo.list_versions(task_id, eval_name)
+    result = _list_versions(ml_evals_repo, task_id, eval_name)
     assert result.count == 0
 
 
 @pytest.mark.unit_tests
 def test_delete_all_versions_not_found_raises(ml_evals_repo, task_id):
     with pytest.raises(ValueError, match="not found"):
-        ml_evals_repo.delete_all_versions(task_id, "nonexistent")
+        ml_evals_repo.delete_llm_item(task_id, "nonexistent")
 
 
 # ---------------------------------------------------------------------------
@@ -315,11 +327,11 @@ def test_ml_repo_does_not_see_llm_as_a_judge_evals(task_id):
     ml_repo.save_ml_eval(task_id, ml_eval_name, CreateMLEvalRequest(eval_type="pii"))
 
     # ML repo should not see the LLM eval (MLEvalsRepository filters to ML types only)
-    ml_result = ml_repo.get_ml_eval(task_id, ml_eval_name, "latest")
+    ml_result = ml_repo.get_llm_item(task_id, ml_eval_name, "latest")
     assert ml_result.eval_type == "pii"
 
     with pytest.raises(ValueError, match="not found"):
-        ml_repo.get_ml_eval(task_id, llm_eval_name, "latest")
+        ml_repo.get_llm_item(task_id, llm_eval_name, "latest")
 
     # LLM repo surfaces all eval types stored in llm_evals (including ML evals)
     llm_result = llm_repo.get_llm_item(task_id, llm_eval_name, "latest")
@@ -332,4 +344,4 @@ def test_ml_repo_does_not_see_llm_as_a_judge_evals(task_id):
 
     # Cleanup
     llm_repo.delete_llm_item(task_id, llm_eval_name)
-    ml_repo.delete_all_versions(task_id, ml_eval_name)
+    ml_repo.delete_llm_item(task_id, ml_eval_name)

@@ -1030,19 +1030,11 @@ class ContinuousEvalCreateRequest(BaseModel):
     )
     llm_eval_name: Optional[str] = Field(
         default=None,
-        description="Name of the llm eval to create the continuous eval for",
+        description="Name of the eval to create the continuous eval for",
     )
     llm_eval_version: Optional[Union[str, int]] = Field(
         default=None,
-        description="Version of the llm eval. Can be 'latest', a version number, an ISO datetime string, or a tag.",
-    )
-    ml_eval_name: Optional[str] = Field(
-        default=None,
-        description="Name of the ml eval to create the continuous eval for",
-    )
-    ml_eval_version: Optional[Union[str, int]] = Field(
-        default=None,
-        description="Version of the ml eval. Can be 'latest', a version number, an ISO datetime string, or a tag.",
+        description="Version of the eval. Can be 'latest', a version number, an ISO datetime string, or a tag.",
     )
     transform_id: UUID = Field(
         description="ID of the transform to create the continuous eval for",
@@ -1059,14 +1051,8 @@ class ContinuousEvalCreateRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_eval_ref(self) -> "ContinuousEvalCreateRequest":
-        if self.eval_type == "llm_eval":
-            if not self.llm_eval_name or self.llm_eval_version is None:
-                raise ValueError(
-                    "llm_eval_name and llm_eval_version are required when eval_type is 'llm_eval'",
-                )
-        elif self.eval_type == "ml_eval":
-            if not self.ml_eval_name:
-                raise ValueError("ml_eval_name is required when eval_type is 'ml_eval'")
+        if not self.llm_eval_name:
+            raise ValueError("llm_eval_name is required")
         return self
 
 

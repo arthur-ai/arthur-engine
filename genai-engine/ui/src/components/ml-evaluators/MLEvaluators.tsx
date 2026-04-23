@@ -17,7 +17,7 @@ import MLEvalFormModal from "./MLEvalFormModal";
 
 import { getContentHeight } from "@/constants/layout";
 import { useTask } from "@/hooks/useTask";
-import type { CreateMLEvalRequest, MLGetAllMetadataResponse } from "@/lib/api-client/api-client";
+import type { CreateMLEvalRequest, LLMGetAllMetadataResponse } from "@/lib/api-client/api-client";
 
 const ML_EVAL_TYPE_LABELS: Record<string, string> = {
   pii: "PII Detection (Strict)",
@@ -34,7 +34,7 @@ interface MLEvaluatorsProps {
 const MLEvaluators: React.FC<MLEvaluatorsProps> = ({ isCreateModalOpen: externalOpen, onCreateModalClose }) => {
   const { task } = useTask();
   const [internalOpen, setInternalOpen] = useState(false);
-  const [editingEval, setEditingEval] = useState<{ name: string; type: string } | null>(null);
+  const [editingEval, setEditingEval] = useState<{ name: string; type: string; config: Record<string, unknown> | null } | null>(null);
 
   const isCreateModalOpen = externalOpen === true || internalOpen || editingEval !== null;
   const handleClose = () => {
@@ -60,7 +60,7 @@ const MLEvaluators: React.FC<MLEvaluatorsProps> = ({ isCreateModalOpen: external
   const handleEdit = useCallback(
     (evalName: string) => {
       const eval_ = evals.find((e) => e.name === evalName);
-      setEditingEval({ name: evalName, type: eval_?.ml_eval_type ?? "pii" });
+      setEditingEval({ name: evalName, type: eval_?.eval_type ?? "pii", config: null });
     },
     [evals]
   );
@@ -99,7 +99,7 @@ const MLEvaluators: React.FC<MLEvaluatorsProps> = ({ isCreateModalOpen: external
           </Box>
         ) : (
           <Stack spacing={1.5}>
-            {evals.map((eval_: MLGetAllMetadataResponse) => (
+            {evals.map((eval_: LLMGetAllMetadataResponse) => (
               <MLEvalCard key={eval_.name} eval_={eval_} onEdit={handleEdit} />
             ))}
           </Stack>
@@ -113,12 +113,13 @@ const MLEvaluators: React.FC<MLEvaluatorsProps> = ({ isCreateModalOpen: external
         isLoading={createMutation.isPending}
         initialName={editingEval?.name}
         initialType={editingEval?.type}
+        initialConfig={editingEval?.config}
       />
     </Box>
   );
 };
 
-const MLEvalCard = ({ eval_, onEdit }: { eval_: MLGetAllMetadataResponse; onEdit: (evalName: string) => void }) => {
+const MLEvalCard = ({ eval_, onEdit }: { eval_: LLMGetAllMetadataResponse; onEdit: (evalName: string) => void }) => {
   return (
     <Paper variant="outlined" sx={{ p: 2 }}>
       <Stack direction="row" alignItems="center" justifyContent="space-between">
@@ -127,7 +128,7 @@ const MLEvalCard = ({ eval_, onEdit }: { eval_: MLGetAllMetadataResponse; onEdit
             {eval_.name}
           </Typography>
           <Stack direction="row" gap={1} mt={0.5}>
-            <Chip label={ML_EVAL_TYPE_LABELS[eval_.ml_eval_type] ?? eval_.ml_eval_type} size="small" variant="outlined" color="secondary" />
+            <Chip label={ML_EVAL_TYPE_LABELS[eval_.eval_type ?? ""] ?? eval_.eval_type} size="small" variant="outlined" color="secondary" />
             <Chip
               label={`${eval_.versions} version${eval_.versions !== 1 ? "s" : ""}`}
               size="small"
@@ -135,7 +136,7 @@ const MLEvalCard = ({ eval_, onEdit }: { eval_: MLGetAllMetadataResponse; onEdit
             />
           </Stack>
         </Box>
-        <MLEvalActions evalName={eval_.name} onEdit={onEdit} />
+        <MLEvalActions evalName={eval_.name} evalType={eval_.eval_type ?? ""} onEdit={onEdit} />
       </Stack>
     </Paper>
   );

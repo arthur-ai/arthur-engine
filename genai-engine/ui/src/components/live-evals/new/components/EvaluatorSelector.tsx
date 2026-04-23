@@ -6,13 +6,13 @@ import { useEffect, useState } from "react";
 
 import CreateEvalTypeModal from "@/components/evaluators/CreateEvalTypeModal";
 import EvalFormModal from "@/components/evaluators/EvalFormModal";
-import { useAllEvals } from "@/components/evaluators/hooks/useAllEvals";
 import { useCreateEvalMutation } from "@/components/evaluators/hooks/useCreateEvalMutation";
+import { useEvals } from "@/components/evaluators/hooks/useEvals";
 import { useEvalVersions } from "@/components/evaluators/hooks/useEvalVersions";
 import { useCreateMlEvalMutation } from "@/components/ml-evaluators/hooks/useCreateMlEvalMutation";
 import MLEvalFormModal from "@/components/ml-evaluators/MLEvalFormModal";
 import { useApiQuery } from "@/hooks/useApiQuery";
-import type { EvalMetadataItem, MLEvalsVersionListResponse } from "@/lib/api-client/api-client";
+import type { LLMEvalsVersionListResponse, LLMGetAllMetadataResponse } from "@/lib/api-client/api-client";
 import { encodePathParam } from "@/utils/url";
 
 type EvaluatorFormState = {
@@ -36,14 +36,29 @@ function useDebouncedValue(value: string, delayMs: number) {
 }
 
 function useMLEvalVersions(taskId: string | undefined, evalName: string | undefined) {
-  const { data, isLoading } = useApiQuery<"listMlEvalVersionsApiV2TasksTaskIdMlEvalsEvalNameVersionsGet">({
-    method: "listMlEvalVersionsApiV2TasksTaskIdMlEvalsEvalNameVersionsGet",
-    args: [encodePathParam(evalName!), taskId!],
+  const { data, isLoading } = useApiQuery<"getAllLlmEvalVersionsApiV1TasksTaskIdLlmEvalsEvalNameVersionsGet">({
+    method: "getAllLlmEvalVersionsApiV1TasksTaskIdLlmEvalsEvalNameVersionsGet",
+    args: [
+      {
+        taskId: taskId!,
+        evalName: encodePathParam(evalName!),
+        page: 0,
+        page_size: 100,
+        sort: "desc",
+        created_after: null,
+        created_before: null,
+        model_provider: null,
+        model_name: null,
+        exclude_deleted: false,
+        min_version: null,
+        max_version: null,
+      },
+    ],
     enabled: !!taskId && !!evalName,
     queryOptions: { staleTime: 2000 },
   });
   return {
-    versions: (data as MLEvalsVersionListResponse | undefined)?.versions ?? [],
+    versions: (data as LLMEvalsVersionListResponse | undefined)?.versions ?? [],
     isLoading,
   };
 }
@@ -66,11 +81,11 @@ export const EvaluatorSelector = withFieldGroup({
       evals,
       isLoading: isEvaluatorsLoading,
       refetch,
-    } = useAllEvals(taskId, {
+    } = useEvals(taskId, {
       page: 0,
       pageSize: 30,
       sort: "desc",
-      name: debouncedSearch || null,
+      llm_asset_names: debouncedSearch ? [debouncedSearch] : null,
     });
 
     const createEval = useCreateEvalMutation(taskId, async (evalData) => {
@@ -87,7 +102,7 @@ export const EvaluatorSelector = withFieldGroup({
       setOpenCreateMLModal(false);
       group.setFieldValue("name", evalData.name);
       group.setFieldValue("version", "latest");
-      group.setFieldValue("eval_type", "ml");
+      group.setFieldValue("eval_type", evalData.eval_type);
       onSelectionChange?.();
     });
 
@@ -96,7 +111,7 @@ export const EvaluatorSelector = withFieldGroup({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const evalType = useStore(group.store, (state: any) => state.values.eval_type as string | null);
 
-    const isML = evalType === "ml";
+    const isML = evalType !== null && evalType !== "llm_as_a_judge";
 
     const llmVersions = useEvalVersions(taskId, isML ? undefined : (name ?? undefined), {
       page: 0,
@@ -111,11 +126,11 @@ export const EvaluatorSelector = withFieldGroup({
 
     const selectedEval = evals.find((e) => e.name === name) ?? null;
 
-    const handleEvalChange = (newEval: EvalMetadataItem | null) => {
+    const handleEvalChange = (newEval: LLMGetAllMetadataResponse | null) => {
       group.setFieldValue("name", newEval?.name ?? null);
       group.setFieldValue("eval_type", newEval?.eval_type ?? null);
       // Default to "latest" for ML evals; clear for LLM evals (user must pick)
-      group.setFieldValue("version", newEval?.eval_type === "ml" ? "latest" : null);
+      group.setFieldValue("version", newEval?.eval_type !== "llm_as_a_judge" ? "latest" : null);
       onSelectionChange?.();
     };
 
@@ -168,13 +183,13 @@ export const EvaluatorSelector = withFieldGroup({
                     <Typography variant="body2" sx={{ flex: 1 }}>
                       {option.name}
                     </Typography>
-                    {option.eval_type === "ml" ? (
+                    {option.eval_type !== "llm_as_a_judge" ? (
                       <Chip label="ML" size="small" color="secondary" variant="outlined" sx={{ height: 18, fontSize: "0.65rem" }} />
                     ) : (
                       <Chip label="LLM" size="small" color="primary" variant="outlined" sx={{ height: 18, fontSize: "0.65rem" }} />
                     )}
-                    {option.ml_eval_type && (
-                      <Chip label={option.ml_eval_type} size="small" variant="outlined" sx={{ height: 18, fontSize: "0.65rem" }} />
+                    {option.eval_type !== "llm_as_a_judge" && (
+                      <Chip label={option.eval_type} size="small" variant="outlined" sx={{ height: 18, fontSize: "0.65rem" }} />
                     )}
                   </Stack>
                 </Box>

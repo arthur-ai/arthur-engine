@@ -429,11 +429,11 @@ const EvaluatorsSelector = ({
   const [draft, setDraft] = useState<Evaluator | null>(null);
   const { task } = useTask();
 
-  const evalsQuery = useEvals(task!.id, {});
+  const evalsQuery = useEvals(task!.id, { pageSize: 500 });
 
   const selected = evalsQuery.evals.find((e) => e.name === draft?.name) ?? null;
 
-  const versionsQuery = useEvalVersions(task!.id, selected?.name ?? undefined, {});
+  const versionsQuery = useEvalVersions(task!.id, selected?.name ?? undefined, { pageSize: 100, exclude_deleted: true });
 
   const selectedVersion = versionsQuery.versions.find((v) => v.version === draft?.version) ?? null;
 

@@ -2661,10 +2661,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "User IDs to filter on. Optional.",
+                            "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.",
                             "title": "User Ids"
                         },
-                        "description": "User IDs to filter on. Optional."
+                        "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional."
                     },
                     {
                         "name": "span_name",
@@ -3416,10 +3416,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "User IDs to filter on. Optional.",
+                            "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.",
                             "title": "User Ids"
                         },
-                        "description": "User IDs to filter on. Optional."
+                        "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional."
                     },
                     {
                         "name": "span_name",
@@ -4410,10 +4410,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "User IDs to filter on. Optional.",
+                            "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.",
                             "title": "User Ids"
                         },
-                        "description": "User IDs to filter on. Optional."
+                        "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional."
                     },
                     {
                         "name": "span_name",
@@ -5164,10 +5164,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "User IDs to filter on. Optional.",
+                            "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.",
                             "title": "User Ids"
                         },
-                        "description": "User IDs to filter on. Optional."
+                        "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional."
                     },
                     {
                         "name": "span_name",
@@ -10454,10 +10454,10 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Version",
-                            "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
+                            "description": "'latest', version number, ISO datetime, or tag.",
+                            "title": "Eval Version"
                         },
-                        "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
+                        "description": "'latest', version number, ISO datetime, or tag."
                     },
                     {
                         "name": "task_id",
@@ -10498,7 +10498,6 @@
                     "LLMEvals"
                 ],
                 "summary": "Delete an llm eval version",
-                "description": "Deletes a specific version of an llm eval",
                 "operationId": "soft_delete_llm_eval_version_api_v1_tasks__task_id__llm_evals__eval_name__versions__eval_version__delete",
                 "security": [
                     {
@@ -10521,10 +10520,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Version",
-                            "description": "The version of the llm eval to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                        },
-                        "description": "The version of the llm eval to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
+                            "title": "Eval Version"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -10973,7 +10970,6 @@
                     "LLMEvals"
                 ],
                 "summary": "Run a saved llm eval",
-                "description": "Run a saved llm eval",
                 "operationId": "run_saved_llm_eval_api_v1_tasks__task_id__llm_evals__eval_name__versions__eval_version__completions_post",
                 "security": [
                     {
@@ -10996,10 +10992,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Version",
-                            "description": "The version of the llm eval to run. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                        },
-                        "description": "The version of the llm eval to run. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
+                            "title": "Eval Version"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -11118,7 +11112,6 @@
                     "LLMEvals"
                 ],
                 "summary": "Delete an llm eval",
-                "description": "Deletes an entire llm eval",
                 "operationId": "delete_llm_eval_api_v1_tasks__task_id__llm_evals__eval_name__delete",
                 "security": [
                     {
@@ -11169,7 +11162,6 @@
                     "LLMEvals"
                 ],
                 "summary": "Get an llm eval by name and tag",
-                "description": "Get an llm eval by name and tag",
                 "operationId": "get_llm_eval_by_tag_api_v1_tasks__task_id__llm_evals__eval_name__versions_tags__tag__get",
                 "security": [
                     {
@@ -11236,7 +11228,6 @@
                     "LLMEvals"
                 ],
                 "summary": "Add a tag to an llm eval version",
-                "description": "Add a tag to an llm eval version",
                 "operationId": "add_tag_to_llm_eval_version_api_v1_tasks__task_id__llm_evals__eval_name__versions__eval_version__tags_put",
                 "security": [
                     {
@@ -11259,10 +11250,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Version",
-                            "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                        },
-                        "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
+                            "title": "Eval Version"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -11315,7 +11304,6 @@
                     "LLMEvals"
                 ],
                 "summary": "Remove a tag from an llm eval version",
-                "description": "Remove a tag from an llm eval version",
                 "operationId": "delete_tag_from_llm_eval_version_api_v1_tasks__task_id__llm_evals__eval_name__versions__eval_version__tags__tag__delete",
                 "security": [
                     {
@@ -11338,10 +11326,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Version",
-                            "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                        },
-                        "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
+                            "title": "Eval Version"
+                        }
                     },
                     {
                         "name": "tag",
@@ -11365,7 +11351,75 @@
                 ],
                 "responses": {
                     "204": {
-                        "description": "LLM eval version deleted."
+                        "description": "Tag removed."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/tasks/{task_id}/ml_evals/{eval_name}": {
+            "post": {
+                "tags": [
+                    "ML Evals"
+                ],
+                "summary": "Save an ML eval",
+                "description": "Save an ML eval. If an eval with the same name exists, a new version is created.",
+                "operationId": "save_ml_eval_api_v2_tasks__task_id__ml_evals__eval_name__post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "eval_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Eval Name"
+                        }
+                    },
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateMLEvalRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MLEval"
+                                }
+                            }
+                        }
                     },
                     "422": {
                         "description": "Validation Error",
@@ -15509,10 +15563,10 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Version",
-                            "description": "The version of the llm eval to get the continuous eval variables and mappings for."
+                            "title": "Eval Version",
+                            "description": "The version of the eval to get the continuous eval variables and mappings for."
                         },
-                        "description": "The version of the llm eval to get the continuous eval variables and mappings for."
+                        "description": "The version of the eval to get the continuous eval variables and mappings for."
                     },
                     {
                         "name": "task_id",
@@ -17160,6 +17214,18 @@
                         "title": "Continuous Eval Name",
                         "description": "Name of the continuous eval this annotation belongs to"
                     },
+                    "eval_type": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Eval Type",
+                        "description": "Type of eval: 'llm_eval' or 'ml_eval'"
+                    },
                     "eval_name": {
                         "anyOf": [
                             {
@@ -18363,6 +18429,12 @@
                         "title": "Version",
                         "description": "Version number of the llm eval"
                     },
+                    "eval_type": {
+                        "type": "string",
+                        "title": "Eval Type",
+                        "description": "Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')",
+                        "default": "llm_as_a_judge"
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
@@ -18383,13 +18455,27 @@
                         "description": "Timestamp when the llm eval version was deleted (None if not deleted)"
                     },
                     "model_provider": {
-                        "$ref": "#/components/schemas/ModelProvider",
-                        "description": "Model provider chosen for this version of the llm eval"
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ModelProvider"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Model provider chosen for this version of the llm eval. None for ML evals."
                     },
                     "model_name": {
-                        "type": "string",
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Model Name",
-                        "description": "Model name chosen for this version of the llm eval"
+                        "description": "Model name chosen for this version of the llm eval. None for ML evals."
                     },
                     "tags": {
                         "items": {
@@ -18415,8 +18501,6 @@
                     "version",
                     "created_at",
                     "deleted_at",
-                    "model_provider",
-                    "model_name",
                     "num_messages",
                     "num_tools"
                 ],
@@ -19398,10 +19482,27 @@
                         "title": "Description",
                         "description": "Description of the continuous eval"
                     },
-                    "llm_eval_name": {
+                    "eval_type": {
                         "type": "string",
+                        "enum": [
+                            "llm_eval",
+                            "ml_eval"
+                        ],
+                        "title": "Eval Type",
+                        "description": "Type of evaluator: 'llm_eval' or 'ml_eval'.",
+                        "default": "llm_eval"
+                    },
+                    "llm_eval_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Llm Eval Name",
-                        "description": "Name of the llm eval to create the continuous eval for"
+                        "description": "Name of the eval to create the continuous eval for"
                     },
                     "llm_eval_version": {
                         "anyOf": [
@@ -19410,10 +19511,13 @@
                             },
                             {
                                 "type": "integer"
+                            },
+                            {
+                                "type": "null"
                             }
                         ],
                         "title": "Llm Eval Version",
-                        "description": "Version of the llm eval to create the continuous eval for. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
+                        "description": "Version of the eval. Can be 'latest', a version number, an ISO datetime string, or a tag."
                     },
                     "transform_id": {
                         "type": "string",
@@ -19439,8 +19543,6 @@
                 "type": "object",
                 "required": [
                     "name",
-                    "llm_eval_name",
-                    "llm_eval_version",
                     "transform_id",
                     "transform_variable_mapping"
                 ],
@@ -19498,15 +19600,35 @@
                         "title": "Task Id",
                         "description": "ID of the parent task."
                     },
-                    "llm_eval_name": {
+                    "eval_type": {
                         "type": "string",
+                        "title": "Eval Type",
+                        "description": "Type of evaluator: 'llm_eval' or 'ml_eval'.",
+                        "default": "llm_eval"
+                    },
+                    "llm_eval_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Llm Eval Name",
-                        "description": "Name of the llm eval."
+                        "description": "Name of the eval."
                     },
                     "llm_eval_version": {
-                        "type": "integer",
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Llm Eval Version",
-                        "description": "Version of the llm eval."
+                        "description": "Version of the eval."
                     },
                     "transform_id": {
                         "type": "string",
@@ -19546,8 +19668,6 @@
                     "id",
                     "name",
                     "task_id",
-                    "llm_eval_name",
-                    "llm_eval_version",
                     "transform_id",
                     "created_at",
                     "updated_at"
@@ -19955,6 +20075,36 @@
                     "instructions"
                 ],
                 "title": "CreateEvalRequest"
+            },
+            "CreateMLEvalRequest": {
+                "properties": {
+                    "eval_type": {
+                        "type": "string",
+                        "enum": [
+                            "pii",
+                            "pii_v1",
+                            "toxicity",
+                            "prompt_injection"
+                        ],
+                        "title": "Eval Type",
+                        "description": "Type of ML eval (e.g. 'pii', 'toxicity', 'prompt_injection')"
+                    },
+                    "config": {
+                        "anyOf": [
+                            {},
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Config",
+                        "description": "Optional configuration for the ML eval"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "eval_type"
+                ],
+                "title": "CreateMLEvalRequest"
             },
             "CreateNotebookRequest": {
                 "properties": {
@@ -22439,182 +22589,6 @@
                     ]
                 }
             },
-            "LLMBaseConfigSettings": {
-                "properties": {
-                    "timeout": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Timeout",
-                        "description": "Request timeout in seconds"
-                    },
-                    "temperature": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Temperature",
-                        "description": "Sampling temperature (0.0 to 2.0). Higher values make output more random"
-                    },
-                    "top_p": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Top P",
-                        "description": "Top-p sampling parameter (0.0 to 1.0). Alternative to temperature"
-                    },
-                    "max_tokens": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Max Tokens",
-                        "description": "Maximum number of tokens to generate in the response"
-                    },
-                    "stop": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Stop",
-                        "description": "Stop sequence(s) where the model should stop generating"
-                    },
-                    "presence_penalty": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Presence Penalty",
-                        "description": "Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence"
-                    },
-                    "frequency_penalty": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Frequency Penalty",
-                        "description": "Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency"
-                    },
-                    "seed": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Seed",
-                        "description": "Random seed for reproducible outputs"
-                    },
-                    "logprobs": {
-                        "anyOf": [
-                            {
-                                "type": "boolean"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Logprobs",
-                        "description": "Whether to return log probabilities of output tokens"
-                    },
-                    "top_logprobs": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Top Logprobs",
-                        "description": "Number of most likely tokens to return log probabilities for (1-20)"
-                    },
-                    "logit_bias": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "$ref": "#/components/schemas/LogitBiasItem"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Logit Bias",
-                        "description": "Modify likelihood of specified tokens appearing in completion"
-                    },
-                    "max_completion_tokens": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Max Completion Tokens",
-                        "description": "Maximum number of completion tokens (alternative to max_tokens)"
-                    },
-                    "reasoning_effort": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/ReasoningEffortEnum"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "Reasoning effort level for models that support it (e.g., OpenAI o1 series)"
-                    },
-                    "thinking": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/AnthropicThinkingParam"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "Anthropic-specific thinking parameter for Claude models"
-                    }
-                },
-                "additionalProperties": false,
-                "type": "object",
-                "title": "LLMBaseConfigSettings"
-            },
             "LLMConfigSettings": {
                 "properties": {
                     "timeout": {
@@ -22837,19 +22811,46 @@
                         "title": "Name",
                         "description": "Name of the llm eval"
                     },
-                    "model_name": {
+                    "eval_type": {
                         "type": "string",
+                        "title": "Eval Type",
+                        "description": "Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')",
+                        "default": "llm_as_a_judge"
+                    },
+                    "model_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Model Name",
-                        "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')"
+                        "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet'). None for ML evals."
                     },
                     "model_provider": {
-                        "$ref": "#/components/schemas/ModelProvider",
-                        "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ModelProvider"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). None for ML evals."
                     },
                     "instructions": {
-                        "type": "string",
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Instructions",
-                        "description": "Instructions for the llm eval"
+                        "description": "Instructions for the llm eval. None for ML evals."
                     },
                     "variables": {
                         "items": {
@@ -22869,14 +22870,13 @@
                     },
                     "config": {
                         "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/LLMBaseConfigSettings"
-                            },
+                            {},
                             {
                                 "type": "null"
                             }
                         ],
-                        "description": "LLM configurations for this eval (e.g. temperature, max_tokens, etc.)"
+                        "title": "Config",
+                        "description": "Eval configuration. LLMBaseConfigSettings for LLM evals; type-specific dict for ML evals."
                     },
                     "created_at": {
                         "type": "string",
@@ -22907,9 +22907,6 @@
                 "type": "object",
                 "required": [
                     "name",
-                    "model_name",
-                    "model_provider",
-                    "instructions",
                     "created_at"
                 ],
                 "title": "LLMEval"
@@ -22992,6 +22989,12 @@
                         "type": "string",
                         "title": "Name",
                         "description": "Name of the llm asset"
+                    },
+                    "eval_type": {
+                        "type": "string",
+                        "title": "Eval Type",
+                        "description": "Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')",
+                        "default": "llm_as_a_judge"
                     },
                     "versions": {
                         "type": "integer",
@@ -23659,6 +23662,12 @@
                         "title": "Version",
                         "description": "Version number of the llm eval"
                     },
+                    "eval_type": {
+                        "type": "string",
+                        "title": "Eval Type",
+                        "description": "Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')",
+                        "default": "llm_as_a_judge"
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
@@ -23679,13 +23688,27 @@
                         "description": "Timestamp when the llm eval version was deleted (None if not deleted)"
                     },
                     "model_provider": {
-                        "$ref": "#/components/schemas/ModelProvider",
-                        "description": "Model provider chosen for this version of the llm eval"
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ModelProvider"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Model provider chosen for this version of the llm eval. None for ML evals."
                     },
                     "model_name": {
-                        "type": "string",
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Model Name",
-                        "description": "Model name chosen for this version of the llm eval"
+                        "description": "Model name chosen for this version of the llm eval. None for ML evals."
                     },
                     "tags": {
                         "items": {
@@ -23700,9 +23723,7 @@
                 "required": [
                     "version",
                     "created_at",
-                    "deleted_at",
-                    "model_provider",
-                    "model_name"
+                    "deleted_at"
                 ],
                 "title": "LLMVersionResponse"
             },
@@ -23906,6 +23927,73 @@
                     "bias"
                 ],
                 "title": "LogitBiasItem"
+            },
+            "MLEval": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "eval_type": {
+                        "type": "string",
+                        "title": "Eval Type"
+                    },
+                    "variables": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Variables",
+                        "default": []
+                    },
+                    "config": {
+                        "anyOf": [
+                            {},
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Config"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At"
+                    },
+                    "deleted_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Deleted At"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "title": "Version"
+                    },
+                    "tags": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Tags",
+                        "default": []
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "eval_type",
+                    "created_at",
+                    "version"
+                ],
+                "title": "MLEval",
+                "description": "Internal representation of an ML-type eval (pii, toxicity, prompt_injection, etc.)."
             },
             "ManualAgentCreationSource": {
                 "properties": {

@@ -14,7 +14,7 @@ import EvalFormModal from "./EvalFormModal";
 import { EvaluatorAccordionList } from "./EvaluatorAccordionList";
 import EvaluatorsHeader from "./EvaluatorsHeader";
 import EvalFullScreenView from "./fullscreen/EvalFullScreenView";
-import { useAllEvals } from "./hooks/useAllEvals";
+import { useEvals } from "./hooks/useEvals";
 import { useCreateEvalMutation } from "./hooks/useCreateEvalMutation";
 import { useDeleteEvalMutation } from "./hooks/useDeleteEvalMutation";
 import { useDeleteMLEvalMutation } from "./hooks/useDeleteMLEvalMutation";
@@ -100,7 +100,7 @@ const Evaluators: React.FC<EvaluatorsProps> = ({ embedded = false, isCreateModal
     [page, pageSize, debouncedSearchQuery]
   );
 
-  const { evals, count, error, isLoading, refetch } = useAllEvals(task?.id, filters);
+  const { evals, count, error, isLoading, refetch } = useEvals(task?.id, filters);
 
   const filteredEvals = useMemo(() => {
     if (!debouncedSearchQuery) return evals;
@@ -130,7 +130,7 @@ const Evaluators: React.FC<EvaluatorsProps> = ({ embedded = false, isCreateModal
   const handleDelete = useCallback(
     async (evalName: string) => {
       const evalMeta = filteredEvals.find((e) => e.name === evalName);
-      if (evalMeta?.eval_type === "ml") {
+      if (evalMeta?.eval_type !== "llm_as_a_judge") {
         await deleteMLMutation.mutateAsync(evalName);
       } else {
         await deleteLLMMutation.mutateAsync(evalName);

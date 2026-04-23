@@ -1,10 +1,10 @@
-"""v1 LLM eval routes — thin aliases over the v2 eval handlers.
+"""v1 LLM eval routes.
 
-All logic lives in routers.v2.eval_routes; these endpoints preserve the v1
-URL shape (/llm_evals/…) and response types (LLMEval, LLMEvalsVersionListResponse)
-expected by existing clients.
+These endpoints preserve the v1 URL shape (/llm_evals/…) and response types
+(LLMEval, LLMEvalsVersionListResponse) expected by existing clients.
 """
 
+import logging
 from typing import Annotated
 
 import jinja2
@@ -20,6 +20,7 @@ from dependencies import (
     llm_get_all_filter_parameters,
     llm_get_versions_filter_parameters,
 )
+from repositories.continuous_evals_repository import ContinuousEvalsRepository
 from repositories.llm_evals_repository import LLMEvalsRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
@@ -39,6 +40,8 @@ from schemas.response_schemas import (
 from utils.url_encoding import decode_path_param
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
+
+logger = logging.getLogger(__name__)
 
 llm_eval_routes = APIRouter(
     prefix="/api/v1",
@@ -225,6 +228,13 @@ def delete_llm_eval(
 ) -> Response:
     try:
         _repo(db_session).delete_llm_item(task.id, eval_name)
+        disabled = ContinuousEvalsRepository(
+            db_session,
+        ).disable_continuous_evals_by_eval_name(task.id, eval_name)
+        if disabled:
+            logger.info(
+                f"Disabled {disabled} continuous eval(s) referencing deleted eval '{eval_name}' for task {task.id}",
+            )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except ValueError as e:
         if "not found" in str(e).lower():
@@ -253,6 +263,17 @@ def soft_delete_llm_eval_version(
 ) -> Response:
     try:
         _repo(db_session).soft_delete_llm_item_version(task.id, eval_name, eval_version)
+        try:
+            version_int = int(eval_version)
+            disabled = ContinuousEvalsRepository(
+                db_session,
+            ).disable_continuous_evals_by_eval_name(task.id, eval_name, version_int)
+            if disabled:
+                logger.info(
+                    f"Disabled {disabled} continuous eval(s) referencing deleted eval '{eval_name}' v{eval_version} for task {task.id}",
+                )
+        except ValueError:
+            pass  # eval_version is not an integer (e.g. 'latest'), skip version-specific disable
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except ValueError as e:
         if "no matching version" in str(e).lower():
