@@ -1346,3 +1346,41 @@ def test_guardrail_before_enforcement_needs_attention(mock_datetime):
 
     detail = policies_client.set_compliance_status.call_args.kwargs["set_compliance_status_request"].compliance_status
     assert detail.status == ComplianceStatus.NEEDS_ATTENTION
+
+
+@patch("job_executors.compliance_policy_check_executor.datetime")
+def test_guardrail_failure_without_materialized_rule_still_reported(mock_datetime):
+    """Guardrail failure for a policy rule with no materialized alert rule
+    still appears in non_compliant_alert_rules (fallback path)."""
+    mock_datetime.now.return_value = NOW
+    mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, tasks_client, _ = _make_executor()
+
+    model_id = str(uuid4())
+    policy_id = str(uuid4())
+    assignment = _make_assignment(
+        policy_summary=_make_policy_summary(policy_id),
+        model_summary=_make_model_summary(model_id),
+    )
+
+    pii_alert_rule = _make_policy_alert_rule(rule_type=PolicyAlertRuleType.PIIDATARULE, policy_id=policy_id)
+    policy = _make_policy(policy_id, alert_rules=[pii_alert_rule])
+
+    job, job_spec = _make_job_and_spec(model_id)
+
+    policies_client.list_model_policy_assignments.return_value = _paginated_response([assignment])
+    policies_client.get_policy.return_value = policy
+    policies_client.list_model_attestations.return_value = _paginated_response([])
+    # No materialized alert rule for the policy rule
+    alert_rules_client.get_model_alert_rules.return_value = _paginated_response([])
+    tasks_client.get_task_state_cache.return_value = _make_task_read_response([])
+
+    executor.execute(job, job_spec)
+
+    detail = policies_client.set_compliance_status.call_args.kwargs["set_compliance_status_request"].compliance_status
+    assert detail.status == ComplianceStatus.NON_COMPLIANT
+    assert len(detail.alert_rules.non_compliant) == 1
+    assert detail.alert_rules.non_compliant[0].id == pii_alert_rule.id
+    assert detail.alert_rules.non_compliant[0].name == pii_alert_rule.name
+    assert "PIIDataRule is not enabled" in detail.alert_rules.non_compliant[0].alert.description

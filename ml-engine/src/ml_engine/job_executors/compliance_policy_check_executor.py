@@ -532,6 +532,29 @@ class CompliancePolicyCheckExecutor:
                     )
                 )
 
+        # Fall back to policy alert rule for any guardrail failure not covered
+        # by a materialized alert rule above.
+        covered_policy_rule_ids = {
+            rule.policy_alert_rule_id for rule, *_ in alert_rule_results
+        }
+        if guardrail_results and policy:
+            for par in policy.alert_rules:
+                rule_id = str(par.id)
+                if (
+                    rule_id in guardrail_failed_rule_ids
+                    and rule_id not in covered_policy_rule_ids
+                ):
+                    non_compliant_alert_rules.append(
+                        NonCompliantAlertRuleStatus(
+                            id=par.id,
+                            name=par.name,
+                            alert=ComplianceAlertSummary(
+                                id=par.id,
+                                description=guardrail_failed_rule_ids[rule_id],
+                            ),
+                        )
+                    )
+
         compliant_attestation_rules: List[CompliantAttestationRuleStatus] = []
         non_compliant_attestation_rules: List[NonCompliantAttestationRuleStatus] = []
         for rule, passed, _reason in attestation_results:
