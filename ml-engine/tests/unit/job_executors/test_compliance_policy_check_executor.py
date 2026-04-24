@@ -24,10 +24,11 @@ from arthur_client.api_bindings import (
     ModelSummary,
     Policy,
     PolicyAlertRule,
+    PolicyAlertRuleType,
     PolicyAssignment,
     PolicyAttestationRule,
     PolicySummary,
-    SetComplianceStatusRequest,
+    RuleType,
 )
 from job_executors.compliance_policy_check_executor import CompliancePolicyCheckExecutor
 
@@ -163,6 +164,42 @@ def _make_policy(
     )
 
 
+def _make_policy_alert_rule(rule_type: PolicyAlertRuleType = PolicyAlertRuleType.CUSTOM, policy_id: str = None) -> PolicyAlertRule:
+    return PolicyAlertRule(
+        id=str(uuid4()),
+        policy_id=policy_id or str(uuid4()),
+        name=f"Alert for {rule_type.value}",
+        threshold=0.8,
+        bound=AlertBound.UPPER_BOUND,
+        query="SELECT ...",
+        metric_name="rule_count",
+        rule_type=rule_type,
+        created_at=NOW,
+        updated_at=NOW,
+    )
+
+
+def _make_task_read_response(enabled_rule_types: list[str]) -> Mock:
+    """Build a mock TaskReadResponse with the given rule types enabled."""
+    rules = []
+    for rt in enabled_rule_types:
+        rule = Mock()
+        rule.enabled = True
+        rule.type = RuleType(rt)
+        rules.append(rule)
+    task = Mock()
+    task.rules = rules
+    task_read = Mock()
+    task_read.task = task
+    return task_read
+
+
+def _make_metrics_query_result(has_data: bool) -> Mock:
+    result = Mock()
+    result.results = [{"metric_value": 42}] if has_data else []
+    return result
+
+
 def _make_job_and_spec(model_id: str, assignment_id: str = None) -> tuple[Job, CompliancePolicyCheckJobSpec]:
     job_spec = CompliancePolicyCheckJobSpec(
         scope_model_id=model_id,
@@ -191,6 +228,7 @@ def _make_executor():
     alert_rules_client = Mock()
     alerts_client = Mock()
     metrics_client = Mock()
+    tasks_client = Mock()
     logger = Mock()
 
     executor = CompliancePolicyCheckExecutor(
@@ -198,6 +236,7 @@ def _make_executor():
         alert_rules_client=alert_rules_client,
         alerts_client=alerts_client,
         metrics_client=metrics_client,
+        tasks_client=tasks_client,
         logger=logger,
     )
 
@@ -206,7 +245,12 @@ def _make_executor():
     metrics_version.version_num = 1
     metrics_client.post_model_metrics_version.return_value = metrics_version
 
-    return executor, policies_client, alert_rules_client, alerts_client, metrics_client, logger
+    # Default: no task state cache (guardrail checks will find no enabled rules)
+    task_read = Mock()
+    task_read.task = None
+    tasks_client.get_task_state_cache.return_value = task_read
+
+    return executor, policies_client, alert_rules_client, alerts_client, metrics_client, tasks_client, logger
 
 
 def _paginated_response(records):
@@ -226,7 +270,7 @@ def test_no_assignments_is_noop(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, _, _, metrics_client, logger = _make_executor()
+    executor, policies_client, _, _, metrics_client, _, logger = _make_executor()
 
     model_id = str(uuid4())
     job, job_spec = _make_job_and_spec(model_id)
@@ -246,7 +290,7 @@ def test_all_rules_pass_compliant(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = _make_executor()
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _, _ = _make_executor()
 
     model_id = str(uuid4())
     policy_id = str(uuid4())
@@ -294,7 +338,7 @@ def test_missing_attestation_non_compliant(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = _make_executor()
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _, _ = _make_executor()
 
     model_id = str(uuid4())
     policy_id = str(uuid4())
@@ -327,7 +371,7 @@ def test_lapsed_attestation_non_compliant(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = _make_executor()
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _, _ = _make_executor()
 
     model_id = str(uuid4())
     policy_id = str(uuid4())
@@ -365,7 +409,7 @@ def test_alert_violation_non_compliant(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = _make_executor()
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _, _ = _make_executor()
 
     model_id = str(uuid4())
     policy_id = str(uuid4())
@@ -402,7 +446,7 @@ def test_violation_before_enforcement_needs_attention(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = _make_executor()
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _, _ = _make_executor()
 
     model_id = str(uuid4())
     policy_id = str(uuid4())
@@ -433,7 +477,7 @@ def test_single_assignment_filter(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = _make_executor()
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _, _ = _make_executor()
 
     model_id = str(uuid4())
     assignment_id = str(uuid4())
@@ -460,7 +504,7 @@ def test_fault_tolerance_across_assignments(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, logger = _make_executor()
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _, logger = _make_executor()
 
     model_id = str(uuid4())
     assignment_1 = _make_assignment(model_summary=_make_model_summary(model_id))
@@ -507,7 +551,7 @@ def test_mixed_alert_rules_compliant_and_non_compliant(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = _make_executor()
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _, _ = _make_executor()
 
     model_id = str(uuid4())
     policy_id = str(uuid4())
@@ -547,7 +591,7 @@ def test_metrics_uploaded_with_correct_dimensions(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = _make_executor()
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _, _ = _make_executor()
 
     model_id = str(uuid4())
     policy_id = str(uuid4())
@@ -606,7 +650,7 @@ def test_alert_rule_metrics_uploaded_with_correct_dimensions(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = _make_executor()
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _, _ = _make_executor()
 
     model_id = str(uuid4())
     policy_id = str(uuid4())
@@ -627,6 +671,7 @@ def test_alert_rule_metrics_uploaded_with_correct_dimensions(mock_datetime):
         bound=alert_rule.bound,
         query=alert_rule.query,
         metric_name=alert_rule.metric_name,
+        rule_type=PolicyAlertRuleType.CUSTOM,
         created_at=NOW,
         updated_at=NOW,
     )
@@ -673,7 +718,7 @@ def test_alert_rule_metric_tracks_multiple_violations(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = _make_executor()
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _, _ = _make_executor()
 
     model_id = str(uuid4())
     policy_id = str(uuid4())
@@ -708,7 +753,7 @@ def test_alert_rule_metric_emits_zero_for_passing_rule(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = _make_executor()
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _, _ = _make_executor()
 
     model_id = str(uuid4())
     policy_id = str(uuid4())
@@ -734,3 +779,172 @@ def test_alert_rule_metric_emits_zero_for_passing_rule(mock_datetime):
     alert_metric = upload.metrics[1].actual_instance
     assert alert_metric.name == "policy_alert_rule_check_count"
     assert alert_metric.numeric_series[0].values[0].value == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Guardrail check tests
+# ---------------------------------------------------------------------------
+
+
+@patch("job_executors.compliance_policy_check_executor.datetime")
+def test_guardrail_not_enabled_non_compliant(mock_datetime):
+    """When a policy requires a guardrail that is not enabled on the model, status is NON_COMPLIANT."""
+    mock_datetime.now.return_value = NOW
+    mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, tasks_client, _ = _make_executor()
+
+    model_id = str(uuid4())
+    policy_id = str(uuid4())
+    assignment = _make_assignment(
+        policy_summary=_make_policy_summary(policy_id),
+        model_summary=_make_model_summary(model_id),
+    )
+
+    pii_alert_rule = _make_policy_alert_rule(rule_type=PolicyAlertRuleType.PIIDATARULE, policy_id=policy_id)
+    policy = _make_policy(policy_id, alert_rules=[pii_alert_rule])
+
+    job, job_spec = _make_job_and_spec(model_id)
+
+    policies_client.list_model_policy_assignments.return_value = _paginated_response([assignment])
+    policies_client.get_policy.return_value = policy
+    policies_client.list_model_attestations.return_value = _paginated_response([])
+    alert_rules_client.get_model_alert_rules.return_value = _paginated_response([])
+    # Task has no rules enabled
+    tasks_client.get_task_state_cache.return_value = _make_task_read_response([])
+
+    executor.execute(job, job_spec)
+
+    detail = policies_client.set_compliance_status.call_args.kwargs["set_compliance_status_request"].compliance_status
+    assert detail.status == ComplianceStatus.NON_COMPLIANT
+
+
+@patch("job_executors.compliance_policy_check_executor.datetime")
+def test_guardrail_enabled_but_no_data_non_compliant(mock_datetime):
+    """When a guardrail is enabled but has no data in the last 7 days, status is NON_COMPLIANT."""
+    mock_datetime.now.return_value = NOW
+    mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, tasks_client, _ = _make_executor()
+
+    model_id = str(uuid4())
+    policy_id = str(uuid4())
+    assignment = _make_assignment(
+        policy_summary=_make_policy_summary(policy_id),
+        model_summary=_make_model_summary(model_id),
+    )
+
+    pii_alert_rule = _make_policy_alert_rule(rule_type=PolicyAlertRuleType.PIIDATARULE, policy_id=policy_id)
+    policy = _make_policy(policy_id, alert_rules=[pii_alert_rule])
+
+    job, job_spec = _make_job_and_spec(model_id)
+
+    policies_client.list_model_policy_assignments.return_value = _paginated_response([assignment])
+    policies_client.get_policy.return_value = policy
+    policies_client.list_model_attestations.return_value = _paginated_response([])
+    alert_rules_client.get_model_alert_rules.return_value = _paginated_response([])
+    tasks_client.get_task_state_cache.return_value = _make_task_read_response(["PIIDataRule"])
+    metrics_client.post_model_metrics_query.return_value = _make_metrics_query_result(has_data=False)
+
+    executor.execute(job, job_spec)
+
+    detail = policies_client.set_compliance_status.call_args.kwargs["set_compliance_status_request"].compliance_status
+    assert detail.status == ComplianceStatus.NON_COMPLIANT
+
+
+@patch("job_executors.compliance_policy_check_executor.datetime")
+def test_guardrail_enabled_and_has_data_compliant(mock_datetime):
+    """When a guardrail is enabled and has data, the guardrail check passes."""
+    mock_datetime.now.return_value = NOW
+    mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, tasks_client, _ = _make_executor()
+
+    model_id = str(uuid4())
+    policy_id = str(uuid4())
+    assignment = _make_assignment(
+        policy_summary=_make_policy_summary(policy_id),
+        model_summary=_make_model_summary(model_id),
+    )
+
+    pii_alert_rule = _make_policy_alert_rule(rule_type=PolicyAlertRuleType.PIIDATARULE, policy_id=policy_id)
+    policy = _make_policy(policy_id, alert_rules=[pii_alert_rule])
+
+    job, job_spec = _make_job_and_spec(model_id)
+
+    policies_client.list_model_policy_assignments.return_value = _paginated_response([assignment])
+    policies_client.get_policy.return_value = policy
+    policies_client.list_model_attestations.return_value = _paginated_response([])
+    alert_rules_client.get_model_alert_rules.return_value = _paginated_response([])
+    tasks_client.get_task_state_cache.return_value = _make_task_read_response(["PIIDataRule"])
+    metrics_client.post_model_metrics_query.return_value = _make_metrics_query_result(has_data=True)
+
+    executor.execute(job, job_spec)
+
+    detail = policies_client.set_compliance_status.call_args.kwargs["set_compliance_status_request"].compliance_status
+    assert detail.status == ComplianceStatus.COMPLIANT
+
+
+@patch("job_executors.compliance_policy_check_executor.datetime")
+def test_guardrail_custom_rule_type_skips_check(mock_datetime):
+    """When a policy only has custom rule_type alert rules, no guardrail check is performed."""
+    mock_datetime.now.return_value = NOW
+    mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, tasks_client, _ = _make_executor()
+
+    model_id = str(uuid4())
+    policy_id = str(uuid4())
+    assignment = _make_assignment(
+        policy_summary=_make_policy_summary(policy_id),
+        model_summary=_make_model_summary(model_id),
+    )
+
+    custom_alert_rule = _make_policy_alert_rule(rule_type=PolicyAlertRuleType.CUSTOM, policy_id=policy_id)
+    policy = _make_policy(policy_id, alert_rules=[custom_alert_rule])
+
+    job, job_spec = _make_job_and_spec(model_id)
+
+    policies_client.list_model_policy_assignments.return_value = _paginated_response([assignment])
+    policies_client.get_policy.return_value = policy
+    policies_client.list_model_attestations.return_value = _paginated_response([])
+    alert_rules_client.get_model_alert_rules.return_value = _paginated_response([])
+
+    executor.execute(job, job_spec)
+
+    tasks_client.get_task_state_cache.assert_not_called()
+    detail = policies_client.set_compliance_status.call_args.kwargs["set_compliance_status_request"].compliance_status
+    assert detail.status == ComplianceStatus.COMPLIANT
+
+
+@patch("job_executors.compliance_policy_check_executor.datetime")
+def test_guardrail_before_enforcement_needs_attention(mock_datetime):
+    """When guardrail fails but enforcement hasn't started, status is NEEDS_ATTENTION."""
+    mock_datetime.now.return_value = NOW
+    mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, tasks_client, _ = _make_executor()
+
+    model_id = str(uuid4())
+    policy_id = str(uuid4())
+    assignment = _make_assignment(
+        policy_summary=_make_policy_summary(policy_id),
+        model_summary=_make_model_summary(model_id),
+        enforcement_in_past=False,
+    )
+
+    pii_alert_rule = _make_policy_alert_rule(rule_type=PolicyAlertRuleType.PIIDATARULE, policy_id=policy_id)
+    policy = _make_policy(policy_id, alert_rules=[pii_alert_rule])
+
+    job, job_spec = _make_job_and_spec(model_id)
+
+    policies_client.list_model_policy_assignments.return_value = _paginated_response([assignment])
+    policies_client.get_policy.return_value = policy
+    policies_client.list_model_attestations.return_value = _paginated_response([])
+    alert_rules_client.get_model_alert_rules.return_value = _paginated_response([])
+    tasks_client.get_task_state_cache.return_value = _make_task_read_response([])
+
+    executor.execute(job, job_spec)
+
+    detail = policies_client.set_compliance_status.call_args.kwargs["set_compliance_status_request"].compliance_status
+    assert detail.status == ComplianceStatus.NEEDS_ATTENTION
