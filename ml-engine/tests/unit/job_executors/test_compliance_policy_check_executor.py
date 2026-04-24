@@ -91,17 +91,18 @@ def _make_attestation_rule(rule_id: str = None, policy_id: str = None) -> Policy
     )
 
 
-def _make_alert_rule(rule_id: str = None, model_id: str = None) -> AlertRule:
+def _make_alert_rule(rule_id: str = None, model_id: str = None, policy_alert_rule_id: str = None, name: str = "PII Score Alert") -> AlertRule:
     return AlertRule(
         id=rule_id or str(uuid4()),
         model_id=model_id or str(uuid4()),
-        name="PII Score Alert",
+        name=name,
         threshold=0.8,
         bound=AlertBound.UPPER_BOUND,
         query="SELECT ...",
         metric_name="pii_score",
         interval=AlertRuleInterval(unit=IntervalUnit.DAYS, count=1),
         notification_webhooks=[],
+        policy_alert_rule_id=policy_alert_rule_id,
         created_at=NOW,
         updated_at=NOW,
     )
@@ -803,13 +804,19 @@ def test_guardrail_not_enabled_non_compliant(mock_datetime):
 
     pii_alert_rule = _make_policy_alert_rule(rule_type=PolicyAlertRuleType.PIIDATARULE, policy_id=policy_id)
     policy = _make_policy(policy_id, alert_rules=[pii_alert_rule])
+    materialized_pii = _make_alert_rule(
+        model_id=model_id,
+        policy_alert_rule_id=pii_alert_rule.id,
+        name="PII Detection",
+    )
 
     job, job_spec = _make_job_and_spec(model_id)
 
     policies_client.list_model_policy_assignments.return_value = _paginated_response([assignment])
     policies_client.get_policy.return_value = policy
     policies_client.list_model_attestations.return_value = _paginated_response([])
-    alert_rules_client.get_model_alert_rules.return_value = _paginated_response([])
+    alert_rules_client.get_model_alert_rules.return_value = _paginated_response([materialized_pii])
+    alerts_client.get_model_alerts.return_value = _paginated_response([])
     # Task has no rules enabled
     tasks_client.get_task_state_cache.return_value = _make_task_read_response([])
 
@@ -817,6 +824,9 @@ def test_guardrail_not_enabled_non_compliant(mock_datetime):
 
     detail = policies_client.set_compliance_status.call_args.kwargs["set_compliance_status_request"].compliance_status
     assert detail.status == ComplianceStatus.NON_COMPLIANT
+    assert len(detail.alert_rules.non_compliant) == 1
+    assert detail.alert_rules.non_compliant[0].id == materialized_pii.id
+    assert "PIIDataRule is not enabled" in detail.alert_rules.non_compliant[0].alert.description
 
 
 @patch("job_executors.compliance_policy_check_executor.datetime")
@@ -836,13 +846,19 @@ def test_guardrail_enabled_but_no_data_non_compliant(mock_datetime):
 
     pii_alert_rule = _make_policy_alert_rule(rule_type=PolicyAlertRuleType.PIIDATARULE, policy_id=policy_id)
     policy = _make_policy(policy_id, alert_rules=[pii_alert_rule])
+    materialized_pii = _make_alert_rule(
+        model_id=model_id,
+        policy_alert_rule_id=pii_alert_rule.id,
+        name="PII Detection",
+    )
 
     job, job_spec = _make_job_and_spec(model_id)
 
     policies_client.list_model_policy_assignments.return_value = _paginated_response([assignment])
     policies_client.get_policy.return_value = policy
     policies_client.list_model_attestations.return_value = _paginated_response([])
-    alert_rules_client.get_model_alert_rules.return_value = _paginated_response([])
+    alert_rules_client.get_model_alert_rules.return_value = _paginated_response([materialized_pii])
+    alerts_client.get_model_alerts.return_value = _paginated_response([])
     tasks_client.get_task_state_cache.return_value = _make_task_read_response(["PIIDataRule"])
     metrics_client.post_model_metrics_query.return_value = _make_metrics_query_result(has_data=False)
 
@@ -850,6 +866,8 @@ def test_guardrail_enabled_but_no_data_non_compliant(mock_datetime):
 
     detail = policies_client.set_compliance_status.call_args.kwargs["set_compliance_status_request"].compliance_status
     assert detail.status == ComplianceStatus.NON_COMPLIANT
+    assert len(detail.alert_rules.non_compliant) == 1
+    assert "has not received data" in detail.alert_rules.non_compliant[0].alert.description
 
 
 @patch("job_executors.compliance_policy_check_executor.datetime")
@@ -869,13 +887,19 @@ def test_guardrail_enabled_and_has_data_compliant(mock_datetime):
 
     pii_alert_rule = _make_policy_alert_rule(rule_type=PolicyAlertRuleType.PIIDATARULE, policy_id=policy_id)
     policy = _make_policy(policy_id, alert_rules=[pii_alert_rule])
+    materialized_pii = _make_alert_rule(
+        model_id=model_id,
+        policy_alert_rule_id=pii_alert_rule.id,
+        name="PII Detection",
+    )
 
     job, job_spec = _make_job_and_spec(model_id)
 
     policies_client.list_model_policy_assignments.return_value = _paginated_response([assignment])
     policies_client.get_policy.return_value = policy
     policies_client.list_model_attestations.return_value = _paginated_response([])
-    alert_rules_client.get_model_alert_rules.return_value = _paginated_response([])
+    alert_rules_client.get_model_alert_rules.return_value = _paginated_response([materialized_pii])
+    alerts_client.get_model_alerts.return_value = _paginated_response([])
     tasks_client.get_task_state_cache.return_value = _make_task_read_response(["PIIDataRule"])
     metrics_client.post_model_metrics_query.return_value = _make_metrics_query_result(has_data=True)
 
@@ -935,13 +959,19 @@ def test_guardrail_before_enforcement_needs_attention(mock_datetime):
 
     pii_alert_rule = _make_policy_alert_rule(rule_type=PolicyAlertRuleType.PIIDATARULE, policy_id=policy_id)
     policy = _make_policy(policy_id, alert_rules=[pii_alert_rule])
+    materialized_pii = _make_alert_rule(
+        model_id=model_id,
+        policy_alert_rule_id=pii_alert_rule.id,
+        name="PII Detection",
+    )
 
     job, job_spec = _make_job_and_spec(model_id)
 
     policies_client.list_model_policy_assignments.return_value = _paginated_response([assignment])
     policies_client.get_policy.return_value = policy
     policies_client.list_model_attestations.return_value = _paginated_response([])
-    alert_rules_client.get_model_alert_rules.return_value = _paginated_response([])
+    alert_rules_client.get_model_alert_rules.return_value = _paginated_response([materialized_pii])
+    alerts_client.get_model_alerts.return_value = _paginated_response([])
     tasks_client.get_task_state_cache.return_value = _make_task_read_response([])
 
     executor.execute(job, job_spec)
