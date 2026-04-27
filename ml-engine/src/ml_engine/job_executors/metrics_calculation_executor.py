@@ -424,6 +424,7 @@ def _create_alert_check_job(
                         scope_model_id=model.id,
                         check_range_start_timestamp=job_spec.start_timestamp,
                         check_range_end_timestamp=job_spec.end_timestamp,
+                        policy_assignment_id=job_spec.policy_assignment_id,
                     ),
                 ),
             ),

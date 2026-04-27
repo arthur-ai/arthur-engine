@@ -10,14 +10,18 @@ from arthur_client.api_bindings import (
     AlertRuleInterval,
     AlertRulesV1Api,
     AlertsV1Api,
+    CompliancePolicyCheckJobSpec,
     Job,
     JobsV1Api,
     MetricsQueryResult,
     MetricsResultFilterOp,
     MetricsV1Api,
-    PoliciesV1Api,
     PostAlert,
     PostAlerts,
+    PostJob,
+    PostJobBatch,
+    PostJobKind,
+    PostJobSpec,
     PostMetricsQuery,
     PostMetricsQueryResultFilter,
     PostMetricsQueryResultFilterAndGroup,
@@ -25,8 +29,6 @@ from arthur_client.api_bindings import (
     PostMetricsQueryTimeRange,
     ResultFilter,
 )
-
-from job_executors.compliance_policy_check_executor import CompliancePolicyCheckExecutor
 
 METRIC_TIMESTAMP_COLUMN_NAME = "metric_timestamp"
 METRIC_VALUE_COLUMN_NAME = "metric_value"
@@ -50,14 +52,12 @@ class AlertCheckExecutor:
         alert_rules_client: AlertRulesV1Api,
         jobs_client: JobsV1Api,
         metrics_client: MetricsV1Api,
-        policies_client: PoliciesV1Api,
         logger: logging.Logger,
     ) -> None:
         self.alerts_client = alerts_client
         self.alert_rules_client = alert_rules_client
         self.jobs_client = jobs_client
         self.metrics_client = metrics_client
-        self.policies_client = policies_client
         self.logger = logger
 
     def execute(self, job: Job, job_spec: AlertCheckJobSpec) -> None:
@@ -78,16 +78,31 @@ class AlertCheckExecutor:
         if processing_exc:
             raise processing_exc
 
-        CompliancePolicyCheckExecutor(
-            self.policies_client,
-            self.alert_rules_client,
-            self.alerts_client,
-            self.metrics_client,
-            self.logger,
-        ).run_compliance_checks(
-            model_id=job_spec.scope_model_id,
-            window_start=job_spec.check_range_start_timestamp,
-            window_end=job_spec.check_range_end_timestamp,
+        self._submit_compliance_check_job(job, job_spec)
+
+    def _submit_compliance_check_job(
+        self,
+        job: Job,
+        job_spec: AlertCheckJobSpec,
+    ) -> None:
+        compliance_batch = PostJobBatch(
+            jobs=[
+                PostJob(
+                    kind=PostJobKind.COMPLIANCE_POLICY_CHECK,
+                    job_spec=PostJobSpec(
+                        CompliancePolicyCheckJobSpec(
+                            scope_model_id=job_spec.scope_model_id,
+                            check_range_start_timestamp=job_spec.check_range_start_timestamp,
+                            check_range_end_timestamp=job_spec.check_range_end_timestamp,
+                            policy_assignment_id=job_spec.policy_assignment_id,
+                        ),
+                    ),
+                ),
+            ],
+        )
+        self.jobs_client.post_submit_jobs_batch(
+            project_id=job.project_id,
+            post_job_batch=compliance_batch,
         )
 
     def _get_all_alert_rules(self, model_id: str) -> List[AlertRule]:

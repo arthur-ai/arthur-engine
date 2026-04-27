@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from typing import List, Optional, Tuple
 
 from arthur_client.api_bindings import (
@@ -53,11 +53,10 @@ class CompliancePolicyCheckExecutor:
         self.logger = logger
 
     def execute(self, job: Job, job_spec: CompliancePolicyCheckJobSpec) -> None:
-        now = datetime.now(timezone.utc)
-        self.run_compliance_checks(
+        self._run_compliance_checks(
             model_id=job_spec.scope_model_id,
-            window_start=now - timedelta(hours=24),
-            window_end=now,
+            window_start=job_spec.check_range_start_timestamp,
+            window_end=job_spec.check_range_end_timestamp,
             policy_assignment_id=(
                 str(job_spec.policy_assignment_id)
                 if job_spec.policy_assignment_id
@@ -65,7 +64,7 @@ class CompliancePolicyCheckExecutor:
             ),
         )
 
-    def run_compliance_checks(
+    def _run_compliance_checks(
         self,
         model_id: str,
         window_start: datetime,
