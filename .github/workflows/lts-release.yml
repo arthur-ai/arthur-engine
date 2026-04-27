@@ -170,9 +170,14 @@ jobs:
         with:
           name: arthur-genai-client-lts
           path: arthur-observability-sdk/python/src/arthur_genai_client
-      - uses: ./.github/workflows/composite-actions/setup-uv
+      # Install uv directly (NOT the local `setup-uv` composite, which runs
+      # `uv sync --frozen` — and that would fail because the lts-management
+      # orchestrator changed pyproject.toml version, putting it out of sync
+      # with uv.lock). `uv build` (used inside build_sdk_wheel.sh) doesn't
+      # need a synced environment.
+      - uses: astral-sh/setup-uv@v5
         with:
-          working-directory: arthur-observability-sdk/python
+          version: "0.11.7"
       - name: Verify pyproject is at .post form
         run: |
           PYPI_VER=$(python3 -c "import tomllib; d=tomllib.load(open('arthur-observability-sdk/python/pyproject.toml','rb')); print(d['project']['version'])")
