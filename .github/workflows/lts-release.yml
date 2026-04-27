@@ -104,6 +104,26 @@ jobs:
               exit 1
             fi
           done
+      - name: Bump version refs in values.yaml.template (template docs only)
+        env:
+          LTS: ${{ github.ref_name }}
+        # The chart's values.yaml.template carries example version values
+        # that customers reference when filling in their own values.yaml.
+        # The orchestrator doesn't touch these (they're free-form `key:
+        # value` lines, not structured TOML/YAML version fields), so we
+        # do a simple sed pass here BEFORE helm package so the packaged
+        # chart's example references the LTS version.
+        # Mirrors the bump-arthur-engine-version sed pattern.
+        run: |
+          set -e
+          GENAI_VALUES="deployment/helm/genai-engine/values.yaml.template"
+          ML_VALUES="deployment/helm/ml-engine/values.yaml.template"
+          if [ -f "$GENAI_VALUES" ]; then
+            sed -i "s|genaiEngineVersion:.*|genaiEngineVersion: '${LTS}'|" "$GENAI_VALUES"
+          fi
+          if [ -f "$ML_VALUES" ]; then
+            sed -i "s|containerImageVersion:.*|containerImageVersion: \"${LTS}\"|" "$ML_VALUES"
+          fi
       - name: Log in to GHCR
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io \
