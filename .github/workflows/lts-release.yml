@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: shared-protected-branch-secrets
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.ref }}
       - name: Read source version
@@ -86,7 +86,7 @@ jobs:
       packages: write
       contents: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.ref }}
       - uses: ./.github/workflows/composite-actions/setup-helm
@@ -156,7 +156,7 @@ jobs:
     name: Generate observability SDK client
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.ref }}
       - uses: actions/setup-node@v4
@@ -180,7 +180,7 @@ jobs:
     runs-on: ubuntu-latest
     container: python:3.12-bullseye
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.ref }}
       - uses: ./.github/workflows/composite-actions/setup-git
