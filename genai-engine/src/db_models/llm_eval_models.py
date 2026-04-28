@@ -39,7 +39,12 @@ class DatabaseLLMEval(Base):
     name: Mapped[str] = mapped_column(String, primary_key=True)
 
     eval_type: Mapped[EvalType] = mapped_column(
-        Enum(EvalType, native_enum=False, create_constraint=False),
+        Enum(
+            EvalType,
+            values_callable=lambda e: [x.value for x in e],
+            native_enum=False,
+            create_constraint=False,
+        ),
         nullable=False,
         server_default=EvalType.LLM_AS_A_JUDGE.value,
         default=EvalType.LLM_AS_A_JUDGE,
