@@ -9,9 +9,8 @@ Create Date: 2026-04-23 12:00:00.000000
 - Makes LLM-specific llm_evals fields (instructions, model_name, model_provider)
   nullable since ML eval types don't use them.
 - Adds eval_type discriminator to continuous_evals.
-- Makes llm_eval_name/llm_eval_version nullable in continuous_evals.
-- Drops the FK constraint that hard-wired continuous_evals to llm_evals
-  (referential integrity is managed in app code).
+- llm_eval_name/llm_eval_version remain NOT NULL; ML continuous evals populate
+  them with the ML eval's name/version (which lives in the same llm_evals table).
 """
 
 import sqlalchemy as sa
@@ -56,27 +55,6 @@ def upgrade() -> None:
 
     # --- continuous_evals ---
 
-    # Drop the FK that hard-links continuous_evals to llm_evals
-    op.drop_constraint(
-        "fk_continuous_evals_llm_eval",
-        "continuous_evals",
-        type_="foreignkey",
-    )
-
-    # Make llm_eval_name/llm_eval_version nullable
-    op.alter_column(
-        "continuous_evals",
-        "llm_eval_name",
-        existing_type=sa.String(),
-        nullable=True,
-    )
-    op.alter_column(
-        "continuous_evals",
-        "llm_eval_version",
-        existing_type=sa.Integer(),
-        nullable=True,
-    )
-
     # Add eval_type discriminator — backfill existing rows as "llm_eval"
     op.add_column(
         "continuous_evals",
@@ -93,55 +71,13 @@ def downgrade() -> None:
     conn = op.get_bind()
 
     # --- continuous_evals ---
+
+    # Delete ML-type continuous evals before dropping eval_type; they reference
+    # ML evals which will be removed below.
+    conn.execute(
+        sa.text("DELETE FROM continuous_evals WHERE eval_type = 'ml_eval'"),
+    )
     op.drop_column("continuous_evals", "eval_type")
-
-    # ML continuous evals have NULL llm_eval_name/llm_eval_version.
-    # Delete them before restoring NOT NULL constraints; downgrading removes ML eval support.
-    conn.execute(
-        sa.text(
-            "DELETE FROM continuous_evals WHERE llm_eval_name IS NULL OR llm_eval_version IS NULL",
-        ),
-    )
-
-    op.alter_column(
-        "continuous_evals",
-        "llm_eval_version",
-        existing_type=sa.Integer(),
-        nullable=False,
-    )
-    op.alter_column(
-        "continuous_evals",
-        "llm_eval_name",
-        existing_type=sa.String(),
-        nullable=False,
-    )
-
-    # Purge any continuous_evals whose referenced llm_eval no longer exists —
-    # these became orphans after the FK was dropped in upgrade.
-    conn.execute(
-        sa.text(
-            """
-            DELETE FROM continuous_evals
-            WHERE llm_eval_name IS NOT NULL
-              AND llm_eval_version IS NOT NULL
-              AND NOT EXISTS (
-                SELECT 1 FROM llm_evals
-                WHERE llm_evals.task_id = continuous_evals.task_id
-                  AND llm_evals.name = continuous_evals.llm_eval_name
-                  AND llm_evals.version = continuous_evals.llm_eval_version
-              )
-            """,
-        ),
-    )
-
-    op.create_foreign_key(
-        "fk_continuous_evals_llm_eval",
-        "continuous_evals",
-        "llm_evals",
-        ["task_id", "llm_eval_name", "llm_eval_version"],
-        ["task_id", "name", "version"],
-        ondelete="CASCADE",
-    )
 
     # --- llm_evals ---
 

@@ -1087,8 +1087,7 @@ class ContinuousEvalCreateRequest(BaseModel):
         default="llm_eval",
         description="Type of evaluator: 'llm_eval' or 'ml_eval'.",
     )
-    llm_eval_name: Optional[str] = Field(
-        default=None,
+    llm_eval_name: str = Field(
         description="Name of the eval to create the continuous eval for",
     )
     llm_eval_version: Optional[Union[str, int]] = Field(
@@ -1107,12 +1106,6 @@ class ContinuousEvalCreateRequest(BaseModel):
         default=True,
         description="Whether to enable or disable a continuous eval. Defaults to True.",
     )
-
-    @model_validator(mode="after")
-    def validate_eval_ref(self) -> "ContinuousEvalCreateRequest":
-        if not self.llm_eval_name:
-            raise ValueError("llm_eval_name is required")
-        return self
 
 
 class UpdateContinuousEvalRequest(BaseModel):

@@ -138,13 +138,10 @@ class DatabaseContinuousEval(Base):
         default="llm_eval",
     )
 
-    # These are Optional because a continuous eval can reference either an LLM eval
-    # (llm_as_a_judge) or an ML eval (pii, toxicity, prompt_injection).
-    # For LLM-type continuous evals both fields are populated.
-    # For ML-type continuous evals both fields are None — the eval is looked up by
-    # name/version from the llm_evals table using the continuous eval's own name/version.
-    llm_eval_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    llm_eval_version: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    # Points to the eval (LLM or ML) in the llm_evals table. ML evals live in the
+    # same table, so these are always populated regardless of eval_type.
+    llm_eval_name: Mapped[str] = mapped_column(String, nullable=False)
+    llm_eval_version: Mapped[int] = mapped_column(Integer, nullable=False)
 
     transform_id: Mapped[uuid.UUID] = mapped_column(
         UUID,
