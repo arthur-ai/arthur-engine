@@ -42,6 +42,7 @@ from schemas.common_schemas import (
 )
 from schemas.enums import (
     DocumentStorageEnvironment,
+    EvalType,
     RagAPIKeyAuthenticationProviderEnum,
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
@@ -827,14 +828,74 @@ class CreateEvalRequest(BaseModel):
     )
 
 
+class PIIEvalConfig(BaseModel):
+    """Configuration for PII detection evals."""
+
+    disabled_pii_entities: Optional[List[str]] = Field(
+        default=None,
+        description="List of PII entity types to disable (e.g. ['EMAIL_ADDRESS', 'PHONE_NUMBER'])",
+    )
+    pii_confidence_threshold: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Minimum confidence score for a PII entity to be flagged",
+    )
+    allow_list: Optional[List[str]] = Field(
+        default=None,
+        description="List of values that should not be flagged as PII",
+    )
+
+
+class ToxicityEvalConfig(BaseModel):
+    """Configuration for toxicity detection evals."""
+
+    toxicity_threshold: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Minimum toxicity score for text to be flagged",
+    )
+
+
+class PromptInjectionEvalConfig(BaseModel):
+    """Configuration for prompt injection detection evals."""
+
+
+# Map from EvalType to its typed config model for validation.
+# Config is stored as a raw dict in the DB; these models define the valid fields.
+_ML_EVAL_CONFIG_MODELS: Dict[EvalType, type] = {
+    EvalType.PII: PIIEvalConfig,
+    EvalType.PII_V1: PIIEvalConfig,
+    EvalType.TOXICITY: ToxicityEvalConfig,
+    EvalType.PROMPT_INJECTION: PromptInjectionEvalConfig,
+}
+
+
 class CreateMLEvalRequest(BaseModel):
-    eval_type: Literal["pii", "pii_v1", "toxicity", "prompt_injection"] = Field(
+    eval_type: EvalType = Field(
         description="Type of ML eval (e.g. 'pii', 'toxicity', 'prompt_injection')",
     )
-    config: Optional[Any] = Field(
+    # Config is a free-form dict whose valid fields are defined by the typed models above
+    # (PIIEvalConfig, ToxicityEvalConfig, PromptInjectionEvalConfig).
+    config: Optional[Dict[str, Any]] = Field(
         default=None,
-        description="Optional configuration for the ML eval",
+        description="Optional configuration for the ML eval. Valid fields depend on eval_type.",
     )
+
+    @model_validator(mode="after")
+    def validate_ml_eval_type(self) -> "CreateMLEvalRequest":
+        ml_eval_types = {
+            EvalType.PII,
+            EvalType.PII_V1,
+            EvalType.TOXICITY,
+            EvalType.PROMPT_INJECTION,
+        }
+        if self.eval_type not in ml_eval_types:
+            raise ValueError(
+                f"eval_type must be one of {[e.value for e in ml_eval_types]}, got '{self.eval_type}'",
+            )
+        return self
 
 
 class CreateAnyEvalRequest(BaseModel):
@@ -842,16 +903,11 @@ class CreateAnyEvalRequest(BaseModel):
 
     For llm_as_a_judge evals model_name, model_provider and instructions are required.
     For ML evals (pii, toxicity, prompt_injection) only eval_type (and optionally config)
-    are needed.
+    are needed. Valid config fields per eval_type are documented in PIIEvalConfig,
+    ToxicityEvalConfig, and PromptInjectionEvalConfig.
     """
 
-    eval_type: Literal[
-        "llm_as_a_judge",
-        "pii",
-        "pii_v1",
-        "toxicity",
-        "prompt_injection",
-    ] = Field(
+    eval_type: EvalType = Field(
         description="Type of eval: 'llm_as_a_judge', 'pii', 'pii_v1', 'toxicity', 'prompt_injection'",
     )
     model_name: Optional[str] = Field(
@@ -866,14 +922,17 @@ class CreateAnyEvalRequest(BaseModel):
         default=None,
         description="Eval instructions — required for llm_as_a_judge evals",
     )
-    config: Optional[Any] = Field(
+    config: Optional[Dict[str, Any]] = Field(
         default=None,
-        description="Optional configuration (thresholds, LLM settings, etc.)",
+        description=(
+            "Optional configuration. For llm_as_a_judge: LLM settings (temperature, etc.). "
+            "For ML evals: see PIIEvalConfig, ToxicityEvalConfig, PromptInjectionEvalConfig."
+        ),
     )
 
     @model_validator(mode="after")
     def validate_for_type(self) -> "CreateAnyEvalRequest":
-        if self.eval_type == "llm_as_a_judge":
+        if self.eval_type == EvalType.LLM_AS_A_JUDGE:
             if not self.model_name:
                 raise ValueError("model_name is required for llm_as_a_judge evals")
             if not self.model_provider:

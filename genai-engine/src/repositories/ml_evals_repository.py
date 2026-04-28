@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
 from repositories.base_evaluator import BaseEvaluator
 from repositories.base_llm_repository import BaseLLMRepository
+from schemas.enums import EvalType
 from schemas.internal_schemas import ContinuousEvalTransformVariableMapping
 from schemas.llm_eval_schemas import MLEval
 from schemas.request_schemas import CreateMLEvalRequest
@@ -17,7 +18,12 @@ from schemas.response_schemas import (
 
 # Known ML eval types stored in the shared llm_evals table.
 # These are model-based evaluators that do not require an LLM-as-a-judge prompt.
-ML_EVAL_TYPES = ["pii", "pii_v1", "toxicity", "prompt_injection"]
+ML_EVAL_TYPES = [
+    EvalType.PII,
+    EvalType.PII_V1,
+    EvalType.TOXICITY,
+    EvalType.PROMPT_INJECTION,
+]
 
 # The single input variable every ML eval expects.
 ML_EVAL_INPUT_VARIABLE = "input"

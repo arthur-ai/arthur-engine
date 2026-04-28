@@ -16,6 +16,9 @@ class PIIScorerV2(BaseMLScorer):
     """Wraps BinaryPIIDataClassifier (GLiNER + Presidio, V2)."""
 
     def __init__(self) -> None:
+        # Deferred import: scorer modules load heavyweight ML models (GLiNER, Presidio,
+        # Transformers) on import. Keeping these inside __init__ ensures models are only
+        # loaded when the scorer is first instantiated, not at server startup.
         from scorer.checks.pii.classifier import BinaryPIIDataClassifier
 
         self._inner = BinaryPIIDataClassifier()

@@ -12,6 +12,7 @@ from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTest
 from db_models.llm_eval_models import DatabaseContinuousEval
 from dependencies import get_db_session
 from repositories.base_evaluator import get_evaluator
+from repositories.llm_evals_repository import LLMEvalsRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
@@ -238,19 +239,20 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                     f"Continuous eval {continuous_eval.id} has no eval version configured",
                 )
 
-            # Look up eval_type from the llm_evals row so we dispatch to the right executor.
-            from db_models.llm_eval_models import DatabaseLLMEval
-
-            db_llm_eval = (
-                db_session.query(DatabaseLLMEval)
-                .filter(
-                    DatabaseLLMEval.task_id == continuous_eval.task_id,
-                    DatabaseLLMEval.name == eval_name,
-                    DatabaseLLMEval.version == continuous_eval.llm_eval_version,
+            # Look up the eval via the repository to get its eval_type for dispatching.
+            try:
+                llm_eval = LLMEvalsRepository(db_session).get_llm_item(
+                    continuous_eval.task_id,
+                    eval_name,
+                    eval_version,
                 )
-                .first()
-            )
-            eval_type = db_llm_eval.eval_type if db_llm_eval else "llm_as_a_judge"
+            except ValueError:
+                raise ValueError(
+                    f"Eval '{eval_name}' version {continuous_eval.llm_eval_version} "
+                    f"not found for task {continuous_eval.task_id}. "
+                    "The eval may have been deleted or the continuous eval configuration is invalid.",
+                )
+            eval_type = llm_eval.eval_type
             evaluator = get_evaluator(db_session, eval_type)
 
             # Validate that the resolved eval vars match what the evaluator expects

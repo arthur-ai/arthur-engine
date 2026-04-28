@@ -3,6 +3,7 @@ from typing import List
 
 from sqlalchemy.orm import Session
 
+from schemas.enums import EvalType
 from schemas.internal_schemas import ContinuousEvalTransformVariableMapping
 from schemas.response_schemas import EvalRunResponse
 
@@ -18,7 +19,6 @@ class BaseEvaluator(ABC):
         eval_version: str,
     ) -> List[str]:
         """Return the list of variable names expected by the evaluator."""
-        ...
 
     @abstractmethod
     def run(
@@ -42,14 +42,15 @@ class BaseEvaluator(ABC):
         Returns:
             EvalRunResponse with score (int 0/1), reason, and cost.
         """
-        ...
 
 
 def get_evaluator(
     db_session: Session,
-    eval_type: str = "llm_as_a_judge",
+    eval_type: EvalType = EvalType.LLM_AS_A_JUDGE,
 ) -> "BaseEvaluator":
     """Factory: return the right evaluator for the given eval_type."""
+    # Imports are intentionally deferred to avoid circular imports:
+    # both MLEvaluator and LLMEvaluator import BaseEvaluator at module level.
     from repositories.ml_evals_repository import ML_EVAL_TYPES, MLEvaluator
 
     if eval_type in ML_EVAL_TYPES:

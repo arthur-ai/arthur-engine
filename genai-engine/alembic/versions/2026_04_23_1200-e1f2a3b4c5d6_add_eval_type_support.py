@@ -90,8 +90,18 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    conn = op.get_bind()
+
     # --- continuous_evals ---
     op.drop_column("continuous_evals", "eval_type")
+
+    # ML continuous evals have NULL llm_eval_name/llm_eval_version.
+    # Delete them before restoring NOT NULL constraints; downgrading removes ML eval support.
+    conn.execute(
+        sa.text(
+            "DELETE FROM continuous_evals WHERE llm_eval_name IS NULL OR llm_eval_version IS NULL",
+        ),
+    )
 
     op.alter_column(
         "continuous_evals",
@@ -116,6 +126,11 @@ def downgrade() -> None:
     )
 
     # --- llm_evals ---
+
+    # ML evals (pii, toxicity, prompt_injection) have NULL model_name, model_provider,
+    # instructions. Delete them before restoring NOT NULL constraints.
+    conn.execute(sa.text("DELETE FROM llm_evals WHERE eval_type != 'llm_as_a_judge'"))
+
     op.alter_column(
         "llm_evals",
         "model_provider",

@@ -36,7 +36,9 @@ class DatabaseLLMEval(Base):
     )
     name: Mapped[str] = mapped_column(String, primary_key=True)
 
-    # Eval type — "llm_as_a_judge" | "pii" | "toxicity" | "prompt_injection" | ...
+    # Eval type — stored as VARCHAR; valid values are defined by schemas.enums.EvalType.
+    # Stored as a plain string (not a DB-level enum) so adding new types doesn't require
+    # a DB migration.
     eval_type: Mapped[str] = mapped_column(
         String,
         nullable=False,
@@ -137,6 +139,11 @@ class DatabaseContinuousEval(Base):
         default="llm_eval",
     )
 
+    # These are Optional because a continuous eval can reference either an LLM eval
+    # (llm_as_a_judge) or an ML eval (pii, toxicity, prompt_injection).
+    # For LLM-type continuous evals both fields are populated.
+    # For ML-type continuous evals both fields are None — the eval is looked up by
+    # name/version from the llm_evals table using the continuous eval's own name/version.
     llm_eval_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     llm_eval_version: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 

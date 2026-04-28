@@ -49,10 +49,6 @@ llm_eval_routes = APIRouter(
 )
 
 
-def _repo(db_session: Session) -> LLMEvalsRepository:
-    return LLMEvalsRepository(db_session)
-
-
 @llm_eval_routes.get(
     "/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}",
     summary="Get an llm eval",
@@ -73,7 +69,11 @@ def get_llm_eval(
     task: Task = Depends(get_validated_task),
 ) -> LLMEval:
     try:
-        return _repo(db_session).get_llm_item(task.id, eval_name, eval_version)
+        return LLMEvalsRepository(db_session).get_llm_item(
+            task.id,
+            eval_name,
+            eval_version,
+        )
     except ValueError as e:
         if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))
@@ -106,7 +106,7 @@ def get_all_llm_eval_versions(
     task: Task = Depends(get_validated_task),
 ) -> LLMEvalsVersionListResponse:
     try:
-        result = _repo(db_session).get_llm_item_versions(
+        result = LLMEvalsRepository(db_session).get_llm_item_versions(
             task.id,
             eval_name,
             pagination_parameters,
@@ -143,7 +143,7 @@ def get_all_llm_evals(
     task: Task = Depends(get_validated_task),
 ) -> LLMGetAllMetadataListResponse:
     try:
-        return _repo(db_session).get_all_llm_item_metadata(
+        return LLMEvalsRepository(db_session).get_all_llm_item_metadata(
             task.id,
             pagination_parameters,
             filter_request,
@@ -171,7 +171,7 @@ def run_saved_llm_eval(
     task: Task = Depends(get_validated_task),
 ) -> LLMEvalRunResponse:
     try:
-        return _repo(db_session).run_llm_eval(
+        return LLMEvalsRepository(db_session).run_llm_eval(
             task.id,
             eval_name,
             eval_version,
@@ -200,7 +200,11 @@ def save_llm_eval(
     task: Task = Depends(get_validated_task),
 ) -> LLMEval:
     try:
-        return _repo(db_session).save_llm_item(task.id, eval_name, eval_config)
+        return LLMEvalsRepository(db_session).save_llm_item(
+            task.id,
+            eval_name,
+            eval_config,
+        )
     except jinja2.exceptions.TemplateSyntaxError as e:
         raise HTTPException(
             status_code=400,
@@ -227,7 +231,7 @@ def delete_llm_eval(
     task: Task = Depends(get_validated_task),
 ) -> Response:
     try:
-        _repo(db_session).delete_llm_item(task.id, eval_name)
+        LLMEvalsRepository(db_session).delete_llm_item(task.id, eval_name)
         disabled = ContinuousEvalsRepository(
             db_session,
         ).disable_continuous_evals_by_eval_name(task.id, eval_name)
@@ -262,7 +266,11 @@ def soft_delete_llm_eval_version(
     task: Task = Depends(get_validated_task),
 ) -> Response:
     try:
-        _repo(db_session).soft_delete_llm_item_version(task.id, eval_name, eval_version)
+        LLMEvalsRepository(db_session).soft_delete_llm_item_version(
+            task.id,
+            eval_name,
+            eval_version,
+        )
         try:
             version_int = int(eval_version)
             disabled = ContinuousEvalsRepository(
@@ -299,7 +307,11 @@ def get_llm_eval_by_tag(
     task: Task = Depends(get_validated_task),
 ) -> LLMEval:
     try:
-        result = _repo(db_session).get_llm_item_by_tag(task.id, eval_name, tag)
+        result = LLMEvalsRepository(db_session).get_llm_item_by_tag(
+            task.id,
+            eval_name,
+            tag,
+        )
         assert isinstance(result, LLMEval)
         return result
     except ValueError as e:
@@ -329,7 +341,7 @@ def add_tag_to_llm_eval_version(
     task: Task = Depends(get_validated_task),
 ) -> LLMEval:
     try:
-        repo = _repo(db_session)
+        repo = LLMEvalsRepository(db_session)
         repo.add_tag_to_llm_item_version(task.id, eval_name, eval_version, tag)
         return repo.get_llm_item(task.id, eval_name, eval_version)
     except ValueError as e:
@@ -359,7 +371,7 @@ def delete_tag_from_llm_eval_version(
     task: Task = Depends(get_validated_task),
 ) -> None:
     try:
-        _repo(db_session).delete_llm_item_tag_from_version(
+        LLMEvalsRepository(db_session).delete_llm_item_tag_from_version(
             task.id,
             eval_name,
             eval_version,

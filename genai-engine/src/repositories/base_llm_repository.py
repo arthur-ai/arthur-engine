@@ -14,6 +14,7 @@ from sqlalchemy.orm import Query, Session
 from sqlalchemy.sql import exists, or_
 
 from custom_types import QueryT
+from schemas.enums import EvalType
 from schemas.request_schemas import LLMGetAllFilterRequest, LLMGetVersionsFilterRequest
 from schemas.response_schemas import (
     LLMGetAllMetadataListResponse,
@@ -80,11 +81,11 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
 
     # Optional: restrict queries to specific eval_type values.
     # None means no filter (all eval types). Set in subclasses to scope the repo.
-    eval_types: Optional[List[str]] = None
+    eval_types: Optional[List[EvalType]] = None
 
     # Optional: the eval_type value to stamp on newly created items when the
     # create request does not include an eval_type field.
-    default_eval_type: Optional[str] = None
+    default_eval_type: Optional[EvalType] = None
 
     def __init__(self, db_session: Session):
         if self.db_model is None:
@@ -605,7 +606,9 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
             llm_metadata.append(
                 LLMGetAllMetadataResponse(
                     name=row.name,
-                    eval_type=row.eval_type if _has_eval_type else "llm_as_a_judge",
+                    eval_type=(
+                        row.eval_type if _has_eval_type else EvalType.LLM_AS_A_JUDGE
+                    ),
                     versions=row.versions,
                     created_at=row.created_at,
                     latest_version_created_at=row.latest_version_created_at,
