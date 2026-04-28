@@ -121,11 +121,6 @@ export interface AgenticAnnotationResponse {
    */
   eval_name?: string | null;
   /**
-   * Eval Type
-   * Type of eval: 'llm_eval' or 'ml_eval'
-   */
-  eval_type?: string | null;
-  /**
    * Eval Version
    * Version of the eval the continuous eval used when scoring
    */
@@ -798,11 +793,10 @@ export interface AgenticPromptVersionResponse {
    */
   deleted_at: string | null;
   /**
-   * Eval Type
    * Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
    * @default "llm_as_a_judge"
    */
-  eval_type?: string;
+  eval_type?: EvalType;
   /**
    * Model Name
    * Model name chosen for this version of the llm eval. None for ML evals.
@@ -1591,12 +1585,6 @@ export interface ContinuousEvalResponse {
    */
   enabled?: boolean;
   /**
-   * Eval Type
-   * Type of evaluator: 'llm_eval' or 'ml_eval'.
-   * @default "llm_eval"
-   */
-  eval_type?: string;
-  /**
    * Id
    * ID of the transform.
    * @format uuid
@@ -1604,14 +1592,14 @@ export interface ContinuousEvalResponse {
   id: string;
   /**
    * Llm Eval Name
-   * Name of the eval.
+   * Name of the llm eval.
    */
-  llm_eval_name?: string | null;
+  llm_eval_name: string;
   /**
    * Llm Eval Version
-   * Version of the eval.
+   * Version of the llm eval.
    */
-  llm_eval_version?: number | null;
+  llm_eval_version: number;
   /**
    * Name
    * Name of the continuous eval.
@@ -1905,21 +1893,12 @@ export interface CreateEvalRequest {
 export interface CreateMLEvalRequest {
   /**
    * Config
-   * Optional configuration for the ML eval
+   * Optional configuration for the ML eval. Valid fields depend on eval_type.
    */
-  config?: null;
-  /**
-   * Eval Type
-   * Type of ML eval (e.g. 'pii', 'toxicity', 'prompt_injection')
-   */
-  eval_type: CreateMlEvalRequestEvalTypeEnum;
+  config?: Record<string, any> | null;
+  /** Type of ML eval (e.g. 'pii', 'toxicity', 'prompt_injection') */
+  eval_type: EvalType;
 }
-
-/**
- * Eval Type
- * Type of ML eval (e.g. 'pii', 'toxicity', 'prompt_injection')
- */
-export type CreateMlEvalRequestEvalTypeEnum = "pii" | "pii_v1" | "toxicity" | "prompt_injection";
 
 export type CreateNotebookApiV1TasksTaskIdNotebooksPostData = NotebookDetail;
 
@@ -2814,6 +2793,12 @@ export interface EvalResultSummary {
    */
   total_count: number;
 }
+
+/**
+ * EvalType
+ * Discriminator for all eval types stored in the llm_evals table.
+ */
+export type EvalType = "llm_as_a_judge" | "pii" | "pii_v1" | "toxicity" | "prompt_injection";
 
 /**
  * EvalVariableMapping
@@ -4629,7 +4614,7 @@ export interface LLMBaseConfigSettings {
   frequency_penalty?: number | null;
   /**
    * Logit Bias
-   * Modify likelihood of specified tokens appearing in combination
+   * Modify likelihood of specified tokens appearing in completion
    */
   logit_bias?: LogitBiasItem[] | null;
   /**
@@ -4771,11 +4756,8 @@ export interface LLMConfigSettings {
 
 /** LLMEval */
 export interface LLMEval {
-  /**
-   * Config
-   * Eval configuration. LLMBaseConfigSettings for LLM evals; type-specific dict for ML evals.
-   */
-  config?: null;
+  /** LLM configurations for this eval (e.g. temperature, max_tokens, etc.) */
+  config?: LLMBaseConfigSettings | null;
   /**
    * Created At
    * Timestamp when the llm eval was created.
@@ -4788,23 +4770,17 @@ export interface LLMEval {
    */
   deleted_at?: string | null;
   /**
-   * Eval Type
-   * Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
-   * @default "llm_as_a_judge"
-   */
-  eval_type?: string;
-  /**
    * Instructions
-   * Instructions for the llm eval. None for ML evals.
+   * Instructions for the llm eval
    */
-  instructions?: string | null;
+  instructions: string;
   /**
    * Model Name
-   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet'). None for ML evals.
+   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
    */
-  model_name?: string | null;
-  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). None for ML evals. */
-  model_provider?: ModelProvider | null;
+  model_name: string;
+  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
+  model_provider: ModelProvider;
   /**
    * Name
    * Name of the llm eval
@@ -4889,11 +4865,10 @@ export interface LLMGetAllMetadataResponse {
    */
   deleted_versions: number[];
   /**
-   * Eval Type
    * Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
    * @default "llm_as_a_judge"
    */
-  eval_type?: string;
+  eval_type?: EvalType;
   /**
    * Latest Version Created At
    * Timestamp when the last version of the llm asset was created
@@ -5189,11 +5164,10 @@ export interface LLMVersionResponse {
    */
   deleted_at: string | null;
   /**
-   * Eval Type
    * Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
    * @default "llm_as_a_judge"
    */
-  eval_type?: string;
+  eval_type?: EvalType;
   /**
    * Model Name
    * Model name chosen for this version of the llm eval. None for ML evals.
@@ -6632,8 +6606,8 @@ export interface MLEval {
   created_at: string;
   /** Deleted At */
   deleted_at?: string | null;
-  /** Eval Type */
-  eval_type: string;
+  /** Discriminator for all eval types stored in the llm_evals table. */
+  eval_type: EvalType;
   /** Name */
   name: string;
   /**

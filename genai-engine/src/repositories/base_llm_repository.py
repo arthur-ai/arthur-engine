@@ -568,7 +568,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         if _has_eval_type:
             _select_cols.insert(
                 1,
-                sa.func.max(self.db_model.eval_type).label("eval_type"),  # type: ignore[attr-defined]
+                sa.func.max(self.db_model.eval_type).label("eval_type"),
             )
 
         # Start with aggregated query

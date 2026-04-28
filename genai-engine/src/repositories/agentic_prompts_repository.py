@@ -28,7 +28,7 @@ from services.prompt.chat_completion_service import ChatCompletionService
 
 class AgenticPromptRepository(
     BaseLLMRepository[
-        DatabaseAgenticPrompt,
+        DatabaseAgenticPrompt,  # type: ignore[type-var]
         DatabaseAgenticPromptVersionTag,
         CreateAgenticPromptRequest,
     ],
