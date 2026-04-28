@@ -17,7 +17,7 @@ from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from repositories.trace_transform_repository import TraceTransformRepository
-from schemas.enums import TestRunStatus
+from schemas.enums import EvalType, TestRunStatus
 from schemas.internal_schemas import ContinuousEval
 from services.base_queue_service import BaseQueueJob, BaseQueueService
 from utils.transform_executor import execute_transform
@@ -252,7 +252,7 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                     f"not found for task {continuous_eval.task_id}. "
                     "The eval may have been deleted or the continuous eval configuration is invalid.",
                 )
-            eval_type = llm_eval.eval_type
+            eval_type = EvalType(llm_eval.eval_type)
             evaluator = get_evaluator(db_session, eval_type)
 
             # Validate that the resolved eval vars match what the evaluator expects

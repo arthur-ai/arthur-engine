@@ -31,6 +31,7 @@ from clients.telemetry.telemetry_client import TelemetryEventTypes, send_telemet
 from config.config import Config
 from config.extra_features import extra_feature_config
 from dependencies import (
+    db_session_context,
     get_db_engine,
     get_db_session,
     get_keycloak_client,
@@ -38,6 +39,7 @@ from dependencies import (
     get_oauth_client,
     get_scorer_client,
 )
+from monitoring.audit_log_middleware import AuditLogMiddleware, setup_audit_logger
 from repositories.system_task_repository import SystemTaskRepository
 from routers.api_key_routes import api_keys_routes
 from routers.auth_routes import auth_routes
@@ -80,6 +82,7 @@ from services.currency import (
     initialize_currency_conversion_service,
     shutdown_currency_conversion_service,
 )
+from services.system_tasks_service import initialize_system_tasks
 from services.task import (
     initialize_global_agent_polling_service,
     shutdown_global_agent_polling_service,
@@ -209,6 +212,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         db.close()
     except HTTPException as e:
         raise ConnectionError(f"Error connecting to database: {e}") from None
+
+    try:
+        with db_session_context() as init_db:
+            initialize_system_tasks(init_db)
+    except Exception as e:
+        logger.error(f"Error initializing system tasks: {e}")
 
     keycloak_settings = get_keycloak_settings()
     if keycloak_settings.ENABLED:
@@ -506,6 +515,11 @@ def get_test_app() -> FastAPI:
         app.add_middleware(TransferEncodingMiddleware)
 
     app.add_middleware(SessionMiddleware, secret_key=Config.app_secret_key())
+
+    if Config.audit_log_enabled():
+        setup_audit_logger()
+        app.add_middleware(AuditLogMiddleware)
+
     add_routers(
         app,
         [
@@ -558,6 +572,11 @@ def get_app() -> FastAPI:
         app.add_middleware(TransferEncodingMiddleware)
 
     app.add_middleware(SessionMiddleware, secret_key=Config.app_secret_key())
+
+    if Config.audit_log_enabled():
+        setup_audit_logger()
+        app.add_middleware(AuditLogMiddleware)
+
     if new_relic_enabled():
         setup_newrelic(app)
 

@@ -82,7 +82,7 @@ class LLMEvalsRepository(
 
         return LLMVersionResponse(
             version=db_item.version,
-            eval_type=db_item.eval_type,
+            eval_type=EvalType(db_item.eval_type),
             created_at=db_item.created_at,
             deleted_at=db_item.deleted_at,
             model_provider=(
@@ -111,6 +111,18 @@ class LLMEvalsRepository(
         llm_eval: LLMEval,
         response_format: Optional[Union[LLMResponseFormat, Type[BaseModel]]] = None,
     ) -> AgenticPrompt:
+        if llm_eval.model_name is None:
+            raise ValueError(
+                f"LLM eval '{llm_eval.name}' has no model_name configured.",
+            )
+        if llm_eval.model_provider is None:
+            raise ValueError(
+                f"LLM eval '{llm_eval.name}' has no model_provider configured.",
+            )
+        if llm_eval.instructions is None:
+            raise ValueError(
+                f"LLM eval '{llm_eval.name}' has no instructions configured.",
+            )
         messages = [
             OpenAIMessage(
                 role=MessageRole.SYSTEM,
@@ -169,6 +181,15 @@ class LLMEvalsRepository(
         if llm_eval.deleted_at is not None:
             raise ValueError(
                 f"Cannot run this llm eval because it was deleted on: {llm_eval.deleted_at}",
+            )
+
+        if llm_eval.model_provider is None:
+            raise ValueError(
+                f"LLM eval '{llm_eval.name}' has no model_provider configured.",
+            )
+        if llm_eval.model_name is None:
+            raise ValueError(
+                f"LLM eval '{llm_eval.name}' has no model_name configured.",
             )
 
         # get the llm client

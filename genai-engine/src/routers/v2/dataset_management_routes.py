@@ -1,4 +1,4 @@
-from typing import Annotated, List, Optional
+from typing import Annotated, List, Optional, cast
 from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
@@ -8,10 +8,12 @@ from starlette.responses import Response
 from starlette.status import HTTP_204_NO_CONTENT
 
 from dependencies import get_db_session, get_validated_task
+from repositories.agentic_prompts_repository import AgenticPromptRepository
 from repositories.datasets_repository import DatasetRepository
 from repositories.model_provider_repository import ModelProviderRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
+from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Dataset, Task, User
 from schemas.request_schemas import (
@@ -29,8 +31,16 @@ from schemas.response_schemas import (
     ListDatasetVersionsResponse,
     SearchDatasetsResponse,
     SyntheticDataGenerationResponse,
+    SyntheticDataPromptStatus,
 )
 from services.synthetic_data_service import SyntheticDataService
+from utils.constants import (
+    EMPTY_MODEL_NAME,
+    EMPTY_MODEL_PROVIDER,
+    PRODUCTION_TAG,
+    SYNTHETIC_DATA_SYSTEM_PROMPT_NAME,
+    SYNTHETIC_DATASET_TASK_ID,
+)
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 
@@ -304,6 +314,52 @@ def get_dataset_version_row(
 ###########################################
 
 
+@dataset_management_routes.get(
+    "/datasets/synthetic-data/prompt-status",
+    summary="Get the model configuration stored in the SDG system prompt.",
+    tags=[datasets_router_tag],
+    response_model=SyntheticDataPromptStatus,
+)
+@permission_checker(permissions=PermissionLevelsEnum.DATASET_READ.value)
+def get_synthetic_data_prompt_status(
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> SyntheticDataPromptStatus:
+    prompt_repo = AgenticPromptRepository(db_session)
+    try:
+        prompt = cast(
+            AgenticPrompt,
+            prompt_repo.get_llm_item_by_tag(
+                task_id=SYNTHETIC_DATASET_TASK_ID,
+                item_name=SYNTHETIC_DATA_SYSTEM_PROMPT_NAME,
+                tag=PRODUCTION_TAG,
+            ),
+        )
+    except ValueError:
+        # Not bootstrapped yet
+        return SyntheticDataPromptStatus.model_validate(
+            {
+                "model_provider": EMPTY_MODEL_PROVIDER,
+                "model_name": EMPTY_MODEL_NAME,
+                "is_placeholder": True,
+            },
+        )
+
+    is_placeholder = (
+        prompt.model_provider == EMPTY_MODEL_PROVIDER
+        or prompt.model_name == EMPTY_MODEL_NAME
+    )
+    # Pydantic coerces the string sentinel ("empty") or enum value back into the
+    # Union[ModelProvider, Literal["empty"]] at construction time.
+    return SyntheticDataPromptStatus.model_validate(
+        {
+            "model_provider": prompt.model_provider,
+            "model_name": prompt.model_name,
+            "is_placeholder": is_placeholder,
+        },
+    )
+
+
 @dataset_management_routes.post(
     "/datasets/{dataset_id}/versions/{version_number}/generate-synthetic",
     description="Generate synthetic data rows based on existing dataset patterns.",
@@ -358,11 +414,12 @@ def generate_synthetic_data(
     ]
 
     # Create the synthetic data service and generate data
-    synthetic_service = SyntheticDataService(model_provider_repo)
+    synthetic_service = SyntheticDataService(model_provider_repo, db_session)
     return synthetic_service.generate_initial(
         request=request,
         existing_rows=existing_rows,
         column_names=column_names,
+        session_id=f"dataset:{dataset_id}:v{version_number}",
     )
 
 
@@ -414,9 +471,10 @@ def send_synthetic_data_message(
     ]
 
     # Create the synthetic data service and continue conversation
-    synthetic_service = SyntheticDataService(model_provider_repo)
+    synthetic_service = SyntheticDataService(model_provider_repo, db_session)
     return synthetic_service.continue_conversation(
         request=request,
         existing_rows=existing_rows,
         column_names=column_names,
+        session_id=f"dataset:{dataset_id}:v{version_number}",
     )

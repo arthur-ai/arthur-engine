@@ -63,6 +63,8 @@ GENAI_ENGINE_OPENAI_GPT_ENDPOINTS_KEYS_ENV_VAR = (
 DEFAULT_MAX_LLM_RULES_PER_TASK = 3
 DEFAULT_TRACE_RETENTION_DAYS = 90
 ALLOWED_TRACE_RETENTION_DAYS = (7, 14, 30, 90, 120, 365)
+TRACE_RETENTION_INTERVAL_HOURS_ENV_VAR = "TRACE_RETENTION_INTERVAL_HOURS"
+MIN_TRACE_RETENTION_INTERVAL_HOURS = 1
 DEFAULT_TOXICITY_RULE_THRESHOLD = 0.5
 GENAI_ENGINE_TOXICITY_HARMFUL_REQUESTS_CHUNK_SIZE_ENV_VAR = (
     "GENAI_ENGINE_TOXICITY_HARMFUL_REQUESTS_CHUNK_SIZE"
@@ -426,7 +428,28 @@ MAX_DATASET_ROWS = 250
 
 ##################################################################
 
+# System Tasks
+SYNTHETIC_DATASET_TASK_ID = "00000000-da7a-0000-0000-000000000001"
+SYNTHETIC_DATASET_TASK_NAME = "Synthetic Dataset Generation"
+SYNTHETIC_DATA_SYSTEM_PROMPT_NAME = "synthetic-data-system-prompt"
+SYNTHETIC_DATA_INITIAL_USER_PROMPT_NAME = "synthetic-data-initial-user-prompt"
+SYNTHETIC_DATA_CONVERSATION_USER_PROMPT_NAME = "synthetic-data-conversation-user-prompt"
+PRODUCTION_TAG = "production"
+
+# Empty model provider sentinel — placeholder for bootstrapped SDG prompts
+EMPTY_MODEL_PROVIDER = "empty"
+EMPTY_MODEL_NAME = "empty"
+
+##################################################################
+
 # Agent Experiment constants
 AGENT_EXPERIMENT_SESSION_PREFIX = "arthur-exp"
+
+##################################################################
+
+# Audit log constants
+AUDIT_LOG_ENABLED_ENV_VAR = "AUDIT_LOG_ENABLED"
+AUDIT_LOG_RETENTION_DAYS_ENV_VAR = "AUDIT_LOG_RETENTION_DAYS"
+AUDIT_LOG_OVERRIDE_PATH_ENV_VAR = "AUDIT_LOG_OVERRIDE_PATH"
 
 ##################################################################

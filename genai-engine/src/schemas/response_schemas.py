@@ -902,6 +902,24 @@ class SyntheticDataGenerationResponse(BaseModel):
     )
 
 
+class SyntheticDataPromptStatus(BaseModel):
+    model_config = {"use_enum_values": True}
+
+    model_provider: Union[ModelProvider, Literal["empty"]] = Field(
+        ...,
+        description="Model provider stored in the SDG system prompt. "
+        "The sentinel 'empty' indicates the prompt has not yet been configured.",
+    )
+    model_name: str = Field(
+        ...,
+        description="Model name stored in the SDG system prompt",
+    )
+    is_placeholder: bool = Field(
+        ...,
+        description="True when the prompt uses the empty placeholder model",
+    )
+
+
 class DailyAgenticAnnotationStats(BaseModel):
     """Statistics for a single day of agentic annotations."""
 

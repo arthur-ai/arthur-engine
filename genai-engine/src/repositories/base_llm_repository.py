@@ -111,7 +111,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
             self.db_model.name == item_name,
         )
         if self.eval_types is not None:
-            query = query.filter(self.db_model.eval_type.in_(self.eval_types))  # type: ignore[attr-defined]
+            query = query.filter(self.db_model.eval_type.in_(self.eval_types))
         return query
 
     def _get_all_tags_for_item_version(self, db_item: DBModelT) -> List[str]:
@@ -541,7 +541,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         if _has_eval_type:
             _select_cols.insert(
                 1,
-                sa.func.max(self.db_model.eval_type).label("eval_type"),  # type: ignore[attr-defined]
+                sa.func.max(self.db_model.eval_type).label("eval_type"),
             )
 
         # Start with aggregated query
@@ -552,7 +552,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         # Apply eval_type filter so each repo subclass only sees its own types
         if self.eval_types is not None:
             base_query = base_query.filter(
-                self.db_model.eval_type.in_(self.eval_types),  # type: ignore[attr-defined]
+                self.db_model.eval_type.in_(self.eval_types),
             )
 
         # Apply filters BEFORE grouping
@@ -590,7 +590,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
                     self.db_model.name == row.name,
                     self.db_model.deleted_at.isnot(None),
                     *(
-                        [self.db_model.eval_type.in_(self.eval_types)]  # type: ignore[attr-defined]
+                        [self.db_model.eval_type.in_(self.eval_types)]
                         if self.eval_types is not None
                         else []
                     ),

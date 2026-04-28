@@ -327,6 +327,12 @@ def update_continuous_eval(
             if update_request.llm_eval_name is not None:
                 llm_eval_name = update_request.llm_eval_name
 
+            if llm_eval_name is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="llm_eval_name must be provided when updating llm_eval_version.",
+                )
+
             # Validate the llm eval exists and hasn't been deleted
             llm_eval_version = (
                 str(update_request.llm_eval_version)
@@ -373,6 +379,11 @@ def update_continuous_eval(
                     if update_request.llm_eval_version is not None
                     else existing_eval.llm_eval_version
                 )
+                if llm_eval_name is None:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="llm_eval_name must be configured on the continuous eval.",
+                    )
                 llm_eval = llm_eval_repo.get_llm_item(
                     existing_eval.task_id,
                     llm_eval_name,

@@ -110,10 +110,10 @@ from schemas.response_schemas import (
     ConnectionCheckResult,
     ContinuousEvalRerunResponse,
     ContinuousEvalTestRunResponse,
-    ListContinuousEvalTestRunsResponse,
     DatasetResponse,
     DatasetVersionResponse,
     DatasetVersionRowResponse,
+    ListContinuousEvalTestRunsResponse,
     ListDatasetVersionsResponse,
     ListRagSearchSettingConfigurationsResponse,
     ListRagSearchSettingConfigurationVersionsResponse,
@@ -201,6 +201,14 @@ from dependencies import (
 )
 from repositories.system_task_repository import SystemTaskRepository
 from server import get_test_app
+
+TEST_AUDIT_LOG_DIR = os.path.join(
+    os.path.dirname(__file__),
+    "..",
+    "..",
+    "test_audit_logs",
+)
+os.environ["AUDIT_LOG_OVERRIDE_PATH"] = TEST_AUDIT_LOG_DIR
 
 app = get_test_app()
 

@@ -121,11 +121,6 @@ export interface AgenticAnnotationResponse {
    */
   eval_name?: string | null;
   /**
-   * Eval Type
-   * Type of eval: 'llm_eval' or 'ml_eval'
-   */
-  eval_type?: string | null;
-  /**
    * Eval Version
    * Version of the eval the continuous eval used when scoring
    */
@@ -721,8 +716,11 @@ export interface AgenticPrompt {
    * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
    */
   model_name: string;
-  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
-  model_provider: ModelProvider;
+  /**
+   * Model Provider
+   * Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). The sentinel value 'empty' indicates the system default placeholder has not been configured.
+   */
+  model_provider: ModelProvider | "empty";
   /**
    * Name
    * Name of the agentic prompt
@@ -795,11 +793,10 @@ export interface AgenticPromptVersionResponse {
    */
   deleted_at: string | null;
   /**
-   * Eval Type
    * Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
    * @default "llm_as_a_judge"
    */
-  eval_type?: string;
+  eval_type?: EvalType;
   /**
    * Model Name
    * Model name chosen for this version of the llm eval. None for ML evals.
@@ -933,12 +930,26 @@ export type AnnotateTraceApiV1TracesTraceIdAnnotationsPostData = AgenticAnnotati
 export type AnnotateTraceApiV1TracesTraceIdAnnotationsPostError = HTTPValidationError;
 
 /** AnthropicThinkingParam */
-export interface AnthropicThinkingParam {
+export interface AnthropicThinkingParamInput {
   /** Budget Tokens */
   budget_tokens?: number;
   /** Type */
-  type?: "enabled";
+  type?: AnthropicThinkingParamInputTypeEnum;
 }
+
+/** Type */
+export type AnthropicThinkingParamInputTypeEnum = "enabled" | "adaptive";
+
+/** AnthropicThinkingParam */
+export interface AnthropicThinkingParamOutput {
+  /** Budget Tokens */
+  budget_tokens?: number;
+  /** Type */
+  type?: AnthropicThinkingParamOutputTypeEnum;
+}
+
+/** Type */
+export type AnthropicThinkingParamOutputTypeEnum = "enabled" | "adaptive";
 
 /** ApiKeyRagAuthenticationConfigRequest */
 export interface ApiKeyRagAuthenticationConfigRequest {
@@ -1520,12 +1531,6 @@ export interface ContinuousEvalResponse {
    */
   enabled?: boolean;
   /**
-   * Eval Type
-   * Type of evaluator: 'llm_eval' or 'ml_eval'.
-   * @default "llm_eval"
-   */
-  eval_type?: string;
-  /**
    * Id
    * ID of the transform.
    * @format uuid
@@ -1533,14 +1538,14 @@ export interface ContinuousEvalResponse {
   id: string;
   /**
    * Llm Eval Name
-   * Name of the eval.
+   * Name of the llm eval.
    */
-  llm_eval_name?: string | null;
+  llm_eval_name: string;
   /**
    * Llm Eval Version
-   * Version of the eval.
+   * Version of the llm eval.
    */
-  llm_eval_version?: number | null;
+  llm_eval_version: number;
   /**
    * Name
    * Name of the continuous eval.
@@ -1829,21 +1834,12 @@ export interface CreateEvalRequest {
 export interface CreateMLEvalRequest {
   /**
    * Config
-   * Optional configuration for the ML eval
+   * Optional configuration for the ML eval. Valid fields depend on eval_type.
    */
-  config?: null;
-  /**
-   * Eval Type
-   * Type of ML eval (e.g. 'pii', 'toxicity', 'prompt_injection')
-   */
-  eval_type: CreateMlEvalRequestEvalTypeEnum;
+  config?: Record<string, any> | null;
+  /** Type of ML eval (e.g. 'pii', 'toxicity', 'prompt_injection') */
+  eval_type: EvalType;
 }
-
-/**
- * Eval Type
- * Type of ML eval (e.g. 'pii', 'toxicity', 'prompt_injection')
- */
-export type CreateMlEvalRequestEvalTypeEnum = "pii" | "pii_v1" | "toxicity" | "prompt_injection";
 
 export type CreateNotebookApiV1TasksTaskIdNotebooksPostData = NotebookDetail;
 
@@ -2704,6 +2700,12 @@ export interface EvalResultSummary {
    */
   total_count: number;
 }
+
+/**
+ * EvalType
+ * Discriminator for all eval types stored in the llm_evals table.
+ */
+export type EvalType = "llm_as_a_judge" | "pii" | "pii_v1" | "toxicity" | "prompt_injection";
 
 /**
  * EvalVariableMapping
@@ -4063,6 +4065,8 @@ export type GetSpanByIdApiV1TracesSpansSpanIdGetData = SpanWithMetricsResponse;
 
 export type GetSpanByIdApiV1TracesSpansSpanIdGetError = HTTPValidationError;
 
+export type GetSyntheticDataPromptStatusApiV2DatasetsSyntheticDataPromptStatusGetData = SyntheticDataPromptStatus;
+
 export type GetTaskApiV2TasksTaskIdGetData = TaskResponse;
 
 export type GetTaskApiV2TasksTaskIdGetError = HTTPValidationError;
@@ -4477,6 +4481,74 @@ export interface KeywordsConfig {
   keywords: string[];
 }
 
+/** LLMBaseConfigSettings */
+export interface LLMBaseConfigSettings {
+  /**
+   * Frequency Penalty
+   * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
+   */
+  frequency_penalty?: number | null;
+  /**
+   * Logit Bias
+   * Modify likelihood of specified tokens appearing in completion
+   */
+  logit_bias?: LogitBiasItem[] | null;
+  /**
+   * Logprobs
+   * Whether to return log probabilities of output tokens
+   */
+  logprobs?: boolean | null;
+  /**
+   * Max Completion Tokens
+   * Maximum number of completion tokens (alternative to max_tokens)
+   */
+  max_completion_tokens?: number | null;
+  /**
+   * Max Tokens
+   * Maximum number of tokens to generate in the response
+   */
+  max_tokens?: number | null;
+  /**
+   * Presence Penalty
+   * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
+   */
+  presence_penalty?: number | null;
+  /** Reasoning effort level for models that support it (e.g., OpenAI o1 series) */
+  reasoning_effort?: ReasoningEffortEnum | null;
+  /**
+   * Seed
+   * Random seed for reproducible outputs
+   */
+  seed?: number | null;
+  /**
+   * Stop
+   * Stop sequence(s) where the model should stop generating
+   */
+  stop?: string | null;
+  /**
+   * Temperature
+   * Sampling temperature (0.0 to 2.0). Higher values make output more random
+   */
+  temperature?: number | null;
+  /** Anthropic-specific thinking parameter for Claude models */
+  thinking?: AnthropicThinkingParamOutput | null;
+  /**
+   * Timeout
+   * Request timeout in seconds
+   */
+  timeout?: number | null;
+  /**
+   * Top Logprobs
+   * Number of most likely tokens to return log probabilities for (1-20)
+   */
+  top_logprobs?: number | null;
+  /**
+   * Top P
+   * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
+   */
+  top_p?: number | null;
+}
+
 /** LLMConfigSettings */
 export interface LLMConfigSettings {
   /**
@@ -4534,7 +4606,7 @@ export interface LLMConfigSettings {
    */
   temperature?: number | null;
   /** Anthropic-specific thinking parameter for Claude models */
-  thinking?: AnthropicThinkingParam | null;
+  thinking?: AnthropicThinkingParamOutput | null;
   /**
    * Timeout
    * Request timeout in seconds
@@ -4559,11 +4631,8 @@ export interface LLMConfigSettings {
 
 /** LLMEval */
 export interface LLMEval {
-  /**
-   * Config
-   * Eval configuration. LLMBaseConfigSettings for LLM evals; type-specific dict for ML evals.
-   */
-  config?: null;
+  /** LLM configurations for this eval (e.g. temperature, max_tokens, etc.) */
+  config?: LLMBaseConfigSettings | null;
   /**
    * Created At
    * Timestamp when the llm eval was created.
@@ -4576,23 +4645,17 @@ export interface LLMEval {
    */
   deleted_at?: string | null;
   /**
-   * Eval Type
-   * Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
-   * @default "llm_as_a_judge"
-   */
-  eval_type?: string;
-  /**
    * Instructions
-   * Instructions for the llm eval. None for ML evals.
+   * Instructions for the llm eval
    */
-  instructions?: string | null;
+  instructions: string;
   /**
    * Model Name
-   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet'). None for ML evals.
+   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
    */
-  model_name?: string | null;
-  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). None for ML evals. */
-  model_provider?: ModelProvider | null;
+  model_name: string;
+  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
+  model_provider: ModelProvider;
   /**
    * Name
    * Name of the llm eval
@@ -4677,11 +4740,10 @@ export interface LLMGetAllMetadataResponse {
    */
   deleted_versions: number[];
   /**
-   * Eval Type
    * Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
    * @default "llm_as_a_judge"
    */
-  eval_type?: string;
+  eval_type?: EvalType;
   /**
    * Latest Version Created At
    * Timestamp when the last version of the llm asset was created
@@ -4771,7 +4833,7 @@ export interface LLMPromptRequestConfigSettings {
    */
   temperature?: number | null;
   /** Anthropic-specific thinking parameter for Claude models */
-  thinking?: AnthropicThinkingParam | null;
+  thinking?: AnthropicThinkingParamInput | null;
   /**
    * Timeout
    * Request timeout in seconds
@@ -4844,7 +4906,7 @@ export interface LLMRequestConfigSettings {
    */
   temperature?: number | null;
   /** Anthropic-specific thinking parameter for Claude models */
-  thinking?: AnthropicThinkingParam | null;
+  thinking?: AnthropicThinkingParamInput | null;
   /**
    * Timeout
    * Request timeout in seconds
@@ -4971,11 +5033,10 @@ export interface LLMVersionResponse {
    */
   deleted_at: string | null;
   /**
-   * Eval Type
    * Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
    * @default "llm_as_a_judge"
    */
-  eval_type?: string;
+  eval_type?: EvalType;
   /**
    * Model Name
    * Model name chosen for this version of the llm eval. None for ML evals.
@@ -6396,8 +6457,8 @@ export interface MLEval {
   created_at: string;
   /** Deleted At */
   deleted_at?: string | null;
-  /** Eval Type */
-  eval_type: string;
+  /** Discriminator for all eval types stored in the llm_evals table. */
+  eval_type: EvalType;
   /** Name */
   name: string;
   /**
@@ -10797,6 +10858,25 @@ export interface SyntheticDataGenerationResponse {
   rows_removed?: string[];
 }
 
+/** SyntheticDataPromptStatus */
+export interface SyntheticDataPromptStatus {
+  /**
+   * Is Placeholder
+   * True when the prompt uses the empty placeholder model
+   */
+  is_placeholder: boolean;
+  /**
+   * Model Name
+   * Model name stored in the SDG system prompt
+   */
+  model_name: string;
+  /**
+   * Model Provider
+   * Model provider stored in the SDG system prompt. The sentinel 'empty' indicates the prompt has not yet been configured.
+   */
+  model_provider: ModelProvider | "empty";
+}
+
 /**
  * SyntheticDataRowResponse
  * A single generated row with a temporary client-side ID for tracking.
@@ -13053,7 +13133,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.533
+ * @version 2.1.541
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -15473,6 +15553,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getSpanByIdApiV1TracesSpansSpanIdGet: (spanId: string, params: RequestParams = {}) =>
       this.request<GetSpanByIdApiV1TracesSpansSpanIdGetData, GetSpanByIdApiV1TracesSpansSpanIdGetError>({
         path: `/api/v1/traces/spans/${spanId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Datasets
+     * @name GetSyntheticDataPromptStatusApiV2DatasetsSyntheticDataPromptStatusGet
+     * @summary Get the model configuration stored in the SDG system prompt.
+     * @request GET:/api/v2/datasets/synthetic-data/prompt-status
+     * @secure
+     */
+    getSyntheticDataPromptStatusApiV2DatasetsSyntheticDataPromptStatusGet: (params: RequestParams = {}) =>
+      this.request<GetSyntheticDataPromptStatusApiV2DatasetsSyntheticDataPromptStatusGetData, any>({
+        path: `/api/v2/datasets/synthetic-data/prompt-status`,
         method: "GET",
         secure: true,
         format: "json",
