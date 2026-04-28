@@ -20,6 +20,7 @@ export const ContinuousEvalAnnotation = z.object({
   trace_id: z.string().optional(),
   continuous_eval_id: z.string().optional(),
   eval_type: z.string().optional(),
+  continuous_eval_name: z.string().optional(),
   eval_name: z.string().optional(),
   eval_version: z.number().optional(),
   input_variables: z

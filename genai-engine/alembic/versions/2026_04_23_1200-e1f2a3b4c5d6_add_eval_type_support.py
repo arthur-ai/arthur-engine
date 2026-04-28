@@ -116,6 +116,24 @@ def downgrade() -> None:
         nullable=False,
     )
 
+    # Purge any continuous_evals whose referenced llm_eval no longer exists —
+    # these became orphans after the FK was dropped in upgrade.
+    conn.execute(
+        sa.text(
+            """
+            DELETE FROM continuous_evals
+            WHERE llm_eval_name IS NOT NULL
+              AND llm_eval_version IS NOT NULL
+              AND NOT EXISTS (
+                SELECT 1 FROM llm_evals
+                WHERE llm_evals.task_id = continuous_evals.task_id
+                  AND llm_evals.name = continuous_evals.llm_eval_name
+                  AND llm_evals.version = continuous_evals.llm_eval_version
+              )
+            """,
+        ),
+    )
+
     op.create_foreign_key(
         "fk_continuous_evals_llm_eval",
         "continuous_evals",

@@ -82,7 +82,7 @@ class LLMEvalsRepository(
 
         return LLMVersionResponse(
             version=db_item.version,
-            eval_type=EvalType(db_item.eval_type),
+            eval_type=db_item.eval_type,
             created_at=db_item.created_at,
             deleted_at=db_item.deleted_at,
             model_provider=(

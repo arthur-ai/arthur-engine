@@ -37,7 +37,6 @@ from schemas.base_experiment_schemas import (
     ExperimentStatus,
     TestCaseStatus,
 )
-from schemas.enums import EvalType
 from schemas.request_schemas import (
     BaseCompletionRequest,
 )
@@ -710,7 +709,7 @@ class BaseExperimentExecutor(ABC):
                     f"Eval '{eval_score.eval_name}' version {eval_score.eval_version} "
                     f"not found for task {experiment.task_id}.",
                 )
-            eval_type = EvalType(db_eval.eval_type)
+            eval_type = db_eval.eval_type
 
             evaluator = get_evaluator(db_session, eval_type)
 

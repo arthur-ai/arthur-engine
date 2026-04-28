@@ -71,7 +71,7 @@ class MLEvalsRepository(
         tags = self._get_all_tags_for_item_version(db_eval)
         return MLEval(
             name=db_eval.name,
-            eval_type=EvalType(db_eval.eval_type),
+            eval_type=db_eval.eval_type,
             variables=db_eval.variables,
             config=db_eval.config,
             created_at=db_eval.created_at,
@@ -88,7 +88,7 @@ class MLEvalsRepository(
         tags = self._get_all_tags_for_item_version(db_item)
         return MLVersionResponse(
             version=db_item.version,
-            eval_type=EvalType(db_item.eval_type),
+            eval_type=db_item.eval_type,
             created_at=db_item.created_at,
             deleted_at=db_item.deleted_at,
             tags=tags,
