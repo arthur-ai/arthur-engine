@@ -7,6 +7,7 @@ from sqlalchemy import (
     TIMESTAMP,
     UUID,
     Boolean,
+    Enum,
     ForeignKey,
     ForeignKeyConstraint,
     Integer,
@@ -17,6 +18,7 @@ from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base
+from schemas.enums import EvalType
 
 if TYPE_CHECKING:
     from db_models.task_models import DatabaseTask
@@ -36,11 +38,13 @@ class DatabaseLLMEval(Base):
     )
     name: Mapped[str] = mapped_column(String, primary_key=True)
 
-    # Eval type — stored as VARCHAR; valid values are defined by schemas.enums.EvalType.
-    # Stored as a plain string (not a DB-level enum) so adding new types doesn't require
-    # a DB migration.
-    eval_type: Mapped[str] = mapped_column(
-        String,
+    eval_type: Mapped[EvalType] = mapped_column(
+        Enum(
+            EvalType,
+            values_callable=lambda e: [x.value for x in e],
+            native_enum=False,
+            create_constraint=False,
+        ),
         nullable=False,
         server_default="llm_as_a_judge",
         default="llm_as_a_judge",
