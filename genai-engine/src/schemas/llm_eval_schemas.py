@@ -3,6 +3,8 @@ from typing import Any, List, Optional
 
 from pydantic import BaseModel, Field
 
+from schemas.enums import EvalType
+
 
 class ReasonedScore(BaseModel):
     """
@@ -20,7 +22,7 @@ class MLEval(BaseModel):
     """Internal representation of an ML-type eval (pii, toxicity, prompt_injection, etc.)."""
 
     name: str
-    eval_type: str
+    eval_type: EvalType
     variables: List[str] = []
     config: Optional[Any] = None
     created_at: datetime

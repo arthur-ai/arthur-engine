@@ -16,6 +16,7 @@ from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
 from repositories.base_llm_repository import BaseLLMRepository
 from repositories.model_provider_repository import ModelProviderRepository
 from schemas.agentic_prompt_schemas import AgenticPrompt
+from schemas.enums import EvalType
 from schemas.llm_eval_schemas import ReasonedScore
 from schemas.request_schemas import (
     BaseCompletionRequest,
@@ -44,7 +45,7 @@ class LLMEvalsRepository(
     tag_db_model: Type[DatabaseLLMEvalVersionTag] = DatabaseLLMEvalVersionTag
     version_list_response_model: Type[BaseModel] = LLMEvalsVersionListResponse
     # eval_types = None → no filter; this repo handles all types stored in llm_evals
-    default_eval_type = "llm_as_a_judge"
+    default_eval_type = EvalType.LLM_AS_A_JUDGE
 
     def __init__(self, db_session: Session):
         super().__init__(db_session)
@@ -56,7 +57,7 @@ class LLMEvalsRepository(
 
         return LLMEval(
             name=db_eval.name,
-            eval_type=db_eval.eval_type or "llm_as_a_judge",
+            eval_type=db_eval.eval_type or EvalType.LLM_AS_A_JUDGE,
             model_name=db_eval.model_name,
             model_provider=(
                 ModelProvider(db_eval.model_provider)

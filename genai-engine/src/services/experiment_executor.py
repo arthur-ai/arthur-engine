@@ -19,6 +19,7 @@ from db_models import (
     DatabaseBaseExperiment,
     DatabaseBaseExperimentTestCase,
 )
+from db_models.llm_eval_models import DatabaseLLMEval
 from db_models.prompt_experiment_models import (
     DatabasePromptExperimentTestCasePromptResult,
 )
@@ -28,6 +29,7 @@ from db_models.rag_experiment_models import (
 from dependencies import db_session_context
 from repositories.base_evaluator import get_evaluator
 from repositories.llm_evals_repository import LLMEvalsRepository
+from repositories.llm_evaluator import LLMEvaluator
 from repositories.ml_evals_repository import MLEvaluator
 from repositories.model_provider_repository import ModelProviderRepository
 from schemas.agentic_experiment_schemas import RequestTimeParameter
@@ -693,8 +695,6 @@ class BaseExperimentExecutor(ABC):
             }
 
             # Look up the eval's type so we can dispatch to the right evaluator.
-            from db_models.llm_eval_models import DatabaseLLMEval
-
             db_eval = (
                 db_session.query(DatabaseLLMEval)
                 .filter(
@@ -704,9 +704,12 @@ class BaseExperimentExecutor(ABC):
                 )
                 .first()
             )
-            eval_type = (
-                (db_eval.eval_type or "llm_as_a_judge") if db_eval else "llm_as_a_judge"
-            )
+            if db_eval is None:
+                raise ValueError(
+                    f"Eval '{eval_score.eval_name}' version {eval_score.eval_version} "
+                    f"not found for task {experiment.task_id}.",
+                )
+            eval_type = db_eval.eval_type
 
             evaluator = get_evaluator(db_session, eval_type)
 
@@ -720,7 +723,7 @@ class BaseExperimentExecutor(ABC):
                         variable_mapping=[],
                         resolved_variables=variable_map,
                     )
-                else:
+                elif isinstance(evaluator, LLMEvaluator):
                     # LLM-as-a-judge evals run through the chat completion pipeline.
                     model_provider_repo = ModelProviderRepository(db_session)
                     llm_evals_repo = LLMEvalsRepository(db_session)
@@ -737,6 +740,10 @@ class BaseExperimentExecutor(ABC):
                         eval_name=eval_score.eval_name,
                         version=str(eval_score.eval_version),
                         completion_request=completion_request,
+                    )
+                else:
+                    raise ValueError(
+                        f"Unknown evaluator type: {type(evaluator).__name__}",
                     )
             except Exception as e:
                 logger.error(

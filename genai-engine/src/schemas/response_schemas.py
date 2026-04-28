@@ -25,6 +25,7 @@ from weaviate.types import INCLUDE_VECTOR
 
 from schemas.enums import (
     ConnectionCheckOutcome,
+    EvalType,
     RagAPIKeyAuthenticationProviderEnum,
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
@@ -705,8 +706,8 @@ class AgenticPromptMetadataResponse(BaseModel):
 
 class LLMGetAllMetadataResponse(BaseModel):
     name: str = Field(description="Name of the llm asset")
-    eval_type: str = Field(
-        default="llm_as_a_judge",
+    eval_type: EvalType = Field(
+        default=EvalType.LLM_AS_A_JUDGE,
         description="Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')",
     )
     versions: int = Field(description="Number of versions of the llm asset")
@@ -732,8 +733,8 @@ class LLMGetAllMetadataListResponse(BaseModel):
 
 class LLMVersionResponse(BaseModel):
     version: int = Field(description="Version number of the llm eval")
-    eval_type: str = Field(
-        default="llm_as_a_judge",
+    eval_type: EvalType = Field(
+        default=EvalType.LLM_AS_A_JUDGE,
         description="Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')",
     )
     created_at: datetime = Field(
@@ -777,7 +778,9 @@ class LLMEvalsVersionListResponse(BaseModel):
 
 class MLVersionResponse(BaseModel):
     version: int = Field(description="Version number of the ML eval")
-    eval_type: str = Field(description="Type of the ML eval (e.g. 'pii', 'toxicity')")
+    eval_type: EvalType = Field(
+        description="Type of the ML eval (e.g. 'pii', 'toxicity')",
+    )
     created_at: datetime = Field(
         description="Timestamp when the ML eval version was created",
     )

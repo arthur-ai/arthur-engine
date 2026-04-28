@@ -5,10 +5,13 @@ from uuid import uuid4
 import pytest
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
+from arthur_common.models.llm_model_providers import ModelProvider
+from pydantic import ValidationError
 
+from repositories.llm_evals_repository import LLMEvalsRepository
 from repositories.ml_evals_repository import MLEvalsRepository
 from schemas.llm_eval_schemas import MLEval
-from schemas.request_schemas import CreateMLEvalRequest
+from schemas.request_schemas import CreateEvalRequest, CreateMLEvalRequest
 from schemas.response_schemas import (
     LLMGetAllMetadataListResponse,
     MLEvalsVersionListResponse,
@@ -91,21 +94,22 @@ def test_save_ml_eval_auto_increments_version(
 @pytest.mark.unit_tests
 def test_save_ml_eval_stores_config(ml_evals_repo, task_id):
     eval_name = f"test_cfg_{uuid4().hex[:8]}"
-    request = CreateMLEvalRequest(eval_type="toxicity", config={"threshold": 0.8})
+    request = CreateMLEvalRequest(
+        eval_type="toxicity",
+        config={"toxicity_threshold": 0.8},
+    )
 
     result = ml_evals_repo.save_ml_eval(task_id, eval_name, request)
 
-    assert result.config == {"threshold": 0.8}
+    assert result.config == {"toxicity_threshold": 0.8}
 
     ml_evals_repo.delete_llm_item(task_id, eval_name)
 
 
 @pytest.mark.unit_tests
 def test_save_ml_eval_rejects_unknown_type(ml_evals_repo, task_id):
-    # CreateMLEvalRequest.eval_type is a Literal — invalid values are rejected
+    # CreateMLEvalRequest.eval_type is an Enum with a validator — invalid values are rejected
     # at Pydantic parse time (ValidationError), before the repository is called.
-    from pydantic import ValidationError
-
     with pytest.raises(ValidationError):
         CreateMLEvalRequest(eval_type="llm_as_a_judge")  # type: ignore[arg-type]
 
@@ -303,11 +307,6 @@ def test_delete_all_versions_not_found_raises(ml_evals_repo, task_id):
 @pytest.mark.unit_tests
 def test_ml_repo_does_not_see_llm_as_a_judge_evals(task_id):
     """ML repo must not surface llm_as_a_judge rows; LLM repo surfaces all eval types."""
-    from arthur_common.models.llm_model_providers import ModelProvider
-
-    from repositories.llm_evals_repository import LLMEvalsRepository
-    from schemas.request_schemas import CreateEvalRequest
-
     db_session = override_get_db_session()
     llm_repo = LLMEvalsRepository(db_session)
     ml_repo = MLEvalsRepository(db_session)
