@@ -333,7 +333,7 @@ class PromptExperimentExecutor(BaseExperimentExecutor):
             # Get LLM client
             model_provider_repo = ModelProviderRepository(db_session)
             llm_client = model_provider_repo.get_model_provider_client(
-                prompt.model_provider,
+                prompt.require_configured_provider(),
             )
 
             # Build variable map from test case input variables

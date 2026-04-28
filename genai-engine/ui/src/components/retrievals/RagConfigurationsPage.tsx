@@ -33,7 +33,7 @@ export const RagConfigurationsPage: React.FC<RagConfigurationsPageProps> = ({ on
   );
 
   const handleCloseFullScreen = useCallback(() => {
-    navigate(`/tasks/${taskId}/rag-configurations`);
+    navigate(`/tasks/${taskId}/rag?tab=rag-configurations`);
   }, [taskId, navigate]);
 
   const handleConfigDelete = async (configId: string) => {

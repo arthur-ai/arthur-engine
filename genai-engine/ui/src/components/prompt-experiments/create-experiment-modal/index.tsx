@@ -76,6 +76,14 @@ const CreateExperimentModalInner = ({
         return formApi.setFieldValue("section", "prompts");
       }
       if (value.section === "prompts") {
+        // Skip the evals step entirely when no evaluators were selected — there
+        // would be nothing to configure on that screen.
+        if (value.info.evaluators.length === 0) {
+          const request = { ...formDataToRequest(value), eval_list: [] };
+          await createExperiment.mutateAsync(request);
+          formApi.reset();
+          return;
+        }
         return formApi.setFieldValue("section", "evals");
       }
 
@@ -96,6 +104,7 @@ const CreateExperimentModalInner = ({
   }, [form.state.isDirty, onClose]);
 
   const section = useStore(form.store, (state) => state.values.section);
+  const hasEvaluators = useStore(form.store, (state) => state.values.info.evaluators.length > 0);
 
   const step = {
     info: 0,
@@ -120,9 +129,11 @@ const CreateExperimentModalInner = ({
           <Step>
             <StepLabel>Configure Prompts</StepLabel>
           </Step>
-          <Step>
-            <StepLabel>Configure Evals</StepLabel>
-          </Step>
+          {hasEvaluators && (
+            <Step>
+              <StepLabel>Configure Evals</StepLabel>
+            </Step>
+          )}
         </Stepper>
         {section === "info" && <InfoStep form={form} onCancel={handleCancel} />}
         {section === "prompts" && <PromptStep form={form} onCancel={handleCancel} />}

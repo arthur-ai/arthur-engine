@@ -2375,7 +2375,7 @@ class TraceQuerySchema(BaseModel):
     span_count_filters: Optional[list[FloatRangeFilter]] = None
     user_ids: Optional[list[str]] = Field(
         None,
-        description="User IDs to filter on. Optional.",
+        description="User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.",
     )
     annotation_score: Optional[int] = Field(
         None,
@@ -2828,14 +2828,26 @@ class DatasetVersion(DatasetVersionMetadata):
         db_dataset_version: DatabaseDatasetVersion,
         total_count: int,
         pagination_params: PaginationParameters,
+        paginated_rows: Optional[List[DatabaseDatasetVersionRow]] = None,
     ) -> "DatasetVersion":
+        # When callers have a paginated subset of rows in hand, they pass it via
+        # `paginated_rows` rather than reassigning db_dataset_version.version_rows.
+        # That reassignment would diff against the eager-loaded full collection
+        # (lazy="joined"), mark the excluded rows as orphans, and — on the next
+        # autoflush — trigger an AssertionError when SQLAlchemy tries to NULL the
+        # rows' version_number, which is both the FK to dataset_versions and part
+        # of the child's primary key.
+        rows_source: List[DatabaseDatasetVersionRow] = (
+            paginated_rows
+            if paginated_rows is not None
+            else db_dataset_version.version_rows
+        )
         return DatasetVersion(
             version_number=db_dataset_version.version_number,
             created_at=db_dataset_version.created_at,
             dataset_id=db_dataset_version.dataset_id,
             rows=[
-                DatasetVersionRow._from_database_model(db_row)
-                for db_row in db_dataset_version.version_rows
+                DatasetVersionRow._from_database_model(db_row) for db_row in rows_source
             ],
             page=pagination_params.page,
             page_size=pagination_params.page_size,
