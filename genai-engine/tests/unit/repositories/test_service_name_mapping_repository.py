@@ -2,8 +2,6 @@ import logging
 import uuid
 
 import pytest
-import sqlalchemy as sa
-from sqlalchemy.exc import IntegrityError
 
 from db_models import DatabaseServiceNameTaskMapping, DatabaseTask
 from repositories.service_name_mapping_repository import ServiceNameMappingRepository
@@ -353,5 +351,3 @@ def test_delete_mapping_not_found():
     service_name = "test-service-delete-not-found"
     result = repo.delete_mapping(service_name)
     assert result is False
-
-

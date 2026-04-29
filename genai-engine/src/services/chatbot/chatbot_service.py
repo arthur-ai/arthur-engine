@@ -233,7 +233,8 @@ class ChatbotService:
                     OpenAIMessage(role=MessageRole.AI, content=final_response.content),
                 )
                 self.tracing.set_output_json(
-                    agent_span, {"text": final_response.content or ""}
+                    agent_span,
+                    {"text": final_response.content or ""},
                 )
                 self.tracing.end_span(agent_span)
                 self.tracing.flush()

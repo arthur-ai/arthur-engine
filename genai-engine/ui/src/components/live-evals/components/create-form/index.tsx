@@ -41,6 +41,7 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
       evaluator: {
         name: null as string | null,
         version: null as string | null,
+        eval_type: null as string | null,
       },
       transform: {
         transformId: null as string | null,
@@ -55,6 +56,7 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
         evaluator: z.object({
           name: z.string().min(1, "Evaluator name is required"),
           version: z.string().min(1, "Evaluator version is required"),
+          eval_type: z.string().min(1, "Evaluator type is required"),
         }),
         transform: z.object({
           transformId: z.string().min(1, "Transform ID is required"),
@@ -73,6 +75,7 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
         evaluator: z.object({
           name: z.string().min(1, "Evaluator name is required"),
           version: z.string().min(1, "Evaluator version is required"),
+          eval_type: z.string().min(1, "Evaluator type is required"),
         }),
         transform: z.object({
           transformId: z.string().min(1, "Transform ID is required"),
@@ -86,12 +89,14 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
       }),
     },
     onSubmit: async ({ value }) => {
+      const isML = value.evaluator.eval_type === "ml";
       const { id } = await createContinuousEval.mutateAsync({
         name: value.name,
         description: value.description?.trim() || undefined,
         enabled: value.enabled,
+        eval_type: isML ? "ml_eval" : "llm_eval",
         llm_eval_name: value.evaluator.name!,
-        llm_eval_version: value.evaluator.version!,
+        llm_eval_version: value.evaluator.version ?? "latest",
         transform_id: value.transform.transformId!,
         transform_variable_mapping: value.variableMappings,
       });

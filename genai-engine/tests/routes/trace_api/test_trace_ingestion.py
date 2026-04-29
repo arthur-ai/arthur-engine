@@ -5,11 +5,14 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+from arthur_common.models.agent_governance_schemas import (
+    GCPAgentCreationSource,
+    TaskMetadata,
+)
 from opentelemetry.proto.common.v1.common_pb2 import AnyValue, KeyValue
-from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans, Status
+from opentelemetry.proto.trace.v1.trace_pb2 import Status
 
 from db_models import DatabaseServiceNameTaskMapping, DatabaseSpan, DatabaseTask
-from arthur_common.models.agent_governance_schemas import GCPAgentCreationSource, TaskMetadata
 from services.trace.trace_ingestion_service import TraceIngestionService
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
@@ -727,11 +730,11 @@ def _create_gcp_task(db_session, engine_id: str, name: str = None) -> DatabaseTa
 def _cleanup_task(db_session, task_id: str):
     """Helper to clean up a task and its service name mappings."""
     db_session.query(DatabaseServiceNameTaskMapping).filter(
-        DatabaseServiceNameTaskMapping.task_id == task_id
+        DatabaseServiceNameTaskMapping.task_id == task_id,
     ).delete(synchronize_session=False)
-    db_session.query(DatabaseTask).filter(
-        DatabaseTask.id == task_id
-    ).delete(synchronize_session=False)
+    db_session.query(DatabaseTask).filter(DatabaseTask.id == task_id).delete(
+        synchronize_session=False,
+    )
     db_session.commit()
 
 

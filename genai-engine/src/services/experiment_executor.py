@@ -19,6 +19,7 @@ from db_models import (
     DatabaseBaseExperiment,
     DatabaseBaseExperimentTestCase,
 )
+from db_models.llm_eval_models import DatabaseLLMEval
 from db_models.prompt_experiment_models import (
     DatabasePromptExperimentTestCasePromptResult,
 )
@@ -26,7 +27,10 @@ from db_models.rag_experiment_models import (
     DatabaseRagExperimentTestCaseRagResult,
 )
 from dependencies import db_session_context
+from repositories.base_evaluator import get_evaluator
 from repositories.llm_evals_repository import LLMEvalsRepository
+from repositories.llm_evaluator import LLMEvaluator
+from repositories.ml_evals_repository import MLEvaluator
 from repositories.model_provider_repository import ModelProviderRepository
 from schemas.agentic_experiment_schemas import RequestTimeParameter
 from schemas.base_experiment_schemas import (
@@ -690,29 +694,58 @@ class BaseExperimentExecutor(ABC):
                 for var in eval_score.eval_input_variables
             }
 
-            # Get LLM evals repository and set model_provider_repo (required by run_llm_eval)
-            model_provider_repo = ModelProviderRepository(db_session)
-            llm_evals_repo = LLMEvalsRepository(db_session)
-            llm_evals_repo.model_provider_repo = model_provider_repo
-
-            # Create completion request with variables
-            completion_request = BaseCompletionRequest(
-                variables=[
-                    VariableTemplateValue(name=k, value=v)
-                    for k, v in variable_map.items()
-                ],
-            )
-
-            # Use run_llm_eval which handles model support checking, structured outputs, and validation
-            try:
-                eval_response = llm_evals_repo.run_llm_eval(
-                    task_id=experiment.task_id,
-                    eval_name=eval_score.eval_name,
-                    version=str(eval_score.eval_version),
-                    completion_request=completion_request,
+            # Look up the eval's type so we can dispatch to the right evaluator.
+            db_eval = (
+                db_session.query(DatabaseLLMEval)
+                .filter(
+                    DatabaseLLMEval.task_id == experiment.task_id,
+                    DatabaseLLMEval.name == eval_score.eval_name,
+                    DatabaseLLMEval.version == eval_score.eval_version,
                 )
+                .first()
+            )
+            if db_eval is None:
+                raise ValueError(
+                    f"Eval '{eval_score.eval_name}' version {eval_score.eval_version} "
+                    f"not found for task {experiment.task_id}.",
+                )
+            eval_type = db_eval.eval_type
+
+            evaluator = get_evaluator(db_session, eval_type)
+
+            try:
+                if isinstance(evaluator, MLEvaluator):
+                    # ML evals (pii, toxicity, prompt_injection) run through the scorer directly.
+                    eval_response = evaluator.run(
+                        task_id=experiment.task_id,
+                        eval_name=eval_score.eval_name,
+                        eval_version=str(eval_score.eval_version),
+                        variable_mapping=[],
+                        resolved_variables=variable_map,
+                    )
+                elif isinstance(evaluator, LLMEvaluator):
+                    # LLM-as-a-judge evals run through the chat completion pipeline.
+                    model_provider_repo = ModelProviderRepository(db_session)
+                    llm_evals_repo = LLMEvalsRepository(db_session)
+                    llm_evals_repo.model_provider_repo = model_provider_repo
+
+                    completion_request = BaseCompletionRequest(
+                        variables=[
+                            VariableTemplateValue(name=k, value=v)
+                            for k, v in variable_map.items()
+                        ],
+                    )
+                    eval_response = llm_evals_repo.run_llm_eval(
+                        task_id=experiment.task_id,
+                        eval_name=eval_score.eval_name,
+                        version=str(eval_score.eval_version),
+                        completion_request=completion_request,
+                    )
+                else:
+                    raise ValueError(
+                        f"Unknown evaluator type: {type(evaluator).__name__}",
+                    )
             except Exception as e:
-                # Handle model not supporting structured outputs, missing eval, or validation errors
                 logger.error(
                     f"Error executing eval {eval_score.eval_name} v{eval_score.eval_version}: {e}",
                 )

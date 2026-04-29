@@ -45,7 +45,9 @@
       "Bash(yarn dev:*)",
       "Bash(source:*)",
       "Bash(uv --version:*)",
-      "Bash(set -a:*)"
+      "Bash(set -a:*)",
+      "Read(//Users/ibrahim/Documents/GitLab/arthur-common/**)",
+      "Bash(python -c \"from arthur_common.models.task_eval_schemas import ContinuousEvalResponse; from arthur_common.models.response_schemas import AgenticAnnotationResponse; print\\('imports OK'\\)\")"
     ]
   }
 }

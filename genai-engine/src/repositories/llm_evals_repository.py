@@ -16,6 +16,7 @@ from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
 from repositories.base_llm_repository import BaseLLMRepository
 from repositories.model_provider_repository import ModelProviderRepository
 from schemas.agentic_prompt_schemas import AgenticPrompt
+from schemas.enums import EvalType
 from schemas.llm_eval_schemas import ReasonedScore
 from schemas.request_schemas import (
     BaseCompletionRequest,
@@ -43,6 +44,8 @@ class LLMEvalsRepository(
     db_model: Type[DatabaseLLMEval] = DatabaseLLMEval
     tag_db_model: Type[DatabaseLLMEvalVersionTag] = DatabaseLLMEvalVersionTag
     version_list_response_model: Type[BaseModel] = LLMEvalsVersionListResponse
+    # eval_types = None → no filter; this repo handles all types stored in llm_evals
+    default_eval_type = EvalType.LLM_AS_A_JUDGE
 
     def __init__(self, db_session: Session):
         super().__init__(db_session)
@@ -54,8 +57,13 @@ class LLMEvalsRepository(
 
         return LLMEval(
             name=db_eval.name,
+            eval_type=db_eval.eval_type or EvalType.LLM_AS_A_JUDGE,
             model_name=db_eval.model_name,
-            model_provider=ModelProvider(db_eval.model_provider),
+            model_provider=(
+                ModelProvider(db_eval.model_provider)
+                if db_eval.model_provider
+                else None
+            ),
             instructions=db_eval.instructions,
             variables=db_eval.variables,
             tags=tags,
@@ -74,9 +82,14 @@ class LLMEvalsRepository(
 
         return LLMVersionResponse(
             version=db_item.version,
+            eval_type=db_item.eval_type,
             created_at=db_item.created_at,
             deleted_at=db_item.deleted_at,
-            model_provider=ModelProvider(db_item.model_provider),
+            model_provider=(
+                ModelProvider(db_item.model_provider)
+                if db_item.model_provider
+                else None
+            ),
             model_name=db_item.model_name,
             tags=tags,
         )
@@ -98,6 +111,18 @@ class LLMEvalsRepository(
         llm_eval: LLMEval,
         response_format: Optional[Union[LLMResponseFormat, Type[BaseModel]]] = None,
     ) -> AgenticPrompt:
+        if llm_eval.model_name is None:
+            raise ValueError(
+                f"LLM eval '{llm_eval.name}' has no model_name configured.",
+            )
+        if llm_eval.model_provider is None:
+            raise ValueError(
+                f"LLM eval '{llm_eval.name}' has no model_provider configured.",
+            )
+        if llm_eval.instructions is None:
+            raise ValueError(
+                f"LLM eval '{llm_eval.name}' has no instructions configured.",
+            )
         messages = [
             OpenAIMessage(
                 role=MessageRole.SYSTEM,
@@ -108,7 +133,12 @@ class LLMEvalsRepository(
 
         config_dict = {}
         if llm_eval.config:
-            config_dict = llm_eval.config.model_dump(exclude_none=True)
+            if isinstance(llm_eval.config, dict):
+                config_dict = {
+                    k: v for k, v in llm_eval.config.items() if v is not None
+                }
+            else:
+                config_dict = llm_eval.config.model_dump(exclude_none=True)
 
         if response_format is not None:
             config_dict["response_format"] = response_format
@@ -131,6 +161,8 @@ class LLMEvalsRepository(
         item_name: str,
         item: CreateEvalRequest,
     ) -> LLMEval:
+        if item.model_name == "":
+            raise ValueError("Model name cannot be empty.")
         return cast(LLMEval, super().save_llm_item(task_id, item_name, item))
 
     def run_llm_eval(
@@ -149,6 +181,15 @@ class LLMEvalsRepository(
         if llm_eval.deleted_at is not None:
             raise ValueError(
                 f"Cannot run this llm eval because it was deleted on: {llm_eval.deleted_at}",
+            )
+
+        if llm_eval.model_provider is None:
+            raise ValueError(
+                f"LLM eval '{llm_eval.name}' has no model_provider configured.",
+            )
+        if llm_eval.model_name is None:
+            raise ValueError(
+                f"LLM eval '{llm_eval.name}' has no model_name configured.",
             )
 
         # get the llm client
