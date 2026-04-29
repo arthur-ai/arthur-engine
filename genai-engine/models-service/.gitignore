@@ -6,4 +6,7 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 .mypy_cache/
-models/
+# Runtime HF weight cache (MODEL_STORAGE_PATH=/models in the container,
+# ./models in baremetal dev). Anchored — must NOT match src/models/, which
+# is the loader/downloader/registry source.
+/models/
