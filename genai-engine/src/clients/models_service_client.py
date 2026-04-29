@@ -31,11 +31,11 @@ Public surface (signatures match the wire schemas exactly):
 
 import logging
 import os
-from typing import Any
+from typing import Any, TypeVar
 
 import httpx
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from tenacity import (
     before_sleep_log,
     retry,
@@ -43,6 +43,8 @@ from tenacity import (
     stop_after_attempt,
     wait_exponential,
 )
+
+R = TypeVar("R", bound=BaseModel)
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +120,18 @@ class ClaimFilterResponse(BaseModel):
     classifications: list[_ClaimClassification]
 
 
+class _ErrorBody(BaseModel):
+    code: str
+    message: str
+    details: dict[str, Any] | None = None
+
+
+class ErrorEnvelope(BaseModel):
+    """Mirrors models-service `schemas.ErrorResponse` — every 4xx body."""
+
+    error: _ErrorBody
+
+
 # ---------------------------------------------------------------------------
 # Client
 # ---------------------------------------------------------------------------
@@ -136,7 +150,9 @@ class ModelsServiceClient:
         secret: str | None = None,
         timeout: httpx.Timeout | None = None,
     ) -> None:
-        self._base_url = (base_url or os.environ.get("MODELS_SERVICE_URL", "")).rstrip("/")
+        self._base_url = (base_url or os.environ.get("MODELS_SERVICE_URL", "")).rstrip(
+            "/"
+        )
         self._secret = secret or os.environ.get("MODEL_REGISTRY_SECRET", "")
         if not self._base_url:
             raise ValueError("MODELS_SERVICE_URL is not set")
@@ -168,7 +184,17 @@ class ModelsServiceClient:
         before_sleep=before_sleep_log(logger, logging.WARNING),
         reraise=True,
     )
-    def _post(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
+    def _post(
+        self,
+        path: str,
+        body: dict[str, Any],
+        response_model: type[R],
+    ) -> R:
+        """Post `body`, raise on 5xx (tenacity retries) and 4xx (typed
+        exception mapping), parse a successful response into
+        `response_model`. Returning the typed model rather than a raw dict
+        keeps the wire contract enforced at the boundary instead of at every
+        caller."""
         try:
             response = self._client.post(path, json=body)
         except httpx.TransportError as e:
@@ -186,16 +212,23 @@ class ModelsServiceClient:
         if response.status_code >= 400:
             self._raise_4xx(response)
 
-        return response.json()
+        try:
+            return response_model.model_validate_json(response.content)
+        except ValidationError as e:
+            # Service returned 2xx with a body that doesn't match the
+            # expected schema — protocol bug, surface to the caller.
+            raise ModelsServiceClientError(
+                f"unexpected {response_model.__name__} payload: {e}"
+            ) from e
 
     @staticmethod
     def _raise_4xx(response: httpx.Response) -> None:
         try:
-            payload = response.json()
-            err = payload.get("error", {}) or {}
-            code = err.get("code", "")
-            message = err.get("message", response.text)
-        except Exception:
+            envelope = ErrorEnvelope.model_validate_json(response.content)
+            code = envelope.error.code
+            message = envelope.error.message
+        except ValidationError:
+            # Non-conforming 4xx body (e.g., proxy-injected error page).
             code = ""
             message = response.text
 
@@ -206,11 +239,16 @@ class ModelsServiceClient:
             f"{response.status_code} {code or 'client_error'}: {message}",
         )
 
-    def _safe_post(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
+    def _safe_post(
+        self,
+        path: str,
+        body: dict[str, Any],
+        response_model: type[R],
+    ) -> R:
         """Wrap _post and translate exhausted-retry 5xx + transport errors
         into ModelNotAvailableError."""
         try:
-            return self._post(path, body)
+            return self._post(path, body, response_model)
         except httpx.HTTPStatusError as e:
             # All retries used and last response was 5xx.
             logger.warning("Models service 5xx after retries: %s", e)
@@ -224,15 +262,18 @@ class ModelsServiceClient:
     # -----------------------------------------------------------------------
 
     def prompt_injection(self, text: str) -> PromptInjectionResponse:
-        body = self._safe_post("/v1/inference/prompt_injection", {"text": text})
-        return PromptInjectionResponse.model_validate(body)
+        return self._safe_post(
+            "/v1/inference/prompt_injection",
+            {"text": text},
+            PromptInjectionResponse,
+        )
 
     def toxicity(self, text: str, threshold: float) -> ToxicityResponse:
-        body = self._safe_post(
+        return self._safe_post(
             "/v1/inference/toxicity",
             {"text": text, "threshold": threshold},
+            ToxicityResponse,
         )
-        return ToxicityResponse.model_validate(body)
 
     def pii(
         self,
@@ -242,7 +283,7 @@ class ModelsServiceClient:
         confidence_threshold: float | None = None,
         use_v2: bool = True,
     ) -> PIIResponse:
-        body = self._safe_post(
+        return self._safe_post(
             "/v1/inference/pii",
             {
                 "text": text,
@@ -251,12 +292,15 @@ class ModelsServiceClient:
                 "confidence_threshold": confidence_threshold,
                 "use_v2": use_v2,
             },
+            PIIResponse,
         )
-        return PIIResponse.model_validate(body)
 
     def claim_filter(self, texts: list[str]) -> ClaimFilterResponse:
-        body = self._safe_post("/v1/inference/claim_filter", {"texts": texts})
-        return ClaimFilterResponse.model_validate(body)
+        return self._safe_post(
+            "/v1/inference/claim_filter",
+            {"texts": texts},
+            ClaimFilterResponse,
+        )
 
 
 # ---------------------------------------------------------------------------

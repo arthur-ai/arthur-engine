@@ -71,7 +71,9 @@ def get_local_model_path(model_name: str) -> str:
     return model_name
 
 
-def download_file_from_url(url: str, model_name: str, filename: str, local_dir: str) -> None:
+def download_file_from_url(
+    url: str, model_name: str, filename: str, local_dir: str
+) -> None:
     file_path = os.path.join(local_dir, filename)
     file_dir = os.path.dirname(file_path)
     if file_dir:
@@ -95,12 +97,18 @@ def download_file(args: tuple[str, str]) -> None:
     os.makedirs(local_model_dir, exist_ok=True)
     try:
         if model_repository_url == DEFAULT_HUGGINGFACE_CO_URL:
-            hf_hub_download(repo_id=model_name, filename=filename, local_dir=local_model_dir)
+            hf_hub_download(
+                repo_id=model_name, filename=filename, local_dir=local_model_dir
+            )
         else:
-            download_file_from_url(model_repository_url, model_name, filename, local_model_dir)
+            download_file_from_url(
+                model_repository_url, model_name, filename, local_model_dir
+            )
         logger.debug(f"Downloaded {filename} to {local_model_dir}")
     except Exception as e:
-        logger.warning(f"Failed to download {filename} from {model_repository_url}/{model_name}: {e}")
+        logger.warning(
+            f"Failed to download {filename} from {model_repository_url}/{model_name}: {e}"
+        )
 
 
 def get_models_to_download() -> dict[str, list[str]]:
@@ -115,13 +123,17 @@ def get_models_to_download() -> dict[str, list[str]]:
             "tokenizer_config.json",
         ]
     else:
-        logger.info("Skipping relevance models download — ENABLE_RELEVANCE_MODELS is False")
+        logger.info(
+            "Skipping relevance models download — ENABLE_RELEVANCE_MODELS is False"
+        )
     return models_to_download
 
 
 def download_models(num_of_process: int) -> None:
     if skip_model_loading():
-        logger.info("Skipping model downloads — GENAI_ENGINE_SKIP_MODEL_LOADING is True")
+        logger.info(
+            "Skipping model downloads — GENAI_ENGINE_SKIP_MODEL_LOADING is True"
+        )
         return
     models_to_download = get_models_to_download()
     if not models_to_download:
@@ -164,7 +176,9 @@ def log_model_loading(
             except Exception as e:
                 logger.error(f"❌ Failed to load {model_name}: {e}")
                 raise
+
         return wrapper
+
     return decorator
 
 
@@ -190,7 +204,7 @@ def get_relevance_tokenizer() -> AutoTokenizer | None:
     global RELEVANCE_TOKENIZER
     if not RELEVANCE_TOKENIZER:
         model_path = get_local_model_path("microsoft/deberta-v2-xlarge-mnli")
-        RELEVANCE_TOKENIZER = AutoTokenizer.from_pretrained(
+        RELEVANCE_TOKENIZER = AutoTokenizer.from_pretrained(  # type: ignore[no-untyped-call]
             model_path,
             weights_only=False,
         )
@@ -228,7 +242,7 @@ def get_relevance_reranker() -> TextClassificationPipeline | None:
         tokenizer = get_relevance_tokenizer()
         if model is None or tokenizer is None:
             return None
-        RELEVANCE_RERANKER = TextClassificationPipeline(
+        RELEVANCE_RERANKER = TextClassificationPipeline(  # type: ignore[no-untyped-call]
             model=model,
             tokenizer=tokenizer,
             device=torch.device(get_device()),

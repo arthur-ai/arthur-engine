@@ -27,7 +27,6 @@ from auth.jwk_client import JWKClient
 from clients.auth.abc_keycloak_client import ABCAuthClient
 from clients.auth.keycloak_client import KeycloakClient
 from clients.models_service_client import (
-    ModelsServiceClient,
     get_models_service_client,
 )
 from clients.s3.azure_client import AzureBlobStorageClient
