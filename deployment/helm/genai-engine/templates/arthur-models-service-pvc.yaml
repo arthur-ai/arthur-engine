@@ -1,0 +1,22 @@
+{{- if and .Values.modelsService.enabled .Values.modelsService.storage.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  {{- if .Values.arthurResourceNameSuffix }}
+  name: arthur-models-service-{{ .Values.arthurResourceNameSuffix }}-cache
+  {{- else }}
+  name: arthur-models-service-cache
+  {{- end }}
+  labels:
+    app: arthur-models-service
+    {{- include "arthur-genai-engine.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.modelsService.storage.size }}
+  {{- if .Values.modelsService.storage.storageClass }}
+  storageClassName: {{ .Values.modelsService.storage.storageClass }}
+  {{- end }}
+{{- end }}

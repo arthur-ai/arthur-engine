@@ -264,6 +264,21 @@ Parameters:
     Type: Number
     Default: 4096
     Description: 'Memory value for AWS Fargate for the Model Upload ECS task'
+  ModelsServiceEnabled:
+    Type: String
+    AllowedValues: ['true', 'false']
+    Default: 'true'
+    Description: 'Deploy arthur-models-service alongside the engine. Disable only for guardrails-disabled deployments — otherwise every model-backed check returns MODEL_NOT_AVAILABLE.'
+  ModelsServiceContainerImageLocation:
+    Type: String
+    Default: 'arthurplatform/models-service-cpu'
+    Description: 'Container image for arthur-models-service (use models-service-gpu for GPU clusters)'
+  ModelsServiceFargateTaskCPUValue:
+    Type: Number
+    Default: 4096
+  ModelsServiceFargateTaskMemoryValue:
+    Type: Number
+    Default: 12288
   AuditLogEnabled:
     Type: String
     AllowedValues:
@@ -483,6 +498,8 @@ Conditions:
     !Not [ !Equals [ !Ref ContainerRepositoryUsername, '' ] ]
   UseInternalModelRepository:
     !Equals [ !Ref GenaiEngineUseInternalModelRepository, 'true' ]
+  IsModelsServiceEnabled:
+    !Equals [ !Ref ModelsServiceEnabled, 'true' ]
 Resources:
   CoreVPCStack:
     Type: AWS::CloudFormation::Stack
@@ -560,6 +577,7 @@ Resources:
             - !GetAtt [ CoreSecretsStack, Outputs.ContainerRepositoryCredentialsSecretOutput ]
             - !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineAppKeySecretOutput ]
             - !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineSecretStoreKeySecretOutput ]
+            - !GetAtt [ GenaiEngineSecretsStack, Outputs.ModelRegistrySecretOutput ]
         GenaiEngineUseInternalModelRepository: !Ref GenaiEngineUseInternalModelRepository
       TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/genai-engine/arthur-genai-engine-iam.yml"
   GenaiEngineSecurityGroupStack:
@@ -592,6 +610,42 @@ Resources:
         GenaiEngineModelUploadFargateTaskCPUValue: !Ref GenaiEngineModelUploadFargateTaskCPUValue
         GenaiEngineModelUploadFargateTaskMemoryValue: !Ref GenaiEngineModelUploadFargateTaskMemoryValue
       TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/genai-engine/arthur-genai-engine-model-upload.yml"
+  ModelsServiceECSTaskDefinitionStack:
+    Type: AWS::CloudFormation::Stack
+    Condition: IsModelsServiceEnabled
+    DependsOn:
+      - GenaiEngineIAMStack
+    Properties:
+      Parameters:
+        ArthurResourceNamespace: !Ref ArthurResourceNamespace
+        ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
+        # Reuses the engine task roles for now — the models-service IAM
+        # surface is the same (CloudWatch + secrets read).
+        ModelsServiceECSTaskRoleARN: !GetAtt [ GenaiEngineIAMStack, Outputs.GenaiEngineTaskRoleOutput ]
+        ModelsServiceECSTaskExecutionRoleARN: !GetAtt [ GenaiEngineIAMStack, Outputs.GenaiEngineTaskExecutionRoleOutput ]
+        ModelsServiceVersion: 'REPLACE_ME_GENAI_ENGINE_VERSION'
+        ModelsServiceContainerImageLocation: !Ref ModelsServiceContainerImageLocation
+        ContainerRepositoryCredentialRequired: !If [ ContainerRepositoryCredentialRequired, 'true', 'false' ]
+        ContainerRepositoryCredentialsSecretARN: !GetAtt [ CoreSecretsStack, Outputs.ContainerRepositoryCredentialsSecretOutput ]
+        ModelRegistrySecretARN: !GetAtt [ GenaiEngineSecretsStack, Outputs.ModelRegistrySecretOutput ]
+        ModelsServiceFargateTaskCPUValue: !Ref ModelsServiceFargateTaskCPUValue
+        ModelsServiceFargateTaskMemoryValue: !Ref ModelsServiceFargateTaskMemoryValue
+      TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/genai-engine/arthur-genai-engine-models-ecs-task-definition.yml"
+
+  ModelsServiceECSStack:
+    Type: AWS::CloudFormation::Stack
+    Condition: IsModelsServiceEnabled
+    Properties:
+      Parameters:
+        ArthurResourceNamespace: !Ref ArthurResourceNamespace
+        ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
+        ArthurECSClusterName: !GetAtt [ CoreECSStack, Outputs.ArthurECSClusterNameOutput ]
+        ArthurVPCId: !Ref ExistingArthurVPCId
+        ModelsServiceECSSecurityGroups: !GetAtt [ GenaiEngineSecurityGroupStack, Outputs.GenaiEngineAppSecurityGroupsOutput ]
+        ModelsServiceECSServiceSubnetIDs: !Join [ ',', !Ref ArthurPrivateSubnets ]
+        ModelsServiceECSTaskDefinitionARN: !GetAtt [ ModelsServiceECSTaskDefinitionStack, Outputs.ModelsServiceECSTaskDefinitionOutput ]
+      TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/genai-engine/arthur-genai-engine-models-ecs.yml"
+
   GenaiEngineECSTaskDefinitionStack:
     Type: AWS::CloudFormation::Stack
     DependsOn:
@@ -637,6 +691,14 @@ Resources:
         AuditLogEnabled: !Ref AuditLogEnabled
         AuditLogRetentionPeriod: !Ref AuditLogRetentionPeriod
         AuditLogOverridePath: !Ref AuditLogOverridePath
+        ModelsServiceURL: !If
+          - IsModelsServiceEnabled
+          - !GetAtt [ ModelsServiceECSStack, Outputs.ModelsServiceURLOutput ]
+          - ''
+        ModelRegistrySecretARN: !If
+          - IsModelsServiceEnabled
+          - !GetAtt [ GenaiEngineSecretsStack, Outputs.ModelRegistrySecretOutput ]
+          - ''
       TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/genai-engine/arthur-genai-engine-ecs-task-definition.yml"
   GenaiEngineLBStack:
     Type: AWS::CloudFormation::Stack

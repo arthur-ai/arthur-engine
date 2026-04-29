@@ -131,6 +131,53 @@ genaiEngineAllowAdminKeyGeneralAccess: "enabled"
 # modelRepositoryURL: ""
 
 ###################################
+## Advanced - Models Service (sideloaded torch/transformers inference)
+###################################
+# Sideloaded service that hosts the prompt-injection / toxicity / PII /
+# hallucination claim-filter models. The genai-engine reaches it over HTTP,
+# gated by MODEL_REGISTRY_SECRET (auto-generated below). Set `enabled: false`
+# only for guardrails-disabled deployments — otherwise every model-backed
+# check returns MODEL_NOT_AVAILABLE.
+modelsService:
+  enabled: true
+  # Use `arthurplatform/models-service-gpu` for GPU clusters and pin
+  # `version` to the engine version for matched releases.
+  containerImageLocation: "arthurplatform/models-service-cpu"
+  # Defaults to `genaiEngineVersion` above so the two ship in lockstep.
+  version: ""
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: "2"
+      memory: "8Gi"
+    limits:
+      cpu: "4"
+      memory: "12Gi"
+  # Persistent volume keeps the ~1.5 GB of HF weights warm across pod
+  # restarts. Disable to use an emptyDir (re-downloads on every restart).
+  storage:
+    enabled: true
+    size: "10Gi"
+    storageClass: ""
+  # K8s ClusterIP service config — stays internal; the engine reaches it
+  # via the in-cluster DNS name.
+  service:
+    annotations: {}
+    labels: {}
+  deployment:
+    annotations: {}
+    labels: {}
+    podAnnotations: {}
+    podLabels: {}
+    # For GPU placement: set nodeSelector to your GPU pool label, etc.
+    podNodeSelector: {}
+    podAffinity: {}
+    podTolerations: []
+  # Secret holding MODEL_REGISTRY_SECRET. Auto-generated on first install,
+  # preserved on upgrade — see templates/arthur-models-service-secret.yaml.
+  secretName: "arthur-models-service-secret"
+
+###################################
 ## Advanced - Secrets name customization
 ###################################
 # Name of the secret containing the credentials for the container repository holding the GenAI Engine image

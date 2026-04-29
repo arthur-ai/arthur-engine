@@ -1,0 +1,79 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Arthur models-service ECS Service + Cloud Map service discovery for in-VPC engine→models-service traffic.'
+
+Parameters:
+  ArthurResourceNamespace:
+    Type: String
+    MinLength: '1'
+    MaxLength: '14'
+    Default: 'arthur'
+  ArthurResourceNameSuffix:
+    Type: String
+    MinLength: '0'
+    MaxLength: '5'
+    Default: ''
+  ArthurECSClusterName:
+    Type: String
+  ArthurVPCId:
+    Type: AWS::EC2::VPC::Id
+  ModelsServiceECSSecurityGroups:
+    Type: List<AWS::EC2::SecurityGroup::Id>
+  ModelsServiceECSServiceSubnetIDs:
+    Type: List<AWS::EC2::Subnet::Id>
+  ModelsServiceECSTaskDefinitionARN:
+    Type: String
+  ModelsServiceECSServiceTaskDesiredCount:
+    Type: Number
+    Default: 1
+    Description: 'Default 1 — the engine has its own retries; horizontal scaling for models-service is rarely needed below significant load.'
+
+Resources:
+  # Private DNS namespace — provides the FQDN the engine resolves
+  # (`arthur-models-service.<ns>.local`). Scoped to the engine VPC.
+  ModelsServiceCloudMapNamespace:
+    Type: AWS::ServiceDiscovery::PrivateDnsNamespace
+    Properties:
+      Name: !Sub "${ArthurResourceNamespace}${ArthurResourceNameSuffix}.local"
+      Vpc: !Ref ArthurVPCId
+      Description: 'Private namespace for Arthur internal service discovery'
+
+  ModelsServiceCloudMapService:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Name: 'arthur-models-service'
+      NamespaceId: !Ref ModelsServiceCloudMapNamespace
+      DnsConfig:
+        DnsRecords:
+          - Type: A
+            TTL: 10
+        RoutingPolicy: MULTIVALUE
+      HealthCheckCustomConfig:
+        FailureThreshold: 1
+
+  ModelsServiceECSService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref ArthurECSClusterName
+      DesiredCount: !Ref ModelsServiceECSServiceTaskDesiredCount
+      LaunchType: FARGATE
+      ServiceName: 'arthur-models-service'
+      TaskDefinition: !Ref ModelsServiceECSTaskDefinitionARN
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups: !Ref ModelsServiceECSSecurityGroups
+          Subnets: !Ref ModelsServiceECSServiceSubnetIDs
+      ServiceRegistries:
+        - RegistryArn: !GetAtt ModelsServiceCloudMapService.Arn
+          ContainerName: 'arthur-models-service'
+          ContainerPort: 7600
+      HealthCheckGracePeriodSeconds: 300
+
+Outputs:
+  ModelsServiceECSServiceNameOutput:
+    Value: !GetAtt ModelsServiceECSService.Name
+  # The engine reads MODELS_SERVICE_URL using this DNS name.
+  ModelsServiceURLOutput:
+    Value: !Sub "http://arthur-models-service.${ArthurResourceNamespace}${ArthurResourceNameSuffix}.local:7600"
+  ModelsServiceCloudMapNamespaceIdOutput:
+    Value: !Ref ModelsServiceCloudMapNamespace
