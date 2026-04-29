@@ -1,0 +1,10 @@
+# Don't ship dev artifacts into the image.
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.git/
+.gitignore
+README.md
+models/

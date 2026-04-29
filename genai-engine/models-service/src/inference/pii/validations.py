@@ -1,21 +1,21 @@
-"""
-PII Entity Validation Functions.
+"""PII entity validation functions.
 
-This module provides validation functions for different PII entity types to filter out
-descriptive text that shouldn't be considered actual PII data.
+Migrated verbatim from genai-engine/src/scorer/checks/pii/validations.py.
 
-The validation strategy follows these principles:
-1. Whitelist Filtering: Remove text containing descriptive keywords (e.g., "enter your phone number")
-2. Possessive Pattern Detection: Filter possessive constructs (e.g., "my email", "his address")
-3. Format Validation: Ensure minimum structural requirements are met
-4. Context Analysis: Check for linguistic patterns that indicate non-PII text
+Each `is_*` function (is_phone_number, is_email_address, is_location, etc.)
+returns True iff its input looks like a real instance of that PII type, and
+False if it's descriptive text that should be filtered out (e.g. "enter
+your phone number", "my email", "where do you live?").
 
-Each validator follows a consistent pipeline:
-- Input sanitization and basic checks
-- Descriptive keyword filtering
-- Possessive pattern detection
-- Format/structure validation
-- Entity-specific validation rules
+Strategy per validator:
+1. Whitelist filter — drop text containing descriptive keywords.
+2. Possessive pattern detection — drop "my X", "his Y", etc.
+3. Format validation — minimum length, required chars, digit counts.
+4. Optional context analysis — action verbs, question patterns.
+5. Optional custom validator — entity-specific structural checks.
+
+Used by inference.pii.classifier as a post-processing pass after Presidio
+and GLiNER produce raw spans.
 """
 
 import ipaddress

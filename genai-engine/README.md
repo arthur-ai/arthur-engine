@@ -123,18 +123,10 @@ docker build -f dockerfile \
   .
 ```
 
-```bash
-# GPU image (PyTorch CUDA stack from requirements-gpu.txt)
-docker build -f dockerfile \
-  --build-arg TORCH_DEVICE=gpu \
-  --build-arg GITLAB_UNIFY_FRONTEND_TOKEN="$GITLAB_UNIFY_FRONTEND_TOKEN" \
-  -t genai-engine:local-gpu \
-  .
-```
+The engine image is CPU-only. Heavy torch/transformers scorer models (prompt injection, toxicity, PII, hallucination claim filter) live in the sibling `models-service` and are reached over HTTP — see [models-service/README.md](models-service/README.md) for its GPU image.
 
 Optional build arguments:
 
-- `TORCH_DEVICE` — `cpu` (default) or `gpu`
 - `ENABLE_TELEMETRY` — `true` or `false` (default `false`); appended to the copied `.env` in the image
 - `METICULOUS_RECORDING_TOKEN`, `METICULOUS_API_TOKEN` — only if the UI build needs them
 

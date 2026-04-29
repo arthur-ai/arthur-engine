@@ -225,20 +225,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         get_oauth_client()
         time.sleep(random.randint(0, 3))
 
-    # Download models in worker process
-    logger.info("Downloading models...")
-    try:
-        model_load.download_models(1)  # Use single process in worker
-    except Exception as e:
-        logger.error(f"Error downloading models: {e}")
-        raise e
-    logger.info("Models downloaded.")
-
-    model_load.get_claim_classifier_embedding_model()
-    model_load.get_prompt_injection_model()
-    model_load.get_prompt_injection_tokenizer()
-    model_load.get_toxicity_model()
-    model_load.get_toxicity_tokenizer()
+    # Migrated-model warmup removed: prompt_injection / toxicity / PII /
+    # claim_filter live in the sideloaded models service now. The relevance
+    # reranker + bert-score below still warm here because the relevance
+    # metric still runs in-process.
 
     # Initialize continuous eval queue service
     try:

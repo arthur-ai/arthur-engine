@@ -439,14 +439,15 @@ jobs:
           uv run --directory ml-engine pytest tests/unit
 
   build-genai-engine-docker-images:
+    # CPU-only build. The GPU variant was dropped now that the heavy
+    # torch/transformers scorer models live in models-service. The
+    # arthurplatform/genai-engine-cpu tag is kept for backwards compatibility
+    # with customers who pin to it.
     environment: shared-protected-branch-secrets
     if: |
       contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        torch_device: [cpu, gpu]
     steps:
       - uses: mathio/gha-cleanup@v1
         with:
@@ -460,7 +461,6 @@ jobs:
         with:
           version-prefix: "genai-engine-"
       - name: Set up QEMU
-        if: matrix.torch_device == 'cpu'
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.11.1
@@ -475,17 +475,16 @@ jobs:
           context: "{{defaultContext}}:genai-engine"
           file: dockerfile
           build-args: |
-            TORCH_DEVICE=${{ matrix.torch_device }}
             ENABLE_TELEMETRY=${{ github.ref == 'refs/heads/main' && 'true' || 'false' }}
             METICULOUS_RECORDING_TOKEN=${{ secrets.METICULOUS_RECORDING_TOKEN }}
             METICULOUS_API_TOKEN=${{ secrets.METICULOUS_API_TOKEN }}
             GITLAB_UNIFY_FRONTEND_TOKEN=${{ secrets.GITLAB_UNIFY_FRONTEND_TOKEN }}
           tags: |
-            arthurplatform/genai-engine-${{ matrix.torch_device }}:${{ env.VERSION }}
-            ${{ github.ref == 'refs/heads/main' && format('arthurplatform/genai-engine-{0}:latest', matrix.torch_device) || '' }}
-            ${{ github.ref == 'refs/heads/dev' && format('arthurplatform/genai-engine-{0}:latest-dev', matrix.torch_device) || '' }}
+            arthurplatform/genai-engine-cpu:${{ env.VERSION }}
+            ${{ github.ref == 'refs/heads/main' && 'arthurplatform/genai-engine-cpu:latest' || '' }}
+            ${{ github.ref == 'refs/heads/dev' && 'arthurplatform/genai-engine-cpu:latest-dev' || '' }}
           push: true
-          platforms: ${{ matrix.torch_device == 'cpu' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
+          platforms: linux/amd64,linux/arm64
 
   build-models-service-docker-images:
     environment: shared-protected-branch-secrets
@@ -526,9 +525,9 @@ jobs:
           build-args: |
             TORCH_DEVICE=${{ matrix.torch_device }}
           tags: |
-            arthurplatform/arthur-models-service-${{ matrix.torch_device }}:${{ env.VERSION }}
-            ${{ github.ref == 'refs/heads/main' && format('arthurplatform/arthur-models-service-{0}:latest', matrix.torch_device) || '' }}
-            ${{ github.ref == 'refs/heads/dev' && format('arthurplatform/arthur-models-service-{0}:latest-dev', matrix.torch_device) || '' }}
+            arthurplatform/models-service-${{ matrix.torch_device }}:${{ env.VERSION }}
+            ${{ github.ref == 'refs/heads/main' && format('arthurplatform/models-service-{0}:latest', matrix.torch_device) || '' }}
+            ${{ github.ref == 'refs/heads/dev' && format('arthurplatform/models-service-{0}:latest-dev', matrix.torch_device) || '' }}
           push: true
           platforms: ${{ matrix.torch_device == 'cpu' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
 

@@ -1,8 +1,23 @@
+"""PII v1 RuleScorer (Presidio-only).
+
+Thin wrapper that adapts the models service's POST /v1/inference/pii
+response (with use_v2=False) into a RuleScore + ScorerRuleDetails. v1 still
+runs Presidio server-side; it just doesn't engage GLiNER or spaCy.
+
+Construct with the same ModelsServiceClient as the v2 scorer — the engine
+chooses between v1 and v2 in dependencies.py based on
+GENAI_ENGINE_USE_PII_MODEL_V2 and forwards the choice via the `use_v2`
+flag on each call.
+"""
+
 import logging
 
 from arthur_common.models.enums import PIIEntityTypes, RuleResultEnum
-from presidio_analyzer import AnalyzerEngine
 
+from clients.models_service_client import (
+    ModelNotAvailableError,
+    ModelsServiceClient,
+)
 from schemas.scorer_schemas import (
     RuleScore,
     ScoreRequest,
@@ -11,32 +26,14 @@ from schemas.scorer_schemas import (
 )
 from scorer.scorer import RuleScorer
 
-logging.getLogger("presidio-analyzer").setLevel(logging.ERROR)
+logger = logging.getLogger(__name__)
 
 
 class BinaryPIIDataClassifierV1(RuleScorer):
-    def __init__(self) -> None:
-        """Initialized the binary classifier for PII Data"""
-        self.analyzer: AnalyzerEngine = AnalyzerEngine()
-        self.default_confidence_threshold: float = 0.5
+    def __init__(self, client: ModelsServiceClient):
+        self.client = client
 
     def score(self, request: ScoreRequest) -> RuleScore:
-        """Scores request for PII"""
-        if request.pii_confidence_threshold is not None:
-            confidence_threshold = request.pii_confidence_threshold
-        else:
-            confidence_threshold = self.default_confidence_threshold
-
-        # Pre PII analyzer - resolve the PII entities to check for using disabled_pii_entities if present
-        entities_to_check = PIIEntityTypes.values()
-        disabled_pii_entities = request.disabled_pii_entities
-        if disabled_pii_entities:
-            entities_to_check = [
-                entity
-                for entity in entities_to_check
-                if entity not in disabled_pii_entities
-            ]
-
         if not request.scoring_text:
             return RuleScore(
                 result=RuleResultEnum.PASS,
@@ -44,43 +41,51 @@ class BinaryPIIDataClassifierV1(RuleScorer):
                 completion_tokens=0,
             )
 
-        results = self.analyzer.analyze(
-            text=request.scoring_text,
-            entities=entities_to_check,
-            allow_list=request.allow_list,
-            language="en",
-        )
-
-        # Post PII analyzer - enforce our threshold on results, if there is one present
-        results = [result for result in results if result.score >= confidence_threshold]
-
-        if len(results) == 0:
+        try:
+            response = self.client.pii(
+                text=request.scoring_text,
+                disabled_entities=list(request.disabled_pii_entities or []),
+                allow_list=list(request.allow_list or []),
+                confidence_threshold=request.pii_confidence_threshold,
+                use_v2=False,
+            )
+        except ModelNotAvailableError as e:
+            logger.warning("PII v1 model unavailable: %s", e)
             return RuleScore(
-                result=RuleResultEnum.PASS,
+                result=RuleResultEnum.MODEL_NOT_AVAILABLE,
                 prompt_tokens=0,
                 completion_tokens=0,
             )
-        else:
-            found_types: list[PIIEntityTypes] = []
-            entity_spans: list[ScorerPIIEntitySpan] = []
-            for res in results:
-                entity_type = PIIEntityTypes(value=res.entity_type)
-                found_types.append(entity_type)
-                entity_spans.append(
-                    ScorerPIIEntitySpan(
-                        entity=entity_type,
-                        span=request.scoring_text[res.start : res.end],
-                        confidence=res.score,
-                    ),
-                )
-            message_string = f"PII found in data: {','.join(found_types)}"
+
+        rule_result = RuleResultEnum(response.result)
+        if rule_result == RuleResultEnum.PASS:
             return RuleScore(
-                result=RuleResultEnum.FAIL,
-                details=ScorerRuleDetails(
-                    message=message_string,
-                    pii_results=found_types,
-                    pii_entities=entity_spans,
+                result=rule_result,
+                prompt_tokens=0,
+                completion_tokens=0,
+            )
+
+        entity_types: list[PIIEntityTypes] = []
+        spans: list[ScorerPIIEntitySpan] = []
+        for entity in response.entities:
+            etype = PIIEntityTypes(entity.entity)
+            entity_types.append(etype)
+            spans.append(
+                ScorerPIIEntitySpan(
+                    entity=etype,
+                    span=entity.span,
+                    confidence=entity.confidence,
                 ),
-                prompt_tokens=0,
-                completion_tokens=0,
             )
+
+        unique_types = sorted({e.value for e in entity_types})
+        return RuleScore(
+            result=rule_result,
+            details=ScorerRuleDetails(
+                message=f"PII found in data: {','.join(unique_types)}",
+                pii_results=[PIIEntityTypes(t) for t in unique_types],
+                pii_entities=spans,
+            ),
+            prompt_tokens=0,
+            completion_tokens=0,
+        )

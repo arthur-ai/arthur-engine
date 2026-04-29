@@ -1,518 +1,91 @@
-"""
-PII (Personally Identifiable Information) Detection Module.
+"""PII v2 RuleScorer.
 
-This module provides utilities and classifiers for detecting PII in text data
-using both Presidio and GLiNER models.
+Thin wrapper that adapts the models service's POST /v1/inference/pii
+response (with use_v2=True) into a RuleScore + ScorerRuleDetails. The
+in-process GLiNER + Presidio + spaCy pipeline moved to the models service;
+the engine forwards `disabled_pii_entities`, `allow_list`, and
+`pii_confidence_threshold` from the request and translates the resulting
+spans back into the engine's RuleScore shape.
 """
 
 import logging
-import re
-import unicodedata
-from typing import Any, TypedDict
 
-import spacy
-import torch
 from arthur_common.models.enums import PIIEntityTypes, RuleResultEnum
-from date_spacy import find_dates  # noqa: F401 - Import registers the component
 
+from clients.models_service_client import (
+    ModelNotAvailableError,
+    ModelsServiceClient,
+)
 from schemas.scorer_schemas import (
     RuleScore,
     ScoreRequest,
     ScorerPIIEntitySpan,
     ScorerRuleDetails,
 )
-from scorer.checks.pii.presidio_gliner_map import PresidioGlinerMapper
-from scorer.checks.pii.validations import (
-    is_bank_account_number,
-    is_credit_card,
-    is_crypto,
-    is_email_address,
-    is_ip,
-    is_location,
-    is_name,
-    is_phone_number,
-    is_ssn,
-    is_url,
-)
-from utils.model_load import (
-    get_gliner_model,
-    get_gliner_tokenizer,
-    get_presidio_analyzer,
-)
-from utils.text_chunking import ChunkIterator
+from scorer.scorer import RuleScorer
 
-logging.getLogger("presidio-analyzer").setLevel(logging.ERROR)
-
-MAX_TOKENS_PER_CHUNK = 384
+logger = logging.getLogger(__name__)
 
 
-class DateTimeSpan(TypedDict):
-    entity: str
-    span: str
-    start: int
-    end: int
-    confidence: float
+class BinaryPIIDataClassifier(RuleScorer):
+    """PII v2 — uses the full GLiNER+Presidio+spaCy pipeline server-side."""
 
-
-class BinaryPIIDataClassifier:
-    """Binary PII classifier using both Presidio and GLiNER models."""
-
-    # Entities that are better handled by Presidio (more accurate/reliable)
-    PRESIDIO_SUPPORTED = {
-        PIIEntityTypes.EMAIL_ADDRESS.value,
-        PIIEntityTypes.IBAN_CODE.value,
-        PIIEntityTypes.IP_ADDRESS.value,
-        PIIEntityTypes.US_SSN.value,
-    }
-
-    # All other entities from PIIEntityTypes will be handled by GLiNER
-    DEFAULT_CONFIDENCE_THRESHOLD = 0.5
-
-    # Entity validation mapping
-    ENTITY_VALIDATORS = {
-        PIIEntityTypes.IP_ADDRESS.value: is_ip,
-        PIIEntityTypes.US_SSN.value: is_ssn,
-        PIIEntityTypes.URL.value: is_url,
-        PIIEntityTypes.PERSON.value: is_name,
-        PIIEntityTypes.CRYPTO.value: is_crypto,
-        PIIEntityTypes.US_BANK_NUMBER.value: is_bank_account_number,
-        PIIEntityTypes.PHONE_NUMBER.value: is_phone_number,
-        PIIEntityTypes.LOCATION.value: is_location,
-        PIIEntityTypes.EMAIL_ADDRESS.value: is_email_address,
-        PIIEntityTypes.CREDIT_CARD.value: is_credit_card,
-    }
-
-    def __init__(self) -> None:
-        """Initialize the PII classifier as a per-process singleton."""
-        self.model = get_gliner_model()
-        self.tokenizer = get_gliner_tokenizer()
-        self.max_tokens_per_chunk = MAX_TOKENS_PER_CHUNK
-        self.analyzer = get_presidio_analyzer()
-
-        # Initialize spaCy with date_spacy for datetime detection
-        # Create a minimal pipeline without NER to avoid entity conflicts
-        self.date_nlp = spacy.load("en_core_web_lg", exclude=["ner"])
-        self.date_nlp.add_pipe("find_dates")
-
-        # Get all entity values from enum
-        entities = PIIEntityTypes.values()
-
-        # Separate entities for Presidio, date_spacy, and GLiNER
-        self.presidio_entities = [
-            entity for entity in entities if entity in self.PRESIDIO_SUPPORTED
-        ]
-        # Exclude DATE_TIME from GLiNER - it will be handled by date_spacy
-        self.gliner_entities = [
-            entity
-            for entity in entities
-            if entity not in self.PRESIDIO_SUPPORTED
-            and entity != PIIEntityTypes.DATE_TIME.value
-        ]
-
-        # Convert GLiNER entities to GLiNER format
-        self.gliner_entity_types = [
-            PresidioGlinerMapper.presidio_to_gliner(entity)
-            for entity in self.gliner_entities
-        ]
-
-    def _remove_overlapping_spans(
-        self,
-        spans: list[DateTimeSpan],
-    ) -> list[DateTimeSpan]:
-        """Remove overlapping spans using a greedy approach with confidence and length prioritization."""
-        if not spans:
-            return []
-
-        # Sort by start position, then by confidence (desc), then by length (desc)
-        sorted_spans = sorted(
-            spans,
-            key=lambda s: (s["start"], -s["confidence"], -(s["end"] - s["start"])),
-        )
-
-        result = []
-        max_end = max((s["end"] for s in spans), default=0)
-        occupied = [False] * (max_end + 1)
-
-        for span in sorted_spans:
-            # Check if span overlaps with any occupied positions
-            if not any(occupied[pos] for pos in range(span["start"], span["end"])):
-                result.append(span)
-                # Mark positions as occupied
-                for pos in range(span["start"], span["end"]):
-                    occupied[pos] = True
-
-        return result
-
-    def _postprocess_spans(
-        self,
-        spans: list[DateTimeSpan],
-        text: str,
-        min_len: int = 2,
-        merge_distance: int = 2,
-    ) -> list[DateTimeSpan]:
-        """Post-process spans by filtering, merging, and validating."""
-        # Filter by minimum length
-        spans = [s for s in spans if (s["end"] - s["start"]) >= min_len]
-        spans.sort(key=lambda s: s["start"])
-
-        # Merge adjacent spans of same entity type
-        merged: list[DateTimeSpan] = []
-        for span in spans:
-            if (
-                merged
-                and span["entity"] == merged[-1]["entity"]
-                and span["start"] - merged[-1]["end"] <= merge_distance
-            ):
-
-                last = merged[-1]
-                merged[-1] = DateTimeSpan(
-                    entity=last["entity"],
-                    start=last["start"],
-                    end=span["end"],
-                    span=text[last["start"] : span["end"]],
-                    confidence=max(last["confidence"], span["confidence"]),
-                )
-            else:
-                merged.append(span)
-
-        # Validate and clean spans
-        validated: list[DateTimeSpan] = []
-        for span in merged:
-            clean_value = sanitize_span_text(span["span"])
-
-            # Skip if cleaned value is too short
-            if not clean_value or len(clean_value) < min_len:
-                continue
-
-            # Validate specific entity types using mapping
-            entity_type = span["entity"]
-            if entity_type in self.ENTITY_VALIDATORS:
-                validator = self.ENTITY_VALIDATORS[entity_type]
-                if not validator(clean_value):
-                    continue
-
-            span["span"] = clean_value
-            validated.append(span)
-
-        return validated
-
-    def _filter_by_allow_list(
-        self,
-        spans: list[DateTimeSpan],
-        allow_list: list[str],
-    ) -> list[DateTimeSpan]:
-        """Filter spans by allow list - remove spans that match allowed patterns."""
-        if not allow_list:
-            return spans
-
-        filtered_spans = []
-        for span in spans:
-            span_text = span["span"].lower()
-            is_allowed = False
-
-            for allowed_pattern in allow_list:
-                if allowed_pattern.lower() in span_text:
-                    is_allowed = True
-                    break
-
-            if not is_allowed:
-                filtered_spans.append(span)
-
-        return filtered_spans
+    def __init__(self, client: ModelsServiceClient):
+        self.client = client
 
     def score(self, request: ScoreRequest) -> RuleScore:
-        """Score text for PII detection using Presidio, GLiNER, and date_spacy."""
-        text = sanitize(request.scoring_text or "")
-        disabled_entities = set(request.disabled_pii_entities or [])
-        allow_list = request.allow_list or []
-        confidence_threshold = (
-            request.pii_confidence_threshold or self.DEFAULT_CONFIDENCE_THRESHOLD
-        )
-
-        # Process with Presidio
-        all_spans = self._process_presidio(text, disabled_entities, allow_list)
-
-        # Process with GLiNER (all other entities except DATE_TIME)
-        all_spans = all_spans + self._process_gliner(text, disabled_entities)
-
-        # Process with date_spacy for DATE_TIME entities
-        all_spans = all_spans + self._process_date_spacy(text, disabled_entities)
-
-        # Apply confidence threshold
-        if confidence_threshold > 0:
-            all_spans = [
-                span for span in all_spans if span["confidence"] >= confidence_threshold
-            ]
-
-        # Apply allow list filtering
-        all_spans = self._filter_by_allow_list(all_spans, allow_list)
-
-        # Post-process spans (sanitation and validation) before overlap removal
-        processed_spans = self._postprocess_spans(all_spans, text)
-
-        # Remove overlaps after postprocessing
-        final_spans = self._remove_overlapping_spans(processed_spans)
-
-        if not final_spans:
+        if not request.scoring_text:
             return RuleScore(
                 result=RuleResultEnum.PASS,
                 prompt_tokens=0,
                 completion_tokens=0,
             )
 
-        # Get unique entity types found
-        entity_types = sorted(set(span["entity"] for span in final_spans))
-
-        # Convert spans to ScorerPIIEntitySpan objects
-        pii_entity_spans = [
-            ScorerPIIEntitySpan(
-                entity=PIIEntityTypes(span["entity"]),
-                span=span["span"],
-                confidence=span["confidence"],
+        try:
+            response = self.client.pii(
+                text=request.scoring_text,
+                disabled_entities=list(request.disabled_pii_entities or []),
+                allow_list=list(request.allow_list or []),
+                confidence_threshold=request.pii_confidence_threshold,
+                use_v2=True,
             )
-            for span in final_spans
-        ]
+        except ModelNotAvailableError as e:
+            logger.warning("PII v2 model unavailable: %s", e)
+            return RuleScore(
+                result=RuleResultEnum.MODEL_NOT_AVAILABLE,
+                prompt_tokens=0,
+                completion_tokens=0,
+            )
 
+        rule_result = RuleResultEnum(response.result)
+        if rule_result == RuleResultEnum.PASS:
+            return RuleScore(
+                result=rule_result,
+                prompt_tokens=0,
+                completion_tokens=0,
+            )
+
+        entity_types: list[PIIEntityTypes] = []
+        spans: list[ScorerPIIEntitySpan] = []
+        for entity in response.entities:
+            etype = PIIEntityTypes(entity.entity)
+            entity_types.append(etype)
+            spans.append(
+                ScorerPIIEntitySpan(
+                    entity=etype,
+                    span=entity.span,
+                    confidence=entity.confidence,
+                ),
+            )
+
+        unique_types = sorted({e.value for e in entity_types})
         return RuleScore(
-            result=RuleResultEnum.FAIL,
+            result=rule_result,
             details=ScorerRuleDetails(
-                message=f"PII found in data: {', '.join(entity_types)}",
-                pii_results=[
-                    PIIEntityTypes(entity_type) for entity_type in entity_types
-                ],
-                pii_entities=pii_entity_spans,
+                message=f"PII found in data: {', '.join(unique_types)}",
+                pii_results=[PIIEntityTypes(t) for t in unique_types],
+                pii_entities=spans,
             ),
             prompt_tokens=0,
             completion_tokens=0,
         )
-
-    def _process_presidio(
-        self,
-        text: str,
-        disabled_entities: set[str],
-        allow_list: list[str],
-    ) -> list[DateTimeSpan]:
-        """Process text using Presidio analyzer."""
-        # Only use Presidio for entities it handles well, excluding disabled ones
-        presidio_entities = [
-            entity
-            for entity in self.presidio_entities
-            if entity not in disabled_entities
-        ]
-
-        if not presidio_entities:
-            return []
-
-        if not self.analyzer:
-            return []
-
-        presidio_results = self.analyzer.analyze(
-            text=text,
-            entities=presidio_entities,
-            allow_list=allow_list,
-            language="en",
-        )
-
-        # Convert to span format
-        return [
-            DateTimeSpan(
-                entity=r.entity_type,
-                span=text[r.start : r.end],
-                start=r.start,
-                end=r.end,
-                confidence=round(r.score, 4),
-            )
-            for r in presidio_results
-        ]
-
-    def _process_gliner(
-        self,
-        text: str,
-        disabled_entities: set[str],
-    ) -> list[DateTimeSpan]:
-        """Process text using GLiNER model."""
-        if not self.model or not self.tokenizer:
-            # Returning empty list to avoid raising an error
-            return []
-
-        # Get GLiNER entities, excluding those that are disabled
-        gliner_entities = [
-            entity
-            for entity in self.gliner_entity_types
-            if PresidioGlinerMapper.gliner_to_presidio(entity) not in disabled_entities
-        ]
-
-        if not gliner_entities:
-            return []
-
-        gliner_preds: list[dict[str, Any]] = []
-        current_offset: int = 0
-
-        for chunk in ChunkIterator(text, self.tokenizer, self.max_tokens_per_chunk):
-            with torch.no_grad():
-                preds = self.model.predict_entities(chunk, labels=gliner_entities)
-            for pred in preds:
-                # Adjust offsets for chunk position
-                pred["start"] += current_offset
-                pred["end"] += current_offset
-                gliner_preds.append(pred)
-
-            # Update offset for next chunk
-            current_offset += len(chunk)
-
-        # Convert to span format
-        return [
-            DateTimeSpan(
-                entity=PresidioGlinerMapper.gliner_to_presidio(pred["label"]),
-                span=text[pred["start"] : pred["end"]],
-                start=pred["start"],
-                end=pred["end"],
-                confidence=round(pred.get("score", 1.0), 4),
-            )
-            for pred in gliner_preds
-        ]
-
-    def _process_date_spacy(
-        self,
-        text: str,
-        disabled_entities: set[str],
-    ) -> list[DateTimeSpan]:
-        """
-        Process text using date_spacy NER + pattern-based supplementation.
-
-        Strategy:
-        1. Run spaCy NER first (intelligent, context-aware)
-        2. Supplement with pattern matching for specific cases spaCy misses
-        3. Generic filtering happens in postprocessing via is_datetime()
-        """
-        if PIIEntityTypes.DATE_TIME.value in disabled_entities:
-            return []
-
-        datetime_spans: list[DateTimeSpan] = []
-
-        # Phase 1: spaCy NER (intelligent, context-aware detection)
-        doc = self.date_nlp(text)
-        for ent in doc.ents:
-            if ent.label_ == "DATE":
-                # Check if the entity has a parsed date
-                parsed_date = ent._.date if hasattr(ent._, "date") else None
-
-                if parsed_date is not None:
-                    datetime_spans.append(
-                        DateTimeSpan(
-                            entity=PIIEntityTypes.DATE_TIME.value,
-                            span=ent.text,
-                            start=ent.start_char,
-                            end=ent.end_char,
-                            confidence=0.95,  # High confidence for spaCy NER
-                        ),
-                    )
-
-        # Phase 2: Pattern-based supplementation for specific patterns spaCy misses
-        datetime_patterns = [
-            # Day names
-            r"\b(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b",
-            r"\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b",
-            # Month + Year combinations
-            r"\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\b",
-            r"\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}(?:st|nd|rd|th)?,?\s*\d{2,4}\b",
-            # Full date patterns
-            r"\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:st|nd|rd|th)?,?\s*\d{2,4}\b",
-            r"\b\d{1,2}(?:st|nd|rd|th)?\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)(?:,?\s*\d{2,4})?\b",
-            # Year patterns
-            r"\b(19|20)\d{2}\b",
-            # Time patterns
-            r"\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm|AM|PM|a\.m\.|p\.m\.)\b",
-            r"\b\d{1,2}\s*(?:am|pm|AM|PM|a\.m\.|p\.m\.)\b",
-            r"\b\d{1,2}\s*o'?clock\b",
-            r"\b(?:noon|midnight)\b",
-            r"\bquarter\s+past\b",
-            # Date formats
-            r"\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b",
-            r"\b\d{4}[/-]\d{1,2}[/-]\d{1,2}\b",
-            # Quantified time units (specific durations)
-            r"\b\d+\s*(?:seconds?|minutes?|hours?|days?|weeks?|months?|years?)\b",
-            r"\b\d+\s*(?:secs?|mins?|hrs?|wks?|yrs?)\b",
-            # Quarters
-            r"\bQ[1-4]\s*\d{4}\b",
-            # Holidays
-            r"\b(?:Christmas|Xmas|Easter|Halloween|Valentine|Thanksgiving|New\s+Year)\b",
-        ]
-
-        for pattern in datetime_patterns:
-            for match in re.finditer(pattern, text, re.IGNORECASE):
-                span_text = match.group().strip()
-                start_pos = match.start()
-                end_pos = match.end()
-
-                # Avoid duplicates - check if overlaps with spaCy detections
-                overlaps = any(
-                    span["start"] <= start_pos < span["end"]
-                    or span["start"] < end_pos <= span["end"]
-                    or start_pos <= span["start"] < end_pos
-                    for span in datetime_spans
-                )
-
-                if not overlaps and span_text:
-                    datetime_spans.append(
-                        {
-                            "entity": PIIEntityTypes.DATE_TIME.value,
-                            "span": span_text,
-                            "start": start_pos,
-                            "end": end_pos,
-                            "confidence": 0.9,  # Slightly lower for pattern matches
-                        },
-                    )
-
-        return datetime_spans
-
-
-#########################
-### Utility Functions ###
-#########################
-
-
-def sanitize(text: str) -> str:
-    """Sanitize text by normalizing unicode, removing control characters, and cleaning whitespace."""
-    if not isinstance(text, str):
-        return ""
-
-    # Normalize unicode characters
-    text = unicodedata.normalize("NFKC", text)
-
-    # Replace pipe with newline for better tokenization
-    text = text.replace("|", "\n")
-
-    # Remove control characters except newline and tab
-    text = re.sub(r"[\x00-\x09\x0b\x0c\x0e-\x1f\x7f]", " ", text)
-
-    # Replace escaped characters with spaces
-    text = text.replace("\\n", " ").replace("\\t", " ").replace("\\r", " ")
-    text = re.sub(r"\\x[0-9a-fA-F]{2}", " ", text)
-
-    # Replace actual control characters
-    text = text.replace("\r", " ").replace("\t", " ")
-
-    # Clean up whitespace
-    text = re.sub(r"[ ]+", " ", text)
-    text = re.sub(r" *\n *", "\n", text)
-
-    return text.strip()
-
-
-def sanitize_span_text(text: str) -> str:
-    """Sanitize span text for entity extraction by removing problematic characters."""
-    # Replace backslashes and control characters
-    text = text.replace("\\", " ")
-    text = re.sub(r"[\n\r\t]", " ", text)
-
-    # Replace commas with spaces
-    text = text.replace(",", " ")
-
-    # Keep only word characters, @, ., :, /, #, &, +, -
-    text = re.sub(r"[^\w@.:/#&+-]", " ", text)
-
-    # Clean up multiple spaces
-    text = re.sub(r"\s{2,}", " ", text)
-
-    return text.strip()

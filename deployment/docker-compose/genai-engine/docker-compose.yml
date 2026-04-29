@@ -22,8 +22,8 @@ services:
     # Sideloaded torch/transformers inference. Hosts prompt-injection,
     # toxicity, PII (v1/v2) and hallucination claim-filter models. Genai-engine
     # talks to it over HTTP, gated by MODEL_REGISTRY_SECRET.
-    # If you have GPUs, use `arthur-models-service-gpu` image instead.
-    image: arthurplatform/arthur-models-service-cpu:${MODELS_SERVICE_VERSION-latest}
+    # If you have GPUs, use `models-service-gpu` image instead.
+    image: arthurplatform/models-service-cpu:${MODELS_SERVICE_VERSION-latest}
     environment:
       - MODELS_SERVICE_PORT=7600
       - MODELS_SERVICE_HOST=0.0.0.0
