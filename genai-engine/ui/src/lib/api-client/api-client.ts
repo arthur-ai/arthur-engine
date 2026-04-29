@@ -121,6 +121,11 @@ export interface AgenticAnnotationResponse {
    */
   eval_name?: string | null;
   /**
+   * Eval Type
+   * Type of eval: 'llm_eval' or 'ml_eval'
+   */
+  eval_type?: string | null;
+  /**
    * Eval Version
    * Version of the eval the continuous eval used when scoring
    */
@@ -1514,7 +1519,7 @@ export interface ContinuousEvalCreateRequest {
    * Llm Eval Name
    * Name of the eval to create the continuous eval for
    */
-  llm_eval_name?: string | null;
+  llm_eval_name: string;
   /**
    * Llm Eval Version
    * Version of the eval. Can be 'latest', a version number, an ISO datetime string, or a tag.
@@ -1585,6 +1590,12 @@ export interface ContinuousEvalResponse {
    */
   enabled?: boolean;
   /**
+   * Eval Type
+   * Type of evaluator: 'llm_eval' or 'ml_eval'.
+   * @default "llm_eval"
+   */
+  eval_type?: string;
+  /**
    * Id
    * ID of the transform.
    * @format uuid
@@ -1592,14 +1603,14 @@ export interface ContinuousEvalResponse {
   id: string;
   /**
    * Llm Eval Name
-   * Name of the llm eval.
+   * Name of the eval.
    */
-  llm_eval_name: string;
+  llm_eval_name?: string | null;
   /**
    * Llm Eval Version
-   * Version of the llm eval.
+   * Version of the eval.
    */
-  llm_eval_version: number;
+  llm_eval_version?: number | null;
   /**
    * Name
    * Name of the continuous eval.
@@ -4672,8 +4683,6 @@ export interface LLMBaseConfigSettings {
    */
   top_p?: number | null;
 }
-
-
 /** LLMConfigSettings */
 export interface LLMConfigSettings {
   /**
@@ -4756,8 +4765,11 @@ export interface LLMConfigSettings {
 
 /** LLMEval */
 export interface LLMEval {
-  /** LLM configurations for this eval (e.g. temperature, max_tokens, etc.) */
-  config?: LLMBaseConfigSettings | null;
+  /**
+   * Config
+   * Eval configuration. LLMBaseConfigSettings for LLM evals; type-specific dict for ML evals.
+   */
+  config?: null;
   /**
    * Created At
    * Timestamp when the llm eval was created.
@@ -4770,17 +4782,23 @@ export interface LLMEval {
    */
   deleted_at?: string | null;
   /**
-   * Instructions
-   * Instructions for the llm eval
+   * Eval Type
+   * Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
+   * @default "llm_as_a_judge"
    */
-  instructions: string;
+  eval_type?: string;
+  /**
+   * Instructions
+   * Instructions for the llm eval. None for ML evals.
+   */
+  instructions?: string | null;
   /**
    * Model Name
-   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
+   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet'). None for ML evals.
    */
-  model_name: string;
-  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
-  model_provider: ModelProvider;
+  model_name?: string | null;
+  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). None for ML evals. */
+  model_provider?: ModelProvider | null;
   /**
    * Name
    * Name of the llm eval
