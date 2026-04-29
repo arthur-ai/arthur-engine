@@ -10,6 +10,7 @@
 * Depending on your environment, Pytorch package wheel might not be available (e.g. Intel chip Mac).
 * You might need to change the `image` and the `platform` configurations in the `docker-compose.yml` depending on your environment.
 * When the `GENAI_ENGINE_VERSION` environment variable is not set, the `latest` stable image is used (not recommended). When `latest` is used, make sure to run `docker compose pull` first to get the most recent `latest` tagged image.
+* The stack ships with a sideloaded `models-service` container that hosts the torch/transformers scorer models (prompt injection, toxicity, PII, hallucination claim filter). It is gated by `MODEL_REGISTRY_SECRET`. **Upgrading from a release that did not include `models-service`?** Either re-run `setup-and-start.sh` / `setup-and-start.ps1`, or add `MODEL_REGISTRY_SECRET=$(openssl rand -base64 32)` to your existing `.env` before `docker compose up`. The first boot downloads ~1.5 GB of model weights into the `models_cache` volume; subsequent starts are fast.
 
 ## Prerequisites
 

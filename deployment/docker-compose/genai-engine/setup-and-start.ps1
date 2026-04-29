@@ -89,17 +89,21 @@ GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$model::$endpoint::$apiKey
         $envContent = "GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=model_name::https://model_service.com/::my_api_key"
     }
 
-    # Generate a secure random key using .NET
-    $randomBytes = New-Object byte[] 32
+    # Generate secure random keys using .NET
     $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
-    $rng.GetBytes($randomBytes)
-    $secretKey = [System.BitConverter]::ToString($randomBytes) -replace '-', ''
-    Write-Host "Generated random secret key since none was found"
+    $secretBytes = New-Object byte[] 32
+    $rng.GetBytes($secretBytes)
+    $secretKey = [System.BitConverter]::ToString($secretBytes) -replace '-', ''
+    $registryBytes = New-Object byte[] 32
+    $rng.GetBytes($registryBytes)
+    $modelRegistrySecret = [System.BitConverter]::ToString($registryBytes) -replace '-', ''
+    Write-Host "Generated random secret keys since none were found"
 
+    $secretBlock = "GENAI_ENGINE_SECRET_STORE_KEY=$secretKey`nMODEL_REGISTRY_SECRET=$modelRegistrySecret"
     if ([string]::IsNullOrWhiteSpace($envContent)) {
-        $envContent = "GENAI_ENGINE_SECRET_STORE_KEY=$secretKey"
+        $envContent = $secretBlock
     } else {
-        $envContent += "`nGENAI_ENGINE_SECRET_STORE_KEY=$secretKey"
+        $envContent += "`n$secretBlock"
     }
 
     Set-Content -Path $envPath -Value $envContent -Encoding UTF8
