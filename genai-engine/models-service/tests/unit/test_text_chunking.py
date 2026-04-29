@@ -14,7 +14,7 @@ pytestmark = pytest.mark.real_models
 
 @pytest.fixture(scope="module")
 def tokenizer():
-    from models import loader
+    from model_registry import loader
 
     tok = loader.get_prompt_injection_tokenizer()
     if tok is None:

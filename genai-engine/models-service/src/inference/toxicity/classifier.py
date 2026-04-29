@@ -47,7 +47,7 @@ from opentelemetry import trace
 from inference.text_chunking import ChunkIterator
 from inference.toxicity.profanity import detect_profanity
 from inference.toxicity.text_utils import list_indicator_regex, pad_text
-from models import loader
+from model_registry import loader
 from schemas import (
     InferenceResult,
     ToxicityRequest,

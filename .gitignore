@@ -44,11 +44,7 @@ ml-engine/src/genai_client/**
 .cursor/
 
 genai-engine/version
-# Runtime HF weight caches. Anchored to known cache locations only — must NOT
-# match models-service/src/models/ which is the loader/downloader/registry
-# source.
-genai-engine/models/
-genai-engine/models-service/models/
+models/
 arthur-engine.code-workspace
 
 # Claude Code integration (any directory)

@@ -32,8 +32,8 @@ from inference import prompt_injection as prompt_injection_mod
 from inference import toxicity as toxicity_mod
 from inference.device import get_device  # noqa: F401 — kept for /v1/models
 from middleware import BodySizeLimitMiddleware
-from models import downloader, loader
-from models.registry import ALL_MODELS
+from model_registry import downloader, loader
+from model_registry.registry import ALL_MODELS
 from schemas import (
     ClaimFilterRequest,
     ClaimFilterResponse,

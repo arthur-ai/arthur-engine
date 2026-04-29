@@ -2,7 +2,7 @@
 
 The .pth file lives in this directory because it's coupled to the
 claim_filter inference logic. `WEIGHTS_PATH` is the absolute path the
-runtime loader (models/loader.py) reads via torch.load.
+runtime loader (model_registry/loader.py) reads via torch.load.
 """
 
 import os

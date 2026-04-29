@@ -37,8 +37,8 @@ from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
 import config as svc_config
 from inference.device import get_device
-from models.classifier_arch import Classifier, LogisticRegressionModel
-from models.registry import (
+from model_registry.classifier_arch import Classifier, LogisticRegressionModel
+from model_registry.registry import (
     CLAIM_CLASSIFIER_EMBEDDING,
     GLINER_PII,
     PROFANITY,

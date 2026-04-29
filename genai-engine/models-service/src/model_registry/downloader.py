@@ -2,8 +2,8 @@
 
 Migrated from genai-engine's `download_models()` flow in
 src/utils/model_load.py. Pulls every (repo, filename) pair declared in
-`models.registry` into MODEL_STORAGE_PATH on container start so the loaders
-in `models.loader` find files on disk.
+`model_registry.registry` into MODEL_STORAGE_PATH on container start so the loaders
+in `model_registry.loader` find files on disk.
 
 The previous build-time bake-in worked but produced a 14 GB image and
 broke GLiNER's offline path (see the Dockerfile note); this matches the
@@ -19,7 +19,7 @@ from pathlib import Path
 from huggingface_hub import hf_hub_download
 
 import config as svc_config
-from models.registry import files_to_download
+from model_registry.registry import files_to_download
 
 logger = logging.getLogger(__name__)
 

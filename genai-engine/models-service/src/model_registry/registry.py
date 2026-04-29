@@ -7,7 +7,7 @@ a specific revision so builds are reproducible — bump on intentional upgrades.
 
 Consumers:
 - scripts/download_models.py: build-time bake into the runtime image.
-- src/models/loader.py: runtime resolution from MODEL_STORAGE_PATH.
+- src/model_registry/loader.py: runtime resolution from MODEL_STORAGE_PATH.
 
 spaCy en_core_web_lg is NOT in this registry — it ships as a pip wheel
 declared in pyproject.toml, not via HF Hub.

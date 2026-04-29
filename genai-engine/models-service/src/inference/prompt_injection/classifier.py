@@ -35,7 +35,7 @@ import torch.nn.functional as F
 from opentelemetry import trace
 
 from inference.text_chunking import SlidingWindowChunkIterator
-from models import loader
+from model_registry import loader
 from schemas import (
     InferenceResult,
     PromptInjectionChunk,

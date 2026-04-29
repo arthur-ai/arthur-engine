@@ -64,7 +64,7 @@ from inference.pii.validations import (
     is_url,
 )
 from inference.text_chunking import ChunkIterator
-from models import loader
+from model_registry import loader
 from schemas import (
     InferenceResult,
     PIIEntitySpan,
