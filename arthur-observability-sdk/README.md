@@ -27,6 +27,7 @@ Full guides are in [`docs/`](docs/):
 
 - **[Getting started](docs/getting-started.md)** — initialisation, session/user context, framework instrumentation, shutdown
 - **[Prompt management](docs/prompt-management.md)** — fetching and rendering versioned prompts, PROMPT span attributes
+- **[Guardrails](docs/guardrails.md)** — validating prompts and responses against task rules, GUARDRAIL span attributes
 
 ### Quick start
 
@@ -59,6 +60,22 @@ rendered = arthur.render_prompt(
     variables={"context": "...", "question": "..."},
 )
 messages = rendered["messages"]
+```
+
+### Guardrails
+
+```python
+# Validate the prompt against the task's prompt-side rules
+prompt_result = arthur.validate_prompt("What is the capital of France?")
+inference_id = prompt_result["inference_id"]
+
+# ...call your LLM, then validate the response (with optional context for
+# Hallucination rules)
+response_result = arthur.validate_response(
+    response="The capital of France is Paris.",
+    inference_id=inference_id,
+    context="Paris is the capital and most populous city of France.",
+)
 ```
 
 ---

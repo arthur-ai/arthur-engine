@@ -331,6 +331,125 @@ class Arthur:
         return prompt_data
 
     # ------------------------------------------------------------------
+    # Guardrails / validation
+    # ------------------------------------------------------------------
+
+    def validate_prompt(
+        self,
+        prompt: str,
+        task_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Validates ``prompt`` against the rules configured for the task and
+        emits an OpenInference ``GUARDRAIL`` span.
+
+        Calls ``POST /api/v2/tasks/{task_id}/validate_prompt``.
+
+        Args:
+            prompt: Prompt text to validate.
+            task_id: Overrides the instance-level ``task_id`` for this call.
+
+        Returns:
+            The raw ``ValidationResult`` dict
+            (``{"inference_id": ..., "rule_results": [...]}``).  The
+            ``inference_id`` is required when calling :meth:`validate_response`
+            for the matching response.
+        """
+        resolved_task_id = self._get_task_id(task_id)
+        tracer_provider = self._tracer_provider or trace.get_tracer_provider()
+        tracer = tracer_provider.get_tracer("openinference.instrumentation.arthur")
+
+        with tracer.start_as_current_span("validate_prompt") as span:
+            span.set_attribute(
+                SpanAttributes.OPENINFERENCE_SPAN_KIND,
+                OpenInferenceSpanKindValues.GUARDRAIL.value,
+            )
+            span.set_attribute("arthur.task.id", resolved_task_id)
+            self._apply_openinference_context(span)
+
+            span.set_attribute(SpanAttributes.INPUT_VALUE, json.dumps({"prompt": prompt}))
+            span.set_attribute(SpanAttributes.INPUT_MIME_TYPE, "application/json")
+
+            try:
+                result = self._api_client.validate_prompt(
+                    task_id=resolved_task_id,
+                    prompt=prompt,
+                )
+            except Exception as exc:
+                span.record_exception(exc)
+                span.set_status(trace.StatusCode.ERROR, str(exc))
+                raise
+
+            inference_id = result.get("inference_id")
+            if inference_id:
+                span.set_attribute("arthur.inference.id", inference_id)
+            span.set_attribute(SpanAttributes.OUTPUT_VALUE, json.dumps(result))
+            span.set_attribute(SpanAttributes.OUTPUT_MIME_TYPE, "application/json")
+
+        return result
+
+    def validate_response(
+        self,
+        response: str,
+        inference_id: str,
+        context: Optional[str] = None,
+        task_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Validates an LLM ``response`` against the rules configured for the task
+        and emits an OpenInference ``GUARDRAIL`` span.
+
+        Calls ``POST /api/v2/tasks/{task_id}/validate_response/{inference_id}``.
+
+        Args:
+            response: LLM response text to validate.
+            inference_id: ``inference_id`` returned by the matching
+                :meth:`validate_prompt` call.
+            context: Optional ground-truth context — required when a
+                Hallucination rule is enabled for the task.
+            task_id: Overrides the instance-level ``task_id`` for this call.
+
+        Returns:
+            The raw ``ValidationResult`` dict
+            (``{"inference_id": ..., "rule_results": [...]}``).
+        """
+        resolved_task_id = self._get_task_id(task_id)
+        tracer_provider = self._tracer_provider or trace.get_tracer_provider()
+        tracer = tracer_provider.get_tracer("openinference.instrumentation.arthur")
+
+        with tracer.start_as_current_span("validate_response") as span:
+            span.set_attribute(
+                SpanAttributes.OPENINFERENCE_SPAN_KIND,
+                OpenInferenceSpanKindValues.GUARDRAIL.value,
+            )
+            span.set_attribute("arthur.task.id", resolved_task_id)
+            span.set_attribute("arthur.inference.id", inference_id)
+            self._apply_openinference_context(span)
+
+            span.set_attribute(
+                SpanAttributes.INPUT_VALUE,
+                json.dumps({"response": response, "context": context}),
+            )
+            span.set_attribute(SpanAttributes.INPUT_MIME_TYPE, "application/json")
+
+            try:
+                result = self._api_client.validate_response(
+                    task_id=resolved_task_id,
+                    inference_id=inference_id,
+                    response=response,
+                    context=context,
+                )
+            except Exception as exc:
+                span.record_exception(exc)
+                span.set_status(trace.StatusCode.ERROR, str(exc))
+                raise
+
+            span.set_attribute(SpanAttributes.OUTPUT_VALUE, json.dumps(result))
+            span.set_attribute(SpanAttributes.OUTPUT_MIME_TYPE, "application/json")
+
+        return result
+
+    # ------------------------------------------------------------------
     # Session / user context helpers
     # ------------------------------------------------------------------
 
