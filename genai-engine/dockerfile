@@ -1,11 +1,12 @@
 ################################################################################
 #                                                                              #
-#       Build GenAI Engine on slim-bookworm images for cpu and gpu             #
+#       Build GenAI Engine on slim-bookworm images (CPU only)                  #
+#                                                                              #
+#  GPU variant dropped — the heavy torch/transformers scorer models now live   #
+#  in arthurplatform/models-service. The engine retains a small torch + bert-  #
+#  score footprint for the relevance reranker, which runs fine on CPU.         #
 #                                                                              #
 ################################################################################
-
-# TORCH_DEVICE must be either "cpu" or "gpu"
-ARG TORCH_DEVICE=cpu
 
 # Preinstall Stage: Install Python dependencies
 FROM python:3.12.8-slim-bookworm AS preinstall
@@ -33,15 +34,6 @@ RUN uv export --frozen \
 # install lsof for healthchecks
 RUN apt-get update && apt-get install -y lsof && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-
-# GPU Install: Install PyTorch for GPU
-FROM preinstall AS gpu-install
-COPY requirements-gpu.txt /tmp/requirements-torch.txt
-RUN uv pip install --system --no-cache --reinstall -r /tmp/requirements-torch.txt
-
-
-# CPU Install: no-op for now
-FROM preinstall AS cpu-install
 
 # UI Build Stage: Build the React SPA
 FROM node:20-alpine AS ui-build
@@ -75,8 +67,8 @@ RUN yarn build
 # Copy the built static files
 RUN cp -r dist /app/ui-dist
 
-# Install Stage: Install GenAI Engine on either CPU Install or GPU Install depending on the TORCH_DEVICE variable
-FROM ${TORCH_DEVICE}-install AS install
+# Install Stage: Install GenAI Engine on top of the preinstall layer.
+FROM preinstall AS install
 # Copy backend files
 COPY src /app/src
 

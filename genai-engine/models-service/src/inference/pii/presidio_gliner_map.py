@@ -1,10 +1,16 @@
-from typing import List
+"""Presidio ↔ GLiNER entity-type mapping.
+
+Migrated verbatim from genai-engine/src/scorer/checks/pii/presidio_gliner_map.py.
+
+Presidio uses upper-snake-case entity tags ("CREDIT_CARD", "EMAIL_ADDRESS").
+GLiNER takes free-text labels at predict time ("credit card number", "email
+address"). The PII v2 pipeline routes some entities through Presidio and
+others through GLiNER, then normalizes back to Presidio tags before merging
+the spans — this class provides the bidirectional translation.
+"""
 
 
 class PresidioGlinerMapper:
-    """Maps between Presidio and GLiNER entity types."""
-
-    # Mapping from Presidio entity types to GLiNER entity types
     PRESIDIO_TO_GLINER = {
         "CREDIT_CARD": "credit card number",
         "CRYPTO": "crypto wallet",
@@ -23,26 +29,12 @@ class PresidioGlinerMapper:
         "US_PASSPORT": "passport number",
         "US_SSN": "social security number",
     }
-
-    # Reverse mapping from GLiNER to Presidio
     GLINER_TO_PRESIDIO = {v: k for k, v in PRESIDIO_TO_GLINER.items()}
 
     @classmethod
     def presidio_to_gliner(cls, tag: str) -> str:
-        """Convert Presidio entity type to GLiNER entity type."""
         return cls.PRESIDIO_TO_GLINER.get(tag, tag.lower())
 
     @classmethod
     def gliner_to_presidio(cls, tag: str) -> str:
-        """Convert GLiNER entity type to Presidio entity type."""
         return cls.GLINER_TO_PRESIDIO.get(tag.lower(), tag.upper())
-
-    @classmethod
-    def map_presidio_tags(cls, tags: List[str]) -> List[str]:
-        """Convert a list of Presidio tags to GLiNER tags."""
-        return [cls.presidio_to_gliner(tag) for tag in tags]
-
-    @classmethod
-    def map_gliner_tags(cls, tags: List[str]) -> List[str]:
-        """Convert a list of GLiNER tags to Presidio tags."""
-        return [cls.gliner_to_presidio(tag) for tag in tags]

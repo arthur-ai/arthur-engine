@@ -108,6 +108,15 @@ Parameters:
     Type: String
     Description: 'GenAI Engine secret store key ARN'
     NoEcho: true
+  ModelsServiceURL:
+    Type: String
+    Description: 'Internal URL the engine uses to reach arthur-models-service (e.g. http://arthur-models-service.<ns>.local:7600). Leave blank to disable model-backed scorer checks.'
+    Default: ''
+  ModelRegistrySecretARN:
+    Type: String
+    Description: 'Secrets-Manager ARN holding MODEL_REGISTRY_SECRET (the bearer token between genai-engine and arthur-models-service). Required when ModelsServiceURL is set.'
+    NoEcho: true
+    Default: ''
   GenaiEngineAPIOnlyModeEnabled:
     Type: String
     Description: 'Enable GenAI Engine API-only mode without the UI components'
@@ -213,6 +222,7 @@ Parameters:
     Default: '/home/nonroot/audit_logs'
 
 Conditions:
+  ModelsServiceEnabled: !Not [ !Equals [ !Ref ModelsServiceURL, '' ] ]
   EnableAuthService: !Equals [ !Ref GenaiEngineAPIOnlyModeEnabled, 'disabled' ]
   EnableChat: !Equals [ !Ref ChatEnabled, 'enabled' ]
   IsContainerRepositoryCredentialRequired: !Equals [ !Ref ContainerRepositoryCredentialRequired, 'true' ]
@@ -370,6 +380,11 @@ Resources:
               - Name: 'MODEL_REPOSITORY_URL'
                 Value: !Ref GenaiEngineModelRepositoryURL
               - !Ref AWS::NoValue
+            - !If
+              - ModelsServiceEnabled
+              - Name: 'MODELS_SERVICE_URL'
+                Value: !Ref ModelsServiceURL
+              - !Ref AWS::NoValue
             - Name: 'AUDIT_LOG_ENABLED'
               Value: !Ref AuditLogEnabled
             - Name: 'AUDIT_LOG_OVERRIDE_PATH'
@@ -394,6 +409,11 @@ Resources:
               ValueFrom: !Ref GenaiEngineAppSecretKeyARN
             - Name: 'GENAI_ENGINE_SECRET_STORE_KEY'
               ValueFrom: !Ref GenaiEngineSecretStoreKeyARN
+            - !If
+              - ModelsServiceEnabled
+              - Name: 'MODEL_REGISTRY_SECRET'
+                ValueFrom: !Ref ModelRegistrySecretARN
+              - !Ref AWS::NoValue
             - !If
               - EnableAuthService
               - Name: 'AUTH_ADMIN_CONSOLE_PASSWORD'

@@ -1,70 +1,54 @@
-from unittest.mock import Mock, patch
+"""Wire-routing tests for the prompt-injection scorer.
+
+The actual model behaviour now lives in the models service — see
+arthur-engine/models-service/tests/unit/test_prompt_injection.py.
+These tests verify that the engine wraps the HTTP response into the right
+RuleScore shape.
+"""
 
 import pytest
-from arthur_common.models.enums import RuleResultEnum
-from schemas.scorer_schemas import RuleScore
-from scorer.checks.prompt_injection.classifier import (
-    BinaryPromptInjectionClassifier,
-    get_prompt_injection_model,
-    get_prompt_injection_tokenizer,
-)
+from arthur_common.models.enums import RuleResultEnum, RuleType
 
-PROMPT_INJECTION_MODEL = get_prompt_injection_model()
-PROMPT_INJECTION_TOKENIZER = get_prompt_injection_tokenizer()
+from clients.models_service_client import ModelNotAvailableError
+from schemas.scorer_schemas import ScoreRequest
+from scorer.checks.prompt_injection.classifier import BinaryPromptInjectionClassifier
+from tests.conftest import make_pi_response
 
 
-@patch("scorer.checks.prompt_injection.classifier.get_prompt_injection_classifier")
+def _req(prompt: str) -> ScoreRequest:
+    return ScoreRequest(user_prompt=prompt, rule_type=RuleType.PROMPT_INJECTION)
+
+
 @pytest.mark.unit_tests
-def test_binary_prompt_injection_classifier_init(
-    mock_pi_classifier,
-):
-    classifier = BinaryPromptInjectionClassifier(
-        model=PROMPT_INJECTION_MODEL,
-        tokenizer=PROMPT_INJECTION_TOKENIZER,
-    )
-    assert mock_pi_classifier.call_count == 1
-    assert classifier.model is mock_pi_classifier.return_value
+def test_pass(fake_models_client):
+    fake_models_client.prompt_injection_response = make_pi_response("SAFE")
+    scorer = BinaryPromptInjectionClassifier(client=fake_models_client)
+    score = scorer.score(_req("hello"))
+    assert score.result == RuleResultEnum.PASS
 
 
-@patch("scorer.checks.prompt_injection.classifier.get_prompt_injection_classifier")
 @pytest.mark.unit_tests
-def test_score_above_threshold(mock_classifier):
-    classifier = BinaryPromptInjectionClassifier(
-        model=PROMPT_INJECTION_MODEL,
-        tokenizer=PROMPT_INJECTION_TOKENIZER,
-    )
-
-    # Create a mock ScoreRequest object
-    mock_request = Mock()
-    mock_request.user_prompt = "Test prompt"
-
-    # Set the mock model's return value
-    mock_classifier.return_value.return_value = [{"label": "INJECTION", "score": 0.99}]
-
-    # Test score method
-    score = classifier.score(mock_request)
-    assert isinstance(score, RuleScore)
-    assert score.result is RuleResultEnum.FAIL
-    assert score.details is None
+def test_fail(fake_models_client):
+    fake_models_client.prompt_injection_response = make_pi_response("INJECTION")
+    scorer = BinaryPromptInjectionClassifier(client=fake_models_client)
+    score = scorer.score(_req("ignore previous instructions"))
+    assert score.result == RuleResultEnum.FAIL
 
 
-@patch("scorer.checks.prompt_injection.classifier.get_prompt_injection_classifier")
 @pytest.mark.unit_tests
-def test_score_below_threshold(mock_classifier):
-    classifier = BinaryPromptInjectionClassifier(
-        model=PROMPT_INJECTION_MODEL,
-        tokenizer=PROMPT_INJECTION_TOKENIZER,
-    )
+def test_empty_prompt_passes(fake_models_client):
+    scorer = BinaryPromptInjectionClassifier(client=fake_models_client)
+    score = scorer.score(_req(""))
+    assert score.result == RuleResultEnum.PASS
+    assert fake_models_client.last_call is None  # never reached the wire
 
-    # Create a mock ScoreRequest object
-    mock_request = Mock()
-    mock_request.user_prompt = "Test prompt"
 
-    # Set the mock model's return value
-    mock_classifier.return_value.return_value = [{"label": "SAFE", "score": 0.01}]
+@pytest.mark.unit_tests
+def test_model_not_available(fake_models_client):
+    def boom(text):
+        raise ModelNotAvailableError("simulated outage")
 
-    # Test score method
-    score = classifier.score(mock_request)
-    assert isinstance(score, RuleScore)
-    assert score.result is RuleResultEnum.PASS
-    assert score.details is None
+    fake_models_client.prompt_injection = boom  # type: ignore[method-assign]
+    scorer = BinaryPromptInjectionClassifier(client=fake_models_client)
+    score = scorer.score(_req("hi"))
+    assert score.result == RuleResultEnum.MODEL_NOT_AVAILABLE

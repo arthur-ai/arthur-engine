@@ -68,6 +68,85 @@ jobs:
           echo "One or more linters failed"
           exit 1
 
+  run-models-service-linter:
+    needs: check-genai-engine-changes
+    if: |
+      (
+        github.event_name == 'pull_request' ||
+        (github.event_name == 'push' && github.ref_type == 'branch')
+      ) &&
+      github.ref != 'refs/heads/main' &&
+      github.ref != 'refs/heads/dev' &&
+      needs.check-genai-engine-changes.outputs.models_service == 'true'
+    runs-on: ubuntu-latest
+    container: python:3.12.9-bullseye
+    env:
+      SKIP: pytest-check,changelog-check
+      GIT_DEPTH: 100
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: ${{ env.GIT_DEPTH }}
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: ./.github/workflows/composite-actions/setup-uv
+        with:
+          working-directory: genai-engine/models-service
+          with-groups: dev,linters
+      - name: Run isort
+        id: isort
+        continue-on-error: true
+        run: |
+          uv run --directory genai-engine/models-service isort src --profile black --check
+      - name: Run autoflake
+        id: autoflake
+        continue-on-error: true
+        run: |
+          uv run --directory genai-engine/models-service autoflake --remove-all-unused-imports --in-place --check --recursive --quiet src
+      - name: Run black
+        id: black
+        continue-on-error: true
+        run: |
+          uv run --directory genai-engine/models-service black --check src
+      - name: Run mypy
+        id: mypy
+        continue-on-error: true
+        run: |
+          uv run --directory genai-engine/models-service mypy src
+      - name: Check linter results
+        if: steps.isort.outcome == 'failure' || steps.autoflake.outcome == 'failure' || steps.black.outcome == 'failure' || steps.mypy.outcome == 'failure'
+        run: |
+          echo "One or more linters failed"
+          exit 1
+
+  run-models-service-unit-tests:
+    needs: check-genai-engine-changes
+    if: |
+      (
+        github.event_name == 'pull_request' ||
+        (github.event_name == 'push' && github.ref_type == 'branch')
+      ) &&
+      github.ref != 'refs/heads/main' &&
+      github.ref != 'refs/heads/dev' &&
+      needs.check-genai-engine-changes.outputs.models_service == 'true'
+    runs-on: ubuntu-latest
+    container: python:3.12.9-bullseye
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: ./.github/workflows/composite-actions/setup-uv
+        with:
+          working-directory: genai-engine/models-service
+          with-groups: dev
+      # Only `unit_tests`-marked tests run in CI. The `real_models` suite
+      # downloads ~1.5 GB of HF weights and is exercised manually / in nightly.
+      - name: Run unit tests
+        run: |
+          uv run --directory genai-engine/models-service pytest -m "unit_tests"
+
   run-ml-engine-linter:
     if: |
       (
@@ -174,6 +253,7 @@ jobs:
     outputs:
       backend: ${{ steps.changes.outputs.backend }}
       ui: ${{ steps.changes.outputs.ui }}
+      models_service: ${{ steps.changes.outputs.models_service }}
     steps:
       - uses: actions/checkout@v5
       - uses: dorny/paths-filter@v2
@@ -182,9 +262,12 @@ jobs:
           filters: |
             ui:
               - 'genai-engine/ui/**'
+            models_service:
+              - 'genai-engine/models-service/**'
             backend:
               - 'genai-engine/**'
               - '!genai-engine/ui/**'
+              - '!genai-engine/models-service/**'
 
   run-genai-engine-ui-lint:
     needs: check-genai-engine-changes
@@ -356,6 +439,54 @@ jobs:
           uv run --directory ml-engine pytest tests/unit
 
   build-genai-engine-docker-images:
+    # CPU-only build. The GPU variant was dropped now that the heavy
+    # torch/transformers scorer models live in models-service. The
+    # arthurplatform/genai-engine-cpu tag is kept for backwards compatibility
+    # with customers who pin to it.
+    environment: shared-protected-branch-secrets
+    if: |
+      contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: mathio/gha-cleanup@v1
+        with:
+          remove-browsers: true
+          verbose: true
+      - uses: actions/checkout@v5
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: ./.github/workflows/composite-actions/set-version
+        with:
+          version-prefix: "genai-engine-"
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.11.1
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3.6.0
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: Build and push docker image
+        uses: docker/build-push-action@v6.18.0
+        with:
+          context: "{{defaultContext}}:genai-engine"
+          file: dockerfile
+          build-args: |
+            ENABLE_TELEMETRY=${{ github.ref == 'refs/heads/main' && 'true' || 'false' }}
+            METICULOUS_RECORDING_TOKEN=${{ secrets.METICULOUS_RECORDING_TOKEN }}
+            METICULOUS_API_TOKEN=${{ secrets.METICULOUS_API_TOKEN }}
+            GITLAB_UNIFY_FRONTEND_TOKEN=${{ secrets.GITLAB_UNIFY_FRONTEND_TOKEN }}
+          tags: |
+            arthurplatform/genai-engine-cpu:${{ env.VERSION }}
+            ${{ github.ref == 'refs/heads/main' && 'arthurplatform/genai-engine-cpu:latest' || '' }}
+            ${{ github.ref == 'refs/heads/dev' && 'arthurplatform/genai-engine-cpu:latest-dev' || '' }}
+          push: true
+          platforms: linux/amd64,linux/arm64
+
+  build-models-service-docker-images:
     environment: shared-protected-branch-secrets
     if: |
       contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
@@ -389,18 +520,14 @@ jobs:
       - name: Build and push docker image
         uses: docker/build-push-action@v6.18.0
         with:
-          context: "{{defaultContext}}:genai-engine"
-          file: dockerfile
+          context: "{{defaultContext}}:genai-engine/models-service"
+          file: Dockerfile
           build-args: |
             TORCH_DEVICE=${{ matrix.torch_device }}
-            ENABLE_TELEMETRY=${{ github.ref == 'refs/heads/main' && 'true' || 'false' }}
-            METICULOUS_RECORDING_TOKEN=${{ secrets.METICULOUS_RECORDING_TOKEN }}
-            METICULOUS_API_TOKEN=${{ secrets.METICULOUS_API_TOKEN }}
-            GITLAB_UNIFY_FRONTEND_TOKEN=${{ secrets.GITLAB_UNIFY_FRONTEND_TOKEN }}
           tags: |
-            arthurplatform/genai-engine-${{ matrix.torch_device }}:${{ env.VERSION }}
-            ${{ github.ref == 'refs/heads/main' && format('arthurplatform/genai-engine-{0}:latest', matrix.torch_device) || '' }}
-            ${{ github.ref == 'refs/heads/dev' && format('arthurplatform/genai-engine-{0}:latest-dev', matrix.torch_device) || '' }}
+            arthurplatform/models-service-${{ matrix.torch_device }}:${{ env.VERSION }}
+            ${{ github.ref == 'refs/heads/main' && format('arthurplatform/models-service-{0}:latest', matrix.torch_device) || '' }}
+            ${{ github.ref == 'refs/heads/dev' && format('arthurplatform/models-service-{0}:latest-dev', matrix.torch_device) || '' }}
           push: true
           platforms: ${{ matrix.torch_device == 'cpu' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
 
@@ -702,7 +829,7 @@ jobs:
     secrets: inherit
 
   push-all-cfts:
-    needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
+    needs: [build-genai-engine-docker-images, build-models-service-docker-images, build-ml-engine-docker-images]
     environment: shared-protected-branch-secrets
     if: |
       contains(github.event.head_commit.message, 'Increment arthur-engine version') &&
@@ -736,7 +863,7 @@ jobs:
           aws s3 sync ./deployment/cloudformation/ s3://${{ env.BUCKET_NAME }}/${{ env.TEMPLATES_DIRECTORY }}/templates/latest --acl public-read
 
   push-all-helm-charts:
-    needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
+    needs: [build-genai-engine-docker-images, build-models-service-docker-images, build-ml-engine-docker-images]
     environment: shared-protected-branch-secrets
     if: |
       (contains(github.event.head_commit.message, 'Increment arthur-engine version') &&

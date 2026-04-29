@@ -1,0 +1,125 @@
+{{- if .Values.modelsService.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  {{- if .Values.arthurResourceNameSuffix }}
+  name: arthur-models-service-{{ .Values.arthurResourceNameSuffix }}
+  {{- else }}
+  name: arthur-models-service
+  {{- end }}
+  {{- with .Values.modelsService.deployment.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  labels:
+    app: arthur-models-service
+    {{- include "arthur-genai-engine.labels" . | nindent 4 }}
+    {{- with .Values.modelsService.deployment.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  replicas: {{ .Values.modelsService.replicaCount }}
+  selector:
+    matchLabels:
+      app: arthur-models-service
+  strategy:
+    # First-boot of a pod downloads ~1.5 GB of HF weights into the PVC. A
+    # rolling update would attempt that twice. Recreate keeps the warm volume
+    # mounted by exactly one pod at a time.
+    type: Recreate
+  template:
+    metadata:
+      {{- with .Values.modelsService.deployment.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        app: arthur-models-service
+        {{- include "arthur-genai-engine.labels" . | nindent 8 }}
+        {{- with .Values.modelsService.deployment.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- if .Values.containerRepositoryCredentialRequired }}
+      imagePullSecrets:
+        - name: {{ .Values.imagePullSecretName }}
+      {{- end }}
+      containers:
+        - name: arthur-models-service
+          image: "{{ .Values.modelsService.containerImageLocation }}:{{ .Values.modelsService.version | default .Values.genaiEngineVersion }}"
+          ports:
+            - containerPort: 7600
+          resources:
+            requests:
+              cpu: "{{ .Values.modelsService.resources.requests.cpu }}"
+              memory: "{{ .Values.modelsService.resources.requests.memory }}"
+            limits:
+              cpu: "{{ .Values.modelsService.resources.limits.cpu }}"
+              memory: "{{ .Values.modelsService.resources.limits.memory }}"
+          env:
+            - name: MODELS_SERVICE_PORT
+              value: "7600"
+            - name: MODELS_SERVICE_HOST
+              value: "0.0.0.0"
+            - name: MODEL_STORAGE_PATH
+              value: "/models"
+            - name: MODEL_REGISTRY_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.modelsService.secretName }}
+                  key: secret
+          volumeMounts:
+            - name: models-cache
+              mountPath: /models
+          # /v1/health is unauthenticated by design so probes don't need the
+          # bearer token.
+          startupProbe:
+            httpGet:
+              path: /v1/health
+              port: 7600
+            # First boot pulls weights from HF (~1.5 GB) — give it generous
+            # headroom before the readiness probe kicks in. 30 attempts * 10s
+            # = 5 minutes total.
+            failureThreshold: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /v1/health
+              port: 7600
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /v1/health
+              port: 7600
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+      volumes:
+        - name: models-cache
+          {{- if .Values.modelsService.storage.enabled }}
+          persistentVolumeClaim:
+            {{- if .Values.arthurResourceNameSuffix }}
+            claimName: arthur-models-service-{{ .Values.arthurResourceNameSuffix }}-cache
+            {{- else }}
+            claimName: arthur-models-service-cache
+            {{- end }}
+          {{- else }}
+          emptyDir:
+            sizeLimit: 5Gi
+          {{- end }}
+      {{- with .Values.modelsService.deployment.podNodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.modelsService.deployment.podAffinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.modelsService.deployment.podTolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

@@ -85,13 +85,16 @@ GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$genai_engine_openai_gpt_name::$gen
 
       # Generate a secure random key using /dev/urandom
       genai_engine_secret_store_key=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32)
-      echo "Generated random secret key since none was found"
+      model_registry_secret=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32)
+      echo "Generated random secret keys since none were found"
 
+    secret_block="GENAI_ENGINE_SECRET_STORE_KEY=$genai_engine_secret_store_key
+MODEL_REGISTRY_SECRET=$model_registry_secret"
     if [[ -n "$all_env_vars" ]]; then
         all_env_vars="$all_env_vars
-GENAI_ENGINE_SECRET_STORE_KEY=$genai_engine_secret_store_key"
+$secret_block"
     else
-        all_env_vars="GENAI_ENGINE_SECRET_STORE_KEY=$genai_engine_secret_store_key"
+        all_env_vars="$secret_block"
     fi
 
     echo "$all_env_vars" > "$genai_subdir/$env_file"

@@ -1,9 +1,24 @@
+"""Hallucination v2 RuleScorer.
+
+Hybrid: the cheap "is this even a claim?" filter (sentence-transformer +
+logistic-regression head) runs in the models service, while the expensive
+LLM judge that decides hallucination/no-hallucination per claim runs here
+because it shares scorer/llm_client.py with non-scorer code paths.
+
+Flow:
+1. ClaimParser splits the LLM response into sentence/list-item candidates.
+2. The models service classifies each candidate as claim / nonclaim / dialog.
+3. Only `claim`-labeled candidates are sent to the LLM judge in batches.
+4. Per-claim verdicts are aggregated into a RuleScore + ScorerHallucinationClaim
+   list that mirrors the order of the original parsed candidates.
+
+A ModelNotAvailableError from the claim-filter call short-circuits to
+RuleResultEnum.MODEL_NOT_AVAILABLE before the LLM judge runs.
+"""
+
 import logging
-import os
-import threading
 from itertools import repeat
 
-import torch
 from arthur_common.models.common_schemas import LLMTokenConsumption
 from arthur_common.models.enums import RuleResultEnum
 from langchain_core.messages.ai import AIMessage
@@ -11,8 +26,11 @@ from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from more_itertools import chunked
 from opentelemetry import trace
 from pydantic import BaseModel
-from sentence_transformers import SentenceTransformer
 
+from clients.models_service_client import (
+    ModelNotAvailableError,
+    ModelsServiceClient,
+)
 from schemas.enums import ClaimClassifierResultEnum
 from schemas.internal_schemas import OrderedClaim
 from schemas.scorer_schemas import (
@@ -30,65 +48,9 @@ from scorer.llm_client import get_llm_executor, handle_llm_exception
 from scorer.scorer import RuleScorer
 from utils import constants, utils
 from utils.claim_parser import ClaimParser
-from utils.classifiers import Classifier, LogisticRegressionModel, get_device
-from utils.model_load import get_claim_classifier_embedding_model
 
 tracer = trace.get_tracer(__name__)
 logger = logging.getLogger()
-
-# claim classifier
-
-__location__ = os.path.dirname(os.path.abspath(__file__))
-
-CLAIM_CLASSIFIER_EMBEDDING_MODEL: SentenceTransformer | None
-CLAIM_CLASSIFIER_CLASSIFIER_PATH = (
-    "claim_classifier/354ec0a465a14726b825b3bd5b97137b.pth"
-)
-d = os.path.dirname(os.path.dirname(os.path.dirname(__location__)))
-
-
-def get_claim_classifier(
-    sentence_transformer: SentenceTransformer | None,
-) -> Classifier | None:
-    """
-    Filtering out non-claim text & dialog text using a Classifier
-    to reduce the false positive rate & token usage of the hallucination check
-    """
-    if not sentence_transformer:
-        sentence_transformer = get_claim_classifier_embedding_model()
-
-    with open(
-        os.path.join(__location__, CLAIM_CLASSIFIER_CLASSIFIER_PATH),
-        "rb",
-    ) as file:
-        state_dict = torch.load(
-            file,
-            map_location=torch.device(get_device()),
-            weights_only=False,
-        )
-
-    classifier = (
-        LogisticRegressionModel(
-            input_size=state_dict["linear.weight"].shape[1],
-            num_classes=3,
-        )
-        .to(get_device())
-        .to(torch.float64)
-    )
-    classifier.load_state_dict(state_dict)
-    classifier.eval()  # Set classifier to evaluation mode
-    if not sentence_transformer:
-        logger.error("Sentence transformer is not available.")
-        return None
-    return Classifier(
-        transformer_model=sentence_transformer,
-        classifier=classifier,
-        label_map={
-            ClaimClassifierResultEnum.CLAIM: 0,
-            ClaimClassifierResultEnum.NONCLAIM: 1,
-            ClaimClassifierResultEnum.DIALOG: 2,
-        },
-    )
 
 
 class LabelledClaim(BaseModel):
@@ -126,8 +88,9 @@ class ReturnClaimFlags(BaseModel):
 class HallucinationClaimsV2(RuleScorer):
     model: AzureChatOpenAI | ChatOpenAI
 
-    def __init__(self, sentence_transformer: SentenceTransformer | None) -> None:
-        self.claim_classifier = get_claim_classifier(sentence_transformer)
+    def __init__(self, models_service_client: ModelsServiceClient) -> None:
+        # Claim filtering moves to the models service; the LLM judge stays here.
+        self.client = models_service_client
         model = get_llm_executor().get_gpt_model()
         if model is None:
             raise RuntimeError(
@@ -139,13 +102,6 @@ class HallucinationClaimsV2(RuleScorer):
         self.flag_text_batch_template = get_claim_flagging_prompt()
         self.explanation_template = get_flagged_claim_explanation_prompt()
         self.structured_output_prompt = get_structured_output_prompt()
-
-    def _download_sentence_transformer(self) -> None:
-        global CLAIM_CLASSIFIER_EMBEDDING_MODEL
-        if CLAIM_CLASSIFIER_EMBEDDING_MODEL is None:
-            CLAIM_CLASSIFIER_EMBEDDING_MODEL = get_claim_classifier_embedding_model()
-        self.claim_classifier = get_claim_classifier(CLAIM_CLASSIFIER_EMBEDDING_MODEL)
-        logger.info("Sentence transformer downloaded and classifier initialized.")
 
     @tracer.start_as_current_span("hallucination v2 score")
     def score(self, request: ScoreRequest, claims_batch_size: int = 3) -> RuleScore:
@@ -159,23 +115,20 @@ class HallucinationClaimsV2(RuleScorer):
 
         """
         Filter out dialog (e.g. 'Any other questions?') & non-claims (e.g. 'I dont have information about X') from the LLM response,
-        since it is unnecessary to check those sentences for hallucinations
+        since it is unnecessary to check those sentences for hallucinations.
+        Filtering happens remotely on the models service.
         """
-        if self.claim_classifier is None:
-            threading.Thread(
-                target=self._download_sentence_transformer,
-                daemon=True,
-            ).start()
-            logger.warning(
-                "Toxicity classifier is not available.",
-            )
+        try:
+            filter_response = self.client.claim_filter(initial_texts)
+        except ModelNotAvailableError as e:
+            logger.warning("Claim filter model unavailable: %s", e)
             return RuleScore(
                 result=RuleResultEnum.MODEL_NOT_AVAILABLE,
                 prompt_tokens=0,
                 completion_tokens=0,
             )
 
-        claim_classifier_labels = self.claim_classifier(initial_texts)["pred_label_str"]
+        claim_classifier_labels = [c.label for c in filter_response.classifications]
         claims: list[OrderedClaim] = []
         non_claims: list[OrderedClaim] = []
         for index, (text, claim_classifier_label) in enumerate(

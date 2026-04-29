@@ -1,0 +1,120 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Arthur models-service ECS task definition. Hosts the torch/transformers scorer models that the genai-engine reaches over HTTP.'
+
+Parameters:
+  ArthurResourceNamespace:
+    Type: String
+    MinLength: '1'
+    MaxLength: '14'
+    Default: 'arthur'
+  ArthurResourceNameSuffix:
+    Type: String
+    MinLength: '0'
+    MaxLength: '5'
+    Default: ''
+  ModelsServiceECSTaskRoleARN:
+    Type: String
+    Description: 'ECS task role ARN for models-service'
+  ModelsServiceECSTaskExecutionRoleARN:
+    Type: String
+    Description: 'ECS task execution role ARN for models-service'
+  ModelsServiceVersion:
+    Type: String
+    Description: 'Image tag (defaults to engine version)'
+  ModelsServiceContainerImageLocation:
+    Type: String
+    Default: 'arthurplatform/models-service-cpu'
+    Description: 'Container image — use models-service-gpu for GPU clusters'
+  ContainerRepositoryCredentialRequired:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+  ContainerRepositoryCredentialsSecretARN:
+    Type: String
+  ModelRegistrySecretARN:
+    Type: String
+    Description: 'Secrets-Manager ARN holding MODEL_REGISTRY_SECRET'
+    NoEcho: true
+  ModelsServiceFargateTaskCPUValue:
+    Type: Number
+    Default: 4096
+    Description: 'CPU for the Fargate task (4 vCPU is enough for the CPU image; GPU lives outside Fargate)'
+  ModelsServiceFargateTaskMemoryValue:
+    Type: Number
+    Default: 12288
+    Description: 'Memory for the Fargate task — torch + presidio + spaCy ≈ 8 GiB resident'
+  ModelsServiceEphemeralStorageGiB:
+    Type: Number
+    Default: 30
+    Description: 'Ephemeral storage for the HF weight cache (~1.5 GB compressed, ~3 GB uncompressed; oversized to keep room for transient transformers tmp files)'
+
+Conditions:
+  IsContainerRepositoryCredentialRequired: !Equals [!Ref ContainerRepositoryCredentialRequired, 'true']
+
+Resources:
+  ModelsServiceECSLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    Properties:
+      LogGroupName: !Sub "/arthur/ecs/${ArthurResourceNamespace}-models-service${ArthurResourceNameSuffix}"
+      RetentionInDays: 30
+
+  ModelsServiceECSTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    DependsOn: ModelsServiceECSLogGroup
+    Properties:
+      Family: !Sub "${ArthurResourceNamespace}-models-service${ArthurResourceNameSuffix}"
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      Cpu: !Ref ModelsServiceFargateTaskCPUValue
+      Memory: !Ref ModelsServiceFargateTaskMemoryValue
+      EphemeralStorage:
+        SizeInGiB: !Ref ModelsServiceEphemeralStorageGiB
+      TaskRoleArn: !Ref ModelsServiceECSTaskRoleARN
+      ExecutionRoleArn: !Ref ModelsServiceECSTaskExecutionRoleARN
+      ContainerDefinitions:
+        - Name: 'arthur-models-service'
+          Image: !Sub "${ModelsServiceContainerImageLocation}:${ModelsServiceVersion}"
+          RepositoryCredentials: !If
+            - IsContainerRepositoryCredentialRequired
+            - CredentialsParameter: !Ref ContainerRepositoryCredentialsSecretARN
+            - !Ref AWS::NoValue
+          Essential: true
+          PortMappings:
+            - ContainerPort: 7600
+              HostPort: 7600
+              Protocol: tcp
+          Environment:
+            - Name: MODELS_SERVICE_PORT
+              Value: '7600'
+            - Name: MODELS_SERVICE_HOST
+              Value: '0.0.0.0'
+            - Name: MODEL_STORAGE_PATH
+              # Fargate ephemeral storage is mounted under /tmp by default; the
+              # service writes weights under MODEL_STORAGE_PATH at first boot.
+              Value: '/tmp/models'
+          Secrets:
+            - Name: MODEL_REGISTRY_SECRET
+              ValueFrom: !Ref ModelRegistrySecretARN
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Sub "/arthur/ecs/${ArthurResourceNamespace}-models-service${ArthurResourceNameSuffix}"
+              awslogs-region: !Sub "${AWS::Region}"
+              awslogs-stream-prefix: ecs
+          HealthCheck:
+            Command:
+              - 'CMD-SHELL'
+              - 'python3 -c "import http.client; c = http.client.HTTPConnection(''localhost:7600''); c.request(''GET'', ''/v1/health''); r = c.getresponse(); exit(0 if r.status == 200 else 1)" || exit 1'
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            # First-boot weight download is the dominant cost; 5 min is roomy
+            # but bounded.
+            StartPeriod: 300
+
+Outputs:
+  ModelsServiceECSTaskDefinitionOutput:
+    Value: !Ref ModelsServiceECSTaskDefinition
+  ModelsServiceECSLogGroupOutput:
+    Value: !Ref ModelsServiceECSLogGroup

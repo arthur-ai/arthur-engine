@@ -306,3 +306,125 @@ def cleanup_test_audit_logs():
     yield
     if os.path.exists(TEST_AUDIT_LOG_DIR):
         shutil.rmtree(TEST_AUDIT_LOG_DIR)
+
+
+# ---------------------------------------------------------------------------
+# Models service fakes
+# ---------------------------------------------------------------------------
+
+from clients.models_service_client import (  # noqa: E402
+    ClaimFilterResponse,
+    PIIResponse,
+    PromptInjectionResponse,
+    ToxicityResponse,
+    _ClaimClassification,
+    _PIIEntitySpan,
+    _PromptInjectionChunk,
+)
+
+
+class FakeModelsServiceClient:
+    """Drop-in stand-in for ModelsServiceClient.
+
+    Each method returns a canned response (settable via the corresponding
+    `*_response` attribute). Tests that exercise scorer wiring set the
+    response shape and assert on the resulting RuleScore.
+    """
+
+    def __init__(self) -> None:
+        self.prompt_injection_response = PromptInjectionResponse(result="Pass", chunks=[])
+        self.toxicity_response = ToxicityResponse(
+            result="Pass",
+            toxicity_score=0.0,
+            violation_type="benign",
+            profanity_detected=False,
+            max_toxicity_score=0.0,
+            max_harmful_request_score=0.0,
+        )
+        self.pii_response = PIIResponse(result="Pass", entities=[])
+        self.claim_filter_response = ClaimFilterResponse(classifications=[])
+
+    # Recorded calls for assertions.
+    last_call: tuple[str, dict] | None = None
+
+    def prompt_injection(self, text: str) -> PromptInjectionResponse:
+        self.last_call = ("prompt_injection", {"text": text})
+        return self.prompt_injection_response
+
+    def toxicity(self, text: str, threshold: float) -> ToxicityResponse:
+        self.last_call = ("toxicity", {"text": text, "threshold": threshold})
+        return self.toxicity_response
+
+    def pii(
+        self,
+        text: str,
+        disabled_entities: list[str] | None = None,
+        allow_list: list[str] | None = None,
+        confidence_threshold: float | None = None,
+        use_v2: bool = True,
+    ) -> PIIResponse:
+        self.last_call = (
+            "pii",
+            {
+                "text": text,
+                "disabled_entities": disabled_entities or [],
+                "allow_list": allow_list or [],
+                "confidence_threshold": confidence_threshold,
+                "use_v2": use_v2,
+            },
+        )
+        return self.pii_response
+
+    def claim_filter(self, texts: list[str]) -> ClaimFilterResponse:
+        self.last_call = ("claim_filter", {"texts": texts})
+        return self.claim_filter_response
+
+
+@pytest.fixture
+def fake_models_client() -> FakeModelsServiceClient:
+    return FakeModelsServiceClient()
+
+
+def make_pi_response(label: str, score: float = 0.99, text: str = "x") -> PromptInjectionResponse:
+    """Helper for prompt-injection tests."""
+    result = "Fail" if label == "INJECTION" else "Pass"
+    return PromptInjectionResponse(
+        result=result,
+        chunks=[_PromptInjectionChunk(index=0, text=text, label=label, score=score)],
+    )
+
+
+def make_toxicity_response(
+    *,
+    result: str = "Pass",
+    toxicity_score: float = 0.0,
+    violation_type: str = "benign",
+    profanity_detected: bool = False,
+) -> ToxicityResponse:
+    return ToxicityResponse(
+        result=result,
+        toxicity_score=toxicity_score,
+        violation_type=violation_type,
+        profanity_detected=profanity_detected,
+        max_toxicity_score=toxicity_score if violation_type == "toxic_content" else 0.0,
+        max_harmful_request_score=toxicity_score if violation_type == "harmful_request" else 0.0,
+    )
+
+
+def make_pii_response(*entities: tuple[str, str, float]) -> PIIResponse:
+    """`entities` is a list of (entity_type, span, confidence)."""
+    return PIIResponse(
+        result="Fail" if entities else "Pass",
+        entities=[
+            _PIIEntitySpan(entity=e, span=s, confidence=c) for (e, s, c) in entities
+        ],
+    )
+
+
+def make_claim_filter_response(*items: tuple[str, str, float]) -> ClaimFilterResponse:
+    """`items` is a list of (text, label, confidence)."""
+    return ClaimFilterResponse(
+        classifications=[
+            _ClaimClassification(text=t, label=l, confidence=c) for (t, l, c) in items
+        ],
+    )

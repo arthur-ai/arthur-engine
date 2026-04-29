@@ -1,0 +1,48 @@
+name: models-service
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+      args:
+        # cpu | gpu — selects which torch wheel the Dockerfile installs
+        TORCH_DEVICE: ${TORCH_DEVICE:-cpu}
+    image: models-service:${MODELS_SERVICE_VERSION:-dev}
+    ports:
+      - "${MODELS_SERVICE_PORT:-7600}:7600"
+    environment:
+      - MODELS_SERVICE_PORT=7600
+      - MODELS_SERVICE_HOST=0.0.0.0
+      - MODEL_REGISTRY_SECRET=${MODEL_REGISTRY_SECRET}
+      - MODEL_STORAGE_PATH=/models
+      # Optional: skip model loading entirely (used by tests).
+      # - MODELS_SERVICE_SKIP_LOADING=true
+    volumes:
+      # Persist downloaded weights across container restarts. First start
+      # pulls ~1.5 GB from HF; subsequent starts read from the volume.
+      # Matches genai-engine's K8s `model-upload` PVC pattern.
+      - models-cache:/models
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:7600/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      # 90s start_period gives torch + transformers warmup room before the
+      # healthcheck starts counting failures.
+      start_period: 90s
+    # ----------------------------------------------------------------------
+    # GPU passthrough — uncomment for production GPU deployments. Local dev
+    # defaults to CPU.
+    # ----------------------------------------------------------------------
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+volumes:
+  models-cache:
+    # Named volume for HF weights. `docker compose down -v` clears it.

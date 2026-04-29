@@ -117,6 +117,19 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.genaiEngineSecretStoreKeyName }}
                   key: key
+            {{- if .Values.modelsService.enabled }}
+            - name: MODELS_SERVICE_URL
+              {{- if .Values.arthurResourceNameSuffix }}
+              value: "http://arthur-models-service-{{ .Values.arthurResourceNameSuffix }}:7600"
+              {{- else }}
+              value: "http://arthur-models-service:7600"
+              {{- end }}
+            - name: MODEL_REGISTRY_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.modelsService.secretName }}
+                  key: secret
+            {{- end }}
             - name: NVIDIA_DRIVER_CAPABILITIES
               value: "compute,utility"
             - name: NVIDIA_VISIBLE_DEVICES

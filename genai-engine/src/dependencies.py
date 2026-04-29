@@ -26,6 +26,9 @@ from auth.auth_constants import OAUTH_CLIENT_NAME
 from auth.jwk_client import JWKClient
 from clients.auth.abc_keycloak_client import ABCAuthClient
 from clients.auth.keycloak_client import KeycloakClient
+from clients.models_service_client import (
+    get_models_service_client,
+)
 from clients.s3.azure_client import AzureBlobStorageClient
 from clients.s3.InMemoryS3Client import InMemoryClient
 from clients.s3.S3Client import S3Client
@@ -64,14 +67,7 @@ from scorer import (
 )
 from scorer.score import ScorerClient
 from utils import constants
-from utils.model_load import (
-    CLAIM_CLASSIFIER_EMBEDDING_MODEL,
-    PROMPT_INJECTION_MODEL,
-    PROMPT_INJECTION_TOKENIZER,
-    TOXICITY_MODEL,
-    TOXICITY_TOKENIZER,
-    USE_PII_MODEL_V2,
-)
+from utils.model_load import USE_PII_MODEL_V2
 from utils.utils import (
     get_auth_metadata_uri,
     get_env_var,
@@ -163,30 +159,27 @@ def get_scorer_client() -> ScorerClient:
     pii_data_classifier: BinaryPIIDataClassifier | BinaryPIIDataClassifierV1
     global SINGLETON_SCORER_CLIENT
     if not SINGLETON_SCORER_CLIENT:
+        # All ML-backed scorers share one HTTP client to the models service.
+        models_client = get_models_service_client()
+
         if USE_PII_MODEL_V2:
-            pii_data_classifier = BinaryPIIDataClassifier()
+            pii_data_classifier = BinaryPIIDataClassifier(client=models_client)
         else:
-            pii_data_classifier = BinaryPIIDataClassifierV1()
+            pii_data_classifier = BinaryPIIDataClassifierV1(client=models_client)
 
         SINGLETON_SCORER_CLIENT = ScorerClient(
             {
                 RuleType.MODEL_HALLUCINATION_V2: HallucinationClaimsV2(
-                    sentence_transformer=CLAIM_CLASSIFIER_EMBEDDING_MODEL,
+                    models_service_client=models_client,
                 ),
                 RuleType.MODEL_SENSITIVE_DATA: SensitiveDataCustomExamples(),
                 RuleType.PROMPT_INJECTION: BinaryPromptInjectionClassifier(
-                    model=PROMPT_INJECTION_MODEL,
-                    tokenizer=PROMPT_INJECTION_TOKENIZER,
+                    client=models_client,
                 ),
                 RuleType.PII_DATA: pii_data_classifier,
                 RuleType.KEYWORD: KeywordScorer(),
                 RuleType.REGEX: RegexScorer(),
-                RuleType.TOXICITY: ToxicityScorer(
-                    toxicity_model=TOXICITY_MODEL,
-                    toxicity_tokenizer=TOXICITY_TOKENIZER,
-                    harmful_request_model=None,
-                    harmful_request_tokenizer=None,
-                ),
+                RuleType.TOXICITY: ToxicityScorer(client=models_client),
                 MetricType.QUERY_RELEVANCE: UserQueryRelevanceScorer(),
                 MetricType.RESPONSE_RELEVANCE: ResponseRelevanceScorer(),
                 MetricType.TOOL_SELECTION: ToolSelectionCorrectnessScorer(),
