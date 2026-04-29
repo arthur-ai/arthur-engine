@@ -62,11 +62,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if svc_config.SKIP_MODEL_LOADING:
         logger.info("Skipping download + warmup — MODELS_SERVICE_SKIP_LOADING=true")
     else:
+
         def _warmup() -> None:
             try:
                 downloader.download_all(workers=4)
             except Exception:
-                logger.exception("Weight download failed; warmup will continue and fail per-model")
+                logger.exception(
+                    "Weight download failed; warmup will continue and fail per-model"
+                )
             loader.warm_all()
 
         logger.info("Spawning background download+warmup thread")
@@ -95,7 +98,9 @@ FastAPIInstrumentor.instrument_app(app)
 
 
 @app.exception_handler(RequestValidationError)
-async def _validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+async def _validation_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
@@ -150,7 +155,9 @@ async def health() -> HealthResponse:
 
 @app.get("/v1/ready", response_model=ReadyResponse)
 async def ready() -> ReadyResponse:
-    statuses = loader.status_snapshot()
+    # status_snapshot returns dict[str, Literal[...]]; widened here to satisfy
+    # ReadyResponse's `dict[str, str]` (dicts are invariant in their value).
+    statuses: dict[str, str] = dict(loader.status_snapshot())
     return ReadyResponse(ready=loader.all_loaded(), models=statuses)
 
 

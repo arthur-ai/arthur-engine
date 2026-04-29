@@ -8,7 +8,7 @@ need the secret.
 """
 
 import hmac
-from typing import Any, Awaitable, Callable
+from typing import Awaitable, Callable
 
 from fastapi import Request
 from fastapi.responses import JSONResponse, Response
@@ -19,7 +19,9 @@ import config as svc_config
 EXEMPT_PATHS = {"/v1/health"}
 
 
-def _unauthorized(message: str = "Missing or invalid Authorization header") -> JSONResponse:
+def _unauthorized(
+    message: str = "Missing or invalid Authorization header",
+) -> JSONResponse:
     return JSONResponse(
         status_code=401,
         content={
@@ -48,7 +50,7 @@ class BearerAuthMiddleware(BaseHTTPMiddleware):
         header = request.headers.get("Authorization", "")
         if not header.startswith("Bearer "):
             return _unauthorized()
-        token = header[len("Bearer "):].strip()
+        token = header[len("Bearer ") :].strip()
         if not hmac.compare_digest(token, secret):
             return _unauthorized()
 

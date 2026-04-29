@@ -18,7 +18,9 @@ MODEL_STORAGE_PATH = os.environ.get("MODEL_STORAGE_PATH", "/models")
 MODEL_REPOSITORY_URL = os.environ.get("MODEL_REPOSITORY_URL")
 
 # Skip all model loading. Useful for tests that don't need real inference.
-SKIP_MODEL_LOADING = os.environ.get("MODELS_SERVICE_SKIP_LOADING", "false").lower() == "true"
+SKIP_MODEL_LOADING = (
+    os.environ.get("MODELS_SERVICE_SKIP_LOADING", "false").lower() == "true"
+)
 
 
 # ---------------------------------------------------------------------------

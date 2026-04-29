@@ -111,7 +111,9 @@ def _profanity_pass(
             if detect_profanity(chunk):
                 return True
 
-        results: list[list[dict[str, str | float]]] = profanity_pipeline(
+        # transformers `pipeline()` overload returns Any at the type level when
+        # called with a list+top_k; the runtime shape is list[list[dict]].
+        results: list[list[dict[str, str | float]]] = profanity_pipeline(  # type: ignore[assignment]
             chunks,
             batch_size=TOXICITY_MODEL_BATCH_SIZE,
         )
@@ -134,7 +136,7 @@ def _score_toxicity(chunks: list[str]) -> list[float]:
 
     with tracer.start_as_current_span("toxicity: run deberta classifier"):
         with torch.no_grad():
-            results: list[list[dict[str, str | float]]] = pipeline(
+            results: list[list[dict[str, str | float]]] = pipeline(  # type: ignore[assignment]
                 pad_text(chunks, pad_type="repetition"),
                 batch_size=TOXICITY_MODEL_BATCH_SIZE,
             )
@@ -177,7 +179,9 @@ def classify(req: ToxicityRequest) -> ToxicityResponse:
         )
 
     tox_chunk_size = req.max_chunk_size or DEFAULT_TOXICITY_CHUNK_SIZE
-    harm_chunk_size = req.harmful_request_max_chunk_size or DEFAULT_HARMFUL_REQUEST_CHUNK_SIZE
+    harm_chunk_size = (
+        req.harmful_request_max_chunk_size or DEFAULT_HARMFUL_REQUEST_CHUNK_SIZE
+    )
 
     text_chunks = _chunk(req.text, tokenizer, tox_chunk_size)
     harm_chunks = _chunk(req.text, tokenizer, harm_chunk_size)

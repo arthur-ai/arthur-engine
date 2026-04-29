@@ -15,7 +15,7 @@ downstream consumers.
 """
 
 import json
-from typing import Awaitable, Callable
+from typing import Awaitable
 
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 

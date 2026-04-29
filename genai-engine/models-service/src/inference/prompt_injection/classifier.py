@@ -57,7 +57,9 @@ def classify(req: PromptInjectionRequest) -> PromptInjectionResponse:
     pipeline = loader.get_prompt_injection_classifier()
     tokenizer = loader.get_prompt_injection_tokenizer()
     if pipeline is None or tokenizer is None:
-        return PromptInjectionResponse(result=InferenceResult.MODEL_NOT_AVAILABLE, chunks=[])
+        return PromptInjectionResponse(
+            result=InferenceResult.MODEL_NOT_AVAILABLE, chunks=[]
+        )
 
     text = req.text
     if not text:

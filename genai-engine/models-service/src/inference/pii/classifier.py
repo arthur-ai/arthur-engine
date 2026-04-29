@@ -46,7 +46,7 @@ API contract:
 import logging
 import re
 import unicodedata
-from typing import Any, TypedDict
+from typing import TypedDict
 
 import torch
 
@@ -165,7 +165,7 @@ def _process_presidio(
     return [
         _Span(
             entity=r.entity_type,
-            span=text[r.start:r.end],
+            span=text[r.start : r.end],
             start=r.start,
             end=r.end,
             confidence=round(r.score, 4),
@@ -185,7 +185,8 @@ def _process_gliner(
         return []
 
     enabled = [
-        e for e in gliner_entity_types
+        e
+        for e in gliner_entity_types
         if PresidioGlinerMapper.gliner_to_presidio(e) not in disabled
     ]
     if not enabled:
@@ -200,7 +201,7 @@ def _process_gliner(
             spans.append(
                 _Span(
                     entity=PresidioGlinerMapper.gliner_to_presidio(pred["label"]),
-                    span=text[pred["start"] + offset:pred["end"] + offset],
+                    span=text[pred["start"] + offset : pred["end"] + offset],
                     start=pred["start"] + offset,
                     end=pred["end"] + offset,
                     confidence=round(pred.get("score", 1.0), 4),
@@ -323,7 +324,7 @@ def _postprocess(
                 entity=last["entity"],
                 start=last["start"],
                 end=span["end"],
-                span=text[last["start"]:span["end"]],
+                span=text[last["start"] : span["end"]],
                 confidence=max(last["confidence"], span["confidence"]),
             )
         else:
@@ -393,7 +394,7 @@ def _classify_v1(req: PIIRequest) -> PIIResponse:
         entities=[
             PIIEntitySpan(
                 entity=PIIEntityTypes(r.entity_type),
-                span=req.text[r.start:r.end],
+                span=req.text[r.start : r.end],
                 confidence=r.score,
             )
             for r in results
@@ -417,7 +418,8 @@ def _classify_v2(req: PIIRequest) -> PIIResponse:
 
     presidio_entities = [e for e in all_entities if e in PRESIDIO_SUPPORTED]
     gliner_entities = [
-        e for e in all_entities
+        e
+        for e in all_entities
         if e not in PRESIDIO_SUPPORTED and e != PIIEntityTypes.DATE_TIME.value
     ]
     gliner_entity_types = [

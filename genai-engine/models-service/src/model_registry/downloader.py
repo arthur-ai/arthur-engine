@@ -58,7 +58,12 @@ def download_all(workers: int = 4) -> None:
     os.makedirs(output_dir, exist_ok=True)
 
     tasks = [(repo, fn, rev, output_dir) for repo, fn, rev in files_to_download()]
-    logger.info("Downloading %d weight files into %s (workers=%d)", len(tasks), output_dir, workers)
+    logger.info(
+        "Downloading %d weight files into %s (workers=%d)",
+        len(tasks),
+        output_dir,
+        workers,
+    )
 
     with get_context("spawn").Pool(processes=workers) as pool:
         pool.map(_download_one, tasks)

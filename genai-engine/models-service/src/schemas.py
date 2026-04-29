@@ -18,11 +18,11 @@ Service-only additions:
 """
 
 from enum import Enum
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
 import config as svc_config
-
 
 # ---------------------------------------------------------------------------
 # Vendored enums (sources: arthur_common.models.enums, genai-engine schemas)
@@ -218,7 +218,7 @@ class ClaimFilterResponse(BaseModel):
 class ErrorBody(BaseModel):
     code: str
     message: str
-    details: dict | None = None
+    details: dict[str, Any] | None = None
 
 
 class ErrorResponse(BaseModel):

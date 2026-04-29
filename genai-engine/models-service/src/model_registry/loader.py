@@ -56,7 +56,6 @@ logger = logging.getLogger(__name__)
 from inference.claim_filter.claim_classifier import WEIGHTS_PATH as CLAIM_CLASSIFIER_PTH
 from inference.pii.gliner import CONFIG_PATH as GLINER_CONFIG_PATH
 
-
 # ---------------------------------------------------------------------------
 # Status tracking — surfaced via /v1/ready
 # ---------------------------------------------------------------------------
@@ -198,7 +197,7 @@ def get_prompt_injection_tokenizer() -> PreTrainedTokenizerBase | None:
     if svc_config.SKIP_MODEL_LOADING:
         return None
     if _PROMPT_INJECTION_TOKENIZER is None:
-        _PROMPT_INJECTION_TOKENIZER = AutoTokenizer.from_pretrained(
+        _PROMPT_INJECTION_TOKENIZER = AutoTokenizer.from_pretrained(  # type: ignore[no-untyped-call]
             _resolve_path(PROMPT_INJECTION.hf_repo),
             weights_only=False,
         )
@@ -220,7 +219,7 @@ def get_prompt_injection_classifier() -> TextClassificationPipeline | None:
         if model is None or tokenizer is None:
             _set_status(name, "failed")
             return None
-        _PROMPT_INJECTION_PIPELINE = TextClassificationPipeline(
+        _PROMPT_INJECTION_PIPELINE = TextClassificationPipeline(  # type: ignore[no-untyped-call]
             model=model,
             tokenizer=tokenizer,
             max_length=512,
@@ -256,7 +255,7 @@ def get_toxicity_tokenizer() -> PreTrainedTokenizerBase | None:
     if svc_config.SKIP_MODEL_LOADING:
         return None
     if _TOXICITY_TOKENIZER is None:
-        _TOXICITY_TOKENIZER = AutoTokenizer.from_pretrained(
+        _TOXICITY_TOKENIZER = AutoTokenizer.from_pretrained(  # type: ignore[no-untyped-call]
             _resolve_path(TOXICITY.hf_repo),
             weights_only=False,
             model_max_length=None,
@@ -279,7 +278,7 @@ def get_toxicity_classifier() -> TextClassificationPipeline | None:
         if model is None or tokenizer is None:
             _set_status(name, "failed")
             return None
-        _TOXICITY_PIPELINE = pipeline(
+        _TOXICITY_PIPELINE = pipeline(  # type: ignore[call-overload]
             "text-classification",
             model=model,
             tokenizer=tokenizer,
@@ -331,7 +330,9 @@ def get_gliner_tokenizer() -> PreTrainedTokenizerBase | None:
         return None
     if _GLINER_TOKENIZER is None:
         config = GLiNERConfig.from_json_file(GLINER_CONFIG_PATH)
-        _GLINER_TOKENIZER = AutoTokenizer.from_pretrained(_resolve_path(config.model_name))
+        _GLINER_TOKENIZER = AutoTokenizer.from_pretrained(  # type: ignore[no-untyped-call]
+            _resolve_path(config.model_name)
+        )
     return _GLINER_TOKENIZER
 
 
@@ -347,7 +348,9 @@ def get_gliner_model() -> GLiNER | None:
     try:
         model_path = _resolve_path(GLINER_PII.hf_repo)
         # Only force local-only when the path actually resolved to disk.
-        local_files_only = os.path.exists(model_path) and model_path != GLINER_PII.hf_repo
+        local_files_only = (
+            os.path.exists(model_path) and model_path != GLINER_PII.hf_repo
+        )
         _GLINER_MODEL = GLiNER.from_pretrained(
             model_path,
             config=GLiNERConfig.from_json_file(GLINER_CONFIG_PATH),
@@ -395,8 +398,8 @@ def get_spacy_date_nlp() -> Any:
 
     _set_status("spacy_date_nlp", "loading")
     try:
-        import spacy
         import date_spacy  # noqa: F401 — registers the find_dates component
+        import spacy
 
         # Exclude NER to avoid entity-type conflicts with date_spacy.
         nlp = spacy.load("en_core_web_lg", exclude=["ner"])

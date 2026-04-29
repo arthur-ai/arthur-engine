@@ -65,7 +65,7 @@ class ChunkIterator:
         if j == len(self.token_ids):
             end_char = len(self.text)
 
-        chunk = self.text[self.prev_char:end_char]
+        chunk = self.text[self.prev_char : end_char]
         self.prev_char = end_char
         self.i = j
         return chunk
