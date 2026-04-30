@@ -41,7 +41,7 @@ async function pollForTraces(
   return { found: false, lastError };
 }
 
-export async function step7_VerifyInstrumentation(state: WorkflowState): Promise<void> {
+export async function step8_VerifyInstrumentation(state: WorkflowState): Promise<void> {
   const client = new ArthurEngineClient(state.engineUrl!, state.apiKey!);
   const isLocal = state.engineUrl?.includes('localhost') || state.engineUrl?.includes('127.0.0.1');
 

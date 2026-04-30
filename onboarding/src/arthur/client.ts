@@ -1,3 +1,13 @@
+export interface OpenAIMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+export interface CreatedPrompt {
+  name: string;
+  version: number;
+}
+
 export interface Task {
   id: string;
   name: string;
@@ -339,6 +349,35 @@ export class ArthurEngineClient {
       return { success: true };
     } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
+  async createPrompt(
+    taskId: string,
+    promptName: string,
+    body: {
+      messages: OpenAIMessage[];
+      model_name: string;
+      model_provider: string;
+    },
+  ): Promise<{ prompt?: CreatedPrompt; error?: string }> {
+    try {
+      const res = await fetch(
+        `${this.baseUrl}/api/v1/tasks/${encodeURIComponent(taskId)}/prompts/${encodeURIComponent(promptName)}`,
+        {
+          method: 'POST',
+          headers: this.headers,
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(15_000),
+        },
+      );
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        return { error: `HTTP ${res.status}: ${text}` };
+      }
+      return { prompt: (await res.json()) as CreatedPrompt };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : String(err) };
     }
   }
 }
