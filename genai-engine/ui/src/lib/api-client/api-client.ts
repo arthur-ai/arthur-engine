@@ -6561,7 +6561,7 @@ export interface MetricResultResponse {
 export type MetricType = "QueryRelevance" | "ResponseRelevance" | "ToolSelection";
 
 /** ModelProvider */
-export type ModelProvider = "anthropic" | "openai" | "gemini" | "bedrock" | "vertex_ai" | "hosted_vllm";
+export type ModelProvider = "anthropic" | "openai" | "gemini" | "bedrock" | "vertex_ai" | "hosted_vllm" | "azure";
 
 /** ModelProviderList */
 export interface ModelProviderList {
@@ -7754,9 +7754,14 @@ export interface PromptVersionResultListResponse {
 export interface PutModelProviderCredentials {
   /**
    * Api Base
-   * The API base URL. Used for VLLM models.
+   * The API base URL. Required for Azure (endpoint URL) and vLLM models.
    */
   api_base?: string | null;
+  /**
+   * Api Version
+   * The API version. Required for Azure (e.g. '2024-02-01').
+   */
+  api_version?: string | null;
   /**
    * Api Key
    * The API key for the provider.
