@@ -106,9 +106,10 @@ class LLMClient:
                 raise ValueError(
                     "api_base (Azure endpoint URL) is required for Azure provider",
                 )
+            if not self.api_version:
+                raise ValueError("api_version is required for Azure provider")
             kwargs["api_base"] = self.api_base
-            if self.api_version:
-                kwargs["api_version"] = self.api_version
+            kwargs["api_version"] = self.api_version
         elif self.provider == ModelProvider.VERTEX_AI:
             if self.project_id:
                 kwargs["vertex_project"] = self.project_id
