@@ -164,6 +164,11 @@ class ModelProviderRepository:
                     status_code=HTTP_400_BAD_REQUEST,
                     detail="api_base (Azure endpoint URL) is required for Azure",
                 )
+            if provider_credentials.api_version is None:
+                raise HTTPException(
+                    status_code=HTTP_400_BAD_REQUEST,
+                    detail="api_version is required for Azure",
+                )
         elif provider == ModelProvider.VLLM:
             if provider_credentials.api_base is None:
                 raise HTTPException(

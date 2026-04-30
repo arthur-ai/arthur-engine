@@ -127,7 +127,7 @@ export const EditForm = ({ provider, onSubmit, onClose }: Props) => {
         return onSubmit({
           api_key: values.api_key,
           api_base: values.api_base,
-          api_version: values.api_version || undefined,
+          api_version: values.api_version,
         });
       }
 

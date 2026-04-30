@@ -496,7 +496,7 @@ def test_setting_azure_provider_credentials(client: GenaiEngineTestClientBase):
     )
     assert response.status_code == 400
 
-    # Enabling azure with api_key and api_base should work
+    # Enabling azure with api_key and api_base but no api_version should fail
     response = client.base_client.put(
         f"/api/v1/model_providers/azure",
         json={
@@ -505,7 +505,7 @@ def test_setting_azure_provider_credentials(client: GenaiEngineTestClientBase):
         },
         headers=client.authorized_user_api_key_headers,
     )
-    assert response.status_code == 201
+    assert response.status_code == 400
 
     # Enabling azure with api_key, api_base, and api_version should work
     response = client.base_client.put(
@@ -545,6 +545,12 @@ def test_setting_azure_provider_credentials(client: GenaiEngineTestClientBase):
     assert secret.api_version is None
 
     # Cleanup
+    response = client.base_client.delete(
+        f"/api/v1/model_providers/anthropic",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 204
+
     response = client.base_client.delete(
         f"/api/v1/model_providers/azure",
         headers=client.authorized_user_api_key_headers,
