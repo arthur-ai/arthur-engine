@@ -48,6 +48,8 @@ from repositories.trace_retention_repository import (
     get_expired_trace_ids,
 )
 from services.base_queue_service import BaseQueueJob, BaseQueueService
+from utils import constants
+from utils.utils import get_env_var
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +63,35 @@ INTER_BATCH_DELAY_SECONDS = 1
 MAX_TRACES_PER_RUN = 100_000
 CIRCUIT_BREAKER_THRESHOLD = 3
 LEADER_ELECTION_RETRY_SECONDS = 60
+
+
+def _resolve_interval_seconds() -> int:
+    """Resolve the retention loop interval (in seconds) from TRACE_RETENTION_INTERVAL_HOURS."""
+    raw = get_env_var(
+        constants.TRACE_RETENTION_INTERVAL_HOURS_ENV_VAR,
+        none_on_missing=True,
+    )
+    if raw is None:
+        return ONE_DAY_SECONDS
+    try:
+        hours = int(raw)
+    except ValueError:
+        logger.warning(
+            "Invalid %s=%r; falling back to default of 24 hours",
+            constants.TRACE_RETENTION_INTERVAL_HOURS_ENV_VAR,
+            raw,
+        )
+        return ONE_DAY_SECONDS
+    if hours < constants.MIN_TRACE_RETENTION_INTERVAL_HOURS:
+        logger.warning(
+            "%s=%d is below the minimum of %d hour(s); clamping up to %d hour(s)",
+            constants.TRACE_RETENTION_INTERVAL_HOURS_ENV_VAR,
+            hours,
+            constants.MIN_TRACE_RETENTION_INTERVAL_HOURS,
+            constants.MIN_TRACE_RETENTION_INTERVAL_HOURS,
+        )
+        return constants.MIN_TRACE_RETENTION_INTERVAL_HOURS * 3600
+    return hours * 3600
 
 
 class TraceRetentionJob(BaseQueueJob):
@@ -82,6 +113,7 @@ class TraceRetentionService(BaseQueueService[TraceRetentionJob]):
         self._tripped = threading.Event()
         self._failure_lock = threading.Lock()
         self._consecutive_failures = 0
+        self._interval_seconds = _resolve_interval_seconds()
 
     def _trip_latch(self, reason: str) -> None:
         """Trip the fail-stop latch. Once tripped it stays tripped until process restart."""
@@ -94,6 +126,7 @@ class TraceRetentionService(BaseQueueService[TraceRetentionJob]):
 
     def _execute_job(self, job: TraceRetentionJob) -> None:
         """Run one retention pass: delete traces older than configured retention."""
+        logger.info("Trace retention run starting")
         total_deleted = 0
         batch_error = False
 
@@ -136,12 +169,13 @@ class TraceRetentionService(BaseQueueService[TraceRetentionJob]):
                     if self.shutdown_event.wait(INTER_BATCH_DELAY_SECONDS):
                         break
 
-                if total_deleted > 0:
-                    logger.info(
-                        "Trace retention: deleted %d traces older than %s",
-                        total_deleted,
-                        cutoff.isoformat(),
-                    )
+                logger.info(
+                    "Trace retention run complete: deleted %d traces "
+                    "(cutoff=%s, retention=%d days)",
+                    total_deleted,
+                    cutoff.isoformat(),
+                    config.trace_retention_days,
+                )
         except Exception:
             with self._failure_lock:
                 self._consecutive_failures += 1
@@ -181,6 +215,10 @@ class TraceRetentionService(BaseQueueService[TraceRetentionJob]):
         when the leader's DB session closes).
         """
         logger.info("Background thread started for %s", self.service_name)
+        logger.info(
+            "Trace retention interval: %d hour(s)",
+            self._interval_seconds // 3600,
+        )
 
         while not self.shutdown_event.is_set():
             leader_session = None
@@ -192,22 +230,44 @@ class TraceRetentionService(BaseQueueService[TraceRetentionJob]):
                 ).scalar()
 
                 if not acquired:
+                    next_check = (
+                        datetime.now(timezone.utc)
+                        + timedelta(seconds=self._interval_seconds)
+                    ).isoformat()
                     logger.info(
-                        "Another replica holds the trace retention leader lock, standing by"
+                        "Another replica holds the trace retention leader lock, "
+                        "standing by; next leadership check at %s",
+                        next_check,
                     )
-                    self.shutdown_event.wait(timeout=ONE_DAY_SECONDS)
+                    self.shutdown_event.wait(timeout=self._interval_seconds)
                     continue
 
                 logger.info("Acquired trace retention leader lock")
 
                 if not self.shutdown_event.is_set():
                     self.enqueue(TraceRetentionJob(delay_seconds=0))
+                    next_enqueue = (
+                        datetime.now(timezone.utc)
+                        + timedelta(seconds=self._interval_seconds)
+                    ).isoformat()
+                    logger.info(
+                        "Next trace retention enqueue scheduled at %s",
+                        next_enqueue,
+                    )
 
                 while not self.shutdown_event.is_set():
-                    if self.shutdown_event.wait(timeout=ONE_DAY_SECONDS):
+                    if self.shutdown_event.wait(timeout=self._interval_seconds):
                         break
                     if not self.shutdown_event.is_set():
                         self.enqueue(TraceRetentionJob(delay_seconds=0))
+                        next_enqueue = (
+                            datetime.now(timezone.utc)
+                            + timedelta(seconds=self._interval_seconds)
+                        ).isoformat()
+                        logger.info(
+                            "Next trace retention enqueue scheduled at %s",
+                            next_enqueue,
+                        )
 
             except Exception as e:
                 logger.error(

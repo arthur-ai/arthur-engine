@@ -10,10 +10,9 @@
 2. This will create a dev release and trigger the Arthur Engine CI workflow
 
 ## Production Release
-1. After the dev release pipeline has succeeded, create a PR to merge `dev` into `main`
-2. **Important**: The version bump commit must be the most recent commit in this PR, or the release won't be triggered
-3. Merge the PR to trigger the production release. **Important** the merge commit must have the same title as the version bump commit,
-   or the release won't be triggered.
-4. Let Madeleine know to publish the release notes on GitHub.
+1. After the dev release pipeline has succeeded, in GitHub Actions, manually run the **Create Release PR** workflow (no inputs required).
+   - This will sanity-check that `dev` is ahead of `main` and that no existing release PR is open, then open the PR automatically with the correct title.
+2. Merge the PR to trigger the production release. **Important**: the merge commit title must match the version bump commit title (GitHub's default when squash-merging), or the release won't be triggered.
+3. Let Madeleine know to publish the release notes on GitHub.
 
-> **Note**: The version bump commit requirement prevents unintended commits from being included in the release.
+> **Note**: Always use the **Create Release PR** workflow instead of opening the PR manually — it enforces the title format and version checks that prevent common release papercuts.
