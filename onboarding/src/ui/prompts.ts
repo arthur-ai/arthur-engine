@@ -41,7 +41,13 @@ export function handleCancel(value: unknown): void {
   }
 }
 
+const CI_MODE = process.env.BUZZ_CI === 'true';
+
 export async function confirm(message: string): Promise<boolean> {
+  if (CI_MODE) {
+    p.log.info(buzzSay(`[CI] Auto-confirming: ${message}`));
+    return true;
+  }
   const result = await p.confirm({ message: buzzSay(message) });
   handleCancel(result);
   return result as boolean;
@@ -51,6 +57,10 @@ export async function select<T extends string>(
   message: string,
   options: { value: T; label: string; hint?: string }[],
 ): Promise<T> {
+  if (CI_MODE) {
+    p.log.info(buzzSay(`[CI] Auto-selecting: ${options[0].label}`));
+    return options[0].value;
+  }
   // Cast options to satisfy @clack/prompts internal Option<T> type
   const result = await p.select({ message: buzzSay(message), options: options as never });
   handleCancel(result);

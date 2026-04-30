@@ -70,10 +70,13 @@ STEP 1 — ANALYSIS:
   - Check if arthur_observability_sdk is already installed (skip if yes)
 
 STEP 2 — IMPLEMENTATION (only if not already instrumented):
+
+PART A — SDK SETUP (always required):
   - Add "arthur-observability-sdk[<framework>]" to requirements.txt / pyproject.toml
     where <framework> matches the detected LLM framework (e.g. langchain, openai, anthropic, crewai)
   - In the entry point, add:
       from arthur_observability_sdk import Arthur
+      import os
       task_id = os.environ.get("ARTHUR_TASK_ID", "${req.taskId}")
       arthur = Arthur(
           api_key=os.environ.get("ARTHUR_API_KEY"),
@@ -82,11 +85,106 @@ STEP 2 — IMPLEMENTATION (only if not already instrumented):
           service_name="<app-name>",
           resource_attributes={"arthur.task": task_id},
       )
-  - Call arthur.instrument_<framework>() matching the detected LLM framework
-  - Wrap the main execution with arthur.attributes() context manager if applicable
+  - Call arthur.instrument_<framework>() to auto-instrument all LLM API calls
   - Add to .env (create if needed, ensure .env is in .gitignore):
       ARTHUR_API_KEY=${req.apiKey}
   - Add to .env.example: ARTHUR_API_KEY=your-api-key-here
+
+PART B — ROOT SPAN + SESSION ID (CRITICAL — without this, each LLM call is a SEPARATE trace):
+  The auto-instrumentor creates one span per LLM call. Without a parent span to connect them,
+  one user interaction emits multiple disconnected traces. A root CHAIN span fixes this.
+
+  Add these imports near the top of the file where arthur is initialised (or in a shared module):
+      from opentelemetry import trace
+      from openinference.semconv.trace import SpanAttributes, OpenInferenceSpanKindValues
+      import json, uuid
+      tracer = trace.get_tracer(__name__)
+
+  Find the main request handler — the function/method that processes one complete user message
+  end-to-end (e.g. a Gradio/FastAPI/Flask chat handler, a process() / answer() / run() method).
+
+  Wrap its body with a root CHAIN span AND a session context manager:
+      # Derive session_id from app state: look for existing session key, conversation ID,
+      # user ID, or generate one: str(uuid.uuid4())
+      session_id = <session_id>
+      with arthur.session(session_id):
+          with tracer.start_as_current_span("<handler_name>") as root_span:
+              root_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND,
+                                      OpenInferenceSpanKindValues.CHAIN.value)
+              root_span.set_attribute(SpanAttributes.INPUT_VALUE, <user_input_message>)
+              # all existing processing code runs here; every sub-span becomes a child
+              root_span.set_attribute(SpanAttributes.OUTPUT_VALUE, <final_response_text>)
+
+  IMPORTANT — streaming / generator handlers: Python async frameworks (Gradio, FastAPI, etc.)
+  may resume a generator in a different async task or thread, which resets the OTel context
+  between iterations. A context-manager-based span (with tracer.start_as_current_span) WILL
+  lose its parent context across yield points. Use explicit attach/detach instead:
+
+      from opentelemetry import context as otel_ctx
+      from opentelemetry.trace import set_span_in_context
+      from opentelemetry.context import set_value as otel_set_value
+
+      def handler(message, ...):
+          yield <initial_update>          # yield BEFORE creating span (fine)
+
+          root_span = tracer.start_span("handler_name")
+          root_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND,
+                                  OpenInferenceSpanKindValues.CHAIN.value)
+          root_span.set_attribute(SpanAttributes.INPUT_VALUE, message)
+
+          span_ctx = set_span_in_context(
+              root_span,
+              otel_set_value(SpanAttributes.SESSION_ID, session_id),
+          )
+          token = otel_ctx.attach(span_ctx)
+          try:
+              for chunk in <inner_generator>:
+                  <process chunk>
+                  otel_ctx.detach(token)
+                  yield <chunk_to_caller>
+                  token = otel_ctx.attach(span_ctx)  # re-attach after each yield
+              root_span.set_attribute(SpanAttributes.OUTPUT_VALUE, <final_response>)
+          finally:
+              root_span.end()
+              otel_ctx.detach(token)
+
+PART C — TOOL SPANS (for LLM tool-calling patterns):
+  If the application uses LLM tool calling — i.e. the LLM outputs tool-call parameters and
+  then Python code executes the actual function — wrap each tool execution with a TOOL span:
+      with tracer.start_as_current_span("<tool_name>") as tool_span:
+          tool_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND,
+                                  OpenInferenceSpanKindValues.TOOL.value)
+          tool_span.set_attribute(SpanAttributes.TOOL_NAME, "<tool_name>")
+          tool_span.set_attribute(SpanAttributes.INPUT_VALUE, json.dumps(<tool_input_params>))
+          result = <execute_tool(tool_input_params)>
+          tool_span.set_attribute(SpanAttributes.OUTPUT_VALUE,
+                                  json.dumps(result) if not isinstance(result, str) else result)
+
+PART D — RETRIEVAL SPANS (for RAG / search patterns):
+  If the application performs retrieval (vector search, semantic search, full-text search,
+  document lookup), wrap the retrieval call with a RETRIEVER span. You MUST set BOTH:
+    (a) per-document attributes so Arthur can index individual docs, AND
+    (b) output.value as a JSON list so Arthur Engine displays the retrieved context — without
+        output.value the retrieval output panel will appear empty in the UI.
+
+      with tracer.start_as_current_span("retrieval") as ret_span:
+          ret_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND,
+                                 OpenInferenceSpanKindValues.RETRIEVER.value)
+          ret_span.set_attribute(SpanAttributes.INPUT_VALUE, <search_query_string>)
+          docs = <execute_retrieval(search_query)>
+          retrieved = []
+          for i, doc in enumerate(docs):
+              doc_text = <doc_text_content>
+              ret_span.set_attribute(f"retrieval.documents.{i}.document.content", doc_text)
+              entry = {"document_content": doc_text}
+              # Include score if the retrieval API returns one (float 0–1 preferred)
+              if <score_available>:
+                  score = float(<doc_score>)
+                  ret_span.set_attribute(f"retrieval.documents.{i}.document.score", score)
+                  entry["score"] = score
+              retrieved.append(entry)
+          # REQUIRED: set output.value so the retrieval output is visible in Arthur Engine
+          ret_span.set_attribute(SpanAttributes.OUTPUT_VALUE, json.dumps(retrieved))
 
 STEP 3 — VALIDATION:
   - Run: pip install 'arthur-observability-sdk[<framework>]'
@@ -170,30 +268,94 @@ STEP 1 — ANALYSIS:
 STEP 2 — IMPLEMENTATION (only if not already instrumented):
 
   For Python:
-    Add to requirements.txt:
-      opentelemetry-sdk
-      opentelemetry-exporter-otlp-proto-http
-      openinference-instrumentation-<framework>  (e.g., openinference-instrumentation-langchain)
+    PART A — OTel + framework instrumentor setup:
+      Add to requirements.txt:
+        opentelemetry-sdk
+        opentelemetry-exporter-otlp-proto-http
+        openinference-instrumentation-<framework>  (e.g., openinference-instrumentation-langchain)
+        openinference-semantic-conventions
 
-    In the entry point:
-      from opentelemetry import trace
-      from opentelemetry.sdk.trace import TracerProvider
-      from opentelemetry.sdk.trace.export import BatchSpanProcessor
-      from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-      from openinference.instrumentation.<framework> import <Framework>Instrumentor
+      In the entry point:
+        from opentelemetry import trace
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+        from openinference.instrumentation.<framework> import <Framework>Instrumentor
+        from openinference.semconv.trace import SpanAttributes, OpenInferenceSpanKindValues
+        import os, json, uuid
 
-      provider = TracerProvider()
-      exporter = OTLPSpanExporter(
-          endpoint="${req.arthurEngineUrl}/api/v1/traces",
-          headers={"Authorization": f"Bearer {os.environ.get('ARTHUR_API_KEY', '')}"},
-      )
-      provider.add_span_processor(BatchSpanProcessor(exporter))
-      trace.set_tracer_provider(provider)
-      <Framework>Instrumentor().instrument()
+        provider = TracerProvider()
+        exporter = OTLPSpanExporter(
+            endpoint="${req.arthurEngineUrl}/api/v1/traces",
+            headers={"Authorization": f"Bearer {os.environ.get('ARTHUR_API_KEY', '')}"},
+        )
+        provider.add_span_processor(BatchSpanProcessor(exporter))
+        trace.set_tracer_provider(provider)
+        <Framework>Instrumentor().instrument()
+        tracer = trace.get_tracer(__name__)
+
+    PART B — ROOT SPAN + SESSION ID (CRITICAL — without this, each LLM call is a SEPARATE trace):
+      The auto-instrumentor creates one span per LLM call; without a parent span every call
+      becomes its own trace. A root CHAIN span fixes this.
+
+      Find the main request handler — the function/method that processes one complete user
+      message end-to-end (e.g. a Gradio/FastAPI/Flask chat handler, a process() / answer() /
+      run() / invoke() method).
+
+      Wrap its body with a root CHAIN span AND a session context manager. Use
+      using_session from openinference.instrumentation:
+          from openinference.instrumentation import using_session
+
+          session_id = <get from app state: session key, conversation ID, or str(uuid.uuid4())>
+          with using_session(session_id=session_id):
+              with tracer.start_as_current_span("<handler_name>") as root_span:
+                  root_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND,
+                                          OpenInferenceSpanKindValues.CHAIN.value)
+                  root_span.set_attribute(SpanAttributes.INPUT_VALUE, <user_input_message>)
+                  # all existing processing code runs here
+                  root_span.set_attribute(SpanAttributes.OUTPUT_VALUE, <final_response_text>)
+
+      If the handler is a streaming/generator function (uses yield), the session + root span
+      must wrap the generator CONSUMPTION in the caller so spans stay open during streaming.
+
+    PART C — TOOL SPANS (for LLM tool-calling patterns):
+      If the application uses LLM tool calling (the LLM outputs tool-call params and then Python
+      code executes the actual function), wrap each tool execution:
+          with tracer.start_as_current_span("<tool_name>") as tool_span:
+              tool_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND,
+                                      OpenInferenceSpanKindValues.TOOL.value)
+              tool_span.set_attribute(SpanAttributes.TOOL_NAME, "<tool_name>")
+              tool_span.set_attribute(SpanAttributes.INPUT_VALUE, json.dumps(<tool_input_params>))
+              result = <execute_tool(tool_input_params)>
+              tool_span.set_attribute(SpanAttributes.OUTPUT_VALUE,
+                                      json.dumps(result) if not isinstance(result, str) else result)
+
+    PART D — RETRIEVAL SPANS (for RAG / search patterns):
+      If the application performs retrieval (vector search, semantic search, document lookup),
+      wrap the retrieval call with a RETRIEVER span. You MUST set BOTH per-document attributes
+      AND output.value as a JSON list — without output.value, Arthur Engine shows empty output:
+          with tracer.start_as_current_span("retrieval") as ret_span:
+              ret_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND,
+                                     OpenInferenceSpanKindValues.RETRIEVER.value)
+              ret_span.set_attribute(SpanAttributes.INPUT_VALUE, <search_query_string>)
+              docs = <execute_retrieval(search_query)>
+              retrieved = []
+              for i, doc in enumerate(docs):
+                  doc_text = <doc_text_content>
+                  ret_span.set_attribute(f"retrieval.documents.{i}.document.content", doc_text)
+                  entry = {"document_content": doc_text}
+                  if <score_available>:
+                      score = float(<doc_score>)
+                      ret_span.set_attribute(f"retrieval.documents.{i}.document.score", score)
+                      entry["score"] = score
+                  retrieved.append(entry)
+              # REQUIRED: set output.value so retrieved docs are visible in Arthur Engine
+              ret_span.set_attribute(SpanAttributes.OUTPUT_VALUE, json.dumps(retrieved))
 
   For TypeScript/JavaScript:
     Follow the pattern from the customer-support-agent example, creating an OTLP exporter
     pointing to ${req.arthurEngineUrl}/api/v1/traces with Bearer auth.
+    Also add a root span around the request handler (same concept as Python PART B above).
 
   Add to .env (create if needed, ensure .env is in .gitignore):
     ARTHUR_BASE_URL=${req.arthurEngineUrl}

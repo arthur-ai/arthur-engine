@@ -12,7 +12,7 @@ import { readGenaiEngineConfig, GENAI_ENGINE_ENV_PATH } from '../../config/env.j
 import type { WorkflowState } from '../orchestrator.js';
 
 const POLL_INTERVAL_MS = 3_000;
-const POLL_MAX_MS = 60_000;
+const POLL_MAX_MS = process.env.BUZZ_CI === 'true' ? 120_000 : 60_000;
 
 async function pollForTraces(
   client: ArthurEngineClient,
