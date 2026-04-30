@@ -88,12 +88,21 @@ Return ONLY a raw JSON object (no markdown, no explanation):
 
 Rules:
 - Only include prompts with actual substantive content (not empty strings or placeholders)
-- For user prompt templates with variables, keep the template as-is (e.g. "Summarize: {text}")
+- For user prompt templates with variables, convert ALL template variables to {{double_brace}} format regardless of how they appear in source (e.g. {text} → {{text}}, %(text)s → {{text}})
 - The "name" must be unique, lowercase, kebab-case, and descriptive (e.g. "customer-support-agent", "summarization-prompt")
 - If the same prompt appears multiple times (e.g. in tests), include it only once
 - model_name and model_provider at prompt level: use values detected for that specific prompt call if known, else null
 - detected_model_name/detected_model_provider: the primary model the app uses overall
 - If no prompts are found, return {"prompts": [], "detected_model_name": null, "detected_model_provider": null}`;
+
+function normalizeMessageContent(content: string): string {
+  // Collapse 3+ consecutive newlines to 2
+  let result = content.replace(/\n{3,}/g, '\n\n');
+  // Convert single-brace variables {var} to double-brace {{var}},
+  // but leave already-doubled {{var}} alone
+  result = result.replace(/(?<!\{)\{([^{}]+)\}(?!\})/g, '{{$1}}');
+  return result.trim();
+}
 
 function extractJSON(text: string): string {
   const blockMatch = text.match(/```(?:json)?\s*([\s\S]+?)```/);
@@ -127,7 +136,15 @@ async function extractPromptsWithClaude(repoPath: string): Promise<ExtractionRes
       }
     }
 
-    return JSON.parse(extractJSON(fullOutput)) as ExtractionResult;
+    const result = JSON.parse(extractJSON(fullOutput)) as ExtractionResult;
+    result.prompts = result.prompts.map(prompt => ({
+      ...prompt,
+      messages: prompt.messages.map(msg => ({
+        ...msg,
+        content: normalizeMessageContent(msg.content),
+      })),
+    }));
+    return result;
   } catch {
     return { prompts: [], detected_model_name: null, detected_model_provider: null };
   }
@@ -247,7 +264,7 @@ export async function step7_ExtractAndRegisterPrompts(state: WorkflowState): Pro
         { value: 'gemini',    label: 'Google Gemini',     hint: 'gemini-1.5-flash, gemini-1.5-pro, ...' },
         { value: 'bedrock',   label: 'AWS Bedrock',       hint: 'anthropic.claude-3-haiku, ...' },
         { value: 'vertex_ai', label: 'Google Vertex AI',  hint: 'gemini-1.5-flash, ...' },
-        { value: 'skip',      label: 'Skip — I\'ll set it later', hint: 'Prompts will use a placeholder model' },
+        { value: 'skip',      label: 'Skip — I\'ll set it later', hint: 'Prompts will not be registered until a provider is configured' },
       ],
     );
 
@@ -259,18 +276,18 @@ export async function step7_ExtractAndRegisterPrompts(state: WorkflowState): Pro
     }
   }
 
+  if (!fallbackProvider) {
+    note(
+      'Prompt registration requires a model provider.\n' +
+        'Configure one in the Arthur Engine UI under Settings → Model Providers, then re-run Buzz to register your prompts.',
+      'Prompt registration skipped',
+    );
+    return;
+  }
+
   // Ensure the chosen provider is actually configured in Arthur Engine
   const client = new ArthurEngineClient(state.engineUrl!, state.apiKey!);
-
-  if (fallbackProvider) {
-    await ensureProviderConfiguredInEngine(client, fallbackProvider, fallbackModel);
-  } else {
-    note(
-      'Registering prompts without a model provider configured in Arthur Engine.\n' +
-        'You can configure one under Settings → Model Providers and update the prompts there.',
-      'No model provider configured',
-    );
-  }
+  await ensureProviderConfiguredInEngine(client, fallbackProvider, fallbackModel);
   let created = 0;
 
   for (const prompt of extraction.prompts) {

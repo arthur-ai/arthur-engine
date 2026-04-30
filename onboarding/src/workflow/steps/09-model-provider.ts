@@ -97,30 +97,42 @@ export async function step9_SelectEvalModelProvider(state: WorkflowState): Promi
   const auto = pickHighestPriorityProvider(providers);
 
   if (auto) {
+    const enabledSupported = providers.filter(p => p.enabled && MODEL_DEFAULTS[p.provider]);
+
     logInfo(`Model providers configured on this Arthur Engine:`);
-    for (const mp of providers.filter(mp => mp.enabled)) {
+    for (const mp of enabledSupported) {
       logInfo(`  • ${PROVIDER_LABELS[mp.provider] ?? mp.provider}`);
     }
 
-    const useAuto = await confirm(
-      `Use ${PROVIDER_LABELS[auto.provider] ?? auto.provider} (${auto.model}) to run evaluations?`,
-    );
-
-    if (useAuto) {
-      state.evalModelProvider = auto.provider;
-      state.evalModelName = auto.model;
-      logSuccess(`Eval model set: ${auto.model} via ${PROVIDER_LABELS[auto.provider] ?? auto.provider}`);
+    if (enabledSupported.length === 1) {
+      // Only one option — confirm it
+      const useAuto = await confirm(
+        `Use ${PROVIDER_LABELS[auto.provider] ?? auto.provider} (${auto.model}) to run evaluations?`,
+      );
+      if (useAuto) {
+        state.evalModelProvider = auto.provider;
+        state.evalModelName = auto.model;
+        logSuccess(`Eval model set: ${auto.model} via ${PROVIDER_LABELS[auto.provider] ?? auto.provider}`);
+        return;
+      }
+      // Fell through — let them configure a new one
+      const result = await configureNewProvider(client);
+      if (result) {
+        state.evalModelProvider = result.provider;
+        state.evalModelName = result.model;
+        logSuccess(`Eval model set: ${result.model} via ${PROVIDER_LABELS[result.provider] ?? result.provider}`);
+      } else {
+        logWarn('No eval model provider selected. Eval recommendations will be skipped.');
+      }
       return;
     }
 
-    // User wants a different one — let them pick from enabled providers
-    const options = providers
-      .filter(p => p.enabled && MODEL_DEFAULTS[p.provider])
-      .map(p => ({
-        value: p.provider,
-        label: PROVIDER_LABELS[p.provider] ?? p.provider,
-        hint: MODEL_DEFAULTS[p.provider],
-      }));
+    // Multiple providers — go straight to the picker
+    const options = enabledSupported.map(p => ({
+      value: p.provider,
+      label: PROVIDER_LABELS[p.provider] ?? p.provider,
+      hint: MODEL_DEFAULTS[p.provider],
+    }));
     options.push({ value: 'new', label: 'Configure a different provider', hint: 'Add API key for a new provider' });
 
     const chosen = await select<string>('Which provider should run evaluations?', options);
