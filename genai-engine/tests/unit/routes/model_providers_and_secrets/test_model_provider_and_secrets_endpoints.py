@@ -466,3 +466,89 @@ def test_setting_vllm_provider_credentials(client: GenaiEngineTestClientBase):
     assert response.status_code == 204
 
     db_session.close()
+
+
+@pytest.mark.unit_tests
+def test_setting_azure_provider_credentials(client: GenaiEngineTestClientBase):
+    db_session = override_get_db_session()
+
+    # Enabling azure with no credentials should fail
+    response = client.base_client.put(
+        f"/api/v1/model_providers/azure",
+        json={},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 400
+
+    # Enabling azure with only api_key (no api_base) should fail
+    response = client.base_client.put(
+        f"/api/v1/model_providers/azure",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 400
+
+    # Enabling azure with only api_base (no api_key) should fail
+    response = client.base_client.put(
+        f"/api/v1/model_providers/azure",
+        json={"api_base": "https://my-deployment.openai.azure.com/"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 400
+
+    # Enabling azure with api_key and api_base should work
+    response = client.base_client.put(
+        f"/api/v1/model_providers/azure",
+        json={
+            "api_key": "test-key",
+            "api_base": "https://my-deployment.openai.azure.com/",
+        },
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 201
+
+    # Enabling azure with api_key, api_base, and api_version should work
+    response = client.base_client.put(
+        f"/api/v1/model_providers/azure",
+        json={
+            "api_key": "test-key",
+            "api_base": "https://my-deployment.openai.azure.com/",
+            "api_version": "2024-02-01",
+        },
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 201
+
+    # Verify api_version is stored in the database
+    secret = (
+        db_session.query(DatabaseSecretStorage)
+        .filter(DatabaseSecretStorage.name == "azure")
+        .first()
+    )
+    assert secret is not None
+    assert secret.api_version == "2024-02-01"
+
+    # Verify adding other models does not set api_version
+    response = client.base_client.put(
+        f"/api/v1/model_providers/anthropic",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 201
+
+    secret = (
+        db_session.query(DatabaseSecretStorage)
+        .filter(DatabaseSecretStorage.name == "anthropic")
+        .first()
+    )
+    assert secret is not None
+    assert secret.api_version is None
+
+    # Cleanup
+    response = client.base_client.delete(
+        f"/api/v1/model_providers/azure",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 204
+
+    db_session.close()

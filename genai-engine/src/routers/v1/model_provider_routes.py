@@ -82,6 +82,7 @@ async def set_model_provider(
             api_key=provider_credentials.api_key,
             project_id=provider_credentials.project_id,
             region=provider_credentials.region,
+            api_version=provider_credentials.api_version,
             api_base=provider_credentials.api_base,
             vertex_credentials=vertex_credentials,
             aws_bedrock_credentials=aws_bedrock_credentials,
