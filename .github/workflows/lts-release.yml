@@ -8,11 +8,11 @@ name: Arthur Engine — LTS Release
 #   * Docker images: RETAG the source-version images (no rebuild).
 #     Source version is read from `.lts-source-version` written by the
 #     lts-management orchestrator at the LTS branch root.
+#     Target: Docker Hub (arthurplatform) only.
 #   * Helm charts: REPACKAGE (Chart.yaml has been updated to LTS by the
-#     orchestrator). Push to ghcr.io + Docker Hub OCI.
-#   * Observability SDK: BUILD wheel from the LTS pyproject (`.post`
-#     form) and publish to PyPI. PyPI is immutable so retag isn't an
-#     option.
+#     orchestrator). Push to Docker Hub OCI only.
+#   * Observability SDK: see arthur-observability-sdk-release.yml —
+#     LTS jobs appended there so no new PyPI trusted publisher is needed.
 #
 # Trigger: tag matching `*-lts` or `*-lts-patch-*` (simple human-readable
 # globs). No commit-message gates, no branch gates. The continuous
@@ -65,17 +65,6 @@ jobs:
             docker tag  "arthurplatform/${IMG}:${SRC}" "arthurplatform/${IMG}:${LTS}"
             docker push "arthurplatform/${IMG}:${LTS}"
           done
-      - name: Log in to Nexus
-        run: |
-          echo "${{ secrets.NEXUS_REPOSITORY_PASSWORD }}" | docker login docker.arthur.ai \
-            -u "${{ secrets.NEXUS_REPOSITORY_USERNAME }}" --password-stdin
-      - name: Mirror ml-engine to Nexus
-        env:
-          SRC: ${{ steps.src.outputs.source }}
-          LTS: ${{ github.ref_name }}
-        run: |
-          docker tag  "arthurplatform/ml-engine:${SRC}" "docker.arthur.ai/arthur/scope/ml-engine:${LTS}"
-          docker push "docker.arthur.ai/arthur/scope/ml-engine:${LTS}"
 
   # ── 2. Package + push Helm charts (genai-engine, ml-engine) ─────────────
   publish-helm-charts:
@@ -83,7 +72,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: shared-protected-branch-secrets
     permissions:
-      packages: write
       contents: read
     steps:
       - uses: actions/checkout@v4
@@ -124,10 +112,6 @@ jobs:
           if [ -f "$ML_VALUES" ]; then
             sed -i "s|containerImageVersion:.*|containerImageVersion: \"${LTS}\"|" "$ML_VALUES"
           fi
-      - name: Log in to GHCR
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io \
-            -u "${{ github.actor }}" --password-stdin
       - name: Log in to Docker Hub OCI
         run: |
           echo "${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}" | helm registry login registry-1.docker.io \
@@ -146,93 +130,6 @@ jobs:
               ls -la "arthur-${SUBDIR}"-*.tgz 2>/dev/null || true
               exit 1
             fi
-            helm push "$TGZ" "oci://ghcr.io/${{ github.repository }}/charts"
             helm push "$TGZ" "oci://registry-1.docker.io/arthurplatform"
             rm -f "$TGZ"
           done
-
-  # ── 3. arthur-observability-sdk PyPI publish ────────────────────────────
-  generate-observability-client:
-    name: Generate observability SDK client
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref }}
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-      - name: Generate API client
-        working-directory: arthur-observability-sdk
-        run: ./scripts/generate_openapi_client.sh generate python
-      - uses: actions/upload-artifact@v4
-        with:
-          name: arthur-genai-client-lts
-          path: arthur-observability-sdk/python/src/arthur_genai_client
-
-  build-observability-wheel:
-    name: Build observability SDK wheel
-    needs: generate-observability-client
-    runs-on: ubuntu-latest
-    container: python:3.12-bullseye
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref }}
-      - uses: ./.github/workflows/composite-actions/setup-git
-        with:
-          safe-directory: ${{ runner.workspace }}
-      - uses: actions/download-artifact@v4
-        with:
-          name: arthur-genai-client-lts
-          path: arthur-observability-sdk/python/src/arthur_genai_client
-      # Install uv directly (NOT the local `setup-uv` composite, which runs
-      # `uv sync --frozen` — and that would fail because the lts-management
-      # orchestrator changed pyproject.toml version, putting it out of sync
-      # with uv.lock). `uv build` (used inside build_sdk_wheel.sh) doesn't
-      # need a synced environment.
-      - uses: astral-sh/setup-uv@v5
-        with:
-          version: "0.11.7"
-      - name: Verify pyproject is at .post form
-        run: |
-          PYPI_VER=$(python3 -c "import tomllib; d=tomllib.load(open('arthur-observability-sdk/python/pyproject.toml','rb')); print(d['project']['version'])")
-          echo "Wheel version will be: ${PYPI_VER}"
-          case "$PYPI_VER" in
-            *.post*) ;;
-            *)
-              echo "ERROR: arthur-observability-sdk pyproject is at '$PYPI_VER' but expected a .postN form." >&2
-              echo "       The lts-management orchestrator should have written the .post form via SetProjectVersion." >&2
-              exit 1
-              ;;
-          esac
-      - name: Build wheel
-        run: ./arthur-observability-sdk/scripts/build_sdk_wheel.sh
-      - uses: actions/upload-artifact@v4
-        with:
-          name: sdk-wheel-lts
-          path: arthur-observability-sdk/dist/*.whl
-
-  publish-observability-pypi:
-    name: Publish observability SDK to PyPI
-    needs: build-observability-wheel
-    runs-on: ubuntu-latest
-    environment:
-      name: shared-protected-branch-secrets
-      url: https://pypi.org/project/arthur-observability-sdk/
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: sdk-wheel-lts
-          path: dist/
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          packages-dir: dist
