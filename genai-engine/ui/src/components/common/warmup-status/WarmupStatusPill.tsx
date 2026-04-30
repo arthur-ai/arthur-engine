@@ -39,6 +39,7 @@ export interface WarmupStatusPillViewProps {
 export function WarmupStatusPillView({ data, size = "small", copy }: WarmupStatusPillViewProps) {
   if (!data) return null;
   if (data.overall_status === "ready") return null;
+  if (!data.models || data.models.length === 0) return null;
 
   const merged: WarmupStatusPillCopy = { ...DEFAULT_COPY, ...copy };
   const models = data.models ?? [];

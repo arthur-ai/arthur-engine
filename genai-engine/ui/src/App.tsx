@@ -67,8 +67,8 @@ function App() {
                         <Box
                           sx={{
                             position: "fixed",
-                            top: 8,
-                            right: 16,
+                            bottom: 16,
+                            left: 16,
                             zIndex: (theme) => theme.zIndex.appBar + 1,
                           }}
                         >
