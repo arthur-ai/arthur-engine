@@ -23,7 +23,9 @@ from schemas.request_schemas import ApplicationConfigurationUpdateRequest
 from schemas.response_schemas import (
     ApplicationConfigurationResponse,
     DisplaySettingsResponse,
+    ModelStatusResponse,
 )
+from services.model_warmup_service import get_model_warmup_service
 from utils.currency_display import get_display_currency
 from utils.users import permission_checker
 from utils.utils import public_endpoint
@@ -131,6 +133,21 @@ def update_configuration(
         return new_config._to_response_model()
     finally:
         db_session.close()
+
+
+@system_management_routes.get(
+    "/system/model_status",
+    description=(
+        "Get warmup status of background-loaded ML models. Use this to decide "
+        "when to start sending validate traffic. Cheap to poll: served entirely "
+        "from in-memory state."
+    ),
+    response_model=ModelStatusResponse,
+    tags=["Settings"],
+)
+@public_endpoint
+def get_model_status() -> ModelStatusResponse:
+    return get_model_warmup_service().get_overall_status()
 
 
 @system_management_routes.post(

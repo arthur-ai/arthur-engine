@@ -14,6 +14,10 @@ import spacy
 import torch
 from arthur_common.models.enums import PIIEntityTypes, RuleResultEnum
 from date_spacy import find_dates  # noqa: F401 - Import registers the component
+from gliner import GLiNER
+from presidio_analyzer import AnalyzerEngine
+from spacy.language import Language
+from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
 from schemas.scorer_schemas import (
     RuleScore,
@@ -34,7 +38,10 @@ from scorer.checks.pii.validations import (
     is_ssn,
     is_url,
 )
+from scorer.scorer import model_not_available_score
+from services.model_warmup_service import ModelKey, get_model_warmup_service
 from utils.model_load import (
+    USE_PII_MODEL_V2,
     get_gliner_model,
     get_gliner_tokenizer,
     get_presidio_analyzer,
@@ -83,37 +90,75 @@ class BinaryPIIDataClassifier:
     }
 
     def __init__(self) -> None:
-        """Initialize the PII classifier as a per-process singleton."""
-        self.model = get_gliner_model()
-        self.tokenizer = get_gliner_tokenizer()
-        self.max_tokens_per_chunk = MAX_TOKENS_PER_CHUNK
-        self.analyzer = get_presidio_analyzer()
+        """Initialize the PII classifier as a per-process singleton.
 
-        # Initialize spaCy with date_spacy for datetime detection
-        # Create a minimal pipeline without NER to avoid entity conflicts
+        Construction is intentionally cheap: spaCy and the entity lists are
+        deferred to ``_lazy_init_pipelines`` (run on first ``score`` call),
+        and Presidio / GLiNER handles are populated only after the warmup
+        service marks them ready. This keeps FastAPI ``lifespan`` from
+        blocking on heavy model loads.
+        """
+        self.model: GLiNER | None = None
+        self.tokenizer: PreTrainedTokenizerBase | None = None
+        self.analyzer: AnalyzerEngine | None = None
+        self.max_tokens_per_chunk = MAX_TOKENS_PER_CHUNK
+
+        self.date_nlp: Language | None = None
+        self.presidio_entities: list[str] = []
+        self.gliner_entities: list[str] = []
+        self.gliner_entity_types: list[str] = []
+        self._pipelines_initialized = False
+
+    def _lazy_init_pipelines(self) -> None:
+        """Initialize spaCy and entity lists on first ``score`` invocation.
+
+        spaCy isn't part of the warmup service queue (it's a bundled local
+        model, not downloaded), so we just load it once on first use and
+        cache it on the instance.
+        """
+        if self._pipelines_initialized:
+            return
+
+        # Minimal spaCy pipeline without NER so we don't conflict with the
+        # date_spacy `find_dates` component we add below.
         self.date_nlp = spacy.load("en_core_web_lg", exclude=["ner"])
         self.date_nlp.add_pipe("find_dates")
 
-        # Get all entity values from enum
         entities = PIIEntityTypes.values()
-
-        # Separate entities for Presidio, date_spacy, and GLiNER
         self.presidio_entities = [
             entity for entity in entities if entity in self.PRESIDIO_SUPPORTED
         ]
-        # Exclude DATE_TIME from GLiNER - it will be handled by date_spacy
+        # Exclude DATE_TIME from GLiNER - it will be handled by date_spacy.
         self.gliner_entities = [
             entity
             for entity in entities
             if entity not in self.PRESIDIO_SUPPORTED
             and entity != PIIEntityTypes.DATE_TIME.value
         ]
-
-        # Convert GLiNER entities to GLiNER format
         self.gliner_entity_types = [
             PresidioGlinerMapper.presidio_to_gliner(entity)
             for entity in self.gliner_entities
         ]
+        self._pipelines_initialized = True
+
+    def _ensure_presidio_loaded(self) -> bool:
+        if self.analyzer is not None:
+            return True
+        warmup = get_model_warmup_service()
+        if not warmup.is_ready(ModelKey.PII_PRESIDIO):
+            return False
+        self.analyzer = get_presidio_analyzer()
+        return self.analyzer is not None
+
+    def _ensure_gliner_loaded(self) -> bool:
+        if self.model is not None and self.tokenizer is not None:
+            return True
+        warmup = get_model_warmup_service()
+        if not warmup.is_ready(ModelKey.PII_GLINER):
+            return False
+        self.tokenizer = get_gliner_tokenizer()
+        self.model = get_gliner_model()
+        return self.model is not None and self.tokenizer is not None
 
     def _remove_overlapping_spans(
         self,
@@ -222,6 +267,21 @@ class BinaryPIIDataClassifier:
 
     def score(self, request: ScoreRequest) -> RuleScore:
         """Score text for PII detection using Presidio, GLiNER, and date_spacy."""
+        # Short-circuit if any required PII model is still warming up so the
+        # caller gets MODEL_NOT_AVAILABLE + Retry-After instead of an empty
+        # (false-negative) result.
+        presidio_ready = self._ensure_presidio_loaded()
+        gliner_ready = (not USE_PII_MODEL_V2) or self._ensure_gliner_loaded()
+        if not presidio_ready or not gliner_ready:
+            return model_not_available_score(
+                ModelKey.PII_PRESIDIO if not presidio_ready else ModelKey.PII_GLINER,
+                "PII classifier is not available yet (warming up).",
+            )
+
+        # spaCy is bundled and not part of the warmup queue; load on first
+        # use so __init__ stays cheap. Entity lists derive from spaCy state.
+        self._lazy_init_pipelines()
+
         text = sanitize(request.scoring_text or "")
         disabled_entities = set(request.disabled_pii_entities or [])
         allow_list = request.allow_list or []
@@ -390,7 +450,10 @@ class BinaryPIIDataClassifier:
 
         datetime_spans: list[DateTimeSpan] = []
 
-        # Phase 1: spaCy NER (intelligent, context-aware detection)
+        # Phase 1: spaCy NER (intelligent, context-aware detection).
+        # ``score()`` runs ``_lazy_init_pipelines`` before invoking us, so
+        # ``date_nlp`` is guaranteed populated here.
+        assert self.date_nlp is not None
         doc = self.date_nlp(text)
         for ent in doc.ents:
             if ent.label_ == "DATE":

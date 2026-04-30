@@ -1,7 +1,6 @@
 import logging
 import os
 import re
-import threading
 from typing import Any, List
 
 import numpy as np
@@ -20,12 +19,12 @@ from schemas.scorer_schemas import (
 )
 from scorer.checks.toxicity.toxicity_profanity.profanity import detect_profanity
 from scorer.scorer import RuleScorer
+from services.model_warmup_service import ModelKey, get_model_warmup_service
 from utils import constants
 from utils.model_load import (
     get_harmful_request_classifier,
     get_profanity_classifier,
     get_toxicity_classifier,
-    get_toxicity_model,
     get_toxicity_tokenizer,
 )
 from utils.text_chunking import ChunkIterator
@@ -36,9 +35,6 @@ logger = logging.getLogger()
 __location__ = os.path.dirname(os.path.abspath(__file__))
 
 tracer = trace.get_tracer(__name__)
-
-TOXICITY_TOKENIZER: PreTrainedTokenizerBase | None
-TOXICITY_MODEL: AutoModelForSequenceClassification | None
 
 HARMFUL_REQUEST_MAX_CHUNK_SIZE = int(
     get_env_var(
@@ -72,27 +68,80 @@ class ToxicityScorer(RuleScorer):
         harmful_request_model: PreTrainedModel | None,
         harmful_request_tokenizer: PreTrainedTokenizerBase | None,
     ) -> None:
-        self.model = get_toxicity_classifier(toxicity_model, toxicity_tokenizer)
-        # This type ignore here is we wanted to keep one source code between Shield and Arthur Engine
-        self.harmfulrequest_classifier = get_harmful_request_classifier(  # type: ignore[func-returns-value]
-            harmful_request_model,
-            harmful_request_tokenizer,
+        self._init_toxicity_model = toxicity_model
+        self._init_toxicity_tokenizer = toxicity_tokenizer
+        self._init_harmful_request_model = harmful_request_model
+        self._init_harmful_request_tokenizer = harmful_request_tokenizer
+        self.model: Any | None = None
+        self.toxicity_tokenizer: PreTrainedTokenizerBase | None = None
+        self.profanity_classifier: Any | None = None
+        self.harmfulrequest_classifier: Any | None = None
+        self._harmful_request_loaded = False
+
+    def _ensure_toxicity_loaded(self) -> bool:
+        """Resolve cached toxicity model+tokenizer once they're available.
+
+        If the constructor was given concrete handles, prefer those over the
+        global warmup gate: the caller has already proven the model is
+        loaded. Otherwise wait until the warmup service marks the key ready.
+        """
+        if self.model is not None and self.toxicity_tokenizer is not None:
+            return True
+        if (
+            self._init_toxicity_model is not None
+            and self._init_toxicity_tokenizer is not None
+        ):
+            self.model = get_toxicity_classifier(
+                self._init_toxicity_model,
+                self._init_toxicity_tokenizer,
+            )
+            self.toxicity_tokenizer = self._init_toxicity_tokenizer
+            return self.model is not None and self.toxicity_tokenizer is not None
+        if not get_model_warmup_service().is_ready(ModelKey.TOXICITY):
+            return False
+        self.model = get_toxicity_classifier(
+            self._init_toxicity_model,
+            self._init_toxicity_tokenizer,
         )
         self.toxicity_tokenizer = (
-            toxicity_tokenizer if toxicity_tokenizer else get_toxicity_tokenizer()
+            self._init_toxicity_tokenizer or get_toxicity_tokenizer()
         )
-        self.profanity_classifier = get_profanity_classifier()
+        return self.model is not None and self.toxicity_tokenizer is not None
 
-    def _download_model_and_tokenizer(self) -> None:
-        # Download the model and tokenizer using the provided methods
-        global TOXICITY_TOKENIZER
-        global TOXICITY_MODEL
-        if TOXICITY_TOKENIZER is None:
-            get_toxicity_tokenizer()
-        if TOXICITY_MODEL is None:
-            get_toxicity_model()
-        self.model = get_toxicity_classifier(TOXICITY_MODEL, TOXICITY_TOKENIZER)
-        logger.info("Model and tokenizer downloaded and classifier initialized.")
+    def _ensure_profanity_loaded(self) -> bool:
+        if self.profanity_classifier is not None:
+            return True
+        if not get_model_warmup_service().is_ready(ModelKey.PROFANITY):
+            return False
+        self.profanity_classifier = get_profanity_classifier()
+        return self.profanity_classifier is not None
+
+    def _ensure_harmful_request_loaded(self) -> bool:
+        """Resolve the harmful-request classifier; tolerate it being optional.
+
+        ``get_harmful_request_classifier`` legitimately returns ``None`` in
+        builds that don't ship the harmful-request model, so a loader call
+        that completes is "loaded", even if the resulting handle is None.
+        ``_harmful_request_loaded`` records that we've attempted the load so
+        we don't spin forever when there's nothing to load.
+        """
+        if self._harmful_request_loaded:
+            return True
+        if (
+            self._init_harmful_request_model is not None
+            and self._init_harmful_request_tokenizer is not None
+        ) or get_model_warmup_service().is_ready(ModelKey.HARMFUL_REQUEST):
+            # The shared loader is typed as returning ``None`` because in
+            # Arthur Engine no concrete classifier is built; we keep the
+            # call so a future Shield-style fork can drop in a real
+            # classifier without changing this site.
+            self.harmfulrequest_classifier = get_harmful_request_classifier(  # type: ignore[func-returns-value]
+                self._init_harmful_request_model,
+                self._init_harmful_request_tokenizer,
+            )
+            self._harmful_request_loaded = True
+            return True
+        return False
 
     def chunk_text(self, text: str, chunk_size: int) -> list[str]:
         if self.toxicity_tokenizer is None:
@@ -148,10 +197,11 @@ class ToxicityScorer(RuleScorer):
         Returns:
             bool: True if profanity is detected, False otherwise.
         """
-        if self.profanity_classifier is None:
+        if not self._ensure_profanity_loaded():
             raise ValueError(
                 "Profanity classifier is not available.",
             )
+        assert self.profanity_classifier is not None  # narrowed by _ensure_*_loaded
         with tracer.start_as_current_span("toxicity: profanity detection"):
             for section in texts:
                 # this calls the detect_profanity function found in toxicity_profanity/profanity.py
@@ -159,10 +209,11 @@ class ToxicityScorer(RuleScorer):
                     # if we detect profanity we can return early since later we check just if any profanity has been detected
                     return True
 
-            # This type ignore here is cause we know that this is the type that the classifier returns
-            prof_inference_res: list[list[dict[str, str | float]]] = self.profanity_classifier(  # type: ignore[assignment]
-                texts,
-                batch_size=TOXICITY_MODEL_BATCH_SIZE,
+            prof_inference_res: list[list[dict[str, str | float]]] = (
+                self.profanity_classifier(
+                    texts,
+                    batch_size=TOXICITY_MODEL_BATCH_SIZE,
+                )
             )
 
             for dicts_arr in prof_inference_res:
@@ -183,6 +234,10 @@ class ToxicityScorer(RuleScorer):
         Returns:
             (# texts,) list of harmful request probabilities
         """
+        # Trigger a load on first use; in builds without the classifier this
+        # leaves ``harmfulrequest_classifier`` as None and we fall through to
+        # the zero-score fallback (which the scorer treats as "no signal").
+        self._ensure_harmful_request_loaded()
         if self.harmfulrequest_classifier is None:
             return [0.0] * len(texts)
         with tracer.start_as_current_span("toxicity: run harmful request classifier"):
@@ -206,10 +261,10 @@ class ToxicityScorer(RuleScorer):
             # it was fine-tuned as a classifier on almost 0 examples of text < 20 chars
             # so for now, we apply repetition padding to the input sequences
             with torch.no_grad():
-                # why we ignore assignment type error?
-                # return type in the transformers library is typed wrongly
-                # it returns list nested in list of dicts with label and score keys
-                tox_results: list[list[dict[str, str | float]]] = self.model(  # type: ignore[assignment]
+                # The transformers library types the call return as a single
+                # dict; in practice it returns list-of-list-of-dicts when
+                # given a batch, so we annotate the call site explicitly.
+                tox_results: list[list[dict[str, str | float]]] = self.model(
                     pad_text(texts, pad_type="repetition"),
                     batch_size=TOXICITY_MODEL_BATCH_SIZE,
                 )
@@ -272,18 +327,12 @@ class ToxicityScorer(RuleScorer):
                         the maximum of the generated toxicity score(s)
                 all token return values 0
         """
-        if self.model is None:
-            threading.Thread(
-                target=self._download_model_and_tokenizer,
-                daemon=True,
-            ).start()
-            logger.warning(
-                "Toxicity classifier is not available.",
-            )
-            return RuleScore(
-                result=RuleResultEnum.MODEL_NOT_AVAILABLE,
-                prompt_tokens=0,
-                completion_tokens=0,
+        toxicity_ready = self._ensure_toxicity_loaded()
+        profanity_ready = self._ensure_profanity_loaded()
+        if not toxicity_ready or not profanity_ready:
+            return self._model_not_available(
+                ModelKey.TOXICITY if not toxicity_ready else ModelKey.PROFANITY,
+                "Toxicity classifier is not available yet (warming up).",
             )
 
         if not isinstance(request.toxicity_threshold, float):

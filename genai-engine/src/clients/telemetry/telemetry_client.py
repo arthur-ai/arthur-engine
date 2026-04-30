@@ -54,6 +54,7 @@ except Exception:
 class TelemetryEventTypes(str, Enum):
     SERVER_START_INITIATED = "server_start_initiated"
     SERVER_START_COMPLETED = "server_start_completed"
+    MODELS_WARM_COMPLETED = "models_warm_completed"
 
     TASK_CREATE_INITIATED = "task_create_initiated"
     TASK_CREATE_COMPLETED = "task_create_completed"

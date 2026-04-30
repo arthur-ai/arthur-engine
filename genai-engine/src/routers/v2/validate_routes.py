@@ -1,12 +1,12 @@
 from uuid import UUID
 
-from arthur_common.models.enums import RuleScope
+from arthur_common.models.enums import RuleResultEnum, RuleScope
 from arthur_common.models.request_schemas import (
     PromptValidationRequest,
     ResponseValidationRequest,
 )
 from arthur_common.models.response_schemas import HTTPError, ValidationResult
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from config.cache_config import cache_config
@@ -18,6 +18,11 @@ from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
 from scorer.score import ScorerClient
+from services.model_warmup_service import (
+    fail_fast_when_warming,
+    get_model_warmup_service,
+)
+from utils import constants
 from utils.users import permission_checker
 from validation.prompt import validate_prompt
 from validation.response import validate_response
@@ -26,6 +31,31 @@ validate_routes = APIRouter(
     prefix="/api/v2",
     route_class=GenaiEngineRoute,
 )
+
+
+def _annotate_warmup_state(
+    response: Response,
+    result: ValidationResult,
+) -> ValidationResult:
+    """Attach a ``Retry-After`` header (or 503) when warmup blocked any rule.
+
+    Implements the agreed signaling for the engine: 200 OK with per-rule
+    ``MODEL_NOT_AVAILABLE`` and a ``Retry-After`` header. If
+    ``GENAI_ENGINE_FAIL_FAST_WHEN_WARMING=true`` is set, the engine instead
+    raises 503 so callers see a hard failure they can retry on.
+    """
+    rule_results = result.rule_results or []
+    if not any(r.result == RuleResultEnum.MODEL_NOT_AVAILABLE for r in rule_results):
+        return result
+    retry_after = get_model_warmup_service().retry_after_seconds()
+    if fail_fast_when_warming():
+        raise HTTPException(
+            status_code=503,
+            detail="One or more models are still warming up. Retry shortly.",
+            headers={constants.RETRY_AFTER_HEADER: str(retry_after)},
+        )
+    response.headers[constants.RETRY_AFTER_HEADER] = str(retry_after)
+    return result
 
 
 @validate_routes.post(
@@ -39,6 +69,7 @@ validate_routes = APIRouter(
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_WRITE.value)
 def default_validate_prompt(
     body: PromptValidationRequest,
+    response: Response,
     db_session: Session = Depends(get_db_session),
     scorer_client: ScorerClient = Depends(get_scorer_client),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
@@ -51,12 +82,13 @@ def default_validate_prompt(
         )
         if not body.user_id and current_user:
             body.user_id = current_user.id
-        return validate_prompt(
+        result = validate_prompt(
             body=body,
             db_session=db_session,
             scorer_client=scorer_client,
             rules=default_rules,
         )
+        return _annotate_warmup_state(response, result)
     finally:
         db_session.close()
 
@@ -75,6 +107,7 @@ def default_validate_prompt(
 def default_validate_response(
     inference_id: UUID,
     body: ResponseValidationRequest,
+    response: Response,
     db_session: Session = Depends(get_db_session),
     scorer_client: ScorerClient = Depends(get_scorer_client),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
@@ -87,13 +120,14 @@ def default_validate_response(
             rule_scopes=[RuleScope.DEFAULT],
         )
 
-        return validate_response(
+        result = validate_response(
             inference_id=str(inference_id),
             body=body,
             db_session=db_session,
             scorer_client=scorer_client,
             rules=default_rules,
         )
+        return _annotate_warmup_state(response, result)
     finally:
         db_session.close()
 
@@ -112,6 +146,7 @@ def default_validate_response(
 def validate_prompt_endpoint(
     body: PromptValidationRequest,
     task_id: UUID,
+    response: Response,
     db_session: Session = Depends(get_db_session),
     scorer_client: ScorerClient = Depends(get_scorer_client),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
@@ -124,13 +159,14 @@ def validate_prompt_endpoint(
             rule_ids=task_rules,
             prompt_enabled=True,
         )
-        return validate_prompt(
+        result = validate_prompt(
             body=body,
             task_id=str(task_id),
             db_session=db_session,
             scorer_client=scorer_client,
             rules=rules,
         )
+        return _annotate_warmup_state(response, result)
     finally:
         db_session.close()
 
@@ -152,6 +188,7 @@ def validate_response_endpoint(
     inference_id: UUID,
     body: ResponseValidationRequest,
     task_id: UUID,
+    response: Response,
     db_session: Session = Depends(get_db_session),
     scorer_client: ScorerClient = Depends(get_scorer_client),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
@@ -164,12 +201,13 @@ def validate_response_endpoint(
             rule_ids=task_rules,
             response_enabled=True,
         )
-        return validate_response(
+        result = validate_response(
             inference_id=str(inference_id),
             body=body,
             db_session=db_session,
             scorer_client=scorer_client,
             rules=rules,
         )
+        return _annotate_warmup_state(response, result)
     finally:
         db_session.close()
