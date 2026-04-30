@@ -111,6 +111,18 @@ const createColumns = ({
       );
     },
   }),
+  columnHelper.display({
+    id: "continuous_eval_name",
+    header: "Continuous Eval Name",
+    cell: ({ row }) => {
+      if (!isContinuousEvalAnnotation(row.original)) return null;
+
+      const name = row.original.continuous_eval_name;
+      if (!name) return null;
+
+      return <Typography variant="body2">{name}</Typography>;
+    },
+  }),
   columnHelper.accessor("eval_name", {
     header: "Eval Name",
     cell: ({ row }) => {
