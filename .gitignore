@@ -51,3 +51,7 @@ arthur-engine.code-workspace
 **/.claude/arthur_config.json
 **/.claude/hooks/claude_code_tracer.py
 .gstack/
+
+# Ignore audit logs
+genai-engine/audit_logs
+genai-engine/tests/test_audit_logs

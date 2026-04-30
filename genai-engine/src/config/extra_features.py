@@ -7,7 +7,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class ExtraFeaturesSettings(BaseSettings):
     CHAT_ENABLED: bool = Field(default=False, alias="CHAT_ENABLED")
     CHATBOT_ENABLED: bool = Field(default=True, alias="CHATBOT_ENABLED")
-
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -15,7 +14,11 @@ class ExtraFeaturesSettings(BaseSettings):
         env_prefix="GENAI_ENGINE_",
     )
 
-    @field_validator("CHAT_ENABLED", "CHATBOT_ENABLED", mode="before")
+    @field_validator(
+        "CHAT_ENABLED",
+        "CHATBOT_ENABLED",
+        mode="before",
+    )
     def validate_feature_flag(cls, v: Any) -> bool:
         if not v:
             return False

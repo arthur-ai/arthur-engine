@@ -714,7 +714,7 @@ class LLMVersionResponse(BaseModel):
     deleted_at: Optional[datetime] = Field(
         description="Timestamp when the llm eval version was deleted (None if not deleted)",
     )
-    model_provider: ModelProvider = Field(
+    model_provider: Union[ModelProvider, Literal["empty"]] = Field(
         description="Model provider chosen for this version of the llm eval",
     )
     model_name: str = Field(
@@ -860,6 +860,22 @@ class SyntheticDataGenerationResponse(BaseModel):
     rows_removed: List[str] = Field(
         default_factory=list,
         description="IDs of rows that were removed in this response.",
+    )
+
+
+class SyntheticDataPromptStatus(BaseModel):
+    model_config = {"use_enum_values": True}
+
+    model_provider: Union[ModelProvider, Literal["empty"]] = Field(
+        ...,
+        description="Model provider stored in the SDG system prompt. "
+        "The sentinel 'empty' indicates the prompt has not yet been configured.",
+    )
+    model_name: str = Field(
+        ..., description="Model name stored in the SDG system prompt"
+    )
+    is_placeholder: bool = Field(
+        ..., description="True when the prompt uses the empty placeholder model"
     )
 
 

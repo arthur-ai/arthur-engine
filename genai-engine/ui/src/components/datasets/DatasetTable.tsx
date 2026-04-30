@@ -128,6 +128,18 @@ export const DatasetTable: React.FC<DatasetTableProps> = ({
       <Table size="small" stickyHeader>
         <TableHead>
           <TableRow>
+            <TableCell
+              sx={{
+                fontWeight: 600,
+                width: 100,
+                position: "sticky",
+                left: 0,
+                zIndex: 3,
+                boxShadow: (theme) => (theme.palette.mode === "dark" ? "2px 0 4px rgba(0, 0, 0, 0.3)" : "2px 0 4px rgba(0, 0, 0, 0.1)"),
+              }}
+            >
+              Row ID
+            </TableCell>
             {columns.map((column) => (
               <TableCell
                 key={column}
@@ -174,13 +186,13 @@ export const DatasetTable: React.FC<DatasetTableProps> = ({
         <TableBody>
           {isLoading ? (
             <TableRow>
-              <TableCell colSpan={columns.length + 1} align="center">
+              <TableCell colSpan={columns.length + 2} align="center">
                 <CircularProgress size={24} sx={{ my: 2 }} />
               </TableCell>
             </TableRow>
           ) : rows.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={columns.length + 1} align="center" sx={{ py: 4 }}>
+              <TableCell colSpan={columns.length + 2} align="center" sx={{ py: 4 }}>
                 <Typography variant="body2" color="text.secondary">
                   {searchQuery ? "No matching rows" : emptyMessage || "No data yet. Click 'Add Row' to get started."}
                 </Typography>

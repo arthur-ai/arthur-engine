@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.516"
+        "version": "2.1.542"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -2661,10 +2661,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "User IDs to filter on. Optional.",
+                            "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.",
                             "title": "User Ids"
                         },
-                        "description": "User IDs to filter on. Optional."
+                        "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional."
                     },
                     {
                         "name": "span_name",
@@ -3416,10 +3416,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "User IDs to filter on. Optional.",
+                            "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.",
                             "title": "User Ids"
                         },
-                        "description": "User IDs to filter on. Optional."
+                        "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional."
                     },
                     {
                         "name": "span_name",
@@ -4410,10 +4410,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "User IDs to filter on. Optional.",
+                            "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.",
                             "title": "User Ids"
                         },
-                        "description": "User IDs to filter on. Optional."
+                        "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional."
                     },
                     {
                         "name": "span_name",
@@ -5164,10 +5164,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "User IDs to filter on. Optional.",
+                            "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.",
                             "title": "User Ids"
                         },
-                        "description": "User IDs to filter on. Optional."
+                        "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional."
                     },
                     {
                         "name": "span_name",
@@ -8680,6 +8680,32 @@
                         }
                     }
                 }
+            }
+        },
+        "/api/v2/datasets/synthetic-data/prompt-status": {
+            "get": {
+                "tags": [
+                    "Datasets"
+                ],
+                "summary": "Get the model configuration stored in the SDG system prompt.",
+                "operationId": "get_synthetic_data_prompt_status_api_v2_datasets_synthetic_data_prompt_status_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SyntheticDataPromptStatus"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
             }
         },
         "/api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic": {
@@ -18181,8 +18207,17 @@
                         "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')"
                     },
                     "model_provider": {
-                        "$ref": "#/components/schemas/ModelProvider",
-                        "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ModelProvider"
+                            },
+                            {
+                                "type": "string",
+                                "const": "empty"
+                            }
+                        ],
+                        "title": "Model Provider",
+                        "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). The sentinel value 'empty' indicates the system default placeholder has not been configured."
                     },
                     "version": {
                         "type": "integer",
@@ -18383,7 +18418,16 @@
                         "description": "Timestamp when the llm eval version was deleted (None if not deleted)"
                     },
                     "model_provider": {
-                        "$ref": "#/components/schemas/ModelProvider",
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ModelProvider"
+                            },
+                            {
+                                "type": "string",
+                                "const": "empty"
+                            }
+                        ],
+                        "title": "Model Provider",
                         "description": "Model provider chosen for this version of the llm eval"
                     },
                     "model_name": {
@@ -18578,11 +18622,14 @@
                 "title": "AgenticTestCaseListResponse",
                 "description": "Paginated list of agentic test cases"
             },
-            "AnthropicThinkingParam": {
+            "AnthropicThinkingParam-Input": {
                 "properties": {
                     "type": {
                         "type": "string",
-                        "const": "enabled",
+                        "enum": [
+                            "enabled",
+                            "adaptive"
+                        ],
                         "title": "Type"
                     },
                     "budget_tokens": {
@@ -18590,6 +18637,25 @@
                         "title": "Budget Tokens"
                     }
                 },
+                "type": "object",
+                "title": "AnthropicThinkingParam"
+            },
+            "AnthropicThinkingParam-Output": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "enabled",
+                            "adaptive"
+                        ],
+                        "title": "Type"
+                    },
+                    "budget_tokens": {
+                        "type": "integer",
+                        "title": "Budget Tokens"
+                    }
+                },
+                "additionalProperties": false,
                 "type": "object",
                 "title": "AnthropicThinkingParam"
             },
@@ -22602,7 +22668,7 @@
                     "thinking": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/AnthropicThinkingParam"
+                                "$ref": "#/components/schemas/AnthropicThinkingParam-Output"
                             },
                             {
                                 "type": "null"
@@ -22778,7 +22844,7 @@
                     "thinking": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/AnthropicThinkingParam"
+                                "$ref": "#/components/schemas/AnthropicThinkingParam-Output"
                             },
                             {
                                 "type": "null"
@@ -23215,7 +23281,7 @@
                     "thinking": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/AnthropicThinkingParam"
+                                "$ref": "#/components/schemas/AnthropicThinkingParam-Input"
                             },
                             {
                                 "type": "null"
@@ -23427,7 +23493,7 @@
                     "thinking": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/AnthropicThinkingParam"
+                                "$ref": "#/components/schemas/AnthropicThinkingParam-Input"
                             },
                             {
                                 "type": "null"
@@ -23679,7 +23745,16 @@
                         "description": "Timestamp when the llm eval version was deleted (None if not deleted)"
                     },
                     "model_provider": {
-                        "$ref": "#/components/schemas/ModelProvider",
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ModelProvider"
+                            },
+                            {
+                                "type": "string",
+                                "const": "empty"
+                            }
+                        ],
+                        "title": "Model Provider",
                         "description": "Model provider chosen for this version of the llm eval"
                     },
                     "model_name": {
@@ -30166,6 +30241,40 @@
                 ],
                 "title": "SyntheticDataGenerationResponse",
                 "description": "Response for synthetic data generation (both initial and conversation)."
+            },
+            "SyntheticDataPromptStatus": {
+                "properties": {
+                    "model_provider": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ModelProvider"
+                            },
+                            {
+                                "type": "string",
+                                "const": "empty"
+                            }
+                        ],
+                        "title": "Model Provider",
+                        "description": "Model provider stored in the SDG system prompt. The sentinel 'empty' indicates the prompt has not yet been configured."
+                    },
+                    "model_name": {
+                        "type": "string",
+                        "title": "Model Name",
+                        "description": "Model name stored in the SDG system prompt"
+                    },
+                    "is_placeholder": {
+                        "type": "boolean",
+                        "title": "Is Placeholder",
+                        "description": "True when the prompt uses the empty placeholder model"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "model_provider",
+                    "model_name",
+                    "is_placeholder"
+                ],
+                "title": "SyntheticDataPromptStatus"
             },
             "SyntheticDataRowResponse": {
                 "properties": {

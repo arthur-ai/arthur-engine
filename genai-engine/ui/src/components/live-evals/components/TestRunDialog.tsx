@@ -28,10 +28,9 @@ import { Details } from "@/components/live-evals/components/results/components/d
 import { serializeDrawerTarget } from "@/components/traces/hooks/useDrawerTarget";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import type { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
+import { MAX_TRACES_PER_TEST_RUN } from "@/lib/constants";
 import { formatCurrency } from "@/utils/formatters";
 import { getStatusChipSx } from "@/utils/statusChipStyles";
-
-const MAX_TRACES = 50;
 
 const columnHelper = createMRTColumnHelper<AgenticAnnotationResponse>();
 
@@ -41,6 +40,7 @@ type Props = {
   evalId: string;
   evalName: string;
   taskId: string;
+  testRunId?: string;
 };
 
 function parseTraceIds(raw: string): string[] {
@@ -50,13 +50,15 @@ function parseTraceIds(raw: string): string[] {
     .filter(Boolean);
 }
 
-export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId }: Props) => {
+export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId, testRunId: externalTestRunId }: Props) => {
   const { defaultCurrency } = useDisplaySettings();
 
   // Setup phase state
   const [traceIdsInput, setTraceIdsInput] = useState("");
-  const [testRunId, setTestRunId] = useState<string | undefined>();
+  const [internalTestRunId, setInternalTestRunId] = useState<string | undefined>();
   const [selectedAnnotationId, setSelectedAnnotationId] = useState("");
+
+  const testRunId = externalTestRunId ?? internalTestRunId;
 
   const createMutation = useCreateTestRun(evalId);
   const testRunQuery = useTestRun(testRunId);
@@ -65,18 +67,18 @@ export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId }: Props
   const resultsQuery = useTestRunResults(testRunId);
 
   const parsedIds = useMemo(() => parseTraceIds(traceIdsInput), [traceIdsInput]);
-  const tooMany = parsedIds.length > MAX_TRACES;
+  const tooMany = parsedIds.length > MAX_TRACES_PER_TEST_RUN;
   const isEmpty = parsedIds.length === 0;
 
   const handleRun = useCallback(async () => {
     const unique = [...new Set(parsedIds)];
     const result = await createMutation.mutateAsync(unique);
-    setTestRunId(result.id);
+    setInternalTestRunId(result.id);
   }, [parsedIds, createMutation]);
 
   const handleClose = () => {
     setTraceIdsInput("");
-    setTestRunId(undefined);
+    setInternalTestRunId(undefined);
     setSelectedAnnotationId("");
     onClose();
   };
@@ -189,8 +191,8 @@ export const TestRunDialog = ({ open, onClose, evalId, evalName, taskId }: Props
                 error={tooMany}
                 helperText={
                   tooMany
-                    ? `Maximum ${MAX_TRACES} traces allowed`
-                    : `${parsedIds.length} trace${parsedIds.length !== 1 ? "s" : ""} (max ${MAX_TRACES})`
+                    ? `Maximum ${MAX_TRACES_PER_TEST_RUN} traces allowed`
+                    : `${parsedIds.length} trace${parsedIds.length !== 1 ? "s" : ""} (max ${MAX_TRACES_PER_TEST_RUN})`
                 }
               />
             </Stack>

@@ -93,6 +93,8 @@ spec:
               value: "{{ .Values.mlEngine.deployment.genaiEngineInternalIngressHost }}"
             - name: FETCH_RAW_DATA_ENABLED
               value: "{{ .Values.mlEngine.deployment.fetchRawDataEnabled }}"
+            - name: GENAI_ENGINE_MAX_PAGE_SIZE
+              value: "{{ .Values.mlEngine.deployment.genaiEngineMaxPageSize }}"
       {{- with .Values.mlEngine.deployment.mlEnginePodNodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
