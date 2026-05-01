@@ -9,10 +9,12 @@ with the structure expected by the model repository server.
 import argparse
 import json
 import logging
+import os
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
+import tiktoken
 from huggingface_hub import hf_hub_download
 
 try:
@@ -185,6 +187,32 @@ def download_models(
     return results
 
 
+TIKTOKEN_ENCODINGS = ["cl100k_base", "p50k_base", "r50k_base", "o200k_base"]
+
+
+def download_tiktoken_encodings(output_dir: Path) -> dict[str, list[str]]:
+    """Download tiktoken encoding files for airgapped deployment.
+
+    Files are cached using tiktoken's SHA1-hashed filename scheme so they are
+    picked up automatically at runtime when TIKTOKEN_CACHE_DIR points here.
+    """
+    tiktoken_dir = output_dir / "tiktoken"
+    tiktoken_dir.mkdir(parents=True, exist_ok=True)
+    os.environ["TIKTOKEN_CACHE_DIR"] = str(tiktoken_dir)
+
+    results: dict[str, list[str]] = {"successful": [], "failed": []}
+    for encoding_name in TIKTOKEN_ENCODINGS:
+        try:
+            tiktoken.get_encoding(encoding_name)
+            logger.info(f"✓ tiktoken/{encoding_name}")
+            results["successful"].append(encoding_name)
+        except Exception as e:
+            logger.error(f"✗ tiktoken/{encoding_name}: {e}")
+            results["failed"].append(encoding_name)
+
+    return results
+
+
 def load_models_config(config_path: str) -> dict[str, list[str]]:
     """Load models configuration from JSON file."""
     with open(config_path) as f:
@@ -249,6 +277,10 @@ def main():
     # Download models
     results = download_models(models, args.output_dir, args.workers)
 
+    # Download tiktoken encoding files
+    logger.info("Downloading tiktoken encoding files...")
+    tiktoken_results = download_tiktoken_encodings(args.output_dir)
+
     # Print summary
     print("\n" + "=" * 60)
     print("DOWNLOAD SUMMARY")
@@ -256,15 +288,23 @@ def main():
     print(f"Total files: {results['total_files']}")
     print(f"Downloaded:  {results['downloaded_files']}")
     print(f"Failed:      {len(results['failed'])}")
+    print(
+        f"Tiktoken encodings: {len(tiktoken_results['successful'])}/{len(TIKTOKEN_ENCODINGS)}",
+    )
     print("=" * 60)
 
-    if results["failed"]:
-        print("\nFailed downloads:")
-        for item in results["failed"]:
-            print(f"  - {item['model']}/{item['file']}: {item['error']}")
+    if results["failed"] or tiktoken_results["failed"]:
+        if results["failed"]:
+            print("\nFailed model downloads:")
+            for item in results["failed"]:
+                print(f"  - {item['model']}/{item['file']}: {item['error']}")
+        if tiktoken_results["failed"]:
+            print("\nFailed tiktoken encodings:")
+            for name in tiktoken_results["failed"]:
+                print(f"  - {name}")
         sys.exit(1)
 
-    print("\n✓ All models downloaded successfully!")
+    print("\n✓ All models and tiktoken encodings downloaded successfully!")
 
     # Save manifest
     manifest_path = args.output_dir / "manifest.json"
