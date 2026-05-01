@@ -104,6 +104,10 @@ class AlertCheckExecutor:
             project_id=job.project_id,
             post_job_batch=compliance_batch,
         )
+        self.logger.info(
+            f"Submitted compliance policy check job for model {job_spec.scope_model_id} "
+            f"(window {job_spec.check_range_start_timestamp} -> {job_spec.check_range_end_timestamp})"
+        )
 
     def _get_all_alert_rules(self, model_id: str) -> List[AlertRule]:
         alert_rules: List[AlertRule] = []
