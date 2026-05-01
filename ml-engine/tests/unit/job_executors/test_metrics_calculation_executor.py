@@ -69,7 +69,11 @@ def column_name_to_id(name: str, schema: DatasetSchema) -> UUID:
         raise ValueError(f"Could not find column {name}")
 
 
-def test_create_alert_check_job():
+@pytest.mark.parametrize("policy_assignment_id", [None, str(uuid4())])
+def test_create_alert_check_job(policy_assignment_id):
+    """Verifies that _create_alert_check_job copies model id, window, and the
+    optional policy_assignment_id from the MetricsCalc spec onto the queued
+    AlertCheck spec — the chain's per-assignment scoping survives this hop."""
     model = random_model()
     model_id = str(uuid4())
     model.id = model_id
@@ -80,6 +84,7 @@ def test_create_alert_check_job():
         scope_model_id=model_id,
         start_timestamp=metrics_start_time,
         end_timestamp=metrics_end_time,
+        policy_assignment_id=policy_assignment_id,
     )
     alert_job_batch = _create_alert_check_job(model, metrics_job_spec)
 
@@ -100,6 +105,7 @@ def test_create_alert_check_job():
     assert alert_check_job.scope_model_id == model_id
     assert alert_check_job.check_range_start_timestamp == metrics_start_time
     assert alert_check_job.check_range_end_timestamp == metrics_end_time
+    assert alert_check_job.policy_assignment_id == policy_assignment_id
 
 
 @pytest.mark.parametrize(

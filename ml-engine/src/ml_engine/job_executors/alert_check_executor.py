@@ -10,6 +10,7 @@ from arthur_client.api_bindings import (
     AlertRuleInterval,
     AlertRulesV1Api,
     AlertsV1Api,
+    CompliancePolicyCheckJobSpec,
     Job,
     JobsV1Api,
     MetricsQueryResult,
@@ -17,6 +18,10 @@ from arthur_client.api_bindings import (
     MetricsV1Api,
     PostAlert,
     PostAlerts,
+    PostJob,
+    PostJobBatch,
+    PostJobKind,
+    PostJobSpec,
     PostMetricsQuery,
     PostMetricsQueryResultFilter,
     PostMetricsQueryResultFilterAndGroup,
@@ -72,6 +77,37 @@ class AlertCheckExecutor:
         # re-raise error so job is marked as failed if any alert rule was not processed
         if processing_exc:
             raise processing_exc
+
+        self._submit_compliance_check_job(job, job_spec)
+
+    def _submit_compliance_check_job(
+        self,
+        job: Job,
+        job_spec: AlertCheckJobSpec,
+    ) -> None:
+        compliance_batch = PostJobBatch(
+            jobs=[
+                PostJob(
+                    kind=PostJobKind.COMPLIANCE_POLICY_CHECK,
+                    job_spec=PostJobSpec(
+                        CompliancePolicyCheckJobSpec(
+                            scope_model_id=job_spec.scope_model_id,
+                            check_range_start_timestamp=job_spec.check_range_start_timestamp,
+                            check_range_end_timestamp=job_spec.check_range_end_timestamp,
+                            policy_assignment_id=job_spec.policy_assignment_id,
+                        ),
+                    ),
+                ),
+            ],
+        )
+        self.jobs_client.post_submit_jobs_batch(
+            project_id=job.project_id,
+            post_job_batch=compliance_batch,
+        )
+        self.logger.info(
+            f"Submitted compliance policy check job for model {job_spec.scope_model_id} "
+            f"(window {job_spec.check_range_start_timestamp} -> {job_spec.check_range_end_timestamp})"
+        )
 
     def _get_all_alert_rules(self, model_id: str) -> List[AlertRule]:
         alert_rules: List[AlertRule] = []
