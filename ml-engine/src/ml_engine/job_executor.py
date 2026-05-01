@@ -397,6 +397,7 @@ class JobExecutor:
                             self.alert_rules_client,
                             self.alerts_client,
                             self.metrics_client,
+                            self.tasks_client,
                             self.logger,
                         ).execute(job, job.job_spec.actual_instance)
                     case JobKind.SCHEDULE_COMPLIANCE_JOBS:
