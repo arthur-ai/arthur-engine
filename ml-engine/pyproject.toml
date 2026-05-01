@@ -33,7 +33,7 @@ dependencies = [
   "types-requests==2.32.4.20260324",
   "psutil==7.0.0",
   "pyarrow==21.0.0",
-  "arthur-common==2.4.53",
+  "arthur-common==0.0.3.post0",
   "gunicorn>=23.0.0,<24",
   "sqlalchemy==2.0.48",
   "snowflake-sqlalchemy==1.7.7",
