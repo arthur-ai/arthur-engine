@@ -1,5 +1,4 @@
 import logging
-import threading
 from typing import Any
 
 import torch
@@ -10,17 +9,15 @@ from transformers.tokenization_utils import PreTrainedTokenizerBase
 
 from schemas.scorer_schemas import RuleScore, ScoreRequest
 from scorer.scorer import RuleScorer
+from services.model_warmup_service import ModelKey, get_model_warmup_service
 from utils.model_load import (
     get_prompt_injection_classifier,
-    get_prompt_injection_model,
     get_prompt_injection_tokenizer,
 )
 from utils.text_chunking import SlidingWindowChunkIterator
 
 logger = logging.getLogger()
 MAX_LENGTH = 512
-PROMPT_INJECTION_MODEL: PreTrainedModel | None = None
-PROMPT_INJECTION_TOKENIZER: PreTrainedTokenizerBase | None = None
 
 
 class BinaryPromptInjectionClassifier(RuleScorer):
@@ -29,55 +26,68 @@ class BinaryPromptInjectionClassifier(RuleScorer):
         model: PreTrainedModel | None,
         tokenizer: PreTrainedTokenizerBase | None,
     ):
-        """Initialized the binary classifier for prompt injection"""
-        self.model = get_prompt_injection_classifier(model, tokenizer)
-        self.tokenizer = (
-            tokenizer if tokenizer is not None else get_prompt_injection_tokenizer()
-        )
+        """Initialized the binary classifier for prompt injection.
+
+        Constructed before models finish warming up, so it does not eagerly
+        load the classifier; it consults the warmup service per ``score``
+        call and lazily fetches the loaded handles only once they're ready.
+        """
+        self._init_model = model
+        self._init_tokenizer = tokenizer
+        self._classifier: Any | None = None
+        self._tokenizer: PreTrainedTokenizerBase | None = None
         self.injection_label = "INJECTION"
 
-    def chunk_text(self, text: str) -> list[str]:
-        if not self.tokenizer:
-            # Raising an error to avoid silent failures
-            raise ValueError(
-                "Tokenizer is not available",
+    def _ensure_loaded(self) -> bool:
+        """Resolve cached classifier+tokenizer once the model is ready.
+
+        If the constructor was given concrete ``model``/``tokenizer`` objects
+        (e.g. by a caller that pre-loaded them), use them immediately rather
+        than waiting on the global warmup service: that caller has already
+        proven the model is loaded.
+        """
+        if self._classifier is not None and self._tokenizer is not None:
+            return True
+        if self._init_model is not None and self._init_tokenizer is not None:
+            self._classifier = get_prompt_injection_classifier(
+                self._init_model,
+                self._init_tokenizer,
             )
+            self._tokenizer = self._init_tokenizer
+            return self._classifier is not None and self._tokenizer is not None
+        if not get_model_warmup_service().is_ready(ModelKey.PROMPT_INJECTION):
+            return False
+        self._classifier = get_prompt_injection_classifier(
+            self._init_model,
+            self._init_tokenizer,
+        )
+        self._tokenizer = self._init_tokenizer or get_prompt_injection_tokenizer()
+        return self._classifier is not None and self._tokenizer is not None
+
+    def is_loaded(self) -> bool:
+        """Public read-only view of whether the classifier is wired up."""
+        return self._classifier is not None and self._tokenizer is not None
+
+    def chunk_text(self, text: str) -> list[str]:
+        # Callers must run after ``_ensure_loaded()`` returns True; the
+        # tokenizer is guaranteed non-None here.
+        assert self._tokenizer is not None, "_ensure_loaded must run first"
         chunk_iterator = SlidingWindowChunkIterator(
             text=text,
-            tokenizer=self.tokenizer,
+            tokenizer=self._tokenizer,
             chunk_size=MAX_LENGTH,
             stride=MAX_LENGTH // 2,
         )
 
         return [chunk for chunk in chunk_iterator]
 
-    def _download_model_and_tokenizer(self) -> None:
-        global PROMPT_INJECTION_MODEL
-        global PROMPT_INJECTION_TOKENIZER
-        if PROMPT_INJECTION_MODEL is None:
-            PROMPT_INJECTION_MODEL = get_prompt_injection_model()
-        if PROMPT_INJECTION_TOKENIZER is None:
-            PROMPT_INJECTION_TOKENIZER = get_prompt_injection_tokenizer()
-        self.model = get_prompt_injection_classifier(
-            PROMPT_INJECTION_MODEL,
-            PROMPT_INJECTION_TOKENIZER,
-        )
-
     def score(self, request: ScoreRequest) -> RuleScore:
         """Scores prompt for how likely they are to be a prompt injection attack
         Requests greater than 2000 characters are truncated from the middle"""
-        if self.model is None:
-            threading.Thread(
-                target=self._download_model_and_tokenizer,
-                daemon=True,
-            ).start()
-            logger.warning(
-                "Prompt injection classifier is not available.",
-            )
-            return RuleScore(
-                result=RuleResultEnum.MODEL_NOT_AVAILABLE,
-                prompt_tokens=0,
-                completion_tokens=0,
+        if not self._ensure_loaded():
+            return self._model_not_available(
+                ModelKey.PROMPT_INJECTION,
+                "Prompt injection classifier is not available yet (warming up).",
             )
         user_prompt = request.user_prompt
         if not user_prompt:
@@ -91,7 +101,7 @@ class BinaryPromptInjectionClassifier(RuleScorer):
         for chunk in text_chunks:
             # Get raw scores from model
             with torch.no_grad():
-                raw_scores: list[dict[str, Any]] = self.model(chunk)
+                raw_scores: list[dict[str, Any]] = self._classifier(chunk)  # type: ignore[misc]
 
             scores = torch.tensor([item["score"] for item in raw_scores])
 

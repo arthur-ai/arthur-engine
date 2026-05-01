@@ -24,6 +24,8 @@ from weaviate.types import INCLUDE_VECTOR
 
 from schemas.enums import (
     ConnectionCheckOutcome,
+    ModelLoadStatus,
+    OverallWarmupStatus,
     RagAPIKeyAuthenticationProviderEnum,
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
@@ -69,6 +71,43 @@ class ConversationResponse(ConversationBaseResponse):
 class HealthResponse(BaseModel):
     message: str
     build_version: Optional[str] = None
+
+
+class ModelStatusEntry(BaseModel):
+    """Per-model warmup status."""
+
+    key: str = Field(description="Stable identifier for the model.")
+    status: ModelLoadStatus = Field(description="Lifecycle state of the model.")
+    rule_types: List[str] = Field(
+        default_factory=list,
+        description="Rule/metric types that depend on this model.",
+    )
+    last_error: Optional[str] = Field(
+        default=None,
+        description=(
+            "Redacted last-error indicator (exception class name) when the "
+            "load failed; full message is only logged server-side."
+        ),
+    )
+    retry_count: int = Field(
+        default=0,
+        description="Number of times warmup has been retried for this model.",
+    )
+
+
+class ModelStatusResponse(BaseModel):
+    """Aggregate warmup status for all models the engine warms in the background."""
+
+    overall_status: OverallWarmupStatus = Field(
+        description="Aggregate warmup status across all models.",
+    )
+    retry_after_seconds: int = Field(
+        description="Suggested Retry-After value (seconds) for callers waiting on warmup.",
+    )
+    models: List[ModelStatusEntry] = Field(
+        default_factory=list,
+        description="Per-model warmup state.",
+    )
 
 
 class DatasetResponse(BaseModel):

@@ -1,6 +1,5 @@
 import logging
 import os
-import threading
 from itertools import repeat
 
 import torch
@@ -28,6 +27,7 @@ from scorer.checks.hallucination.v2_legacy_prompts import (
 from scorer.checks.hallucination.v2_prompts import get_structured_output_prompt
 from scorer.llm_client import get_llm_executor, handle_llm_exception
 from scorer.scorer import RuleScorer
+from services.model_warmup_service import ModelKey, get_model_warmup_service
 from utils import constants, utils
 from utils.claim_parser import ClaimParser
 from utils.classifiers import Classifier, LogisticRegressionModel, get_device
@@ -40,7 +40,6 @@ logger = logging.getLogger()
 
 __location__ = os.path.dirname(os.path.abspath(__file__))
 
-CLAIM_CLASSIFIER_EMBEDDING_MODEL: SentenceTransformer | None
 CLAIM_CLASSIFIER_CLASSIFIER_PATH = (
     "claim_classifier/354ec0a465a14726b825b3bd5b97137b.pth"
 )
@@ -127,7 +126,8 @@ class HallucinationClaimsV2(RuleScorer):
     model: AzureChatOpenAI | ChatOpenAI
 
     def __init__(self, sentence_transformer: SentenceTransformer | None) -> None:
-        self.claim_classifier = get_claim_classifier(sentence_transformer)
+        self._init_sentence_transformer = sentence_transformer
+        self.claim_classifier: Classifier | None = None
         model = get_llm_executor().get_gpt_model()
         if model is None:
             raise RuntimeError(
@@ -140,12 +140,26 @@ class HallucinationClaimsV2(RuleScorer):
         self.explanation_template = get_flagged_claim_explanation_prompt()
         self.structured_output_prompt = get_structured_output_prompt()
 
-    def _download_sentence_transformer(self) -> None:
-        global CLAIM_CLASSIFIER_EMBEDDING_MODEL
-        if CLAIM_CLASSIFIER_EMBEDDING_MODEL is None:
-            CLAIM_CLASSIFIER_EMBEDDING_MODEL = get_claim_classifier_embedding_model()
-        self.claim_classifier = get_claim_classifier(CLAIM_CLASSIFIER_EMBEDDING_MODEL)
-        logger.info("Sentence transformer downloaded and classifier initialized.")
+    def _ensure_claim_classifier_loaded(self) -> bool:
+        """Resolve the claim classifier; honor a constructor-provided model.
+
+        If the constructor was given a concrete ``SentenceTransformer``, use
+        it immediately rather than waiting on the global warmup service.
+        Otherwise wait for warmup to mark the key ready.
+        """
+        if self.claim_classifier is not None:
+            return True
+        if self._init_sentence_transformer is not None:
+            self.claim_classifier = get_claim_classifier(
+                self._init_sentence_transformer,
+            )
+            return self.claim_classifier is not None
+        if not get_model_warmup_service().is_ready(ModelKey.CLAIM_CLASSIFIER):
+            return False
+        self.claim_classifier = get_claim_classifier(
+            get_claim_classifier_embedding_model(),
+        )
+        return self.claim_classifier is not None
 
     @tracer.start_as_current_span("hallucination v2 score")
     def score(self, request: ScoreRequest, claims_batch_size: int = 3) -> RuleScore:
@@ -161,19 +175,12 @@ class HallucinationClaimsV2(RuleScorer):
         Filter out dialog (e.g. 'Any other questions?') & non-claims (e.g. 'I dont have information about X') from the LLM response,
         since it is unnecessary to check those sentences for hallucinations
         """
-        if self.claim_classifier is None:
-            threading.Thread(
-                target=self._download_sentence_transformer,
-                daemon=True,
-            ).start()
-            logger.warning(
-                "Toxicity classifier is not available.",
+        if not self._ensure_claim_classifier_loaded():
+            return self._model_not_available(
+                ModelKey.CLAIM_CLASSIFIER,
+                "Hallucination claim classifier is not available yet (warming up).",
             )
-            return RuleScore(
-                result=RuleResultEnum.MODEL_NOT_AVAILABLE,
-                prompt_tokens=0,
-                completion_tokens=0,
-            )
+        assert self.claim_classifier is not None  # narrowed by _ensure_*_loaded
 
         claim_classifier_labels = self.claim_classifier(initial_texts)["pred_label_str"]
         claims: list[OrderedClaim] = []

@@ -1,3 +1,4 @@
+import { Box } from "@mui/material";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -15,6 +16,7 @@ import { ApiKeysManagement } from "./components/ApiKeysManagement";
 import { DatasetDetailView } from "./components/datasets/DatasetDetailView";
 import { DatasetExperimentsView } from "./components/datasets/DatasetExperimentsView";
 import { DatasetsView } from "./components/datasets/DatasetsView";
+import { EngineWarmupStatusPill } from "./components/EngineWarmupStatusPill";
 import { EvaluateView } from "./components/evaluate/EvaluateView";
 import Evaluators from "./components/evaluators/Evaluators";
 import { LiveEvalDetail } from "./components/live-evals/[evalId]";
@@ -62,6 +64,16 @@ function App() {
                   <DisplaySettingsProvider>
                     <Router>
                       <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+                        <Box
+                          sx={{
+                            position: "fixed",
+                            bottom: 16,
+                            left: 16,
+                            zIndex: (theme) => theme.zIndex.appBar + 1,
+                          }}
+                        >
+                          <EngineWarmupStatusPill />
+                        </Box>
                         <Routes>
                           {/* Public routes */}
                           <Route path="/login" element={<LoginPage />} />

@@ -67,6 +67,27 @@ class TestRunStatus(str, Enum):
     ERROR = "error"
 
 
+class ModelLoadStatus(str, Enum):
+    """Lifecycle states for a single model loaded by the warmup service."""
+
+    PENDING = "pending"
+    DOWNLOADING = "downloading"
+    LOADING = "loading"
+    READY = "ready"
+    FAILED = "failed"
+    SKIPPED = "skipped"
+
+
+class OverallWarmupStatus(str, Enum):
+    """Aggregate warmup status across all background-loaded ML models."""
+
+    WARMING = "warming"
+    READY = "ready"
+    PARTIAL = "partial"
+    FAILED = "failed"
+    SKIPPED = "skipped"
+
+
 class PermissionLevelsEnum(Enum):
     API_KEY_READ = frozenset(
         [constants.ORG_ADMIN, constants.ORG_AUDITOR, constants.ADMIN_KEY],

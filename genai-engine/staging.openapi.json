@@ -177,6 +177,28 @@
                 ]
             }
         },
+        "/api/v2/system/model_status": {
+            "get": {
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Get Model Status",
+                "description": "Get warmup status of background-loaded ML models. Use this to decide when to start sending validate traffic. Cheap to poll: served entirely from in-memory state.",
+                "operationId": "get_model_status_api_v2_system_model_status_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ModelStatusResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v2/feedback/{inference_id}": {
             "post": {
                 "tags": [
@@ -24202,6 +24224,19 @@
                 ],
                 "title": "MetricType"
             },
+            "ModelLoadStatus": {
+                "type": "string",
+                "enum": [
+                    "pending",
+                    "downloading",
+                    "loading",
+                    "ready",
+                    "failed",
+                    "skipped"
+                ],
+                "title": "ModelLoadStatus",
+                "description": "Lifecycle states for a single model loaded by the warmup service."
+            },
             "ModelProvider": {
                 "type": "string",
                 "enum": [
@@ -24271,6 +24306,80 @@
                     "enabled"
                 ],
                 "title": "ModelProviderResponse"
+            },
+            "ModelStatusEntry": {
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "title": "Key",
+                        "description": "Stable identifier for the model."
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/ModelLoadStatus",
+                        "description": "Lifecycle state of the model."
+                    },
+                    "rule_types": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Rule Types",
+                        "description": "Rule/metric types that depend on this model."
+                    },
+                    "last_error": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Last Error",
+                        "description": "Redacted last-error indicator (exception class name) when the load failed; full message is only logged server-side."
+                    },
+                    "retry_count": {
+                        "type": "integer",
+                        "title": "Retry Count",
+                        "description": "Number of times warmup has been retried for this model.",
+                        "default": 0
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "key",
+                    "status"
+                ],
+                "title": "ModelStatusEntry",
+                "description": "Per-model warmup status."
+            },
+            "ModelStatusResponse": {
+                "properties": {
+                    "overall_status": {
+                        "$ref": "#/components/schemas/OverallWarmupStatus",
+                        "description": "Aggregate warmup status across all models."
+                    },
+                    "retry_after_seconds": {
+                        "type": "integer",
+                        "title": "Retry After Seconds",
+                        "description": "Suggested Retry-After value (seconds) for callers waiting on warmup."
+                    },
+                    "models": {
+                        "items": {
+                            "$ref": "#/components/schemas/ModelStatusEntry"
+                        },
+                        "type": "array",
+                        "title": "Models",
+                        "description": "Per-model warmup state."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "overall_status",
+                    "retry_after_seconds"
+                ],
+                "title": "ModelStatusResponse",
+                "description": "Aggregate warmup status for all models the engine warms in the background."
             },
             "NestedSpanWithMetricsResponse": {
                 "properties": {
@@ -25627,6 +25736,18 @@
                     "input_audio"
                 ],
                 "title": "OpenAIMessageType"
+            },
+            "OverallWarmupStatus": {
+                "type": "string",
+                "enum": [
+                    "warming",
+                    "ready",
+                    "partial",
+                    "failed",
+                    "skipped"
+                ],
+                "title": "OverallWarmupStatus",
+                "description": "Aggregate warmup status across all background-loaded ML models."
             },
             "PIIConfig": {
                 "properties": {

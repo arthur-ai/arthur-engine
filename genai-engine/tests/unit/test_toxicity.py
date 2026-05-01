@@ -2,19 +2,17 @@ import os
 
 import nltk
 import pytest
+from arthur_common.models.enums import RuleResultEnum, RuleType, ToxicityViolationType
 from nltk.corpus import words
 
-from arthur_common.models.enums import RuleResultEnum, RuleType, ToxicityViolationType
 from schemas.scorer_schemas import ScoreRequest
-from scorer.checks.toxicity.toxicity import (
-    ToxicityScorer,
-    get_toxicity_model,
-    get_toxicity_tokenizer,
-)
+from scorer.checks.toxicity.toxicity import ToxicityScorer
 from scorer.checks.toxicity.toxicity_profanity.profanity import (
     FULLY_BAD_WORDS,
     detect_profanity,
 )
+from tests.unit.conftest import stub_warmup_ready
+from utils.model_load import get_toxicity_model, get_toxicity_tokenizer
 
 __location__ = os.path.dirname(os.path.abspath(__file__))
 
@@ -30,6 +28,13 @@ def get_english_dictionary():
         nltk.download("words")
         english_dictionary = words.words()
         return set([word.lower() for word in english_dictionary])
+
+
+@pytest.fixture(autouse=True)
+def _stub_warmup_ready(monkeypatch):
+    """Treat toxicity / profanity / harmful-request warmup keys as READY so
+    these tests exercise real model behavior on locally-loaded weights."""
+    stub_warmup_ready(monkeypatch, "scorer.checks.toxicity.toxicity")
 
 
 CLASSIFIER = ToxicityScorer(TOXICITY_MODEL, TOXICITY_TOKENIZER, None, None)

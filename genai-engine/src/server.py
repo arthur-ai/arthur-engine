@@ -81,6 +81,7 @@ from services.currency import (
     initialize_currency_conversion_service,
     shutdown_currency_conversion_service,
 )
+from services.model_warmup_service import get_model_warmup_service
 from services.system_tasks_service import initialize_system_tasks
 from services.task import (
     initialize_global_agent_polling_service,
@@ -91,7 +92,6 @@ from services.trace_retention_service import (
     shutdown_trace_retention_service,
 )
 from utils import constants as constants
-from utils import model_load
 from utils.classifiers import get_device
 from utils.utils import (
     get_env_var,
@@ -102,7 +102,6 @@ from utils.utils import (
     is_local_environment,
     is_transfer_encoding_middleware_enabled,
     new_relic_enabled,
-    relevance_models_enabled,
 )
 
 logger = get_logger(log_level=Config.get_log_level())
@@ -225,20 +224,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         get_oauth_client()
         time.sleep(random.randint(0, 3))
 
-    # Download models in worker process
-    logger.info("Downloading models...")
+    # Kick off model downloads/loads on a background thread so the API can
+    # accept traffic while heavy ML models warm up. Endpoints that depend on
+    # an unready model return MODEL_NOT_AVAILABLE plus a Retry-After header
+    # until the warmup service marks them READY.
     try:
-        model_load.download_models(1)  # Use single process in worker
+        get_model_warmup_service().start_warmup()
     except Exception as e:
-        logger.error(f"Error downloading models: {e}")
-        raise e
-    logger.info("Models downloaded.")
-
-    model_load.get_claim_classifier_embedding_model()
-    model_load.get_prompt_injection_model()
-    model_load.get_prompt_injection_tokenizer()
-    model_load.get_toxicity_model()
-    model_load.get_toxicity_tokenizer()
+        logger.error(f"Error starting model warmup service: {e}")
 
     # Initialize continuous eval queue service
     try:
@@ -264,15 +257,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         logger.error(f"Error initializing global agent polling service: {e}")
 
-    # Conditionally load relevance models
-    if relevance_models_enabled():
-        model_load.get_bert_scorer()
-        model_load.get_relevance_reranker()
-    else:
-        logger.info(
-            "Skipping relevance models loading - ENABLE_RELEVANCE_MODELS is False",
-        )
-
+    # The scorer client is built eagerly: the scorers consult the warmup
+    # service per-request, so they tolerate models still warming up.
     get_scorer_client()
 
     send_telemetry_event(TelemetryEventTypes.SERVER_START_COMPLETED)

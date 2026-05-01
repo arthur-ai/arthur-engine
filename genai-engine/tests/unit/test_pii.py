@@ -3,6 +3,15 @@ from arthur_common.models.enums import PIIEntityTypes, RuleResultEnum, RuleType
 
 from schemas.scorer_schemas import ScoreRequest
 from scorer.checks.pii.classifier import BinaryPIIDataClassifier
+from tests.unit.conftest import stub_warmup_ready
+
+
+@pytest.fixture(autouse=True)
+def _stub_warmup_ready(monkeypatch):
+    """Treat all PII-related warmup keys as READY so we exercise real
+    Presidio / GLiNER behavior on locally-loaded weights instead of being
+    short-circuited by the warmup gate."""
+    stub_warmup_ready(monkeypatch, "scorer.checks.pii.classifier")
 
 
 @pytest.fixture(scope="session")

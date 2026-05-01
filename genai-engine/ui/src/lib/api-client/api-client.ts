@@ -3722,6 +3722,8 @@ export type GetModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailable
 
 export type GetModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailableModelsGetError = HTTPValidationError;
 
+export type GetModelStatusApiV2SystemModelStatusGetData = ModelStatusResponse;
+
 export type GetNotebookApiV1NotebooksNotebookIdGetData = NotebookDetail;
 
 export type GetNotebookApiV1NotebooksNotebookIdGetError = HTTPValidationError;
@@ -6560,6 +6562,12 @@ export interface MetricResultResponse {
 /** MetricType */
 export type MetricType = "QueryRelevance" | "ResponseRelevance" | "ToolSelection";
 
+/**
+ * ModelLoadStatus
+ * Lifecycle states for a single model loaded by the warmup service.
+ */
+export type ModelLoadStatus = "pending" | "downloading" | "loading" | "ready" | "failed" | "skipped";
+
 /** ModelProvider */
 export type ModelProvider = "anthropic" | "openai" | "gemini" | "bedrock" | "vertex_ai" | "hosted_vllm";
 
@@ -6592,6 +6600,55 @@ export interface ModelProviderResponse {
   enabled: boolean;
   /** The model provider */
   provider: ModelProvider;
+}
+
+/**
+ * ModelStatusEntry
+ * Per-model warmup status.
+ */
+export interface ModelStatusEntry {
+  /**
+   * Key
+   * Stable identifier for the model.
+   */
+  key: string;
+  /**
+   * Last Error
+   * Redacted last-error indicator (exception class name) when the load failed; full message is only logged server-side.
+   */
+  last_error?: string | null;
+  /**
+   * Retry Count
+   * Number of times warmup has been retried for this model.
+   * @default 0
+   */
+  retry_count?: number;
+  /**
+   * Rule Types
+   * Rule/metric types that depend on this model.
+   */
+  rule_types?: string[];
+  /** Lifecycle state of the model. */
+  status: ModelLoadStatus;
+}
+
+/**
+ * ModelStatusResponse
+ * Aggregate warmup status for all models the engine warms in the background.
+ */
+export interface ModelStatusResponse {
+  /**
+   * Models
+   * Per-model warmup state.
+   */
+  models?: ModelStatusEntry[];
+  /** Aggregate warmup status across all models. */
+  overall_status: OverallWarmupStatus;
+  /**
+   * Retry After Seconds
+   * Suggested Retry-After value (seconds) for callers waiting on warmup.
+   */
+  retry_after_seconds: number;
 }
 
 /** _MultiTargetVectorJoin */
@@ -7200,6 +7257,12 @@ export interface OpenAIMessageOutput {
 
 /** OpenAIMessageType */
 export type OpenAIMessageType = "text" | "image_url" | "input_audio";
+
+/**
+ * OverallWarmupStatus
+ * Aggregate warmup status across all background-loaded ML models.
+ */
+export type OverallWarmupStatus = "warming" | "ready" | "partial" | "failed" | "skipped";
 
 /**
  * PIIConfig
@@ -10797,9 +10860,9 @@ export interface SyntheticDataPromptStatus {
   model_name: string;
   /**
    * Model Provider
-   * Model provider stored in the SDG system prompt
+   * Model provider stored in the SDG system prompt. The sentinel 'empty' indicates the prompt has not yet been configured.
    */
-  model_provider: string;
+  model_provider: ModelProvider | "empty";
 }
 
 /**
@@ -13058,7 +13121,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.530
+ * @version 2.1.542
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -15094,6 +15157,22 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v1/model_providers/${provider}/available_models`,
         method: "GET",
         secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get warmup status of background-loaded ML models. Use this to decide when to start sending validate traffic. Cheap to poll: served entirely from in-memory state.
+     *
+     * @tags Settings
+     * @name GetModelStatusApiV2SystemModelStatusGet
+     * @summary Get Model Status
+     * @request GET:/api/v2/system/model_status
+     */
+    getModelStatusApiV2SystemModelStatusGet: (params: RequestParams = {}) =>
+      this.request<GetModelStatusApiV2SystemModelStatusGetData, any>({
+        path: `/api/v2/system/model_status`,
+        method: "GET",
         format: "json",
         ...params,
       }),

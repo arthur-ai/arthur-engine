@@ -124,4 +124,7 @@ export const queryKeys = {
   taskMetrics: {
     all: (taskId: string) => ["taskMetrics", "all", taskId] as const,
   },
+  system: {
+    warmupStatus: () => ["system", "warmup-status"] as const,
+  },
 } as const;
