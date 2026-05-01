@@ -62,7 +62,7 @@ linters = [
 
 [tool.uv]
 exclude-newer = "3 days"
-exclude-newer-package = { arthur-client = false }
+exclude-newer-package = { arthur-client = false, arthur-common = false }
 
 [build-system]
 requires = ["hatchling"]
