@@ -57,13 +57,14 @@ jobs:
         env:
           SRC: ${{ steps.src.outputs.source }}
           LTS: ${{ github.ref_name }}
+        # imagetools create manipulates only the remote manifest — no layer
+        # download/upload. Also preserves multi-arch manifest lists correctly,
+        # unlike docker pull/tag/push which only retags the host architecture.
         run: |
           set -e
           for IMG in genai-engine-cpu genai-engine-gpu ml-engine genai-engine-models genai-engine-models-k8s; do
             echo "==== arthurplatform/${IMG}: ${SRC} -> ${LTS} ===="
-            docker pull "arthurplatform/${IMG}:${SRC}"
-            docker tag  "arthurplatform/${IMG}:${SRC}" "arthurplatform/${IMG}:${LTS}"
-            docker push "arthurplatform/${IMG}:${LTS}"
+            docker buildx imagetools create --tag "arthurplatform/${IMG}:${LTS}" "arthurplatform/${IMG}:${SRC}"
           done
       - name: Retag arthur-model-upload on Docker Hub
         env:
@@ -72,9 +73,7 @@ jobs:
         run: |
           set -e
           echo "==== arthurplatform/arthur-model-upload: ${SRC}-gcp -> ${LTS}-gcp ===="
-          docker pull "arthurplatform/arthur-model-upload:${SRC}-gcp"
-          docker tag  "arthurplatform/arthur-model-upload:${SRC}-gcp" "arthurplatform/arthur-model-upload:${LTS}-gcp"
-          docker push "arthurplatform/arthur-model-upload:${LTS}-gcp"
+          docker buildx imagetools create --tag "arthurplatform/arthur-model-upload:${LTS}-gcp" "arthurplatform/arthur-model-upload:${SRC}-gcp"
 
   # ── 2. Package + push Helm charts (genai-engine, ml-engine) ─────────────
   publish-helm-charts:
