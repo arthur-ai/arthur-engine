@@ -1,0 +1,144 @@
+name: Arthur Engine — LTS Release
+
+# LTS publish pipeline. Independent from `arthur-engine-workflow.yml`
+# (the continuous build/publish) and `version-workflow.yml` (the
+# continuous version bump).
+#
+# Strategy:
+#   * Docker images: RETAG the source-version images (no rebuild).
+#     Source version is read from `.lts-source-version` written by the
+#     lts-management orchestrator at the LTS branch root.
+#     Target: Docker Hub (arthurplatform) only.
+#   * Helm charts: REPACKAGE (Chart.yaml has been updated to LTS by the
+#     orchestrator). Push to Docker Hub OCI only.
+#   * Observability SDK: see arthur-observability-sdk-release.yml —
+#     LTS jobs appended there so no new PyPI trusted publisher is needed.
+#
+# Trigger: tag matching `*-lts` or `*-lts-patch-*` (simple human-readable
+# globs). No commit-message gates, no branch gates. The continuous
+# workflows above ARE NOT modified — they don't fire on `lts/*` branches
+# or on these tags because their existing triggers don't match.
+
+on:
+  push:
+    tags:
+      - '*-lts'
+      - '*-lts-patch-*'
+
+jobs:
+  # ── 1. Retag Docker images (genai-engine-cpu, genai-engine-gpu, ml-engine)
+  retag-docker-images:
+    name: Retag engine Docker images
+    runs-on: ubuntu-latest
+    environment: shared-protected-branch-secrets
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      - name: Read source version
+        id: src
+        run: |
+          if [ ! -f .lts-source-version ]; then
+            echo "ERROR: .lts-source-version not found at repo root." >&2
+            echo "       The lts-management orchestrator must write this" >&2
+            echo "       file when creating the LTS branch." >&2
+            exit 1
+          fi
+          SRC=$(tr -d '[:space:]' < .lts-source-version)
+          echo "source=$SRC" >> "$GITHUB_OUTPUT"
+          echo "Source version: $SRC"
+          echo "LTS tag:        ${{ github.ref_name }}"
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: Retag engine images on Docker Hub
+        env:
+          SRC: ${{ steps.src.outputs.source }}
+          LTS: ${{ github.ref_name }}
+        # imagetools create manipulates only the remote manifest — no layer
+        # download/upload. Also preserves multi-arch manifest lists correctly,
+        # unlike docker pull/tag/push which only retags the host architecture.
+        run: |
+          set -e
+          for IMG in genai-engine-cpu genai-engine-gpu ml-engine genai-engine-models genai-engine-models-k8s; do
+            echo "==== arthurplatform/${IMG}: ${SRC} -> ${LTS} ===="
+            docker buildx imagetools create --tag "arthurplatform/${IMG}:${LTS}" "arthurplatform/${IMG}:${SRC}"
+          done
+      - name: Retag arthur-model-upload on Docker Hub
+        env:
+          SRC: ${{ steps.src.outputs.source }}
+          LTS: ${{ github.ref_name }}
+        run: |
+          set -e
+          echo "==== arthurplatform/arthur-model-upload: ${SRC}-gcp -> ${LTS}-gcp ===="
+          docker buildx imagetools create --tag "arthurplatform/arthur-model-upload:${LTS}-gcp" "arthurplatform/arthur-model-upload:${SRC}-gcp"
+
+  # ── 2. Package + push Helm charts (genai-engine, ml-engine) ─────────────
+  publish-helm-charts:
+    name: Publish helm charts
+    runs-on: ubuntu-latest
+    environment: shared-protected-branch-secrets
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      - uses: ./.github/workflows/composite-actions/setup-helm
+      - name: Verify Chart.yaml versions match the LTS tag
+        env:
+          LTS: ${{ github.ref_name }}
+        run: |
+          set -e
+          for CHART in deployment/helm/genai-engine/Chart.yaml deployment/helm/ml-engine/Chart.yaml; do
+            CHART_VER=$(awk '/^version:/ {print $2; exit}' "$CHART")
+            if [ "$CHART_VER" != "$LTS" ]; then
+              echo "ERROR: $CHART has version=$CHART_VER, expected $LTS." >&2
+              echo "       The lts-management orchestrator must bump Chart.yaml" >&2
+              echo "       to the LTS form before pushing the tag." >&2
+              exit 1
+            fi
+          done
+      - name: Bump version refs in values.yaml.template (template docs only)
+        env:
+          LTS: ${{ github.ref_name }}
+        # The chart's values.yaml.template carries example version values
+        # that customers reference when filling in their own values.yaml.
+        # The orchestrator doesn't touch these (they're free-form `key:
+        # value` lines, not structured TOML/YAML version fields), so we
+        # do a simple sed pass here BEFORE helm package so the packaged
+        # chart's example references the LTS version.
+        # Mirrors the bump-arthur-engine-version sed pattern.
+        run: |
+          set -e
+          GENAI_VALUES="deployment/helm/genai-engine/values.yaml.template"
+          ML_VALUES="deployment/helm/ml-engine/values.yaml.template"
+          if [ -f "$GENAI_VALUES" ]; then
+            sed -i "s|genaiEngineVersion:.*|genaiEngineVersion: '${LTS}'|" "$GENAI_VALUES"
+          fi
+          if [ -f "$ML_VALUES" ]; then
+            sed -i "s|containerImageVersion:.*|containerImageVersion: \"${LTS}\"|" "$ML_VALUES"
+          fi
+      - name: Log in to Docker Hub OCI
+        run: |
+          echo "${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}" | helm registry login registry-1.docker.io \
+            -u "${{ secrets.DOCKER_HUB_USERNAME }}" --password-stdin
+      - name: Package and push charts
+        env:
+          LTS: ${{ github.ref_name }}
+        run: |
+          set -e
+          for SUBDIR in genai-engine ml-engine; do
+            echo "==== arthur-${SUBDIR} chart ===="
+            helm package "deployment/helm/${SUBDIR}"
+            TGZ="arthur-${SUBDIR}-${LTS}.tgz"
+            if [ ! -f "$TGZ" ]; then
+              echo "ERROR: expected $TGZ from helm package, not found." >&2
+              ls -la "arthur-${SUBDIR}"-*.tgz 2>/dev/null || true
+              exit 1
+            fi
+            helm push "$TGZ" "oci://registry-1.docker.io/arthurplatform"
+            rm -f "$TGZ"
+          done
