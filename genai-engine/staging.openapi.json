@@ -24042,6 +24042,11 @@
                         "type": "boolean",
                         "title": "Is Consistent",
                         "default": false
+                    },
+                    "query_profile": {
+                        "type": "boolean",
+                        "title": "Query Profile",
+                        "default": false
                     }
                 },
                 "additionalProperties": false,
@@ -24210,7 +24215,8 @@
                     "gemini",
                     "bedrock",
                     "vertex_ai",
-                    "hosted_vllm"
+                    "hosted_vllm",
+                    "azure"
                 ],
                 "title": "ModelProvider"
             },
@@ -32664,7 +32670,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -32879,7 +32886,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -33094,7 +33102,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -33309,7 +33318,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -33459,7 +33469,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -33609,7 +33620,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -33941,7 +33953,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -34114,7 +34127,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -34287,7 +34301,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
