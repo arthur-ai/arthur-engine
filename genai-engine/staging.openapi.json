@@ -7106,6 +7106,17 @@
                             "title": "Tags"
                         },
                         "description": "List of tags to filter for items that have any matching tag across any version."
+                    },
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/LLMMetadataSortField",
+                            "description": "Field to sort the metadata list by. 'name' (default) preserves the historical alphabetical ordering. 'latest_version_created_at' orders by the most recent version's creation timestamp so that pagination matches the 'last updated' display.",
+                            "default": "name"
+                        },
+                        "description": "Field to sort the metadata list by. 'name' (default) preserves the historical alphabetical ordering. 'latest_version_created_at' orders by the most recent version's creation timestamp so that pagination matches the 'last updated' display."
                     }
                 ],
                 "responses": {
@@ -10967,6 +10978,17 @@
                             "title": "Tags"
                         },
                         "description": "List of tags to filter for items that have any matching tag across any version."
+                    },
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/LLMMetadataSortField",
+                            "description": "Field to sort the metadata list by. 'name' (default) preserves the historical alphabetical ordering. 'latest_version_created_at' orders by the most recent version's creation timestamp so that pagination matches the 'last updated' display.",
+                            "default": "name"
+                        },
+                        "description": "Field to sort the metadata list by. 'name' (default) preserves the historical alphabetical ordering. 'latest_version_created_at' orders by the most recent version's creation timestamp so that pagination matches the 'last updated' display."
                     }
                 ],
                 "responses": {
@@ -23102,6 +23124,15 @@
                     "deleted_versions"
                 ],
                 "title": "LLMGetAllMetadataResponse"
+            },
+            "LLMMetadataSortField": {
+                "type": "string",
+                "enum": [
+                    "name",
+                    "latest_version_created_at"
+                ],
+                "title": "LLMMetadataSortField",
+                "description": "Sort field options for the LLM evals/prompts metadata list endpoints."
             },
             "LLMModel": {
                 "properties": {

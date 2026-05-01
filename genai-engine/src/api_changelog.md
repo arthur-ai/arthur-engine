@@ -2,6 +2,10 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 04/30/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals  added the new optional `query` request parameter `sort_by`
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  added the new optional `query` request parameter `sort_by`
+
 # 04/20/2026
 - **BREAKING CHANGE** for **URL**: /api/v2/datasets/synthetic-data/prompt-status  the `model_provider` response's property type/format changed from `string`/`` to ``/`` for status `200`
 - **CHANGE** for **URL**: /api/v2/datasets/synthetic-data/prompt-status  added `#/components/schemas/ModelProvider, subschema #2` to the `model_provider` response property `anyOf` list for the response status `200`

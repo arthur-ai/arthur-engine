@@ -1,4 +1,4 @@
-import { LLMGetAllMetadataResponse, LLMEval, CreateEvalRequest } from "@/lib/api-client/api-client";
+import { LLMGetAllMetadataResponse, LLMEval, CreateEvalRequest, LLMMetadataSortField } from "@/lib/api-client/api-client";
 
 interface EvalsTableProps {
   evals: LLMGetAllMetadataResponse[];
@@ -50,6 +50,7 @@ interface FiltersBase {
 
 interface EvalsFilters extends FiltersBase {
   llm_asset_names?: string[] | null;
+  sort_by?: LLMMetadataSortField;
 }
 
 interface EvalVersionsFilters extends FiltersBase {

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -18,6 +18,7 @@ from sqlalchemy.exc import IntegrityError
 from clients.llm.llm_client import LLMClient, LLMModelResponse
 from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
 from repositories.llm_evals_repository import LLMEvalsRepository
+from schemas.enums import LLMMetadataSortField
 from schemas.request_schemas import (
     CreateEvalRequest,
     LLMGetAllFilterRequest,
@@ -756,6 +757,134 @@ def test_get_all_llm_eval_metadata_with_pagination(
         # Cleanup
         for i in range(3):
             llm_evals_repo.delete_llm_item(task_id, f"eval_{i}")
+
+
+@pytest.mark.unit_tests
+def test_get_all_llm_eval_metadata_sorted_by_latest_version_created_at(
+    llm_evals_repo,
+    sample_create_eval_request,
+):
+    """Sorting by latest_version_created_at orders rows by max(created_at)
+    across versions, with name asc as a deterministic tie-breaker.
+
+    Names and update times are deliberately interleaved so that a name-sort
+    would yield a different order than the timestamp-sort.
+    """
+    task_id = "test_sort_by_updated_task"
+
+    # Create three evals with two versions each. After save we explicitly
+    # rewrite created_at so the test is independent of clock resolution.
+    name_to_latest_created_at = {
+        "alpha": datetime(2026, 1, 5, 12, 0, 0),
+        "beta": datetime(2026, 1, 1, 12, 0, 0),
+        "gamma": datetime(2026, 1, 10, 12, 0, 0),
+    }
+
+    for name, latest_ts in name_to_latest_created_at.items():
+        llm_evals_repo.save_llm_item(task_id, name, sample_create_eval_request)
+        llm_evals_repo.save_llm_item(task_id, name, sample_create_eval_request)
+        # Force the latest version's created_at and an older first-version timestamp.
+        rows = (
+            llm_evals_repo.db_session.query(DatabaseLLMEval)
+            .filter(
+                DatabaseLLMEval.task_id == task_id,
+                DatabaseLLMEval.name == name,
+            )
+            .order_by(DatabaseLLMEval.version.asc())
+            .all()
+        )
+        rows[0].created_at = latest_ts - timedelta(days=1)
+        rows[1].created_at = latest_ts
+    llm_evals_repo.db_session.commit()
+
+    try:
+        # latest_version_created_at DESC -> gamma (Jan 10), alpha (Jan 5), beta (Jan 1)
+        result_desc = llm_evals_repo.get_all_llm_item_metadata(
+            task_id=task_id,
+            pagination_parameters=PaginationParameters(
+                page=0,
+                page_size=10,
+                sort=PaginationSortMethod.DESCENDING,
+            ),
+            sort_by=LLMMetadataSortField.LATEST_VERSION_CREATED_AT,
+        )
+        assert [m.name for m in result_desc.llm_metadata] == ["gamma", "alpha", "beta"]
+
+        # ASC inverts the order
+        result_asc = llm_evals_repo.get_all_llm_item_metadata(
+            task_id=task_id,
+            pagination_parameters=PaginationParameters(
+                page=0,
+                page_size=10,
+                sort=PaginationSortMethod.ASCENDING,
+            ),
+            sort_by=LLMMetadataSortField.LATEST_VERSION_CREATED_AT,
+        )
+        assert [m.name for m in result_asc.llm_metadata] == ["beta", "alpha", "gamma"]
+
+        # Pagination: page 0/size 1 returns the most recently updated row only,
+        # page 1/size 1 returns the next, etc. — proving the order is consistent
+        # across pages (the ticket's reported regression).
+        page0 = llm_evals_repo.get_all_llm_item_metadata(
+            task_id=task_id,
+            pagination_parameters=PaginationParameters(
+                page=0,
+                page_size=1,
+                sort=PaginationSortMethod.DESCENDING,
+            ),
+            sort_by=LLMMetadataSortField.LATEST_VERSION_CREATED_AT,
+        )
+        page1 = llm_evals_repo.get_all_llm_item_metadata(
+            task_id=task_id,
+            pagination_parameters=PaginationParameters(
+                page=1,
+                page_size=1,
+                sort=PaginationSortMethod.DESCENDING,
+            ),
+            sort_by=LLMMetadataSortField.LATEST_VERSION_CREATED_AT,
+        )
+        page2 = llm_evals_repo.get_all_llm_item_metadata(
+            task_id=task_id,
+            pagination_parameters=PaginationParameters(
+                page=2,
+                page_size=1,
+                sort=PaginationSortMethod.DESCENDING,
+            ),
+            sort_by=LLMMetadataSortField.LATEST_VERSION_CREATED_AT,
+        )
+        assert page0.llm_metadata[0].name == "gamma"
+        assert page1.llm_metadata[0].name == "alpha"
+        assert page2.llm_metadata[0].name == "beta"
+    finally:
+        for name in name_to_latest_created_at:
+            llm_evals_repo.delete_llm_item(task_id, name)
+
+
+@pytest.mark.unit_tests
+def test_get_all_llm_eval_metadata_default_sort_is_name(
+    llm_evals_repo,
+    sample_create_eval_request,
+):
+    """Without an explicit sort_by, the default is sort by name (BC)."""
+    task_id = "test_default_sort_name_task"
+
+    # Save in non-alphabetical order so a timestamp-sort would differ.
+    for name in ("gamma", "alpha", "beta"):
+        llm_evals_repo.save_llm_item(task_id, name, sample_create_eval_request)
+
+    try:
+        result = llm_evals_repo.get_all_llm_item_metadata(
+            task_id=task_id,
+            pagination_parameters=PaginationParameters(
+                page=0,
+                page_size=10,
+                sort=PaginationSortMethod.ASCENDING,
+            ),
+        )
+        assert [m.name for m in result.llm_metadata] == ["alpha", "beta", "gamma"]
+    finally:
+        for name in ("gamma", "alpha", "beta"):
+            llm_evals_repo.delete_llm_item(task_id, name)
 
 
 @pytest.mark.unit_tests

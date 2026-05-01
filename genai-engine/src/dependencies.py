@@ -38,7 +38,7 @@ from repositories.configuration_repository import ConfigurationRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
-from schemas.enums import DocumentStorageEnvironment
+from schemas.enums import DocumentStorageEnvironment, LLMMetadataSortField
 from schemas.internal_schemas import (
     ApplicationConfiguration,
     DocumentStorageConfiguration,
@@ -384,6 +384,20 @@ def llm_get_versions_filter_parameters(
         min_version=min_version,
         max_version=max_version,
     )
+
+
+def llm_metadata_sort_by_parameter(
+    sort_by: LLMMetadataSortField = Query(
+        LLMMetadataSortField.NAME,
+        description=(
+            "Field to sort the metadata list by. 'name' (default) preserves the "
+            "historical alphabetical ordering. 'latest_version_created_at' orders "
+            "by the most recent version's creation timestamp so that pagination "
+            "matches the 'last updated' display."
+        ),
+    ),
+) -> LLMMetadataSortField:
+    return sort_by
 
 
 def llm_get_all_filter_parameters(

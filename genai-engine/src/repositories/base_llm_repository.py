@@ -2,7 +2,18 @@
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Generic, List, Optional, Protocol, Tuple, Type, TypeVar, cast
+from typing import (
+    Any,
+    Generic,
+    List,
+    Optional,
+    Protocol,
+    Sequence,
+    Tuple,
+    Type,
+    TypeVar,
+    cast,
+)
 
 import sqlalchemy as sa
 from arthur_common.models.common_schemas import PaginationParameters
@@ -12,8 +23,10 @@ from sqlalchemy import asc, delete, desc, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import exists, or_
+from sqlalchemy.sql.elements import ColumnElement
 
 from custom_types import QueryT
+from schemas.enums import LLMMetadataSortField
 from schemas.request_schemas import LLMGetAllFilterRequest, LLMGetVersionsFilterRequest
 from schemas.response_schemas import (
     LLMGetAllMetadataListResponse,
@@ -227,7 +240,8 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         self,
         query: QueryT,
         pagination_parameters: PaginationParameters,
-        sort_column: str,
+        sort_column: ColumnElement[Any],
+        secondary_sort_columns: Optional[Sequence[ColumnElement[Any]]] = None,
     ) -> Tuple[QueryT, int]:
         """
         Apply sorting and pagination to a query and return the total count.
@@ -236,6 +250,8 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
             query: Query - the SQLAlchemy query to sort and paginate
             pagination_parameters: PaginationParameters - pagination and sorting params
             sort_column - the column or label to sort by
+            secondary_sort_columns - optional ascending tie-breaker columns
+                applied after the primary sort to keep pagination stable
 
         Returns:
             Tuple[Query, int] - the sorted and paginated query, and total count
@@ -245,6 +261,9 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
             query = query.order_by(desc(sort_column))
         else:  # ASCENDING or default
             query = query.order_by(asc(sort_column))
+
+        if secondary_sort_columns:
+            query = query.order_by(*(asc(c) for c in secondary_sort_columns))
 
         # Get total count BEFORE applying pagination
         total_count = query.count()
@@ -504,6 +523,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         task_id: str,
         pagination_parameters: PaginationParameters,
         filter_request: Optional[LLMGetAllFilterRequest] = None,
+        sort_by: LLMMetadataSortField = LLMMetadataSortField.NAME,
     ) -> LLMGetAllMetadataListResponse:
         """
         Get metadata for all llm items by task_id, including:
@@ -516,18 +536,24 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
             task_id: str - the id of the task
             pagination_parameters: PaginationParameters - pagination and sorting params
             filter_request: LLMGetAllFilterRequest - filter request parameters
+            sort_by: LLMMetadataSortField - which column to order rows by.
+                Defaults to NAME for backward compatibility. When set to
+                LATEST_VERSION_CREATED_AT, rows are ordered by the most recent
+                version's creation timestamp with `name` ASC as a deterministic
+                tie-breaker.
 
         Returns:
             LLMGetAllMetadataListResponse - list of metadata objects with total count
         """
         # Start with aggregated query
+        latest_version_created_at_col = sa.func.max(self.db_model.created_at).label(
+            "latest_version_created_at",
+        )
         base_query = self.db_session.query(
             self.db_model.name.label("name"),
             sa.func.count(self.db_model.version).label("versions"),
             sa.func.min(self.db_model.created_at).label("created_at"),
-            sa.func.max(self.db_model.created_at).label(
-                "latest_version_created_at",
-            ),
+            latest_version_created_at_col,
         ).filter(
             self.db_model.task_id == task_id,
         )
@@ -542,11 +568,21 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         # Apply grouping
         base_query = base_query.group_by(self.db_model.name)
 
+        # Pick primary sort column + name tie-breaker so equal timestamps still
+        # paginate deterministically.
+        if sort_by == LLMMetadataSortField.LATEST_VERSION_CREATED_AT:
+            primary_sort_column = latest_version_created_at_col
+            secondary_sort_columns = [self.db_model.name]
+        else:
+            primary_sort_column = self.db_model.name
+            secondary_sort_columns = None
+
         # Apply sorting, pagination, and get count
         base_query, total_count = self._apply_sorting_pagination_and_count(
             base_query,
             pagination_parameters,
-            self.db_model.name,
+            primary_sort_column,
+            secondary_sort_columns=secondary_sort_columns,
         )
 
         results = base_query.all()

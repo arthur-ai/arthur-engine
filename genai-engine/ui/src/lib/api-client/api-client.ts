@@ -3337,6 +3337,11 @@ export interface GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Field to sort the metadata list by. 'name' (default) preserves the historical alphabetical ordering. 'latest_version_created_at' orders by the most recent version's creation timestamp so that pagination matches the 'last updated' display.
+   * @default "name"
+   */
+  sort_by?: LLMMetadataSortField;
+  /**
    * Tags
    * List of tags to filter for items that have any matching tag across any version.
    */
@@ -3462,6 +3467,11 @@ export interface GetAllLlmEvalsApiV1TasksTaskIdLlmEvalsGetParams {
    * @default "desc"
    */
   sort?: PaginationSortMethod;
+  /**
+   * Field to sort the metadata list by. 'name' (default) preserves the historical alphabetical ordering. 'latest_version_created_at' orders by the most recent version's creation timestamp so that pagination matches the 'last updated' display.
+   * @default "name"
+   */
+  sort_by?: LLMMetadataSortField;
   /**
    * Tags
    * List of tags to filter for items that have any matching tag across any version.
@@ -4729,6 +4739,12 @@ export interface LLMGetAllMetadataResponse {
    */
   versions: number;
 }
+
+/**
+ * LLMMetadataSortField
+ * Sort field options for the LLM evals/prompts metadata list endpoints.
+ */
+export type LLMMetadataSortField = "name" | "latest_version_created_at";
 
 /**
  * LLMModel
@@ -10797,9 +10813,9 @@ export interface SyntheticDataPromptStatus {
   model_name: string;
   /**
    * Model Provider
-   * Model provider stored in the SDG system prompt
+   * Model provider stored in the SDG system prompt. The sentinel 'empty' indicates the prompt has not yet been configured.
    */
-  model_provider: string;
+  model_provider: ModelProvider | "empty";
 }
 
 /**
@@ -13058,7 +13074,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.530
+ * @version 2.1.543
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
