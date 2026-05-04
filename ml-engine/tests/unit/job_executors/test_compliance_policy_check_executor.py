@@ -943,13 +943,14 @@ def test_per_rule_query_uses_rule_interval(mock_datetime):
 
     executor.execute(job, job_spec)
 
-    # Verify time_from values: per-rule, scoped by the rule's interval, not the
-    # caller's check window.
+    # Verify time_from values: per-rule sliding window of 2*rule.interval back
+    # from window_end. The 2x ensures we always catch the latest completed
+    # bucket regardless of how window_end aligns to bucket boundaries.
     calls = alerts_client.get_model_alerts.call_args_list
     by_rule = {c.kwargs["alert_rule_ids"][0]: c.kwargs for c in calls}
-    assert by_rule["minute-rule"]["time_from"] == NOW - timedelta(minutes=1)
+    assert by_rule["minute-rule"]["time_from"] == NOW - timedelta(minutes=2)
     assert by_rule["minute-rule"]["time_to"] == NOW
-    assert by_rule["hour-rule"]["time_from"] == NOW - timedelta(hours=1)
+    assert by_rule["hour-rule"]["time_from"] == NOW - timedelta(hours=2)
     assert by_rule["hour-rule"]["time_to"] == NOW
     assert by_rule["minute-rule"]["page_size"] == 1
     assert by_rule["hour-rule"]["page_size"] == 1
@@ -962,64 +963,6 @@ def test_per_rule_query_uses_rule_interval(mock_datetime):
     non_compliant_ids = {r.id for r in detail.alert_rules.non_compliant}
     assert compliant_ids == {"minute-rule"}
     assert non_compliant_ids == {"hour-rule"}
-
-
-@patch("job_executors.compliance_policy_check_executor.datetime")
-def test_short_window_honors_window_start(mock_datetime):
-    """When the user-specified window is shorter than the rule's interval, the
-    query must be bounded by window_start — not reach further back than the
-    user asked about. With no completed bucket inside the window, the rule is
-    reported compliant (no alert can exist in that range)."""
-    mock_datetime.now.return_value = NOW
-    mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
-
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = (
-        _make_executor()
-    )
-
-    model_id = str(uuid4())
-    policy_id = str(uuid4())
-    assignment = _make_assignment(
-        policy_summary=_make_policy_summary(policy_id),
-        model_summary=_make_model_summary(model_id),
-    )
-    policy = _make_policy(policy_id)
-
-    # 30-minute window, 1-hour rule interval. window_end - rule.interval = NOW - 1h,
-    # which is before window_start = NOW - 30m. Query lower bound must clamp to
-    # window_start, not reach back to NOW - 1h.
-    short_window_start = NOW - timedelta(minutes=30)
-    rule = _make_alert_rule(
-        rule_id="hour-rule",
-        model_id=model_id,
-        interval=AlertRuleInterval(unit=IntervalUnit.HOURS, count=1),
-    )
-
-    job, job_spec = _make_job_and_spec(
-        model_id, window_start=short_window_start, window_end=NOW
-    )
-
-    policies_client.list_model_policy_assignments.return_value = _paginated_response(
-        [assignment]
-    )
-    policies_client.get_policy.return_value = policy
-    policies_client.list_model_attestations.return_value = _paginated_response([])
-    alert_rules_client.get_model_alert_rules.return_value = _paginated_response([rule])
-    alerts_client.get_model_alerts.return_value = _paginated_response([])
-
-    executor.execute(job, job_spec)
-
-    # time_from clamped to window_start, not window_end - rule.interval
-    call_kwargs = alerts_client.get_model_alerts.call_args.kwargs
-    assert call_kwargs["time_from"] == short_window_start
-    assert call_kwargs["time_to"] == NOW
-
-    detail = policies_client.set_compliance_status.call_args.kwargs[
-        "set_compliance_status_request"
-    ].compliance_status
-    assert detail.status == ComplianceStatus.COMPLIANT
-    assert len(detail.alert_rules.compliant) == 1
-    assert detail.alert_rules.compliant[0].id == "hour-rule"
 
 
 @patch("job_executors.compliance_policy_check_executor.datetime")

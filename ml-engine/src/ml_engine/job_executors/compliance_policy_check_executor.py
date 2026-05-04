@@ -129,9 +129,7 @@ class CompliancePolicyCheckExecutor:
         attestation_results = self._check_attestation_rules(
             assignment, policy.attestation_rules, window_end
         )
-        alert_rule_results = self._check_alert_rules(
-            assignment, window_start, window_end
-        )
+        alert_rule_results = self._check_alert_rules(assignment, window_end)
 
         has_violations = any(not passed for _, passed, _ in attestation_results) or any(
             not passed for _, passed, _ in alert_rule_results
@@ -230,17 +228,23 @@ class CompliancePolicyCheckExecutor:
     def _check_alert_rules(
         self,
         assignment: PolicyAssignment,
-        window_start: datetime,
         window_end: datetime,
     ) -> List[Tuple[ClientAlertRule, bool, Optional[Alert]]]:
         """Returns list of (alert_rule, passed, triggering_alert) tuples.
 
-        Verdict is based on the *latest interval bucket* per rule within the
-        caller's window. The lower bound is max(window_start, window_end -
-        rule.interval): long windows look at the latest interval only; short
-        windows (where rule.interval > window length) honor window_start, so
-        if no completed bucket falls inside the window the rule is reported
-        compliant (no alert can exist in that range — expected behavior).
+        Per rule, query a sliding window of (window_end - 2*rule.interval,
+        window_end] and report non-compliant iff any alert exists in there.
+
+        Why 2*interval, not 1: alert timestamps land at fixed bucket
+        boundaries, but window_end is arbitrary. The most recent completed
+        bucket has a timestamp T satisfying window_end - 2*interval < T <=
+        window_end - interval (worst case: window_end falls just before a
+        boundary, so the latest completed bucket started almost 2 intervals
+        ago). Looking back exactly 1 interval would miss the latest bucket
+        whenever window_end is mid-bucket. 2 intervals always catches it,
+        and at most one bucket fits in a 2-interval window so we can't pick
+        up a stale older one — the user's window_start is irrelevant here
+        because we only ever consider the latest bucket, never a sweep.
         """
         alert_rules = self._fetch_alert_rules(assignment)
         if not alert_rules:
@@ -248,14 +252,13 @@ class CompliancePolicyCheckExecutor:
 
         results: List[Tuple[ClientAlertRule, bool, Optional[Alert]]] = []
         for rule in alert_rules:
-            latest_bucket_start = window_end - alert_interval_to_timedelta(
+            sliding_window_start = window_end - 2 * alert_interval_to_timedelta(
                 rule.interval
             )
-            effective_start = max(latest_bucket_start, window_start)
             resp = self.alerts_client.get_model_alerts(
                 model_id=assignment.model.id,
                 alert_rule_ids=[rule.id],
-                time_from=effective_start,
+                time_from=sliding_window_start,
                 time_to=window_end,
                 sort=AlertSort.TIMESTAMP,
                 order=SortOrder.DESC,
