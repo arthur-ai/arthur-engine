@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Dict, List, Union
 from uuid import UUID
 
@@ -7,7 +7,6 @@ from arthur_client.api_bindings import (
     AlertBound,
     AlertCheckJobSpec,
     AlertRule,
-    AlertRuleInterval,
     AlertRulesV1Api,
     AlertsV1Api,
     CompliancePolicyCheckJobSpec,
@@ -29,6 +28,8 @@ from arthur_client.api_bindings import (
     PostMetricsQueryTimeRange,
     ResultFilter,
 )
+
+from job_executors._interval_utils import alert_interval_to_timedelta
 
 METRIC_TIMESTAMP_COLUMN_NAME = "metric_timestamp"
 METRIC_VALUE_COLUMN_NAME = "metric_value"
@@ -167,7 +168,7 @@ class AlertCheckExecutor:
         # see more info here:
         # https://gitlab.com/ArthurAI/arthur-scope/blob/f03cc26e11ea74f019be5b94a04f280b03d027ff/documentation/technical-documentation/implementations/Alert-Rule-Implementation.md#L291-291
 
-        td = self._alert_interval_to_timedelta(alert_rule.interval)
+        td = alert_interval_to_timedelta(alert_rule.interval)
         adjusted_start_time = job_spec.check_range_start_timestamp - td
 
         # similarly, to prevent alerting on partial alert buckets,
@@ -332,8 +333,3 @@ class AlertCheckExecutor:
                     f"Webhook {webhook_called.webhook_name} ({webhook_called.webhook_id}) "
                     f"called with result {webhook_called.webhook_result}",
                 )
-
-    @staticmethod
-    def _alert_interval_to_timedelta(interval: AlertRuleInterval) -> timedelta:
-        kwargs = {interval.unit: interval.count}
-        return timedelta(**kwargs)
