@@ -11,9 +11,8 @@
 ARG BACKEND=s3
 
 # =============================================================================
-# Stage 1: Download models (shared across all backends)
-#   - Always installs huggingface-hub
-#   - For pvc (k8s): also installs tiktoken and downloads tiktoken encodings
+# Stage 1: Download models + tiktoken encodings (shared across all backends)
+#   All backends include tiktoken to support airgapped deployments.
 # =============================================================================
 FROM python:3.12-slim AS downloader
 ARG BACKEND
@@ -22,26 +21,18 @@ WORKDIR /app
 RUN pip install --no-cache-dir uv==0.11.7
 COPY pyproject.toml uv.lock* ./
 
-RUN if [ "$BACKEND" = "pvc" ]; then \
-      uv export --frozen --no-emit-project --extra k8s -o /tmp/requirements.txt; \
-    else \
-      uv export --frozen --no-emit-project -o /tmp/requirements.txt; \
-    fi \
+RUN uv export --frozen --no-emit-project --extra k8s -o /tmp/requirements.txt \
     && uv pip install --system --no-cache -r /tmp/requirements.txt
 
 COPY download_models.py .
 
-RUN if [ "$BACKEND" = "pvc" ]; then \
-      python download_models.py --output-dir /models --workers 4 --include-tiktoken; \
-    else \
-      python download_models.py --output-dir /models --workers 4; \
-    fi
+RUN python download_models.py --output-dir /models --workers 4 --include-tiktoken
 
 # =============================================================================
 # Stage 2: Install backend-specific runtime deps
 #   - s3:  boto3
 #   - gcs: google-cloud-storage
-#   - pvc: nothing (stdlib only)
+#   - pvc: nothing (stdlib only; tiktoken only needed at download time)
 # =============================================================================
 FROM python:3.12-slim AS builder
 ARG BACKEND
