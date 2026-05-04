@@ -27,7 +27,7 @@ def test_model_provider_lifecycle(
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
-    assert len(response.json()["providers"]) == 6
+    assert len(response.json()["providers"]) == 7
     for provider in response.json()["providers"]:
         assert provider["provider"] in ModelProvider
         assert not provider["enabled"]
@@ -46,7 +46,7 @@ def test_model_provider_lifecycle(
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
-    assert len(response.json()["providers"]) == 6
+    assert len(response.json()["providers"]) == 7
     for provider in response.json()["providers"]:
         assert provider["provider"] in ModelProvider
         assert (
@@ -87,7 +87,7 @@ def test_model_provider_lifecycle(
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
-    assert len(response.json()["providers"]) == 6
+    assert len(response.json()["providers"]) == 7
     for provider in response.json()["providers"]:
         assert provider["provider"] in ModelProvider
         assert (
@@ -117,7 +117,7 @@ def test_model_provider_lifecycle(
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
-    assert len(response.json()["providers"]) == 6
+    assert len(response.json()["providers"]) == 7
     for provider in response.json()["providers"]:
         assert provider["provider"] in ModelProvider
         assert (
