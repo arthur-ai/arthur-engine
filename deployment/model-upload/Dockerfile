@@ -21,7 +21,7 @@ WORKDIR /app
 RUN pip install --no-cache-dir uv==0.11.7
 COPY pyproject.toml uv.lock* ./
 
-RUN uv export --frozen --no-emit-project --extra k8s -o /tmp/requirements.txt \
+RUN uv export --frozen --no-emit-project --no-hashes --extra k8s -o /tmp/requirements.txt \
     && uv pip install --system --no-cache -r /tmp/requirements.txt
 
 COPY download_models.py .
@@ -42,7 +42,7 @@ RUN pip install --no-cache-dir uv==0.11.7
 COPY pyproject.toml uv.lock* ./
 
 RUN if [ "$BACKEND" != "pvc" ]; then \
-      uv export --frozen --no-emit-project --extra "$BACKEND" \
+      uv export --frozen --no-emit-project --no-hashes --extra "$BACKEND" \
         -o /tmp/requirements.txt \
       && pip install --target=/app/site-packages --no-cache \
            -r /tmp/requirements.txt; \
