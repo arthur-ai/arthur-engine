@@ -44,7 +44,7 @@ COPY pyproject.toml uv.lock* ./
 RUN if [ "$BACKEND" != "pvc" ]; then \
       uv export --frozen --no-emit-project --extra "$BACKEND" \
         -o /tmp/requirements.txt \
-      && pip install --prefix=/app/site-packages --no-cache \
+      && pip install --target=/app/site-packages --no-cache \
            -r /tmp/requirements.txt; \
     fi
 
