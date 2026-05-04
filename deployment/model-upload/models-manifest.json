@@ -1,0 +1,11 @@
+{
+  "combined_hash": "c5fe3b92f0470d8b",
+  "model_commits": {
+    "sentence-transformers/all-MiniLM-L12-v2": "a50ef00143b4d5391434df20ae11632588ac25be",
+    "ProtectAI/deberta-v3-base-prompt-injection-v2": "e6535ca4ce3ba852083e75ec585d7c8aeb4be4c5",
+    "s-nlp/roberta_toxicity_classifier": "048c25bb1e199b98802784f96325f4840f22145d",
+    "microsoft/deberta-v2-xlarge-mnli": "2b65bccdedcead4bc685988bcc30153d4922a789",
+    "urchade/gliner_multi_pii-v1": "1fcf13e85f4eef5394e1fcd406cf2ca9ea82351d",
+    "tarekziade/pardonmyai": "ab8a02ae775d32baff05936fac625e289c4f4b07"
+  }
+}

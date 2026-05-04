@@ -1,0 +1,35 @@
+# Cloud Run Job - Arthur Model Upload to GCS
+# Replace PROJECT_NUMBER, REGION, BUCKET_NAME, IMAGE, and SERVICE_ACCOUNT_EMAIL before applying.
+# Apply with: gcloud run jobs replace cloud-run-job.yaml --region=REGION
+# Or create via: gcloud run jobs create arthur-model-upload --image=IMAGE --region=REGION ...
+apiVersion: run.googleapis.com/v1
+kind: Job
+metadata:
+  name: arthur-model-upload
+  namespace: PROJECT_NUMBER
+  labels:
+    cloud.googleapis.com/location: REGION
+spec:
+  template:
+    spec:
+      template:
+        spec:
+          maxRetries: 0
+          timeoutSeconds: 3600
+          serviceAccountName: SERVICE_ACCOUNT_EMAIL
+          containers:
+            - image: arthurplatform/genai-engine-models-gcp:latest
+              command:
+                - python
+                - upload_models.py
+              env:
+                - name: GCS_BUCKET
+                  value: BUCKET_NAME
+                - name: GCS_PREFIX
+                  value: models
+                - name: LOG_LEVEL
+                  value: INFO
+              resources:
+                limits:
+                  cpu: "2"
+                  memory: 4Gi

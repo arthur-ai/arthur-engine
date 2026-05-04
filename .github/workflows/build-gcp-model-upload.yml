@@ -58,8 +58,10 @@ jobs:
       - name: Build (and optionally push) docker image
         uses: docker/build-push-action@v6.18.0
         with:
-          context: "{{defaultContext}}:deployment/gcp/model-upload"
+          context: "{{defaultContext}}:deployment/model-upload"
           file: Dockerfile
+          build-args: BACKEND=gcs
+          target: runtime-gcs
           tags: |
             ${{ inputs.image }}:${{ env.VERSION }}-gcp
             ${{ github.ref == 'refs/heads/main' && format('{0}:latest-gcp', inputs.image) || '' }}

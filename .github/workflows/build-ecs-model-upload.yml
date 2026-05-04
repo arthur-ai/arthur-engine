@@ -1,0 +1,96 @@
+name: Build ECS Model Upload Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      push:
+        description: "Push image after build"
+        type: boolean
+        required: false
+        default: true
+      image:
+        description: "Image name (e.g. arthurplatform/genai-engine-models)"
+        type: string
+        required: false
+        default: "arthurplatform/genai-engine-models"
+  workflow_call:
+    inputs:
+      push:
+        description: "Push image after build"
+        type: boolean
+        required: false
+        default: true
+      image:
+        description: "Image name (e.g. arthurplatform/genai-engine-models)"
+        type: string
+        required: false
+        default: "arthurplatform/genai-engine-models"
+
+jobs:
+  build-ecs-model-upload:
+    environment: shared-protected-branch-secrets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Arthur GitHub Automator App Token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_ID }}
+          private-key: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_PRIVATE_KEY }}
+      - uses: mathio/gha-cleanup@v1
+        with:
+          remove-browsers: true
+          verbose: true
+      - uses: actions/checkout@v5
+        with:
+          token: ${{ steps.generate-token.outputs.token }}
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: ./.github/workflows/composite-actions/set-version
+        with:
+          version-prefix: "genai-engine-"
+      - name: Use test suffix for manual runs
+        if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/dev'
+        shell: bash
+        run: |
+          echo "VERSION=${VERSION%-dev}-test" >> $GITHUB_ENV
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install huggingface_hub
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.11.1
+      - name: Log in to Docker Hub
+        if: inputs.push
+        uses: docker/login-action@v3.6.0
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: Build (and optionally push) docker image
+        uses: docker/build-push-action@v6.18.0
+        with:
+          context: "{{defaultContext}}:deployment/model-upload"
+          file: Dockerfile
+          build-args: BACKEND=s3
+          target: runtime-s3
+          tags: |
+            ${{ inputs.image }}:${{ env.VERSION }}
+            ${{ github.ref == 'refs/heads/main' && format('{0}:latest', inputs.image) || '' }}
+            ${{ github.ref == 'refs/heads/dev' && format('{0}:latest-dev', inputs.image) || '' }}
+          push: ${{ inputs.push }}
+          platforms: linux/amd64
+      - name: Update models manifest
+        run: |
+          cd deployment/model-upload
+          python check_model_updates.py --update
+      - name: Commit updated manifest
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add deployment/model-upload/models-manifest.json
+          export GH_TOKEN=${{ steps.generate-token.outputs.token }}
+          git diff --staged --quiet || git commit --no-verify -m "Update models manifest [skip ci]"
+          git push origin ${{ github.ref_name }}
