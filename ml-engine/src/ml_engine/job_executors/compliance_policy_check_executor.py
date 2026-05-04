@@ -129,7 +129,9 @@ class CompliancePolicyCheckExecutor:
         attestation_results = self._check_attestation_rules(
             assignment, policy.attestation_rules, window_end
         )
-        alert_rule_results = self._check_alert_rules(assignment, window_end)
+        alert_rule_results = self._check_alert_rules(
+            assignment, window_start, window_end
+        )
 
         has_violations = any(not passed for _, passed, _ in attestation_results) or any(
             not passed for _, passed, _ in alert_rule_results
@@ -228,13 +230,17 @@ class CompliancePolicyCheckExecutor:
     def _check_alert_rules(
         self,
         assignment: PolicyAssignment,
+        window_start: datetime,
         window_end: datetime,
     ) -> List[Tuple[ClientAlertRule, bool, Optional[Alert]]]:
         """Returns list of (alert_rule, passed, triggering_alert) tuples.
 
-        Verdict is based on the *latest interval bucket* per rule, i.e. whether
-        an alert exists in (window_end - rule.interval, window_end]. A rule
-        that fired earlier in the window but recovered is reported as passing.
+        Verdict is based on the *latest interval bucket* per rule within the
+        caller's window. The lower bound is max(window_start, window_end -
+        rule.interval): long windows look at the latest interval only; short
+        windows (where rule.interval > window length) honor window_start, so
+        if no completed bucket falls inside the window the rule is reported
+        compliant (no alert can exist in that range — expected behavior).
         """
         alert_rules = self._fetch_alert_rules(assignment)
         if not alert_rules:
@@ -245,10 +251,11 @@ class CompliancePolicyCheckExecutor:
             latest_bucket_start = window_end - alert_interval_to_timedelta(
                 rule.interval
             )
+            effective_start = max(latest_bucket_start, window_start)
             resp = self.alerts_client.get_model_alerts(
                 model_id=assignment.model.id,
                 alert_rule_ids=[rule.id],
-                time_from=latest_bucket_start,
+                time_from=effective_start,
                 time_to=window_end,
                 sort=AlertSort.TIMESTAMP,
                 order=SortOrder.DESC,
