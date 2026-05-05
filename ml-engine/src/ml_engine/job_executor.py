@@ -179,6 +179,7 @@ class JobExecutor:
                             self.datasets_client,
                             self.metrics_client,
                             self.jobs_client,
+                            self.policies_client,
                             self.custom_aggregations_client,
                             self.custom_aggregation_tests_client,
                             self.connector_constructor,
@@ -197,6 +198,7 @@ class JobExecutor:
                             self.datasets_client,
                             self.metrics_client,
                             self.jobs_client,
+                            self.policies_client,
                             self.custom_aggregations_client,
                             self.custom_aggregation_tests_client,
                             self.connector_constructor,
@@ -247,6 +249,7 @@ class JobExecutor:
                             self.alert_rules_client,
                             self.jobs_client,
                             self.metrics_client,
+                            self.policies_client,
                             self.logger,
                         ).execute(job, job.job_spec.actual_instance)
                     case JobKind.SCHEDULE_JOBS:

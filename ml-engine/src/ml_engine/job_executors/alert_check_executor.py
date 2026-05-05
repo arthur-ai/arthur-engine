@@ -15,6 +15,8 @@ from arthur_client.api_bindings import (
     MetricsQueryResult,
     MetricsResultFilterOp,
     MetricsV1Api,
+    PoliciesV1Api,
+    PolicyAssignmentJobChainPatch,
     PostAlert,
     PostAlerts,
     PostJob,
@@ -53,12 +55,14 @@ class AlertCheckExecutor:
         alert_rules_client: AlertRulesV1Api,
         jobs_client: JobsV1Api,
         metrics_client: MetricsV1Api,
+        policies_client: PoliciesV1Api,
         logger: logging.Logger,
     ) -> None:
         self.alerts_client = alerts_client
         self.alert_rules_client = alert_rules_client
         self.jobs_client = jobs_client
         self.metrics_client = metrics_client
+        self.policies_client = policies_client
         self.logger = logger
 
     def execute(self, job: Job, job_spec: AlertCheckJobSpec) -> None:
@@ -101,7 +105,7 @@ class AlertCheckExecutor:
                 ),
             ],
         )
-        self.jobs_client.post_submit_jobs_batch(
+        spawned = self.jobs_client.post_submit_jobs_batch(
             project_id=job.project_id,
             post_job_batch=compliance_batch,
         )
@@ -109,6 +113,16 @@ class AlertCheckExecutor:
             f"Submitted compliance policy check job for model {job_spec.scope_model_id} "
             f"(window {job_spec.check_range_start_timestamp} -> {job_spec.check_range_end_timestamp})"
         )
+        # Stamp compliance_job_id on the assignment so the FE chain widget can
+        # advance from "alerts done" to "compliance running". Skip when the
+        # chain isn't bound to a specific assignment.
+        if job_spec.policy_assignment_id and spawned.jobs:
+            self.policies_client.update_assignment_job_chain(
+                assignment_id=str(job_spec.policy_assignment_id),
+                policy_assignment_job_chain_patch=PolicyAssignmentJobChainPatch(
+                    compliance_job_id=spawned.jobs[0].id,
+                ),
+            )
 
     def _get_all_alert_rules(self, model_id: str) -> List[AlertRule]:
         alert_rules: List[AlertRule] = []

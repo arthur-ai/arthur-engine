@@ -15,6 +15,7 @@ from arthur_client.api_bindings import (
     Job,
     JobKind,
     JobPriority,
+    JobsBatch,
     JobSpec,
     JobState,
     JobTrigger,
@@ -135,6 +136,7 @@ def test_alert_check_executor_fault_tolerance():
         alert_rules_client=alert_rules_client,
         jobs_client=jobs_client,
         metrics_client=metrics_client,
+        policies_client=Mock(),
         logger=logger,
     )
 
@@ -236,6 +238,7 @@ def test_alert_check_executor_submits_compliance_job_on_success():
     alert_rules_client = Mock()
     jobs_client = Mock()
     metrics_client = Mock()
+    policies_client = Mock()
     logger = Mock()
 
     alert_rules_response = Mock()
@@ -247,11 +250,19 @@ def test_alert_check_executor_submits_compliance_job_on_success():
         results=[],
     )
 
+    spawned_compliance_job_id = str(uuid4())
+    spawned_compliance_job = Mock()
+    spawned_compliance_job.id = spawned_compliance_job_id
+    jobs_client.post_submit_jobs_batch.return_value = JobsBatch.model_construct(
+        jobs=[spawned_compliance_job]
+    )
+
     executor = AlertCheckExecutor(
         alerts_client=alerts_client,
         alert_rules_client=alert_rules_client,
         jobs_client=jobs_client,
         metrics_client=metrics_client,
+        policies_client=policies_client,
         logger=logger,
     )
 
@@ -271,3 +282,13 @@ def test_alert_check_executor_submits_compliance_job_on_success():
     assert submitted_spec.check_range_start_timestamp == start_time
     assert submitted_spec.check_range_end_timestamp == end_time
     assert submitted_spec.policy_assignment_id == assignment_id
+
+    # The chain handoff should also stamp the spawned compliance job id back
+    # onto the assignment so the FE chain widget can advance.
+    policies_client.update_assignment_job_chain.assert_called_once()
+    patch_kwargs = policies_client.update_assignment_job_chain.call_args.kwargs
+    assert patch_kwargs["assignment_id"] == assignment_id
+    assert (
+        patch_kwargs["policy_assignment_job_chain_patch"].compliance_job_id
+        == spawned_compliance_job_id
+    )

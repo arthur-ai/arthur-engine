@@ -14,6 +14,7 @@ from arthur_client.api_bindings import (
     Dataset,
     DatasetsV1Api,
     Job,
+    JobsBatch,
     JobsV1Api,
     MetricsCalculationJobSpec,
     MetricsUpload,
@@ -22,6 +23,8 @@ from arthur_client.api_bindings import (
     MetricsVersion,
     Model,
     ModelsV1Api,
+    PoliciesV1Api,
+    PolicyAssignmentJobChainPatch,
     PostJob,
     PostJobBatch,
     PostJobKind,
@@ -82,6 +85,7 @@ class AggregationCalculationExecutor(ABC):
         datasets_client: DatasetsV1Api,
         metrics_client: MetricsV1Api,
         jobs_client: JobsV1Api,
+        policies_client: PoliciesV1Api,
         custom_aggregations_client: CustomAggregationsV1Api,
         custom_aggregation_tests_client: CustomAggregationTestsV1Api,
         connector_constructor: ConnectorConstructor,
@@ -91,6 +95,7 @@ class AggregationCalculationExecutor(ABC):
         self.datasets_client = datasets_client
         self.metrics_client = metrics_client
         self.jobs_client = jobs_client
+        self.policies_client = policies_client
         self.custom_aggregations_client = custom_aggregations_client
         self.custom_aggregation_tests_client = custom_aggregation_tests_client
         self.connector_constructor = connector_constructor
@@ -200,8 +205,8 @@ class AggregationCalculationExecutor(ABC):
         self,
         project_id: str,
         alert_check_batch: PostJobBatch,
-    ) -> None:
-        self.jobs_client.post_submit_jobs_batch(
+    ) -> JobsBatch:
+        return self.jobs_client.post_submit_jobs_batch(
             project_id=project_id,
             post_job_batch=alert_check_batch,
         )
@@ -528,7 +533,18 @@ class MetricsCalculationExecutor(AggregationCalculationExecutor):
             metrics_upload=metrics_upload,
         )
         alert_check_batch = _create_alert_check_job(model, job_spec)
-        self._submit_alert_check_job(model.project_id, alert_check_batch)
+        spawned = self._submit_alert_check_job(model.project_id, alert_check_batch)
+        # Stamp alerts_check_job_id on the assignment so the FE chain widget can
+        # advance from "metrics done" to "alerts running". Only meaningful when
+        # the chain was scoped to a specific assignment; model-wide schedule
+        # runs leave policy_assignment_id None and we skip the PATCH.
+        if job_spec.policy_assignment_id and spawned.jobs:
+            self.policies_client.update_assignment_job_chain(
+                assignment_id=str(job_spec.policy_assignment_id),
+                policy_assignment_job_chain_patch=PolicyAssignmentJobChainPatch(
+                    alerts_check_job_id=spawned.jobs[0].id,
+                ),
+            )
 
     @staticmethod
     def _process_metrics(
