@@ -5,14 +5,17 @@ name: Arthur Engine — LTS Release
 # continuous version bump).
 #
 # Strategy:
-#   * Docker images: RETAG the source-version images (no rebuild).
-#     Source version is read from `.lts-source-version` written by the
-#     lts-management orchestrator at the LTS branch root.
-#     Target: Docker Hub (arthurplatform) only.
+#   * genai-engine-cpu/gpu + ml-engine: BUILD from source. These depend
+#     on arthur-common (pinned in pyproject.toml by the orchestrator), so
+#     the LTS branch must be compiled fresh — retagging the source images
+#     would bake the pre-LTS arthur-common version.
+#   * genai-engine-models, genai-engine-models-k8s, arthur-model-upload:
+#     BUILD from source. Each Dockerfile downloads models from HuggingFace
+#     at build time; building from the LTS branch ensures a clean,
+#     self-contained LTS image rather than retagging a source image that
+#     may not exist for every patch.
 #   * Helm charts: REPACKAGE (Chart.yaml has been updated to LTS by the
 #     orchestrator). Push to Docker Hub OCI only.
-#   * Observability SDK: see arthur-observability-sdk-release.yml —
-#     LTS jobs appended there so no new PyPI trusted publisher is needed.
 #
 # Trigger: tag matching `*-lts` or `*-lts-patch-*` (simple human-readable
 # globs). No commit-message gates, no branch gates. The continuous
@@ -26,56 +29,120 @@ on:
       - '*-lts-patch-*'
 
 jobs:
-  # ── 1. Retag Docker images (genai-engine-cpu, genai-engine-gpu, ml-engine)
-  retag-docker-images:
-    name: Retag engine Docker images
+  # ── 1. Build genai-engine (cpu + gpu) from source ────────────────────────
+  build-genai-engine:
+    name: Build genai-engine-${{ matrix.torch_device }}
     runs-on: ubuntu-latest
     environment: shared-protected-branch-secrets
+    strategy:
+      matrix:
+        torch_device: [cpu, gpu]
     steps:
+      - uses: mathio/gha-cleanup@v1
+        with:
+          remove-browsers: true
+          verbose: true
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.ref }}
-      - name: Read source version
-        id: src
-        run: |
-          if [ ! -f .lts-source-version ]; then
-            echo "ERROR: .lts-source-version not found at repo root." >&2
-            echo "       The lts-management orchestrator must write this" >&2
-            echo "       file when creating the LTS branch." >&2
-            exit 1
-          fi
-          SRC=$(tr -d '[:space:]' < .lts-source-version)
-          echo "source=$SRC" >> "$GITHUB_OUTPUT"
-          echo "Source version: $SRC"
-          echo "LTS tag:        ${{ github.ref_name }}"
+      - name: Set up QEMU
+        if: matrix.torch_device == 'cpu'
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.11.1
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-      - name: Retag engine images on Docker Hub
-        env:
-          SRC: ${{ steps.src.outputs.source }}
-          LTS: ${{ github.ref_name }}
-        # imagetools create manipulates only the remote manifest — no layer
-        # download/upload. Also preserves multi-arch manifest lists correctly,
-        # unlike docker pull/tag/push which only retags the host architecture.
-        run: |
-          set -e
-          for IMG in genai-engine-cpu genai-engine-gpu ml-engine genai-engine-models genai-engine-models-k8s; do
-            echo "==== arthurplatform/${IMG}: ${SRC} -> ${LTS} ===="
-            docker buildx imagetools create --tag "arthurplatform/${IMG}:${LTS}" "arthurplatform/${IMG}:${SRC}"
-          done
-      - name: Retag arthur-model-upload on Docker Hub
-        env:
-          SRC: ${{ steps.src.outputs.source }}
-          LTS: ${{ github.ref_name }}
-        run: |
-          set -e
-          echo "==== arthurplatform/arthur-model-upload: ${SRC}-gcp -> ${LTS}-gcp ===="
-          docker buildx imagetools create --tag "arthurplatform/arthur-model-upload:${LTS}-gcp" "arthurplatform/arthur-model-upload:${SRC}-gcp"
+      - name: Build and push genai-engine-${{ matrix.torch_device }}
+        uses: docker/build-push-action@v6.18.0
+        with:
+          context: "{{defaultContext}}:genai-engine"
+          file: dockerfile
+          build-args: |
+            TORCH_DEVICE=${{ matrix.torch_device }}
+            ENABLE_TELEMETRY=false
+            GITLAB_UNIFY_FRONTEND_TOKEN=${{ secrets.GITLAB_UNIFY_FRONTEND_TOKEN }}
+          tags: arthurplatform/genai-engine-${{ matrix.torch_device }}:${{ github.ref_name }}
+          push: true
+          platforms: ${{ matrix.torch_device == 'cpu' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
 
-  # ── 2. Package + push Helm charts (genai-engine, ml-engine) ─────────────
+  # ── 2. Build ml-engine from source ───────────────────────────────────────
+  build-ml-engine:
+    name: Build ml-engine
+    runs-on: ubuntu-latest
+    environment: shared-protected-branch-secrets
+    steps:
+      - uses: mathio/gha-cleanup@v1
+        with:
+          remove-browsers: true
+          verbose: true
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      - name: Generate GenAI Client
+        run: |
+          pip install 'openapi-generator-cli[jdk4py]==7.12'
+          openapi-generator-cli generate -c ml-engine/scripts/openapitools.json
+          sed -i 's/license = "NoLicense"/license = "Unlicense"/g' ./ml-engine/src/genai_client/pyproject.toml
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: Build and push ml-engine
+        run: |
+          cd ml-engine
+          docker build -t arthurplatform/ml-engine:${{ github.ref_name }} .
+          docker push arthurplatform/ml-engine:${{ github.ref_name }}
+
+  # ── 3. Build model-upload images from source ─────────────────────────────
+  build-models-images:
+    name: Build model-upload images
+    runs-on: ubuntu-latest
+    environment: shared-protected-branch-secrets
+    steps:
+      - uses: mathio/gha-cleanup@v1
+        with:
+          remove-browsers: true
+          verbose: true
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.11.1
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: Build and push genai-engine-models (ECS)
+        uses: docker/build-push-action@v6.18.0
+        with:
+          context: "{{defaultContext}}:deployment/ecs/model-upload"
+          file: Dockerfile
+          tags: arthurplatform/genai-engine-models:${{ github.ref_name }}
+          push: true
+          platforms: linux/amd64
+      - name: Build and push genai-engine-models-k8s
+        uses: docker/build-push-action@v6.18.0
+        with:
+          context: "{{defaultContext}}:deployment/k8s/model-upload-oc"
+          file: Dockerfile
+          tags: arthurplatform/genai-engine-models-k8s:${{ github.ref_name }}
+          push: true
+          platforms: linux/amd64
+      - name: Build and push arthur-model-upload (GCP)
+        uses: docker/build-push-action@v6.18.0
+        with:
+          context: "{{defaultContext}}:deployment/gcp/model-upload"
+          file: Dockerfile
+          tags: arthurplatform/arthur-model-upload:${{ github.ref_name }}-gcp
+          push: true
+          platforms: linux/amd64
+
+  # ── 4. Package + push Helm charts (genai-engine, ml-engine) ─────────────
   publish-helm-charts:
     name: Publish helm charts
     runs-on: ubuntu-latest
