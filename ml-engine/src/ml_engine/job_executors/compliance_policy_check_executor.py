@@ -57,20 +57,6 @@ class CompliancePolicyCheckExecutor:
         self.logger = logger
 
     def execute(self, job: Job, job_spec: CompliancePolicyCheckJobSpec) -> None:
-        # Window fields are Optional on the canonical spec (so historical rows
-        # deserialize), but every chain-queued compliance job sets them. A None
-        # here means we received a malformed or pre-migration spec — fail loudly
-        # rather than silently querying alerts with no time bound.
-        if (
-            job_spec.check_range_start_timestamp is None
-            or job_spec.check_range_end_timestamp is None
-        ):
-            raise ValueError(
-                f"CompliancePolicyCheckJobSpec for job {job.id} is missing "
-                "check_range_start_timestamp/check_range_end_timestamp; "
-                "expected to be set by the upstream alert_check executor."
-            )
-
         self._run_compliance_checks(
             model_id=job_spec.scope_model_id,
             window_start=job_spec.check_range_start_timestamp,
