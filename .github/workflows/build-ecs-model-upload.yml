@@ -9,10 +9,10 @@ on:
         required: false
         default: true
       image:
-        description: "Image name (e.g. arthurplatform/genai-engine-models)"
+        description: "Image name (e.g. arthurplatform/arthur-model-upload)"
         type: string
         required: false
-        default: "arthurplatform/genai-engine-models"
+        default: "arthurplatform/arthur-model-upload"
   workflow_call:
     inputs:
       push:
@@ -21,10 +21,10 @@ on:
         required: false
         default: true
       image:
-        description: "Image name (e.g. arthurplatform/genai-engine-models)"
+        description: "Image name (e.g. arthurplatform/arthur-model-upload)"
         type: string
         required: false
-        default: "arthurplatform/genai-engine-models"
+        default: "arthurplatform/arthur-model-upload"
 
 jobs:
   build-ecs-model-upload:
@@ -77,9 +77,9 @@ jobs:
           build-args: BACKEND=s3
           target: runtime-s3
           tags: |
-            ${{ inputs.image }}:${{ env.VERSION }}
-            ${{ github.ref == 'refs/heads/main' && format('{0}:latest', inputs.image) || '' }}
-            ${{ github.ref == 'refs/heads/dev' && format('{0}:latest-dev', inputs.image) || '' }}
+            ${{ inputs.image }}:${{ env.VERSION }}-s3
+            ${{ github.ref == 'refs/heads/main' && format('{0}:latest-s3', inputs.image) || '' }}
+            ${{ github.ref == 'refs/heads/dev' && format('{0}:latest-dev-s3', inputs.image) || '' }}
           push: ${{ inputs.push }}
           platforms: linux/amd64
       - name: Update models manifest

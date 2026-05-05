@@ -495,7 +495,7 @@ jobs:
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     with:
       push: true
-      image: arthurplatform/genai-engine-models
+      image: arthurplatform/arthur-model-upload
     secrets: inherit
 
   tag-genai-engine-models-docker-image:
@@ -521,15 +521,15 @@ jobs:
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
       - name: Retag previous models image with new version
         run: |
-          SOURCE_TAG=${{ github.ref == 'refs/heads/main' && 'latest' || 'latest-dev' }}
-          echo "No model updates detected - retagging ${SOURCE_TAG} as ${{ env.VERSION }}"
-          docker pull arthurplatform/genai-engine-models:${SOURCE_TAG}
-          docker tag arthurplatform/genai-engine-models:${SOURCE_TAG} arthurplatform/genai-engine-models:${{ env.VERSION }}
-          docker push arthurplatform/genai-engine-models:${{ env.VERSION }}
+          SOURCE_TAG=${{ github.ref == 'refs/heads/main' && 'latest-s3' || 'latest-dev-s3' }}
+          echo "No model updates detected - retagging ${SOURCE_TAG} as ${{ env.VERSION }}-s3"
+          docker pull arthurplatform/arthur-model-upload:${SOURCE_TAG}
+          docker tag arthurplatform/arthur-model-upload:${SOURCE_TAG} arthurplatform/arthur-model-upload:${{ env.VERSION }}-s3
+          docker push arthurplatform/arthur-model-upload:${{ env.VERSION }}-s3
           # Update latest tag for main branch
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            docker tag arthurplatform/genai-engine-models:${SOURCE_TAG} arthurplatform/genai-engine-models:latest
-            docker push arthurplatform/genai-engine-models:latest
+            docker tag arthurplatform/arthur-model-upload:${SOURCE_TAG} arthurplatform/arthur-model-upload:latest-s3
+            docker push arthurplatform/arthur-model-upload:latest-s3
           fi
 
   build-genai-engine-models-k8s-docker-image:
@@ -541,7 +541,7 @@ jobs:
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     with:
       push: true
-      image: arthurplatform/genai-engine-models-k8s
+      image: arthurplatform/arthur-model-upload
     secrets: inherit
 
   tag-genai-engine-models-k8s-docker-image:
@@ -567,15 +567,15 @@ jobs:
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
       - name: Retag previous models k8s image with new version
         run: |
-          SOURCE_TAG=${{ github.ref == 'refs/heads/main' && 'latest' || 'latest-dev' }}
-          echo "No model updates detected - retagging ${SOURCE_TAG} as ${{ env.VERSION }}"
-          docker pull arthurplatform/genai-engine-models-k8s:${SOURCE_TAG}
-          docker tag arthurplatform/genai-engine-models-k8s:${SOURCE_TAG} arthurplatform/genai-engine-models-k8s:${{ env.VERSION }}
-          docker push arthurplatform/genai-engine-models-k8s:${{ env.VERSION }}
+          SOURCE_TAG=${{ github.ref == 'refs/heads/main' && 'latest-k8s' || 'latest-dev-k8s' }}
+          echo "No model updates detected - retagging ${SOURCE_TAG} as ${{ env.VERSION }}-k8s"
+          docker pull arthurplatform/arthur-model-upload:${SOURCE_TAG}
+          docker tag arthurplatform/arthur-model-upload:${SOURCE_TAG} arthurplatform/arthur-model-upload:${{ env.VERSION }}-k8s
+          docker push arthurplatform/arthur-model-upload:${{ env.VERSION }}-k8s
           # Update latest tag for main branch
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            docker tag arthurplatform/genai-engine-models-k8s:${SOURCE_TAG} arthurplatform/genai-engine-models-k8s:latest
-            docker push arthurplatform/genai-engine-models-k8s:latest
+            docker tag arthurplatform/arthur-model-upload:${SOURCE_TAG} arthurplatform/arthur-model-upload:latest-k8s
+            docker push arthurplatform/arthur-model-upload:latest-k8s
           fi
 
   build-gcp-model-upload-docker-image:
