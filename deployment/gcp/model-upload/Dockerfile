@@ -67,10 +67,12 @@ COPY --from=downloader /models /models
 # Set Python path to include our dependencies
 ENV PYTHONPATH=/app/site-packages
 ENV LOG_LEVEL=INFO
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 # Create non-root user for Cloud Run
 RUN groupadd -r nonroot -g 65532 && useradd -r -u 65532 -g nonroot nonroot \
-    && chown -R nonroot:nonroot /app
+    && chown -R nonroot:nonroot /app /models
 USER nonroot
 
 # Run upload task
