@@ -9,10 +9,10 @@ on:
         required: false
         default: true
       image:
-        description: "Image name (e.g. arthurplatform/arthur-model-upload)"
+        description: "Image name (e.g. arthurplatform/genai-engine-models-gcp)"
         type: string
         required: false
-        default: "arthurplatform/arthur-model-upload"
+        default: "arthurplatform/genai-engine-models-gcp"
   workflow_call:
     inputs:
       push:
@@ -21,10 +21,10 @@ on:
         required: false
         default: true
       image:
-        description: "Image name (e.g. arthurplatform/arthur-model-upload)"
+        description: "Image name (e.g. arthurplatform/genai-engine-models-gcp)"
         type: string
         required: false
-        default: "arthurplatform/arthur-model-upload"
+        default: "arthurplatform/genai-engine-models-gcp"
 
 jobs:
   build-gcp-model-upload:
@@ -63,8 +63,8 @@ jobs:
           build-args: BACKEND=gcs
           target: runtime-gcs
           tags: |
-            ${{ inputs.image }}:${{ env.VERSION }}-gcp
-            ${{ github.ref == 'refs/heads/main' && format('{0}:latest-gcp', inputs.image) || '' }}
-            ${{ github.ref == 'refs/heads/dev' && format('{0}:latest-dev-gcp', inputs.image) || '' }}
+            ${{ inputs.image }}:${{ env.VERSION }}
+            ${{ github.ref == 'refs/heads/main' && format('{0}:latest', inputs.image) || '' }}
+            ${{ github.ref == 'refs/heads/dev' && format('{0}:latest-dev', inputs.image) || '' }}
           push: ${{ inputs.push }}
           platforms: linux/amd64

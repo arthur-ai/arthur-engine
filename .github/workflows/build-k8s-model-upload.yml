@@ -9,10 +9,10 @@ on:
         required: false
         default: true
       image:
-        description: "Image name (e.g. arthurplatform/arthur-model-upload)"
+        description: "Image name (e.g. arthurplatform/genai-engine-models-k8s)"
         type: string
         required: false
-        default: "arthurplatform/arthur-model-upload"
+        default: "arthurplatform/genai-engine-models-k8s"
   workflow_call:
     inputs:
       push:
@@ -21,10 +21,10 @@ on:
         required: false
         default: true
       image:
-        description: "Image name (e.g. arthurplatform/arthur-model-upload)"
+        description: "Image name (e.g. arthurplatform/genai-engine-models-k8s)"
         type: string
         required: false
-        default: "arthurplatform/arthur-model-upload"
+        default: "arthurplatform/genai-engine-models-k8s"
 
 jobs:
   build-k8s-model-upload:
@@ -77,9 +77,9 @@ jobs:
           build-args: BACKEND=pvc
           target: runtime-pvc
           tags: |
-            ${{ inputs.image }}:${{ env.VERSION }}-k8s
-            ${{ github.ref == 'refs/heads/main' && format('{0}:latest-k8s', inputs.image) || '' }}
-            ${{ github.ref == 'refs/heads/dev' && format('{0}:latest-dev-k8s', inputs.image) || '' }}
+            ${{ inputs.image }}:${{ env.VERSION }}
+            ${{ github.ref == 'refs/heads/main' && format('{0}:latest', inputs.image) || '' }}
+            ${{ github.ref == 'refs/heads/dev' && format('{0}:latest-dev', inputs.image) || '' }}
           push: ${{ inputs.push }}
           platforms: linux/amd64
       - name: Update models manifest

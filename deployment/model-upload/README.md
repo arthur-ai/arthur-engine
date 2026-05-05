@@ -13,15 +13,15 @@ Uploads pre-downloaded ML models to cloud storage for airgapped deployments. Sup
 ```bash
 # ECS / S3
 docker build --build-arg BACKEND=s3 --target runtime-s3 \
-  -t arthurplatform/arthur-model-upload:<version>-s3 .
+  -t arthurplatform/genai-engine-models-s3:<version> .
 
 # GCP / GCS
 docker build --build-arg BACKEND=gcs --target runtime-gcs \
-  -t arthurplatform/arthur-model-upload:<version>-gcp .
+  -t arthurplatform/genai-engine-models-gcp:<version> .
 
 # K8s / PVC
 docker build --build-arg BACKEND=pvc --target runtime-pvc \
-  -t arthurplatform/arthur-model-upload:<version>-k8s .
+  -t arthurplatform/genai-engine-models-k8s:<version> .
 ```
 
 ## Deploy
@@ -31,7 +31,7 @@ docker build --build-arg BACKEND=pvc --target runtime-pvc \
 Fill in the variables and register the task definition:
 
 ```bash
-export ECR_IMAGE_URI=<account>.dkr.ecr.<region>.amazonaws.com/arthur-model-upload:<version>-s3
+export ECR_IMAGE_URI=<account>.dkr.ecr.<region>.amazonaws.com/genai-engine-models-s3:<version>
 export EXECUTION_ROLE_ARN=arn:aws:iam::<account>:role/ecsTaskExecutionRole
 export TASK_ROLE_ARN=arn:aws:iam::<account>:role/arthur-model-upload-role
 export S3_BUCKET=my-models-bucket
@@ -72,7 +72,7 @@ HF_HUB_OFFLINE=1
 **Via Helm:**
 ```bash
 helm install arthur-model-upload ./helm \
-  --set image.tag=<version>-k8s \
+  --set image.tag=<version> \
   --set pvc.claimName=arthur-models-pvc
 ```
 

@@ -22,7 +22,7 @@ spec:
           timeoutSeconds: 3600
           serviceAccountName: aa-sa-npr-dp-svc@aa-dp-npr-01.iam.gserviceaccount.com
           containers:
-            - image: arthurplatform/arthur-model-upload:2.1.546-gcp
+            - image: arthurplatform/genai-engine-models-gcp:2.1.546
               env:
                 - name: GCS_BUCKET
                   value:  arthur-models-bucket-01

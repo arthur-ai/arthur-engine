@@ -13,7 +13,6 @@ dependencies = [
 [project.optional-dependencies]
 s3  = ["boto3>=1.28.0,<2"]
 gcs = ["google-cloud-storage>=2.10.0"]
-k8s = ["tiktoken>=0.7.0"]
 
 [project.scripts]
 upload   = "upload_models:main"

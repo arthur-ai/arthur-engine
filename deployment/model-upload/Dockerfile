@@ -11,8 +11,7 @@
 ARG BACKEND=s3
 
 # =============================================================================
-# Stage 1: Download models + tiktoken encodings (shared across all backends)
-#   All backends include tiktoken to support airgapped deployments.
+# Stage 1: Download models (shared across all backends)
 # =============================================================================
 FROM python:3.12-slim AS downloader
 ARG BACKEND
@@ -21,18 +20,18 @@ WORKDIR /app
 RUN pip install --no-cache-dir uv==0.11.7
 COPY pyproject.toml uv.lock* ./
 
-RUN uv export --frozen --no-emit-project --no-hashes --extra k8s -o /tmp/requirements.txt \
+RUN uv export --frozen --no-emit-project --no-hashes -o /tmp/requirements.txt \
     && uv pip install --system --no-cache -r /tmp/requirements.txt
 
 COPY download_models.py .
 
-RUN python download_models.py --output-dir /models --workers 4 --include-tiktoken
+RUN python download_models.py --output-dir /models --workers 4
 
 # =============================================================================
 # Stage 2: Install backend-specific runtime deps
 #   - s3:  boto3
 #   - gcs: google-cloud-storage
-#   - pvc: nothing (stdlib only; tiktoken only needed at download time)
+#   - pvc: nothing (stdlib only)
 # =============================================================================
 FROM python:3.12-slim AS builder
 ARG BACKEND

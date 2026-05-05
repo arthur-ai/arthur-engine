@@ -9,7 +9,6 @@ with the structure expected by the model repository server.
 import argparse
 import json
 import logging
-import os
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -93,8 +92,6 @@ DEFAULT_MODELS: dict[str, list[str]] = {
     ],
 }
 
-TIKTOKEN_ENCODINGS = ["cl100k_base", "p50k_base", "r50k_base", "o200k_base"]
-
 
 def download_file(
     model_name: str,
@@ -161,30 +158,6 @@ def download_models(
     return results
 
 
-def download_tiktoken_encodings(output_dir: Path) -> dict[str, list[str]]:
-    """Download tiktoken encoding files for airgapped k8s/PVC deployment.
-
-    Files are cached using tiktoken's SHA1-hashed filename scheme so they are
-    picked up automatically at runtime when TIKTOKEN_CACHE_DIR points here.
-    """
-    import tiktoken
-
-    tiktoken_dir = output_dir / "tiktoken"
-    tiktoken_dir.mkdir(parents=True, exist_ok=True)
-    os.environ["TIKTOKEN_CACHE_DIR"] = str(tiktoken_dir)
-
-    results: dict[str, list[str]] = {"successful": [], "failed": []}
-    for encoding_name in TIKTOKEN_ENCODINGS:
-        try:
-            tiktoken.get_encoding(encoding_name)
-            logger.info(f"✓ tiktoken/{encoding_name}")
-            results["successful"].append(encoding_name)
-        except Exception as e:
-            logger.error(f"✗ tiktoken/{encoding_name}: {e}")
-            results["failed"].append(encoding_name)
-    return results
-
-
 def load_models_config(config_path: str) -> dict[str, list[str]]:
     """Load models configuration from JSON file."""
     with open(config_path) as f:
@@ -220,12 +193,6 @@ def main() -> None:
         action="store_true",
         help="Exclude relevance models (microsoft/deberta-v2-xlarge-mnli) to reduce image size",
     )
-    parser.add_argument(
-        "--include-tiktoken",
-        action="store_true",
-        default=False,
-        help="Also download tiktoken encodings (required for airgapped k8s/PVC deployments)",
-    )
     args = parser.parse_args()
 
     if args.config:
@@ -244,41 +211,21 @@ def main() -> None:
 
     results = download_models(models, args.output_dir, args.workers)
 
-    tiktoken_results: dict[str, list[str]] | None = None
-    if args.include_tiktoken:
-        logger.info("Downloading tiktoken encoding files...")
-        tiktoken_results = download_tiktoken_encodings(args.output_dir)
-
     print("\n" + "=" * 60)
     print("DOWNLOAD SUMMARY")
     print("=" * 60)
     print(f"Total files: {results['total_files']}")
     print(f"Downloaded:  {results['downloaded_files']}")
     print(f"Failed:      {len(results['failed'])}")  # type: ignore[arg-type]
-    if tiktoken_results is not None:
-        print(
-            f"Tiktoken encodings: {len(tiktoken_results['successful'])}/{len(TIKTOKEN_ENCODINGS)}",
-        )
     print("=" * 60)
 
-    failed = bool(results["failed"]) or bool(
-        tiktoken_results and tiktoken_results["failed"],
-    )
-    if failed:
-        if results["failed"]:
-            print("\nFailed model downloads:")
-            for item in results["failed"]:  # type: ignore[union-attr]
-                print(f"  - {item['model']}/{item['file']}: {item['error']}")
-        if tiktoken_results and tiktoken_results["failed"]:
-            print("\nFailed tiktoken encodings:")
-            for name in tiktoken_results["failed"]:
-                print(f"  - {name}")
+    if results["failed"]:
+        print("\nFailed model downloads:")
+        for item in results["failed"]:  # type: ignore[union-attr]
+            print(f"  - {item['model']}/{item['file']}: {item['error']}")
         sys.exit(1)
 
-    if tiktoken_results is not None:
-        print("\n✓ All models and tiktoken encodings downloaded successfully!")
-    else:
-        print("\n✓ All models downloaded successfully!")
+    print("\n✓ All models downloaded successfully!")
 
     manifest_path = args.output_dir / "manifest.json"
     with open(manifest_path, "w") as f:

@@ -20,7 +20,7 @@ spec:
       restartPolicy: Never
       containers:
       - name: model-upload
-        image: arthurplatform/arthur-model-upload:<genai_engine_models_version>-k8s  # Use version tag to ensure new image is pulled
+        image: arthurplatform/genai-engine-models-k8s:<genai_engine_models_version>  # Use version tag to ensure new image is pulled
         imagePullPolicy: Always  # Always pull to get the new version
         command: ["python", "-u", "/app/upload_models.py"]
         env:

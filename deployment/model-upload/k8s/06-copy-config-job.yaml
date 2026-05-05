@@ -17,7 +17,7 @@ spec:
       restartPolicy: Never
       containers:
       - name: copier
-        image: arthurplatform/arthur-model-upload:<genai_engine_models_version>-k8s  # Use same image as model upload job
+        image: arthurplatform/genai-engine-models-k8s:<genai_engine_models_version>  # Use same image as model upload job
         imagePullPolicy: IfNotPresent
         command:
         - python
