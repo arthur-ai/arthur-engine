@@ -121,6 +121,11 @@ export interface AgenticAnnotationResponse {
    */
   eval_name?: string | null;
   /**
+   * Eval Type
+   * Type of eval: 'llm_eval' or 'ml_eval'
+   */
+  eval_type?: string | null;
+  /**
    * Eval Version
    * Version of the eval the continuous eval used when scoring
    */
@@ -1516,6 +1521,12 @@ export interface ContinuousEvalResponse {
    */
   enabled?: boolean;
   /**
+   * Eval Type
+   * Type of evaluator: 'llm_eval' or 'ml_eval'.
+   * @default "llm_eval"
+   */
+  eval_type?: string;
+  /**
    * Id
    * ID of the transform.
    * @format uuid
@@ -1523,14 +1534,14 @@ export interface ContinuousEvalResponse {
   id: string;
   /**
    * Llm Eval Name
-   * Name of the llm eval.
+   * Name of the eval.
    */
-  llm_eval_name: string;
+  llm_eval_name?: string | null;
   /**
    * Llm Eval Version
-   * Version of the llm eval.
+   * Version of the eval.
    */
-  llm_eval_version: number;
+  llm_eval_version?: number | null;
   /**
    * Name
    * Name of the continuous eval.
@@ -4449,74 +4460,6 @@ export interface KeywordsConfig {
   keywords: string[];
 }
 
-/** LLMBaseConfigSettings */
-export interface LLMBaseConfigSettings {
-  /**
-   * Frequency Penalty
-   * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
-   */
-  frequency_penalty?: number | null;
-  /**
-   * Logit Bias
-   * Modify likelihood of specified tokens appearing in completion
-   */
-  logit_bias?: LogitBiasItem[] | null;
-  /**
-   * Logprobs
-   * Whether to return log probabilities of output tokens
-   */
-  logprobs?: boolean | null;
-  /**
-   * Max Completion Tokens
-   * Maximum number of completion tokens (alternative to max_tokens)
-   */
-  max_completion_tokens?: number | null;
-  /**
-   * Max Tokens
-   * Maximum number of tokens to generate in the response
-   */
-  max_tokens?: number | null;
-  /**
-   * Presence Penalty
-   * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
-   */
-  presence_penalty?: number | null;
-  /** Reasoning effort level for models that support it (e.g., OpenAI o1 series) */
-  reasoning_effort?: ReasoningEffortEnum | null;
-  /**
-   * Seed
-   * Random seed for reproducible outputs
-   */
-  seed?: number | null;
-  /**
-   * Stop
-   * Stop sequence(s) where the model should stop generating
-   */
-  stop?: string | null;
-  /**
-   * Temperature
-   * Sampling temperature (0.0 to 2.0). Higher values make output more random
-   */
-  temperature?: number | null;
-  /** Anthropic-specific thinking parameter for Claude models */
-  thinking?: AnthropicThinkingParamOutput | null;
-  /**
-   * Timeout
-   * Request timeout in seconds
-   */
-  timeout?: number | null;
-  /**
-   * Top Logprobs
-   * Number of most likely tokens to return log probabilities for (1-20)
-   */
-  top_logprobs?: number | null;
-  /**
-   * Top P
-   * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
-   */
-  top_p?: number | null;
-}
-
 /** LLMConfigSettings */
 export interface LLMConfigSettings {
   /**
@@ -4599,8 +4542,11 @@ export interface LLMConfigSettings {
 
 /** LLMEval */
 export interface LLMEval {
-  /** LLM configurations for this eval (e.g. temperature, max_tokens, etc.) */
-  config?: LLMBaseConfigSettings | null;
+  /**
+   * Config
+   * Eval configuration. LLMBaseConfigSettings for LLM evals; type-specific dict for ML evals.
+   */
+  config?: null;
   /**
    * Created At
    * Timestamp when the llm eval was created.
@@ -4613,17 +4559,23 @@ export interface LLMEval {
    */
   deleted_at?: string | null;
   /**
-   * Instructions
-   * Instructions for the llm eval
+   * Eval Type
+   * Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
+   * @default "llm_as_a_judge"
    */
-  instructions: string;
+  eval_type?: string;
+  /**
+   * Instructions
+   * Instructions for the llm eval. None for ML evals.
+   */
+  instructions?: string | null;
   /**
    * Model Name
-   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
+   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet'). None for ML evals.
    */
-  model_name: string;
-  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
-  model_provider: ModelProvider;
+  model_name?: string | null;
+  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). None for ML evals. */
+  model_provider?: ModelProvider | null;
   /**
    * Name
    * Name of the llm eval
@@ -6455,6 +6407,11 @@ export interface MetadataQuery {
    */
   last_update_time?: boolean;
   /**
+   * Query Profile
+   * @default false
+   */
+  query_profile?: boolean;
+  /**
    * Score
    * @default false
    */
@@ -7758,15 +7715,15 @@ export interface PutModelProviderCredentials {
    */
   api_base?: string | null;
   /**
-   * Api Version
-   * The API version. Required for Azure (e.g. '2024-02-01').
-   */
-  api_version?: string | null;
-  /**
    * Api Key
    * The API key for the provider.
    */
   api_key?: string | null;
+  /**
+   * Api Version
+   * The API version. Required for Azure (e.g. '2024-02-01').
+   */
+  api_version?: string | null;
   /**
    * Aws Access Key Id
    * The AWS access key ID.
@@ -10802,9 +10759,9 @@ export interface SyntheticDataPromptStatus {
   model_name: string;
   /**
    * Model Provider
-   * Model provider stored in the SDG system prompt
+   * Model provider stored in the SDG system prompt. The sentinel 'empty' indicates the prompt has not yet been configured.
    */
-  model_provider: string;
+  model_provider: ModelProvider | "empty";
 }
 
 /**
@@ -12232,7 +12189,8 @@ export type WeaviateHybridSearchSettingsConfigurationRequestReturnMetadataEnum =
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateHybridSearchSettingsConfigurationResponse */
 export interface WeaviateHybridSearchSettingsConfigurationResponse {
@@ -12324,7 +12282,8 @@ export type WeaviateHybridSearchSettingsConfigurationResponseReturnMetadataEnum 
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateHybridSearchSettingsRequest */
 export interface WeaviateHybridSearchSettingsRequest {
@@ -12416,7 +12375,8 @@ export type WeaviateHybridSearchSettingsRequestReturnMetadataEnum =
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateKeywordSearchSettingsConfigurationRequest */
 export interface WeaviateKeywordSearchSettingsConfigurationRequest {
@@ -12485,7 +12445,8 @@ export type WeaviateKeywordSearchSettingsConfigurationRequestReturnMetadataEnum 
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateKeywordSearchSettingsConfigurationResponse */
 export interface WeaviateKeywordSearchSettingsConfigurationResponse {
@@ -12554,7 +12515,8 @@ export type WeaviateKeywordSearchSettingsConfigurationResponseReturnMetadataEnum
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateKeywordSearchSettingsRequest */
 export interface WeaviateKeywordSearchSettingsRequest {
@@ -12623,7 +12585,8 @@ export type WeaviateKeywordSearchSettingsRequestReturnMetadataEnum =
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /**
  * WeaviateQueryResult
@@ -12782,7 +12745,8 @@ export type WeaviateVectorSimilarityTextSearchSettingsConfigurationRequestReturn
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse */
 export interface WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse {
@@ -12856,7 +12820,8 @@ export type WeaviateVectorSimilarityTextSearchSettingsConfigurationResponseRetur
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateVectorSimilarityTextSearchSettingsRequest */
 export interface WeaviateVectorSimilarityTextSearchSettingsRequest {
@@ -12930,7 +12895,8 @@ export type WeaviateVectorSimilarityTextSearchSettingsRequestReturnMetadataEnum 
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, HeadersDefaults, ResponseType } from "axios";
 import axios from "axios";
@@ -13063,7 +13029,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.530
+ * @version 2.1.546
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
