@@ -1,6 +1,6 @@
 [project]
 name = "arthur-observability-sdk"
-version = "0.0.6.post0"
+version = "0.0.7.post0"
 description = "Arthur Observability SDK — telemetry, prompt management, and framework instrumentation"
 authors = [{ name = "Arthur AI", email = "engineering@arthur.ai" }]
 readme = "../README.md"
