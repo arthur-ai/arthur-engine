@@ -47,6 +47,7 @@ from pydantic import Field
 
 from config import Config
 from dataset_loader import DatasetLoader
+from job_executors._chain_utils import stamp_chain_job_id
 from metric_calculators.custom_metric_sql_calculator import CustomMetricSQLCalculator
 from metric_calculators.default_metric_calculator import DefaultMetricCalculator
 from metric_calculators.metric_calculator import MetricCalculator
@@ -534,14 +535,16 @@ class MetricsCalculationExecutor(AggregationCalculationExecutor):
         )
         alert_check_batch = _create_alert_check_job(model, job_spec)
         spawned = self._submit_alert_check_job(model.project_id, alert_check_batch)
-        # Stamp alerts_check_job_id on the assignment so the FE chain widget can
-        # advance from "metrics done" to "alerts running". Only meaningful when
-        # the chain was scoped to a specific assignment; model-wide schedule
-        # runs leave policy_assignment_id None and we skip the PATCH.
-        if job_spec.policy_assignment_id and spawned.jobs:
-            self.policies_client.update_assignment_job_chain(
-                assignment_id=str(job_spec.policy_assignment_id),
-                policy_assignment_job_chain_patch=PolicyAssignmentJobChainPatch(
+        # Stamp alerts_check_job_id on the affected assignment(s) so the FE
+        # chain widget can advance from "metrics done" to "alerts running".
+        # Single assignment when the chain is bound to one; fan out to every
+        # assignment on the model when it's a model-wide chain.
+        if spawned.jobs:
+            stamp_chain_job_id(
+                policies_client=self.policies_client,
+                model_id=model.id,
+                explicit_assignment_id=job_spec.policy_assignment_id,
+                patch=PolicyAssignmentJobChainPatch(
                     alerts_check_job_id=spawned.jobs[0].id,
                 ),
             )

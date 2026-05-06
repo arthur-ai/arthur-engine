@@ -31,6 +31,7 @@ from arthur_client.api_bindings import (
     ResultFilter,
 )
 
+from job_executors._chain_utils import stamp_chain_job_id
 from job_executors._interval_utils import alert_interval_to_timedelta
 
 METRIC_TIMESTAMP_COLUMN_NAME = "metric_timestamp"
@@ -113,13 +114,19 @@ class AlertCheckExecutor:
             f"Submitted compliance policy check job for model {job_spec.scope_model_id} "
             f"(window {job_spec.check_range_start_timestamp} -> {job_spec.check_range_end_timestamp})"
         )
-        # Stamp compliance_job_id on the assignment so the FE chain widget can
-        # advance from "alerts done" to "compliance running". Skip when the
-        # chain isn't bound to a specific assignment.
-        if job_spec.policy_assignment_id and spawned.jobs:
-            self.policies_client.update_assignment_job_chain(
-                assignment_id=str(job_spec.policy_assignment_id),
-                policy_assignment_job_chain_patch=PolicyAssignmentJobChainPatch(
+        # Stamp compliance_job_id on the affected assignment(s) so the FE
+        # chain widget can advance from "alerts done" to "compliance running".
+        # When this chain is bound to a single assignment (the policy/
+        # assignment-level entry points), stamp just that one. When it's a
+        # model-wide chain (POST /models/{id}/check_compliance), fan out to
+        # every assignment on the model — the spawned compliance job will
+        # evaluate each one.
+        if spawned.jobs:
+            stamp_chain_job_id(
+                policies_client=self.policies_client,
+                model_id=str(job_spec.scope_model_id),
+                explicit_assignment_id=job_spec.policy_assignment_id,
+                patch=PolicyAssignmentJobChainPatch(
                     compliance_job_id=spawned.jobs[0].id,
                 ),
             )

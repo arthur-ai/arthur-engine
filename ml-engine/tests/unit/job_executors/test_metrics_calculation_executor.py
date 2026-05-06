@@ -336,6 +336,9 @@ def test_metrics_calculation_timeout(mock_bigquery_client, caplog):
         mock_datasets_client = Mock()
         mock_metrics_client = Mock()
         mock_jobs_client = Mock()
+        # Empty spawned batch — we don't care about the chain handoff in this
+        # timeout test, just that the bare Mock isn't subscripted downstream.
+        mock_jobs_client.post_submit_jobs_batch.return_value = Mock(jobs=[])
         mock_custom_aggs_client = Mock()
         mock_model = Mock()
         mock_custom_aggs_test_client = Mock()
