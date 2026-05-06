@@ -112,6 +112,15 @@ export const EVENT_NAMES = {
   // Cross-link events
   PLAYGROUND_OPEN_FROM_SPAN: "playground/open_from_span",
   CONTINUOUS_EVALS_NEW_FROM_TRACE: "continuous_evals/new_from_trace",
+
+  // Model provider events
+  MODEL_PROVIDER_CONFIGURE_OPENED: "model_provider/configure_opened",
+  MODEL_PROVIDER_SAVED: "model_provider/saved",
+  MODEL_PROVIDER_SAVE_FAILED: "model_provider/save_failed",
+  MODEL_PROVIDER_DELETE_INTENT: "model_provider/delete_intent",
+  MODEL_PROVIDER_DELETED: "model_provider/deleted",
+  MODEL_PROVIDER_DELETE_FAILED: "model_provider/delete_failed",
+  MODEL_PROVIDER_STATUS_CHANGED: "model_provider/status_changed",
 } as const;
 
 /**
