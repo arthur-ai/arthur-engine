@@ -47,31 +47,25 @@ _PAGE_SIZE = 100
 
 _GUARDRAIL_DATA_LOOKBACK_DAYS = 7
 
-# Guardrail rule types that require task enablement and data ingestion checks.
-GUARDRAIL_RULE_TYPES: Set[str] = {
-    RuleType.PIIDATARULE.value,
-    RuleType.PROMPTINJECTIONRULE.value,
-}
-
 
 class GuardrailCheckResult:
     """Result of a single guardrail validation check."""
 
     def __init__(
         self,
-        rule_type: str,
+        rule_type: RuleType,
         enabled: bool,
-        has_data: bool,
+        is_utilized: bool,
         reason: str,
     ) -> None:
         self.rule_type = rule_type
         self.enabled = enabled
-        self.has_data = has_data
+        self.is_utilized = is_utilized
         self.reason = reason
 
     @property
     def passed(self) -> bool:
-        return self.enabled and self.has_data
+        return self.enabled and self.is_utilized
 
 
 class CompliancePolicyCheckExecutor:
@@ -353,8 +347,11 @@ class CompliancePolicyCheckExecutor:
         model's task and have received data in the last 7 days."""
         required_types: Set[RuleType] = set()
         for alert_rule in policy.alert_rules:
-            if alert_rule.rule_type in GUARDRAIL_RULE_TYPES:
-                required_types.add(alert_rule.rule_type)
+            if (
+                alert_rule.dependent_resource is not None
+                and alert_rule.dependent_resource.resource_type == "guardrail"
+            ):
+                required_types.add(alert_rule.dependent_resource.resource_name)
 
         if not required_types:
             return []
@@ -363,11 +360,11 @@ class CompliancePolicyCheckExecutor:
             f"Policy {policy.id} requires guardrail types: {required_types}"
         )
 
-        enabled_rule_types = self._get_enabled_guardrail_types(model_id)
+        enabled_guardrail_types = self._get_enabled_guardrail_types(model_id)
 
         results: List[GuardrailCheckResult] = []
         for rule_type in sorted(required_types):
-            is_enabled = rule_type in enabled_rule_types
+            is_enabled = rule_type.value in enabled_guardrail_types
             if not is_enabled:
                 self.logger.info(
                     f"Guardrail {rule_type.value}: NOT ENABLED on model {model_id}"
@@ -376,31 +373,31 @@ class CompliancePolicyCheckExecutor:
                     GuardrailCheckResult(
                         rule_type=rule_type,
                         enabled=False,
-                        has_data=False,
+                        is_utilized=False,
                         reason=f"Guardrail {rule_type.value} is not enabled on this application",
                     )
                 )
                 continue
 
-            has_data = self._has_guardrail_data(model_id, rule_type.value)
-            if has_data:
-                self.logger.info(f"Guardrail {rule_type.value}: ENABLED and has data")
+            guardrail_utilized = self._is_guardrail_utilized(model_id, rule_type.value)
+            if guardrail_utilized:
+                self.logger.info(f"Guardrail {rule_type.value}: ENABLED and utilized")
             else:
                 self.logger.info(
-                    f"Guardrail {rule_type.value}: ENABLED but NO DATA in last "
-                    f"{_GUARDRAIL_DATA_LOOKBACK_DAYS} days"
+                    f"Guardrail {rule_type.value}: ENABLED but NOT UTILIZED on "
+                    f"in the last {_GUARDRAIL_DATA_LOOKBACK_DAYS} days"
                 )
 
             results.append(
                 GuardrailCheckResult(
                     rule_type=rule_type,
                     enabled=True,
-                    has_data=has_data,
+                    is_utilized=guardrail_utilized,
                     reason=(
                         "ok"
-                        if has_data
-                        else f"Guardrail {rule_type.value} has not received data in the "
-                        f"last {_GUARDRAIL_DATA_LOOKBACK_DAYS} days"
+                        if guardrail_utilized
+                        else f"Guardrail {rule_type.value} has not run in the last "
+                        f"{_GUARDRAIL_DATA_LOOKBACK_DAYS} days while new traces were received"
                     ),
                 )
             )
@@ -423,20 +420,30 @@ class CompliancePolicyCheckExecutor:
 
         enabled: Set[str] = set()
         for rule in task_read.task.rules:
-            if rule.enabled and rule.type and rule.type.value in GUARDRAIL_RULE_TYPES:
+            if rule.enabled:
                 enabled.add(rule.type.value)
         return enabled
 
-    def _has_guardrail_data(self, model_id: str, rule_type: str) -> bool:
-        """Check whether the model has received any rule_count metrics for the
-        given guardrail rule_type in the last 7 days."""
+    def _is_guardrail_utilized(self, model_id: str, rule_type: str) -> bool:
+        """
+        Checks whether the guardrail has run in the specified time period
+        given that new traces were received in the same time period.
+
+        This is meant to be used as an indicator that the application is
+        being actively used, but they only have guardrails enabled to meet
+        compliance and are not actually enforcing any guardrails.
+        """
         lookback_start = self._now - timedelta(days=_GUARDRAIL_DATA_LOOKBACK_DAYS)
 
         query = (
-            "SELECT sum(value) AS metric_value, max(timestamp) AS metric_timestamp "
+            "SELECT "
+            "  sum(CASE WHEN metric_name = 'trace_count' "
+            "    THEN value ELSE 0 END) AS trace_total, "
+            "  sum(CASE WHEN metric_name = 'rule_count' "
+            f"    AND dimensions ->> 'rule_type' = '{rule_type}' "
+            "    THEN value ELSE 0 END) AS guardrail_total "
             "FROM metrics_numeric_latest_version "
-            "WHERE metric_name = 'rule_count' "
-            f"AND dimensions ->> 'rule_type' = '{rule_type}' "
+            "WHERE metric_name IN ('trace_count', 'rule_count') "
             "AND timestamp >= '{{dateStart}}' AND timestamp < '{{dateEnd}}'"
         )
 
@@ -453,13 +460,17 @@ class CompliancePolicyCheckExecutor:
                 ),
             )
             if not result.results:
-                return False
-            first = result.results[0]
-            return first is not None and first.get("metric_value") is not None
+                return True
+
+            first = result.results[0] or {}
+            trace_total = first.get("trace_total") or 0
+            guardrail_total = first.get("guardrail_total") or 0
+
+            return not (trace_total > 0 and guardrail_total == 0)
         except Exception:
             self.logger.warning(
                 f"Could not query metrics for guardrail {rule_type} "
-                f"on model {model_id}. Treating as no data.",
+                f"on model {model_id}",
                 exc_info=True,
             )
             return False
@@ -492,9 +503,13 @@ class CompliancePolicyCheckExecutor:
                 gr.rule_type: gr.reason for gr in guardrail_results if not gr.passed
             }
             for par in policy.alert_rules:
-                if par.rule_type in failed_by_type:
+                if par.dependent_resource is None:
+                    continue
+
+                par_rule_type = par.dependent_resource.resource_name
+                if par_rule_type in failed_by_type:
                     guardrail_failed_rule_ids[str(par.id)] = failed_by_type[
-                        par.rule_type
+                        par_rule_type
                     ]
 
         compliant_alert_rules: List[CompliantAlertRuleStatus] = []
@@ -509,10 +524,7 @@ class CompliancePolicyCheckExecutor:
                     NonCompliantAlertRuleStatus(
                         id=rule.id,
                         name=rule.name,
-                        alert=ComplianceAlertSummary(
-                            id=rule.id,
-                            description=guardrail_reason,
-                        ),
+                        error_message=guardrail_reason,
                     )
                 )
             elif passed:
@@ -548,10 +560,7 @@ class CompliancePolicyCheckExecutor:
                         NonCompliantAlertRuleStatus(
                             id=par.id,
                             name=par.name,
-                            alert=ComplianceAlertSummary(
-                                id=par.id,
-                                description=guardrail_failed_rule_ids[rule_id],
-                            ),
+                            error_message=guardrail_failed_rule_ids[rule_id],
                         )
                     )
 

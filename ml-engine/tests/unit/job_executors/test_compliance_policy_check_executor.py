@@ -3,6 +3,7 @@ from unittest.mock import Mock, call, patch
 from uuid import uuid4
 
 import pytest
+from arthur_common.models.enums import RuleType
 from arthur_client.api_bindings import (
     Alert,
     AlertBound,
@@ -24,7 +25,7 @@ from arthur_client.api_bindings import (
     ModelSummary,
     Policy,
     PolicyAlertRule,
-    PolicyAlertRuleType,
+    PolicyAlertGuardrailRule,
     PolicyAssignment,
     PolicyAttestationRule,
     PolicySummary,
@@ -192,16 +193,16 @@ def _make_policy(
     )
 
 
-def _make_policy_alert_rule(rule_type: PolicyAlertRuleType = PolicyAlertRuleType.CUSTOM, policy_id: str = None) -> PolicyAlertRule:
+def _make_policy_alert_rule(dependent_resource: PolicyAlertGuardrailRule = None, policy_id: str = None) -> PolicyAlertRule:
     return PolicyAlertRule(
         id=str(uuid4()),
         policy_id=policy_id or str(uuid4()),
-        name=f"Alert for {rule_type.value}",
+        name=f"Alert for {dependent_resource.name}",
         threshold=0.8,
         bound=AlertBound.UPPER_BOUND,
         query="SELECT ...",
         metric_name="rule_count",
-        rule_type=rule_type,
+        dependent_resource=dependent_resource,
         created_at=NOW,
         updated_at=NOW,
     )
@@ -228,16 +229,16 @@ def _make_metrics_query_result(has_data: bool) -> Mock:
     return result
 
 
-def _make_policy_alert_rule(rule_type: PolicyAlertRuleType = PolicyAlertRuleType.CUSTOM, policy_id: str = None) -> PolicyAlertRule:
+def _make_policy_alert_rule(dependent_resource: PolicyAlertGuardrailRule = None, policy_id: str = None) -> PolicyAlertRule:
     return PolicyAlertRule(
         id=str(uuid4()),
         policy_id=policy_id or str(uuid4()),
-        name=f"Alert for {rule_type.value}",
+        name=f"Alert for {dependent_resource.name}",
         threshold=0.8,
         bound=AlertBound.UPPER_BOUND,
         query="SELECT ...",
         metric_name="rule_count",
-        rule_type=rule_type,
+        dependent_resource=dependent_resource,
         created_at=NOW,
         updated_at=NOW,
     )
@@ -827,7 +828,6 @@ def test_alert_rule_metrics_uploaded_with_correct_dimensions(mock_datetime):
         query=alert_rule.query,
         metric_name=alert_rule.metric_name,
         interval=alert_rule.interval,
-        rule_type=PolicyAlertRuleType.CUSTOM,
         created_at=NOW,
         updated_at=NOW,
     )
@@ -1170,7 +1170,7 @@ def test_guardrail_not_enabled_non_compliant(mock_datetime):
         model_summary=_make_model_summary(model_id),
     )
 
-    pii_alert_rule = _make_policy_alert_rule(rule_type=PolicyAlertRuleType.PIIDATARULE, policy_id=policy_id)
+    pii_alert_rule = _make_policy_alert_rule(dependent_resource=PolicyAlertGuardrailRule(name=RuleType.PIIDATARULE), policy_id=policy_id)
     policy = _make_policy(policy_id, alert_rules=[pii_alert_rule])
     materialized_pii = _make_alert_rule(
         model_id=model_id,
@@ -1212,7 +1212,7 @@ def test_guardrail_enabled_but_no_data_non_compliant(mock_datetime):
         model_summary=_make_model_summary(model_id),
     )
 
-    pii_alert_rule = _make_policy_alert_rule(rule_type=PolicyAlertRuleType.PIIDATARULE, policy_id=policy_id)
+    pii_alert_rule = _make_policy_alert_rule(dependent_resource=PolicyAlertGuardrailRule(name=RuleType.PIIDATARULE), policy_id=policy_id)
     policy = _make_policy(policy_id, alert_rules=[pii_alert_rule])
     materialized_pii = _make_alert_rule(
         model_id=model_id,
@@ -1253,7 +1253,7 @@ def test_guardrail_enabled_and_has_data_compliant(mock_datetime):
         model_summary=_make_model_summary(model_id),
     )
 
-    pii_alert_rule = _make_policy_alert_rule(rule_type=PolicyAlertRuleType.PIIDATARULE, policy_id=policy_id)
+    pii_alert_rule = _make_policy_alert_rule(dependent_resource=PolicyAlertGuardrailRule(name=RuleType.PIIDATARULE), policy_id=policy_id)
     policy = _make_policy(policy_id, alert_rules=[pii_alert_rule])
     materialized_pii = _make_alert_rule(
         model_id=model_id,
@@ -1292,7 +1292,7 @@ def test_guardrail_custom_rule_type_skips_check(mock_datetime):
         model_summary=_make_model_summary(model_id),
     )
 
-    custom_alert_rule = _make_policy_alert_rule(rule_type=PolicyAlertRuleType.CUSTOM, policy_id=policy_id)
+    custom_alert_rule = _make_policy_alert_rule(dependent_resource=None, policy_id=policy_id)
     policy = _make_policy(policy_id, alert_rules=[custom_alert_rule])
 
     job, job_spec = _make_job_and_spec(model_id)
@@ -1325,7 +1325,7 @@ def test_guardrail_before_enforcement_needs_attention(mock_datetime):
         enforcement_in_past=False,
     )
 
-    pii_alert_rule = _make_policy_alert_rule(rule_type=PolicyAlertRuleType.PIIDATARULE, policy_id=policy_id)
+    pii_alert_rule = _make_policy_alert_rule(dependent_resource=PolicyAlertGuardrailRule(name=RuleType.PIIDATARULE), policy_id=policy_id)
     policy = _make_policy(policy_id, alert_rules=[pii_alert_rule])
     materialized_pii = _make_alert_rule(
         model_id=model_id,
@@ -1364,7 +1364,7 @@ def test_guardrail_failure_without_materialized_rule_still_reported(mock_datetim
         model_summary=_make_model_summary(model_id),
     )
 
-    pii_alert_rule = _make_policy_alert_rule(rule_type=PolicyAlertRuleType.PIIDATARULE, policy_id=policy_id)
+    pii_alert_rule = _make_policy_alert_rule(dependent_resource=PolicyAlertGuardrailRule(name=RuleType.PIIDATARULE), policy_id=policy_id)
     policy = _make_policy(policy_id, alert_rules=[pii_alert_rule])
 
     job, job_spec = _make_job_and_spec(model_id)
