@@ -121,11 +121,6 @@ export interface AgenticAnnotationResponse {
    */
   eval_name?: string | null;
   /**
-   * Eval Type
-   * Type of eval: 'llm_eval' or 'ml_eval'
-   */
-  eval_type?: string | null;
-  /**
    * Eval Version
    * Version of the eval the continuous eval used when scoring
    */
@@ -1521,12 +1516,6 @@ export interface ContinuousEvalResponse {
    */
   enabled?: boolean;
   /**
-   * Eval Type
-   * Type of evaluator: 'llm_eval' or 'ml_eval'.
-   * @default "llm_eval"
-   */
-  eval_type?: string;
-  /**
    * Id
    * ID of the transform.
    * @format uuid
@@ -1534,14 +1523,14 @@ export interface ContinuousEvalResponse {
   id: string;
   /**
    * Llm Eval Name
-   * Name of the eval.
+   * Name of the llm eval.
    */
-  llm_eval_name?: string | null;
+  llm_eval_name: string;
   /**
    * Llm Eval Version
-   * Version of the eval.
+   * Version of the llm eval.
    */
-  llm_eval_version?: number | null;
+  llm_eval_version: number;
   /**
    * Name
    * Name of the continuous eval.
@@ -4460,6 +4449,74 @@ export interface KeywordsConfig {
   keywords: string[];
 }
 
+/** LLMBaseConfigSettings */
+export interface LLMBaseConfigSettings {
+  /**
+   * Frequency Penalty
+   * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
+   */
+  frequency_penalty?: number | null;
+  /**
+   * Logit Bias
+   * Modify likelihood of specified tokens appearing in completion
+   */
+  logit_bias?: LogitBiasItem[] | null;
+  /**
+   * Logprobs
+   * Whether to return log probabilities of output tokens
+   */
+  logprobs?: boolean | null;
+  /**
+   * Max Completion Tokens
+   * Maximum number of completion tokens (alternative to max_tokens)
+   */
+  max_completion_tokens?: number | null;
+  /**
+   * Max Tokens
+   * Maximum number of tokens to generate in the response
+   */
+  max_tokens?: number | null;
+  /**
+   * Presence Penalty
+   * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
+   */
+  presence_penalty?: number | null;
+  /** Reasoning effort level for models that support it (e.g., OpenAI o1 series) */
+  reasoning_effort?: ReasoningEffortEnum | null;
+  /**
+   * Seed
+   * Random seed for reproducible outputs
+   */
+  seed?: number | null;
+  /**
+   * Stop
+   * Stop sequence(s) where the model should stop generating
+   */
+  stop?: string | null;
+  /**
+   * Temperature
+   * Sampling temperature (0.0 to 2.0). Higher values make output more random
+   */
+  temperature?: number | null;
+  /** Anthropic-specific thinking parameter for Claude models */
+  thinking?: AnthropicThinkingParamOutput | null;
+  /**
+   * Timeout
+   * Request timeout in seconds
+   */
+  timeout?: number | null;
+  /**
+   * Top Logprobs
+   * Number of most likely tokens to return log probabilities for (1-20)
+   */
+  top_logprobs?: number | null;
+  /**
+   * Top P
+   * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
+   */
+  top_p?: number | null;
+}
+
 /** LLMConfigSettings */
 export interface LLMConfigSettings {
   /**
@@ -4542,11 +4599,8 @@ export interface LLMConfigSettings {
 
 /** LLMEval */
 export interface LLMEval {
-  /**
-   * Config
-   * Eval configuration. LLMBaseConfigSettings for LLM evals; type-specific dict for ML evals.
-   */
-  config?: null;
+  /** LLM configurations for this eval (e.g. temperature, max_tokens, etc.) */
+  config?: LLMBaseConfigSettings | null;
   /**
    * Created At
    * Timestamp when the llm eval was created.
@@ -4559,23 +4613,17 @@ export interface LLMEval {
    */
   deleted_at?: string | null;
   /**
-   * Eval Type
-   * Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
-   * @default "llm_as_a_judge"
-   */
-  eval_type?: string;
-  /**
    * Instructions
-   * Instructions for the llm eval. None for ML evals.
+   * Instructions for the llm eval
    */
-  instructions?: string | null;
+  instructions: string;
   /**
    * Model Name
-   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet'). None for ML evals.
+   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
    */
-  model_name?: string | null;
-  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). None for ML evals. */
-  model_provider?: ModelProvider | null;
+  model_name: string;
+  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
+  model_provider: ModelProvider;
   /**
    * Name
    * Name of the llm eval
@@ -13029,7 +13077,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.546
+ * @version 2.1.545
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {

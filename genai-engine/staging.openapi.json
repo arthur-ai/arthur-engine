@@ -17186,18 +17186,6 @@
                         "title": "Continuous Eval Name",
                         "description": "Name of the continuous eval this annotation belongs to"
                     },
-                    "eval_type": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Eval Type",
-                        "description": "Type of eval: 'llm_eval' or 'ml_eval'"
-                    },
                     "eval_name": {
                         "anyOf": [
                             {
@@ -19576,35 +19564,15 @@
                         "title": "Task Id",
                         "description": "ID of the parent task."
                     },
-                    "eval_type": {
-                        "type": "string",
-                        "title": "Eval Type",
-                        "description": "Type of evaluator: 'llm_eval' or 'ml_eval'.",
-                        "default": "llm_eval"
-                    },
                     "llm_eval_name": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "type": "string",
                         "title": "Llm Eval Name",
-                        "description": "Name of the eval."
+                        "description": "Name of the llm eval."
                     },
                     "llm_eval_version": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "type": "integer",
                         "title": "Llm Eval Version",
-                        "description": "Version of the eval."
+                        "description": "Version of the llm eval."
                     },
                     "transform_id": {
                         "type": "string",
@@ -19644,6 +19612,8 @@
                     "id",
                     "name",
                     "task_id",
+                    "llm_eval_name",
+                    "llm_eval_version",
                     "transform_id",
                     "created_at",
                     "updated_at"
@@ -22535,6 +22505,182 @@
                     ]
                 }
             },
+            "LLMBaseConfigSettings": {
+                "properties": {
+                    "timeout": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Timeout",
+                        "description": "Request timeout in seconds"
+                    },
+                    "temperature": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Temperature",
+                        "description": "Sampling temperature (0.0 to 2.0). Higher values make output more random"
+                    },
+                    "top_p": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Top P",
+                        "description": "Top-p sampling parameter (0.0 to 1.0). Alternative to temperature"
+                    },
+                    "max_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Tokens",
+                        "description": "Maximum number of tokens to generate in the response"
+                    },
+                    "stop": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Stop",
+                        "description": "Stop sequence(s) where the model should stop generating"
+                    },
+                    "presence_penalty": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Presence Penalty",
+                        "description": "Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence"
+                    },
+                    "frequency_penalty": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Frequency Penalty",
+                        "description": "Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency"
+                    },
+                    "seed": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Seed",
+                        "description": "Random seed for reproducible outputs"
+                    },
+                    "logprobs": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Logprobs",
+                        "description": "Whether to return log probabilities of output tokens"
+                    },
+                    "top_logprobs": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Top Logprobs",
+                        "description": "Number of most likely tokens to return log probabilities for (1-20)"
+                    },
+                    "logit_bias": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/LogitBiasItem"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Logit Bias",
+                        "description": "Modify likelihood of specified tokens appearing in completion"
+                    },
+                    "max_completion_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Completion Tokens",
+                        "description": "Maximum number of completion tokens (alternative to max_tokens)"
+                    },
+                    "reasoning_effort": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ReasoningEffortEnum"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Reasoning effort level for models that support it (e.g., OpenAI o1 series)"
+                    },
+                    "thinking": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AnthropicThinkingParam-Output"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Anthropic-specific thinking parameter for Claude models"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "LLMBaseConfigSettings"
+            },
             "LLMConfigSettings": {
                 "properties": {
                     "timeout": {
@@ -22757,46 +22903,19 @@
                         "title": "Name",
                         "description": "Name of the llm eval"
                     },
-                    "eval_type": {
-                        "type": "string",
-                        "title": "Eval Type",
-                        "description": "Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')",
-                        "default": "llm_as_a_judge"
-                    },
                     "model_name": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "type": "string",
                         "title": "Model Name",
-                        "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet'). None for ML evals."
+                        "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')"
                     },
                     "model_provider": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/ModelProvider"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). None for ML evals."
+                        "$ref": "#/components/schemas/ModelProvider",
+                        "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
                     },
                     "instructions": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "type": "string",
                         "title": "Instructions",
-                        "description": "Instructions for the llm eval. None for ML evals."
+                        "description": "Instructions for the llm eval"
                     },
                     "variables": {
                         "items": {
@@ -22816,13 +22935,14 @@
                     },
                     "config": {
                         "anyOf": [
-                            {},
+                            {
+                                "$ref": "#/components/schemas/LLMBaseConfigSettings"
+                            },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Config",
-                        "description": "Eval configuration. LLMBaseConfigSettings for LLM evals; type-specific dict for ML evals."
+                        "description": "LLM configurations for this eval (e.g. temperature, max_tokens, etc.)"
                     },
                     "created_at": {
                         "type": "string",
@@ -22853,6 +22973,9 @@
                 "type": "object",
                 "required": [
                     "name",
+                    "model_name",
+                    "model_provider",
+                    "instructions",
                     "created_at"
                 ],
                 "title": "LLMEval"
