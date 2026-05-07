@@ -291,6 +291,7 @@ class RuleEngine:
         score_request = ScoreRequest(
             rule_type=RuleType.PROMPT_INJECTION,
             user_prompt=request.prompt,
+            llm_response=request.response,
             context=request.context,
         )
 

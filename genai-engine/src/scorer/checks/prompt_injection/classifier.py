@@ -64,8 +64,10 @@ class BinaryPromptInjectionClassifier(RuleScorer):
         )
 
     def score(self, request: ScoreRequest) -> RuleScore:
-        """Scores prompt for how likely they are to be a prompt injection attack
-        Requests greater than 2000 characters are truncated from the middle"""
+        """Scores text for how likely it is to contain a prompt injection.
+        Accepts either a user prompt or an LLM/tool response — whichever field is
+        populated on the ScoreRequest. Long inputs are split into 512-token
+        windows by SlidingWindowChunkIterator and scored chunk-by-chunk."""
         if self.model is None:
             threading.Thread(
                 target=self._download_model_and_tokenizer,
@@ -79,14 +81,14 @@ class BinaryPromptInjectionClassifier(RuleScorer):
                 prompt_tokens=0,
                 completion_tokens=0,
             )
-        user_prompt = request.user_prompt
-        if not user_prompt:
+        text_to_score = request.user_prompt or request.llm_response
+        if not text_to_score:
             return RuleScore(
                 result=RuleResultEnum.PASS,
                 prompt_tokens=0,
                 completion_tokens=0,
             )
-        text_chunks = self.chunk_text(user_prompt)
+        text_chunks = self.chunk_text(text_to_score)
 
         for chunk in text_chunks:
             # Get raw scores from model
