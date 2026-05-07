@@ -137,4 +137,7 @@ export const queryKeys = {
     list: () => ["searchTasksApiV2TasksSearchPost", "active"] as const,
     archived: () => ["searchTasksApiV2TasksSearchPost", "archived"] as const,
   },
+  guardrails: {
+    rulesForTask: (taskId: string) => ["getTaskApiV2TasksTaskIdGet", "guardrails", taskId] as const,
+  },
 } as const;
