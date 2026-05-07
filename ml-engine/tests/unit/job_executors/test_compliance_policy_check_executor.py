@@ -727,7 +727,12 @@ def test_alert_rule_metrics_uploaded_with_correct_dimensions(mock_datetime):
     )
 
     alert_rule = _make_alert_rule(rule_id="failing-rule", model_id=model_id)
-    alert = _make_alert(alert_rule_id="failing-rule", model_id=model_id)
+    # Distinct alert timestamp from NOW so we can verify the metric is keyed
+    # to the alert, not the check run.
+    alert_ts = NOW - timedelta(minutes=17)
+    alert = _make_alert(
+        alert_rule_id="failing-rule", model_id=model_id, timestamp=alert_ts
+    )
     policy_alert_rule = PolicyAlertRule(
         id="failing-rule",
         policy_id=policy_id,
@@ -769,16 +774,23 @@ def test_alert_rule_metrics_uploaded_with_correct_dimensions(mock_datetime):
     # Second metric is the alert rule check
     alert_metric = upload.metrics[1].actual_instance
     assert alert_metric.name == "policy_alert_rule_check_count"
-    alert_dim_names = {d.name for d in alert_metric.numeric_series[0].dimensions}
-    assert "policy_id" in alert_dim_names
-    assert "policy_name" in alert_dim_names
-    assert "assignment_id" in alert_dim_names
-    assert "model_name" in alert_dim_names
-    assert "alert_rule_id" in alert_dim_names
-    assert "alert_rule_name" in alert_dim_names
+    alert_dims = {d.name: d.value for d in alert_metric.numeric_series[0].dimensions}
+    assert "policy_id" in alert_dims
+    assert "policy_name" in alert_dims
+    assert "assignment_id" in alert_dims
+    assert "model_name" in alert_dims
+    assert "alert_rule_id" in alert_dims
+    assert "alert_rule_name" in alert_dims
+    # Violations carry the alert's id so re-runs collapse to one row.
+    assert alert_dims["alert_id"] == alert.id
 
     # Verify violation count is 1 since one alert fired
     assert alert_metric.numeric_series[0].values[0].value == 1.0
+    # Timestamp is the alert's timestamp aligned to 5min, not the check run.
+    expected_ts = alert_ts.replace(
+        minute=(alert_ts.minute // 5) * 5, second=0, microsecond=0
+    )
+    assert alert_metric.numeric_series[0].values[0].timestamp == expected_ts
 
 
 @patch("job_executors.compliance_policy_check_executor.datetime")

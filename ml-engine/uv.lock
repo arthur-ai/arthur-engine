@@ -1309,7 +1309,7 @@ wheels = [
 
 [[package]]
 name = "ml-engine"
-version = "2.1.548"
+version = "2.1.550"
 source = { editable = "." }
 dependencies = [
     { name = "arthur-client" },

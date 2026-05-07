@@ -472,44 +472,40 @@ class CompliancePolicyCheckExecutor:
         # Per-alert-rule violation flag metric. value=1.0 if the rule's latest
         # interval bucket is currently violating, else 0.0. Dashboards read
         # `value` directly and SUM it over time to chart violations per rule.
-        for rule, passed, _triggering_alert in alert_rule_results:
+        #
+        # For violations, key the metric to the triggering alert (its aligned
+        # timestamp + id) instead of the check run. Re-running compliance over
+        # the same persistent alert then produces metrics with identical
+        # (model_id, metric_name, timestamp) tuples — the platform's existing
+        # version-cleanup collapses them to one row, so dashboards stop
+        # over-counting a single ongoing violation as N separate ones.
+        for rule, passed, triggering_alert in alert_rule_results:
+            dimensions = [
+                Dimension(name="policy_id", value=str(assignment.policy.id)),
+                Dimension(name="policy_name", value=assignment.policy.name),
+                Dimension(name="assignment_id", value=str(assignment.id)),
+                Dimension(name="model_name", value=assignment.model.name),
+                Dimension(name="alert_rule_id", value=str(rule.id)),
+                Dimension(name="alert_rule_name", value=rule.name),
+            ]
+            if passed:
+                point_ts = metric_ts
+                value = 0.0
+            else:
+                assert triggering_alert is not None
+                point_ts = self._align_to_5min(triggering_alert.timestamp)
+                value = 1.0
+                dimensions.append(
+                    Dimension(name="alert_id", value=str(triggering_alert.id))
+                )
+
             metrics.append(
                 NumericMetric(
                     name="policy_alert_rule_check_count",
                     numeric_series=[
                         NumericTimeSeries(
-                            dimensions=[
-                                Dimension(
-                                    name="policy_id",
-                                    value=str(assignment.policy.id),
-                                ),
-                                Dimension(
-                                    name="policy_name",
-                                    value=assignment.policy.name,
-                                ),
-                                Dimension(
-                                    name="assignment_id",
-                                    value=str(assignment.id),
-                                ),
-                                Dimension(
-                                    name="model_name",
-                                    value=assignment.model.name,
-                                ),
-                                Dimension(
-                                    name="alert_rule_id",
-                                    value=str(rule.id),
-                                ),
-                                Dimension(
-                                    name="alert_rule_name",
-                                    value=rule.name,
-                                ),
-                            ],
-                            values=[
-                                NumericPoint(
-                                    timestamp=metric_ts,
-                                    value=0.0 if passed else 1.0,
-                                ),
-                            ],
+                            dimensions=dimensions,
+                            values=[NumericPoint(timestamp=point_ts, value=value)],
                         ),
                     ],
                 )
