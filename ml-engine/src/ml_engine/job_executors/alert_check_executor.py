@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Dict, List, Union
 from uuid import UUID
 
@@ -7,16 +7,22 @@ from arthur_client.api_bindings import (
     AlertBound,
     AlertCheckJobSpec,
     AlertRule,
-    AlertRuleInterval,
     AlertRulesV1Api,
     AlertsV1Api,
+    CompliancePolicyCheckJobSpec,
     Job,
     JobsV1Api,
     MetricsQueryResult,
     MetricsResultFilterOp,
     MetricsV1Api,
+    PoliciesV1Api,
+    PolicyAssignmentJobChainPatch,
     PostAlert,
     PostAlerts,
+    PostJob,
+    PostJobBatch,
+    PostJobKind,
+    PostJobSpec,
     PostMetricsQuery,
     PostMetricsQueryResultFilter,
     PostMetricsQueryResultFilterAndGroup,
@@ -24,6 +30,9 @@ from arthur_client.api_bindings import (
     PostMetricsQueryTimeRange,
     ResultFilter,
 )
+
+from job_executors._chain_utils import stamp_chain_job_id
+from job_executors._interval_utils import alert_interval_to_timedelta
 
 METRIC_TIMESTAMP_COLUMN_NAME = "metric_timestamp"
 METRIC_VALUE_COLUMN_NAME = "metric_value"
@@ -47,12 +56,14 @@ class AlertCheckExecutor:
         alert_rules_client: AlertRulesV1Api,
         jobs_client: JobsV1Api,
         metrics_client: MetricsV1Api,
+        policies_client: PoliciesV1Api,
         logger: logging.Logger,
     ) -> None:
         self.alerts_client = alerts_client
         self.alert_rules_client = alert_rules_client
         self.jobs_client = jobs_client
         self.metrics_client = metrics_client
+        self.policies_client = policies_client
         self.logger = logger
 
     def execute(self, job: Job, job_spec: AlertCheckJobSpec) -> None:
@@ -72,6 +83,53 @@ class AlertCheckExecutor:
         # re-raise error so job is marked as failed if any alert rule was not processed
         if processing_exc:
             raise processing_exc
+
+        self._submit_compliance_check_job(job, job_spec)
+
+    def _submit_compliance_check_job(
+        self,
+        job: Job,
+        job_spec: AlertCheckJobSpec,
+    ) -> None:
+        compliance_batch = PostJobBatch(
+            jobs=[
+                PostJob(
+                    kind=PostJobKind.COMPLIANCE_POLICY_CHECK,
+                    job_spec=PostJobSpec(
+                        CompliancePolicyCheckJobSpec(
+                            scope_model_id=job_spec.scope_model_id,
+                            check_range_start_timestamp=job_spec.check_range_start_timestamp,
+                            check_range_end_timestamp=job_spec.check_range_end_timestamp,
+                            policy_assignment_id=job_spec.policy_assignment_id,
+                        ),
+                    ),
+                ),
+            ],
+        )
+        spawned = self.jobs_client.post_submit_jobs_batch(
+            project_id=job.project_id,
+            post_job_batch=compliance_batch,
+        )
+        self.logger.info(
+            f"Submitted compliance policy check job for model {job_spec.scope_model_id} "
+            f"(window {job_spec.check_range_start_timestamp} -> {job_spec.check_range_end_timestamp})"
+        )
+        # Stamp compliance_job_id on the affected assignment(s) so the FE
+        # chain widget can advance from "alerts done" to "compliance running".
+        # When this chain is bound to a single assignment (the policy/
+        # assignment-level entry points), stamp just that one. When it's a
+        # model-wide chain (POST /models/{id}/check_compliance), fan out to
+        # every assignment on the model — the spawned compliance job will
+        # evaluate each one.
+        if spawned.jobs:
+            stamp_chain_job_id(
+                policies_client=self.policies_client,
+                model_id=str(job_spec.scope_model_id),
+                explicit_assignment_id=job_spec.policy_assignment_id,
+                patch=PolicyAssignmentJobChainPatch(
+                    compliance_job_id=spawned.jobs[0].id,
+                ),
+            )
 
     def _get_all_alert_rules(self, model_id: str) -> List[AlertRule]:
         alert_rules: List[AlertRule] = []
@@ -131,7 +189,7 @@ class AlertCheckExecutor:
         # see more info here:
         # https://gitlab.com/ArthurAI/arthur-scope/blob/f03cc26e11ea74f019be5b94a04f280b03d027ff/documentation/technical-documentation/implementations/Alert-Rule-Implementation.md#L291-291
 
-        td = self._alert_interval_to_timedelta(alert_rule.interval)
+        td = alert_interval_to_timedelta(alert_rule.interval)
         adjusted_start_time = job_spec.check_range_start_timestamp - td
 
         # similarly, to prevent alerting on partial alert buckets,
@@ -296,8 +354,3 @@ class AlertCheckExecutor:
                     f"Webhook {webhook_called.webhook_name} ({webhook_called.webhook_id}) "
                     f"called with result {webhook_called.webhook_result}",
                 )
-
-    @staticmethod
-    def _alert_interval_to_timedelta(interval: AlertRuleInterval) -> timedelta:
-        kwargs = {interval.unit: interval.count}
-        return timedelta(**kwargs)
