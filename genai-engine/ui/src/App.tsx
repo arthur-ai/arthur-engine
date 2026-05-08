@@ -41,6 +41,7 @@ import { TracesView } from "./components/TracesView";
 import TransformsManagement from "./components/transforms/TransformsManagement";
 import { AuthProvider } from "./contexts/AuthContext";
 import { DisplaySettingsProvider } from "./contexts/DisplaySettingsContext";
+import { EngineConfigProvider } from "./contexts/EngineConfigContext";
 import { queryClient } from "./lib/queryClient";
 import { AppThemeProvider } from "./theme/ThemeProvider";
 
@@ -58,6 +59,7 @@ function App() {
             >
               <>
                 <ReactQueryDevtools />
+                <EngineConfigProvider>
                 <AuthProvider>
                   <DisplaySettingsProvider>
                     <Router>
@@ -177,6 +179,7 @@ function App() {
                     </Router>
                   </DisplaySettingsProvider>
                 </AuthProvider>
+                </EngineConfigProvider>
               </>
             </SnackbarProvider>
           </NuqsAdapter>
