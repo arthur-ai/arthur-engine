@@ -17,6 +17,7 @@ import { DatasetExperimentsView } from "./components/datasets/DatasetExperiments
 import { DatasetsView } from "./components/datasets/DatasetsView";
 import { EvaluateView } from "./components/evaluate/EvaluateView";
 import Evaluators from "./components/evaluators/Evaluators";
+import { GuardrailsView } from "./components/guardrails/GuardrailsView";
 import { LiveEvalDetail } from "./components/live-evals/[evalId]";
 import { LiveEvalsNew } from "./components/live-evals/new";
 import { LoginPage } from "./components/LoginPage";
@@ -132,6 +133,7 @@ function App() {
                             <Route path="datasets/:datasetId/experiments" element={<DatasetExperimentsView />} />
 
                             <Route path="evaluate" element={<EvaluateView />} />
+                            <Route path="guardrails" element={<GuardrailsView />} />
 
                             {/* Legacy redirect: /evaluators → /evaluate */}
                             <Route path="evaluators" element={<Navigate to="../evaluate" replace />} />

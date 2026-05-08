@@ -8,6 +8,7 @@ import {
   ArrowBackOutlined,
   InsightsOutlined,
   ChevronRightOutlined,
+  SecurityOutlined,
 } from "@mui/icons-material";
 import { Link, Typography } from "@mui/material";
 import React from "react";
@@ -54,6 +55,7 @@ const navigationSections: NavigationSection[] = [
     label: "Evals",
     items: [
       { id: "evaluate", label: "Evaluate", icon: <BalanceOutlined /> },
+      { id: "guardrails", label: "Guardrails", icon: <SecurityOutlined /> },
       { id: "datasets", label: "Dataset", icon: <TableChartOutlined /> },
       { id: "transforms", label: "Transform", icon: <StorageOutlined /> },
     ],

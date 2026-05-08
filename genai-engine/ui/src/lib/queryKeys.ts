@@ -124,4 +124,7 @@ export const queryKeys = {
   taskMetrics: {
     all: (taskId: string) => ["taskMetrics", "all", taskId] as const,
   },
+  guardrails: {
+    rulesForTask: (taskId: string) => ["getTaskApiV2TasksTaskIdGet", "guardrails", taskId] as const,
+  },
 } as const;
