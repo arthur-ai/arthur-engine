@@ -642,8 +642,12 @@ class GenaiEngineTestClientBase(httpx.Client):
                     allow_list=allow_list,
                 ).model_dump()
         elif rule_type == RuleType.PROMPT_INJECTION:
-            rule["apply_to_prompt"] = True
-            rule["apply_to_response"] = False
+            rule["apply_to_prompt"] = (
+                prompt_enabled if prompt_enabled is not None else True
+            )
+            rule["apply_to_response"] = (
+                response_enabled if response_enabled is not None else False
+            )
             if not skip_config:
                 rule["config"] = None
         elif rule_type == RuleType.TOXICITY:

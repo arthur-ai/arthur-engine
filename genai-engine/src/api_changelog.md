@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 05/07/2026
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_response/{inference_id}  PromptInjectionRule rules with apply_to_response set to true now evaluate prompt injection on the response (previously silently passed)
+- **CHANGE** for **URL**: /api/v2/validate_response/{inference_id}  PromptInjectionRule rules with apply_to_response set to true now evaluate prompt injection on the response (previously silently passed)
 # 05/01/2026
 # 04/30/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'llm_eval_name' became optional for the status '200'
