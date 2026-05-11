@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.542"
+        "version": "2.1.551"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -24283,7 +24283,8 @@
                     "gemini",
                     "bedrock",
                     "vertex_ai",
-                    "hosted_vllm"
+                    "hosted_vllm",
+                    "azure"
                 ],
                 "title": "ModelProvider"
             },
@@ -26773,7 +26774,19 @@
                             }
                         ],
                         "title": "Api Base",
-                        "description": "The API base URL. Used for VLLM models."
+                        "description": "The API base URL. Required for Azure (endpoint URL) and vLLM models."
+                    },
+                    "api_version": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Api Version",
+                        "description": "The API version. Required for Azure (e.g. '2024-02-01')."
                     },
                     "credentials_file": {
                         "anyOf": [

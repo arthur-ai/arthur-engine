@@ -121,11 +121,6 @@ export interface AgenticAnnotationResponse {
    */
   eval_name?: string | null;
   /**
-   * Eval Type
-   * Type of eval: 'llm_eval' or 'ml_eval'
-   */
-  eval_type?: string | null;
-  /**
    * Eval Version
    * Version of the eval the continuous eval used when scoring
    */
@@ -798,17 +793,15 @@ export interface AgenticPromptVersionResponse {
    */
   deleted_at: string | null;
   /**
-   * Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
-   * @default "llm_as_a_judge"
-   */
-  eval_type?: EvalType;
-  /**
    * Model Name
-   * Model name chosen for this version of the llm eval. None for ML evals.
+   * Model name chosen for this version of the llm eval
    */
-  model_name?: string | null;
-  /** Model provider chosen for this version of the llm eval. None for ML evals. */
-  model_provider?: ModelProvider | null;
+  model_name: string;
+  /**
+   * Model Provider
+   * Model provider chosen for this version of the llm eval
+   */
+  model_provider: ModelProvider | "empty";
   /**
    * Num Messages
    * Number of messages in the prompt
@@ -1461,21 +1454,15 @@ export interface ContinuousEvalCreateRequest {
    */
   enabled?: boolean;
   /**
-   * Eval Type
-   * Type of evaluator: 'llm_eval' or 'ml_eval'.
-   * @default "llm_eval"
-   */
-  eval_type?: ContinuousEvalCreateRequestEvalTypeEnum;
-  /**
    * Llm Eval Name
-   * Name of the eval to create the continuous eval for
+   * Name of the llm eval to create the continuous eval for
    */
   llm_eval_name: string;
   /**
    * Llm Eval Version
-   * Version of the eval. Can be 'latest', a version number, an ISO datetime string, or a tag.
+   * Version of the llm eval to create the continuous eval for. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.
    */
-  llm_eval_version?: string | number | null;
+  llm_eval_version: string | number;
   /**
    * Name
    * Name of the continuous eval
@@ -1493,13 +1480,6 @@ export interface ContinuousEvalCreateRequest {
    */
   transform_variable_mapping: ContinuousEvalTransformVariableMappingRequest[];
 }
-
-/**
- * Eval Type
- * Type of evaluator: 'llm_eval' or 'ml_eval'.
- * @default "llm_eval"
- */
-export type ContinuousEvalCreateRequestEvalTypeEnum = "llm_eval" | "ml_eval";
 
 /** ContinuousEvalRerunResponse */
 export interface ContinuousEvalRerunResponse {
@@ -1536,12 +1516,6 @@ export interface ContinuousEvalResponse {
    */
   enabled?: boolean;
   /**
-   * Eval Type
-   * Type of evaluator: 'llm_eval' or 'ml_eval'.
-   * @default "llm_eval"
-   */
-  eval_type?: string;
-  /**
    * Id
    * ID of the transform.
    * @format uuid
@@ -1549,14 +1523,14 @@ export interface ContinuousEvalResponse {
   id: string;
   /**
    * Llm Eval Name
-   * Name of the eval.
+   * Name of the llm eval.
    */
-  llm_eval_name?: string | null;
+  llm_eval_name: string;
   /**
    * Llm Eval Version
-   * Version of the eval.
+   * Version of the llm eval.
    */
-  llm_eval_version?: number | null;
+  llm_eval_version: number;
   /**
    * Name
    * Name of the continuous eval.
@@ -1839,17 +1813,6 @@ export interface CreateEvalRequest {
   model_name: string;
   /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
   model_provider: ModelProvider;
-}
-
-/** CreateMLEvalRequest */
-export interface CreateMLEvalRequest {
-  /**
-   * Config
-   * Optional configuration for the ML eval. Valid fields depend on eval_type.
-   */
-  config?: Record<string, any> | null;
-  /** Type of ML eval (e.g. 'pii', 'toxicity', 'prompt_injection') */
-  eval_type: EvalType;
 }
 
 export type CreateNotebookApiV1TasksTaskIdNotebooksPostData = NotebookDetail;
@@ -2711,12 +2674,6 @@ export interface EvalResultSummary {
    */
   total_count: number;
 }
-
-/**
- * EvalType
- * Discriminator for all eval types stored in the llm_evals table.
- */
-export type EvalType = "llm_as_a_judge" | "pii" | "pii_v1" | "toxicity" | "prompt_injection";
 
 /**
  * EvalVariableMapping
@@ -4492,6 +4449,74 @@ export interface KeywordsConfig {
   keywords: string[];
 }
 
+/** LLMBaseConfigSettings */
+export interface LLMBaseConfigSettings {
+  /**
+   * Frequency Penalty
+   * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
+   */
+  frequency_penalty?: number | null;
+  /**
+   * Logit Bias
+   * Modify likelihood of specified tokens appearing in completion
+   */
+  logit_bias?: LogitBiasItem[] | null;
+  /**
+   * Logprobs
+   * Whether to return log probabilities of output tokens
+   */
+  logprobs?: boolean | null;
+  /**
+   * Max Completion Tokens
+   * Maximum number of completion tokens (alternative to max_tokens)
+   */
+  max_completion_tokens?: number | null;
+  /**
+   * Max Tokens
+   * Maximum number of tokens to generate in the response
+   */
+  max_tokens?: number | null;
+  /**
+   * Presence Penalty
+   * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
+   */
+  presence_penalty?: number | null;
+  /** Reasoning effort level for models that support it (e.g., OpenAI o1 series) */
+  reasoning_effort?: ReasoningEffortEnum | null;
+  /**
+   * Seed
+   * Random seed for reproducible outputs
+   */
+  seed?: number | null;
+  /**
+   * Stop
+   * Stop sequence(s) where the model should stop generating
+   */
+  stop?: string | null;
+  /**
+   * Temperature
+   * Sampling temperature (0.0 to 2.0). Higher values make output more random
+   */
+  temperature?: number | null;
+  /** Anthropic-specific thinking parameter for Claude models */
+  thinking?: AnthropicThinkingParamOutput | null;
+  /**
+   * Timeout
+   * Request timeout in seconds
+   */
+  timeout?: number | null;
+  /**
+   * Top Logprobs
+   * Number of most likely tokens to return log probabilities for (1-20)
+   */
+  top_logprobs?: number | null;
+  /**
+   * Top P
+   * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
+   */
+  top_p?: number | null;
+}
+
 /** LLMConfigSettings */
 export interface LLMConfigSettings {
   /**
@@ -4574,11 +4599,8 @@ export interface LLMConfigSettings {
 
 /** LLMEval */
 export interface LLMEval {
-  /**
-   * Config
-   * Eval configuration. LLMBaseConfigSettings for LLM evals; type-specific dict for ML evals.
-   */
-  config?: null;
+  /** LLM configurations for this eval (e.g. temperature, max_tokens, etc.) */
+  config?: LLMBaseConfigSettings | null;
   /**
    * Created At
    * Timestamp when the llm eval was created.
@@ -4591,23 +4613,17 @@ export interface LLMEval {
    */
   deleted_at?: string | null;
   /**
-   * Eval Type
-   * Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
-   * @default "llm_as_a_judge"
-   */
-  eval_type?: string;
-  /**
    * Instructions
-   * Instructions for the llm eval. None for ML evals.
+   * Instructions for the llm eval
    */
-  instructions?: string | null;
+  instructions: string;
   /**
    * Model Name
-   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet'). None for ML evals.
+   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
    */
-  model_name?: string | null;
-  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). None for ML evals. */
-  model_provider?: ModelProvider | null;
+  model_name: string;
+  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
+  model_provider: ModelProvider;
   /**
    * Name
    * Name of the llm eval
@@ -4691,11 +4707,6 @@ export interface LLMGetAllMetadataResponse {
    * List of deleted versions of the llm asset
    */
   deleted_versions: number[];
-  /**
-   * Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
-   * @default "llm_as_a_judge"
-   */
-  eval_type?: EvalType;
   /**
    * Latest Version Created At
    * Timestamp when the last version of the llm asset was created
@@ -4985,17 +4996,15 @@ export interface LLMVersionResponse {
    */
   deleted_at: string | null;
   /**
-   * Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
-   * @default "llm_as_a_judge"
-   */
-  eval_type?: EvalType;
-  /**
    * Model Name
-   * Model name chosen for this version of the llm eval. None for ML evals.
+   * Model name chosen for this version of the llm eval
    */
-  model_name?: string | null;
-  /** Model provider chosen for this version of the llm eval. None for ML evals. */
-  model_provider?: ModelProvider | null;
+  model_name: string;
+  /**
+   * Model Provider
+   * Model provider chosen for this version of the llm eval
+   */
+  model_provider: ModelProvider | "empty";
   /**
    * Tags
    * List of tags for the llm asset
@@ -6396,38 +6405,6 @@ export interface LogitBiasItem {
 }
 
 /**
- * MLEval
- * Internal representation of an ML-type eval (pii, toxicity, prompt_injection, etc.).
- */
-export interface MLEval {
-  /** Config */
-  config?: null;
-  /**
-   * Created At
-   * @format date-time
-   */
-  created_at: string;
-  /** Deleted At */
-  deleted_at?: string | null;
-  /** Discriminator for all eval types stored in the llm_evals table. */
-  eval_type: EvalType;
-  /** Name */
-  name: string;
-  /**
-   * Tags
-   * @default []
-   */
-  tags?: string[];
-  /**
-   * Variables
-   * @default []
-   */
-  variables?: string[];
-  /** Version */
-  version: number;
-}
-
-/**
  * ManualAgentCreationSource
  * Creation source for manually created tasks.
  */
@@ -6589,7 +6566,7 @@ export interface MetricResultResponse {
 export type MetricType = "QueryRelevance" | "ResponseRelevance" | "ToolSelection";
 
 /** ModelProvider */
-export type ModelProvider = "anthropic" | "openai" | "gemini" | "bedrock" | "vertex_ai" | "hosted_vllm";
+export type ModelProvider = "anthropic" | "openai" | "gemini" | "bedrock" | "vertex_ai" | "hosted_vllm" | "azure";
 
 /** ModelProviderList */
 export interface ModelProviderList {
@@ -7782,7 +7759,7 @@ export interface PromptVersionResultListResponse {
 export interface PutModelProviderCredentials {
   /**
    * Api Base
-   * The API base URL. Used for VLLM models.
+   * The API base URL. Required for Azure (endpoint URL) and vLLM models.
    */
   api_base?: string | null;
   /**
@@ -7790,6 +7767,11 @@ export interface PutModelProviderCredentials {
    * The API key for the provider.
    */
   api_key?: string | null;
+  /**
+   * Api Version
+   * The API version. Required for Azure (e.g. '2024-02-01').
+   */
+  api_version?: string | null;
   /**
    * Aws Access Key Id
    * The AWS access key ID.
@@ -9938,10 +9920,6 @@ export type SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostError = HTTPVa
 export type SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostData = LLMEval;
 
 export type SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostError = HTTPValidationError;
-
-export type SaveMlEvalApiV2TasksTaskIdMlEvalsEvalNamePostData = MLEval;
-
-export type SaveMlEvalApiV2TasksTaskIdMlEvalsEvalNamePostError = HTTPValidationError;
 
 /**
  * SavedPromptConfig
@@ -13099,7 +13077,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.542
+ * @version 2.1.549
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -13133,7 +13111,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * No description
+     * @description Add a tag to an llm eval version
      *
      * @tags LLMEvals
      * @name AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPut
@@ -13991,7 +13969,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * No description
+     * @description Deletes an entire llm eval
      *
      * @tags LLMEvals
      * @name DeleteLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameDelete
@@ -14173,7 +14151,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * No description
+     * @description Remove a tag from an llm eval version
      *
      * @tags LLMEvals
      * @name DeleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsTagDelete
@@ -15080,7 +15058,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * No description
+     * @description Get an llm eval by name and tag
      *
      * @tags LLMEvals
      * @name GetLlmEvalByTagApiV1TasksTaskIdLlmEvalsEvalNameVersionsTagsTagGet
@@ -16356,7 +16334,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * No description
+     * @description Run a saved llm eval
      *
      * @tags LLMEvals
      * @name RunSavedLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionCompletionsPost
@@ -16421,26 +16399,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     saveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePost: (evalName: string, taskId: string, data: CreateEvalRequest, params: RequestParams = {}) =>
       this.request<SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostData, SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostError>({
         path: `/api/v1/tasks/${taskId}/llm_evals/${evalName}`,
-        method: "POST",
-        body: data,
-        secure: true,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Save an ML eval. If an eval with the same name exists, a new version is created.
-     *
-     * @tags ML Evals
-     * @name SaveMlEvalApiV2TasksTaskIdMlEvalsEvalNamePost
-     * @summary Save an ML eval
-     * @request POST:/api/v2/tasks/{task_id}/ml_evals/{eval_name}
-     * @secure
-     */
-    saveMlEvalApiV2TasksTaskIdMlEvalsEvalNamePost: (evalName: string, taskId: string, data: CreateMLEvalRequest, params: RequestParams = {}) =>
-      this.request<SaveMlEvalApiV2TasksTaskIdMlEvalsEvalNamePostData, SaveMlEvalApiV2TasksTaskIdMlEvalsEvalNamePostError>({
-        path: `/api/v2/tasks/${taskId}/ml_evals/${evalName}`,
         method: "POST",
         body: data,
         secure: true,
@@ -16607,7 +16565,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * No description
+     * @description Deletes a specific version of an llm eval
      *
      * @tags LLMEvals
      * @name SoftDeleteLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionDelete

@@ -25,6 +25,11 @@ class DatabaseSecretStorage(Base):
         nullable=True,
     )
     region: Mapped[Optional[str]] = mapped_column(String, default=None, nullable=True)
+    api_version: Mapped[Optional[str]] = mapped_column(
+        String,
+        default=None,
+        nullable=True,
+    )
     api_base: Mapped[Optional[Dict[str, Any]]] = mapped_column(
         EncryptedJSON,
         default=None,
