@@ -57,30 +57,30 @@ def test_builtin_validate_multiple_checks(client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
-def test_builtin_validate_unknown_check_returns_422(
+def test_builtin_validate_unknown_check_returns_400(
     client: GenaiEngineTestClientBase,
 ):
     status_code, _ = client.builtin_validate(
         text="hello",
         checks=["not_a_real_check"],
     )
-    assert status_code == 422
+    assert status_code == 400
 
 
 @pytest.mark.unit_tests
-def test_builtin_validate_empty_checks_returns_422(
+def test_builtin_validate_empty_checks_returns_400(
     client: GenaiEngineTestClientBase,
 ):
     status_code, _ = client.builtin_validate(text="hello", checks=[])
-    assert status_code == 422
+    assert status_code == 400
 
 
 @pytest.mark.unit_tests
-def test_builtin_validate_empty_text_returns_422(
+def test_builtin_validate_empty_text_returns_400(
     client: GenaiEngineTestClientBase,
 ):
     status_code, _ = client.builtin_validate(text="", checks=["prompt_injection"])
-    assert status_code == 422
+    assert status_code == 400
 
 
 @pytest.mark.unit_tests
