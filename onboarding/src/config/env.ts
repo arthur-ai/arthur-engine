@@ -1,18 +1,14 @@
 import fs from 'node:fs';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import os from 'node:os';
 import * as dotenv from 'dotenv';
 
-export const BUZZ_ENV_PATH = path.join(
-  os.homedir(),
-  '.arthur-engine',
-  'local-stack',
-  'buzz',
-  '.env',
-);
-
 export function getBuzzEnvPath(repoPath: string): string {
-  return path.join(os.homedir(), '.arthur-engine', 'local-stack', 'buzz', path.basename(repoPath), '.env');
+  const resolved = path.resolve(repoPath);
+  const hash = createHash('sha1').update(resolved).digest('hex').slice(0, 12);
+  const key = `${path.basename(resolved)}-${hash}`;
+  return path.join(os.homedir(), '.arthur-engine', 'local-stack', 'buzz', key, '.env');
 }
 
 export const GENAI_ENGINE_ENV_PATH = path.join(
@@ -36,13 +32,13 @@ export interface BuzzConfig {
   ARTHUR_TASK_ID?: string;
 }
 
-export function readBuzzConfig(envPath = BUZZ_ENV_PATH): BuzzConfig {
+export function readBuzzConfig(envPath: string): BuzzConfig {
   if (!fs.existsSync(envPath)) return {};
   const result = dotenv.config({ path: envPath, override: false, processEnv: {} });
   return (result.parsed ?? {}) as BuzzConfig;
 }
 
-export function writeBuzzConfig(config: Partial<BuzzConfig>, envPath = BUZZ_ENV_PATH): void {
+export function writeBuzzConfig(config: Partial<BuzzConfig>, envPath: string): void {
   fs.mkdirSync(path.dirname(envPath), { recursive: true });
   const existing = readBuzzConfig(envPath);
   const merged = { ...existing, ...config };

@@ -14,15 +14,28 @@ describe('getBuzzEnvPath', () => {
     expect(result).toContain(path.join('.arthur-engine', 'local-stack', 'buzz'));
   });
 
-  it('uses the basename of the repo path as the subdirectory', () => {
+  it('uses basename-hash as the subdirectory', () => {
     const result = getBuzzEnvPath('/home/user/projects/my-app');
-    expect(result).toContain(path.join('buzz', 'my-app', '.env'));
+    const key = path.basename(path.dirname(result));
+    expect(key).toMatch(/^my-app-[0-9a-f]{12}$/);
   });
 
-  it('different repo basenames produce different paths', () => {
-    const path1 = getBuzzEnvPath('/projects/app-one');
-    const path2 = getBuzzEnvPath('/projects/app-two');
-    expect(path1).not.toBe(path2);
+  it('same full path always produces the same env path', () => {
+    const p1 = getBuzzEnvPath('/projects/my-app');
+    const p2 = getBuzzEnvPath('/projects/my-app');
+    expect(p1).toBe(p2);
+  });
+
+  it('different full paths produce different env paths', () => {
+    const p1 = getBuzzEnvPath('/projects/app-one');
+    const p2 = getBuzzEnvPath('/projects/app-two');
+    expect(p1).not.toBe(p2);
+  });
+
+  it('repos with the same basename but different parent dirs produce different paths', () => {
+    const p1 = getBuzzEnvPath('/work/myapp');
+    const p2 = getBuzzEnvPath('/personal/myapp');
+    expect(p1).not.toBe(p2);
   });
 
   it('path ends with .env', () => {
