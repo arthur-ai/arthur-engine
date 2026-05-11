@@ -82,7 +82,7 @@ This ensures a consistent development experience across all platforms.
 
 ### Install the Python dependencies with uv
 
-1. Git clone the repo
+1. Git clone the repo.
 2. Install uv: uv is a Python dependency management tool. `pyproject.toml` is the descriptor.
    ```bash
    pip install uv
@@ -168,6 +168,7 @@ uv run alembic upgrade head
 This command will apply newest migration scripts
 
 #### Autogenerate script with changes
+
 If you made some changes to DB models you should create migration script. You could use alembic to generate such script. If you create
 a new file that contains DB changes import this file to [DB Models init file](src/db_models/__init__.py).
 

@@ -227,7 +227,7 @@ const RagExperimentsContent: React.FC = () => {
         <Typography variant="body1" color="text.secondary" sx={{ textAlign: "center", maxWidth: 400 }}>
           The notebook you're looking for doesn't exist or may have been deleted.
         </Typography>
-        <Button variant="contained" onClick={() => navigateWithUnsavedCheck(`/tasks/${taskId}/rag-notebooks`)} sx={{ mt: 2 }}>
+        <Button variant="contained" onClick={() => navigateWithUnsavedCheck(`/tasks/${taskId}/rag`)} sx={{ mt: 2 }}>
           Back to RAG Notebooks
         </Button>
       </Box>

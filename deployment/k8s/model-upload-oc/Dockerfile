@@ -11,7 +11,7 @@ FROM python:3.12-slim AS downloader
 WORKDIR /app
 
 # Install uv
-RUN pip install --no-cache-dir uv
+RUN pip install --no-cache-dir uv==0.11.7
 
 # Copy project files
 COPY pyproject.toml uv.lock* ./
@@ -49,11 +49,13 @@ WORKDIR /app
 COPY --from=builder --chown=nonroot:nonroot /app/copy_models.py /app/copy_models.py
 
 # Copy downloaded models from stage 1
-COPY --from=downloader /models /models
+COPY --chown=nonroot:nonroot --from=downloader /models /models
 
 # Environment variables
 ENV MODELS_DIR=/models
 ENV LOG_LEVEL=INFO
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 # Run as non-root user (distroless nonroot image runs as uid 65532)
 USER nonroot

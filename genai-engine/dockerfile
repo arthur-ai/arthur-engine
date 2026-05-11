@@ -15,7 +15,7 @@ COPY pyproject.toml /app/
 COPY uv.lock /app/
 
 # Install Python dependencies
-RUN pip3 install uv
+RUN pip3 install uv==0.11.7
 # Set working directory
 WORKDIR /app
 
@@ -104,6 +104,10 @@ COPY --from=ui-build /app/ui-dist /app/static
 # Create models directory for model downloads
 RUN mkdir -p /home/nonroot/models
 
+# Pre-download tiktoken encoding files for airgapped environments
+RUN TIKTOKEN_CACHE_DIR=/home/nonroot/tiktoken \
+    python3 -c "import os, tiktoken; os.makedirs('/home/nonroot/tiktoken', exist_ok=True); [tiktoken.get_encoding(e) for e in ['cl100k_base', 'p50k_base', 'r50k_base', 'o200k_base']]"
+
 
 #####################################################################################
 #                                                                                   #
@@ -129,12 +133,14 @@ COPY --from=install /usr/local/bin/ /usr/local/bin/
 COPY --from=install /etc/ld.so.cache /etc/ld.so.cache
 COPY --from=install --chown=nonroot:nonroot /app/ /home/nonroot/app/
 COPY --from=install --chown=nonroot:nonroot /home/nonroot/models /home/nonroot/models
+COPY --from=install --chown=nonroot:nonroot /home/nonroot/tiktoken /home/nonroot/tiktoken
 
 ENV PATH="/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 ENV PYTHONPATH="/home/nonroot/app/src"
 ENV UV_SYSTEM_PYTHON=1
 # Default model storage path for nonroot user
 ENV MODEL_STORAGE_PATH="/home/nonroot/models"
+ENV TIKTOKEN_CACHE_DIR="/home/nonroot/tiktoken"
 
 # Set working directory (this is where the entrypoint will be run)
 WORKDIR /home/nonroot/app

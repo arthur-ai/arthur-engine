@@ -229,7 +229,11 @@ class PutModelProviderCredentials(BaseModel):
     )
     api_base: Optional[SecretStr] = Field(
         default=None,
-        description="The API base URL. Used for VLLM models.",
+        description="The API base URL. Required for Azure (endpoint URL) and vLLM models.",
+    )
+    api_version: Optional[str] = Field(
+        default=None,
+        description="The API version. Required for Azure (e.g. '2024-02-01').",
     )
     credentials_file: Optional[GCPServiceAccountCredentialsRequest] = Field(
         default=None,

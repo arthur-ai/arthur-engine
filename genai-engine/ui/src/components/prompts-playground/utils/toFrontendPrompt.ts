@@ -14,8 +14,8 @@ export const toFrontendPrompt = (backendPrompt: AgenticPrompt): PromptType => {
     classification: "default",
     name: backendPrompt.name,
     created_at: backendPrompt.created_at || undefined,
-    modelName: backendPrompt.model_name,
-    modelProvider: backendPrompt.model_provider,
+    modelName: backendPrompt.model_name === "empty" ? "" : backendPrompt.model_name,
+    modelProvider: backendPrompt.model_provider === "empty" ? "" : backendPrompt.model_provider,
     messages: backendPrompt.messages.map((msg) => ({
       id: `msg-${uuidv4()}`,
       role: msg.role,

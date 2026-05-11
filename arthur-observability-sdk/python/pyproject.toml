@@ -1,6 +1,6 @@
 [project]
 name = "arthur-observability-sdk"
-version = "2.1.511"
+version = "2.1.551"
 description = "Arthur Observability SDK — telemetry, prompt management, and framework instrumentation"
 authors = [{ name = "Arthur AI", email = "engineering@arthur.ai" }]
 readme = "../README.md"
@@ -111,6 +111,10 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/arthur_observability_sdk", "src/arthur_genai_client"]
+
+[tool.isort]
+profile = "black"
+known_first_party = ["arthur_observability_sdk"]
 
 [tool.black]
 line-length = 100

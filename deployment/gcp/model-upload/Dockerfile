@@ -11,7 +11,7 @@ FROM python:3.12-slim AS downloader
 WORKDIR /app
 
 # Install uv
-RUN pip install --no-cache-dir uv
+RUN pip install --no-cache-dir uv==0.11.7
 
 # Copy project files
 COPY pyproject.toml uv.lock* ./
@@ -37,7 +37,7 @@ FROM python:3.12-slim AS builder
 WORKDIR /app
 
 # Install uv
-RUN pip install --no-cache-dir uv
+RUN pip install --no-cache-dir uv==0.11.7
 
 # Copy project files
 COPY pyproject.toml uv.lock* ./
@@ -67,10 +67,12 @@ COPY --from=downloader /models /models
 # Set Python path to include our dependencies
 ENV PYTHONPATH=/app/site-packages
 ENV LOG_LEVEL=INFO
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 # Create non-root user for Cloud Run
 RUN groupadd -r nonroot -g 65532 && useradd -r -u 65532 -g nonroot nonroot \
-    && chown -R nonroot:nonroot /app
+    && chown -R nonroot:nonroot /app /models
 USER nonroot
 
 # Run upload task

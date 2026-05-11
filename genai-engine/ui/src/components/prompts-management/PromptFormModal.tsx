@@ -221,8 +221,8 @@ const PromptFormModal = ({ open, onClose, onSubmit, isLoading = false }: PromptF
         if (firstMessage && typeof firstMessage.content === "string") {
           setInstructions(firstMessage.content);
         }
-        setModelProvider(promptData.model_provider);
-        setModelName(promptData.model_name);
+        setModelProvider(promptData.model_provider === "empty" ? "" : promptData.model_provider);
+        setModelName(promptData.model_name === "empty" ? "" : promptData.model_name);
       } catch (error) {
         console.error("Failed to fetch latest prompt version:", error);
         // Don't show error to user, just fail silently
