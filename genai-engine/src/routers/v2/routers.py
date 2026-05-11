@@ -1,3 +1,4 @@
+from .builtin_validate_routes import builtin_validate_routes
 from .dataset_management_routes import dataset_management_routes
 from .engine_config_routes import engine_config_routes
 from .feedback_routes import feedback_routes
@@ -14,6 +15,7 @@ all = [
     system_management_routes,
     task_management_routes,
     validate_routes,
+    builtin_validate_routes,
     dataset_management_routes,
     engine_config_routes,
 ]

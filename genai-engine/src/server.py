@@ -65,6 +65,7 @@ from routers.v1.secrets_routes import secrets_routes
 from routers.v1.trace_api_routes import trace_api_routes
 from routers.v1.transform_routes import transform_routes
 from routers.v2.routers import (
+    builtin_validate_routes,
     dataset_management_routes,
     engine_config_routes,
     feedback_routes,
@@ -480,6 +481,7 @@ def get_app_with_routes() -> FastAPI:
             rule_management_routes,
             task_management_routes,
             validate_routes,
+            builtin_validate_routes,
             api_keys_routes,
             span_routes,
             trace_api_routes,
@@ -531,6 +533,7 @@ def get_test_app() -> FastAPI:
             rule_management_routes,
             task_management_routes,
             validate_routes,
+            builtin_validate_routes,
             api_keys_routes,
             span_routes,
             trace_api_routes,
@@ -591,6 +594,7 @@ def get_app() -> FastAPI:
             rule_management_routes,
             task_management_routes,
             validate_routes,
+            builtin_validate_routes,
             api_keys_routes,
             span_routes,
             trace_api_routes,

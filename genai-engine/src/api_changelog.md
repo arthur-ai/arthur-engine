@@ -7,582 +7,612 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  added the new optional `query` request parameter `sort_by`
 
 # 05/11/2026
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the new optional request property 'transform_version_id'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional request property 'transform_version_id'
-- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  endpoint added
-- **CHANGE** for **URL**: /api/v2/engine-config  endpoint added
+
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id} added the new optional request property 'transform_version_id'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals added the new optional request property 'transform_version_id'
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id} endpoint added
+- **CHANGE** for **URL**: /api/v2/engine-config endpoint added
 
 # 05/01/2026
+
 # 04/30/2026
-- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'llm_eval_name' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'llm_eval_version' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  response property 'llm_eval_name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  response property 'llm_eval_version' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'llm_eval_name' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'llm_eval_version' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  response property 'llm_eval_name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  response property 'llm_eval_version' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the response property 'evals/items/llm_eval_name' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the response property 'evals/items/llm_eval_version' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  response property 'evals/items/llm_eval_name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  response property 'evals/items/llm_eval_version' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the response property 'llm_eval_name' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the response property 'llm_eval_version' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  response property 'llm_eval_name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  response property 'llm_eval_version' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  the response property 'instructions' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  the response property 'model_name' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  the response property 'model_provider' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  response property 'instructions' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  response property 'model_name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  response property 'model_provider' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  the response property 'instructions' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  the response property 'model_name' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  the response property 'model_provider' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  response property 'instructions' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  response property 'model_name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  response property 'model_provider' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  the response property 'instructions' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  the response property 'model_name' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  the response property 'model_provider' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  response property 'instructions' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  response property 'model_name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  response property 'model_provider' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  the response property 'instructions' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  the response property 'model_name' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  the response property 'model_provider' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  response property 'instructions' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  response property 'model_name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  response property 'model_provider' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
-- **CHANGE** for **URL**: /api/v1/chatbot/config  added the new 'azure' enum value to the 'model_provider' response property for the response status '200'
+
+- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id} the response property 'llm_eval_name' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id} the response property 'llm_eval_version' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id} response property 'llm_eval_name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id} response property 'llm_eval_version' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id} the response property 'llm_eval_name' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id} the response property 'llm_eval_version' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id} response property 'llm_eval_name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id} response property 'llm_eval_version' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals the response property 'evals/items/llm_eval_name' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals the response property 'evals/items/llm_eval_version' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals response property 'evals/items/llm_eval_name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals response property 'evals/items/llm_eval_version' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals the response property 'llm_eval_name' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals the response property 'llm_eval_version' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals response property 'llm_eval_name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals response property 'llm_eval_version' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} the response property 'instructions' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} the response property 'model_name' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} the response property 'model_provider' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} response property 'instructions' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} response property 'model_name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} response property 'model_provider' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag} the response property 'instructions' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag} the response property 'model_name' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag} the response property 'model_provider' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag} response property 'instructions' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag} response property 'model_name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag} response property 'model_provider' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version} the response property 'instructions' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version} the response property 'model_name' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version} the response property 'model_provider' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version} response property 'instructions' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version} response property 'model_name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version} response property 'model_provider' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags the response property 'instructions' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags the response property 'model_name' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags the response property 'model_provider' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags response property 'instructions' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags response property 'model_name' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags response property 'model_provider' list-of-types was widened by adding types 'null' to media type 'application/json' of response '200'
+- **CHANGE** for **URL**: /api/v1/chatbot/config added the new 'azure' enum value to the 'model_provider' response property for the response status '200'
 - **CHANGE** in API PUT /api/v1/chatbot/config
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  added the new 'azure' enum value to the 'provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models added the new 'azure' enum value to the 'provider' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/notebooks/{notebook_id}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  added the new 'azure' enum value to the 'experiments/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id} added the new 'azure' enum value to the 'experiments/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
 - **CHANGE** in API PUT /api/v1/notebooks/{notebook_id}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  added the new 'azure' enum value to the 'prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state added the new 'azure' enum value to the 'prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
 - **CHANGE** in API PUT /api/v1/notebooks/{notebook_id}/state
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the new 'azure' enum value to the 'prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id} added the new 'azure' enum value to the 'prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
 - **CHANGE** in API PATCH /api/v1/prompt_experiments/{experiment_id}/notebook
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}  added the new 'query_profile' enum value to the 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id} added the new 'query_profile' enum value to the 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/rag_experiments/{experiment_id}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/notebook  added the new 'query_profile' enum value to the 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/notebook added the new 'query_profile' enum value to the 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
 - **CHANGE** in API PATCH /api/v1/rag_experiments/{experiment_id}/notebook
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  added the new 'query_profile' enum value to the 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id} added the new 'query_profile' enum value to the 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/rag_notebooks/{notebook_id}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  added the new 'query_profile' enum value to the 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id} added the new 'query_profile' enum value to the 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/rag_notebooks/{notebook_id}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  added the new 'query_profile' enum value to the 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id} added the new 'query_profile' enum value to the 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
 - **CHANGE** in API PUT /api/v1/rag_notebooks/{notebook_id}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  added the new 'query_profile' enum value to the 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id} added the new 'query_profile' enum value to the 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
 - **CHANGE** in API PUT /api/v1/rag_notebooks/{notebook_id}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/history  added the new 'query_profile' enum value to the 'data/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/history added the new 'query_profile' enum value to the 'data/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/rag_notebooks/{notebook_id}/history
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  added the new 'query_profile' enum value to the 'rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state added the new 'query_profile' enum value to the 'rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/rag_notebooks/{notebook_id}/state
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  added the new 'query_profile' enum value to the 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state added the new 'query_profile' enum value to the 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
 - **CHANGE** in API PUT /api/v1/rag_notebooks/{notebook_id}/state
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  added the new 'query_profile' enum value to the 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state added the new 'query_profile' enum value to the 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
 - **CHANGE** in API PUT /api/v1/rag_notebooks/{notebook_id}/state
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  added the new 'query_profile' enum value to the 'latest_version/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id} added the new 'query_profile' enum value to the 'latest_version/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/rag_search_settings/{setting_configuration_id}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  added the new 'query_profile' enum value to the 'latest_version/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id} added the new 'query_profile' enum value to the 'latest_version/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
 - **CHANGE** in API PATCH /api/v1/rag_search_settings/{setting_configuration_id}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  added the new 'query_profile' enum value to the 'rag_provider_setting_configurations/items/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions added the new 'query_profile' enum value to the 'rag_provider_setting_configurations/items/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/rag_search_settings/{setting_configuration_id}/versions
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  added the new 'query_profile' enum value to the 'settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions added the new 'query_profile' enum value to the 'settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
 - **CHANGE** in API POST /api/v1/rag_search_settings/{setting_configuration_id}/versions
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/tags/{tag}  added the new 'query_profile' enum value to the 'settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/tags/{tag} added the new 'query_profile' enum value to the 'settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/rag_search_settings/{setting_configuration_id}/versions/tags/{tag}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  added the new 'query_profile' enum value to the 'settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number} added the new 'query_profile' enum value to the 'settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  added the new 'query_profile' enum value to the 'settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number} added the new 'query_profile' enum value to the 'settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
 - **CHANGE** in API PATCH /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions  added the new 'azure' enum value to the 'versions/items/model_provider/anyOf[subschema #1: ModelProvider]/' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions added the new 'azure' enum value to the 'versions/items/model_provider/anyOf[subschema #1: ModelProvider]/' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  added the new 'azure' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags added the new 'azure' enum value to the 'model_provider' response property for the response status '200'
 - **CHANGE** in API POST /api/v1/tasks/{task_id}/notebooks
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new 'azure' enum value to the 'data/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments added the new 'azure' enum value to the 'data/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
 - **CHANGE** in API POST /api/v1/tasks/{task_id}/prompt_experiments
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions  added the new 'azure' enum value to the 'versions/items/model_provider/anyOf[subschema #1: ModelProvider]/' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions added the new 'azure' enum value to the 'versions/items/model_provider/anyOf[subschema #1: ModelProvider]/' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the new 'azure' enum value to the 'model_provider/anyOf[subschema #1: ModelProvider]/' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders added the new 'azure' enum value to the 'model_provider/anyOf[subschema #1: ModelProvider]/' response property for the response status '200'
 - **CHANGE** in API PUT /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  added the new 'query_profile' enum value to the 'data/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments added the new 'query_profile' enum value to the 'data/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/tasks/{task_id}/rag_experiments
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  added the new 'query_profile' enum value to the 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments added the new 'query_profile' enum value to the 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
 - **CHANGE** in API POST /api/v1/tasks/{task_id}/rag_experiments
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  added the new 'query_profile' enum value to the 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '201'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks added the new 'query_profile' enum value to the 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '201'
 - **CHANGE** in API POST /api/v1/tasks/{task_id}/rag_notebooks
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  added the new 'query_profile' enum value to the 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '201'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks added the new 'query_profile' enum value to the 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '201'
 - **CHANGE** in API POST /api/v1/tasks/{task_id}/rag_notebooks
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  added the new 'query_profile' enum value to the 'rag_provider_setting_configurations/items/latest_version/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings added the new 'query_profile' enum value to the 'rag_provider_setting_configurations/items/latest_version/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/tasks/{task_id}/rag_search_settings
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  added the new 'query_profile' enum value to the 'latest_version/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings added the new 'query_profile' enum value to the 'latest_version/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
 - **CHANGE** in API POST /api/v1/tasks/{task_id}/rag_search_settings
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/chatbot/config  added the new 'azure' enum value to the request property 'model_provider/anyOf[subschema #1: ModelProvider]/'
-- **CHANGE** for **URL**: /api/v1/completions  added the new 'azure' enum value to the request property 'model_provider'
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new enum value 'azure' to the 'path' request parameter 'provider'
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new enum value 'azure' to the 'path' request parameter 'provider'
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  added the new enum value 'azure' to the 'path' request parameter 'provider'
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  added the new 'azure' enum value to the request property 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
-- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}  added the optional property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}  added the optional property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}  added the optional property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/notebook  added the optional property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/notebook  added the optional property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/notebook  added the optional property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  added the optional property 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  added the optional property 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  added the optional property 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  added the optional property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  added the optional property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  added the optional property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  added the optional property 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  added the optional property 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  added the optional property 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  added the optional property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  added the optional property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  added the optional property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/history  added the optional property 'data/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/history  added the optional property 'data/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/history  added the optional property 'data/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  added the optional property 'rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  added the optional property 'rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  added the optional property 'rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  added the new optional request property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  added the new optional request property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #2: WeaviateKeywordSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  added the new optional request property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #3: WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  added the new 'query_profile' enum value to the request property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  added the new 'query_profile' enum value to the request property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #2: WeaviateKeywordSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  added the new 'query_profile' enum value to the request property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #3: WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  added the optional property 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  added the optional property 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  added the optional property 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  added the optional property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  added the optional property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  added the optional property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/hybrid_search  added the new optional request property 'settings/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
-- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/hybrid_search  added the new 'query_profile' enum value to the request property 'settings/return_metadata/anyOf[subschema #1]/items/'
-- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/keyword_search  added the new optional request property 'settings/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
-- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/keyword_search  added the new 'query_profile' enum value to the request property 'settings/return_metadata/anyOf[subschema #1]/items/'
-- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search  added the new optional request property 'settings/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
-- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search  added the new 'query_profile' enum value to the request property 'settings/return_metadata/anyOf[subschema #1]/items/'
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  added the optional property 'latest_version/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  added the optional property 'latest_version/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  added the optional property 'latest_version/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  added the optional property 'latest_version/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  added the optional property 'latest_version/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  added the optional property 'latest_version/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  added the optional property 'rag_provider_setting_configurations/items/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  added the optional property 'rag_provider_setting_configurations/items/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  added the optional property 'rag_provider_setting_configurations/items/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  added the new optional request property 'settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  added the new optional request property 'settings/anyOf[subschema #2: WeaviateKeywordSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  added the new optional request property 'settings/anyOf[subschema #3: WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  added the new 'query_profile' enum value to the request property 'settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  added the new 'query_profile' enum value to the request property 'settings/anyOf[subschema #2: WeaviateKeywordSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  added the new 'query_profile' enum value to the request property 'settings/anyOf[subschema #3: WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  added the optional property 'settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  added the optional property 'settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  added the optional property 'settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/tags/{tag}  added the optional property 'settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/tags/{tag}  added the optional property 'settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/tags/{tag}  added the optional property 'settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  added the optional property 'settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  added the optional property 'settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  added the optional property 'settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  added the optional property 'settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  added the optional property 'settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  added the optional property 'settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new 'azure' enum value to the request property 'model_provider'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  added the new 'azure' enum value to the request property 'state/anyOf[subschema #1: NotebookState]/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new 'azure' enum value to the request property 'prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new 'azure' enum value to the request property 'model_provider'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  added the optional property 'data/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  added the optional property 'data/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  added the optional property 'data/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  added the new optional request property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  added the new optional request property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #2: WeaviateKeywordSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  added the new optional request property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #3: WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  added the new 'query_profile' enum value to the request property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  added the new 'query_profile' enum value to the request property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #2: WeaviateKeywordSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  added the new 'query_profile' enum value to the request property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #3: WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  added the optional property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  added the optional property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  added the optional property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  added the new optional request property 'state/anyOf[subschema #1: RagNotebookState]/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  added the new optional request property 'state/anyOf[subschema #1: RagNotebookState]/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #2: WeaviateKeywordSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  added the new optional request property 'state/anyOf[subschema #1: RagNotebookState]/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #3: WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  added the new 'query_profile' enum value to the request property 'state/anyOf[subschema #1: RagNotebookState]/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  added the new 'query_profile' enum value to the request property 'state/anyOf[subschema #1: RagNotebookState]/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #2: WeaviateKeywordSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  added the new 'query_profile' enum value to the request property 'state/anyOf[subschema #1: RagNotebookState]/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #3: WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  added the optional property 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '201' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  added the optional property 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '201' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  added the optional property 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '201' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  added the optional property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '201' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  added the optional property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '201' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  added the optional property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '201' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  added the optional property 'rag_provider_setting_configurations/items/latest_version/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  added the optional property 'rag_provider_setting_configurations/items/latest_version/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  added the optional property 'rag_provider_setting_configurations/items/latest_version/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  added the new optional request property 'settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  added the new optional request property 'settings/anyOf[subschema #2: WeaviateKeywordSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  added the new optional request property 'settings/anyOf[subschema #3: WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  added the new 'query_profile' enum value to the request property 'settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  added the new 'query_profile' enum value to the request property 'settings/anyOf[subschema #2: WeaviateKeywordSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  added the new 'query_profile' enum value to the request property 'settings/anyOf[subschema #3: WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  added the optional property 'latest_version/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  added the optional property 'latest_version/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  added the optional property 'latest_version/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic  added the new 'azure' enum value to the request property 'model_provider'
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message  added the new 'azure' enum value to the request property 'model_provider'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/chatbot/config added the new 'azure' enum value to the request property 'model_provider/anyOf[subschema #1: ModelProvider]/'
+- **CHANGE** for **URL**: /api/v1/completions added the new 'azure' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider} added the new enum value 'azure' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider} added the new enum value 'azure' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models added the new enum value 'azure' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state added the new 'azure' enum value to the request property 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
+- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id} added the optional property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id} added the optional property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id} added the optional property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/notebook added the optional property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/notebook added the optional property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/notebook added the optional property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id} added the optional property 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id} added the optional property 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id} added the optional property 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id} added the optional property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id} added the optional property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id} added the optional property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id} added the optional property 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id} added the optional property 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id} added the optional property 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id} added the optional property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id} added the optional property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id} added the optional property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/history added the optional property 'data/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/history added the optional property 'data/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/history added the optional property 'data/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state added the optional property 'rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state added the optional property 'rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state added the optional property 'rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state added the new optional request property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state added the new optional request property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #2: WeaviateKeywordSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state added the new optional request property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #3: WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state added the new 'query_profile' enum value to the request property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state added the new 'query_profile' enum value to the request property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #2: WeaviateKeywordSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state added the new 'query_profile' enum value to the request property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #3: WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state added the optional property 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state added the optional property 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state added the optional property 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state added the optional property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state added the optional property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state added the optional property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/hybrid_search added the new optional request property 'settings/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/hybrid_search added the new 'query_profile' enum value to the request property 'settings/return_metadata/anyOf[subschema #1]/items/'
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/keyword_search added the new optional request property 'settings/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/keyword_search added the new 'query_profile' enum value to the request property 'settings/return_metadata/anyOf[subschema #1]/items/'
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search added the new optional request property 'settings/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search added the new 'query_profile' enum value to the request property 'settings/return_metadata/anyOf[subschema #1]/items/'
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id} added the optional property 'latest_version/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id} added the optional property 'latest_version/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id} added the optional property 'latest_version/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id} added the optional property 'latest_version/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id} added the optional property 'latest_version/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id} added the optional property 'latest_version/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions added the optional property 'rag_provider_setting_configurations/items/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions added the optional property 'rag_provider_setting_configurations/items/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions added the optional property 'rag_provider_setting_configurations/items/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions added the new optional request property 'settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions added the new optional request property 'settings/anyOf[subschema #2: WeaviateKeywordSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions added the new optional request property 'settings/anyOf[subschema #3: WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions added the new 'query_profile' enum value to the request property 'settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions added the new 'query_profile' enum value to the request property 'settings/anyOf[subschema #2: WeaviateKeywordSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions added the new 'query_profile' enum value to the request property 'settings/anyOf[subschema #3: WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions added the optional property 'settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions added the optional property 'settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions added the optional property 'settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/tags/{tag} added the optional property 'settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/tags/{tag} added the optional property 'settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/tags/{tag} added the optional property 'settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number} added the optional property 'settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number} added the optional property 'settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number} added the optional property 'settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number} added the optional property 'settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number} added the optional property 'settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number} added the optional property 'settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} added the new 'azure' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks added the new 'azure' enum value to the request property 'state/anyOf[subschema #1: NotebookState]/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments added the new 'azure' enum value to the request property 'prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} added the new 'azure' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments added the optional property 'data/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments added the optional property 'data/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments added the optional property 'data/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments added the new optional request property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments added the new optional request property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #2: WeaviateKeywordSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments added the new optional request property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #3: WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments added the new 'query_profile' enum value to the request property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments added the new 'query_profile' enum value to the request property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #2: WeaviateKeywordSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments added the new 'query_profile' enum value to the request property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #3: WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments added the optional property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments added the optional property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments added the optional property 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks added the new optional request property 'state/anyOf[subschema #1: RagNotebookState]/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks added the new optional request property 'state/anyOf[subschema #1: RagNotebookState]/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #2: WeaviateKeywordSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks added the new optional request property 'state/anyOf[subschema #1: RagNotebookState]/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #3: WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks added the new 'query_profile' enum value to the request property 'state/anyOf[subschema #1: RagNotebookState]/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks added the new 'query_profile' enum value to the request property 'state/anyOf[subschema #1: RagNotebookState]/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #2: WeaviateKeywordSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks added the new 'query_profile' enum value to the request property 'state/anyOf[subschema #1: RagNotebookState]/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #3: WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks added the optional property 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks added the optional property 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks added the optional property 'experiments/items/rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks added the optional property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks added the optional property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks added the optional property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings added the optional property 'rag_provider_setting_configurations/items/latest_version/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings added the optional property 'rag_provider_setting_configurations/items/latest_version/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings added the optional property 'rag_provider_setting_configurations/items/latest_version/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings added the new optional request property 'settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings added the new optional request property 'settings/anyOf[subschema #2: WeaviateKeywordSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings added the new optional request property 'settings/anyOf[subschema #3: WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings added the new 'query_profile' enum value to the request property 'settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings added the new 'query_profile' enum value to the request property 'settings/anyOf[subschema #2: WeaviateKeywordSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings added the new 'query_profile' enum value to the request property 'settings/anyOf[subschema #3: WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings added the optional property 'latest_version/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings added the optional property 'latest_version/settings/anyOf[subschema #2: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings added the optional property 'latest_version/settings/anyOf[subschema #3: WeaviateKeywordSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #2: MetadataQuery]/query_profile' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic added the new 'azure' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message added the new 'azure' enum value to the request property 'model_provider'
 
 # 04/20/2026
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/synthetic-data/prompt-status  the `model_provider` response's property type/format changed from `string`/`` to ``/`` for status `200`
-- **CHANGE** for **URL**: /api/v2/datasets/synthetic-data/prompt-status  added `#/components/schemas/ModelProvider, subschema #2` to the `model_provider` response property `anyOf` list for the response status `200`
+
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/synthetic-data/prompt-status the `model_provider` response's property type/format changed from `string`/`to`/``for status`200`
+- **CHANGE** for **URL**: /api/v2/datasets/synthetic-data/prompt-status added `#/components/schemas/ModelProvider, subschema #2` to the `model_provider` response property `anyOf` list for the response status `200`
 
 # 04/17/2026
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMPromptRequestConfigSettings]/thinking' request property 'anyOf' list
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking' request property 'anyOf' list
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMPromptRequestConfigSettings]/thinking' request property 'anyOf' list
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking' request property 'anyOf' list
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking' request property 'anyOf' list
-- **CHANGE** for Component/Schema:  removed the schema 'AnthropicThinkingParam'
-- **CHANGE** for **URL**: /api/v1/completions  added '#/components/schemas/AnthropicThinkingParam-Input' to the 'config/anyOf[subschema #1: LLMPromptRequestConfigSettings]/thinking' request property 'anyOf' list
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added '#/components/schemas/AnthropicThinkingParam-Input' to the 'config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking' request property 'anyOf' list
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added '#/components/schemas/AnthropicThinkingParam-Output' to the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  added '#/components/schemas/AnthropicThinkingParam-Output' to the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  added '#/components/schemas/AnthropicThinkingParam-Output' to the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  added '#/components/schemas/AnthropicThinkingParam-Output' to the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added '#/components/schemas/AnthropicThinkingParam-Input' to the 'config/anyOf[subschema #1: LLMPromptRequestConfigSettings]/thinking' request property 'anyOf' list
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added '#/components/schemas/AnthropicThinkingParam-Output' to the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}  added '#/components/schemas/AnthropicThinkingParam-Output' to the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  added '#/components/schemas/AnthropicThinkingParam-Output' to the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added '#/components/schemas/AnthropicThinkingParam-Output' to the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags  added '#/components/schemas/AnthropicThinkingParam-Output' to the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags  removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic  added '#/components/schemas/AnthropicThinkingParam-Input' to the 'config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking' request property 'anyOf' list
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message  added '#/components/schemas/AnthropicThinkingParam-Input' to the 'config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking' request property 'anyOf' list
+
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMPromptRequestConfigSettings]/thinking' request property 'anyOf' list
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking' request property 'anyOf' list
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMPromptRequestConfigSettings]/thinking' request property 'anyOf' list
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking' request property 'anyOf' list
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking' request property 'anyOf' list
+- **CHANGE** for Component/Schema: removed the schema 'AnthropicThinkingParam'
+- **CHANGE** for **URL**: /api/v1/completions added '#/components/schemas/AnthropicThinkingParam-Input' to the 'config/anyOf[subschema #1: LLMPromptRequestConfigSettings]/thinking' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} added '#/components/schemas/AnthropicThinkingParam-Input' to the 'config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} added '#/components/schemas/AnthropicThinkingParam-Output' to the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag} added '#/components/schemas/AnthropicThinkingParam-Output' to the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag} removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version} added '#/components/schemas/AnthropicThinkingParam-Output' to the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version} removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags added '#/components/schemas/AnthropicThinkingParam-Output' to the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMBaseConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} added '#/components/schemas/AnthropicThinkingParam-Input' to the 'config/anyOf[subschema #1: LLMPromptRequestConfigSettings]/thinking' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} added '#/components/schemas/AnthropicThinkingParam-Output' to the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag} added '#/components/schemas/AnthropicThinkingParam-Output' to the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag} removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} added '#/components/schemas/AnthropicThinkingParam-Output' to the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders added '#/components/schemas/AnthropicThinkingParam-Output' to the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags added '#/components/schemas/AnthropicThinkingParam-Output' to the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags removed '#/components/schemas/AnthropicThinkingParam' from the 'config/anyOf[subschema #1: LLMConfigSettings]/thinking' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic added '#/components/schemas/AnthropicThinkingParam-Input' to the 'config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message added '#/components/schemas/AnthropicThinkingParam-Input' to the 'config/anyOf[subschema #1: LLMRequestConfigSettings]/thinking' request property 'anyOf' list
 
 # 04/09/2026
-- **CHANGE** for **URL**: /api/v2/configuration  added the optional property 'trace_retention_days' to the request body
-- **CHANGE** for **URL**: /api/v2/configuration  added the optional property 'trace_retention_days' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/configuration  added the optional property 'allowed_trace_retention_days' to the response with the '200' status
+
+- **CHANGE** for **URL**: /api/v2/configuration added the optional property 'trace_retention_days' to the request body
+- **CHANGE** for **URL**: /api/v2/configuration added the optional property 'trace_retention_days' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/configuration added the optional property 'allowed_trace_retention_days' to the response with the '200' status
 
 # 04/08/2026
-- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}  added the new 'error' enum value to the 'status' response property for the response status '200'
+
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id} added the new 'error' enum value to the 'status' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/continuous_evals/{eval_id}/test_runs
 - **CHANGE**warning [response-property-enum-value-added] at /vagrant/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
 
 # 04/07/2026
-- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}  added the new 'completed' enum value to the 'status' response property for the response status '200'
+
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id} added the new 'completed' enum value to the 'status' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/continuous_evals/test_runs/{test_run_id}
 - **CHANGE**warning [response-property-enum-value-added] at /vagrant/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/test_runs  added the new 'completed' enum value to the 'test_runs/items/status' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/test_runs added the new 'completed' enum value to the 'test_runs/items/status' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/continuous_evals/{eval_id}/test_runs
 - **CHANGE**warning [response-property-enum-value-added] at /vagrant/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/test_runs  added the new 'completed' enum value to the 'status' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/test_runs added the new 'completed' enum value to the 'status' response property for the response status '200'
 - **CHANGE** in API POST /api/v1/continuous_evals/{eval_id}/test_runs
 - **CHANGE**warning [response-property-enum-value-added] at /vagrant/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
 
 # 04/07/2026
-- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}  endpoint added
+
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id} endpoint added
 
 # 04/07/2026
-- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}/results  endpoint added
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/test_runs  endpoint added
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/test_runs  endpoint added
+
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}/results endpoint added
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/test_runs endpoint added
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}/test_runs endpoint added
 
 # 04/06/2026
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/chatbot/stream  for the 'path' request parameter 'task_id', the type/format was changed from 'string'/'' to 'string'/'uuid'
+
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/chatbot/stream for the 'path' request parameter 'task_id', the type/format was changed from 'string'/'' to 'string'/'uuid'
 
 # 04/02/2026
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals  added the new optional 'query' request parameter 'tags'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  added the new optional 'query' request parameter 'tags'
+
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals added the new optional 'query' request parameter 'tags'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts added the new optional 'query' request parameter 'tags'
 
 # 03/26/2026
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals  added the new optional 'query' request parameter 'tags'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  added the new optional 'query' request parameter 'tags'
+
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals added the new optional 'query' request parameter 'tags'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts added the new optional 'query' request parameter 'tags'
 
 # 03/19/2026
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/chatbot/stream  endpoint added
-- **CHANGE** for **URL**: /api/v1/chatbot/history/{conversation_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/chatbot/config  endpoint added
-- **CHANGE** for **URL**: /api/v1/chatbot/config  endpoint added
-- **CHANGE** for **URL**: /api/v2/display-settings  added the optional property 'chatbot_enabled' to the response with the '200' status
+
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/chatbot/stream endpoint added
+- **CHANGE** for **URL**: /api/v1/chatbot/history/{conversation_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/chatbot/config endpoint added
+- **CHANGE** for **URL**: /api/v1/chatbot/config endpoint added
+- **CHANGE** for **URL**: /api/v2/display-settings added the optional property 'chatbot_enabled' to the response with the '200' status
 
 # 03/16/2026
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_count_eq'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_count_gt'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_count_gte'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_count_lt'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_count_lte'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_count_eq'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_count_gt'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_count_gte'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_count_lt'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_count_lte'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_count_eq'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_count_gt'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_count_gte'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_count_lt'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_count_lte'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_count_eq'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_count_gt'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_count_gte'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_count_lt'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_count_lte'
+
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'span_count_eq'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'span_count_gt'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'span_count_gte'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'span_count_lt'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'span_count_lte'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'span_count_eq'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'span_count_gt'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'span_count_gte'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'span_count_lt'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'span_count_lte'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'span_count_eq'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'span_count_gt'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'span_count_gte'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'span_count_lt'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'span_count_lte'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'span_count_eq'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'span_count_gt'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'span_count_gte'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'span_count_lt'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'span_count_lte'
 
 # 03/13/2026
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'sort_by'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'sort_by'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'sort_by'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'sort_by'
+
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'sort_by'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'sort_by'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'sort_by'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'sort_by'
 
 # 03/13/2026
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'completion_token_count_eq'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'completion_token_count_gt'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'completion_token_count_gte'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'completion_token_count_lt'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'completion_token_count_lte'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'prompt_token_count_eq'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'prompt_token_count_gt'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'prompt_token_count_gte'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'prompt_token_count_lt'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'prompt_token_count_lte'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'total_token_count_eq'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'total_token_count_gt'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'total_token_count_gte'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'total_token_count_lt'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'total_token_count_lte'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'completion_token_count_eq'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'completion_token_count_gt'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'completion_token_count_gte'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'completion_token_count_lt'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'completion_token_count_lte'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'prompt_token_count_eq'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'prompt_token_count_gt'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'prompt_token_count_gte'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'prompt_token_count_lt'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'prompt_token_count_lte'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'total_token_count_eq'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'total_token_count_gt'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'total_token_count_gte'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'total_token_count_lt'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'total_token_count_lte'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'completion_token_count_eq'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'completion_token_count_gt'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'completion_token_count_gte'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'completion_token_count_lt'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'completion_token_count_lte'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'prompt_token_count_eq'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'prompt_token_count_gt'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'prompt_token_count_gte'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'prompt_token_count_lt'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'prompt_token_count_lte'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'total_token_count_eq'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'total_token_count_gt'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'total_token_count_gte'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'total_token_count_lt'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'total_token_count_lte'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'completion_token_count_eq'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'completion_token_count_gt'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'completion_token_count_gte'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'completion_token_count_lt'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'completion_token_count_lte'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'prompt_token_count_eq'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'prompt_token_count_gt'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'prompt_token_count_gte'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'prompt_token_count_lt'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'prompt_token_count_lte'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'total_token_count_eq'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'total_token_count_gt'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'total_token_count_gte'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'total_token_count_lt'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'total_token_count_lte'
+
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'completion_token_count_eq'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'completion_token_count_gt'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'completion_token_count_gte'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'completion_token_count_lt'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'completion_token_count_lte'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'prompt_token_count_eq'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'prompt_token_count_gt'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'prompt_token_count_gte'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'prompt_token_count_lt'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'prompt_token_count_lte'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'total_token_count_eq'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'total_token_count_gt'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'total_token_count_gte'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'total_token_count_lt'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'total_token_count_lte'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'completion_token_count_eq'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'completion_token_count_gt'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'completion_token_count_gte'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'completion_token_count_lt'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'completion_token_count_lte'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'prompt_token_count_eq'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'prompt_token_count_gt'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'prompt_token_count_gte'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'prompt_token_count_lt'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'prompt_token_count_lte'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'total_token_count_eq'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'total_token_count_gt'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'total_token_count_gte'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'total_token_count_lt'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'total_token_count_lte'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'completion_token_count_eq'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'completion_token_count_gt'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'completion_token_count_gte'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'completion_token_count_lt'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'completion_token_count_lte'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'prompt_token_count_eq'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'prompt_token_count_gt'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'prompt_token_count_gte'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'prompt_token_count_lt'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'prompt_token_count_lte'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'total_token_count_eq'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'total_token_count_gt'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'total_token_count_gte'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'total_token_count_lt'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'total_token_count_lte'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'completion_token_count_eq'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'completion_token_count_gt'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'completion_token_count_gte'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'completion_token_count_lt'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'completion_token_count_lte'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'prompt_token_count_eq'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'prompt_token_count_gt'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'prompt_token_count_gte'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'prompt_token_count_lt'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'prompt_token_count_lte'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'total_token_count_eq'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'total_token_count_gt'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'total_token_count_gte'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'total_token_count_lt'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'total_token_count_lte'
+
 # 02/27/2026
 
 # 03/10/2026
-- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/dependents  endpoint added
+
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/dependents endpoint added
 
 # 03/10/2026
-- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the non-success response with the status '409'
+
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id} added the non-success response with the status '409'
 
 # 02/27/2026
-- **CHANGE** for Component/Schema:  removed the schema 'CreationSource'
-- **CHANGE** for Component/Schema:  removed the schema 'DiscoverAgentsRequest'
-- **CHANGE** for Component/Schema:  removed the schema 'DiscoverAgentsResponse'
-- **CHANGE** for Component/Schema:  removed the schema 'DiscoveredAgent'
-- **CHANGE** for **URL**: /api/v1/discover-agents  api path removed with deprecation
+
+- **CHANGE** for Component/Schema: removed the schema 'CreationSource'
+- **CHANGE** for Component/Schema: removed the schema 'DiscoverAgentsRequest'
+- **CHANGE** for Component/Schema: removed the schema 'DiscoverAgentsResponse'
+- **CHANGE** for Component/Schema: removed the schema 'DiscoveredAgent'
+- **CHANGE** for **URL**: /api/v1/discover-agents api path removed with deprecation
 
 # 02/26/2026
-- **CHANGE** for **URL**: /api/v2/tasks/search  added the new optional request property 'only_archived'
+
+- **CHANGE** for **URL**: /api/v2/tasks/search added the new optional request property 'only_archived'
 
 # 02/26/2026
-- **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/is_archived' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks  added the optional property 'is_archived' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/search  added the new optional request property 'include_archived'
-- **CHANGE** for **URL**: /api/v2/tasks/search  added the optional property 'tasks/items/is_archived' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  added the optional property 'is_archived' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'is_archived' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id}  added the optional property 'is_archived' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/unarchive  endpoint added
+
+- **CHANGE** for **URL**: /api/v2/tasks added the optional property '/items/is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks added the optional property 'is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/search added the new optional request property 'include_archived'
+- **CHANGE** for **URL**: /api/v2/tasks/search added the optional property 'tasks/items/is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id} added the optional property 'is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id} added the optional property 'is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id} added the optional property 'is_archived' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/unarchive endpoint added
 
 # 02/26/2026
-- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'display_currency' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/sessions  added the optional property 'display_currency' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'display_currency' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'display_currency' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the optional property 'display_currency' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/users  added the optional property 'display_currency' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/display-settings  endpoint added
-- **CHANGE** for **URL**: /api/v2/tasks/search  added the new optional request property 'only_archived'
+
+- **CHANGE** for **URL**: /api/v1/traces added the optional property 'display_currency' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions added the optional property 'display_currency' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id} added the optional property 'display_currency' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics added the optional property 'display_currency' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/spans added the optional property 'display_currency' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/users added the optional property 'display_currency' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/display-settings endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/search added the new optional request property 'only_archived'
 
 # 02/25/2026
-- **BREAKING CHANGE** for **URL**: /api/v1/agent-polling/execute-all  removed the required property 'enqueued' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  added the new optional 'query' request parameter 'timeout'
-- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  added the new optional 'query' request parameter 'wait_for_completion'
-- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  added the non-success response with the status '422'
-- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  added the required property 'traces_fetched' to the response with the '200' status
+
+- **BREAKING CHANGE** for **URL**: /api/v1/agent-polling/execute-all removed the required property 'enqueued' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all added the new optional 'query' request parameter 'timeout'
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all added the new optional 'query' request parameter 'wait_for_completion'
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all added the non-success response with the status '422'
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all added the required property 'traces_fetched' to the response with the '200' status
 
 # 02/25/2026
-- **CHANGE** for **URL**: /api/v2/agent-tasks  added '#/components/schemas/AgentCreationSource' to the '/items/creation_source' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v2/agent-tasks  removed '#/components/schemas/GCPAgentCreationSource, #/components/schemas/OTELAgentCreationSource, #/components/schemas/ManualAgentCreationSource' from the '/items/creation_source' response property 'anyOf' list for the response status '200'
+
+- **CHANGE** for **URL**: /api/v2/agent-tasks added '#/components/schemas/AgentCreationSource' to the '/items/creation_source' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v2/agent-tasks removed '#/components/schemas/GCPAgentCreationSource, #/components/schemas/OTELAgentCreationSource, #/components/schemas/ManualAgentCreationSource' from the '/items/creation_source' response property 'anyOf' list for the response status '200'
 
 # 02/24/2026
-- **CHANGE** for Component/Schema:  removed the schema 'GCPCreationSource'
-- **CHANGE** for Component/Schema:  removed the schema 'ManualCreationSource'
-- **CHANGE** for Component/Schema:  removed the schema 'OTELCreationSource'
-- **CHANGE** for **URL**: /api/v2/agent-tasks  added '#/components/schemas/GCPAgentCreationSource, #/components/schemas/OTELAgentCreationSource, #/components/schemas/ManualAgentCreationSource' to the '/items/creation_source' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v2/agent-tasks  removed '#/components/schemas/GCPCreationSource, #/components/schemas/OTELCreationSource, #/components/schemas/ManualCreationSource' from the '/items/creation_source' response property 'anyOf' list for the response status '200'
+
+- **CHANGE** for Component/Schema: removed the schema 'GCPCreationSource'
+- **CHANGE** for Component/Schema: removed the schema 'ManualCreationSource'
+- **CHANGE** for Component/Schema: removed the schema 'OTELCreationSource'
+- **CHANGE** for **URL**: /api/v2/agent-tasks added '#/components/schemas/GCPAgentCreationSource, #/components/schemas/OTELAgentCreationSource, #/components/schemas/ManualAgentCreationSource' to the '/items/creation_source' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v2/agent-tasks removed '#/components/schemas/GCPCreationSource, #/components/schemas/OTELCreationSource, #/components/schemas/ManualCreationSource' from the '/items/creation_source' response property 'anyOf' list for the response status '200'
 
 # 02/23/2026
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  the '/items/models/anyOf[subschema #1]/items/' response's property type/format changed from 'string'/'' to 'object'/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  removed the required property '/items/creation_source/anyOf[subschema #2: OTELCreationSource]/service_name' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/creation_source/anyOf[subschema #1: GCPCreationSource]/last_fetched' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/creation_source/anyOf[subschema #3: ManualCreationSource]/service_names' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/infrastructure' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/is_agentic' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/execute  endpoint added
-- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #2: OTELCreationSource]/service_names' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/data_sources' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/last_fetched' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/agent-tasks  the 'type' response's property default value changed from 'manual' to 'MANUAL' for the status '200'
-- **CHANGE** for **URL**: /api/v2/agent-tasks  added the required property '/items/models/anyOf[subschema #1]/items/name' to the response with the '200' status
+
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id} api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks the '/items/models/anyOf[subschema #1]/items/' response's property type/format changed from 'string'/'' to 'object'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks removed the required property '/items/creation_source/anyOf[subschema #2: OTELCreationSource]/service_name' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks removed the optional property '/items/creation_source/anyOf[subschema #1: GCPCreationSource]/last_fetched' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks removed the optional property '/items/creation_source/anyOf[subschema #3: ManualCreationSource]/service_names' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks removed the optional property '/items/infrastructure' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks removed the optional property '/items/is_agentic' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/execute endpoint added
+- **CHANGE** for **URL**: /api/v2/agent-tasks added the optional property '/items/creation_source/anyOf[subschema #2: OTELCreationSource]/service_names' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks added the optional property '/items/data_sources' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks added the optional property '/items/last_fetched' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks the 'type' response's property default value changed from 'manual' to 'MANUAL' for the status '200'
+- **CHANGE** for **URL**: /api/v2/agent-tasks added the required property '/items/models/anyOf[subschema #1]/items/name' to the response with the '200' status
 
 # 02/23/2026
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  the '/items/models/anyOf[subschema #1]/items/' response's property type/format changed from 'string'/'' to 'object'/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  removed the required property '/items/creation_source/anyOf[subschema #2: OTELCreationSource]/service_name' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/creation_source/anyOf[subschema #1: GCPCreationSource]/last_fetched' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/creation_source/anyOf[subschema #3: ManualCreationSource]/service_names' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/infrastructure' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/agent-tasks  removed the optional property '/items/is_agentic' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/execute  endpoint added
-- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/creation_source/anyOf[subschema #2: OTELCreationSource]/service_names' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/data_sources' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/agent-tasks  added the optional property '/items/last_fetched' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/agent-tasks  the 'type' response's property default value changed from 'manual' to 'MANUAL' for the status '200'
-- **CHANGE** for **URL**: /api/v2/agent-tasks  added the required property '/items/models/anyOf[subschema #1]/items/name' to the response with the '200' status
+
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id} api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks the '/items/models/anyOf[subschema #1]/items/' response's property type/format changed from 'string'/'' to 'object'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks removed the required property '/items/creation_source/anyOf[subschema #2: OTELCreationSource]/service_name' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks removed the optional property '/items/creation_source/anyOf[subschema #1: GCPCreationSource]/last_fetched' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks removed the optional property '/items/creation_source/anyOf[subschema #3: ManualCreationSource]/service_names' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks removed the optional property '/items/infrastructure' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks removed the optional property '/items/is_agentic' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/execute endpoint added
+- **CHANGE** for **URL**: /api/v2/agent-tasks added the optional property '/items/creation_source/anyOf[subschema #2: OTELCreationSource]/service_names' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks added the optional property '/items/data_sources' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks added the optional property '/items/last_fetched' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks the 'type' response's property default value changed from 'manual' to 'MANUAL' for the status '200'
+- **CHANGE** for **URL**: /api/v2/agent-tasks added the required property '/items/models/anyOf[subschema #1]/items/name' to the response with the '200' status
 
 # 02/23/2026
-- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  the '/items/data_sources/anyOf[subschema #1]/items/' response's property type/format changed from 'string'/'' to 'object'/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks  the '/items/models/anyOf[subschema #1]/items/' response's property type/format changed from 'string'/'' to 'object'/'' for status '200'
-- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all  endpoint added
-- **CHANGE** for **URL**: /api/v2/agent-tasks  added the required property '/items/data_sources/anyOf[subschema #1]/items/url' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/agent-tasks  added the required property '/items/models/anyOf[subschema #1]/items/name' to the response with the '200' status
+
+- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks the '/items/data_sources/anyOf[subschema #1]/items/' response's property type/format changed from 'string'/'' to 'object'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v2/agent-tasks the '/items/models/anyOf[subschema #1]/items/' response's property type/format changed from 'string'/'' to 'object'/'' for status '200'
+- **CHANGE** for **URL**: /api/v1/agent-polling/execute-all endpoint added
+- **CHANGE** for **URL**: /api/v2/agent-tasks added the required property '/items/data_sources/anyOf[subschema #1]/items/url' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/agent-tasks added the required property '/items/models/anyOf[subschema #1]/items/name' to the response with the '200' status
 
 02/20/2026
+
 - Added GET /api/v2/agent-tasks — new unified endpoint for listing agentic tasks with enriched metadata (tools, sub-agents, models, data sources, rules, creation source, span counts)
 - Added POST /api/v1/tasks/{task_id}/agent-polling/execute — manual trigger for global polling per task
 - POST /api/v1/discover-agents — deprecated in favor of /api/v2/agent-tasks
 - Removed POST /api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id} — replaced by the new /execute endpoint
-
 
 02/12/2026
 
@@ -599,653 +629,693 @@ CHANGE for /api/v1/tasks/{task_id}/traces/transforms: Added required property 'c
 CHANGE for multiple endpoints: Added optional properties 'is_autocreated' and 'is_system_task' to responses for /api/v2/tasks, /api/v2/tasks/search, /api/v2/tasks/{task_id}, /api/v2/tasks/{task_id}/metrics/{metric_id}, and /api/v2/tasks/{task_id}/rules/{rule_id}
 
 # 02/06/2026
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional 'query' request parameter 'continuous_eval_ids'
-- **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/agent_metadata' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks  added the new optional request property 'agent_metadata'
-- **CHANGE** for **URL**: /api/v2/tasks  added the optional property 'agent_metadata' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/search  added the optional property 'tasks/items/agent_metadata' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  added the optional property 'agent_metadata' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'agent_metadata' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id}  added the optional property 'agent_metadata' to the response with the '200' status
+
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agent-polling/retry/{agent_polling_data_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals added the new optional 'query' request parameter 'continuous_eval_ids'
+- **CHANGE** for **URL**: /api/v2/tasks added the optional property '/items/agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks added the new optional request property 'agent_metadata'
+- **CHANGE** for **URL**: /api/v2/tasks added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/search added the optional property 'tasks/items/agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id} added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id} added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id} added the optional property 'agent_metadata' to the response with the '200' status
 
 # 02/05/2026
-- **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/agent_metadata' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks  added the new optional request property 'agent_metadata'
-- **CHANGE** for **URL**: /api/v2/tasks  added the optional property 'agent_metadata' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/search  added the optional property 'tasks/items/agent_metadata' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  added the optional property 'agent_metadata' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'agent_metadata' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id}  added the optional property 'agent_metadata' to the response with the '200' status
+
+- **CHANGE** for **URL**: /api/v2/tasks added the optional property '/items/agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks added the new optional request property 'agent_metadata'
+- **CHANGE** for **URL**: /api/v2/tasks added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/search added the optional property 'tasks/items/agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id} added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id} added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id} added the optional property 'agent_metadata' to the response with the '200' status
 
 # 02/04/2026
-- **CHANGE** for **URL**: /api/v2/tasks  added the optional property '/items/agent_metadata' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks  added the new optional request property 'agent_metadata'
-- **CHANGE** for **URL**: /api/v2/tasks  added the optional property 'agent_metadata' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/search  added the optional property 'tasks/items/agent_metadata' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  added the optional property 'agent_metadata' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'agent_metadata' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id}  added the optional property 'agent_metadata' to the response with the '200' status
+
+- **CHANGE** for **URL**: /api/v2/tasks added the optional property '/items/agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks added the new optional request property 'agent_metadata'
+- **CHANGE** for **URL**: /api/v2/tasks added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/search added the optional property 'tasks/items/agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id} added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id} added the optional property 'agent_metadata' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id} added the optional property 'agent_metadata' to the response with the '200' status
 
 # 02/04/2026
-- **CHANGE** for **URL**: /api/v1/discover-agents  endpoint added
+
+- **CHANGE** for **URL**: /api/v1/discover-agents endpoint added
 
 # 02/03/2026
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/analytics/daily  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'eval_name'
+
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/analytics/daily endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results added the new optional 'query' request parameter 'eval_name'
 
 # 02/02/2026
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  deleted the 'query' request parameter 'continuous_eval_id'
+
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results deleted the 'query' request parameter 'continuous_eval_id'
 - **CHANGE** in API GET /api/v1/tasks/{task_id}/continuous_evals/results
 - **CHANGE**warning [request-parameter-removed] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'continuous_eval_ids'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'ids'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'trace_ids'
+- **CHANGE** This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results added the new optional 'query' request parameter 'continuous_eval_ids'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results added the new optional 'query' request parameter 'ids'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results added the new optional 'query' request parameter 'trace_ids'
 
 # 02/02/2026
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  added the new optional request property 'rows_to_add/items/id'
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic  Added new endpoint for generating synthetic dataset rows using LLM. Accepts dataset purpose, column descriptions, model configuration, and number of rows to generate.
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message  Added new endpoint for conversational refinement of synthetic data generation. Supports iterative modification of generated rows via natural language instructions.
+
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions added the new optional request property 'rows_to_add/items/id'
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic Added new endpoint for generating synthetic dataset rows using LLM. Accepts dataset purpose, column descriptions, model configuration, and number of rows to generate.
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic/message Added new endpoint for conversational refinement of synthetic data generation. Supports iterative modification of generated rows via natural language instructions.
 - **CHANGE** Added new request schemas: `SyntheticDataGenerationRequest`, `SyntheticDataConversationRequest`, `SyntheticDataColumnDescription`
 - **CHANGE** Added new response schemas: `SyntheticDataGenerationResponse`, `SyntheticDataRowResponse`
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'include_experiment_traces'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'include_experiment_traces'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'include_experiment_traces'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'include_experiment_traces'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'include_experiment_traces'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'include_experiment_traces'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'include_experiment_traces'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'include_experiment_traces'
 
 # 01/29/2026
-- **CHANGE** for **URL**: /api/v1/model_providers  added the new 'hosted_vllm' enum value to the 'providers/items/provider' response property for the response status '200'
+
+- **CHANGE** for **URL**: /api/v1/model_providers added the new 'hosted_vllm' enum value to the 'providers/items/provider' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/model_providers/{provider}/available_models
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  added the new 'hosted_vllm' enum value to the 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id} added the new 'hosted_vllm' enum value to the 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
 - **CHANGE** in API PUT /api/v1/notebooks/{notebook_id}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/history  added the new 'hosted_vllm' enum value to the 'data/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/history added the new 'hosted_vllm' enum value to the 'data/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/notebooks/{notebook_id}/state
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  added the new 'hosted_vllm' enum value to the 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state added the new 'hosted_vllm' enum value to the 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/prompt_experiments/{experiment_id}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new 'hosted_vllm' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} added the new 'hosted_vllm' enum value to the 'model_provider' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  added the new 'hosted_vllm' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version} added the new 'hosted_vllm' enum value to the 'model_provider' response property for the response status '200'
 - **CHANGE** in API PUT /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  added the new 'hosted_vllm' enum value to the 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '201'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks added the new 'hosted_vllm' enum value to the 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '201'
 - **CHANGE** in API GET /api/v1/tasks/{task_id}/prompt_experiments
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new 'hosted_vllm' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} added the new 'hosted_vllm' enum value to the 'model_provider' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  added the new 'hosted_vllm' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} added the new 'hosted_vllm' enum value to the 'model_provider' response property for the response status '200'
 - **CHANGE** in API POST /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/completions  added the new 'hosted_vllm' enum value to the request property 'model_provider'
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new enum value 'hosted_vllm' to the 'path' request parameter 'provider'
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new optional request property 'api_base'
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new enum value 'hosted_vllm' to the 'path' request parameter 'provider'
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  added the new enum value 'hosted_vllm' to the 'path' request parameter 'provider'
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  added the new 'hosted_vllm' enum value to the request property 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new 'hosted_vllm' enum value to the request property 'model_provider'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  added the new 'hosted_vllm' enum value to the request property 'state/anyOf[subschema #1: NotebookState]/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new 'hosted_vllm' enum value to the request property 'prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new 'hosted_vllm' enum value to the request property 'model_provider'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/completions added the new 'hosted_vllm' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider} added the new enum value 'hosted_vllm' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider} added the new optional request property 'api_base'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider} added the new enum value 'hosted_vllm' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models added the new enum value 'hosted_vllm' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state added the new 'hosted_vllm' enum value to the request property 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} added the new 'hosted_vllm' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks added the new 'hosted_vllm' enum value to the request property 'state/anyOf[subschema #1: NotebookState]/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments added the new 'hosted_vllm' enum value to the request property 'prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} added the new 'hosted_vllm' enum value to the request property 'model_provider'
 
 # 01/20/2026
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_key}/results  the 'data/items/output/anyOf[subschema #1: PromptOutput]/tool_calls/items/' response's property type/format changed from ''/'' to 'object'/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  the 'data/items/prompt_results/items/output/anyOf[subschema #1: PromptOutput]/tool_calls/items/' response's property type/format changed from ''/'' to 'object'/'' for status '200'
-- **CHANGE** for **URL**: /api/v1/traces  for the 'query' request parameter 'status_code', the type/format was generalized from 'array'/'' to ''/''
-- **CHANGE** for **URL**: /api/v1/traces/spans  for the 'query' request parameter 'status_code', the type/format was generalized from 'array'/'' to ''/''
-- **CHANGE** for **URL**: /v1/traces/metrics/  for the 'query' request parameter 'status_code', the type/format was generalized from 'array'/'' to ''/''
-- **CHANGE** for **URL**: /v1/traces/query  for the 'query' request parameter 'status_code', the type/format was generalized from 'array'/'' to ''/''
+
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_key}/results the 'data/items/output/anyOf[subschema #1: PromptOutput]/tool_calls/items/' response's property type/format changed from ''/'' to 'object'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases the 'data/items/prompt_results/items/output/anyOf[subschema #1: PromptOutput]/tool_calls/items/' response's property type/format changed from ''/'' to 'object'/'' for status '200'
+- **CHANGE** for **URL**: /api/v1/traces for the 'query' request parameter 'status_code', the type/format was generalized from 'array'/'' to ''/''
+- **CHANGE** for **URL**: /api/v1/traces/spans for the 'query' request parameter 'status_code', the type/format was generalized from 'array'/'' to ''/''
+- **CHANGE** for **URL**: /v1/traces/metrics/ for the 'query' request parameter 'status_code', the type/format was generalized from 'array'/'' to ''/''
+- **CHANGE** for **URL**: /v1/traces/query for the 'query' request parameter 'status_code', the type/format was generalized from 'array'/'' to ''/''
 
 # 01/27/2026
-- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'enabled' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'enabled' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the response property 'evals/items/enabled' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the response property 'enabled' became optional for the status '200'
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the 'enabled' response's property default value 'true' was added for the status '200'
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the 'enabled' response's property default value 'true' was added for the status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the 'enabled' response's property default value 'true' was added for the status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  the 'enabled' response's property default value 'true' was added for the status '200'
-- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/spans/anyOf[subschema #1]/items/user_id' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/root_spans/items/user_id' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/root_spans/items/user_id' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/spans/{span_id}  added the optional property 'user_id' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/spans/{span_id}/metrics  added the optional property 'user_id' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'root_spans/items/user_id' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'root_spans/items/user_id' to the response with the '200' status
-- **CHANGE** for **URL**: /v1/span/{span_id}/metrics  added the optional property 'user_id' to the response with the '200' status
-- **CHANGE** for **URL**: /v1/spans/query  added the optional property 'spans/items/user_id' to the response with the '200' status
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/root_spans/items/user_id' to the response with the '200' status
-- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/root_spans/items/user_id' to the response with the '200' status
+
+- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id} the response property 'enabled' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id} the response property 'enabled' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals the response property 'evals/items/enabled' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals the response property 'enabled' became optional for the status '200'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id} the 'enabled' response's property default value 'true' was added for the status '200'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id} the 'enabled' response's property default value 'true' was added for the status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals the 'enabled' response's property default value 'true' was added for the status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals the 'enabled' response's property default value 'true' was added for the status '200'
+- **CHANGE** for **URL**: /api/v1/traces added the optional property 'traces/items/spans/anyOf[subschema #1]/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id} added the optional property 'traces/items/root_spans/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics added the optional property 'traces/items/root_spans/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/spans/{span_id} added the optional property 'user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/spans/{span_id}/metrics added the optional property 'user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id} added the optional property 'root_spans/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics added the optional property 'root_spans/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/span/{span_id}/metrics added the optional property 'user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/spans/query added the optional property 'spans/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the optional property 'traces/items/root_spans/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query added the optional property 'traces/items/root_spans/items/user_id' to the response with the '200' status
 
 # 01/23/2026
-- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  request property 'state/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' was restricted to a list of enum values
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments  request property 'template_variable_mapping/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' was restricted to a list of enum values
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  request property 'state/anyOf[subschema #1: AgenticNotebookState]/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' was restricted to a list of enum values
-- **CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}  added the new 'session_id' enum value to the 'template_variable_mapping/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' response property for the response status '200'
+
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state request property 'state/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' was restricted to a list of enum values
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments request property 'template_variable_mapping/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' was restricted to a list of enum values
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks request property 'state/anyOf[subschema #1: AgenticNotebookState]/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' was restricted to a list of enum values
+- **CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id} added the new 'session_id' enum value to the 'template_variable_mapping/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/agentic_experiments/{experiment_id}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}  added the new 'uuid' enum value to the 'state/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id} added the new 'uuid' enum value to the 'state/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' response property for the response status '200'
 - **CHANGE** in API PUT /api/v1/agentic_notebooks/{notebook_id}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  added the new 'session_id' enum value to the 'template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state added the new 'session_id' enum value to the 'template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/agentic_notebooks/{notebook_id}/state
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  added the new 'uuid' enum value to the 'state/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state added the new 'uuid' enum value to the 'state/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type' response property for the response status '200'
 - **CHANGE** in API POST /api/v1/tasks/{task_id}/agentic_notebooks
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  added the new 'session_id' enum value to the request property 'state/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type'
-- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  added the new 'uuid' enum value to the request property 'state/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments  added the new 'session_id' enum value to the request property 'template_variable_mapping/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments  added the new 'uuid' enum value to the request property 'template_variable_mapping/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  added the new 'session_id' enum value to the request property 'state/anyOf[subschema #1: AgenticNotebookState]/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  added the new 'uuid' enum value to the request property 'state/anyOf[subschema #1: AgenticNotebookState]/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state added the new 'session_id' enum value to the request property 'state/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type'
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state added the new 'uuid' enum value to the request property 'state/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments added the new 'session_id' enum value to the request property 'template_variable_mapping/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments added the new 'uuid' enum value to the request property 'template_variable_mapping/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks added the new 'session_id' enum value to the request property 'state/anyOf[subschema #1: AgenticNotebookState]/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks added the new 'uuid' enum value to the request property 'state/anyOf[subschema #1: AgenticNotebookState]/template_variable_mapping/anyOf[subschema #1]/items/source/oneOf[subschema #3: GeneratedVariableSource]/generator_type'
 
 # 01/22/2026
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions  added the required property 'missing_spans' to the response with the '200' status
+
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions added the required property 'missing_spans' to the response with the '200' status
 
 # 01/21/2026
-- **BREAKING CHANGE** for **URL**: /api/v1/model_providers/{provider}  the 'api_key' request property type/format changed from 'string'/'password' to ''/''
-- **CHANGE** for **URL**: /api/v1/model_providers  added the new 'bedrock' enum value to the 'providers/items/provider' response property for the response status '200'
+
+- **BREAKING CHANGE** for **URL**: /api/v1/model_providers/{provider} the 'api_key' request property type/format changed from 'string'/'password' to ''/''
+- **CHANGE** for **URL**: /api/v1/model_providers added the new 'bedrock' enum value to the 'providers/items/provider' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/model_providers
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  added the new 'vertex_ai' enum value to the 'provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models added the new 'vertex_ai' enum value to the 'provider' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/notebooks/{notebook_id}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  added the new 'vertex_ai' enum value to the 'experiments/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id} added the new 'vertex_ai' enum value to the 'experiments/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/notebooks/{notebook_id}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}  added the new 'bedrock' enum value to the 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id} added the new 'bedrock' enum value to the 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
 - **CHANGE** in API PUT /api/v1/notebooks/{notebook_id}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/history  added the new 'bedrock' enum value to the 'data/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/history added the new 'bedrock' enum value to the 'data/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/notebooks/{notebook_id}/history
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  added the new 'vertex_ai' enum value to the 'prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state added the new 'vertex_ai' enum value to the 'prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
 - **CHANGE** in API PUT /api/v1/notebooks/{notebook_id}/state
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  added the new 'vertex_ai' enum value to the 'experiments/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state added the new 'vertex_ai' enum value to the 'experiments/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
 - **CHANGE** in API PUT /api/v1/notebooks/{notebook_id}/state
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the new 'vertex_ai' enum value to the 'prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id} added the new 'vertex_ai' enum value to the 'prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
 - **CHANGE** in API PATCH /api/v1/prompt_experiments/{experiment_id}/notebook
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new 'bedrock' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} added the new 'bedrock' enum value to the 'model_provider' response property for the response status '200'
 - **CHANGE** in API POST /api/v1/tasks/{task_id}/llm_evals/{eval_name}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions  added the new 'vertex_ai' enum value to the 'versions/items/model_provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions added the new 'vertex_ai' enum value to the 'versions/items/model_provider' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  added the new 'bedrock' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version} added the new 'bedrock' enum value to the 'model_provider' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  added the new 'vertex_ai' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags added the new 'vertex_ai' enum value to the 'model_provider' response property for the response status '200'
 - **CHANGE** in API POST /api/v1/tasks/{task_id}/notebooks
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  added the new 'vertex_ai' enum value to the 'experiments/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '201'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks added the new 'vertex_ai' enum value to the 'experiments/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '201'
 - **CHANGE** in API POST /api/v1/tasks/{task_id}/notebooks
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new 'vertex_ai' enum value to the 'data/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments added the new 'vertex_ai' enum value to the 'data/items/prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider' response property for the response status '200'
 - **CHANGE** in API POST /api/v1/tasks/{task_id}/prompt_experiments
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new 'bedrock' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} added the new 'bedrock' enum value to the 'model_provider' response property for the response status '200'
 - **CHANGE** in API POST /api/v1/tasks/{task_id}/prompts/{prompt_name}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions  added the new 'vertex_ai' enum value to the 'versions/items/model_provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions added the new 'vertex_ai' enum value to the 'versions/items/model_provider' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  added the new 'bedrock' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} added the new 'bedrock' enum value to the 'model_provider' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the new 'vertex_ai' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders added the new 'vertex_ai' enum value to the 'model_provider' response property for the response status '200'
 - **CHANGE** in API PUT /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags
 - **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
-- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
-- **CHANGE** for **URL**: /api/v1/completions  added the new 'bedrock' enum value to the request property 'model_provider'
-- **CHANGE** for **URL**: /api/v1/completions  added the new 'vertex_ai' enum value to the request property 'model_provider'
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new enum value 'bedrock' to the 'path' request parameter 'provider'
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new enum value 'vertex_ai' to the 'path' request parameter 'provider'
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new optional request property 'aws_access_key_id'
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new optional request property 'aws_bedrock_runtime_endpoint'
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new optional request property 'aws_role_name'
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new optional request property 'aws_secret_access_key'
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new optional request property 'aws_session_name'
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new optional request property 'credentials_file'
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new optional request property 'project_id'
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new optional request property 'region'
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new enum value 'bedrock' to the 'path' request parameter 'provider'
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added the new enum value 'vertex_ai' to the 'path' request parameter 'provider'
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  added 'subschema #1, subschema #2' to the 'api_key' request property 'anyOf' list
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  the request property 'api_key' became optional
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  the request required property 'api_key' became not write-only
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  added the new enum value 'bedrock' to the 'path' request parameter 'provider'
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  added the new enum value 'vertex_ai' to the 'path' request parameter 'provider'
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  added the new 'bedrock' enum value to the request property 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
-- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state  added the new 'vertex_ai' enum value to the request property 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new 'bedrock' enum value to the request property 'model_provider'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new 'vertex_ai' enum value to the request property 'model_provider'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  added the new 'bedrock' enum value to the request property 'state/anyOf[subschema #1: NotebookState]/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks  added the new 'vertex_ai' enum value to the request property 'state/anyOf[subschema #1: NotebookState]/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new 'bedrock' enum value to the request property 'prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new 'vertex_ai' enum value to the request property 'prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new 'bedrock' enum value to the request property 'model_provider'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new 'vertex_ai' enum value to the request property 'model_provider'
+- **CHANGE** Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/completions added the new 'bedrock' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/completions added the new 'vertex_ai' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider} added the new enum value 'bedrock' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider} added the new enum value 'vertex_ai' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider} added the new optional request property 'aws_access_key_id'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider} added the new optional request property 'aws_bedrock_runtime_endpoint'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider} added the new optional request property 'aws_role_name'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider} added the new optional request property 'aws_secret_access_key'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider} added the new optional request property 'aws_session_name'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider} added the new optional request property 'credentials_file'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider} added the new optional request property 'project_id'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider} added the new optional request property 'region'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider} added the new enum value 'bedrock' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider} added the new enum value 'vertex_ai' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider} added 'subschema #1, subschema #2' to the 'api_key' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider} the request property 'api_key' became optional
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider} the request required property 'api_key' became not write-only
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models added the new enum value 'bedrock' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models added the new enum value 'vertex_ai' to the 'path' request parameter 'provider'
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state added the new 'bedrock' enum value to the request property 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
+- **CHANGE** for **URL**: /api/v1/notebooks/{notebook_id}/state added the new 'vertex_ai' enum value to the request property 'state/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} added the new 'bedrock' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} added the new 'vertex_ai' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks added the new 'bedrock' enum value to the request property 'state/anyOf[subschema #1: NotebookState]/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/notebooks added the new 'vertex_ai' enum value to the request property 'state/anyOf[subschema #1: NotebookState]/prompt_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments added the new 'bedrock' enum value to the request property 'prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments added the new 'vertex_ai' enum value to the request property 'prompt_configs/items/oneOf[subschema #2: UnsavedPromptConfig]/model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} added the new 'bedrock' enum value to the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} added the new 'vertex_ai' enum value to the request property 'model_provider'
 
 # 01/16/2026
-- **BREAKING CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}  the 'http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}/notebook  the 'http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}/test_cases  the 'data/items/agentic_result/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}  the 'experiments/items/http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}  the 'state/http_template/anyOf[subschema #1: HttpTemplate]/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}  the 'experiments/items/http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}  the 'state/http_template/anyOf[subschema #1: HttpTemplate]/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/history  the 'data/items/http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  the 'http_template/anyOf[subschema #1: HttpTemplate]/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  the 'state/http_template/anyOf[subschema #1: HttpTemplate]/request_body' request property type/format changed from 'object'/'' to 'string'/''
-- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  the 'experiments/items/http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  the 'state/http_template/anyOf[subschema #1: HttpTemplate]/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments  the 'data/items/http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments  the 'http_template/request_body' request property type/format changed from 'object'/'' to 'string'/''
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments  the 'http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  the 'state/anyOf[subschema #1: AgenticNotebookState]/http_template/anyOf[subschema #1: HttpTemplate]/request_body' request property type/format changed from 'object'/'' to 'string'/''
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  the 'experiments/items/http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '201'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  the 'state/http_template/anyOf[subschema #1: HttpTemplate]/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '201'
+
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id} the 'http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}/notebook the 'http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}/test_cases the 'data/items/agentic_result/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id} the 'experiments/items/http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id} the 'state/http_template/anyOf[subschema #1: HttpTemplate]/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id} the 'experiments/items/http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id} the 'state/http_template/anyOf[subschema #1: HttpTemplate]/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/history the 'data/items/http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state the 'http_template/anyOf[subschema #1: HttpTemplate]/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state the 'state/http_template/anyOf[subschema #1: HttpTemplate]/request_body' request property type/format changed from 'object'/'' to 'string'/''
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state the 'experiments/items/http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state the 'state/http_template/anyOf[subschema #1: HttpTemplate]/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments the 'data/items/http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments the 'http_template/request_body' request property type/format changed from 'object'/'' to 'string'/''
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments the 'http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks the 'state/anyOf[subschema #1: AgenticNotebookState]/http_template/anyOf[subschema #1: HttpTemplate]/request_body' request property type/format changed from 'object'/'' to 'string'/''
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks the 'experiments/items/http_template/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '201'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks the 'state/http_template/anyOf[subschema #1: HttpTemplate]/request_body' response's property type/format changed from 'object'/'' to 'string'/'' for status '201'
 
 # 01/07/2026
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the required property 'enabled' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the new optional request property 'enabled'
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the required property 'enabled' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional 'query' request parameter 'enabled'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the required property 'evals/items/enabled' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional request property 'enabled'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the required property 'enabled' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'continuous_eval_enabled'
+
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id} added the required property 'enabled' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id} added the new optional request property 'enabled'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id} added the required property 'enabled' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals added the new optional 'query' request parameter 'enabled'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals added the required property 'evals/items/enabled' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals added the new optional request property 'enabled'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals added the required property 'enabled' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results added the new optional 'query' request parameter 'continuous_eval_enabled'
 
 # 01/07/2026
-- **CHANGE** for **URL**: /api/v1/completions  added the optional property 'input_tokens' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/completions  added the optional property 'output_tokens' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/completions  added the optional property 'total_tokens' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions  added the optional property 'input_tokens' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions  added the optional property 'output_tokens' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions  added the optional property 'total_tokens' to the response with the '200' status
+
+- **CHANGE** for **URL**: /api/v1/completions added the optional property 'input_tokens' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/completions added the optional property 'output_tokens' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/completions added the optional property 'total_tokens' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions added the optional property 'input_tokens' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions added the optional property 'output_tokens' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions added the optional property 'total_tokens' to the response with the '200' status
 
 # 01/06/2026
-- **CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}/notebook  endpoint added
+
+- **CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}/notebook endpoint added
 
 # 01/06/2026
-- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/history  endpoint added
-- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  endpoint added
-- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks  endpoint added
+
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/history endpoint added
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state endpoint added
+- **CHANGE** for **URL**: /api/v1/agentic_notebooks/{notebook_id}/state endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_notebooks endpoint added
 
 # 01/05/2026
-- **CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}/test_cases  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces/sessions  added the new optional 'query' request parameter 'include_experiment_sessions'
+
+- **CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/agentic_experiments/{experiment_id}/test_cases endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/agentic_experiments endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/sessions added the new optional 'query' request parameter 'include_experiment_sessions'
 
 # 01/05/2026
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the new optional 'query' request parameter 'continuous_eval_id'
+
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results added the new optional 'query' request parameter 'continuous_eval_id'
 
 # 12/18/2025
-- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}  added the optional property 'notebook_id' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/notebook  endpoint added
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/history  endpoint added
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  endpoint added
-- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks  endpoint added
+
+- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id} added the optional property 'notebook_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/notebook endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/history endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_notebooks endpoint added
 
 # 12/18/2025
-- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}  endpoint added
+
+- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id} endpoint added
 
 # 12/18/2025
-- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/rag_configs/{rag_config_key}/results  endpoint added
-- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/test_cases  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments  endpoint added
+
+- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/rag_configs/{rag_config_key}/results endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}/test_cases endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_experiments endpoint added
 
 # 12/16/2025
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new required request property 'transform_variable_mapping'
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property 'transform_variable_mapping' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the new optional request property 'transform_variable_mapping'
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the optional property 'transform_variable_mapping' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property 'evals/items/transform_variable_mapping' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the optional property 'transform_variable_mapping' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/transforms/{transform_id}/llm_evals/{eval_name}/versions/{eval_version}/variables  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions  added the optional property 'missing_variables' to the response with the '200' status
+
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals added the new required request property 'transform_variable_mapping'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id} added the optional property 'transform_variable_mapping' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id} added the new optional request property 'transform_variable_mapping'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id} added the optional property 'transform_variable_mapping' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals added the optional property 'evals/items/transform_variable_mapping' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals added the optional property 'transform_variable_mapping' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/transforms/{transform_id}/llm_evals/{eval_name}/versions/{eval_version}/variables endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions added the optional property 'missing_variables' to the response with the '200' status
 
 # 12/16/2025
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'status_code'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'status_code'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'status_code'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'status_code'
+
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'status_code'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'status_code'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'status_code'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'status_code'
 
 # 12/14/2025
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'include_spans'
-- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/spans' to the response with the '200' status
+
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'include_spans'
+- **CHANGE** for **URL**: /api/v1/traces added the optional property 'traces/items/spans' to the response with the '200' status
 
 # 12/13/2025
-- **BREAKING CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  the 'continuous_eval_id/anyOf[subschema #1]/' response's property type/format changed from 'string'/'uuid' to 'string'/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  the 'id' response's property type/format changed from 'string'/'uuid' to 'string'/'' for status '200'
-- **CHANGE** for Component/Schema:  removed the schema 'AgenticAnnotation'
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  the response property 'created_at' became required for the status '200'
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  the response property 'updated_at' became required for the status '200'
+
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations the 'continuous_eval_id/anyOf[subschema #1]/' response's property type/format changed from 'string'/'uuid' to 'string'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations the 'id' response's property type/format changed from 'string'/'uuid' to 'string'/'' for status '200'
+- **CHANGE** for Component/Schema: removed the schema 'AgenticAnnotation'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations the response property 'created_at' became required for the status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations the response property 'updated_at' became required for the status '200'
 
 # 12/13/2025
-- **CHANGE** for Component/Schema:  removed the schema 'AgenticAnnotationMetadataResponse'
-- **CHANGE** for Component/Schema:  removed the schema 'ListAgenticAnnotationsMetadataResponse'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the optional property 'annotations/items/annotation_description' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the optional property 'annotations/items/continuous_eval_name' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the optional property 'annotations/items/eval_name' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the optional property 'annotations/items/eval_version' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added the optional property 'annotations/items/input_variables' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added '#/components/schemas/ContinuousEvalRunStatus' to the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  removed 'subschema #1' from the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces  added '#/components/schemas/ContinuousEvalRunStatus' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/traces  removed 'subschema #1' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/traces/annotations/{annotation_id}  added the optional property 'continuous_eval_name' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/annotations/{annotation_id}  added the optional property 'eval_name' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/annotations/{annotation_id}  added the optional property 'eval_version' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added '#/components/schemas/ContinuousEvalRunStatus' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  removed 'subschema #1' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added '#/components/schemas/ContinuousEvalRunStatus' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  removed 'subschema #1' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added '#/components/schemas/ContinuousEvalRunStatus' to the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  removed 'subschema #1' from the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'annotations/items/annotation_description' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'annotations/items/continuous_eval_name' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'annotations/items/eval_name' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'annotations/items/eval_version' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'annotations/items/input_variables' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added '#/components/schemas/ContinuousEvalRunStatus' to the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  removed 'subschema #1' from the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'continuous_eval_name' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'eval_name' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'eval_version' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added '#/components/schemas/ContinuousEvalRunStatus' to the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  removed 'subschema #1' from the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
-- **CHANGE** for **URL**: /v1/traces/metrics/  added '#/components/schemas/ContinuousEvalRunStatus' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /v1/traces/metrics/  removed 'subschema #1' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
-- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
-- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
-- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
-- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
-- **CHANGE** for **URL**: /v1/traces/query  added '#/components/schemas/ContinuousEvalRunStatus' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /v1/traces/query  removed 'subschema #1' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+
+- **CHANGE** for Component/Schema: removed the schema 'AgenticAnnotationMetadataResponse'
+- **CHANGE** for Component/Schema: removed the schema 'ListAgenticAnnotationsMetadataResponse'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results added the optional property 'annotations/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results added the optional property 'annotations/items/continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results added the optional property 'annotations/items/eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results added the optional property 'annotations/items/eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results added the optional property 'annotations/items/input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results added '#/components/schemas/ContinuousEvalRunStatus' to the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results removed 'subschema #1' from the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces added '#/components/schemas/ContinuousEvalRunStatus' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces removed 'subschema #1' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/annotations/{annotation_id} added the optional property 'continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/annotations/{annotation_id} added the optional property 'eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/annotations/{annotation_id} added the optional property 'eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id} added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id} added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id} added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id} added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id} added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id} added '#/components/schemas/ContinuousEvalRunStatus' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id} removed 'subschema #1' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics added '#/components/schemas/ContinuousEvalRunStatus' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics removed 'subschema #1' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id} added the optional property 'annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id} added the optional property 'annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id} added the optional property 'annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id} added the optional property 'annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id} added the optional property 'annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id} added '#/components/schemas/ContinuousEvalRunStatus' to the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id} removed 'subschema #1' from the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations added the optional property 'annotations/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations added the optional property 'annotations/items/continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations added the optional property 'annotations/items/eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations added the optional property 'annotations/items/eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations added the optional property 'annotations/items/input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations added '#/components/schemas/ContinuousEvalRunStatus' to the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations removed 'subschema #1' from the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations added the optional property 'continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations added the optional property 'eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations added the optional property 'eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics added the optional property 'annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics added the optional property 'annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics added the optional property 'annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics added the optional property 'annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics added the optional property 'annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics added '#/components/schemas/ContinuousEvalRunStatus' to the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics removed 'subschema #1' from the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/ added '#/components/schemas/ContinuousEvalRunStatus' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/metrics/ removed 'subschema #1' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/query added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/annotation_description' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/continuous_eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_name' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_version' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query added '#/components/schemas/ContinuousEvalRunStatus' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/query removed 'subschema #1' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
 
 # 12/11/2025
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'continuous_eval_name'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'continuous_eval_name'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'continuous_eval_name'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'continuous_eval_name'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'annotation_type'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'continuous_eval_run_status'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'annotation_type'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'continuous_eval_run_status'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'annotation_type'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'continuous_eval_run_status'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'annotation_type'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'continuous_eval_run_status'
+
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'continuous_eval_name'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'continuous_eval_name'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'continuous_eval_name'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'continuous_eval_name'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'annotation_type'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'continuous_eval_run_status'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'annotation_type'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'continuous_eval_run_status'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'annotation_type'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'continuous_eval_run_status'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'annotation_type'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'continuous_eval_run_status'
 
 # 12/09/2025
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added 'subschema #1' to the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/traces  added 'subschema #1' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/traces  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added 'subschema #1' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added 'subschema #1' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added 'subschema #1' to the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added 'subschema #1' to the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added 'subschema #1' to the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added 'subschema #1' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /v1/traces/metrics/  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /v1/traces/query  added 'subschema #1' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /v1/traces/query  removed '#/components/schemas/ContinuousEvalRunStatus' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results added 'subschema #1' to the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results removed '#/components/schemas/ContinuousEvalRunStatus' from the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces added 'subschema #1' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces removed '#/components/schemas/ContinuousEvalRunStatus' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id} added 'subschema #1' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id} removed '#/components/schemas/ContinuousEvalRunStatus' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics added 'subschema #1' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics removed '#/components/schemas/ContinuousEvalRunStatus' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id} added 'subschema #1' to the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id} removed '#/components/schemas/ContinuousEvalRunStatus' from the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations added 'subschema #1' to the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations removed '#/components/schemas/ContinuousEvalRunStatus' from the 'annotations/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics added 'subschema #1' to the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics removed '#/components/schemas/ContinuousEvalRunStatus' from the 'annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added 'subschema #1' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/metrics/ removed '#/components/schemas/ContinuousEvalRunStatus' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/query added 'subschema #1' to the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/query removed '#/components/schemas/ContinuousEvalRunStatus' from the 'traces/items/annotations/anyOf[subschema #1]/items/run_status' response property 'anyOf' list for the response status '200'
 
 # 12/08/2025
-- **BREAKING CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  the response property 'annotation_score' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  the 'annotation_score' response's property type/format changed from 'integer'/'' to ''/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions  removed the required property 'variables/items/variable_name' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces  removed the optional property 'traces/items/annotation' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  removed the optional property 'traces/items/annotation' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  removed the optional property 'traces/items/annotation' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  removed the optional property 'annotation' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  removed the optional property 'annotation' from the response with the '200' status
-- **CHANGE** for **URL**: /v1/traces/metrics/  removed the optional property 'traces/items/annotation' from the response with the '200' status
-- **CHANGE** for **URL**: /v1/traces/query  removed the optional property 'traces/items/annotation' from the response with the '200' status
-- **CHANGE** for Component/Schema:  removed the schema 'TransformExtractionResponseVariable'
-- **CHANGE** for **URL**: /api/v1/continuous_evals/results/{run_id}/rerun  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/annotations' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/annotations/{annotation_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/annotations' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/annotations' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'annotations' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'continuous_eval_id' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'cost' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'input_variables' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the optional property 'run_status' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added 'subschema #1, subschema #2' to the 'annotation_score' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added the required property 'annotation_type' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'annotations' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions  added the required property 'variables/items/name' to the response with the '200' status
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/annotations' to the response with the '200' status
-- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/annotations' to the response with the '200' status
+
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations the response property 'annotation_score' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations the 'annotation_score' response's property type/format changed from 'integer'/'' to ''/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions removed the required property 'variables/items/variable_name' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces removed the optional property 'traces/items/annotation' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id} removed the optional property 'traces/items/annotation' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics removed the optional property 'traces/items/annotation' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id} removed the optional property 'annotation' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics removed the optional property 'annotation' from the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/ removed the optional property 'traces/items/annotation' from the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query removed the optional property 'traces/items/annotation' from the response with the '200' status
+- **CHANGE** for Component/Schema: removed the schema 'TransformExtractionResponseVariable'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/results/{run_id}/rerun endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results endpoint added
+- **CHANGE** for **URL**: /api/v1/traces added the optional property 'traces/items/annotations' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/annotations/{annotation_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id} added the optional property 'traces/items/annotations' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics added the optional property 'traces/items/annotations' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id} added the optional property 'annotations' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations added the optional property 'continuous_eval_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations added the optional property 'cost' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations added the optional property 'input_variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations added the optional property 'run_status' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations added 'subschema #1, subschema #2' to the 'annotation_score' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations added the required property 'annotation_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics added the optional property 'annotations' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions added the required property 'variables/items/name' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the optional property 'traces/items/annotations' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query added the optional property 'traces/items/annotations' to the response with the '200' status
 
 # 12/03/2025
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces/unregistered  endpoint added
+
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/unregistered endpoint added
 
 # 12/02/2025
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms/{transform_id}  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms/{transform_id}  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms/{transform_id}  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  api path removed without deprecation
-- **CHANGE** for Component/Schema:  removed the schema 'DatasetTransformResponse'
-- **CHANGE** for Component/Schema:  removed the schema 'ListDatasetTransformsResponse'
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'session_ids'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_ids'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name_contains'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'session_ids'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_ids'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name_contains'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'user_ids'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'session_ids'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_ids'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name_contains'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'user_ids'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'session_ids'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_ids'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name_contains'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'user_ids'
+
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms/{transform_id} api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms/{transform_id} api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/transforms/{transform_id} api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id} api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id} api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id} api path removed without deprecation
+- **CHANGE** for Component/Schema: removed the schema 'DatasetTransformResponse'
+- **CHANGE** for Component/Schema: removed the schema 'ListDatasetTransformsResponse'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/transforms/{transform_id}/extractions endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'user_ids'
 
 # 12/02/2025
-- **CHANGE** for **URL**: /api/v1/traces  deleted the 'query' request parameter 'user_ids'
+
+- **CHANGE** for **URL**: /api/v1/traces deleted the 'query' request parameter 'user_ids'
 - **CHANGE** in API GET /v1/spans/query
 - **CHANGE**warning [request-parameter-removed] at /app/genai-engine/new.openapi.json
-- **CHANGE**  This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
-- **CHANGE** for **URL**: /v1/spans/query  deleted the 'query' request parameter 'span_name'
+- **CHANGE** This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
+- **CHANGE** for **URL**: /v1/spans/query deleted the 'query' request parameter 'span_name'
 - **CHANGE** in API GET /v1/spans/query
 - **CHANGE**warning [request-parameter-removed] at /app/genai-engine/new.openapi.json
-- **CHANGE**  This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
+- **CHANGE** This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
 
 # 12/02/2025
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'session_ids'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_ids'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name_contains'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'session_ids'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_ids'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name_contains'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'user_ids'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'session_ids'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_ids'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name_contains'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'user_ids'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'session_ids'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_ids'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name_contains'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'user_ids'
+
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'user_ids'
 
 # 12/02/2025
-- **CHANGE** for **URL**: /api/v1/traces  deleted the 'query' request parameter 'user_ids'
+
+- **CHANGE** for **URL**: /api/v1/traces deleted the 'query' request parameter 'user_ids'
 - **CHANGE** in API GET /v1/spans/query
 - **CHANGE**warning [request-parameter-removed] at /app/genai-engine/new.openapi.json
-- **CHANGE**  This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
-- **CHANGE** for **URL**: /v1/spans/query  deleted the 'query' request parameter 'span_name'
+- **CHANGE** This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
+- **CHANGE** for **URL**: /v1/spans/query deleted the 'query' request parameter 'span_name'
 - **CHANGE** in API GET /v1/spans/query
 - **CHANGE**warning [request-parameter-removed] at /app/genai-engine/new.openapi.json
-- **CHANGE**  This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
+- **CHANGE** This is a warning because some apps may return an error when receiving a parameter that they do not expect. It is recommended to deprecate the parameter first.
 
 # 11/26/2025
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /api/v2/datasets/search  api path removed without deprecation
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/datasets  endpoint added
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/datasets/search  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'session_ids'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_ids'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'span_name_contains'
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'user_ids'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'session_ids'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_ids'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'span_name_contains'
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the new optional 'query' request parameter 'user_ids'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'session_ids'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_ids'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'span_name_contains'
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'user_ids'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'session_ids'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_ids'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'span_name_contains'
-- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'user_ids'
+
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v2/datasets/search api path removed without deprecation
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/datasets endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/datasets/search endpoint added
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /api/v1/traces/spans added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'session_ids'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'span_ids'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'span_name'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'span_name_contains'
+- **CHANGE** for **URL**: /v1/traces/query added the new optional 'query' request parameter 'user_ids'
 
 # 11/25/2025
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'config' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'deleted_at' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'tags' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'tools' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'variables' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the optional property 'version' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the required property 'created_at' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the required property 'model_name' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the required property 'model_provider' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  added the required property 'name' to the response with the '200' status
+
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders added the optional property 'config' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders added the optional property 'deleted_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders added the optional property 'tags' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders added the optional property 'tools' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders added the optional property 'variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders added the optional property 'version' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders added the required property 'created_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders added the required property 'model_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders added the required property 'model_provider' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders added the required property 'name' to the response with the '200' status
 
 # 11/21/2025
+
 - `/api/v1/prompt_experiments/{experiment_id}`: Made `prompt_name` and `prompt_version` optional and added optional fields `prompt_key`, `prompt_type` to `summary_results.prompt_eval_summaries.items` response
 - `/api/v1/prompt_experiments/{experiment_id}`: Added optional field `dataset_row_filter` to response
 - `/api/v1/tasks/{task_id}/prompt_experiments`: Added optional request field `dataset_row_filter`
 
 # 11/20/2025
+
 - `/api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_name}/versions/{prompt_version}/results`: Endpoint removed
 - `/api/v1/prompt_experiments/{experiment_id}/test_cases`: Made `name` and `version` optional in `data.items.prompt_results.items` (changed from required string to optional with multiple types)
 - `/api/v1/tasks/{task_id}/prompt_experiments`: Removed required fields `prompt_name`, `prompt_ref` from request/response; added required request fields `prompt_configs`, `prompt_variable_mapping`
@@ -1257,200 +1327,217 @@ CHANGE for multiple endpoints: Added optional properties 'is_autocreated' and 'i
 - Removed schemas: `PromptRef-Input`, `PromptRef-Output`
 
 # 11/19/2025
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions  endpoint added
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  added the new optional request property 'rows_to_delete_filter'
-- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/annotation' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added the optional property 'traces/items/annotation' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added the optional property 'traces/items/annotation' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added the optional property 'annotation' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added the optional property 'annotation' to the response with the '200' status
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/annotation' to the response with the '200' status
-- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/annotation' to the response with the '200' status
+
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}/extractions endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions added the new optional request property 'rows_to_delete_filter'
+- **CHANGE** for **URL**: /api/v1/traces added the optional property 'traces/items/annotation' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id} added the optional property 'traces/items/annotation' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics added the optional property 'traces/items/annotation' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id} added the optional property 'annotation' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics added the optional property 'annotation' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the optional property 'traces/items/annotation' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query added the optional property 'traces/items/annotation' to the response with the '200' status
 -
 
 # 11/18/2025
-- **CHANGE** for **URL**: /api/v1/prompt_variables  endpoint added
+
+- **CHANGE** for **URL**: /api/v1/prompt_variables endpoint added
 
 # 11/17/2025
-- **CHANGE** for **URL**: /api/v1/prompt_renders  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  endpoint added
+
+- **CHANGE** for **URL**: /api/v1/prompt_renders endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders endpoint added
 
 # 11/17/2025
-- **CHANGE** for **URL**: /api/v1/prompt_renders  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders  endpoint added
+
+- **CHANGE** for **URL**: /api/v1/prompt_renders endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/renders endpoint added
 
 # 11/16/2025
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the optional property 'tags' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  added the optional property 'tags' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags/{tag}  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the optional property 'tags' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  added the optional property 'tags' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags/{tag}  endpoint added
+
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} added the optional property 'tags' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag} endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version} added the optional property 'tags' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags/{tag} endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} added the optional property 'tags' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag} endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} added the optional property 'tags' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags/{tag} endpoint added
 
 # 11/16/2025
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_name}/versions/{prompt_version}/results  endpoint added
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  endpoint added
+
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_name}/versions/{prompt_version}/results endpoint added
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments endpoint added
 
 # 11/16/2025
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  the 'created_at' response's property type/format changed from ''/'' to 'string'/'date-time' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  the 'created_at' response's property type/format changed from ''/'' to 'string'/'date-time' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  the 'created_at' response's property type/format changed from ''/'' to 'string'/'date-time' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  the 'created_at' response's property type/format changed from ''/'' to 'string'/'date-time' for status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  the response property 'created_at' became required for the status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  the response property 'created_at' became required for the status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  the response property 'created_at' became required for the status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  the response property 'created_at' became required for the status '200'
+
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} the 'created_at' response's property type/format changed from ''/'' to 'string'/'date-time' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version} the 'created_at' response's property type/format changed from ''/'' to 'string'/'date-time' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} the 'created_at' response's property type/format changed from ''/'' to 'string'/'date-time' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} the 'created_at' response's property type/format changed from ''/'' to 'string'/'date-time' for status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} the response property 'created_at' became required for the status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version} the response property 'created_at' became required for the status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} the response property 'created_at' became required for the status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} the response property 'created_at' became required for the status '200'
 
 # 11/15/2025
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the request property 'max_score'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the request property 'min_score'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the optional property 'max_score' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the optional property 'min_score' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  removed the optional property 'max_score' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  removed the optional property 'min_score' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the request property 'max_score'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the request property 'min_score'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the optional property 'max_score' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the optional property 'min_score' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  removed the optional property 'max_score' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  removed the optional property 'min_score' from the response with the '200' status
+
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} removed the request property 'max_score'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} removed the request property 'min_score'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} removed the optional property 'max_score' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} removed the optional property 'min_score' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version} removed the optional property 'max_score' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version} removed the optional property 'min_score' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} removed the request property 'max_score'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} removed the request property 'min_score'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} removed the optional property 'max_score' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} removed the optional property 'min_score' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version} removed the optional property 'max_score' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version} removed the optional property 'min_score' from the response with the '200' status
 
 # 11/15/2025
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  endpoint added
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  endpoint added
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  endpoint added
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  endpoint added
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the optional property 'variables' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  added the optional property 'variables' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the optional property 'variables' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  added the optional property 'variables' to the response with the '200' status
+
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id} endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id} endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} added the optional property 'variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version} added the optional property 'variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} added the optional property 'variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} added the optional property 'variables' to the response with the '200' status
 
 # 11/14/2025
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed '#/components/schemas/LLMConfigSettings' from the 'config' request property 'anyOf' list
-- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'frequency_penalty'
-- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'logit_bias'
-- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'logprobs'
-- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'max_completion_tokens'
-- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'max_tokens'
-- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'presence_penalty'
-- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'reasoning_effort'
-- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'response_format'
-- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'seed'
-- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'stop'
-- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'stream_options'
-- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'temperature'
-- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'thinking'
-- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'timeout'
-- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'tool_choice'
-- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'top_logprobs'
-- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'top_p'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'frequency_penalty'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'logit_bias'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'logprobs'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'max_completion_tokens'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'max_tokens'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'presence_penalty'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'reasoning_effort'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'response_format'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'seed'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'stop'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'stream_options'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'temperature'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'thinking'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'timeout'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'tool_choice'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'top_logprobs'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'top_p'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'frequency_penalty' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'logit_bias' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'logprobs' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'max_completion_tokens' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'max_tokens' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'presence_penalty' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'reasoning_effort' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'response_format' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'seed' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'stop' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'stream_options' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'temperature' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'thinking' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'timeout' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'tool_choice' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'top_logprobs' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'top_p' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'frequency_penalty' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'logit_bias' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'logprobs' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'max_completion_tokens' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'max_tokens' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'presence_penalty' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'reasoning_effort' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'response_format' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'seed' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'stop' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'stream_options' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'temperature' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'thinking' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'timeout' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'tool_choice' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'top_logprobs' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'top_p' from the response with the '200' status
-- **CHANGE** for Component/Schema:  removed the schema 'AgenticPromptMessage-Input'
-- **CHANGE** for Component/Schema:  removed the schema 'AgenticPromptMessage-Output'
-- **CHANGE** for **URL**: /api/v1/completions  added the new optional request property 'config'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added '#/components/schemas/LLMRequestConfigSettings' to the 'config' request property 'anyOf' list
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added '#/components/schemas/LLMBaseConfigSettings' to the 'config' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed '#/components/schemas/LLMConfigSettings' from the 'config' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  added '#/components/schemas/LLMBaseConfigSettings' to the 'config' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  removed '#/components/schemas/LLMConfigSettings' from the 'config' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new optional request property 'config'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the optional property 'config' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  added the optional property 'config' to the response with the '200' status
+
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} removed '#/components/schemas/LLMConfigSettings' from the 'config' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v1/completions removed the request property 'frequency_penalty'
+- **CHANGE** for **URL**: /api/v1/completions removed the request property 'logit_bias'
+- **CHANGE** for **URL**: /api/v1/completions removed the request property 'logprobs'
+- **CHANGE** for **URL**: /api/v1/completions removed the request property 'max_completion_tokens'
+- **CHANGE** for **URL**: /api/v1/completions removed the request property 'max_tokens'
+- **CHANGE** for **URL**: /api/v1/completions removed the request property 'presence_penalty'
+- **CHANGE** for **URL**: /api/v1/completions removed the request property 'reasoning_effort'
+- **CHANGE** for **URL**: /api/v1/completions removed the request property 'response_format'
+- **CHANGE** for **URL**: /api/v1/completions removed the request property 'seed'
+- **CHANGE** for **URL**: /api/v1/completions removed the request property 'stop'
+- **CHANGE** for **URL**: /api/v1/completions removed the request property 'stream_options'
+- **CHANGE** for **URL**: /api/v1/completions removed the request property 'temperature'
+- **CHANGE** for **URL**: /api/v1/completions removed the request property 'thinking'
+- **CHANGE** for **URL**: /api/v1/completions removed the request property 'timeout'
+- **CHANGE** for **URL**: /api/v1/completions removed the request property 'tool_choice'
+- **CHANGE** for **URL**: /api/v1/completions removed the request property 'top_logprobs'
+- **CHANGE** for **URL**: /api/v1/completions removed the request property 'top_p'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the request property 'frequency_penalty'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the request property 'logit_bias'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the request property 'logprobs'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the request property 'max_completion_tokens'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the request property 'max_tokens'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the request property 'presence_penalty'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the request property 'reasoning_effort'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the request property 'response_format'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the request property 'seed'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the request property 'stop'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the request property 'stream_options'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the request property 'temperature'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the request property 'thinking'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the request property 'timeout'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the request property 'tool_choice'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the request property 'top_logprobs'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the request property 'top_p'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the optional property 'frequency_penalty' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the optional property 'logit_bias' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the optional property 'logprobs' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the optional property 'max_completion_tokens' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the optional property 'max_tokens' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the optional property 'presence_penalty' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the optional property 'reasoning_effort' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the optional property 'response_format' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the optional property 'seed' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the optional property 'stop' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the optional property 'stream_options' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the optional property 'temperature' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the optional property 'thinking' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the optional property 'timeout' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the optional property 'tool_choice' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the optional property 'top_logprobs' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the optional property 'top_p' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} removed the optional property 'frequency_penalty' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} removed the optional property 'logit_bias' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} removed the optional property 'logprobs' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} removed the optional property 'max_completion_tokens' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} removed the optional property 'max_tokens' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} removed the optional property 'presence_penalty' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} removed the optional property 'reasoning_effort' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} removed the optional property 'response_format' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} removed the optional property 'seed' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} removed the optional property 'stop' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} removed the optional property 'stream_options' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} removed the optional property 'temperature' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} removed the optional property 'thinking' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} removed the optional property 'timeout' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} removed the optional property 'tool_choice' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} removed the optional property 'top_logprobs' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} removed the optional property 'top_p' from the response with the '200' status
+- **CHANGE** for Component/Schema: removed the schema 'AgenticPromptMessage-Input'
+- **CHANGE** for Component/Schema: removed the schema 'AgenticPromptMessage-Output'
+- **CHANGE** for **URL**: /api/v1/completions added the new optional request property 'config'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} added '#/components/schemas/LLMRequestConfigSettings' to the 'config' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} added '#/components/schemas/LLMBaseConfigSettings' to the 'config' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} removed '#/components/schemas/LLMConfigSettings' from the 'config' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version} added '#/components/schemas/LLMBaseConfigSettings' to the 'config' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version} removed '#/components/schemas/LLMConfigSettings' from the 'config' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} added the new optional request property 'config'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} added the optional property 'config' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} added the optional property 'config' to the response with the '200' status
 
 # 11/13/2025
-- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'created_at'
-- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'deleted_at'
-- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'version'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'created_at'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'deleted_at'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'version'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/completions  endpoint added
+
+- **CHANGE** for **URL**: /api/v1/completions removed the request property 'created_at'
+- **CHANGE** for **URL**: /api/v1/completions removed the request property 'deleted_at'
+- **CHANGE** for **URL**: /api/v1/completions removed the request property 'version'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the request property 'created_at'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the request property 'deleted_at'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} removed the request property 'version'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/completions endpoint added
 
 # 11/12/2025
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed 'subschema #2' from the 'response_format' request property 'anyOf' list
+
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed 'subschema #2' from the 'response_format' request property 'anyOf' list
 
 # 11/12/2025
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  endpoint added
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/tags/{tag}  endpoint added
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  endpoint added
+
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/tags/{tag} endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number} endpoint added
 -
+
 # 11/07/2025
-- **CHANGE** for Component/Schema:  removed the schema 'LLMEvalsVersionResponse'
+
+- **CHANGE** for Component/Schema: removed the schema 'LLMEvalsVersionResponse'
 
 # 11/04/2025
-- **BREAKING CHANGE** for **URL**: /api/chat/conversations  the 'items/items/' response's property type/format changed from 'array'/'' to 'object'/'' for status '200'
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  removed the request property 'metric_metadata'
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  removed the request property 'name'
-- **CHANGE** for Component/Schema:  removed the schema 'Page_List_ConversationBaseResponse__'
-- **CHANGE** for **URL**: /api/chat/conversations  added the required property 'items/items/id' to the response with the '200' status
-- **CHANGE** for **URL**: /api/chat/conversations  added the required property 'items/items/updated_at' to the response with the '200' status
+
+- **BREAKING CHANGE** for **URL**: /api/chat/conversations the 'items/items/' response's property type/format changed from 'array'/'' to 'object'/'' for status '200'
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id} removed the request property 'metric_metadata'
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id} removed the request property 'name'
+- **CHANGE** for Component/Schema: removed the schema 'Page_List_ConversationBaseResponse\_\_'
+- **CHANGE** for **URL**: /api/chat/conversations added the required property 'items/items/id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/chat/conversations added the required property 'items/items/updated_at' to the response with the '200' status
 
 # 11/06/2025
-- **BREAKING CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  request property 'tags' list-of-types was narrowed by removing types 'null' from media type 'application/json'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  request property 'tags' list-of-types was narrowed by removing types 'null' from media type 'application/json'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  removed the required property 'prompt_metadata' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  deleted the 'query' request parameter 'prompt_names'
+
+- **BREAKING CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions request property 'tags' list-of-types was narrowed by removing types 'null' from media type 'application/json'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings request property 'tags' list-of-types was narrowed by removing types 'null' from media type 'application/json'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts removed the required property 'prompt_metadata' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts deleted the 'query' request parameter 'prompt_names'
 - **CHANGE** in components/schemas
 - **CHANGE** in components/schemas
 - **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals
@@ -1460,698 +1547,748 @@ CHANGE for multiple endpoints: Added optional properties 'is_autocreated' and 'i
 - **CHANGE** in API GET /api/v1/tasks/{task_id}/prompts
 
 # 11/06/2025
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  api tag 'RAG Settings' added
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  api tag 'RAG Providers' removed
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  api tag 'RAG Settings' added
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  api tag 'RAG Providers' removed
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  api tag 'RAG Settings' added
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  api tag 'RAG Providers' removed
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  api tag 'RAG Settings' added
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  api tag 'RAG Providers' removed
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  api tag 'RAG Settings' added
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  api tag 'RAG Providers' removed
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  api tag 'RAG Settings' added
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  api tag 'RAG Providers' removed
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  api tag 'RAG Settings' added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  api tag 'RAG Providers' removed
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  api tag 'RAG Settings' added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  api tag 'RAG Providers' removed
+
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id} api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id} api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id} api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id} api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id} api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id} api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number} api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number} api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number} api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number} api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings api tag 'RAG Providers' removed
 
 # 11/06/2025
-- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/hybrid_search  removed the request property 'settings/search_kind'
-- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/keyword_search  removed the request property 'settings/search_kind'
-- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search  removed the request property 'settings/search_kind'
+
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/hybrid_search removed the request property 'settings/search_kind'
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/keyword_search removed the request property 'settings/search_kind'
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search removed the request property 'settings/search_kind'
 
 # 11/05/2025
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  endpoint added
-- **BREAKING CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  the response property 'latest_version/settings' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  the response property 'latest_version/settings' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  the response property 'rag_provider_setting_configurations/items/latest_version/settings' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  the response property 'latest_version/settings' became optional for the status '200'
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  added the optional property 'latest_version/deleted_at' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  added 'subschema #4' to the 'latest_version/settings' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  added the optional property 'latest_version/deleted_at' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  added 'subschema #4' to the 'latest_version/settings' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  endpoint added
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  endpoint added
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  added the optional property 'rag_provider_setting_configurations/items/latest_version/deleted_at' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  added 'subschema #4' to the 'rag_provider_setting_configurations/items/latest_version/settings' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  added the optional property 'latest_version/deleted_at' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  added 'subschema #4' to the 'latest_version/settings' response property 'anyOf' list for the response status '200'
+
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name} endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version} endpoint added
+- **BREAKING CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id} the response property 'latest_version/settings' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id} the response property 'latest_version/settings' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings the response property 'rag_provider_setting_configurations/items/latest_version/settings' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings the response property 'latest_version/settings' became optional for the status '200'
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id} added the optional property 'latest_version/deleted_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id} added 'subschema #4' to the 'latest_version/settings' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id} added the optional property 'latest_version/deleted_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id} added 'subschema #4' to the 'latest_version/settings' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number} endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number} endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings added the optional property 'rag_provider_setting_configurations/items/latest_version/deleted_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings added 'subschema #4' to the 'rag_provider_setting_configurations/items/latest_version/settings' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings added the optional property 'latest_version/deleted_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings added 'subschema #4' to the 'latest_version/settings' response property 'anyOf' list for the response status '200'
 
 # 11/04/2025
-- **BREAKING CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  the response property 'all_possible_tags' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  the response property 'all_possible_tags' became optional for the status '200'
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  endpoint added
+
+- **BREAKING CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id} the response property 'all_possible_tags' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings the response property 'all_possible_tags' became optional for the status '200'
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings endpoint added
 
 # 11/04/2025
-- **CHANGE** for **URL**: /api/v1/rag_provider_settings/{setting_configuration_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_provider_settings  endpoint added
+
+- **CHANGE** for **URL**: /api/v1/rag_provider_settings/{setting_configuration_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_provider_settings endpoint added
 
 # 11/04/2025
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  endpoint added
+
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings endpoint added
 
 # 11/03/2025
+
 - Removed context, response, system_prompt, user_query from span properties
 - **CHANGE** for **URL**: Added prompt_token_cost, prompt_token_count, completion_token_cost, completion_token_count, total_token_cost, total_token_count, input_content, output_content to spans, traces, sessions and users.
-- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/hybrid_search  added the new optional request property 'settings/search_kind'
-- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/keyword_search  added the new optional request property 'settings/search_kind'
-- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search  added the new optional request property 'settings/search_kind'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_providers/test_connection  removed the request property 'description'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_providers/test_connection  removed the request property 'name'
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/hybrid_search added the new optional request property 'settings/search_kind'
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/keyword_search added the new optional request property 'settings/search_kind'
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search added the new optional request property 'settings/search_kind'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_providers/test_connection removed the request property 'description'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_providers/test_connection removed the request property 'name'
 
 # 10/31/2025
-- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/hybrid_search  endpoint added
+
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/hybrid_search endpoint added
 
 # 10/31/2025
-- **CHANGE** for **URL**: /api/v2/inferences/query  removed the optional property 'inferences/items/inference_prompt/model_name' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_prompt  removed the request property 'model_name'
-- **CHANGE** for **URL**: /api/v2/validate_prompt  removed the request property 'model_name'
-- **CHANGE** for Component/Schema:  removed the schema 'RagVectorKeywordSearchSettingRequest'
+
+- **CHANGE** for **URL**: /api/v2/inferences/query removed the optional property 'inferences/items/inference_prompt/model_name' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_prompt removed the request property 'model_name'
+- **CHANGE** for **URL**: /api/v2/validate_prompt removed the request property 'model_name'
+- **CHANGE** for Component/Schema: removed the schema 'RagVectorKeywordSearchSettingRequest'
 
 # 10/30/2025
-- **CHANGE** for Component/Schema:  removed the schema 'RagProviderSimilarityTextSearchResponse'
-- **CHANGE** for Component/Schema:  removed the schema 'WeaviateSimilaritySearchMetadata'
-- **CHANGE** for Component/Schema:  removed the schema 'WeaviateSimilaritySearchTextResult'
-- **CHANGE** for Component/Schema:  removed the schema 'WeaviateSimilarityTextSearchResponse'
-- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/keyword_search  endpoint added
-- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search  added '#/components/schemas/WeaviateQueryResultMetadata' to the 'response/objects/items/metadata' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search  removed '#/components/schemas/WeaviateSimilaritySearchMetadata' from the 'response/objects/items/metadata' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new 'developer' enum value to the 'messages/items/role' response property for the response status '200'
+
+- **CHANGE** for Component/Schema: removed the schema 'RagProviderSimilarityTextSearchResponse'
+- **CHANGE** for Component/Schema: removed the schema 'WeaviateSimilaritySearchMetadata'
+- **CHANGE** for Component/Schema: removed the schema 'WeaviateSimilaritySearchTextResult'
+- **CHANGE** for Component/Schema: removed the schema 'WeaviateSimilarityTextSearchResponse'
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/keyword_search endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search added '#/components/schemas/WeaviateQueryResultMetadata' to the 'response/objects/items/metadata' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search removed '#/components/schemas/WeaviateSimilaritySearchMetadata' from the 'response/objects/items/metadata' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} added the new 'developer' enum value to the 'messages/items/role' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}
-- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/collections  endpoint added
-
-
-# 10/30/2025
-- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_providers/test_connection  endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/collections endpoint added
 
 # 10/30/2025
-- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_providers  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_providers  endpoint added
+
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_providers/test_connection endpoint added
+
+# 10/30/2025
+
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_providers endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_providers endpoint added
 
 # 10/28/2025
-- **CHANGE** for **URL**: /api/v2/inferences/query  added the optional property 'inferences/items/inference_prompt/model_name' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_prompt  added the new optional request property 'model_name'
-- **CHANGE** for **URL**: /api/v2/validate_prompt  added the new optional request property 'model_name'
+
+- **CHANGE** for **URL**: /api/v2/inferences/query added the optional property 'inferences/items/inference_prompt/model_name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_prompt added the new optional request property 'model_name'
+- **CHANGE** for **URL**: /api/v2/validate_prompt added the new optional request property 'model_name'
 
 # 10/29/2025
-- **BREAKING CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  the response's body type/format changed from ''/'' to 'object'/'' for status '201'
-- **BREAKING CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  the response's body type/format changed from ''/'' to 'object'/'' for status '200'
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  api operation id 'set_model_provider_api_v1_model_providers__provider__delete' removed and replaced with 'delete_model_provider_api_v1_model_providers__provider__delete'
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  api operation id 'get_model_providers_api_v1_model_providers__provider__available_models_get' removed and replaced with 'get_model_providers_available_models_api_v1_model_providers__provider__available_models_get'
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  added the optional property 'config' to the response with the '201' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  added the optional property 'enabled' to the response with the '201' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  added the required property 'created_at' to the response with the '201' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  added the required property 'id' to the response with the '201' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  added the required property 'metric_metadata' to the response with the '201' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  added the required property 'name' to the response with the '201' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  added the required property 'type' to the response with the '201' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  added the required property 'updated_at' to the response with the '201' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'is_agentic' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'metrics' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the required property 'created_at' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the required property 'id' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the required property 'name' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the required property 'rules' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the required property 'updated_at' to the response with the '200' status
+
+- **BREAKING CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics the response's body type/format changed from ''/'' to 'object'/'' for status '201'
+- **BREAKING CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id} the response's body type/format changed from ''/'' to 'object'/'' for status '200'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider} api operation id 'set_model_provider_api_v1_model_providers**provider**delete' removed and replaced with 'delete_model_provider_api_v1_model_providers**provider**delete'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models api operation id 'get_model_providers_api_v1_model_providers**provider**available_models_get' removed and replaced with 'get_model_providers_available_models_api_v1_model_providers**provider**available_models_get'
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics added the optional property 'config' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics added the optional property 'enabled' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics added the required property 'created_at' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics added the required property 'id' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics added the required property 'metric_metadata' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics added the required property 'name' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics added the required property 'type' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics added the required property 'updated_at' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id} added the optional property 'is_agentic' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id} added the optional property 'metrics' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id} added the required property 'created_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id} added the required property 'id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id} added the required property 'name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id} added the required property 'rules' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id} added the required property 'updated_at' to the response with the '200' status
 
 # 10/28/2025
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the new optional request property 'metric_metadata'
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the new optional request property 'name'
+
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id} added the new optional request property 'metric_metadata'
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id} added the new optional request property 'name'
 
 # 10/23/2025
-- **CHANGE** for **URL**: /api/v1/completions  added the new optional request property 'completion_request/strict'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions  added the new optional request property 'strict'
+
+- **CHANGE** for **URL**: /api/v1/completions added the new optional request property 'completion_request/strict'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions added the new optional request property 'strict'
 
 # 10/22/2025
-- **BREAKING CHANGE** for **URL**: /api/v1/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}/completions  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  api path removed without deprecation
-- **CHANGE** for **URL**: /api/v1/completions  api tag 'Prompts' added
-- **CHANGE** for **URL**: /api/v1/completions  api tag 'AgenticPrompt' removed
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions  endpoint added
+
+- **BREAKING CHANGE** for **URL**: /api/v1/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}/completions api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} api path removed without deprecation
+- **CHANGE** for **URL**: /api/v1/completions api tag 'Prompts' added
+- **CHANGE** for **URL**: /api/v1/completions api tag 'AgenticPrompt' removed
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name} endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version} endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions endpoint added
 
 # 10/22/2025
-- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'user_ids'
-- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/user_id' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/sessions  added the new optional 'query' request parameter 'user_ids'
-- **CHANGE** for **URL**: /api/v1/traces/sessions  added the optional property 'sessions/items/user_id' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/spans  added the optional property 'spans/items/user_id' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/traces/sessions  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces/spans  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces/spans/{span_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces/spans/{span_id}/metrics  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces/users  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces/users/{user_id}  endpoint added
+
+- **CHANGE** for **URL**: /api/v1/traces added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /api/v1/traces added the optional property 'traces/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /api/v1/traces/sessions added the optional property 'sessions/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/spans added the optional property 'spans/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/spans endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/spans/{span_id} endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/spans/{span_id}/metrics endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/users endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/users/{user_id} endpoint added
 
 # 10/21/2025
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  endpoint added
+
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models endpoint added
 
 # 10/20/2025
-- **CHANGE** for **URL**: /api/v1/users  endpoint added
-- **CHANGE** for **URL**: /api/v1/users/{user_id}/sessions  endpoint added
-- **CHANGE** for **URL**: /api/v1/users/{user_id}/traces  endpoint added
+
+- **CHANGE** for **URL**: /api/v1/users endpoint added
+- **CHANGE** for **URL**: /api/v1/users/{user_id}/sessions endpoint added
+- **CHANGE** for **URL**: /api/v1/users/{user_id}/traces endpoint added
 
 # 10/21/2025
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  endpoint added
+
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models endpoint added
 
 # 10/20/2025
-- **CHANGE** for **URL**: /api/v2/datasets  added the optional property 'latest_version_number' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/search  added the optional property 'datasets/items/latest_version_number' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}  added the optional property 'latest_version_number' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}  added the optional property 'latest_version_number' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  added the required property 'rows/items/created_at' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}  added the required property 'rows/items/created_at' to the response with the '200' status
+
+- **CHANGE** for **URL**: /api/v2/datasets added the optional property 'latest_version_number' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/search added the optional property 'datasets/items/latest_version_number' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id} added the optional property 'latest_version_number' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id} added the optional property 'latest_version_number' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions added the required property 'rows/items/created_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number} added the required property 'rows/items/created_at' to the response with the '200' status
 
 # 10/20/2025
-- **BREAKING CHANGE** for **URL**: /api/v1/model_providers/{provider}  the 'api_key' request property type/format changed from 'string'/'' to 'string'/'password'
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  the request required property 'api_key' became write-only
+
+- **BREAKING CHANGE** for **URL**: /api/v1/model_providers/{provider} the 'api_key' request property type/format changed from 'string'/'' to 'string'/'password'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider} the request required property 'api_key' became write-only
 
 # 10/20/2025
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'azure' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'bedrock' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'sagemaker' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'vertex_ai' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'azure' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'bedrock' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'sagemaker' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'vertex_ai' of the request property 'model_provider'
-- **CHANGE** for **URL**: /api/v1/model_providers  endpoint added
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  endpoint added
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  endpoint added
-- **CHANGE** for **URL**: /api/v1/secrets/rotation  endpoint added
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'azure' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'bedrock' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'sagemaker' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'vertex_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'azure' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'bedrock' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'sagemaker' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'vertex_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'azure' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'bedrock' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'sagemaker' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'vertex_ai' enum value from the 'model_provider' response property for the response status '200'
+
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'azure' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'bedrock' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'sagemaker' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'vertex_ai' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'azure' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'bedrock' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'sagemaker' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'vertex_ai' of the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/model_providers endpoint added
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider} endpoint added
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider} endpoint added
+- **CHANGE** for **URL**: /api/v1/secrets/rotation endpoint added
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'azure' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'bedrock' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'sagemaker' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'vertex_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'azure' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'bedrock' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'sagemaker' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'vertex_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'azure' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'bedrock' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'sagemaker' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'vertex_ai' enum value from the 'model_provider' response property for the response status '200'
 
 # 10/20/2025
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'azure' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'bedrock' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'sagemaker' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'vertex_ai' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'azure' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'bedrock' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'sagemaker' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'vertex_ai' of the request property 'model_provider'
-- **CHANGE** for **URL**: /api/v1/model_providers  endpoint added
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  endpoint added
-- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  endpoint added
-- **CHANGE** for **URL**: /api/v1/secrets/rotation  endpoint added
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'azure' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'bedrock' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'sagemaker' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'vertex_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'azure' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'bedrock' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'sagemaker' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'vertex_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'azure' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'bedrock' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'sagemaker' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'vertex_ai' enum value from the 'model_provider' response property for the response status '200'
+
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'azure' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'bedrock' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'sagemaker' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'vertex_ai' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'azure' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'bedrock' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'sagemaker' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'vertex_ai' of the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/model_providers endpoint added
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider} endpoint added
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider} endpoint added
+- **CHANGE** for **URL**: /api/v1/secrets/rotation endpoint added
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'azure' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'bedrock' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'sagemaker' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'vertex_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'azure' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'bedrock' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'sagemaker' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'vertex_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'azure' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'bedrock' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'sagemaker' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'vertex_ai' enum value from the 'model_provider' response property for the response status '200'
 
 # 10/20/2025
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  added the optional property 'prompts/items/created_at' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  added the optional property 'prompts/items/created_at' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  added the optional property 'created_at' to the response with the '200' status
+
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts added the optional property 'prompts/items/created_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions added the optional property 'prompts/items/created_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} added the optional property 'created_at' to the response with the '200' status
 
 # 10/17/2025
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'ai21' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'baseten' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'cloudflare' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'cohere' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'deepseek' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'empower' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'featherless_ai' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'friendliai' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'galadriel' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'groq' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'huggingface' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'meta_llama' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'mistral' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'nebius' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'nlp_cloud' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'novita' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'openrouter' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'petals' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'replicate' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'together_ai' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'vllm' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'watsonx' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'ai21' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'baseten' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'cloudflare' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'cohere' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'deepseek' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'empower' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'featherless_ai' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'friendliai' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'galadriel' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'groq' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'huggingface' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'meta_llama' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'mistral' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'nebius' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'nlp_cloud' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'novita' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'openrouter' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'petals' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'replicate' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'together_ai' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'vllm' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'watsonx' of the request property 'model_provider'
-- **CHANGE** for Component/Schema:  removed the schema 'ProviderEnum'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'ai21' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'baseten' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'cloudflare' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'cohere' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'deepseek' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'empower' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'featherless_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'friendliai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'galadriel' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'groq' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'huggingface' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'meta_llama' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'mistral' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'nebius' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'nlp_cloud' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'novita' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'openrouter' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'petals' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'replicate' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'together_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'vllm' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'watsonx' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'ai21' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'baseten' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'cloudflare' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'cohere' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'deepseek' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'empower' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'featherless_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'friendliai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'galadriel' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'groq' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'huggingface' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'meta_llama' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'mistral' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'nebius' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'nlp_cloud' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'novita' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'openrouter' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'petals' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'replicate' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'together_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'vllm' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'watsonx' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'ai21' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'baseten' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'cloudflare' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'cohere' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'deepseek' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'empower' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'featherless_ai' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'friendliai' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'galadriel' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'groq' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'huggingface' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'meta_llama' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'mistral' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'nebius' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'nlp_cloud' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'novita' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'openrouter' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'petals' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'replicate' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'together_ai' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'vllm' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'watsonx' enum value from the 'model_provider' response property for the response status '200'
+
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'ai21' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'baseten' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'cloudflare' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'cohere' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'deepseek' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'empower' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'featherless_ai' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'friendliai' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'galadriel' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'groq' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'huggingface' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'meta_llama' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'mistral' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'nebius' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'nlp_cloud' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'novita' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'openrouter' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'petals' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'replicate' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'together_ai' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'vllm' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'watsonx' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'ai21' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'baseten' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'cloudflare' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'cohere' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'deepseek' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'empower' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'featherless_ai' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'friendliai' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'galadriel' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'groq' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'huggingface' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'meta_llama' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'mistral' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'nebius' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'nlp_cloud' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'novita' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'openrouter' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'petals' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'replicate' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'together_ai' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'vllm' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'watsonx' of the request property 'model_provider'
+- **CHANGE** for Component/Schema: removed the schema 'ProviderEnum'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'ai21' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'baseten' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'cloudflare' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'cohere' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'deepseek' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'empower' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'featherless_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'friendliai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'galadriel' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'groq' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'huggingface' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'meta_llama' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'mistral' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'nebius' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'nlp_cloud' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'novita' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'openrouter' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'petals' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'replicate' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'together_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'vllm' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'watsonx' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'ai21' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'baseten' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'cloudflare' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'cohere' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'deepseek' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'empower' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'featherless_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'friendliai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'galadriel' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'groq' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'huggingface' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'meta_llama' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'mistral' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'nebius' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'nlp_cloud' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'novita' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'openrouter' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'petals' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'replicate' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'together_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'vllm' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'watsonx' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'ai21' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'baseten' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'cloudflare' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'cohere' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'deepseek' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'empower' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'featherless_ai' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'friendliai' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'galadriel' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'groq' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'huggingface' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'meta_llama' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'mistral' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'nebius' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'nlp_cloud' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'novita' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'openrouter' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'petals' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'replicate' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'together_ai' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'vllm' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'watsonx' enum value from the 'model_provider' response property for the response status '200'
 
 # 10/17/2025
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'ai21' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'baseten' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'cloudflare' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'cohere' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'deepseek' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'empower' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'featherless_ai' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'friendliai' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'galadriel' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'groq' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'huggingface' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'meta_llama' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'mistral' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'nebius' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'nlp_cloud' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'novita' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'openrouter' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'petals' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'replicate' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'together_ai' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'vllm' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'watsonx' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'ai21' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'baseten' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'cloudflare' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'cohere' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'deepseek' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'empower' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'featherless_ai' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'friendliai' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'galadriel' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'groq' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'huggingface' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'meta_llama' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'mistral' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'nebius' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'nlp_cloud' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'novita' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'openrouter' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'petals' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'replicate' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'together_ai' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'vllm' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'watsonx' of the request property 'model_provider'
-- **CHANGE** for Component/Schema:  removed the schema 'ProviderEnum'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'ai21' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'baseten' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'cloudflare' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'cohere' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'deepseek' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'empower' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'featherless_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'friendliai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'galadriel' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'groq' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'huggingface' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'meta_llama' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'mistral' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'nebius' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'nlp_cloud' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'novita' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'openrouter' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'petals' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'replicate' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'together_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'vllm' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'watsonx' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'ai21' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'baseten' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'cloudflare' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'cohere' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'deepseek' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'empower' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'featherless_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'friendliai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'galadriel' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'groq' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'huggingface' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'meta_llama' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'mistral' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'nebius' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'nlp_cloud' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'novita' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'openrouter' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'petals' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'replicate' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'together_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'vllm' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'watsonx' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'ai21' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'baseten' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'cloudflare' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'cohere' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'deepseek' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'empower' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'featherless_ai' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'friendliai' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'galadriel' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'groq' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'huggingface' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'meta_llama' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'mistral' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'nebius' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'nlp_cloud' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'novita' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'openrouter' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'petals' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'replicate' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'together_ai' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'vllm' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'watsonx' enum value from the 'model_provider' response property for the response status '200'
+
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'ai21' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'baseten' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'cloudflare' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'cohere' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'deepseek' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'empower' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'featherless_ai' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'friendliai' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'galadriel' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'groq' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'huggingface' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'meta_llama' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'mistral' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'nebius' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'nlp_cloud' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'novita' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'openrouter' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'petals' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'replicate' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'together_ai' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'vllm' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'watsonx' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'ai21' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'baseten' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'cloudflare' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'cohere' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'deepseek' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'empower' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'featherless_ai' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'friendliai' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'galadriel' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'groq' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'huggingface' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'meta_llama' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'mistral' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'nebius' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'nlp_cloud' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'novita' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'openrouter' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'petals' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'replicate' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'together_ai' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'vllm' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'watsonx' of the request property 'model_provider'
+- **CHANGE** for Component/Schema: removed the schema 'ProviderEnum'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'ai21' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'baseten' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'cloudflare' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'cohere' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'deepseek' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'empower' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'featherless_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'friendliai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'galadriel' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'groq' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'huggingface' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'meta_llama' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'mistral' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'nebius' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'nlp_cloud' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'novita' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'openrouter' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'petals' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'replicate' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'together_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'vllm' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'watsonx' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'ai21' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'baseten' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'cloudflare' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'cohere' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'deepseek' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'empower' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'featherless_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'friendliai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'galadriel' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'groq' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'huggingface' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'meta_llama' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'mistral' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'nebius' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'nlp_cloud' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'novita' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'openrouter' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'petals' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'replicate' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'together_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'vllm' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'watsonx' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'ai21' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'baseten' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'cloudflare' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'cohere' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'deepseek' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'empower' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'featherless_ai' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'friendliai' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'galadriel' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'groq' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'huggingface' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'meta_llama' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'mistral' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'nebius' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'nlp_cloud' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'novita' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'openrouter' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'petals' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'replicate' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'together_ai' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'vllm' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'watsonx' enum value from the 'model_provider' response property for the response status '200'
 
 # 10/17/2025
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'ai21' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'baseten' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'cloudflare' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'cohere' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'deepseek' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'empower' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'featherless_ai' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'friendliai' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'galadriel' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'groq' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'huggingface' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'meta_llama' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'mistral' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'nebius' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'nlp_cloud' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'novita' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'openrouter' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'petals' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'replicate' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'together_ai' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'vllm' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'watsonx' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'ai21' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'baseten' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'cloudflare' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'cohere' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'deepseek' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'empower' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'featherless_ai' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'friendliai' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'galadriel' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'groq' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'huggingface' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'meta_llama' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'mistral' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'nebius' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'nlp_cloud' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'novita' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'openrouter' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'petals' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'replicate' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'together_ai' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'vllm' of the request property 'model_provider'
-- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'watsonx' of the request property 'model_provider'
-- **CHANGE** for Component/Schema:  removed the schema 'ProviderEnum'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'ai21' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'baseten' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'cloudflare' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'cohere' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'deepseek' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'empower' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'featherless_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'friendliai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'galadriel' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'groq' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'huggingface' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'meta_llama' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'mistral' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'nebius' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'nlp_cloud' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'novita' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'openrouter' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'petals' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'replicate' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'together_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'vllm' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'watsonx' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'ai21' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'baseten' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'cloudflare' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'cohere' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'deepseek' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'empower' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'featherless_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'friendliai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'galadriel' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'groq' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'huggingface' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'meta_llama' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'mistral' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'nebius' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'nlp_cloud' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'novita' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'openrouter' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'petals' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'replicate' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'together_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'vllm' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'watsonx' enum value from the 'prompts/items/model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'ai21' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'baseten' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'cloudflare' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'cohere' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'deepseek' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'empower' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'featherless_ai' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'friendliai' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'galadriel' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'groq' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'huggingface' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'meta_llama' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'mistral' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'nebius' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'nlp_cloud' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'novita' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'openrouter' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'petals' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'replicate' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'together_ai' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'vllm' enum value from the 'model_provider' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'watsonx' enum value from the 'model_provider' response property for the response status '200'
+
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'ai21' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'baseten' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'cloudflare' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'cohere' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'deepseek' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'empower' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'featherless_ai' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'friendliai' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'galadriel' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'groq' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'huggingface' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'meta_llama' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'mistral' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'nebius' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'nlp_cloud' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'novita' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'openrouter' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'petals' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'replicate' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'together_ai' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'vllm' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions removed the enum value 'watsonx' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'ai21' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'baseten' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'cloudflare' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'cohere' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'deepseek' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'empower' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'featherless_ai' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'friendliai' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'galadriel' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'groq' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'huggingface' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'meta_llama' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'mistral' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'nebius' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'nlp_cloud' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'novita' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'openrouter' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'petals' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'replicate' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'together_ai' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'vllm' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} removed the enum value 'watsonx' of the request property 'model_provider'
+- **CHANGE** for Component/Schema: removed the schema 'ProviderEnum'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'ai21' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'baseten' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'cloudflare' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'cohere' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'deepseek' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'empower' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'featherless_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'friendliai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'galadriel' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'groq' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'huggingface' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'meta_llama' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'mistral' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'nebius' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'nlp_cloud' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'novita' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'openrouter' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'petals' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'replicate' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'together_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'vllm' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts removed the 'watsonx' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'ai21' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'baseten' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'cloudflare' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'cohere' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'deepseek' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'empower' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'featherless_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'friendliai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'galadriel' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'groq' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'huggingface' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'meta_llama' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'mistral' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'nebius' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'nlp_cloud' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'novita' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'openrouter' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'petals' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'replicate' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'together_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'vllm' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions removed the 'watsonx' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'ai21' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'baseten' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'cloudflare' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'cohere' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'deepseek' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'empower' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'featherless_ai' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'friendliai' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'galadriel' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'groq' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'huggingface' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'meta_llama' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'mistral' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'nebius' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'nlp_cloud' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'novita' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'openrouter' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'petals' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'replicate' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'together_ai' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'vllm' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} removed the 'watsonx' enum value from the 'model_provider' response property for the response status '200'
 
 # 10/17/2025
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  added the required property 'versions/items/column_names' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  added the required property 'column_names' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}  added the required property 'column_names' to the response with the '200' status
+
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions added the required property 'versions/items/column_names' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions added the required property 'column_names' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number} added the required property 'column_names' to the response with the '200' status
 
 # 10/16/2025
-- **CHANGE** for **URL**: /api/v2/datasets  endpoint added
-- **CHANGE** for **URL**: /api/v2/datasets/search  endpoint added
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}  endpoint added
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}  endpoint added
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}  endpoint added
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  endpoint added
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  endpoint added
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}  endpoint added
 
+- **CHANGE** for **URL**: /api/v2/datasets endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/search endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id} endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id} endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id} endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number} endpoint added
 
 # 10/14/2025
-- **CHANGE** for **URL**: /api/v1/completions  endpoint added
-- **CHANGE** for **URL**: /api/v1/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}/completions  endpoint added
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  endpoint added
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  endpoint added
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  endpoint added
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  endpoint added
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  endpoint added
-- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  endpoint added
+
+- **CHANGE** for **URL**: /api/v1/completions endpoint added
+- **CHANGE** for **URL**: /api/v1/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}/completions endpoint added
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts endpoint added
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} endpoint added
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name} endpoint added
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions endpoint added
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} endpoint added
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version} endpoint added
 
 # 10/10/2025
-- **CHANGE** for **URL**: /v1/span/{span_id}/metrics  added the optional property 'session_id' to the response with the '200' status
-- **CHANGE** for **URL**: /v1/span/{span_id}/metrics  added the required property 'status_code' to the response with the '200' status
-- **CHANGE** for **URL**: /v1/spans/query  added the optional property 'spans/items/session_id' to the response with the '200' status
-- **CHANGE** for **URL**: /v1/spans/query  added the required property 'spans/items/status_code' to the response with the '200' status
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/root_spans/items/session_id' to the response with the '200' status
-- **CHANGE** for **URL**: /v1/traces/metrics/  added the required property 'traces/items/root_spans/items/status_code' to the response with the '200' status
-- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/root_spans/items/session_id' to the response with the '200' status
-- **CHANGE** for **URL**: /v1/traces/query  added the required property 'traces/items/root_spans/items/status_code' to the response with the '200' status
+
+- **CHANGE** for **URL**: /v1/span/{span_id}/metrics added the optional property 'session_id' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/span/{span_id}/metrics added the required property 'status_code' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/spans/query added the optional property 'spans/items/session_id' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/spans/query added the required property 'spans/items/status_code' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the optional property 'traces/items/root_spans/items/session_id' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/ added the required property 'traces/items/root_spans/items/status_code' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query added the optional property 'traces/items/root_spans/items/session_id' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query added the required property 'traces/items/root_spans/items/status_code' to the response with the '200' status
 
 # 10/09/2025
-- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/delete_prompt/{prompt_name}  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/get_all_prompts  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/get_prompt/{prompt_name}  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/run_prompt  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/run_prompt/{prompt_name}  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/save_prompt  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/update_prompt  api path removed without deprecation
+
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/delete_prompt/{prompt_name} api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/get_all_prompts api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/get_prompt/{prompt_name} api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/run_prompt api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/run_prompt/{prompt_name} api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/save_prompt api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/update_prompt api path removed without deprecation
 
 # 10/07/2025
-- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/delete_prompt/{prompt_name}  endpoint added
-- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/get_all_prompts  endpoint added
-- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/get_prompt/{prompt_name}  endpoint added
-- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/run_prompt  endpoint added
-- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/run_prompt/{prompt_name}  endpoint added
-- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/save_prompt  endpoint added
-- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/update_prompt  endpoint added
+
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/delete_prompt/{prompt_name} endpoint added
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/get_all_prompts endpoint added
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/get_prompt/{prompt_name} endpoint added
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/run_prompt endpoint added
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/run_prompt/{prompt_name} endpoint added
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/save_prompt endpoint added
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/update_prompt endpoint added
 
 # 09/10/2025
+
 - v1/traces/metrics and v1/traces/query added new optional request parameters: 'query_relevance_eq', 'query_relevance_gt', 'query_relevance_gte', 'query_relevance_lt', 'query_relevance_lte', 'response_relevance_eq', 'response_relevance_gt', 'response_relevance_gte', 'response_relevance_lt', 'response_relevance_lte', 'tool_name', 'tool_selection', 'tool_usage', 'trace_duration_eq', 'trace_duration_gt', 'trace_duration_gte', 'trace_duration_lt', 'trace_duration_lte', 'trace_ids', 'span_kind'
 
 # 09/05/2025
+
 - Added span_name to spans response
 
 # 08/27/2025
-- **CHANGE** for **URL**: /v1/spans/query  endpoint added
+
+- **CHANGE** for **URL**: /v1/spans/query endpoint added
 
 # 08/25/2025
-- **BREAKING CHANGE** for **URL**: /api/chat/conversations  the 'page' response's property type/format changed from ''/'' to 'integer'/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/chat/conversations  the 'pages' response's property type/format changed from ''/'' to 'integer'/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/chat/conversations  the 'size' response's property type/format changed from ''/'' to 'integer'/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/chat/conversations  the 'total' response's property type/format changed from ''/'' to 'integer'/'' for status '200'
-- **CHANGE** for **URL**: /api/chat/conversations  removed 'subschema #1, subschema #2' from the 'page' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/chat/conversations  removed 'subschema #1, subschema #2' from the 'pages' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/chat/conversations  removed 'subschema #1, subschema #2' from the 'size' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/chat/conversations  removed 'subschema #1, subschema #2' from the 'total' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/chat/conversations  the response property 'pages' became required for the status '200'
+
+- **BREAKING CHANGE** for **URL**: /api/chat/conversations the 'page' response's property type/format changed from ''/'' to 'integer'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/chat/conversations the 'pages' response's property type/format changed from ''/'' to 'integer'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/chat/conversations the 'size' response's property type/format changed from ''/'' to 'integer'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/chat/conversations the 'total' response's property type/format changed from ''/'' to 'integer'/'' for status '200'
+- **CHANGE** for **URL**: /api/chat/conversations removed 'subschema #1, subschema #2' from the 'page' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/chat/conversations removed 'subschema #1, subschema #2' from the 'pages' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/chat/conversations removed 'subschema #1, subschema #2' from the 'size' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/chat/conversations removed 'subschema #1, subschema #2' from the 'total' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/chat/conversations the response property 'pages' became required for the status '200'
+
 # 08/09/2025
+
 Made `bert_f_score` and `reranker_relevance_score` optional.
 
 # 08/08/2025
+
 - **CHANGE**: Made `is_agentic` optional
 
 # 08/04/2025
+
 - **CHANGE**: Forces toxicity threshold to float
 
 # 07/23/2025
+
 - **CHANGE** for **URL**: /v1/spans/{span_id}/metrics/ now returns the span object itself instead of a list of Span objects of len 1
 - **CHANGE** for **URL**: /v1/traces/metrics/ and /v1/traces/query updated to return a nested traces object instead of a flat list of spans
+
 # 07/22/2025
+
 - **CHANGE** for **URL**: /api/v2/tasks Added optional metrics to the task response
-- **CHANGE** for **URL**: /api/v2/tasks/search  Added optional metrics to the task response
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  Added optional metrics to the task response
+- **CHANGE** for **URL**: /api/v2/tasks/search Added optional metrics to the task response
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id} Added optional metrics to the task response
 - **CHANGE** for **URL**: Added new endpoints for metrics management /api/v2/tasks/{task_id}/metrics and /api/v2/tasks/{task_id}/metrics/{metric_id}
 - **CHANGE** for **URL**: Added new metrics compute endpoints. Span Level: `/v1/span/{span_id}/metrics` and trace level `/v1/traces/metrics/`
 - **CHANGE** for **URL**: Added new trace query endpoint `/v1/traces/query`
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id}  added optional metrics to the task response
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id} added optional metrics to the task response
+
 # 07/21/2025
-- **CHANGE** for **URL**: /api/v2/tasks  added is_agentic to the request, and response
-- **CHANGE** for **URL**: /api/v2/tasks/search  added is_agentic as a search filter and part of the task response body
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  added is_agentic to the response
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id}  added is_agentic to the response
+
+- **CHANGE** for **URL**: /api/v2/tasks added is_agentic to the request, and response
+- **CHANGE** for **URL**: /api/v2/tasks/search added is_agentic as a search filter and part of the task response body
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id} added is_agentic to the response
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id} added is_agentic to the response
 
 # 06/11/2025
-- **CHANGE** for **URL**: /v1/spans/query  endpoint added
-- **CHANGE** for **URL**: /v1/traces  endpoint added
+
+- **CHANGE** for **URL**: /v1/spans/query endpoint added
+- **CHANGE** for **URL**: /v1/traces endpoint added
 
 # 03/25/2025
-- **CHANGE** for **URL**: /api/v2/usage/tokens  added the required property '/items/count/eval_completion' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/usage/tokens  added the required property '/items/count/eval_prompt' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/usage/tokens  added the required property '/items/count/inference' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/usage/tokens  added the required property '/items/count/user_input' to the response with the '200' status
+
+- **CHANGE** for **URL**: /api/v2/usage/tokens added the required property '/items/count/eval_completion' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/usage/tokens added the required property '/items/count/eval_prompt' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/usage/tokens added the required property '/items/count/inference' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/usage/tokens added the required property '/items/count/user_input' to the response with the '200' status
+
 # 03/03/2025
+
 - OSS version changelog started
