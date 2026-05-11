@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 05/11/2026
+- **CHANGE** for **URL**: /api/v2/display-settings  added the optional property 'scope_url' to the response with the '200' status
+
 # 05/01/2026
 # 04/30/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'llm_eval_name' became optional for the status '200'

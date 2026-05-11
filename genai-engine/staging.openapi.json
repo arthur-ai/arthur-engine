@@ -20798,6 +20798,17 @@
                         "type": "boolean",
                         "title": "Chatbot Enabled",
                         "default": true
+                    },
+                    "scope_url": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Scope Url"
                     }
                 },
                 "type": "object",

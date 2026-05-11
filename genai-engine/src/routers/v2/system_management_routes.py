@@ -24,9 +24,10 @@ from schemas.response_schemas import (
     ApplicationConfigurationResponse,
     DisplaySettingsResponse,
 )
+from utils.constants import GENAI_ENGINE_SCOPE_URL_ENV_VAR
 from utils.currency_display import get_display_currency
 from utils.users import permission_checker
-from utils.utils import public_endpoint
+from utils.utils import get_env_var, public_endpoint
 
 system_management_routes = APIRouter(
     prefix="/api/v2",
@@ -78,9 +79,18 @@ def get_token_usage(
 def get_display_settings(
     application_config: ApplicationConfiguration = Depends(get_application_config),
 ) -> DisplaySettingsResponse:
+    raw_scope_url = (
+        get_env_var(GENAI_ENGINE_SCOPE_URL_ENV_VAR, none_on_missing=True) or None
+    )
+    scope_url = (
+        raw_scope_url
+        if raw_scope_url and raw_scope_url.startswith("https://")
+        else None
+    )
     return DisplaySettingsResponse(
         default_currency=get_display_currency(application_config),
         chatbot_enabled=extra_feature_config.CHATBOT_ENABLED,
+        scope_url=scope_url,
     )
 
 

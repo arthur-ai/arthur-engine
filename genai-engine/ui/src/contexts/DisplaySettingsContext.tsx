@@ -23,6 +23,8 @@ interface DisplaySettingsContextValue {
   setTimezone: (timezone: string) => void;
   use24Hour: boolean;
   setUse24Hour: (use24Hour: boolean) => void;
+  /** URL of the Arthur Platform (Scope) for this deployment. Null if not configured. */
+  scopeUrl: string | null;
 }
 
 const DisplaySettingsContext = createContext<DisplaySettingsContextValue | undefined>(undefined);
@@ -68,6 +70,7 @@ export const DisplaySettingsProvider: React.FC<DisplaySettingsProviderProps> = (
     setTimezone,
     use24Hour,
     setUse24Hour,
+    scopeUrl: settings.scope_url ?? null,
   };
 
   return <DisplaySettingsContext.Provider value={value}>{children}</DisplaySettingsContext.Provider>;

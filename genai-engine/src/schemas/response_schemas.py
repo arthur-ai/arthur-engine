@@ -55,6 +55,7 @@ class DisplaySettingsResponse(BaseModel):
 
     default_currency: str = "USD"
     chatbot_enabled: bool = True
+    scope_url: str | None = None
 
 
 class ConversationBaseResponse(BaseModel):
@@ -803,7 +804,7 @@ class ContinuousEvalRerunResponse(BaseModel):
 class ContinuousEvalTestRunResponse(BaseModel):
     id: UUID = Field(description="ID of the test run.")
     continuous_eval_id: UUID = Field(
-        description="ID of the continuous eval being tested."
+        description="ID of the continuous eval being tested.",
     )
     task_id: str = Field(description="ID of the parent task.")
     status: TestRunStatus = Field(description="Status of the test run.")
@@ -872,10 +873,12 @@ class SyntheticDataPromptStatus(BaseModel):
         "The sentinel 'empty' indicates the prompt has not yet been configured.",
     )
     model_name: str = Field(
-        ..., description="Model name stored in the SDG system prompt"
+        ...,
+        description="Model name stored in the SDG system prompt",
     )
     is_placeholder: bool = Field(
-        ..., description="True when the prompt uses the empty placeholder model"
+        ...,
+        description="True when the prompt uses the empty placeholder model",
     )
 
 
