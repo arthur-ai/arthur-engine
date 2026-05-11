@@ -52,13 +52,6 @@ export async function step5_InstrumentMastra(state: WorkflowState): Promise<bool
     return true;
   }
 
-  // Set env vars for Claude
-  if (state.apiKey) {
-    process.env.ARTHUR_API_KEY = state.apiKey;
-    process.env.ARTHUR_BASE_URL = state.engineUrl!;
-    process.env.ARTHUR_TASK_ID = state.taskId!;
-  }
-
   p.log.info(buzzSay('Initiating Mastra Arthur exporter launch sequence...'));
   console.log();
 
@@ -68,6 +61,7 @@ export async function step5_InstrumentMastra(state: WorkflowState): Promise<bool
       type: 'mastra-arthur-exporter',
       arthurEngineUrl: state.engineUrl!,
       taskId: state.taskId!,
+      apiKey: state.apiKey!,
     },
   );
 

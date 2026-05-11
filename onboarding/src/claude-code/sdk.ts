@@ -8,6 +8,7 @@ export interface InstrumentationRequest {
   type: 'python-arthur-sdk' | 'mastra-arthur-exporter' | 'openinference';
   arthurEngineUrl: string;
   taskId: string;
+  apiKey: string;
 }
 
 export interface InstrumentationResult {
@@ -426,6 +427,12 @@ export async function instrumentCodeWithClaude(
         allowedTools: ['Read', 'Glob', 'Grep', 'Edit', 'Write', 'Bash'],
         permissionMode: 'acceptEdits',
         systemPrompt: SYSTEM_PROMPTS[req.type],
+        env: {
+          ...process.env,
+          ARTHUR_API_KEY: req.apiKey,
+          ARTHUR_BASE_URL: req.arthurEngineUrl,
+          ARTHUR_TASK_ID: req.taskId,
+        },
       },
     });
 

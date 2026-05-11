@@ -53,13 +53,6 @@ export async function step6_InstrumentOther(state: WorkflowState): Promise<boole
     return true;
   }
 
-  // Set env vars for Claude
-  if (state.apiKey) {
-    process.env.ARTHUR_API_KEY = state.apiKey;
-    process.env.ARTHUR_BASE_URL = state.engineUrl!;
-    process.env.ARTHUR_TASK_ID = state.taskId!;
-  }
-
   p.log.info(buzzSay('Initiating OpenInference instrumentation launch sequence...'));
   console.log();
 
@@ -69,6 +62,7 @@ export async function step6_InstrumentOther(state: WorkflowState): Promise<boole
       type: 'openinference',
       arthurEngineUrl: state.engineUrl!,
       taskId: state.taskId!,
+      apiKey: state.apiKey!,
     },
   );
 

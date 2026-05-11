@@ -53,13 +53,6 @@ export async function step4_InstrumentPython(state: WorkflowState): Promise<bool
     return true; // User declined — handled, skip to verify
   }
 
-  // 4. Set ARTHUR_API_KEY in current process env so Claude can use it
-  if (state.apiKey) {
-    process.env.ARTHUR_API_KEY = state.apiKey;
-    process.env.ARTHUR_BASE_URL = state.engineUrl!;
-    process.env.ARTHUR_TASK_ID = state.taskId!;
-  }
-
   p.log.info(buzzSay('Initiating Python instrumentation launch sequence...'));
   console.log();
 
@@ -69,6 +62,7 @@ export async function step4_InstrumentPython(state: WorkflowState): Promise<bool
       type: 'python-arthur-sdk',
       arthurEngineUrl: state.engineUrl!,
       taskId: state.taskId!,
+      apiKey: state.apiKey!,
     },
   );
 
