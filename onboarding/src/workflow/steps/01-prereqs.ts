@@ -1,4 +1,3 @@
-import { query } from '@anthropic-ai/claude-agent-sdk';
 import { execa } from 'execa';
 import ora from 'ora';
 import { BuzzError } from '../../errors.js';
@@ -60,9 +59,10 @@ export async function step1_VerifyPrereqs(state: WorkflowState): Promise<void> {
   spinner.text = buzzSay('Checking Claude Code authentication...');
 
   // 1.4 Check Claude Code is authenticated (supports SSO, OAuth, API key, and other auth methods)
-  let accountInfo = await query({ prompt: '' }).accountInfo();
+  const authStatus = await execa('claude', ['auth', 'status']).catch(() => null);
+  let isAuthenticated = authStatus?.exitCode === 0;
 
-  if (!accountInfo) {
+  if (!isAuthenticated) {
     spinner.stop();
     logError('Claude Code is not authenticated.');
     const { password } = await import('../../ui/prompts.js');
@@ -70,8 +70,10 @@ export async function step1_VerifyPrereqs(state: WorkflowState): Promise<void> {
     process.env.ANTHROPIC_API_KEY = apiKey;
     spinner.start(buzzSay('Verifying API key...'));
 
-    accountInfo = await query({ prompt: '' }).accountInfo();
-    if (!accountInfo) {
+    const authVerify = await execa('claude', ['auth', 'status']).catch(() => null);
+    isAuthenticated = authVerify?.exitCode === 0;
+
+    if (!isAuthenticated) {
       spinner.stop();
       logError('The provided ANTHROPIC_API_KEY does not appear to be valid.');
       throw new BuzzError('Claude Code is not authenticated.');
