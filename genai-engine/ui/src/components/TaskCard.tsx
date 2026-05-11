@@ -25,7 +25,7 @@ interface TaskCardProps {
   onArchiveToggle?: () => void;
 }
 
-export const TaskCard: React.FC<TaskCardProps> = ({ task, onArchiveToggle }) => {
+export const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, onArchiveToggle }) => {
   const navigate = useNavigate();
   const api = useApi();
   const { timezone, use24Hour } = useDisplaySettings();
@@ -392,4 +392,6 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onArchiveToggle }) => 
       </Box>
     </Tooltip>
   );
-};
+});
+
+TaskCard.displayName = "TaskCard";
