@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from services.trace.external_trace_retrieval_service import (
-    DEFAULT_PAGE_SIZE,
     ExternalTraceRetrievalService,
 )
 
@@ -38,7 +37,7 @@ def test_missing_start_time_raises():
                 reasoning_engine_id="re1",
                 start_time=None,
                 end_time=datetime.now(),
-            )
+            ),
         )
 
 
@@ -53,7 +52,7 @@ def test_missing_end_time_raises():
                 reasoning_engine_id="re1",
                 start_time=datetime.now(),
                 end_time=None,
-            )
+            ),
         )
 
 
@@ -74,7 +73,7 @@ def test_empty_results_yields_nothing(mock_trace_v1):
             reasoning_engine_id="re1",
             start_time=now - timedelta(days=1),
             end_time=now,
-        )
+        ),
     )
 
     assert pages == []
@@ -91,9 +90,7 @@ def test_single_page_yield(mock_trace_v1):
     list_entries = [_make_mock_list_entry(f"trace-{i}") for i in range(3)]
     mock_client.list_traces.return_value = iter(list_entries)
 
-    full_traces = {
-        f"trace-{i}": _make_mock_trace(f"trace-{i}") for i in range(3)
-    }
+    full_traces = {f"trace-{i}": _make_mock_trace(f"trace-{i}") for i in range(3)}
 
     def mock_get_trace(request, timeout):
         return full_traces[request.trace_id]
@@ -111,7 +108,7 @@ def test_single_page_yield(mock_trace_v1):
             start_time=now - timedelta(days=1),
             end_time=now,
             page_size=10,
-        )
+        ),
     )
 
     assert len(pages) == 1
@@ -131,9 +128,7 @@ def test_multiple_pages_yield(mock_trace_v1):
     list_entries = [_make_mock_list_entry(f"trace-{i}") for i in range(5)]
     mock_client.list_traces.return_value = iter(list_entries)
 
-    full_traces = {
-        f"trace-{i}": _make_mock_trace(f"trace-{i}") for i in range(5)
-    }
+    full_traces = {f"trace-{i}": _make_mock_trace(f"trace-{i}") for i in range(5)}
 
     def mock_get_trace(request, timeout):
         return full_traces[request.trace_id]
@@ -151,7 +146,7 @@ def test_multiple_pages_yield(mock_trace_v1):
             start_time=now - timedelta(days=1),
             end_time=now,
             page_size=2,
-        )
+        ),
     )
 
     assert len(pages) == 3
@@ -171,9 +166,7 @@ def test_max_traces_caps_total(mock_trace_v1):
     list_entries = [_make_mock_list_entry(f"trace-{i}") for i in range(10)]
     mock_client.list_traces.return_value = iter(list_entries)
 
-    full_traces = {
-        f"trace-{i}": _make_mock_trace(f"trace-{i}") for i in range(10)
-    }
+    full_traces = {f"trace-{i}": _make_mock_trace(f"trace-{i}") for i in range(10)}
 
     def mock_get_trace(request, timeout):
         return full_traces[request.trace_id]
@@ -192,7 +185,7 @@ def test_max_traces_caps_total(mock_trace_v1):
             end_time=now,
             max_traces=3,
             page_size=2,
-        )
+        ),
     )
 
     total_traces = sum(len(p) for p in pages)
@@ -236,7 +229,7 @@ def test_get_trace_failure_skips_individual_trace(mock_trace_v1):
             start_time=now - timedelta(days=1),
             end_time=now,
             page_size=10,
-        )
+        ),
     )
 
     # One page with 2 successful traces (trace-1 was skipped)
@@ -262,7 +255,7 @@ def test_page_size_passed_to_list_traces_request(mock_trace_v1):
             start_time=now - timedelta(days=1),
             end_time=now,
             page_size=50,
-        )
+        ),
     )
 
     mock_trace_v1.ListTracesRequest.assert_called_once()

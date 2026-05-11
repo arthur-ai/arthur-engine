@@ -24,6 +24,7 @@ from weaviate.types import INCLUDE_VECTOR
 
 from schemas.enums import (
     ConnectionCheckOutcome,
+    EvalType,
     RagAPIKeyAuthenticationProviderEnum,
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
@@ -685,6 +686,10 @@ class AgenticPromptMetadataResponse(BaseModel):
 
 class LLMGetAllMetadataResponse(BaseModel):
     name: str = Field(description="Name of the llm asset")
+    eval_type: EvalType = Field(
+        default=EvalType.LLM_AS_A_JUDGE,
+        description="Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')",
+    )
     versions: int = Field(description="Number of versions of the llm asset")
     tags: List[str] = Field(
         default_factory=list,
@@ -708,17 +713,23 @@ class LLMGetAllMetadataListResponse(BaseModel):
 
 class LLMVersionResponse(BaseModel):
     version: int = Field(description="Version number of the llm eval")
+    eval_type: EvalType = Field(
+        default=EvalType.LLM_AS_A_JUDGE,
+        description="Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')",
+    )
     created_at: datetime = Field(
         description="Timestamp when the llm eval version was created",
     )
     deleted_at: Optional[datetime] = Field(
         description="Timestamp when the llm eval version was deleted (None if not deleted)",
     )
-    model_provider: Union[ModelProvider, Literal["empty"]] = Field(
-        description="Model provider chosen for this version of the llm eval",
+    model_provider: Optional[ModelProvider] = Field(
+        default=None,
+        description="Model provider chosen for this version of the llm eval. None for ML evals.",
     )
-    model_name: str = Field(
-        description="Model name chosen for this version of the llm eval",
+    model_name: Optional[str] = Field(
+        default=None,
+        description="Model name chosen for this version of the llm eval. None for ML evals.",
     )
     tags: List[str] = Field(
         default_factory=list,
@@ -745,6 +756,30 @@ class LLMEvalsVersionListResponse(BaseModel):
     count: int = Field(description="Total number of llm evals matching filters")
 
 
+class MLVersionResponse(BaseModel):
+    version: int = Field(description="Version number of the ML eval")
+    eval_type: EvalType = Field(
+        description="Type of the ML eval (e.g. 'pii', 'toxicity')",
+    )
+    created_at: datetime = Field(
+        description="Timestamp when the ML eval version was created",
+    )
+    deleted_at: Optional[datetime] = Field(
+        description="Timestamp when the ML eval version was deleted (None if not deleted)",
+    )
+    tags: List[str] = Field(
+        default_factory=list,
+        description="List of tags for the ML eval",
+    )
+
+
+class MLEvalsVersionListResponse(BaseModel):
+    versions: list[MLVersionResponse] = Field(
+        description="List of ML eval version metadata",
+    )
+    count: int = Field(description="Total number of ML evals matching filters")
+
+
 class LLMEvalRunResponse(BaseModel):
     reason: str = Field(
         ...,
@@ -752,6 +787,10 @@ class LLMEvalRunResponse(BaseModel):
     )
     score: int = Field(..., description="Score for this llm eval")
     cost: str = Field(..., description="Cost of this llm completion")
+
+
+# Alias — ML evals share the same run response shape as LLM evals
+EvalRunResponse = LLMEvalRunResponse
 
 
 class RenderedPromptResponse(BaseModel):
@@ -803,7 +842,7 @@ class ContinuousEvalRerunResponse(BaseModel):
 class ContinuousEvalTestRunResponse(BaseModel):
     id: UUID = Field(description="ID of the test run.")
     continuous_eval_id: UUID = Field(
-        description="ID of the continuous eval being tested."
+        description="ID of the continuous eval being tested.",
     )
     task_id: str = Field(description="ID of the parent task.")
     status: TestRunStatus = Field(description="Status of the test run.")
@@ -872,10 +911,12 @@ class SyntheticDataPromptStatus(BaseModel):
         "The sentinel 'empty' indicates the prompt has not yet been configured.",
     )
     model_name: str = Field(
-        ..., description="Model name stored in the SDG system prompt"
+        ...,
+        description="Model name stored in the SDG system prompt",
     )
     is_placeholder: bool = Field(
-        ..., description="True when the prompt uses the empty placeholder model"
+        ...,
+        description="True when the prompt uses the empty placeholder model",
     )
 
 

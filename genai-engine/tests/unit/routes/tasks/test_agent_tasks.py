@@ -1,19 +1,19 @@
 """Unit tests for the /api/v2/agent-tasks endpoint."""
+
 import random
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from openinference.semconv.trace import OpenInferenceSpanKindValues
-
-from db_models import DatabaseSpan, DatabaseTask, DatabaseTaskPollingState
 from arthur_common.models.agent_governance_schemas import (
     GCPAgentCreationSource,
     ManualAgentCreationSource,
     OTELAgentCreationSource,
     TaskMetadata,
 )
+from openinference.semconv.trace import OpenInferenceSpanKindValues
+
+from db_models import DatabaseSpan, DatabaseTask, DatabaseTaskPollingState
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
@@ -33,7 +33,8 @@ def test_get_agent_tasks_returns_agentic_by_default(
     assert status_code == 200
 
     status_code, non_agentic_task = client.create_task(
-        non_agentic_name, is_agentic=False
+        non_agentic_name,
+        is_agentic=False,
     )
     assert status_code == 200
 

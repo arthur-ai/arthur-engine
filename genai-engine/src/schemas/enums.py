@@ -209,3 +209,13 @@ class SSEEventType(str, Enum):
     SEARCH_COMPLETE = "search_complete"
     TOOL_CALL = "tool_call"
     TOOL_RESULT = "tool_result"
+
+
+class EvalType(str, Enum):
+    """Discriminator for all eval types stored in the llm_evals table."""
+
+    LLM_AS_A_JUDGE = "llm_as_a_judge"
+    PII = "pii"
+    PII_V1 = "pii_v1"
+    TOXICITY = "toxicity"
+    PROMPT_INJECTION = "prompt_injection"

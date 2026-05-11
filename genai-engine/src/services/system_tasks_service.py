@@ -149,7 +149,7 @@ def _ensure_prompt_with_production_tag(
     try:
         db_session.commit()
         logger.info(
-            f"Seeded prompt '{prompt_name}' with production tag for system task"
+            f"Seeded prompt '{prompt_name}' with production tag for system task",
         )
     except IntegrityError:
         db_session.rollback()

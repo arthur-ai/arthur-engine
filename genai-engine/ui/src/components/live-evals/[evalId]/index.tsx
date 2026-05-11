@@ -196,14 +196,23 @@ export const LiveEvalDetail = () => {
                   Evaluator
                 </Typography>
                 <Stack direction="row" alignItems="center" gap={1}>
-                  <MuiLink
-                    variant="body1"
-                    fontWeight={500}
-                    component={Link}
-                    to={`/tasks/${liveEval.task_id}/evaluators/${encodeURIComponent(liveEval.llm_eval_name)}/versions/${liveEval.llm_eval_version}`}
-                  >
-                    {liveEval.llm_eval_name}
-                  </MuiLink>
+                  {liveEval.eval_type === "ml_eval" ? (
+                    <Typography variant="body1" fontWeight={500}>
+                      {liveEval.llm_eval_name}
+                    </Typography>
+                  ) : (
+                    <MuiLink
+                      variant="body1"
+                      fontWeight={500}
+                      component={Link}
+                      to={`/tasks/${liveEval.task_id}/evaluators/${encodeURIComponent(liveEval.llm_eval_name ?? "")}/versions/${liveEval.llm_eval_version ?? ""}`}
+                    >
+                      {liveEval.llm_eval_name}
+                    </MuiLink>
+                  )}
+                  {liveEval.eval_type === "ml_eval" && (
+                    <Chip label="ML" size="small" color="secondary" variant="outlined" sx={{ width: "fit-content" }} />
+                  )}
                   <Chip label={`v${liveEval.llm_eval_version}`} size="small" sx={{ width: "fit-content" }} />
                 </Stack>
               </Stack>

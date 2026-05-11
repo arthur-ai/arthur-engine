@@ -11,14 +11,14 @@ from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTestRun
 from db_models.llm_eval_models import DatabaseContinuousEval
 from dependencies import get_db_session
+from repositories.base_evaluator import get_evaluator
 from repositories.llm_evals_repository import LLMEvalsRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from repositories.trace_transform_repository import TraceTransformRepository
-from schemas.enums import TestRunStatus
+from schemas.enums import EvalType, TestRunStatus
 from schemas.internal_schemas import ContinuousEval
-from schemas.request_schemas import BaseCompletionRequest
 from services.base_queue_service import BaseQueueJob, BaseQueueService
 from utils.transform_executor import execute_transform
 
@@ -221,39 +221,48 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
             for mapping in continuous_eval.transform_variable_mapping:
                 mapping_dict[mapping.transform_variable] = mapping.eval_variable
 
-            # Build the completion request variables
-            completion_request_variables = []
-            mapped_eval_vars = set()
+            # Resolve transform variables into eval variable names
+            resolved_variables: dict[str, str] = {}
             for variable in transform_results.variables:
                 if variable.name in mapping_dict:
-                    completion_request_variables.append(
-                        VariableTemplateValue(
-                            name=mapping_dict[variable.name],
-                            value=variable.value,
-                        ),
-                    )
-                    mapped_eval_vars.add(mapping_dict[variable.name])
+                    resolved_variables[mapping_dict[variable.name]] = variable.value
 
-            llm_eval_repository = LLMEvalsRepository(db_session)
-            llm_eval = llm_eval_repository.get_llm_item(
-                continuous_eval.task_id,
-                continuous_eval.llm_eval_name,
-                str(continuous_eval.llm_eval_version),
+            eval_name = continuous_eval.llm_eval_name
+            eval_version = str(continuous_eval.llm_eval_version)
+
+            # Look up the eval via the repository to get its eval_type for dispatching.
+            try:
+                llm_eval = LLMEvalsRepository(db_session).get_llm_item(
+                    continuous_eval.task_id,
+                    eval_name,
+                    eval_version,
+                )
+            except ValueError:
+                raise ValueError(
+                    f"Eval '{eval_name}' version {continuous_eval.llm_eval_version} "
+                    f"not found for task {continuous_eval.task_id}. "
+                    "The eval may have been deleted or the continuous eval configuration is invalid.",
+                )
+            eval_type = EvalType(llm_eval.eval_type)
+            evaluator = get_evaluator(db_session, eval_type)
+
+            # Validate that the resolved eval vars match what the evaluator expects
+            expected_vars = set(
+                evaluator.get_eval_variables(
+                    continuous_eval.task_id,
+                    eval_name,
+                    eval_version,
+                ),
             )
-
-            # Validate that the mapped eval vars match the llm eval vars
-            if mapped_eval_vars != set(llm_eval.variables):
+            mapped_eval_vars = set(resolved_variables.keys())
+            if mapped_eval_vars != expected_vars:
                 self._update_annotation_status(
                     db_session,
                     job.annotation_id,
                     ContinuousEvalRunStatus.SKIPPED.value,
-                    annotation_description=f"Mapped eval variables: {', '.join(mapped_eval_vars)} do not match LLM eval variables: {', '.join(llm_eval.variables)}",
+                    annotation_description=f"Mapped eval variables: {', '.join(mapped_eval_vars)} do not match eval variables: {', '.join(expected_vars)}",
                 )
                 return
-
-            completion_request = BaseCompletionRequest(
-                variables=completion_request_variables,
-            )
 
             # Update annotation status to running
             # NOTE: We are not using _update_annotation_status here so we can atomically update the status from pending to running
@@ -283,28 +292,30 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
 
             db_session.expire_all()
 
-            llm_eval_run_result = llm_eval_repository.run_llm_eval(
-                job.task_id,
-                continuous_eval.llm_eval_name,
-                str(continuous_eval.llm_eval_version),
-                completion_request,
+            eval_run_result = evaluator.run(
+                task_id=continuous_eval.task_id,
+                eval_name=eval_name,
+                eval_version=eval_version,
+                variable_mapping=continuous_eval.transform_variable_mapping,
+                resolved_variables=resolved_variables,
             )
             run_status = (
                 ContinuousEvalRunStatus.PASSED.value
-                if llm_eval_run_result.score == 1
+                if eval_run_result.score
                 else ContinuousEvalRunStatus.FAILED.value
             )
-            llm_eval_run_result_cost = (
-                float(llm_eval_run_result.cost) if llm_eval_run_result.cost else None
-            )
+            input_variables = [
+                VariableTemplateValue(name=k, value=v)
+                for k, v in resolved_variables.items()
+            ]
             self._update_annotation_status(
                 db_session,
                 job.annotation_id,
                 run_status,
-                input_variables=completion_request_variables,
-                annotation_score=llm_eval_run_result.score,
-                annotation_description=llm_eval_run_result.reason,
-                cost=llm_eval_run_result_cost,
+                input_variables=input_variables,
+                annotation_score=int(eval_run_result.score),
+                annotation_description=eval_run_result.reason,
+                cost=float(eval_run_result.cost) if eval_run_result.cost else None,
             )
 
         except Exception as e:

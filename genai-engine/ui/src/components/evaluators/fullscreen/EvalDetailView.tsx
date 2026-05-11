@@ -29,15 +29,21 @@ import type { EvalDetailViewProps } from "../types";
 
 import ImpactedCEsDialog from "./ImpactedCEsDialog";
 
+import { useCreateMlEvalMutation } from "@/components/ml-evaluators/hooks/useCreateMlEvalMutation";
+import MLEvalFormModal from "@/components/ml-evaluators/MLEvalFormModal";
+
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
-import type { ContinuousEvalResponse, CreateEvalRequest } from "@/lib/api-client/api-client";
+import type { ContinuousEvalResponse, CreateEvalRequest, CreateMLEvalRequest, ModelProvider } from "@/lib/api-client/api-client";
 import { formatDateInTimezone } from "@/utils/formatters";
+
+const ML_EDITABLE_TYPES = ["pii", "pii_v1", "toxicity"];
 
 const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestVersion, taskId, onRefetch }: EvalDetailViewProps) => {
   const [tagAnchorEl, setTagAnchorEl] = useState<HTMLButtonElement | null>(null);
   const [newTag, setNewTag] = useState("");
   const [tagError, setTagError] = useState("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isMlEditModalOpen, setIsMlEditModalOpen] = useState(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [impactedCEs, setImpactedCEs] = useState<ContinuousEvalResponse[]>([]);
   const [impactedCEsNewVersion, setImpactedCEsNewVersion] = useState<number>(0);
@@ -46,6 +52,7 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
   const addTagMutation = useAddTagToEvalVersionMutation();
   const deleteTagMutation = useDeleteTagFromEvalVersionMutation();
   const createEvalMutation = useCreateEvalMutation(taskId);
+  const createMlEvalMutation = useCreateMlEvalMutation(taskId);
   const { fetchImpactedCEs } = useImpactedContinuousEvals(taskId);
   const { timezone, use24Hour } = useDisplaySettings();
 
@@ -160,6 +167,26 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
   const handleConfigModalClose = useCallback(() => {
     setIsConfigModalOpen(false);
   }, []);
+
+  const handleMlEditSubmit = useCallback(
+    async (_evalName: string, data: CreateMLEvalRequest) => {
+      const result = await createMlEvalMutation.mutateAsync({ evalName, data });
+      setIsMlEditModalOpen(false);
+      onRefetch?.(result.version);
+
+      try {
+        const affected = await fetchImpactedCEs(evalName, result.version);
+        if (affected.length > 0) {
+          setImpactedCEs(affected);
+          setImpactedCEsNewVersion(result.version);
+          setIsImpactedCEsDialogOpen(true);
+        }
+      } catch {
+        // Non-critical
+      }
+    },
+    [evalName, createMlEvalMutation, onRefetch, fetchImpactedCEs]
+  );
   if (isLoading) {
     return (
       <Box
@@ -224,14 +251,26 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
           </Box>
 
           <Box sx={{ display: "flex", gap: 3, flexWrap: "wrap", alignItems: "center" }}>
-            <Box sx={{ display: "flex", gap: 0.5, alignItems: "baseline" }}>
-              <Typography variant="caption" color="text.secondary">
-                Model:
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {evalData.model_provider} / {evalData.model_name}
-              </Typography>
-            </Box>
+            {evalData.model_provider && evalData.model_name && (
+              <Box sx={{ display: "flex", gap: 0.5, alignItems: "baseline" }}>
+                <Typography variant="caption" color="text.secondary">
+                  Model:
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {evalData.model_provider} / {evalData.model_name}
+                </Typography>
+              </Box>
+            )}
+            {evalData.eval_type && evalData.eval_type !== "llm_as_a_judge" && (
+              <Box sx={{ display: "flex", gap: 0.5, alignItems: "baseline" }}>
+                <Typography variant="caption" color="text.secondary">
+                  Type:
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {evalData.eval_type}
+                </Typography>
+              </Box>
+            )}
             <Box sx={{ display: "flex", gap: 0.5, alignItems: "baseline" }}>
               <Typography variant="caption" color="text.secondary">
                 Created:
@@ -259,50 +298,57 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
         </Box>
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          {!evalData.deleted_at && (
+          {!evalData.deleted_at && evalData.eval_type === "llm_as_a_judge" && (
             <Button variant="outlined" size="small" startIcon={<EditIcon />} onClick={handleEditClick} sx={{ minWidth: 80 }}>
+              Edit
+            </Button>
+          )}
+          {!evalData.deleted_at && ML_EDITABLE_TYPES.includes(evalData.eval_type ?? "") && (
+            <Button variant="outlined" size="small" startIcon={<EditIcon />} onClick={() => setIsMlEditModalOpen(true)} sx={{ minWidth: 80 }}>
               Edit
             </Button>
           )}
         </Box>
       </Box>
 
-      <Paper sx={{ p: 3, display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-          Instructions
-        </Typography>
-        <Box
-          sx={{
-            flex: 1,
-            minHeight: 0,
-            display: "flex",
-            flexDirection: "column",
-            "& .MuiTextField-root": {
+      {evalData.eval_type === "llm_as_a_judge" && (
+        <Paper sx={{ p: 3, display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+            Instructions
+          </Typography>
+          <Box
+            sx={{
               flex: 1,
+              minHeight: 0,
               display: "flex",
               flexDirection: "column",
-            },
-            "& .MuiInputBase-root": {
-              flex: 1,
-              height: "100%",
-              alignItems: "flex-start",
-            },
-            "& .MuiInputBase-input": {
-              height: "100% !important",
-              overflow: "auto !important",
-            },
-          }}
-        >
-          <MustacheHighlightedTextField
-            value={evalData.instructions}
-            onChange={() => {}} // Read-only, no-op
-            disabled
-            multiline
-            minRows={4}
-            size="small"
-          />
-        </Box>
-      </Paper>
+              "& .MuiTextField-root": {
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+              },
+              "& .MuiInputBase-root": {
+                flex: 1,
+                height: "100%",
+                alignItems: "flex-start",
+              },
+              "& .MuiInputBase-input": {
+                height: "100% !important",
+                overflow: "auto !important",
+              },
+            }}
+          >
+            <MustacheHighlightedTextField
+              value={evalData.instructions ?? ""}
+              onChange={() => {}} // Read-only, no-op
+              disabled
+              multiline
+              minRows={4}
+              size="small"
+            />
+          </Box>
+        </Paper>
+      )}
 
       <Popover
         open={tagPopoverOpen}
@@ -410,11 +456,21 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
           onSubmit={handleEditSubmit}
           isLoading={createEvalMutation.isPending}
           evalName={evalName}
-          initialInstructions={evalData.instructions}
-          initialModelProvider={evalData.model_provider}
-          initialModelName={evalData.model_name}
+          initialInstructions={evalData.instructions ?? ""}
+          initialModelProvider={evalData.model_provider ?? "" as ModelProvider}
+          initialModelName={evalData.model_name ?? ""}
         />
       )}
+
+      <MLEvalFormModal
+        open={isMlEditModalOpen}
+        onClose={() => setIsMlEditModalOpen(false)}
+        onSubmit={handleMlEditSubmit}
+        isLoading={createMlEvalMutation.isPending}
+        initialName={evalName}
+        initialType={evalData.eval_type}
+        initialConfig={evalData.config as unknown as Record<string, unknown>}
+      />
 
       <ImpactedCEsDialog
         open={isImpactedCEsDialogOpen}

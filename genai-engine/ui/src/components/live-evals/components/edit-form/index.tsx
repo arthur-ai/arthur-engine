@@ -13,7 +13,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
-import { useId } from "react";
+import { useId, useMemo } from "react";
 
 import { useContinuousEval } from "../../hooks/useContinuousEval";
 import { useContinuousEvalVariableMapping } from "../../hooks/useContinuousEvalVariableMapping";
@@ -22,6 +22,8 @@ import { DetailsFieldGroup, EvaluatorSelector, TransformSelector } from "../../n
 import { VariableMappingSection } from "../variable-mapping";
 
 import { CopyableChip } from "@/components/common";
+import { useMLEval } from "@/components/evaluators/hooks/useEval";
+import { useTransforms } from "@/components/transforms/hooks/useTransforms";
 import type { ContinuousEvalResponse, ContinuousEvalTransformVariableMappingRequest } from "@/lib/api-client/api-client";
 
 type Props = {
@@ -64,8 +66,9 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
         transformId: data.transform_id,
       },
       evaluator: {
-        name: data.llm_eval_name,
-        version: data.llm_eval_version.toString(),
+        name: data.llm_eval_name ?? null,
+        version: data.llm_eval_version?.toString() ?? "latest",
+        eval_type: data.eval_type === "ml_eval" ? "ml" : "llm",
       },
       variableMappings: initialMappings,
     },
@@ -73,13 +76,14 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
       isDirty: true,
     },
     onSubmit: async ({ value }) => {
+      const isML = value.evaluator.eval_type === "ml";
       await updateContinuousEval.mutateAsync({
         name: value.name,
         description: value.description?.trim() || undefined,
         enabled: value.enabled,
         transform_id: value.transform.transformId,
         llm_eval_name: value.evaluator.name,
-        llm_eval_version: value.evaluator.version,
+        llm_eval_version: value.evaluator.version ?? "latest",
         transform_variable_mapping: value.variableMappings,
       });
 
@@ -90,12 +94,29 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
   const evaluator = useStore(form.store, (state) => state.values.evaluator);
   const transform = useStore(form.store, (state) => state.values.transform);
 
-  const { data: variableMappingData, isLoading: isLoadingVariableMapping } = useContinuousEvalVariableMapping(
+  const isMLEval = evaluator.eval_type === "ml";
+
+  const { data: llmVariableMappingData, isLoading: isLoadingVariableMapping } = useContinuousEvalVariableMapping(
     data.task_id,
     transform.transformId ?? undefined,
     evaluator.name ?? undefined,
-    evaluator.version ?? undefined
+    evaluator.version ?? undefined,
+    evaluator.eval_type
   );
+
+  const { eval: mlEvaluatorData } = useMLEval(data.task_id, isMLEval ? (evaluator.name ?? undefined) : undefined, "latest");
+  const { data: allTransforms } = useTransforms(data.task_id ?? undefined);
+  const selectedTransform = allTransforms?.find((t) => t.id === transform.transformId);
+
+  const mlVariableMappingData = useMemo(() => {
+    if (!isMLEval || !selectedTransform || !mlEvaluatorData?.variables?.length) return undefined;
+    const evalVars = mlEvaluatorData.variables as string[];
+    const transformVars = (selectedTransform.definition.variables as { variable_name: string }[]).map((v) => v.variable_name);
+    const matching = evalVars.filter((v) => transformVars.includes(v));
+    return { eval_variables: evalVars, transform_variables: transformVars, matching_variables: matching };
+  }, [isMLEval, selectedTransform, mlEvaluatorData]);
+
+  const variableMappingData = isMLEval ? mlVariableMappingData : llmVariableMappingData;
 
   const variableMappings = useStore(form.store, (state) => state.values.variableMappings);
 
@@ -164,7 +185,7 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
                 eval_variables={variableMappingData?.eval_variables ?? []}
                 transform_variables={variableMappingData?.transform_variables ?? []}
                 matching_variables={variableMappingData?.matching_variables ?? []}
-                isLoading={isLoadingVariableMapping}
+                isLoading={isMLEval ? false : isLoadingVariableMapping}
               />
             </>
           )}

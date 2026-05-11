@@ -135,7 +135,7 @@ class TraceRetentionService(BaseQueueService[TraceRetentionJob]):
                 config_repo = ConfigurationRepository(db_session)
                 config = config_repo.get_configurations()
                 cutoff = datetime.now(timezone.utc) - timedelta(
-                    days=config.trace_retention_days
+                    days=config.trace_retention_days,
                 )
 
                 while True:
@@ -162,7 +162,7 @@ class TraceRetentionService(BaseQueueService[TraceRetentionJob]):
                     if total_deleted >= MAX_TRACES_PER_RUN:
                         self._trip_latch(
                             f"runaway deletion cap reached: deleted {total_deleted} "
-                            f"traces (cutoff={cutoff.isoformat()})"
+                            f"traces (cutoff={cutoff.isoformat()})",
                         )
                         break
 
@@ -187,7 +187,7 @@ class TraceRetentionService(BaseQueueService[TraceRetentionJob]):
             if failures >= CIRCUIT_BREAKER_THRESHOLD:
                 self._trip_latch(
                     f"circuit breaker threshold reached: "
-                    f"{failures} consecutive failures"
+                    f"{failures} consecutive failures",
                 )
             return
 
@@ -202,7 +202,7 @@ class TraceRetentionService(BaseQueueService[TraceRetentionJob]):
         if failures >= CIRCUIT_BREAKER_THRESHOLD:
             self._trip_latch(
                 f"circuit breaker threshold reached: "
-                f"{failures} consecutive failures"
+                f"{failures} consecutive failures",
             )
 
     def _background_loop(self) -> None:

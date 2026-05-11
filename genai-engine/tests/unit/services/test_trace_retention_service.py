@@ -11,7 +11,6 @@ from services.trace_retention_service import (
     CIRCUIT_BREAKER_THRESHOLD,
     MAX_TRACES_PER_RUN,
     ONE_DAY_SECONDS,
-    TRACE_RETENTION_ADVISORY_LOCK_KEY,
     TraceRetentionJob,
     TraceRetentionService,
     get_trace_retention_service,
@@ -109,7 +108,7 @@ def test_circuit_breaker_trips_after_threshold_consecutive_failures(
 ) -> None:
     """Latch trips after CIRCUIT_BREAKER_THRESHOLD consecutive failures, not before."""
     mock_db_session_ctx.return_value.__enter__ = MagicMock(
-        side_effect=RuntimeError("db down")
+        side_effect=RuntimeError("db down"),
     )
     mock_db_session_ctx.return_value.__exit__ = MagicMock(return_value=False)
 
@@ -145,7 +144,7 @@ def test_success_resets_consecutive_failures(
 
     # Fail twice (just under threshold)
     mock_db_session_ctx.return_value.__enter__ = MagicMock(
-        side_effect=RuntimeError("db down")
+        side_effect=RuntimeError("db down"),
     )
     mock_db_session_ctx.return_value.__exit__ = MagicMock(return_value=False)
     for _ in range(CIRCUIT_BREAKER_THRESHOLD - 1):
@@ -162,7 +161,7 @@ def test_success_resets_consecutive_failures(
 
     # Fail once more — should NOT trip (counter was reset)
     mock_db_session_ctx.return_value.__enter__ = MagicMock(
-        side_effect=RuntimeError("db down")
+        side_effect=RuntimeError("db down"),
     )
     mock_db_session_ctx.return_value.__exit__ = MagicMock(return_value=False)
     service._execute_job(TraceRetentionJob())
@@ -489,9 +488,7 @@ def test_interval_defaults_to_one_day_when_env_unset(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Without the env var, the service uses ONE_DAY_SECONDS as the interval."""
-    monkeypatch.delenv(
-        constants.TRACE_RETENTION_INTERVAL_HOURS_ENV_VAR, raising=False
-    )
+    monkeypatch.delenv(constants.TRACE_RETENTION_INTERVAL_HOURS_ENV_VAR, raising=False)
     service = _make_service()
     assert service._interval_seconds == ONE_DAY_SECONDS
 
@@ -514,12 +511,11 @@ def test_interval_clamps_to_minimum_when_env_too_small(
     with caplog.at_level(logging.WARNING, logger="services.trace_retention_service"):
         service = _make_service()
     assert (
-        service._interval_seconds
-        == constants.MIN_TRACE_RETENTION_INTERVAL_HOURS * 3600
+        service._interval_seconds == constants.MIN_TRACE_RETENTION_INTERVAL_HOURS * 3600
     )
-    assert any(
-        "below the minimum" in r.getMessage() for r in caplog.records
-    ), [r.getMessage() for r in caplog.records]
+    assert any("below the minimum" in r.getMessage() for r in caplog.records), [
+        r.getMessage() for r in caplog.records
+    ]
 
 
 @pytest.mark.unit_tests
@@ -528,9 +524,7 @@ def test_interval_falls_back_to_default_on_invalid_env_var(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Non-integer env var values fall back to ONE_DAY_SECONDS with a WARNING log."""
-    monkeypatch.setenv(
-        constants.TRACE_RETENTION_INTERVAL_HOURS_ENV_VAR, "not-a-number"
-    )
+    monkeypatch.setenv(constants.TRACE_RETENTION_INTERVAL_HOURS_ENV_VAR, "not-a-number")
     with caplog.at_level(logging.WARNING, logger="services.trace_retention_service"):
         service = _make_service()
     assert service._interval_seconds == ONE_DAY_SECONDS

@@ -144,6 +144,7 @@ class ContinuousEvalsRepository:
             name=continuous_eval_request.name,
             description=continuous_eval_request.description,
             task_id=task_id,
+            eval_type=continuous_eval_request.eval_type,
             llm_eval_name=continuous_eval_request.llm_eval_name,
             llm_eval_version=continuous_eval_request.llm_eval_version,
             transform_id=continuous_eval_request.transform_id,
@@ -401,6 +402,33 @@ class ContinuousEvalsRepository:
             AgenticAnnotation.from_db_model(db_agentic_annotation)
             for db_agentic_annotation in db_agentic_annotations
         ], total_count
+
+    def disable_continuous_evals_by_eval_name(
+        self,
+        task_id: str,
+        eval_name: str,
+        eval_version: Optional[int] = None,
+    ) -> int:
+        """Disable all continuous evals referencing the given eval name (and optionally version).
+
+        Returns the number of continuous evals disabled.
+        """
+        query = self.db_session.query(DatabaseContinuousEval).filter(
+            DatabaseContinuousEval.task_id == task_id,
+            DatabaseContinuousEval.llm_eval_name == eval_name,
+            DatabaseContinuousEval.enabled == True,
+        )
+        if eval_version is not None:
+            query = query.filter(
+                DatabaseContinuousEval.llm_eval_version == eval_version,
+            )
+
+        updated = query.update(
+            {"enabled": False, "updated_at": datetime.now()},
+            synchronize_session=False,
+        )
+        self.db_session.commit()
+        return updated
 
     def delete_continuous_eval(
         self,

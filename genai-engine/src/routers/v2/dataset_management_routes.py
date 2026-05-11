@@ -342,7 +342,7 @@ def get_synthetic_data_prompt_status(
                 "model_provider": EMPTY_MODEL_PROVIDER,
                 "model_name": EMPTY_MODEL_NAME,
                 "is_placeholder": True,
-            }
+            },
         )
 
     is_placeholder = (
@@ -356,7 +356,7 @@ def get_synthetic_data_prompt_status(
             "model_provider": prompt.model_provider,
             "model_name": prompt.model_name,
             "is_placeholder": is_placeholder,
-        }
+        },
     )
 
 

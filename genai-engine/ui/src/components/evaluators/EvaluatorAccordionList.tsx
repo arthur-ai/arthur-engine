@@ -27,6 +27,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
 import { EvaluatorPipelinesPanel } from "./EvaluatorPipelinesPanel";
+import { MLEvaluatorPipelinesPanel } from "./MLEvaluatorPipelinesPanel";
 
 import { continuousEvalsQueryOptions } from "@/components/live-evals/hooks/useContinuousEvals";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
@@ -63,8 +64,11 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
   const cesByEval = useMemo(() => {
     const map = new Map<string, ContinuousEvalResponse[]>();
     allCEsData?.evals.forEach((ce) => {
-      const existing = map.get(ce.llm_eval_name) ?? [];
-      map.set(ce.llm_eval_name, [...existing, ce]);
+      // Key by the relevant eval name based on eval_type
+      const key = ce.llm_eval_name ?? "";
+      if (!key) return;
+      const existing = map.get(key) ?? [];
+      map.set(key, [...existing, ce]);
     });
     return map;
   }, [allCEsData]);
@@ -126,39 +130,48 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
       {evals.map((evalMeta) => {
         const pipelines = cesByEval.get(evalMeta.name) ?? [];
         const activePipelines = pipelines.filter((ce) => ce.enabled).length;
-        const stalePipelines = pipelines.filter((ce) => ce.llm_eval_version < evalMeta.versions).length;
+        const isLLM = evalMeta.eval_type === "llm_as_a_judge";
+        // Stale check only applies to LLM evals (version-controlled)
+        const stalePipelines = isLLM ? pipelines.filter((ce) => (ce.llm_eval_version ?? 0) < evalMeta.versions).length : 0;
 
         return (
-          <Accordion
-            key={evalMeta.name}
-            expanded={expanded === evalMeta.name}
-            onChange={handleAccordionChange(evalMeta.name)}
-            disableGutters
-            elevation={0}
-            sx={{
-              border: "1px solid",
-              borderColor: "divider",
-              borderRadius: "8px !important",
-              mb: 1,
-              "&:before": { display: "none" },
-              overflow: "hidden",
-            }}
-          >
-            <AccordionSummary
-              expandIcon={<ExpandMoreIcon />}
+          <Box key={evalMeta.name} sx={{ position: "relative", mb: 1 }}>
+            <Accordion
+              expanded={expanded === evalMeta.name}
+              onChange={handleAccordionChange(evalMeta.name)}
+              disableGutters
+              elevation={0}
               sx={{
-                px: 2,
-                py: 0,
-                minHeight: 56,
-                "& .MuiAccordionSummary-content": { my: 1.5, mr: 1 },
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: "8px !important",
+                "&:before": { display: "none" },
+                overflow: "hidden",
               }}
             >
-              <Stack direction="row" alignItems="center" justifyContent="space-between" width="100%">
-                {/* Left: name, version chip, continuous eval count */}
+              <AccordionSummary
+                expandIcon={<ExpandMoreIcon />}
+                sx={{
+                  px: 2,
+                  py: 0,
+                  minHeight: 56,
+                  // Reserve space on the right so summary text doesn't overlap the action buttons
+                  pr: 14,
+                  "& .MuiAccordionSummary-content": { my: 1.5, mr: 1 },
+                }}
+              >
+                {/* Left: name, type chip, version chip, continuous eval count */}
                 <Stack direction="row" alignItems="center" gap={1.5} flexShrink={0} flexWrap="wrap">
                   <Typography variant="body1" fontWeight={500}>
                     {evalMeta.name}
                   </Typography>
+                  {/* Eval type chip */}
+                  {isLLM ? (
+                    <Chip label="LLM" size="small" color="primary" variant="outlined" sx={{ height: 20, fontSize: "0.7rem", fontWeight: 600 }} />
+                  ) : (
+                    <Chip label="ML" size="small" color="secondary" variant="outlined" sx={{ height: 20, fontSize: "0.7rem", fontWeight: 600 }} />
+                  )}
+                  {!isLLM && <Chip label={evalMeta.eval_type} size="small" variant="outlined" sx={{ height: 20, fontSize: "0.7rem" }} />}
                   <Chip label={`v${evalMeta.versions}`} size="small" variant="outlined" sx={{ height: 20, fontSize: "0.7rem", fontWeight: 600 }} />
                   {pipelines.length > 0 && (
                     <Chip
@@ -174,35 +187,53 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
                     </Tooltip>
                   )}
                 </Stack>
+              </AccordionSummary>
 
-                {/* Right: updated date + actions (stop accordion toggle from firing on button clicks) */}
-                <Stack direction="row" alignItems="center" gap={0.5} onClick={(e) => e.stopPropagation()}>
-                  <Typography variant="caption" color="text.secondary" sx={{ mr: 1, whiteSpace: "nowrap" }}>
-                    Updated {formatDateInTimezone(evalMeta.latest_version_created_at, timezone, { hour12: !use24Hour })}
-                  </Typography>
-                  <Tooltip title="View full details">
-                    <IconButton size="small" onClick={() => onExpandToFullScreen(evalMeta.name)} aria-label="View full details">
-                      <OpenInFullIcon sx={{ fontSize: 16 }} />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Delete evaluator">
-                    <IconButton
-                      size="small"
-                      onClick={(e) => handleDeleteClick(e, evalMeta.name)}
-                      sx={{ color: "error.main" }}
-                      aria-label="Delete evaluator"
-                    >
-                      <DeleteIcon sx={{ fontSize: 16 }} />
-                    </IconButton>
-                  </Tooltip>
-                </Stack>
-              </Stack>
-            </AccordionSummary>
+              <AccordionDetails sx={{ p: 0, borderTop: "1px solid", borderColor: "divider" }}>
+                {isLLM ? (
+                  <EvaluatorPipelinesPanel taskId={taskId} evalName={evalMeta.name} latestVersion={evalMeta.versions} pipelines={pipelines} />
+                ) : (
+                  <MLEvaluatorPipelinesPanel taskId={taskId} evalName={evalMeta.name} pipelines={pipelines} />
+                )}
+              </AccordionDetails>
+            </Accordion>
 
-            <AccordionDetails sx={{ p: 0, borderTop: "1px solid", borderColor: "divider" }}>
-              <EvaluatorPipelinesPanel taskId={taskId} evalName={evalMeta.name} latestVersion={evalMeta.versions} pipelines={pipelines} />
-            </AccordionDetails>
-          </Accordion>
+            {/* Date text — aligned with "Last Updated" column header */}
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{
+                position: "absolute",
+                top: 0,
+                right: 100,
+                height: 56,
+                display: "flex",
+                alignItems: "center",
+                whiteSpace: "nowrap",
+                pointerEvents: "none",
+              }}
+            >
+              Updated {formatDateInTimezone(evalMeta.latest_version_created_at ?? null, timezone, { hour12: !use24Hour })}
+            </Typography>
+            {/* Action icons — positioned outside AccordionSummary to avoid nested <button> elements */}
+            <Stack direction="row" alignItems="center" gap={0.5} sx={{ position: "absolute", top: 0, right: 48, height: 56, zIndex: 2 }}>
+              <Tooltip title="View full details">
+                <IconButton size="small" onClick={() => onExpandToFullScreen(evalMeta.name)} aria-label="View full details">
+                  <OpenInFullIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Delete evaluator">
+                <IconButton
+                  size="small"
+                  onClick={(e) => handleDeleteClick(e, evalMeta.name)}
+                  sx={{ color: "error.main" }}
+                  aria-label="Delete evaluator"
+                >
+                  <DeleteIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+            </Stack>
+          </Box>
         );
       })}
 

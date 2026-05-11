@@ -64,6 +64,7 @@ from routers.v1.rag_setting_routes import rag_setting_routes
 from routers.v1.secrets_routes import secrets_routes
 from routers.v1.trace_api_routes import trace_api_routes
 from routers.v1.transform_routes import transform_routes
+from routers.v2.ml_eval_routes import ml_eval_routes
 from routers.v2.routers import (
     dataset_management_routes,
     feedback_routes,
@@ -488,6 +489,7 @@ def get_app_with_routes() -> FastAPI:
             rag_routes,
             rag_setting_routes,
             llm_eval_routes,
+            ml_eval_routes,
             notebook_routes,
             rag_notebook_routes,
             agentic_notebook_routes,
@@ -538,6 +540,7 @@ def get_test_app() -> FastAPI:
             rag_routes,
             rag_setting_routes,
             llm_eval_routes,
+            ml_eval_routes,
             notebook_routes,
             rag_notebook_routes,
             agentic_notebook_routes,
@@ -597,6 +600,7 @@ def get_app() -> FastAPI:
             rag_routes,
             rag_setting_routes,
             llm_eval_routes,
+            ml_eval_routes,
             notebook_routes,
             rag_notebook_routes,
             agentic_notebook_routes,
