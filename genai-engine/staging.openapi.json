@@ -19764,6 +19764,19 @@
                         "title": "Transform Id",
                         "description": "ID of the transform."
                     },
+                    "transform_version_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Transform Version Id",
+                        "description": "ID of the pinned transform version. When set, the continuous eval will always execute using this version's configuration snapshot."
+                    },
                     "transform_variable_mapping": {
                         "items": {
                             "$ref": "#/components/schemas/ContinuousEvalTransformVariableMappingResponse"
@@ -31668,10 +31681,6 @@
                         "title": "Description",
                         "description": "Description of the transform."
                     },
-                    "definition": {
-                        "$ref": "#/components/schemas/TraceTransformDefinition",
-                        "description": "Transform definition specifying extraction rules."
-                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
@@ -31690,7 +31699,6 @@
                     "id",
                     "task_id",
                     "name",
-                    "definition",
                     "created_at",
                     "updated_at"
                 ],
