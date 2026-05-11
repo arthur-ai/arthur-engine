@@ -68,7 +68,6 @@ export async function step5_InstrumentMastra(state: WorkflowState): Promise<bool
       type: 'mastra-arthur-exporter',
       arthurEngineUrl: state.engineUrl!,
       taskId: state.taskId!,
-      apiKey: state.apiKey!,
     },
   );
 

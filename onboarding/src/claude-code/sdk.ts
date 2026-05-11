@@ -8,7 +8,6 @@ export interface InstrumentationRequest {
   type: 'python-arthur-sdk' | 'mastra-arthur-exporter' | 'openinference';
   arthurEngineUrl: string;
   taskId: string;
-  apiKey: string;
 }
 
 export interface InstrumentationResult {
@@ -34,7 +33,7 @@ Arthur Task ID: ${req.taskId}
 IMPORTANT RULES:
 - Do NOT hardcode API keys in source code. Always read from environment variables (ARTHUR_API_KEY).
 - Add these entries to .env (create if it does not exist; ensure .env is in .gitignore):
-    ARTHUR_API_KEY=${req.apiKey}
+    ARTHUR_API_KEY=$ARTHUR_API_KEY
     ARTHUR_BASE_URL=${req.arthurEngineUrl}
     ARTHUR_TASK_ID=${req.taskId}
 - Also add placeholder entries to .env.example:
@@ -87,7 +86,7 @@ PART A — SDK SETUP (always required):
       )
   - Call arthur.instrument_<framework>() to auto-instrument all LLM API calls
   - Add to .env (create if needed, ensure .env is in .gitignore):
-      ARTHUR_API_KEY=${req.apiKey}
+      ARTHUR_API_KEY=$ARTHUR_API_KEY
   - Add to .env.example: ARTHUR_API_KEY=your-api-key-here
 
 PART B — ROOT SPAN + SESSION ID (CRITICAL — without this, each LLM call is a SEPARATE trace):
@@ -236,7 +235,7 @@ STEP 2 — IMPLEMENTATION (only if not already instrumented):
 
   Add to .env (create if needed, ensure .env is in .gitignore):
     ARTHUR_BASE_URL=${req.arthurEngineUrl}
-    ARTHUR_API_KEY=${req.apiKey}
+    ARTHUR_API_KEY=$ARTHUR_API_KEY
     ARTHUR_TASK_ID=${req.taskId}
   Add to .env.example:
     ARTHUR_BASE_URL=${req.arthurEngineUrl}
@@ -359,7 +358,7 @@ STEP 2 — IMPLEMENTATION (only if not already instrumented):
 
   Add to .env (create if needed, ensure .env is in .gitignore):
     ARTHUR_BASE_URL=${req.arthurEngineUrl}
-    ARTHUR_API_KEY=${req.apiKey}
+    ARTHUR_API_KEY=$ARTHUR_API_KEY
     ARTHUR_TASK_ID=${req.taskId}
   Add to .env.example:
     ARTHUR_BASE_URL=${req.arthurEngineUrl}

@@ -69,7 +69,6 @@ export async function step4_InstrumentPython(state: WorkflowState): Promise<bool
       type: 'python-arthur-sdk',
       arthurEngineUrl: state.engineUrl!,
       taskId: state.taskId!,
-      apiKey: state.apiKey!,
     },
   );
 

@@ -69,7 +69,6 @@ export async function step6_InstrumentOther(state: WorkflowState): Promise<boole
       type: 'openinference',
       arthurEngineUrl: state.engineUrl!,
       taskId: state.taskId!,
-      apiKey: state.apiKey!,
     },
   );
 
