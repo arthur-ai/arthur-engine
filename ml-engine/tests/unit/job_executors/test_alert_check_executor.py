@@ -15,11 +15,14 @@ from arthur_client.api_bindings import (
     Job,
     JobKind,
     JobPriority,
+    JobsBatch,
     JobSpec,
     JobState,
     JobTrigger,
     MetricsQueryResult,
+    PostJobKind,
 )
+
 from job_executors.alert_check_executor import AlertCheckExecutor
 
 
@@ -133,6 +136,7 @@ def test_alert_check_executor_fault_tolerance():
         alert_rules_client=alert_rules_client,
         jobs_client=jobs_client,
         metrics_client=metrics_client,
+        policies_client=Mock(),
         logger=logger,
     )
 
@@ -177,3 +181,214 @@ def test_alert_check_executor_fault_tolerance():
     )
     assert isinstance(call_args_list[1][1]["exc_info"], Exception)
     assert str(call_args_list[1][1]["exc_info"]) == "Simulated failure for rule1"
+
+    # On any per-rule failure execute() re-raises before reaching
+    # _submit_compliance_check_job, so no compliance job is queued.
+    jobs_client.post_submit_jobs_batch.assert_not_called()
+
+
+def test_alert_check_executor_submits_compliance_job_on_success():
+    """On a clean run, execute() submits a CompliancePolicyCheck job whose spec
+    inherits scope_model_id, the alert window, and policy_assignment_id from the
+    AlertCheckJobSpec. This is the chain handoff that drives compliance updates."""
+    interval = AlertRuleInterval(unit=IntervalUnit.MINUTES, count=1)
+    model_id = str(uuid4())
+    project_id = str(uuid4())
+    assignment_id = str(uuid4())
+    now = datetime.now(timezone.utc)
+    end_time = now
+    start_time = end_time - timedelta(hours=1)
+
+    alert_rule = AlertRule(
+        id="rule1",
+        name="test_rule",
+        metric_name="test_metric",
+        query="test query",
+        threshold=100,
+        bound=AlertBound.UPPER_BOUND,
+        notification_webhooks=[],
+        interval=interval,
+        model_id=model_id,
+        created_at=now,
+        updated_at=now,
+    )
+    job_spec = AlertCheckJobSpec(
+        scope_model_id=model_id,
+        check_range_start_timestamp=start_time,
+        check_range_end_timestamp=end_time,
+        policy_assignment_id=assignment_id,
+    )
+    job = Job(
+        id=str(uuid4()),
+        kind=JobKind.ALERT_CHECK,
+        job_spec=JobSpec(job_spec),
+        state=JobState.RUNNING,
+        project_id=project_id,
+        data_plane_id=str(uuid4()),
+        queued_at=start_time,
+        ready_at=start_time,
+        trigger_type=JobTrigger.USER,
+        attempts=1,
+        max_attempts=1,
+        memory_requirements_mb=100,
+        job_priority=JobPriority.NUMBER_100,
+    )
+
+    alerts_client = Mock()
+    alert_rules_client = Mock()
+    jobs_client = Mock()
+    metrics_client = Mock()
+    policies_client = Mock()
+    logger = Mock()
+
+    alert_rules_response = Mock()
+    alert_rules_response.records = [alert_rule]
+    alert_rules_client.get_model_alert_rules.return_value = alert_rules_response
+
+    # Empty results — no alerts triggered. Happy path.
+    metrics_client.post_model_metrics_query.return_value = MetricsQueryResult(
+        results=[],
+    )
+
+    spawned_compliance_job_id = str(uuid4())
+    spawned_compliance_job = Mock()
+    spawned_compliance_job.id = spawned_compliance_job_id
+    jobs_client.post_submit_jobs_batch.return_value = JobsBatch.model_construct(
+        jobs=[spawned_compliance_job]
+    )
+
+    executor = AlertCheckExecutor(
+        alerts_client=alerts_client,
+        alert_rules_client=alert_rules_client,
+        jobs_client=jobs_client,
+        metrics_client=metrics_client,
+        policies_client=policies_client,
+        logger=logger,
+    )
+
+    executor.execute(job, job_spec)
+
+    jobs_client.post_submit_jobs_batch.assert_called_once()
+    call_kwargs = jobs_client.post_submit_jobs_batch.call_args.kwargs
+    assert call_kwargs["project_id"] == project_id
+
+    batch = call_kwargs["post_job_batch"]
+    assert len(batch.jobs) == 1
+    posted = batch.jobs[0]
+    assert posted.kind == PostJobKind.COMPLIANCE_POLICY_CHECK
+
+    submitted_spec = posted.job_spec.actual_instance
+    assert submitted_spec.scope_model_id == model_id
+    assert submitted_spec.check_range_start_timestamp == start_time
+    assert submitted_spec.check_range_end_timestamp == end_time
+    assert submitted_spec.policy_assignment_id == assignment_id
+
+    # The chain handoff should also stamp the spawned compliance job id back
+    # onto the assignment so the FE chain widget can advance.
+    policies_client.update_assignment_job_chain.assert_called_once()
+    patch_kwargs = policies_client.update_assignment_job_chain.call_args.kwargs
+    assert patch_kwargs["assignment_id"] == assignment_id
+    assert (
+        patch_kwargs["policy_assignment_job_chain_patch"].compliance_job_id
+        == spawned_compliance_job_id
+    )
+
+
+def test_alert_check_executor_fans_out_compliance_patch_when_assignment_id_is_none():
+    """When the chain is model-wide (POST /models/{id}/check_compliance, no
+    policy_assignment_id on the spec), the compliance handoff fans out: the
+    helper lists every assignment on the model and PATCHes each with the
+    spawned compliance job id."""
+    interval = AlertRuleInterval(unit=IntervalUnit.MINUTES, count=1)
+    model_id = str(uuid4())
+    project_id = str(uuid4())
+    now = datetime.now(timezone.utc)
+    end_time = now
+    start_time = end_time - timedelta(hours=1)
+
+    alert_rule = AlertRule(
+        id="rule1",
+        name="test_rule",
+        metric_name="test_metric",
+        query="test query",
+        threshold=100,
+        bound=AlertBound.UPPER_BOUND,
+        notification_webhooks=[],
+        interval=interval,
+        model_id=model_id,
+        created_at=now,
+        updated_at=now,
+    )
+    job_spec = AlertCheckJobSpec(
+        scope_model_id=model_id,
+        check_range_start_timestamp=start_time,
+        check_range_end_timestamp=end_time,
+        policy_assignment_id=None,  # model-wide chain
+    )
+    job = Job(
+        id=str(uuid4()),
+        kind=JobKind.ALERT_CHECK,
+        job_spec=JobSpec(job_spec),
+        state=JobState.RUNNING,
+        project_id=project_id,
+        data_plane_id=str(uuid4()),
+        queued_at=start_time,
+        ready_at=start_time,
+        trigger_type=JobTrigger.USER,
+        attempts=1,
+        max_attempts=1,
+        memory_requirements_mb=100,
+        job_priority=JobPriority.NUMBER_100,
+    )
+
+    alerts_client = Mock()
+    alert_rules_client = Mock()
+    jobs_client = Mock()
+    metrics_client = Mock()
+    policies_client = Mock()
+    logger = Mock()
+
+    alert_rules_response = Mock()
+    alert_rules_response.records = [alert_rule]
+    alert_rules_client.get_model_alert_rules.return_value = alert_rules_response
+
+    metrics_client.post_model_metrics_query.return_value = MetricsQueryResult(
+        results=[],
+    )
+
+    spawned_compliance_job_id = str(uuid4())
+    spawned_compliance_job = Mock()
+    spawned_compliance_job.id = spawned_compliance_job_id
+    jobs_client.post_submit_jobs_batch.return_value = JobsBatch.model_construct(
+        jobs=[spawned_compliance_job]
+    )
+
+    # Two assignments on this model — both should get the compliance id stamped.
+    aid_1 = str(uuid4())
+    aid_2 = str(uuid4())
+    assignments_page = Mock()
+    assignments_page.records = [Mock(id=aid_1), Mock(id=aid_2)]
+    policies_client.list_model_policy_assignments.return_value = assignments_page
+
+    executor = AlertCheckExecutor(
+        alerts_client=alerts_client,
+        alert_rules_client=alert_rules_client,
+        jobs_client=jobs_client,
+        metrics_client=metrics_client,
+        policies_client=policies_client,
+        logger=logger,
+    )
+
+    executor.execute(job, job_spec)
+
+    assert policies_client.update_assignment_job_chain.call_count == 2
+    stamped_ids = {
+        call.kwargs["assignment_id"]
+        for call in policies_client.update_assignment_job_chain.call_args_list
+    }
+    assert stamped_ids == {aid_1, aid_2}
+    for call in policies_client.update_assignment_job_chain.call_args_list:
+        assert (
+            call.kwargs["policy_assignment_job_chain_patch"].compliance_job_id
+            == spawned_compliance_job_id
+        )

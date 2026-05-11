@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.550"
+        "version": "2.1.551"
     },
     "paths": {
         "/api/v2/usage/tokens": {
