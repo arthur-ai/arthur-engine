@@ -66,7 +66,7 @@ class ApiCallService:
                 body="DELETE is only permitted for tag endpoints",
             )
 
-        if self.blacklist and is_blacklisted(normalized_path, self.blacklist):
+        if is_blacklisted(normalized_path, self.blacklist):
             return ApiCallResult(
                 method=method,
                 path=path,

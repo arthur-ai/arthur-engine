@@ -11,12 +11,25 @@ export const AgentState = z.object({
   proverbs: z.array(z.string()).default([]),
 });
 
+/**
+ * Generates a natural language summary of SQL query results.
+ * When a previous guardrail check was blocked, the blockedReason is passed in
+ * as additional context so the LLM can self-correct on retry.
+ */
+export const generateSqlSummaryAgent = new Agent({
+  name: "generateSqlSummaryAgent",
+  model: openai("gpt-4.1"),
+  instructions: `You summarize SQL query results in clear, concise natural language.
+You will receive the SQL query and its result data. Report only what the data actually shows — use the exact numbers provided, do not round, estimate, or invent values.
+If you are given a correction note explaining a previous mistake, address it directly and produce an accurate summary this time.`,
+});
+
 export const dataAnalystAgent = new Agent({
   name: "dataAnalystAgent",
   tools: { textToSqlTool, executeSqlTool, generateGraphTool },
   model: openai("gpt-4.1"),
   instructions:
-    "You are a helpful data analyst assistant. Please use the textToSqlTool to convert natural language queries into PostgreSQL SQL statements and the executeSqlTool to execute the SQL query and return the results. Once you have the results, please generate a graph to visualize the results using the createGraphTool. Also always respond in english no matter the language the user speaks.",
+    "You are a helpful data analyst assistant. Please use the textToSqlTool to convert natural language queries into PostgreSQL SQL statements and the executeSqlTool to execute the SQL query and return the results. Once you have the results, please generate a graph to visualize the results using the createGraphTool. Also always respond in english no matter the language the user speaks. If executeSqlTool returns a guardrailResult with blocked=true, inform the user that Arthur Engine's guardrails detected a hallucination and display the blockedReason.",
 });
 
 export const textToSqlAgent = new Agent({

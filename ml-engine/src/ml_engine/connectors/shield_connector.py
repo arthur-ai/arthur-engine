@@ -85,8 +85,6 @@ from tools.agentic_filters import (
 )
 from tools.api_client_type_converters import ShieldClientTypeConverter
 
-SHIELD_MAX_PAGE_SIZE = 1500
-
 
 class ShieldBaseConnector(Connector, ABC):
     def __init__(
@@ -163,7 +161,7 @@ class ShieldBaseConnector(Connector, ABC):
         }
 
         params: dict[str, Any] = {
-            "page_size": SHIELD_MAX_PAGE_SIZE,
+            "page_size": Config.genai_engine_max_page_size(),
         }
 
         filters = add_default_sort_filter(filters)
@@ -178,7 +176,7 @@ class ShieldBaseConnector(Connector, ABC):
             params["page_size"] = page_size
         else:
             params["page"] = 0
-            params["page_size"] = SHIELD_MAX_PAGE_SIZE
+            params["page_size"] = Config.genai_engine_max_page_size()
 
         page_size = params["page_size"]
 

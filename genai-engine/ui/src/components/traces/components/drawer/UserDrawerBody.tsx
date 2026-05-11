@@ -1,3 +1,4 @@
+import { TracesTable } from "@arthur/shared-components";
 import { Box, Paper, Skeleton, Stack, Typography } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { Suspense, useCallback, useMemo } from "react";
@@ -15,7 +16,6 @@ import { FilterRow } from "../filtering/FilterRow";
 import { IncomingFilter } from "../filtering/mapper";
 import { TRACE_FIELDS } from "../filtering/trace-fields";
 import { Operators } from "../filtering/types";
-import { TracesTable } from "../tables/TracesTable";
 import { TimeRangeSelect } from "../TimeRangeSelect";
 import { TracesEmptyState } from "../TracesEmptyState";
 

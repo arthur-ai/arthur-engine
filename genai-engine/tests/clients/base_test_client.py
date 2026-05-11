@@ -63,7 +63,7 @@ from arthur_common.models.task_eval_schemas import (
     TraceTransformResponse,
 )
 from pydantic import TypeAdapter
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from weaviate.collections.classes.grpc import HybridFusion, TargetVectorJoinType
 
 from config.database_config import DatabaseConfig
@@ -109,6 +109,8 @@ from schemas.response_schemas import (
     AgenticAnnotationAnalyticsResponse,
     ConnectionCheckResult,
     ContinuousEvalRerunResponse,
+    ContinuousEvalTestRunResponse,
+    ListContinuousEvalTestRunsResponse,
     DatasetResponse,
     DatasetVersionResponse,
     DatasetVersionRowResponse,
@@ -175,7 +177,7 @@ def override_get_keycloak_client():
     return MockAuthClient()
 
 
-def override_get_db_session():
+def override_get_db_session() -> Session:
     global DATABASE_ENGINE
     if DATABASE_ENGINE is None:
         DATABASE_ENGINE = get_db_engine(DatabaseConfig(TEST_DATABASE=True))
@@ -199,6 +201,9 @@ from dependencies import (
 )
 from repositories.system_task_repository import SystemTaskRepository
 from server import get_test_app
+
+TEST_AUDIT_LOG_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "test_audit_logs")
+os.environ["AUDIT_LOG_OVERRIDE_PATH"] = TEST_AUDIT_LOG_DIR
 
 app = get_test_app()
 
@@ -4041,6 +4046,113 @@ class GenaiEngineTestClientBase(httpx.Client):
         """Delete a continuous eval."""
         resp = self.base_client.delete(
             f"/api/v1/continuous_evals/{continuous_eval_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        if resp.status_code == 204:
+            return resp.status_code, None
+
+        return resp.status_code, resp.json() if resp.content else None
+
+    # ========================================================================
+    # Continuous Eval Test Runs
+    # ========================================================================
+
+    def create_test_run(
+        self,
+        eval_id: str,
+        trace_ids: list[str],
+    ) -> tuple[int, ContinuousEvalTestRunResponse]:
+        """Create a test run for a continuous eval."""
+        resp = self.base_client.post(
+            f"/api/v1/continuous_evals/{eval_id}/test_runs",
+            json={"trace_ids": trace_ids},
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ContinuousEvalTestRunResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def get_test_run(
+        self,
+        test_run_id: str,
+    ) -> tuple[int, ContinuousEvalTestRunResponse]:
+        """Get a test run by id."""
+        resp = self.base_client.get(
+            f"/api/v1/continuous_evals/test_runs/{test_run_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ContinuousEvalTestRunResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def list_test_runs(
+        self,
+        eval_id: str,
+    ) -> tuple[int, ListContinuousEvalTestRunsResponse]:
+        """List test runs for a continuous eval."""
+        resp = self.base_client.get(
+            f"/api/v1/continuous_evals/{eval_id}/test_runs",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ListContinuousEvalTestRunsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def get_test_run_results(
+        self,
+        test_run_id: str,
+    ) -> tuple[int, ListAgenticAnnotationsResponse]:
+        """Get results for a test run."""
+        resp = self.base_client.get(
+            f"/api/v1/continuous_evals/test_runs/{test_run_id}/results",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ListAgenticAnnotationsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def delete_test_run(
+        self,
+        test_run_id: str,
+    ) -> tuple[int, Any]:
+        """Delete a test run."""
+        resp = self.base_client.delete(
+            f"/api/v1/continuous_evals/test_runs/{test_run_id}",
             headers=self.authorized_user_api_key_headers,
         )
 

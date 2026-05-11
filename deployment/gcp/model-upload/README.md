@@ -18,9 +18,9 @@ This is the **GCS version** that:
   - For Cloud Run: used as the job’s service account
 
 ## Build and push image
-First, regenerate the poetry.lock file:
+First, generate the lock file:
 ```bash
-rm -rf poetry.lock && poetry lock
+uv lock
 ```
 
 Then build and push to Docker Hub:
@@ -67,7 +67,6 @@ gcloud config set project <your GCP project>
 gcloud auth application-default login
 export GCS_BUCKET=<your GCP bucket>
 export GCS_PREFIX=models-storage-test
-poetry shell && poetry env use 3.12
-poetry install
+uv sync
 python upload_models.py
 ```

@@ -49,6 +49,7 @@ interface FiltersBase {
 
 interface PromptsFilters extends FiltersBase {
   llm_asset_names?: string[] | null;
+  tags?: string[] | null;
 }
 
 interface PromptVersionsFilters extends FiltersBase {

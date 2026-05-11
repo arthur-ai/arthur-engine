@@ -13,6 +13,7 @@ export const PromptStep = withForm({
   },
   render: function Render({ form, onCancel }) {
     const dataset = useStore(form.store, (state) => state.values.info.dataset);
+    const hasEvaluators = useStore(form.store, (state) => state.values.info.evaluators.length > 0);
 
     const { version } = useDatasetVersionData(dataset.id ?? undefined, dataset.version ?? undefined);
 
@@ -50,9 +51,13 @@ export const PromptStep = withForm({
           <Button onClick={onCancel}>Cancel</Button>
           <Box sx={{ flex: 1 }} />
           <Button onClick={() => form.setFieldValue("section", "info")}>Back</Button>
-          <Button type="submit" variant="contained">
-            Configure Evals
-          </Button>
+          <form.Subscribe selector={(state) => [state.isSubmitting]}>
+            {([isSubmitting]) => (
+              <Button type="submit" variant="contained" loading={!hasEvaluators && isSubmitting}>
+                {hasEvaluators ? "Configure Evals" : "Create Experiment"}
+              </Button>
+            )}
+          </form.Subscribe>
         </DialogActions>
       </>
     );

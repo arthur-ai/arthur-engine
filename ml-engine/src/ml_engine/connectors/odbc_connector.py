@@ -103,8 +103,8 @@ class ODBCConnector(Connector):
         for dialect_pattern, handler_func in dialect_handlers.items():
             if dialect_pattern in dialect_lower:
                 if dialect_pattern == "generic odbc (pyodbc)":
-                    return handler_func(conn_str)  # type: ignore
-                return handler_func()  # type: ignore
+                    return handler_func(conn_str)  # type: ignore[call-arg]
+                return handler_func()
 
         # Default to generic ODBC (pyodbc) - fallback or explicitly chosen
         # This handles cases where no dialect is specified or an invalid dialect is provided

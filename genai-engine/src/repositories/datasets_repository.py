@@ -204,11 +204,11 @@ class DatasetRepository:
                         detail="Dataset version for dataset %s not found." % dataset_id,
                         headers={"full_stacktrace": "false"},
                     )
-                db_dataset_version.version_rows = []
                 return DatasetVersion._from_database_model(
                     db_dataset_version,
                     total_count,
                     pagination_params,
+                    paginated_rows=[],
                 )
 
             raise HTTPException(
@@ -226,11 +226,11 @@ class DatasetRepository:
         paginated_rows = [
             result[1] for result in paginated_results if result[1] is not None
         ]
-        db_dataset_version.version_rows = paginated_rows
         return DatasetVersion._from_database_model(
             db_dataset_version,
             total_count,
             pagination_params,
+            paginated_rows=paginated_rows,
         )
 
     def get_dataset_version_row(

@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.488"
+        "version": "2.1.551"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -109,6 +109,72 @@
                         }
                     }
                 }
+            }
+        },
+        "/api/v2/configuration": {
+            "get": {
+                "summary": "Get Configuration",
+                "description": "Get application configuration settings.",
+                "operationId": "get_configuration_api_v2_configuration_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApplicationConfigurationResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            },
+            "post": {
+                "summary": "Update Configuration",
+                "description": "Update application configuration settings.",
+                "operationId": "update_configuration_api_v2_configuration_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ApplicationConfigurationUpdateRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApplicationConfigurationResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
             }
         },
         "/api/v2/feedback/{inference_id}": {
@@ -2595,10 +2661,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "User IDs to filter on. Optional.",
+                            "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.",
                             "title": "User Ids"
                         },
-                        "description": "User IDs to filter on. Optional."
+                        "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional."
                     },
                     {
                         "name": "span_name",
@@ -3350,10 +3416,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "User IDs to filter on. Optional.",
+                            "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.",
                             "title": "User Ids"
                         },
-                        "description": "User IDs to filter on. Optional."
+                        "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional."
                     },
                     {
                         "name": "span_name",
@@ -4344,10 +4410,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "User IDs to filter on. Optional.",
+                            "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.",
                             "title": "User Ids"
                         },
-                        "description": "User IDs to filter on. Optional."
+                        "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional."
                     },
                     {
                         "name": "span_name",
@@ -5098,10 +5164,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "User IDs to filter on. Optional.",
+                            "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.",
                             "title": "User Ids"
                         },
-                        "description": "User IDs to filter on. Optional."
+                        "description": "User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional."
                     },
                     {
                         "name": "span_name",
@@ -6754,6 +6820,15 @@
                 ],
                 "parameters": [
                     {
+                        "name": "prompt_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Name"
+                        }
+                    },
+                    {
                         "name": "prompt_version",
                         "in": "path",
                         "required": true,
@@ -6763,17 +6838,6 @@
                             "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
                         "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                    },
-                    {
-                        "name": "prompt_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt (URL-encoded)."
-                        },
-                        "description": "The name of the prompt (URL-encoded)."
                     },
                     {
                         "name": "task_id",
@@ -6823,6 +6887,15 @@
                 ],
                 "parameters": [
                     {
+                        "name": "prompt_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Name"
+                        }
+                    },
+                    {
                         "name": "prompt_version",
                         "in": "path",
                         "required": true,
@@ -6832,17 +6905,6 @@
                             "description": "The version of the prompt to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
                         "description": "The version of the prompt to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                    },
-                    {
-                        "name": "prompt_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt (URL-encoded)."
-                        },
-                        "description": "The name of the prompt (URL-encoded)."
                     },
                     {
                         "name": "task_id",
@@ -7023,6 +7085,27 @@
                             "title": "Created Before"
                         },
                         "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "tags",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "List of tags to filter for items that have any matching tag across any version.",
+                            "title": "Tags"
+                        },
+                        "description": "List of tags to filter for items that have any matching tag across any version."
                     }
                 ],
                 "responses": {
@@ -7069,10 +7152,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt (URL-encoded)."
-                        },
-                        "description": "The name of the prompt (URL-encoded)."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -7428,6 +7509,15 @@
                 ],
                 "parameters": [
                     {
+                        "name": "prompt_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Name"
+                        }
+                    },
+                    {
                         "name": "prompt_version",
                         "in": "path",
                         "required": true,
@@ -7437,17 +7527,6 @@
                             "description": "The version of the prompt to run. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
                         "description": "The version of the prompt to run. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                    },
-                    {
-                        "name": "prompt_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt (URL-encoded)."
-                        },
-                        "description": "The name of the prompt (URL-encoded)."
                     },
                     {
                         "name": "task_id",
@@ -7519,6 +7598,15 @@
                 ],
                 "parameters": [
                     {
+                        "name": "prompt_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Name"
+                        }
+                    },
+                    {
                         "name": "prompt_version",
                         "in": "path",
                         "required": true,
@@ -7528,17 +7616,6 @@
                             "description": "The version of the prompt to render. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
                         "description": "The version of the prompt to render. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                    },
-                    {
-                        "name": "prompt_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt (URL-encoded)."
-                        },
-                        "description": "The name of the prompt (URL-encoded)."
                     },
                     {
                         "name": "task_id",
@@ -7610,10 +7687,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt (URL-encoded)."
-                        },
-                        "description": "The name of the prompt (URL-encoded)."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -7678,10 +7753,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt (URL-encoded)."
-                        },
-                        "description": "The name of the prompt (URL-encoded)."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -7731,10 +7804,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt (URL-encoded)."
-                        },
-                        "description": "The name of the prompt (URL-encoded)."
+                            "title": "Prompt Name"
+                        }
                     },
                     {
                         "name": "tag",
@@ -7742,10 +7813,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Tag",
-                            "description": "The tag name (URL-encoded)."
-                        },
-                        "description": "The tag name (URL-encoded)."
+                            "title": "Tag"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -7797,6 +7866,15 @@
                 ],
                 "parameters": [
                     {
+                        "name": "prompt_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Name"
+                        }
+                    },
+                    {
                         "name": "prompt_version",
                         "in": "path",
                         "required": true,
@@ -7806,17 +7884,6 @@
                             "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
                         "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                    },
-                    {
-                        "name": "prompt_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt (URL-encoded)."
-                        },
-                        "description": "The name of the prompt (URL-encoded)."
                     },
                     {
                         "name": "task_id",
@@ -7878,6 +7945,15 @@
                 ],
                 "parameters": [
                     {
+                        "name": "prompt_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Name"
+                        }
+                    },
+                    {
                         "name": "prompt_version",
                         "in": "path",
                         "required": true,
@@ -7889,26 +7965,13 @@
                         "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                     },
                     {
-                        "name": "prompt_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "Prompt Name",
-                            "description": "The name of the prompt (URL-encoded)."
-                        },
-                        "description": "The name of the prompt (URL-encoded)."
-                    },
-                    {
                         "name": "tag",
                         "in": "path",
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Tag",
-                            "description": "The tag name (URL-encoded)."
-                        },
-                        "description": "The tag name (URL-encoded)."
+                            "title": "Tag"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -8617,6 +8680,32 @@
                         }
                     }
                 }
+            }
+        },
+        "/api/v2/datasets/synthetic-data/prompt-status": {
+            "get": {
+                "tags": [
+                    "Datasets"
+                ],
+                "summary": "Get the model configuration stored in the SDG system prompt.",
+                "operationId": "get_synthetic_data_prompt_status_api_v2_datasets_synthetic_data_prompt_status_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SyntheticDataPromptStatus"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
             }
         },
         "/api/v2/datasets/{dataset_id}/versions/{version_number}/generate-synthetic": {
@@ -10334,10 +10423,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Tag",
-                            "description": "The tag name (URL-encoded)."
-                        },
-                        "description": "The tag name (URL-encoded)."
+                            "title": "Tag"
+                        }
                     }
                 ],
                 "responses": {
@@ -10379,6 +10466,15 @@
                 ],
                 "parameters": [
                     {
+                        "name": "eval_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Eval Name"
+                        }
+                    },
+                    {
                         "name": "eval_version",
                         "in": "path",
                         "required": true,
@@ -10388,17 +10484,6 @@
                             "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
                         "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                    },
-                    {
-                        "name": "eval_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval (URL-encoded)."
-                        },
-                        "description": "The name of the llm eval (URL-encoded)."
                     },
                     {
                         "name": "task_id",
@@ -10448,6 +10533,15 @@
                 ],
                 "parameters": [
                     {
+                        "name": "eval_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Eval Name"
+                        }
+                    },
+                    {
                         "name": "eval_version",
                         "in": "path",
                         "required": true,
@@ -10457,17 +10551,6 @@
                             "description": "The version of the llm eval to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
                         "description": "The version of the llm eval to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                    },
-                    {
-                        "name": "eval_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval (URL-encoded)."
-                        },
-                        "description": "The name of the llm eval (URL-encoded)."
                     },
                     {
                         "name": "task_id",
@@ -10517,10 +10600,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval (URL-encoded)."
-                        },
-                        "description": "The name of the llm eval (URL-encoded)."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -10865,6 +10946,27 @@
                             "title": "Created Before"
                         },
                         "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "tags",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "List of tags to filter for items that have any matching tag across any version.",
+                            "title": "Tags"
+                        },
+                        "description": "List of tags to filter for items that have any matching tag across any version."
                     }
                 ],
                 "responses": {
@@ -10906,6 +11008,15 @@
                 ],
                 "parameters": [
                     {
+                        "name": "eval_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Eval Name"
+                        }
+                    },
+                    {
                         "name": "eval_version",
                         "in": "path",
                         "required": true,
@@ -10915,17 +11026,6 @@
                             "description": "The version of the llm eval to run. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
                         "description": "The version of the llm eval to run. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                    },
-                    {
-                        "name": "eval_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval (URL-encoded)."
-                        },
-                        "description": "The name of the llm eval (URL-encoded)."
                     },
                     {
                         "name": "task_id",
@@ -10992,10 +11092,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval (URL-encoded)."
-                        },
-                        "description": "The name of the llm eval (URL-encoded)."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -11060,10 +11158,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval (URL-encoded)."
-                        },
-                        "description": "The name of the llm eval (URL-encoded)."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -11113,10 +11209,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval (URL-encoded)."
-                        },
-                        "description": "The name of the llm eval (URL-encoded)."
+                            "title": "Eval Name"
+                        }
                     },
                     {
                         "name": "tag",
@@ -11124,10 +11218,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Tag",
-                            "description": "The tag name (URL-encoded)."
-                        },
-                        "description": "The tag name (URL-encoded)."
+                            "title": "Tag"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -11179,6 +11271,15 @@
                 ],
                 "parameters": [
                     {
+                        "name": "eval_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Eval Name"
+                        }
+                    },
+                    {
                         "name": "eval_version",
                         "in": "path",
                         "required": true,
@@ -11188,17 +11289,6 @@
                             "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                         },
                         "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
-                    },
-                    {
-                        "name": "eval_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval (URL-encoded)."
-                        },
-                        "description": "The name of the llm eval (URL-encoded)."
                     },
                     {
                         "name": "task_id",
@@ -11260,6 +11350,15 @@
                 ],
                 "parameters": [
                     {
+                        "name": "eval_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Eval Name"
+                        }
+                    },
+                    {
                         "name": "eval_version",
                         "in": "path",
                         "required": true,
@@ -11271,26 +11370,13 @@
                         "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag."
                     },
                     {
-                        "name": "eval_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval (URL-encoded)."
-                        },
-                        "description": "The name of the llm eval (URL-encoded)."
-                    },
-                    {
                         "name": "tag",
                         "in": "path",
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Tag",
-                            "description": "The tag name (URL-encoded)."
-                        },
-                        "description": "The tag name (URL-encoded)."
+                            "title": "Tag"
+                        }
                     },
                     {
                         "name": "task_id",
@@ -15435,6 +15521,15 @@
                         "description": "The id of the transform to get the continuous eval variables and mappings for."
                     },
                     {
+                        "name": "eval_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Eval Name"
+                        }
+                    },
+                    {
                         "name": "eval_version",
                         "in": "path",
                         "required": true,
@@ -15444,17 +15539,6 @@
                             "description": "The version of the llm eval to get the continuous eval variables and mappings for."
                         },
                         "description": "The version of the llm eval to get the continuous eval variables and mappings for."
-                    },
-                    {
-                        "name": "eval_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval (URL-encoded)."
-                        },
-                        "description": "The name of the llm eval (URL-encoded)."
                     },
                     {
                         "name": "task_id",
@@ -15629,6 +15713,330 @@
                 }
             }
         },
+        "/api/v1/continuous_evals/{eval_id}/test_runs": {
+            "post": {
+                "tags": [
+                    "Continuous Eval Test Runs"
+                ],
+                "summary": "Create and start a test run for a continuous eval",
+                "description": "Run a continuous eval against specific traces as a test. Results are stored separately from production annotations.",
+                "operationId": "create_test_run_api_v1_continuous_evals__eval_id__test_runs_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "eval_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Continuous Eval ID",
+                            "description": "The id of the continuous eval to test."
+                        },
+                        "description": "The id of the continuous eval to test."
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateTestRunRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ContinuousEvalTestRunResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "tags": [
+                    "Continuous Eval Test Runs"
+                ],
+                "summary": "List test runs for a continuous eval",
+                "description": "Get all test runs for a specific continuous eval.",
+                "operationId": "list_test_runs_api_v1_continuous_evals__eval_id__test_runs_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "eval_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Continuous Eval ID",
+                            "description": "The id of the continuous eval."
+                        },
+                        "description": "The id of the continuous eval."
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListContinuousEvalTestRunsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/continuous_evals/test_runs/{test_run_id}": {
+            "get": {
+                "tags": [
+                    "Continuous Eval Test Runs"
+                ],
+                "summary": "Get a test run by id",
+                "description": "Get the status and counters for a specific test run. Use this endpoint for polling progress.",
+                "operationId": "get_test_run_api_v1_continuous_evals_test_runs__test_run_id__get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "test_run_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Test Run ID",
+                            "description": "The id of the test run."
+                        },
+                        "description": "The id of the test run."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ContinuousEvalTestRunResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Continuous Eval Test Runs"
+                ],
+                "summary": "Delete a test run",
+                "description": "Delete a test run and all its associated annotation results.",
+                "operationId": "delete_test_run_api_v1_continuous_evals_test_runs__test_run_id__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "test_run_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Test Run ID",
+                            "description": "The id of the test run to delete."
+                        },
+                        "description": "The id of the test run to delete."
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Test run deleted."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/continuous_evals/test_runs/{test_run_id}/results": {
+            "get": {
+                "tags": [
+                    "Continuous Eval Test Runs"
+                ],
+                "summary": "Get individual test case results for a test run",
+                "description": "Get the per-trace results of a test run, including scores, reasons, and input variables.",
+                "operationId": "get_test_run_results_api_v1_continuous_evals_test_runs__test_run_id__results_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "test_run_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Test Run ID",
+                            "description": "The id of the test run."
+                        },
+                        "description": "The id of the test run."
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListAgenticAnnotationsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tasks/{task_id}/agent-polling/execute": {
             "post": {
                 "tags": [
@@ -15763,6 +16171,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
+                            "format": "uuid",
                             "title": "Task Id"
                         }
                     }
@@ -17798,8 +18207,17 @@
                         "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')"
                     },
                     "model_provider": {
-                        "$ref": "#/components/schemas/ModelProvider",
-                        "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ModelProvider"
+                            },
+                            {
+                                "type": "string",
+                                "const": "empty"
+                            }
+                        ],
+                        "title": "Model Provider",
+                        "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). The sentinel value 'empty' indicates the system default placeholder has not been configured."
                     },
                     "version": {
                         "type": "integer",
@@ -18000,7 +18418,16 @@
                         "description": "Timestamp when the llm eval version was deleted (None if not deleted)"
                     },
                     "model_provider": {
-                        "$ref": "#/components/schemas/ModelProvider",
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ModelProvider"
+                            },
+                            {
+                                "type": "string",
+                                "const": "empty"
+                            }
+                        ],
+                        "title": "Model Provider",
                         "description": "Model provider chosen for this version of the llm eval"
                     },
                     "model_name": {
@@ -18195,11 +18622,14 @@
                 "title": "AgenticTestCaseListResponse",
                 "description": "Paginated list of agentic test cases"
             },
-            "AnthropicThinkingParam": {
+            "AnthropicThinkingParam-Input": {
                 "properties": {
                     "type": {
                         "type": "string",
-                        "const": "enabled",
+                        "enum": [
+                            "enabled",
+                            "adaptive"
+                        ],
                         "title": "Type"
                     },
                     "budget_tokens": {
@@ -18207,6 +18637,25 @@
                         "title": "Budget Tokens"
                     }
                 },
+                "type": "object",
+                "title": "AnthropicThinkingParam"
+            },
+            "AnthropicThinkingParam-Output": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "enabled",
+                            "adaptive"
+                        ],
+                        "title": "Type"
+                    },
+                    "budget_tokens": {
+                        "type": "integer",
+                        "title": "Budget Tokens"
+                    }
+                },
+                "additionalProperties": false,
                 "type": "object",
                 "title": "AnthropicThinkingParam"
             },
@@ -18407,6 +18856,124 @@
                     "created_at"
                 ],
                 "title": "ApiKeyResponse"
+            },
+            "ApplicationConfigurationResponse": {
+                "properties": {
+                    "chat_task_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Chat Task Id"
+                    },
+                    "default_currency": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default Currency"
+                    },
+                    "document_storage_configuration": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/DocumentStorageConfigurationResponse"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "max_llm_rules_per_task_count": {
+                        "type": "integer",
+                        "title": "Max Llm Rules Per Task Count"
+                    },
+                    "trace_retention_days": {
+                        "type": "integer",
+                        "title": "Trace Retention Days"
+                    },
+                    "allowed_trace_retention_days": {
+                        "items": {
+                            "type": "integer"
+                        },
+                        "type": "array",
+                        "title": "Allowed Trace Retention Days",
+                        "default": []
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "max_llm_rules_per_task_count",
+                    "trace_retention_days"
+                ],
+                "title": "ApplicationConfigurationResponse"
+            },
+            "ApplicationConfigurationUpdateRequest": {
+                "properties": {
+                    "chat_task_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Chat Task Id"
+                    },
+                    "default_currency": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default Currency"
+                    },
+                    "document_storage_configuration": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/DocumentStorageConfigurationUpdateRequest"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "max_llm_rules_per_task_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Llm Rules Per Task Count"
+                    },
+                    "trace_retention_days": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Trace Retention Days"
+                    }
+                },
+                "type": "object",
+                "title": "ApplicationConfigurationUpdateRequest"
             },
             "AuthUserRole": {
                 "properties": {
@@ -19065,6 +19632,89 @@
                 ],
                 "title": "ContinuousEvalRunStatus"
             },
+            "ContinuousEvalTestRunResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id",
+                        "description": "ID of the test run."
+                    },
+                    "continuous_eval_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Continuous Eval Id",
+                        "description": "ID of the continuous eval being tested."
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "ID of the parent task."
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/TestRunStatus",
+                        "description": "Status of the test run."
+                    },
+                    "total_count": {
+                        "type": "integer",
+                        "title": "Total Count",
+                        "description": "Total number of traces in the test run."
+                    },
+                    "completed_count": {
+                        "type": "integer",
+                        "title": "Completed Count",
+                        "description": "Number of completed test cases."
+                    },
+                    "passed_count": {
+                        "type": "integer",
+                        "title": "Passed Count",
+                        "description": "Number of test cases that passed."
+                    },
+                    "failed_count": {
+                        "type": "integer",
+                        "title": "Failed Count",
+                        "description": "Number of test cases that failed."
+                    },
+                    "error_count": {
+                        "type": "integer",
+                        "title": "Error Count",
+                        "description": "Number of test cases that errored."
+                    },
+                    "skipped_count": {
+                        "type": "integer",
+                        "title": "Skipped Count",
+                        "description": "Number of test cases that were skipped."
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "When the test run was created."
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At",
+                        "description": "When the test run was last updated."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "continuous_eval_id",
+                    "task_id",
+                    "status",
+                    "total_count",
+                    "completed_count",
+                    "passed_count",
+                    "failed_count",
+                    "error_count",
+                    "skipped_count",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "ContinuousEvalTestRunResponse"
+            },
             "ContinuousEvalTransformVariableMappingRequest": {
                 "properties": {
                     "transform_variable": {
@@ -19615,6 +20265,26 @@
                 "title": "CreateRagNotebookRequest",
                 "description": "Request to create a new RAG notebook"
             },
+            "CreateTestRunRequest": {
+                "properties": {
+                    "trace_ids": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "maxItems": 50,
+                        "minItems": 1,
+                        "title": "Trace Ids",
+                        "description": "List of trace IDs to test the continuous eval against"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "trace_ids"
+                ],
+                "title": "CreateTestRunRequest",
+                "description": "Request schema for creating a continuous eval test run"
+            },
             "CreateUserRequest": {
                 "properties": {
                     "email": {
@@ -20144,6 +20814,120 @@
                 "type": "object",
                 "title": "DisplaySettingsResponse",
                 "description": "Public display settings (e.g. default currency for cost formatting)."
+            },
+            "DocumentStorageConfigurationResponse": {
+                "properties": {
+                    "storage_environment": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Storage Environment"
+                    },
+                    "bucket_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Bucket Name"
+                    },
+                    "container_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Container Name"
+                    },
+                    "assumable_role_arn": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Assumable Role Arn"
+                    }
+                },
+                "type": "object",
+                "title": "DocumentStorageConfigurationResponse"
+            },
+            "DocumentStorageConfigurationUpdateRequest": {
+                "properties": {
+                    "environment": {
+                        "$ref": "#/components/schemas/DocumentStorageEnvironment"
+                    },
+                    "connection_string": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Connection String"
+                    },
+                    "container_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Container Name"
+                    },
+                    "bucket_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Bucket Name"
+                    },
+                    "assumable_role_arn": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Assumable Role Arn"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "environment"
+                ],
+                "title": "DocumentStorageConfigurationUpdateRequest"
+            },
+            "DocumentStorageEnvironment": {
+                "type": "string",
+                "enum": [
+                    "aws",
+                    "azure"
+                ],
+                "title": "DocumentStorageEnvironment"
             },
             "EnrichedTaskResponse": {
                 "properties": {
@@ -21895,7 +22679,7 @@
                     "thinking": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/AnthropicThinkingParam"
+                                "$ref": "#/components/schemas/AnthropicThinkingParam-Output"
                             },
                             {
                                 "type": "null"
@@ -22071,7 +22855,7 @@
                     "thinking": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/AnthropicThinkingParam"
+                                "$ref": "#/components/schemas/AnthropicThinkingParam-Output"
                             },
                             {
                                 "type": "null"
@@ -22508,7 +23292,7 @@
                     "thinking": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/AnthropicThinkingParam"
+                                "$ref": "#/components/schemas/AnthropicThinkingParam-Input"
                             },
                             {
                                 "type": "null"
@@ -22720,7 +23504,7 @@
                     "thinking": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/AnthropicThinkingParam"
+                                "$ref": "#/components/schemas/AnthropicThinkingParam-Input"
                             },
                             {
                                 "type": "null"
@@ -22972,7 +23756,16 @@
                         "description": "Timestamp when the llm eval version was deleted (None if not deleted)"
                     },
                     "model_provider": {
-                        "$ref": "#/components/schemas/ModelProvider",
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ModelProvider"
+                            },
+                            {
+                                "type": "string",
+                                "const": "empty"
+                            }
+                        ],
+                        "title": "Model Provider",
                         "description": "Model provider chosen for this version of the llm eval"
                     },
                     "model_name": {
@@ -23021,6 +23814,29 @@
                     "count"
                 ],
                 "title": "ListAgenticAnnotationsResponse"
+            },
+            "ListContinuousEvalTestRunsResponse": {
+                "properties": {
+                    "test_runs": {
+                        "items": {
+                            "$ref": "#/components/schemas/ContinuousEvalTestRunResponse"
+                        },
+                        "type": "array",
+                        "title": "Test Runs",
+                        "description": "List of test runs."
+                    },
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "Total number of test runs."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "test_runs",
+                    "count"
+                ],
+                "title": "ListContinuousEvalTestRunsResponse"
             },
             "ListContinuousEvalsResponse": {
                 "properties": {
@@ -23237,6 +24053,11 @@
                         "type": "boolean",
                         "title": "Is Consistent",
                         "default": false
+                    },
+                    "query_profile": {
+                        "type": "boolean",
+                        "title": "Query Profile",
+                        "default": false
                     }
                 },
                 "additionalProperties": false,
@@ -23405,7 +24226,8 @@
                     "gemini",
                     "bedrock",
                     "vertex_ai",
-                    "hosted_vllm"
+                    "hosted_vllm",
+                    "azure"
                 ],
                 "title": "ModelProvider"
             },
@@ -25895,7 +26717,19 @@
                             }
                         ],
                         "title": "Api Base",
-                        "description": "The API base URL. Used for VLLM models."
+                        "description": "The API base URL. Required for Azure (endpoint URL) and vLLM models."
+                    },
+                    "api_version": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Api Version",
+                        "description": "The API version. Required for Azure (e.g. '2024-02-01')."
                     },
                     "credentials_file": {
                         "anyOf": [
@@ -29437,6 +30271,40 @@
                 "title": "SyntheticDataGenerationResponse",
                 "description": "Response for synthetic data generation (both initial and conversation)."
             },
+            "SyntheticDataPromptStatus": {
+                "properties": {
+                    "model_provider": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ModelProvider"
+                            },
+                            {
+                                "type": "string",
+                                "const": "empty"
+                            }
+                        ],
+                        "title": "Model Provider",
+                        "description": "Model provider stored in the SDG system prompt. The sentinel 'empty' indicates the prompt has not yet been configured."
+                    },
+                    "model_name": {
+                        "type": "string",
+                        "title": "Model Name",
+                        "description": "Model name stored in the SDG system prompt"
+                    },
+                    "is_placeholder": {
+                        "type": "boolean",
+                        "title": "Is Placeholder",
+                        "description": "True when the prompt uses the empty placeholder model"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "model_provider",
+                    "model_name",
+                    "is_placeholder"
+                ],
+                "title": "SyntheticDataPromptStatus"
+            },
             "SyntheticDataRowResponse": {
                 "properties": {
                     "id": {
@@ -29760,6 +30628,16 @@
                 ],
                 "title": "TestCaseStatus",
                 "description": "Status of a test case"
+            },
+            "TestRunStatus": {
+                "type": "string",
+                "enum": [
+                    "running",
+                    "completed",
+                    "partial_failure",
+                    "error"
+                ],
+                "title": "TestRunStatus"
             },
             "TokenUsageCount": {
                 "properties": {
@@ -31815,7 +32693,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -32030,7 +32909,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -32245,7 +33125,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -32460,7 +33341,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -32610,7 +33492,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -32760,7 +33643,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -33092,7 +33976,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -33265,7 +34150,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -33438,7 +34324,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"

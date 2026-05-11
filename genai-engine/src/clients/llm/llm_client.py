@@ -9,7 +9,7 @@ from arthur_common.models.llm_model_providers import ModelProvider
 from fastapi import HTTPException
 from litellm import completion_cost, get_model_cost_map, model_cost_map_url
 from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
-from litellm.types.utils import ModelResponse
+from litellm.types.utils import ModelResponse, TextCompletionResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
@@ -83,6 +83,7 @@ class LLMClient:
         api_key: str | None = None,
         project_id: str | None = None,
         region: str | None = None,
+        api_version: str | None = None,
         api_base: str | None = None,
         vertex_credentials: dict[str, str] | None = None,
         aws_bedrock_credentials: dict[str, str] | None = None,
@@ -91,6 +92,7 @@ class LLMClient:
         self.api_key = api_key
         self.project_id = project_id
         self.region = region
+        self.api_version = api_version
         self.api_base = api_base
         self.vertex_credentials = vertex_credentials
         self.aws_bedrock_credentials = aws_bedrock_credentials
@@ -99,7 +101,16 @@ class LLMClient:
         if self.api_key:
             kwargs["api_key"] = self.api_key
 
-        if self.provider == ModelProvider.VERTEX_AI:
+        if self.provider == ModelProvider.AZURE:
+            if not self.api_base:
+                raise ValueError(
+                    "api_base (Azure endpoint URL) is required for Azure provider",
+                )
+            if not self.api_version:
+                raise ValueError("api_version is required for Azure provider")
+            kwargs["api_base"] = self.api_base
+            kwargs["api_version"] = self.api_version
+        elif self.provider == ModelProvider.VERTEX_AI:
             if self.project_id:
                 kwargs["vertex_project"] = self.project_id
             if self.region:
@@ -151,6 +162,24 @@ class LLMClient:
                 raise ValueError("api_base is required for this provider")
 
         return kwargs
+
+    def calculate_cost(
+        self,
+        response: Optional[Union[ModelResponse, TextCompletionResponse]],
+    ) -> str:
+        """Calculate the cost of an LLM response, returning '0.00' if cost data is unavailable."""
+        if response is None:
+            return "0.00"
+        if self.provider == ModelProvider.VLLM:
+            logger.warning("Cost calculation is not supported for the VLLM provider")
+            return "0.00"
+        try:
+            cost_float = completion_cost(response)
+            return f"{cost_float:.6f}"
+        except Exception:
+            model_name = getattr(response, "model", "unknown")
+            logger.warning(f"Cost calculation not available for model={model_name}")
+            return "0.00"
 
     def completion(
         self,
@@ -220,12 +249,7 @@ class LLMClient:
                 detail=f"Unexpected error during completion: {str(e)}",
             )
 
-        if self.provider != ModelProvider.VLLM:
-            cost_float = completion_cost(response)
-            cost = f"{cost_float:.6f}" if cost_float is not None else None
-        else:
-            cost = "0.00"
-            logger.warning("Cost calculation is not supported for this provider")
+        cost = self.calculate_cost(response)
 
         llm_model_response = LLMModelResponse(
             response=response,

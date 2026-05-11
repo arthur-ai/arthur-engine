@@ -23,13 +23,14 @@ from arthur_client.api_bindings import (
     JobTrigger,
     ModelSummary,
     Policy,
+    PolicyAlertRule,
     PolicyAssignment,
     PolicyAttestationRule,
     PolicySummary,
     SetComplianceStatusRequest,
 )
-from job_executors.compliance_policy_check_executor import CompliancePolicyCheckExecutor
 
+from job_executors.compliance_policy_check_executor import CompliancePolicyCheckExecutor
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -51,6 +52,7 @@ def _make_model_summary(model_id: str = None) -> ModelSummary:
     return ModelSummary(
         id=model_id or str(uuid4()),
         name="Test Model",
+        project_id=str(uuid4()),
     )
 
 
@@ -59,7 +61,9 @@ def _make_assignment(
     model_summary: ModelSummary = None,
     enforcement_in_past: bool = True,
 ) -> PolicyAssignment:
-    enforcement = NOW - timedelta(days=7) if enforcement_in_past else NOW + timedelta(days=7)
+    enforcement = (
+        NOW - timedelta(days=7) if enforcement_in_past else NOW + timedelta(days=7)
+    )
     return PolicyAssignment(
         id=str(uuid4()),
         policy=policy_summary or _make_policy_summary(),
@@ -77,7 +81,9 @@ def _make_assignment(
     )
 
 
-def _make_attestation_rule(rule_id: str = None, policy_id: str = None) -> PolicyAttestationRule:
+def _make_attestation_rule(
+    rule_id: str = None, policy_id: str = None
+) -> PolicyAttestationRule:
     return PolicyAttestationRule(
         id=rule_id or str(uuid4()),
         policy_id=policy_id or str(uuid4()),
@@ -88,7 +94,11 @@ def _make_attestation_rule(rule_id: str = None, policy_id: str = None) -> Policy
     )
 
 
-def _make_alert_rule(rule_id: str = None, model_id: str = None) -> AlertRule:
+def _make_alert_rule(
+    rule_id: str = None,
+    model_id: str = None,
+    interval: AlertRuleInterval = None,
+) -> AlertRule:
     return AlertRule(
         id=rule_id or str(uuid4()),
         model_id=model_id or str(uuid4()),
@@ -97,30 +107,47 @@ def _make_alert_rule(rule_id: str = None, model_id: str = None) -> AlertRule:
         bound=AlertBound.UPPER_BOUND,
         query="SELECT ...",
         metric_name="pii_score",
-        interval=AlertRuleInterval(unit=IntervalUnit.DAYS, count=1),
+        interval=interval or AlertRuleInterval(unit=IntervalUnit.DAYS, count=1),
         notification_webhooks=[],
         created_at=NOW,
         updated_at=NOW,
     )
 
 
-def _make_alert(alert_rule_id: str, model_id: str = None) -> Alert:
+def _make_alert(
+    alert_rule_id: str,
+    model_id: str = None,
+    timestamp: datetime = None,
+    interval: AlertRuleInterval = None,
+) -> Alert:
     return Alert(
         id=str(uuid4()),
         model_id=model_id or str(uuid4()),
         alert_rule_id=alert_rule_id,
         alert_rule_name="PII Score Alert",
         alert_rule_metric_name="pii_score",
-        timestamp=NOW,
+        timestamp=timestamp or NOW,
         value=0.95,
         threshold=0.8,
         bound=AlertBound.UPPER_BOUND,
-        interval=AlertRuleInterval(unit=IntervalUnit.DAYS, count=1),
+        interval=interval or AlertRuleInterval(unit=IntervalUnit.DAYS, count=1),
         description="PII score exceeded threshold",
         dimensions={},
         created_at=NOW,
         updated_at=NOW,
     )
+
+
+def _alerts_side_effect(rule_to_alerts: dict):
+    """Mock side_effect for alerts_client.get_model_alerts that returns
+    different alert lists based on the alert_rule_ids filter."""
+
+    def _impl(*args, **kwargs):
+        ids = kwargs.get("alert_rule_ids") or []
+        rule_id = ids[0] if ids else None
+        return _paginated_response(list(rule_to_alerts.get(rule_id, [])))
+
+    return _impl
 
 
 def _make_attestation_record(
@@ -161,9 +188,16 @@ def _make_policy(
     )
 
 
-def _make_job_and_spec(model_id: str, assignment_id: str = None) -> tuple[Job, CompliancePolicyCheckJobSpec]:
+def _make_job_and_spec(
+    model_id: str,
+    assignment_id: str = None,
+    window_start: datetime = None,
+    window_end: datetime = None,
+) -> tuple[Job, CompliancePolicyCheckJobSpec]:
     job_spec = CompliancePolicyCheckJobSpec(
         scope_model_id=model_id,
+        check_range_start_timestamp=window_start or ALERT_WINDOW_START,
+        check_range_end_timestamp=window_end or NOW,
         policy_assignment_id=assignment_id,
     )
     job = Job(
@@ -204,7 +238,14 @@ def _make_executor():
     metrics_version.version_num = 1
     metrics_client.post_model_metrics_version.return_value = metrics_version
 
-    return executor, policies_client, alert_rules_client, alerts_client, metrics_client, logger
+    return (
+        executor,
+        policies_client,
+        alert_rules_client,
+        alerts_client,
+        metrics_client,
+        logger,
+    )
 
 
 def _paginated_response(records):
@@ -244,7 +285,9 @@ def test_all_rules_pass_compliant(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = _make_executor()
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = (
+        _make_executor()
+    )
 
     model_id = str(uuid4())
     policy_id = str(uuid4())
@@ -258,16 +301,20 @@ def test_all_rules_pass_compliant(mock_datetime):
     job, job_spec = _make_job_and_spec(model_id)
 
     # Setup mocks
-    policies_client.list_model_policy_assignments.return_value = _paginated_response([assignment])
+    policies_client.list_model_policy_assignments.return_value = _paginated_response(
+        [assignment]
+    )
     policies_client.get_policy.return_value = policy
-    policies_client.list_model_attestations.return_value = _paginated_response([
-        _make_attestation_record(
-            rule_id=attestation_rule.id,
-            assignment_id=assignment.id,
-            model_id=model_id,
-            next_due=NOW + timedelta(days=60),  # valid
-        ),
-    ])
+    policies_client.list_model_attestations.return_value = _paginated_response(
+        [
+            _make_attestation_record(
+                rule_id=attestation_rule.id,
+                assignment_id=assignment.id,
+                model_id=model_id,
+                next_due=NOW + timedelta(days=60),  # valid
+            ),
+        ]
+    )
     alert_rules_client.get_model_alert_rules.return_value = _paginated_response([])
 
     executor.execute(job, job_spec)
@@ -292,7 +339,9 @@ def test_missing_attestation_non_compliant(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = _make_executor()
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = (
+        _make_executor()
+    )
 
     model_id = str(uuid4())
     policy_id = str(uuid4())
@@ -306,14 +355,20 @@ def test_missing_attestation_non_compliant(mock_datetime):
 
     job, job_spec = _make_job_and_spec(model_id)
 
-    policies_client.list_model_policy_assignments.return_value = _paginated_response([assignment])
+    policies_client.list_model_policy_assignments.return_value = _paginated_response(
+        [assignment]
+    )
     policies_client.get_policy.return_value = policy
-    policies_client.list_model_attestations.return_value = _paginated_response([])  # no attestations
+    policies_client.list_model_attestations.return_value = _paginated_response(
+        []
+    )  # no attestations
     alert_rules_client.get_model_alert_rules.return_value = _paginated_response([])
 
     executor.execute(job, job_spec)
 
-    detail = policies_client.set_compliance_status.call_args.kwargs["set_compliance_status_request"].compliance_status
+    detail = policies_client.set_compliance_status.call_args.kwargs[
+        "set_compliance_status_request"
+    ].compliance_status
     assert detail.status == ComplianceStatus.NON_COMPLIANT
     assert len(detail.attestation_rules.non_compliant) == 1
     assert detail.attestation_rules.non_compliant[0].id == attestation_rule.id
@@ -325,7 +380,9 @@ def test_lapsed_attestation_non_compliant(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = _make_executor()
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = (
+        _make_executor()
+    )
 
     model_id = str(uuid4())
     policy_id = str(uuid4())
@@ -338,21 +395,27 @@ def test_lapsed_attestation_non_compliant(mock_datetime):
 
     job, job_spec = _make_job_and_spec(model_id)
 
-    policies_client.list_model_policy_assignments.return_value = _paginated_response([assignment])
+    policies_client.list_model_policy_assignments.return_value = _paginated_response(
+        [assignment]
+    )
     policies_client.get_policy.return_value = policy
-    policies_client.list_model_attestations.return_value = _paginated_response([
-        _make_attestation_record(
-            rule_id=attestation_rule.id,
-            assignment_id=assignment.id,
-            model_id=model_id,
-            next_due=NOW - timedelta(days=1),  # expired
-        ),
-    ])
+    policies_client.list_model_attestations.return_value = _paginated_response(
+        [
+            _make_attestation_record(
+                rule_id=attestation_rule.id,
+                assignment_id=assignment.id,
+                model_id=model_id,
+                next_due=NOW - timedelta(days=1),  # expired
+            ),
+        ]
+    )
     alert_rules_client.get_model_alert_rules.return_value = _paginated_response([])
 
     executor.execute(job, job_spec)
 
-    detail = policies_client.set_compliance_status.call_args.kwargs["set_compliance_status_request"].compliance_status
+    detail = policies_client.set_compliance_status.call_args.kwargs[
+        "set_compliance_status_request"
+    ].compliance_status
     assert detail.status == ComplianceStatus.NON_COMPLIANT
     assert len(detail.attestation_rules.non_compliant) == 1
 
@@ -363,7 +426,9 @@ def test_alert_violation_non_compliant(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = _make_executor()
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = (
+        _make_executor()
+    )
 
     model_id = str(uuid4())
     policy_id = str(uuid4())
@@ -378,20 +443,31 @@ def test_alert_violation_non_compliant(mock_datetime):
 
     job, job_spec = _make_job_and_spec(model_id)
 
-    policies_client.list_model_policy_assignments.return_value = _paginated_response([assignment])
+    policies_client.list_model_policy_assignments.return_value = _paginated_response(
+        [assignment]
+    )
     policies_client.get_policy.return_value = policy
     policies_client.list_model_attestations.return_value = _paginated_response([])
-    alert_rules_client.get_model_alert_rules.return_value = _paginated_response([alert_rule])
-    alerts_client.get_model_alerts.return_value = _paginated_response([triggering_alert])
+    alert_rules_client.get_model_alert_rules.return_value = _paginated_response(
+        [alert_rule]
+    )
+    alerts_client.get_model_alerts.return_value = _paginated_response(
+        [triggering_alert]
+    )
 
     executor.execute(job, job_spec)
 
-    detail = policies_client.set_compliance_status.call_args.kwargs["set_compliance_status_request"].compliance_status
+    detail = policies_client.set_compliance_status.call_args.kwargs[
+        "set_compliance_status_request"
+    ].compliance_status
     assert detail.status == ComplianceStatus.NON_COMPLIANT
     assert len(detail.alert_rules.non_compliant) == 1
     assert detail.alert_rules.non_compliant[0].id == alert_rule.id
     assert detail.alert_rules.non_compliant[0].alert.id == triggering_alert.id
-    assert detail.alert_rules.non_compliant[0].alert.description == triggering_alert.description
+    assert (
+        detail.alert_rules.non_compliant[0].alert.description
+        == triggering_alert.description
+    )
 
 
 @patch("job_executors.compliance_policy_check_executor.datetime")
@@ -400,7 +476,9 @@ def test_violation_before_enforcement_needs_attention(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = _make_executor()
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = (
+        _make_executor()
+    )
 
     model_id = str(uuid4())
     policy_id = str(uuid4())
@@ -414,14 +492,20 @@ def test_violation_before_enforcement_needs_attention(mock_datetime):
 
     job, job_spec = _make_job_and_spec(model_id)
 
-    policies_client.list_model_policy_assignments.return_value = _paginated_response([assignment])
+    policies_client.list_model_policy_assignments.return_value = _paginated_response(
+        [assignment]
+    )
     policies_client.get_policy.return_value = policy
-    policies_client.list_model_attestations.return_value = _paginated_response([])  # missing attestation
+    policies_client.list_model_attestations.return_value = _paginated_response(
+        []
+    )  # missing attestation
     alert_rules_client.get_model_alert_rules.return_value = _paginated_response([])
 
     executor.execute(job, job_spec)
 
-    detail = policies_client.set_compliance_status.call_args.kwargs["set_compliance_status_request"].compliance_status
+    detail = policies_client.set_compliance_status.call_args.kwargs[
+        "set_compliance_status_request"
+    ].compliance_status
     assert detail.status == ComplianceStatus.NEEDS_ATTENTION
 
 
@@ -431,7 +515,9 @@ def test_single_assignment_filter(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = _make_executor()
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = (
+        _make_executor()
+    )
 
     model_id = str(uuid4())
     assignment_id = str(uuid4())
@@ -440,7 +526,9 @@ def test_single_assignment_filter(mock_datetime):
 
     job, job_spec = _make_job_and_spec(model_id, assignment_id=assignment_id)
 
-    policies_client.list_model_policy_assignments.return_value = _paginated_response([assignment])
+    policies_client.list_model_policy_assignments.return_value = _paginated_response(
+        [assignment]
+    )
     policies_client.get_policy.return_value = policy
     policies_client.list_model_attestations.return_value = _paginated_response([])
     alert_rules_client.get_model_alert_rules.return_value = _paginated_response([])
@@ -458,7 +546,14 @@ def test_fault_tolerance_across_assignments(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, logger = _make_executor()
+    (
+        executor,
+        policies_client,
+        alert_rules_client,
+        alerts_client,
+        metrics_client,
+        logger,
+    ) = _make_executor()
 
     model_id = str(uuid4())
     assignment_1 = _make_assignment(model_summary=_make_model_summary(model_id))
@@ -505,7 +600,9 @@ def test_mixed_alert_rules_compliant_and_non_compliant(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = _make_executor()
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = (
+        _make_executor()
+    )
 
     model_id = str(uuid4())
     policy_id = str(uuid4())
@@ -521,17 +618,23 @@ def test_mixed_alert_rules_compliant_and_non_compliant(mock_datetime):
 
     job, job_spec = _make_job_and_spec(model_id)
 
-    policies_client.list_model_policy_assignments.return_value = _paginated_response([assignment])
+    policies_client.list_model_policy_assignments.return_value = _paginated_response(
+        [assignment]
+    )
     policies_client.get_policy.return_value = policy
     policies_client.list_model_attestations.return_value = _paginated_response([])
     alert_rules_client.get_model_alert_rules.return_value = _paginated_response(
         [passing_rule, failing_rule]
     )
-    alerts_client.get_model_alerts.return_value = _paginated_response([triggering_alert])
+    alerts_client.get_model_alerts.side_effect = _alerts_side_effect(
+        {"failing-rule": [triggering_alert], "passing-rule": []}
+    )
 
     executor.execute(job, job_spec)
 
-    detail = policies_client.set_compliance_status.call_args.kwargs["set_compliance_status_request"].compliance_status
+    detail = policies_client.set_compliance_status.call_args.kwargs[
+        "set_compliance_status_request"
+    ].compliance_status
     assert detail.status == ComplianceStatus.NON_COMPLIANT
     assert len(detail.alert_rules.compliant) == 1
     assert detail.alert_rules.compliant[0].id == "passing-rule"
@@ -545,7 +648,9 @@ def test_metrics_uploaded_with_correct_dimensions(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = _make_executor()
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = (
+        _make_executor()
+    )
 
     model_id = str(uuid4())
     policy_id = str(uuid4())
@@ -560,15 +665,19 @@ def test_metrics_uploaded_with_correct_dimensions(mock_datetime):
 
     job, job_spec = _make_job_and_spec(model_id)
 
-    policies_client.list_model_policy_assignments.return_value = _paginated_response([assignment])
+    policies_client.list_model_policy_assignments.return_value = _paginated_response(
+        [assignment]
+    )
     policies_client.get_policy.return_value = policy
-    policies_client.list_model_attestations.return_value = _paginated_response([
-        _make_attestation_record(
-            rule_id=attestation_rule.id,
-            assignment_id=assignment.id,
-            model_id=model_id,
-        ),
-    ])
+    policies_client.list_model_attestations.return_value = _paginated_response(
+        [
+            _make_attestation_record(
+                rule_id=attestation_rule.id,
+                assignment_id=assignment.id,
+                model_id=model_id,
+            ),
+        ]
+    )
     alert_rules_client.get_model_alert_rules.return_value = _paginated_response([])
 
     executor.execute(job, job_spec)
@@ -596,3 +705,360 @@ def test_metrics_uploaded_with_correct_dimensions(mock_datetime):
     assert "attestation_rule_name" in att_dim_names
     assert "policy_name" in att_dim_names
     assert "model_name" in att_dim_names
+
+
+@patch("job_executors.compliance_policy_check_executor.datetime")
+def test_alert_rule_metrics_uploaded_with_correct_dimensions(mock_datetime):
+    """Verify alert rule metrics include alert_rule_id, alert_rule_name, and status dimensions."""
+    mock_datetime.now.return_value = NOW
+    mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = (
+        _make_executor()
+    )
+
+    model_id = str(uuid4())
+    policy_id = str(uuid4())
+    policy_summary = _make_policy_summary(policy_id)
+    model_summary = _make_model_summary(model_id)
+    assignment = _make_assignment(
+        policy_summary=policy_summary,
+        model_summary=model_summary,
+    )
+
+    alert_rule = _make_alert_rule(rule_id="failing-rule", model_id=model_id)
+    # Distinct alert timestamp from NOW so we can verify the metric is keyed
+    # to the alert, not the check run.
+    alert_ts = NOW - timedelta(minutes=17)
+    alert = _make_alert(
+        alert_rule_id="failing-rule", model_id=model_id, timestamp=alert_ts
+    )
+    policy_alert_rule = PolicyAlertRule(
+        id="failing-rule",
+        policy_id=policy_id,
+        name=alert_rule.name,
+        threshold=alert_rule.threshold,
+        bound=alert_rule.bound,
+        query=alert_rule.query,
+        metric_name=alert_rule.metric_name,
+        interval=alert_rule.interval,
+        created_at=NOW,
+        updated_at=NOW,
+    )
+    policy = _make_policy(policy_id, alert_rules=[policy_alert_rule])
+
+    job, job_spec = _make_job_and_spec(model_id)
+
+    policies_client.list_model_policy_assignments.return_value = _paginated_response(
+        [assignment]
+    )
+    policies_client.get_policy.return_value = policy
+    policies_client.list_model_attestations.return_value = _paginated_response([])
+    alert_rules_client.get_model_alert_rules.return_value = _paginated_response(
+        [alert_rule]
+    )
+    alerts_client.get_model_alerts.return_value = _paginated_response([alert])
+
+    executor.execute(job, job_spec)
+
+    upload_call = metrics_client.post_model_metrics_by_version.call_args
+    upload = upload_call.kwargs["metrics_upload"]
+
+    # Should have 2 metrics: 1 compliance check + 1 alert rule check (no attestation rules)
+    assert len(upload.metrics) == 2
+
+    # First metric is the overall compliance check
+    compliance_metric = upload.metrics[0].actual_instance
+    assert compliance_metric.name == "policy_compliance_check_count"
+
+    # Second metric is the alert rule check
+    alert_metric = upload.metrics[1].actual_instance
+    assert alert_metric.name == "policy_alert_rule_check_count"
+    alert_dims = {d.name: d.value for d in alert_metric.numeric_series[0].dimensions}
+    assert "policy_id" in alert_dims
+    assert "policy_name" in alert_dims
+    assert "assignment_id" in alert_dims
+    assert "model_name" in alert_dims
+    assert "alert_rule_id" in alert_dims
+    assert "alert_rule_name" in alert_dims
+    # Violations carry the alert's id so re-runs collapse to one row.
+    assert alert_dims["alert_id"] == alert.id
+
+    # Verify violation count is 1 since one alert fired
+    assert alert_metric.numeric_series[0].values[0].value == 1.0
+    # Timestamp is the alert's timestamp aligned to 5min, not the check run.
+    expected_ts = alert_ts.replace(
+        minute=(alert_ts.minute // 5) * 5, second=0, microsecond=0
+    )
+    assert alert_metric.numeric_series[0].values[0].timestamp == expected_ts
+
+
+@patch("job_executors.compliance_policy_check_executor.datetime")
+def test_alert_rule_metric_is_one_for_violation(mock_datetime):
+    """The alert-rule metric value is a 0/1 violation flag, not a count.
+    Even if many alerts exist in the latest bucket, value is 1.0 when violating."""
+    mock_datetime.now.return_value = NOW
+    mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = (
+        _make_executor()
+    )
+
+    model_id = str(uuid4())
+    policy_id = str(uuid4())
+    assignment = _make_assignment(
+        policy_summary=_make_policy_summary(policy_id),
+        model_summary=_make_model_summary(model_id),
+    )
+    policy = _make_policy(policy_id)
+
+    alert_rule = _make_alert_rule(rule_id="multi-alert-rule", model_id=model_id)
+    alerts = [
+        _make_alert(alert_rule_id="multi-alert-rule", model_id=model_id)
+        for _ in range(3)
+    ]
+
+    job, job_spec = _make_job_and_spec(model_id)
+
+    policies_client.list_model_policy_assignments.return_value = _paginated_response(
+        [assignment]
+    )
+    policies_client.get_policy.return_value = policy
+    policies_client.list_model_attestations.return_value = _paginated_response([])
+    alert_rules_client.get_model_alert_rules.return_value = _paginated_response(
+        [alert_rule]
+    )
+    alerts_client.get_model_alerts.return_value = _paginated_response(alerts)
+
+    executor.execute(job, job_spec)
+
+    upload = metrics_client.post_model_metrics_by_version.call_args.kwargs[
+        "metrics_upload"
+    ]
+    alert_metric = upload.metrics[1].actual_instance
+    assert alert_metric.name == "policy_alert_rule_check_count"
+    assert alert_metric.numeric_series[0].values[0].value == 1.0
+
+
+@patch("job_executors.compliance_policy_check_executor.datetime")
+def test_alert_outside_latest_bucket_is_compliant(mock_datetime):
+    """An alert exists in the window but outside the rule's latest interval bucket
+    → rule is reported compliant. This is the regression that motivated the change:
+    a long-lookback manual check no longer pins a rule as non-compliant on stale alerts.
+    """
+    mock_datetime.now.return_value = NOW
+    mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = (
+        _make_executor()
+    )
+
+    model_id = str(uuid4())
+    policy_id = str(uuid4())
+    assignment = _make_assignment(
+        policy_summary=_make_policy_summary(policy_id),
+        model_summary=_make_model_summary(model_id),
+    )
+    policy = _make_policy(policy_id)
+
+    # 1h interval → latest bucket is (NOW - 1h, NOW]. The alert at NOW - 6h is in
+    # the broader 24h check window but outside that bucket. The API would not return
+    # it for the per-rule query (time_from=NOW-1h), so the mock returns no records.
+    alert_rule = _make_alert_rule(
+        rule_id="hourly-rule",
+        model_id=model_id,
+        interval=AlertRuleInterval(unit=IntervalUnit.HOURS, count=1),
+    )
+
+    job, job_spec = _make_job_and_spec(model_id)
+
+    policies_client.list_model_policy_assignments.return_value = _paginated_response(
+        [assignment]
+    )
+    policies_client.get_policy.return_value = policy
+    policies_client.list_model_attestations.return_value = _paginated_response([])
+    alert_rules_client.get_model_alert_rules.return_value = _paginated_response(
+        [alert_rule]
+    )
+    alerts_client.get_model_alerts.return_value = _paginated_response([])
+
+    executor.execute(job, job_spec)
+
+    detail = policies_client.set_compliance_status.call_args.kwargs[
+        "set_compliance_status_request"
+    ].compliance_status
+    assert detail.status == ComplianceStatus.COMPLIANT
+    assert len(detail.alert_rules.compliant) == 1
+    assert detail.alert_rules.compliant[0].id == "hourly-rule"
+    assert len(detail.alert_rules.non_compliant) == 0
+
+    upload = metrics_client.post_model_metrics_by_version.call_args.kwargs[
+        "metrics_upload"
+    ]
+    alert_metric = upload.metrics[1].actual_instance
+    assert alert_metric.name == "policy_alert_rule_check_count"
+    assert alert_metric.numeric_series[0].values[0].value == 0.0
+
+
+@patch("job_executors.compliance_policy_check_executor.datetime")
+def test_per_rule_query_uses_rule_interval(mock_datetime):
+    """Each rule is queried with time_from = window_end - rule.interval, so two rules
+    with different intervals get different per-rule queries."""
+    mock_datetime.now.return_value = NOW
+    mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = (
+        _make_executor()
+    )
+
+    model_id = str(uuid4())
+    policy_id = str(uuid4())
+    assignment = _make_assignment(
+        policy_summary=_make_policy_summary(policy_id),
+        model_summary=_make_model_summary(model_id),
+    )
+    policy = _make_policy(policy_id)
+
+    minute_rule = _make_alert_rule(
+        rule_id="minute-rule",
+        model_id=model_id,
+        interval=AlertRuleInterval(unit=IntervalUnit.MINUTES, count=1),
+    )
+    hour_rule = _make_alert_rule(
+        rule_id="hour-rule",
+        model_id=model_id,
+        interval=AlertRuleInterval(unit=IntervalUnit.HOURS, count=1),
+    )
+
+    # Hour rule has an alert in its latest bucket (timestamp = NOW - 30min — inside
+    # (NOW - 1h, NOW]); minute rule has none. Expect mixed verdicts.
+    hour_alert = _make_alert(
+        alert_rule_id="hour-rule",
+        model_id=model_id,
+        timestamp=NOW - timedelta(minutes=30),
+        interval=hour_rule.interval,
+    )
+
+    job, job_spec = _make_job_and_spec(model_id)
+
+    policies_client.list_model_policy_assignments.return_value = _paginated_response(
+        [assignment]
+    )
+    policies_client.get_policy.return_value = policy
+    policies_client.list_model_attestations.return_value = _paginated_response([])
+    alert_rules_client.get_model_alert_rules.return_value = _paginated_response(
+        [minute_rule, hour_rule]
+    )
+    alerts_client.get_model_alerts.side_effect = _alerts_side_effect(
+        {"hour-rule": [hour_alert], "minute-rule": []}
+    )
+
+    executor.execute(job, job_spec)
+
+    # Verify time_from values: per-rule sliding window of 2*rule.interval back
+    # from window_end. The 2x ensures we always catch the latest completed
+    # bucket regardless of how window_end aligns to bucket boundaries.
+    calls = alerts_client.get_model_alerts.call_args_list
+    by_rule = {c.kwargs["alert_rule_ids"][0]: c.kwargs for c in calls}
+    assert by_rule["minute-rule"]["time_from"] == NOW - timedelta(minutes=2)
+    assert by_rule["minute-rule"]["time_to"] == NOW
+    assert by_rule["hour-rule"]["time_from"] == NOW - timedelta(hours=2)
+    assert by_rule["hour-rule"]["time_to"] == NOW
+    assert by_rule["minute-rule"]["page_size"] == 1
+    assert by_rule["hour-rule"]["page_size"] == 1
+
+    detail = policies_client.set_compliance_status.call_args.kwargs[
+        "set_compliance_status_request"
+    ].compliance_status
+    assert detail.status == ComplianceStatus.NON_COMPLIANT
+    compliant_ids = {r.id for r in detail.alert_rules.compliant}
+    non_compliant_ids = {r.id for r in detail.alert_rules.non_compliant}
+    assert compliant_ids == {"minute-rule"}
+    assert non_compliant_ids == {"hour-rule"}
+
+
+@patch("job_executors.compliance_policy_check_executor.datetime")
+def test_alert_rule_metric_has_no_status_dimension(mock_datetime):
+    """The alert-rule metric must not carry a `status` dimension. The dashboard
+    chart query reads `value` directly for this metric — adding a status dim would
+    silently change its semantics."""
+    mock_datetime.now.return_value = NOW
+    mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = (
+        _make_executor()
+    )
+
+    model_id = str(uuid4())
+    policy_id = str(uuid4())
+    assignment = _make_assignment(
+        policy_summary=_make_policy_summary(policy_id),
+        model_summary=_make_model_summary(model_id),
+    )
+    policy = _make_policy(policy_id)
+    alert_rule = _make_alert_rule(rule_id="any-rule", model_id=model_id)
+    alert = _make_alert(alert_rule_id="any-rule", model_id=model_id)
+
+    job, job_spec = _make_job_and_spec(model_id)
+
+    policies_client.list_model_policy_assignments.return_value = _paginated_response(
+        [assignment]
+    )
+    policies_client.get_policy.return_value = policy
+    policies_client.list_model_attestations.return_value = _paginated_response([])
+    alert_rules_client.get_model_alert_rules.return_value = _paginated_response(
+        [alert_rule]
+    )
+    alerts_client.get_model_alerts.return_value = _paginated_response([alert])
+
+    executor.execute(job, job_spec)
+
+    upload = metrics_client.post_model_metrics_by_version.call_args.kwargs[
+        "metrics_upload"
+    ]
+    alert_metric = upload.metrics[1].actual_instance
+    assert alert_metric.name == "policy_alert_rule_check_count"
+    dim_names = {d.name for d in alert_metric.numeric_series[0].dimensions}
+    assert "status" not in dim_names
+
+
+@patch("job_executors.compliance_policy_check_executor.datetime")
+def test_alert_rule_metric_emits_zero_for_passing_rule(mock_datetime):
+    """A passing alert rule emits a violation count of 0."""
+    mock_datetime.now.return_value = NOW
+    mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = (
+        _make_executor()
+    )
+
+    model_id = str(uuid4())
+    policy_id = str(uuid4())
+    assignment = _make_assignment(
+        policy_summary=_make_policy_summary(policy_id),
+        model_summary=_make_model_summary(model_id),
+    )
+    policy = _make_policy(policy_id)
+
+    alert_rule = _make_alert_rule(rule_id="clean-rule", model_id=model_id)
+
+    job, job_spec = _make_job_and_spec(model_id)
+
+    policies_client.list_model_policy_assignments.return_value = _paginated_response(
+        [assignment]
+    )
+    policies_client.get_policy.return_value = policy
+    policies_client.list_model_attestations.return_value = _paginated_response([])
+    alert_rules_client.get_model_alert_rules.return_value = _paginated_response(
+        [alert_rule]
+    )
+    alerts_client.get_model_alerts.return_value = _paginated_response([])  # no alerts
+
+    executor.execute(job, job_spec)
+
+    upload = metrics_client.post_model_metrics_by_version.call_args.kwargs[
+        "metrics_upload"
+    ]
+    alert_metric = upload.metrics[1].actual_instance
+    assert alert_metric.name == "policy_alert_rule_check_count"
+    assert alert_metric.numeric_series[0].values[0].value == 0.0

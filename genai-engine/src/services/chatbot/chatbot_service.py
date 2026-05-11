@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from typing import AsyncGenerator, List, MutableMapping, Optional, Tuple
@@ -24,8 +25,8 @@ from schemas.enums import SSEEventType
 from schemas.request_schemas import PromptCompletionRequest
 from schemas.response_schemas import AgenticPromptRunResponse
 from services.chatbot.api_call_service import ApiCallService
-from services.chatbot.chatbot_tracing_service import ChatbotTracingService
 from services.prompt.chat_completion_service import ChatCompletionService
+from services.trace.internal_trace_service import InternalTraceService
 from utils import constants
 from utils.llm_tool_functions import search_api_index
 from utils.sse_events import format_sse, format_sse_error, format_sse_json
@@ -67,7 +68,11 @@ class ChatbotService:
         self.chat_completion_service = chat_completion_service
         self.api_call_service = api_call_service
         self.api_index = api_index
-        self.tracing = ChatbotTracingService(db_session)
+        self.tracing = InternalTraceService(
+            db_session,
+            task_id=constants.ARTHUR_SYSTEM_TASK_ID,
+            service_name="chatbot",
+        )
         self.summarizer_prompt = summarizer_prompt
 
     def build_prompt(
@@ -149,9 +154,20 @@ class ChatbotService:
     ) -> AsyncGenerator[str, None]:
         api_calls_made: List[ApiCallSummary] = []
         current_prompt = prompt
-        agent_span = self.tracing.start_agent_span(user_id, conversation_id)
+        agent_span = self.tracing.start_agent_span(
+            name="chatbot",
+            agent_name="arthur_chatbot",
+            user_id=user_id,
+            session_id=conversation_id,
+        )
 
-        self.tracing.set_agent_input(agent_span, current_prompt.messages)
+        self.tracing.set_input_json(
+            agent_span,
+            [
+                {"role": m.role, "content": m.content or ""}
+                for m in current_prompt.messages
+            ],
+        )
 
         for _ in range(MAX_ITERATIONS):
             final_response: AgenticPromptRunResponse | None = None
@@ -216,16 +232,22 @@ class ChatbotService:
                 current_prompt.messages.append(
                     OpenAIMessage(role=MessageRole.AI, content=final_response.content),
                 )
-                self.tracing.set_agent_output(agent_span, final_response.content or "")
+                self.tracing.set_output_json(
+                    agent_span, {"text": final_response.content or ""}
+                )
                 self.tracing.end_span(agent_span)
                 self.tracing.flush()
                 yield format_sse(
                     SSEEventType.FINAL_RESPONSE,
                     final_response.model_dump_json(),
                 )
-                CONVERSATION_HISTORIES[(user_id, conversation_id)] = (
-                    self._summarize_history(current_prompt.messages, llm_client)
+
+                summarized_history = await asyncio.to_thread(
+                    self._summarize_history,
+                    current_prompt.messages,
+                    llm_client,
                 )
+                CONVERSATION_HISTORIES[(user_id, conversation_id)] = summarized_history
                 return
             assistant_msg = OpenAIMessage(
                 role=MessageRole.AI,
@@ -348,11 +370,14 @@ class ChatbotService:
         current_prompt.messages.append(
             OpenAIMessage(role=MessageRole.AI, content=error_msg),
         )
-        self.tracing.set_agent_output(agent_span, error_msg)
+        self.tracing.set_output_json(agent_span, {"text": error_msg})
         self.tracing.end_span(agent_span)
         self.tracing.flush()
         yield format_sse_error(error_msg)
-        CONVERSATION_HISTORIES[(user_id, conversation_id)] = self._summarize_history(
+
+        summarized_history = await asyncio.to_thread(
+            self._summarize_history,
             current_prompt.messages,
             llm_client,
         )
+        CONVERSATION_HISTORIES[(user_id, conversation_id)] = summarized_history

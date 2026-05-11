@@ -1,7 +1,7 @@
 FROM --platform=linux/amd64 python:3.13-slim-bookworm AS install
 
-# install poetry and wget
-RUN pip install poetry==2.1.3 && \
+# install uv and wget
+RUN pip install uv==0.11.7 && \
     apt-get update && \
     apt-get install -y wget curl gnupg apt-transport-https && \
     rm -rf /var/lib/apt/lists/*
@@ -61,10 +61,14 @@ ENV PATH=/opt/oracle/instantclient:$PATH
 
 # install dependencies
 COPY pyproject.toml /app/
-COPY poetry.lock /app/
+COPY uv.lock /app/
 COPY README.md /app/
 WORKDIR /app
-RUN poetry config virtualenvs.create false && poetry install --no-root
+RUN uv export --frozen \
+    --no-group dev --no-group linters \
+    --no-emit-project \
+    -o /tmp/requirements.txt \
+    && uv pip install --system --no-cache -r /tmp/requirements.txt
 
 # copy ml-engine code
 COPY src/ml_engine /app/src/ml_engine
@@ -72,7 +76,7 @@ COPY src/ml_engine /app/src/ml_engine
 # copy and install the genai client
 RUN mkdir -p /genai_client
 COPY src/genai_client /genai_client
-RUN poetry run pip install /genai_client
+RUN uv pip install --system /genai_client
 
 # Final Stage(s): Create ml-engine image
 FROM --platform=linux/amd64 gcr.io/distroless/python3-debian12:nonroot AS ml-engine-distroless-base
@@ -94,13 +98,8 @@ COPY --from=install /opt/microsoft/msodbcsql18 /opt/microsoft/msodbcsql18
 COPY --from=install /opt/microsoft/msodbcsql17 /opt/microsoft/msodbcsql17
 COPY --from=install /etc/odbcinst.ini /etc/odbcinst.ini
 COPY --from=install --chown=nonroot:nonroot /app/ /home/nonroot/app/
-COPY --from=install --chown=nonroot:nonroot /root/.cache/pypoetry/ /home/nonroot/.cache/pypoetry/
-COPY --from=install --chown=nonroot:nonroot /root/.config/pypoetry/ /home/nonroot/.config/pypoetry/
-
 ENV PATH="/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 ENV PYTHONPATH="$PYTHONPATH:/home/nonroot/app/src"
-ENV POETRY_VIRTUALENVS_PATH="/home/nonroot/.cache/pypoetry/virtualenvs"
-ENV POETRY_CACHE_DIR="/home/nonroot/.cache/pypoetry"
 ENV LD_LIBRARY_PATH="/opt/microsoft/msodbcsql18/lib64:/opt/microsoft/msodbcsql17/lib64:/opt/oracle/instantclient:${LD_LIBRARY_PATH}"
 ENV ODBCSYSINI="/etc"
 
@@ -108,4 +107,4 @@ ENV ODBCSYSINI="/etc"
 WORKDIR /home/nonroot/app
 
 # start the ml-engine
-ENTRYPOINT ["poetry", "run", "python", "src/ml_engine/job_agent.py"]
+ENTRYPOINT ["python", "src/ml_engine/job_agent.py"]

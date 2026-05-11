@@ -1,30 +1,38 @@
-[tool.poetry]
+[project]
 name = "arthur-genai-engine-models-k8s"
 version = "1.0.0"
 description = "OpenShift job to copy ML models to PVC for airgapped environments"
-authors = ["Arthur <engineering@arthur.ai>"]
+authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 readme = "README.md"
+requires-python = ">=3.12,<3.13"
 
-[tool.poetry.dependencies]
-python = ">=3.12,<3.13.dev0"
-# No boto3 needed - uses only Python standard library for PVC copy
-huggingface-hub = "^0.36.0"  # Only needed for download_models.py during build
+dependencies = [
+  # No boto3 needed - uses only Python standard library for PVC copy
+  "huggingface-hub>=0.36.0",  # Only needed for download_models.py during build
+  "tiktoken>=0.7.0",  # Only needed for download_models.py during build
+]
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.0.0"
-pytest-asyncio = "^0.26.0"
-black = "^26.0.0"
-mypy = "^1.13.0"
-isort = "^5.13.0"
-autoflake = "^2.3.0"
-
-[tool.poetry.scripts]
+[project.scripts]
 copy = "copy_models:main"
 download = "download_models:main"
 
+[dependency-groups]
+dev = [
+  "pytest>=8.0.0,<9",
+  "pytest-asyncio>=0.26.0",
+  "black>=26.0.0",
+  "mypy>=1.13.0,<2",
+  "isort>=5.13.0,<6",
+  "autoflake>=2.3.0,<3",
+]
+
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+package = false
+exclude-newer = "3 days"
 
 [tool.mypy]
 python_version = "3.12"

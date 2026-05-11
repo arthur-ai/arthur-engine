@@ -46,7 +46,7 @@ This Vagrantfile sets up a Linux VM for developing Arthur Engine with all necess
 - Docker & Docker Compose
 - Node.js 20.x
 - Python 3.12
-- Poetry (Python package manager)
+- uv (Python package manager)
 - Git, curl, wget, build tools
 
 ## Port Mappings

@@ -1,125 +1,135 @@
-[tool.poetry]
+[project]
 name = "arthur-genai-engine"
-version = "2.1.493"
+version = "2.1.551"
 description = ""
-authors = ["Arthur <engineering@arthur.ai>"]
+authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 readme = "README.md"
-packages = [
-    { include = "src" },
-    { include = "src/auth" },
-    { include = "src/db_models" },
-    { include = "src/repositories" },
-    { include = "src/routers" },
-    { include = "src/schemas" },
-    { include = "src/scorer" },
-    { include = "src/utils" },
+requires-python = ">=3.12,<3.13"
+
+dependencies = [
+  "openai==2.30.0",
+  "fastapi==0.128.0",
+  "uvicorn==0.35.0",
+  "pydantic==2.12.5",
+  "sse-starlette==3.0.4",
+  "fastapi-sqlalchemy==0.2.1",
+  "alembic==1.17.2",
+  "boto3==1.42.78",
+  "python-dotenv==1.0.1",
+  "psycopg2-binary==2.9.11",
+  "sqlalchemy==2.0.48",
+  "pgvector==0.4.2",
+  "python-multipart==0.0.22",
+  "pypdf==6.8.0",
+  "httpx==0.28.1",
+  "transformers==4.56.2",
+  "authlib==1.6.9",
+  "requests==2.32.5",
+  "starlette==0.49.1",
+  "pyjwt==2.12.0",
+  "azure-storage-blob==12.27.1",
+  "itsdangerous==2.2.0",
+  "newrelic==10.17.0",
+  "importlib-metadata==8.5.0",
+  "opentelemetry-instrumentation-logging>=0.60b1,<0.61",
+  "opentelemetry-instrumentation>=0.60b1,<0.61",
+  "opentelemetry-instrumentation-fastapi>=0.60b1,<0.61",
+  "opentelemetry-exporter-otlp>=1.39.1,<2",
+  "opentelemetry-instrumentation-sqlalchemy>=0.60b1,<0.61",
+  "tiktoken==0.12.0",
+  "nltk==3.9.4",
+  "more-itertools==10.8.0",
+  "presidio-analyzer==2.2.362",
+  "presidio-anonymizer==2.2.362",
+  "python-keycloak==5.8.1",
+  "bcrypt==4.3.0",
+  "cachetools==6.2.6",
+  "sentence-transformers==5.1.2",
+  "en-core-web-lg @ https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl",
+  "torch==2.9.1 ; sys_platform == 'darwin'",
+  "torch==2.9.1+cpu ; sys_platform == 'linux' or sys_platform == 'win32'",
+  "commonmark==0.9.1",
+  "gunicorn>=23.0.0,<24",
+  "fastapi-pagination==0.15.11",
+  "pydantic-settings>=2.3.4,<3",
+  "spacy>=3.8.3",
+  "date-spacy>=0.0.1,<0.1",
+  "bert-score==0.3.13",
+  "langchain==0.3.28",
+  "langchain-community==0.3.31",
+  "langchain-openai==0.3.35",
+  "cloudpickle==3.1.2",
+  "amplitude-analytics>=1.1.5,<2",
+  "sentencepiece==0.2.1",
+  "gliner==0.2.21",
+  "openinference-semantic-conventions>=0.1.12,<0.2",
+  "litellm==1.83.4",
+  "jinja2>=3.1.6,<4",
+  "python-benedict>=0.35.0,<0.36",
+  "weaviate-client>=4.17.0,<5",
+  "arthur-common==2.4.58",
+  "google-auth>=2.48.0,<3",
+  "google-cloud-aiplatform>=1.38",
+  "google-cloud-trace>=1.11.0,<2",
+  "opentelemetry-semantic-conventions>=0.60b1,<0.61",
 ]
 
-[tool.poetry.dependencies]
-python = ">=3.12,<3.13.dev0"
-openai = "1.109.1"
-fastapi = "0.128.0"
-uvicorn = "0.35.0"
-pydantic = "2.11.10"
-sse-starlette = "3.0.4"
-fastapi-sqlalchemy = "0.2.1"
-alembic = "1.17.2"
-boto3 = "1.42.78"
-python-dotenv = "1.1.1"
-psycopg2-binary = "2.9.11"
-sqlalchemy = "2.0.48"
-pgvector = "0.4.2"
-python-multipart = "0.0.22"
-pypdf = "6.8.0"
-httpx = "0.28.1"
-transformers = "4.56.2"
-authlib = "1.6.9"
-requests = "2.32.5"
-starlette = "0.49.1"
-pyjwt = "2.12.0"
-azure-storage-blob = "12.27.1"
-itsdangerous = "2.2.0"
-newrelic = "10.17.0"
-importlib-metadata = "8.7.1"
-opentelemetry-instrumentation-logging = "^0.60b1"
-opentelemetry-instrumentation = "^0.60b1"
-opentelemetry-instrumentation-fastapi = "^0.60b1"
-opentelemetry-exporter-otlp = "^1.39.1"
-opentelemetry-instrumentation-sqlalchemy = "^0.60b1"
-tiktoken = "0.11.0"
-nltk = "3.9.4"
-more-itertools = "10.8.0"
-presidio-analyzer = "2.2.362"
-presidio-anonymizer = "2.2.362"
-python-keycloak = "5.8.1"
-bcrypt = "4.3.0"
-cachetools = "6.2.6"
-sentence-transformers = "5.1.2"
-en-core-web-lg = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl" }
-torch = [
-    { version = "=2.9.1", source = "PyPI", platform = "darwin" },
-    { version = "=2.9.1+cpu", source = "pytorch-cpu", platform = "linux" },
-    { version = "=2.9.1+cpu", source = "pytorch-cpu", platform = "win32" },
+[project.scripts]
+serve = "src.server:start"
+generate_changelog = "changelog:main"
+routes_security_check = "routes_security_check:main"
+
+[dependency-groups]
+dev = [
+  "pytest==8.4.2",
+  "pytest-asyncio==1.2.0",
+  "pytest-cov==6.3.0",
+  "pre-commit==4.5.1",
+  "types-cachetools>=6.2.0.20251022",
 ]
-commonmark = "0.9.1"
-gunicorn = "^23.0.0"
-fastapi-pagination = "0.15.11"
-pydantic-settings = "^2.3.4"
-spacy = ">=3.8.3"
-date-spacy = "^0.0.1"
-bert-score = "0.3.13"
-langchain = "0.3.28"
-langchain-community = "0.3.31"
-langchain-openai = "0.3.35"
-cloudpickle = "3.1.2"
-amplitude-analytics = "^1.1.5"
-sentencepiece = "0.2.1"
-gliner = "0.2.21"
-openinference-semantic-conventions = "^0.1.12"
-litellm = "1.80.0"
-jinja2 = "^3.1.6"
-python-benedict = "^0.35.0"
-weaviate-client = "^4.17.0"
-arthur-common = "2.4.53"
-google-auth = "^2.48.0"
-google-cloud-aiplatform = ">=1.38"
-google-cloud-trace = "^1.11.0"
-opentelemetry-semantic-conventions = "^0.60b1"
+performance = [
+  "locust==2.43.3",
+]
+linters = [
+  "black==25.12.0",
+  "mypy>=1.13.0,<2",
+  "isort>=7.0.0",
+  "autoflake>=2.3.1,<3",
+]
 
+[tool.uv]
+exclude-newer = "3 days"
+exclude-newer-package = { torch = false, arthur-common = false }
 
-[[tool.poetry.source]]
+[[tool.uv.index]]
 name = "PyPI"
+url = "https://pypi.org/simple"
 priority = "primary"
 
-
-[[tool.poetry.source]]
+[[tool.uv.index]]
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
-priority = "explicit"
+explicit = true
 
-
-[[tool.poetry.source]]
+[[tool.uv.index]]
 name = "arthur-repo"
 url = "https://gitlab.com/api/v4/projects/45576036/packages/pypi"
-priority = "explicit"
+explicit = true
 
-[tool.poetry.group.dev.dependencies]
-pytest = "8.4.2"
-pytest-asyncio = "1.2.0"
-pytest-cov = "6.3.0"
-pre-commit = "4.5.1"
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
 
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.poetry.group.performance.dependencies]
-locust = "2.43.3"
-black = "25.12.0"
-mypy = "^1.13.0"
-isort = "^7.0.0"
-autoflake = "^2.3.1"
+[tool.hatch.metadata]
+allow-direct-references = true
 
-
-[tool.poetry.group.linters.dependencies]
-types-cachetools = "^6.2.0.20251022"
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -129,6 +139,7 @@ implicit_reexport = true
 explicit_package_bases = true
 mypy_path = "src"
 namespace_packages = true
+disable_error_code = ["untyped-decorator"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
@@ -147,17 +158,8 @@ markers = [
     "skip_auto_api_key_create: mark a test as opting out of api key creation and deletion pre and post steps"
 ]
 
-[tool.poetry.scripts]
-serve = "src.server:start"
-generate_changelog = "changelog:main"
-routes_security_check = "routes_security_check:main"
-
 [tool.black]
 target-version = ['py312']
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
 
 [tool.isort]
 profile = "black"

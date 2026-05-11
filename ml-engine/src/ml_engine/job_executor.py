@@ -48,7 +48,9 @@ from pydantic import StrictBytes
 
 from config import Config
 from job_executors.alert_check_executor import AlertCheckExecutor
-from job_executors.compliance_policy_check_executor import CompliancePolicyCheckExecutor
+from job_executors.compliance_policy_check_executor import (
+    CompliancePolicyCheckExecutor,
+)
 from job_executors.connector_test_executor import ConnectorTestExecutor
 from job_executors.discover_agents_executor import DiscoverAgentsExecutor
 from job_executors.fetch_data_executor import FetchDataExecutor
@@ -177,6 +179,7 @@ class JobExecutor:
                             self.datasets_client,
                             self.metrics_client,
                             self.jobs_client,
+                            self.policies_client,
                             self.custom_aggregations_client,
                             self.custom_aggregation_tests_client,
                             self.connector_constructor,
@@ -195,6 +198,7 @@ class JobExecutor:
                             self.datasets_client,
                             self.metrics_client,
                             self.jobs_client,
+                            self.policies_client,
                             self.custom_aggregations_client,
                             self.custom_aggregation_tests_client,
                             self.connector_constructor,
@@ -245,6 +249,7 @@ class JobExecutor:
                             self.alert_rules_client,
                             self.jobs_client,
                             self.metrics_client,
+                            self.policies_client,
                             self.logger,
                         ).execute(job, job.job_spec.actual_instance)
                     case JobKind.SCHEDULE_JOBS:

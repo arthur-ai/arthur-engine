@@ -28,6 +28,7 @@ from schemas.enums import (
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
     RagSearchKind,
+    TestRunStatus,
 )
 
 
@@ -45,6 +46,8 @@ class ApplicationConfigurationResponse(BaseModel):
         None
     )
     max_llm_rules_per_task_count: int
+    trace_retention_days: int
+    allowed_trace_retention_days: tuple[int, ...] = ()
 
 
 class DisplaySettingsResponse(BaseModel):
@@ -712,7 +715,7 @@ class LLMVersionResponse(BaseModel):
     deleted_at: Optional[datetime] = Field(
         description="Timestamp when the llm eval version was deleted (None if not deleted)",
     )
-    model_provider: ModelProvider = Field(
+    model_provider: Union[ModelProvider, Literal["empty"]] = Field(
         description="Model provider chosen for this version of the llm eval",
     )
     model_name: str = Field(
@@ -798,6 +801,30 @@ class ContinuousEvalRerunResponse(BaseModel):
     trace_id: str = Field(description="ID of the trace that was rerun.")
 
 
+class ContinuousEvalTestRunResponse(BaseModel):
+    id: UUID = Field(description="ID of the test run.")
+    continuous_eval_id: UUID = Field(
+        description="ID of the continuous eval being tested.",
+    )
+    task_id: str = Field(description="ID of the parent task.")
+    status: TestRunStatus = Field(description="Status of the test run.")
+    total_count: int = Field(description="Total number of traces in the test run.")
+    completed_count: int = Field(description="Number of completed test cases.")
+    passed_count: int = Field(description="Number of test cases that passed.")
+    failed_count: int = Field(description="Number of test cases that failed.")
+    error_count: int = Field(description="Number of test cases that errored.")
+    skipped_count: int = Field(description="Number of test cases that were skipped.")
+    created_at: datetime = Field(description="When the test run was created.")
+    updated_at: datetime = Field(description="When the test run was last updated.")
+
+
+class ListContinuousEvalTestRunsResponse(BaseModel):
+    test_runs: List[ContinuousEvalTestRunResponse] = Field(
+        description="List of test runs.",
+    )
+    count: int = Field(description="Total number of test runs.")
+
+
 # ============================================================================
 # Synthetic Data Generation Response Schemas
 # ============================================================================
@@ -834,6 +861,24 @@ class SyntheticDataGenerationResponse(BaseModel):
     rows_removed: List[str] = Field(
         default_factory=list,
         description="IDs of rows that were removed in this response.",
+    )
+
+
+class SyntheticDataPromptStatus(BaseModel):
+    model_config = {"use_enum_values": True}
+
+    model_provider: Union[ModelProvider, Literal["empty"]] = Field(
+        ...,
+        description="Model provider stored in the SDG system prompt. "
+        "The sentinel 'empty' indicates the prompt has not yet been configured.",
+    )
+    model_name: str = Field(
+        ...,
+        description="Model name stored in the SDG system prompt",
+    )
+    is_placeholder: bool = Field(
+        ...,
+        description="True when the prompt uses the empty placeholder model",
     )
 
 

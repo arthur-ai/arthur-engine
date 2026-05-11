@@ -129,6 +129,8 @@ spec:
               value: {{ .Values.genaiEngineWorkers | quote }}
             - name: ALLOW_ADMIN_KEY_GENERAL_ACCESS
               value: {{ .Values.genaiEngineAllowAdminKeyGeneralAccess }}
+            - name: TRANSFER_ENCODING_MIDDLEWARE_ENABLED
+              value: {{ .Values.transferEncodingMiddlewareEnabled }}
             {{- if .Values.modelRepositoryURL }}
             - name: MODEL_REPOSITORY_URL
               value: {{ .Values.modelRepositoryURL | quote }}

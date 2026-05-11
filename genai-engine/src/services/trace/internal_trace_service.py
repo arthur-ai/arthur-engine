@@ -1,10 +1,20 @@
+"""
+Internal tracing service for emitting OpenInference-flavored spans from
+engine-internal services (chatbot, synthetic data generation, etc.) into
+the trace store under a caller-specified system task.
+
+One instance per logical operation (a single request/response). Build spans
+with ``start_agent_span`` / ``start_llm_span`` / ``start_tool_span``, attach
+attributes via the ``set_*`` helpers, then ``flush()`` to persist them.
+"""
+
 import json
 import logging
 import os
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, List, Optional
+from typing import Any, List, Literal, Optional
 
 from arthur_common.models.llm_model_providers import OpenAIMessage, ToolCall
 from openinference.semconv.trace import (
@@ -31,7 +41,7 @@ from utils import constants
 logger = logging.getLogger(__name__)
 
 
-class ChatbotSpanBuilder:
+class TraceSpanBuilder:
     def __init__(self, trace_id: bytes, parent_span_id: Optional[bytes] = None) -> None:
         self.trace_id = trace_id
         self.span_id = os.urandom(8)
@@ -78,33 +88,61 @@ class ChatbotSpanBuilder:
         )
 
 
-class ChatbotTracingService:
-    def __init__(self, db_session: Session) -> None:
+LLMOutputEnvelope = Literal["text", "raw"]
+
+
+class InternalTraceService:
+    """Collect OpenInference spans for an internal operation and flush them
+    to the trace store under a specific system task.
+
+    Args:
+        db_session: SQLAlchemy session used by the underlying
+            ``TraceIngestionService`` on flush.
+        task_id: System task ID to attach to every span's resource, so the
+            trace shows up under the right task in the trace UI.
+        service_name: Logical name of the calling service, used in log
+            messages on flush. Not written to span attributes.
+    """
+
+    def __init__(
+        self,
+        db_session: Session,
+        *,
+        task_id: str,
+        service_name: str,
+    ) -> None:
         self.db_session = db_session
-        self.spans: List[ChatbotSpanBuilder] = []
+        self.task_id = task_id
+        self.service_name = service_name
+        self.spans: List[TraceSpanBuilder] = []
         self.trace_id = uuid.uuid4().bytes
 
     def start_agent_span(
         self,
-        user_id: str,
-        conversation_id: str,
-    ) -> ChatbotSpanBuilder:
-        span = ChatbotSpanBuilder(self.trace_id)
-        span.name = "chatbot"
+        *,
+        name: str,
+        agent_name: str,
+        session_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+    ) -> TraceSpanBuilder:
+        span = TraceSpanBuilder(self.trace_id)
+        span.name = name
         span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND, "AGENT")
-        span.set_attribute(SpanAttributes.AGENT_NAME, "arthur_chatbot")
-        span.set_attribute(SpanAttributes.USER_ID, user_id)
-        span.set_attribute(SpanAttributes.SESSION_ID, conversation_id)
+        span.set_attribute(SpanAttributes.AGENT_NAME, agent_name)
+        if user_id is not None:
+            span.set_attribute(SpanAttributes.USER_ID, user_id)
+        if session_id is not None:
+            span.set_attribute(SpanAttributes.SESSION_ID, session_id)
         self.spans.append(span)
         return span
 
     def start_llm_span(
         self,
-        parent: ChatbotSpanBuilder,
+        parent: TraceSpanBuilder,
         model_name: str,
         model_provider: str,
-    ) -> ChatbotSpanBuilder:
-        span = ChatbotSpanBuilder(self.trace_id, parent.span_id)
+    ) -> TraceSpanBuilder:
+        span = TraceSpanBuilder(self.trace_id, parent.span_id)
         span.name = "llm_call"
         span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND, "LLM")
         span.set_attribute(SpanAttributes.LLM_MODEL_NAME, model_name)
@@ -114,10 +152,10 @@ class ChatbotTracingService:
 
     def start_tool_span(
         self,
-        parent: ChatbotSpanBuilder,
+        parent: TraceSpanBuilder,
         tool_name: str,
-    ) -> ChatbotSpanBuilder:
-        span = ChatbotSpanBuilder(self.trace_id, parent.span_id)
+    ) -> TraceSpanBuilder:
+        span = TraceSpanBuilder(self.trace_id, parent.span_id)
         span.name = tool_name
         span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND, "TOOL")
         span.set_attribute(SpanAttributes.TOOL_NAME, tool_name)
@@ -126,7 +164,7 @@ class ChatbotTracingService:
 
     def set_llm_input_messages(
         self,
-        span: ChatbotSpanBuilder,
+        span: TraceSpanBuilder,
         messages: List[OpenAIMessage],
     ) -> None:
         input_parts = []
@@ -134,11 +172,14 @@ class ChatbotTracingService:
             prefix = f"{SpanAttributes.LLM_INPUT_MESSAGES}.{i}"
             span.set_attribute(f"{prefix}.{MessageAttributes.MESSAGE_ROLE}", msg.role)
             if msg.content:
+                content = (
+                    msg.content if isinstance(msg.content, str) else str(msg.content)
+                )
                 span.set_attribute(
                     f"{prefix}.{MessageAttributes.MESSAGE_CONTENT}",
-                    msg.content,
+                    content,
                 )
-                input_parts.append({"role": msg.role, "content": msg.content})
+                input_parts.append({"role": str(msg.role), "content": content})
         span.set_attribute(
             SpanAttributes.INPUT_VALUE,
             json.dumps({"messages": input_parts}),
@@ -147,13 +188,23 @@ class ChatbotTracingService:
 
     def set_llm_response(
         self,
-        span: ChatbotSpanBuilder,
+        span: TraceSpanBuilder,
+        *,
         content: Optional[str] = None,
         tool_calls: Optional[List[ToolCall]] = None,
         input_tokens: Optional[int] = None,
         output_tokens: Optional[int] = None,
         total_tokens: Optional[int] = None,
+        output_envelope: LLMOutputEnvelope = "text",
     ) -> None:
+        """Record an LLM completion on an LLM span.
+
+        ``output_envelope`` controls how ``OUTPUT_VALUE`` is serialized:
+        - ``"text"``: wraps content as ``{"text": content or ""}`` — use for
+          prose replies (default, matches chatbot behavior).
+        - ``"raw"``: writes content as-is — use when content is already a
+          JSON string (e.g. structured-output responses).
+        """
         output_prefix = f"{SpanAttributes.LLM_OUTPUT_MESSAGES}.0"
         span.set_attribute(
             f"{output_prefix}.{MessageAttributes.MESSAGE_ROLE}",
@@ -167,24 +218,28 @@ class ChatbotTracingService:
 
         if tool_calls:
             for j, tc in enumerate(tool_calls):
-                name = tc.function.name
-                args = tc.function.arguments
                 tc_prefix = (
                     f"{output_prefix}.{MessageAttributes.MESSAGE_TOOL_CALLS}.{j}"
                 )
                 span.set_attribute(
                     f"{tc_prefix}.{ToolCallAttributes.TOOL_CALL_FUNCTION_NAME}",
-                    name,
+                    tc.function.name,
                 )
                 span.set_attribute(
                     f"{tc_prefix}.{ToolCallAttributes.TOOL_CALL_FUNCTION_ARGUMENTS_JSON}",
-                    args,
+                    tc.function.arguments,
                 )
 
-        span.set_attribute(
-            SpanAttributes.OUTPUT_VALUE,
-            json.dumps({"text": content or ""}),
-        )
+        if output_envelope == "text":
+            span.set_attribute(
+                SpanAttributes.OUTPUT_VALUE,
+                json.dumps({"text": content or ""}),
+            )
+        else:
+            span.set_attribute(
+                SpanAttributes.OUTPUT_VALUE,
+                content if content is not None else "",
+            )
         span.set_attribute(SpanAttributes.OUTPUT_MIME_TYPE, "application/json")
 
         if input_tokens is not None:
@@ -194,31 +249,26 @@ class ChatbotTracingService:
         if total_tokens is not None:
             span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_TOTAL, total_tokens)
 
-    def set_tool_input(self, span: ChatbotSpanBuilder, tool_input: str) -> None:
-        span.set_attribute(SpanAttributes.INPUT_VALUE, tool_input)
-
-    def set_tool_output(self, span: ChatbotSpanBuilder, tool_output: str) -> None:
-        span.set_attribute(SpanAttributes.OUTPUT_VALUE, tool_output)
-
-    def set_agent_input(
-        self,
-        span: ChatbotSpanBuilder,
-        messages: List[OpenAIMessage],
-    ) -> None:
-        value = json.dumps(
-            [{"role": m.role, "content": m.content or ""} for m in messages],
-        )
+    def set_tool_input(self, span: TraceSpanBuilder, value: str) -> None:
         span.set_attribute(SpanAttributes.INPUT_VALUE, value)
+
+    def set_tool_output(self, span: TraceSpanBuilder, value: str) -> None:
+        span.set_attribute(SpanAttributes.OUTPUT_VALUE, value)
+
+    def set_input_json(self, span: TraceSpanBuilder, value: Any) -> None:
+        """Set ``INPUT_VALUE`` to a JSON-serialized value with JSON MIME type."""
+        span.set_attribute(SpanAttributes.INPUT_VALUE, json.dumps(value))
         span.set_attribute(SpanAttributes.INPUT_MIME_TYPE, "application/json")
 
-    def set_agent_output(self, span: ChatbotSpanBuilder, output: str) -> None:
-        span.set_attribute(SpanAttributes.OUTPUT_VALUE, json.dumps({"text": output}))
+    def set_output_json(self, span: TraceSpanBuilder, value: Any) -> None:
+        """Set ``OUTPUT_VALUE`` to a JSON-serialized value with JSON MIME type."""
+        span.set_attribute(SpanAttributes.OUTPUT_VALUE, json.dumps(value))
         span.set_attribute(SpanAttributes.OUTPUT_MIME_TYPE, "application/json")
 
-    def end_span(self, span: ChatbotSpanBuilder) -> None:
+    def end_span(self, span: TraceSpanBuilder) -> None:
         span.end()
 
-    def end_span_with_error(self, span: ChatbotSpanBuilder, error: str) -> None:
+    def end_span_with_error(self, span: TraceSpanBuilder, error: str) -> None:
         span.end_with_error(error)
 
     def flush(self) -> None:
@@ -229,7 +279,7 @@ class ChatbotTracingService:
             attributes=[
                 KeyValue(
                     key=constants.TASK_ID_KEY,
-                    value=AnyValue(string_value=constants.ARTHUR_SYSTEM_TASK_ID),
+                    value=AnyValue(string_value=self.task_id),
                 ),
             ],
         )
@@ -246,8 +296,12 @@ class ChatbotTracingService:
         try:
             service = TraceIngestionService(self.db_session)
             service.process_trace_data(request.SerializeToString())
-            logger.info("Flushed %d chatbot spans", len(self.spans))
+            logger.info(
+                "Flushed %d %s spans",
+                len(self.spans),
+                self.service_name,
+            )
         except Exception:
-            logger.exception("Failed to flush chatbot spans")
+            logger.exception("Failed to flush %s spans", self.service_name)
 
         self.spans.clear()

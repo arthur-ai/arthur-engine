@@ -5,6 +5,7 @@ import {
   textToSqlAgent,
   executeSqlAgent,
   generateGraphAgent,
+  generateSqlSummaryAgent,
 } from "./agents";
 import { ConsoleLogger, LogLevel } from "@mastra/core/logger";
 import { ArthurExporter } from "./observability/arthur";
@@ -17,6 +18,7 @@ export const mastra = new Mastra({
     textToSqlAgent,
     executeSqlAgent,
     generateGraphAgent,
+    generateSqlSummaryAgent,
   },
   storage: new LibSQLStore({
     url: ":memory:",

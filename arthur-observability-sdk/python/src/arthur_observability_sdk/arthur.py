@@ -57,7 +57,11 @@ class Arthur:
             base_url or os.environ.get("ARTHUR_BASE_URL") or "http://localhost:3030"
         ).rstrip("/")
         self._service_name: Optional[str] = service_name
-        self._resource_attributes: Dict[str, Any] = resource_attributes or {}
+        # Caller-supplied OTel resource attrs; `arthur.task` defaults from `task_id` unless set.
+        _attrs: Dict[str, Any] = dict(resource_attributes) if resource_attributes else {}
+        if task_id:
+            _attrs.setdefault("arthur.task", task_id)
+        self._resource_attributes = _attrs
         self._task_id: Optional[str] = task_id
         self._task_name: Optional[str] = task_name
         self._enable_telemetry: bool = enable_telemetry
@@ -66,7 +70,7 @@ class Arthur:
         if task_id is None and task_name is None and service_name is None:
             raise ValueError(
                 "Arthur requires at least one of: task_id, task_name, or service_name. "
-                "Provide a task context for prompt fetching or a service_name for telemetry."
+                "Provide a task context for prompt fetching or a service_name for telemetry.",
             )
 
         self._tracer_provider: Optional[TracerProvider] = None
@@ -119,7 +123,7 @@ class Arthur:
             self._resolved_task_id = self._api_client.resolve_task_id(self._task_name)
             return self._resolved_task_id
         raise ValueError(
-            "No task_id available. Provide task_id or task_name when initialising Arthur."
+            "No task_id available. Provide task_id or task_name when initialising Arthur.",
         )
 
     def _apply_openinference_context(self, span: Any) -> None:
@@ -148,7 +152,7 @@ class Arthur:
         except ImportError:
             raise ImportError(
                 f"Missing optional dependency '{package}'. "
-                f"Install it with: pip install arthur-ai-observability-sdk[{extra_name}]"
+                f"Install it with: pip install arthur-observability-sdk[{extra_name}]",
             )
         try:
             instrumentor_cls = getattr(mod, class_name)
@@ -156,7 +160,7 @@ class Arthur:
             raise ImportError(
                 f"Module '{module_path}' does not export '{class_name}'. "
                 f"You may have an incompatible version of '{package}'. "
-                f"Try: pip install --upgrade arthur-ai-observability-sdk[{extra_name}]"
+                f"Try: pip install --upgrade arthur-observability-sdk[{extra_name}]",
             )
         instrumentor = instrumentor_cls()
         kwargs: Dict[str, Any] = {}
@@ -208,11 +212,15 @@ class Arthur:
             try:
                 if tag:
                     prompt_data = self._api_client.get_prompt_by_tag(
-                        task_id=resolved_task_id, name=name, tag=tag
+                        task_id=resolved_task_id,
+                        name=name,
+                        tag=tag,
                     )
                 else:
                     prompt_data = self._api_client.get_prompt_by_version(
-                        task_id=resolved_task_id, name=name, version=version
+                        task_id=resolved_task_id,
+                        name=name,
+                        version=version,
                     )
             except Exception as exc:
                 span.record_exception(exc)
@@ -283,11 +291,15 @@ class Arthur:
                 # not the already-substituted result.
                 if tag:
                     template_data = self._api_client.get_prompt_by_tag(
-                        task_id=resolved_task_id, name=name, tag=tag
+                        task_id=resolved_task_id,
+                        name=name,
+                        tag=tag,
                     )
                 else:
                     template_data = self._api_client.get_prompt_by_version(
-                        task_id=resolved_task_id, name=name, version=version
+                        task_id=resolved_task_id,
+                        name=name,
+                        version=version,
                     )
 
                 prompt_data = self._api_client.render_prompt(

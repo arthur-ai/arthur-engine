@@ -15,6 +15,7 @@ from schemas.enums import SecretType
 from schemas.internal_schemas import AwsBedrockCredentials, GCPServiceAccountCredentials
 from schemas.request_schemas import PutModelProviderCredentials
 from schemas.response_schemas import ModelProviderResponse
+from utils.constants import EMPTY_MODEL_PROVIDER
 
 logger = logging.getLogger(__name__)
 
@@ -152,6 +153,22 @@ class ModelProviderRepository:
                 logger.warning(
                     "No api key or aws credentials provided for Bedrock. Falling back to using default credentials. If you don't have the proper configurations in this environment, calls to bedrock will fail",
                 )
+        elif provider == ModelProvider.AZURE:
+            if provider_credentials.api_key is None:
+                raise HTTPException(
+                    status_code=HTTP_400_BAD_REQUEST,
+                    detail="api_key is required for Azure",
+                )
+            if provider_credentials.api_base is None:
+                raise HTTPException(
+                    status_code=HTTP_400_BAD_REQUEST,
+                    detail="api_base (Azure endpoint URL) is required for Azure",
+                )
+            if provider_credentials.api_version is None:
+                raise HTTPException(
+                    status_code=HTTP_400_BAD_REQUEST,
+                    detail="api_version is required for Azure",
+                )
         elif provider == ModelProvider.VLLM:
             if provider_credentials.api_base is None:
                 raise HTTPException(
@@ -170,6 +187,7 @@ class ModelProviderRepository:
         api_key: SecretStr | None = None,
         project_id: str | None = None,
         region: str | None = None,
+        api_version: str | None = None,
         api_base: SecretStr | None = None,
         vertex_credentials: GCPServiceAccountCredentials | None = None,
         aws_bedrock_credentials: AwsBedrockCredentials | None = None,
@@ -199,6 +217,7 @@ class ModelProviderRepository:
             existing_provider.value = secret_data.get(self.API_KEY_SECRET_FIELD)
             existing_provider.project_id = project_id
             existing_provider.region = region
+            existing_provider.api_version = api_version
             existing_provider.api_base = secret_data.get(self.API_BASE_SECRET_FIELD)
             existing_provider.vertex_credentials = vertex_credentials_data
             existing_provider.aws_bedrock_credentials = aws_bedrock_credentials_data
@@ -212,6 +231,7 @@ class ModelProviderRepository:
                     secret_type=SecretType.MODEL_PROVIDER,
                     project_id=project_id,
                     region=region,
+                    api_version=api_version,
                     api_base=secret_data.get(self.API_BASE_SECRET_FIELD),
                     vertex_credentials=vertex_credentials_data,
                     aws_bedrock_credentials=aws_bedrock_credentials_data,
@@ -237,6 +257,14 @@ class ModelProviderRepository:
 
     def get_model_provider_client(self, provider: ModelProvider) -> LLMClient:
         """Returns an authenticated LiteLLM client instance for the provider"""
+        if str(provider) == EMPTY_MODEL_PROVIDER:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "The 'empty' model provider is a placeholder and cannot be used for LLM calls. "
+                    "Please configure a real model provider."
+                ),
+            )
         secret = (
             self.db_session.query(DatabaseSecretStorage)
             .where(DatabaseSecretStorage.secret_type == SecretType.MODEL_PROVIDER)
@@ -267,6 +295,7 @@ class ModelProviderRepository:
             api_key=api_key,
             project_id=secret.project_id,
             region=secret.region,
+            api_version=secret.api_version,
             api_base=api_base,
             vertex_credentials=vertex_credentials,
             aws_bedrock_credentials=aws_bedrock_credentials,

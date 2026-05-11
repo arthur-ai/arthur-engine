@@ -716,8 +716,11 @@ export interface AgenticPrompt {
    * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
    */
   model_name: string;
-  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
-  model_provider: ModelProvider;
+  /**
+   * Model Provider
+   * Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). The sentinel value 'empty' indicates the system default placeholder has not been configured.
+   */
+  model_provider: ModelProvider | "empty";
   /**
    * Name
    * Name of the agentic prompt
@@ -794,8 +797,11 @@ export interface AgenticPromptVersionResponse {
    * Model name chosen for this version of the llm eval
    */
   model_name: string;
-  /** Model provider chosen for this version of the llm eval */
-  model_provider: ModelProvider;
+  /**
+   * Model Provider
+   * Model provider chosen for this version of the llm eval
+   */
+  model_provider: ModelProvider | "empty";
   /**
    * Num Messages
    * Number of messages in the prompt
@@ -922,12 +928,26 @@ export type AnnotateTraceApiV1TracesTraceIdAnnotationsPostData = AgenticAnnotati
 export type AnnotateTraceApiV1TracesTraceIdAnnotationsPostError = HTTPValidationError;
 
 /** AnthropicThinkingParam */
-export interface AnthropicThinkingParam {
+export interface AnthropicThinkingParamInput {
   /** Budget Tokens */
   budget_tokens?: number;
   /** Type */
-  type?: "enabled";
+  type?: AnthropicThinkingParamInputTypeEnum;
 }
+
+/** Type */
+export type AnthropicThinkingParamInputTypeEnum = "enabled" | "adaptive";
+
+/** AnthropicThinkingParam */
+export interface AnthropicThinkingParamOutput {
+  /** Budget Tokens */
+  budget_tokens?: number;
+  /** Type */
+  type?: AnthropicThinkingParamOutputTypeEnum;
+}
+
+/** Type */
+export type AnthropicThinkingParamOutputTypeEnum = "enabled" | "adaptive";
 
 /** ApiKeyRagAuthenticationConfigRequest */
 export interface ApiKeyRagAuthenticationConfigRequest {
@@ -1036,6 +1056,37 @@ export interface ApiKeyResponse {
    * @default []
    */
   roles?: string[];
+}
+
+/** ApplicationConfigurationResponse */
+export interface ApplicationConfigurationResponse {
+  /**
+   * Allowed Trace Retention Days
+   * @default []
+   */
+  allowed_trace_retention_days?: number[];
+  /** Chat Task Id */
+  chat_task_id?: string | null;
+  /** Default Currency */
+  default_currency?: string | null;
+  document_storage_configuration?: DocumentStorageConfigurationResponse | null;
+  /** Max Llm Rules Per Task Count */
+  max_llm_rules_per_task_count: number;
+  /** Trace Retention Days */
+  trace_retention_days: number;
+}
+
+/** ApplicationConfigurationUpdateRequest */
+export interface ApplicationConfigurationUpdateRequest {
+  /** Chat Task Id */
+  chat_task_id?: string | null;
+  /** Default Currency */
+  default_currency?: string | null;
+  document_storage_configuration?: DocumentStorageConfigurationUpdateRequest | null;
+  /** Max Llm Rules Per Task Count */
+  max_llm_rules_per_task_count?: number | null;
+  /** Trace Retention Days */
+  trace_retention_days?: number | null;
 }
 
 export type ArchiveDefaultRuleApiV2DefaultRulesRuleIdDeleteData = any;
@@ -1512,6 +1563,71 @@ export interface ContinuousEvalResponse {
 /** ContinuousEvalRunStatus */
 export type ContinuousEvalRunStatus = "pending" | "passed" | "running" | "failed" | "skipped" | "error";
 
+/** ContinuousEvalTestRunResponse */
+export interface ContinuousEvalTestRunResponse {
+  /**
+   * Completed Count
+   * Number of completed test cases.
+   */
+  completed_count: number;
+  /**
+   * Continuous Eval Id
+   * ID of the continuous eval being tested.
+   * @format uuid
+   */
+  continuous_eval_id: string;
+  /**
+   * Created At
+   * When the test run was created.
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Error Count
+   * Number of test cases that errored.
+   */
+  error_count: number;
+  /**
+   * Failed Count
+   * Number of test cases that failed.
+   */
+  failed_count: number;
+  /**
+   * Id
+   * ID of the test run.
+   * @format uuid
+   */
+  id: string;
+  /**
+   * Passed Count
+   * Number of test cases that passed.
+   */
+  passed_count: number;
+  /**
+   * Skipped Count
+   * Number of test cases that were skipped.
+   */
+  skipped_count: number;
+  /** Status of the test run. */
+  status: TestRunStatus;
+  /**
+   * Task Id
+   * ID of the parent task.
+   */
+  task_id: string;
+  /**
+   * Total Count
+   * Total number of traces in the test run.
+   */
+  total_count: number;
+  /**
+   * Updated At
+   * When the test run was last updated.
+   * @format date-time
+   */
+  updated_at: string;
+}
+
 /** ContinuousEvalTransformVariableMappingRequest */
 export interface ContinuousEvalTransformVariableMappingRequest {
   /**
@@ -1863,6 +1979,24 @@ export type CreateTaskMetricApiV2TasksTaskIdMetricsPostError = HTTPValidationErr
 export type CreateTaskRuleApiV2TasksTaskIdRulesPostData = RuleResponse;
 
 export type CreateTaskRuleApiV2TasksTaskIdRulesPostError = HTTPValidationError;
+
+export type CreateTestRunApiV1ContinuousEvalsEvalIdTestRunsPostData = ContinuousEvalTestRunResponse;
+
+export type CreateTestRunApiV1ContinuousEvalsEvalIdTestRunsPostError = HTTPValidationError;
+
+/**
+ * CreateTestRunRequest
+ * Request schema for creating a continuous eval test run
+ */
+export interface CreateTestRunRequest {
+  /**
+   * Trace Ids
+   * List of trace IDs to test the continuous eval against
+   * @maxItems 50
+   * @minItems 1
+   */
+  trace_ids: string[];
+}
 
 export type CreateTransformForTaskApiV1TasksTaskIdTracesTransformsPostData = TraceTransformResponse;
 
@@ -2273,6 +2407,10 @@ export type DeleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsE
 
 export type DeleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsTagDeleteError = HTTPValidationError;
 
+export type DeleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDeleteData = any;
+
+export type DeleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDeleteError = HTTPValidationError;
+
 export type DeleteTransformApiV1TracesTransformsTransformIdDeleteData = any;
 
 export type DeleteTransformApiV1TracesTransformsTransformIdDeleteError = HTTPValidationError;
@@ -2324,6 +2462,34 @@ export interface DisplaySettingsResponse {
    */
   scope_url?: string | null;
 }
+
+/** DocumentStorageConfigurationResponse */
+export interface DocumentStorageConfigurationResponse {
+  /** Assumable Role Arn */
+  assumable_role_arn?: string | null;
+  /** Bucket Name */
+  bucket_name?: string | null;
+  /** Container Name */
+  container_name?: string | null;
+  /** Storage Environment */
+  storage_environment?: string | null;
+}
+
+/** DocumentStorageConfigurationUpdateRequest */
+export interface DocumentStorageConfigurationUpdateRequest {
+  /** Assumable Role Arn */
+  assumable_role_arn?: string | null;
+  /** Bucket Name */
+  bucket_name?: string | null;
+  /** Connection String */
+  connection_string?: string | null;
+  /** Container Name */
+  container_name?: string | null;
+  environment: DocumentStorageEnvironment;
+}
+
+/** DocumentStorageEnvironment */
+export type DocumentStorageEnvironment = "aws" | "azure";
 
 /**
  * EnrichedTaskResponse
@@ -3176,6 +3342,11 @@ export interface GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Tags
+   * List of tags to filter for items that have any matching tag across any version.
+   */
+  tags?: string[] | null;
+  /**
    * Task Id
    * @format uuid
    */
@@ -3297,6 +3468,11 @@ export interface GetAllLlmEvalsApiV1TasksTaskIdLlmEvalsGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Tags
+   * List of tags to filter for items that have any matching tag across any version.
+   */
+  tags?: string[] | null;
+  /**
    * Task Id
    * @format uuid
    */
@@ -3315,6 +3491,8 @@ export type GetApiKeyAuthApiKeysApiKeyIdGetData = ApiKeyResponse;
 export type GetApiKeyAuthApiKeysApiKeyIdGetError = HTTPValidationError;
 
 export type GetChatbotConfigApiV1ChatbotConfigGetData = ChatbotConfigResponse;
+
+export type GetConfigurationApiV2ConfigurationGetData = ApplicationConfigurationResponse;
 
 export type GetContinuousEvalByIdApiV1ContinuousEvalsEvalIdGetData = ContinuousEvalResponse;
 
@@ -3860,6 +4038,8 @@ export type GetSpanByIdApiV1TracesSpansSpanIdGetData = SpanWithMetricsResponse;
 
 export type GetSpanByIdApiV1TracesSpansSpanIdGetError = HTTPValidationError;
 
+export type GetSyntheticDataPromptStatusApiV2DatasetsSyntheticDataPromptStatusGetData = SyntheticDataPromptStatus;
+
 export type GetTaskApiV2TasksTaskIdGetData = TaskResponse;
 
 export type GetTaskApiV2TasksTaskIdGetError = HTTPValidationError;
@@ -3902,6 +4082,40 @@ export interface GetTaskRagSearchSettingsApiV1TasksTaskIdRagSearchSettingsGetPar
    * @format uuid
    */
   taskId: string;
+}
+
+export type GetTestRunApiV1ContinuousEvalsTestRunsTestRunIdGetData = ContinuousEvalTestRunResponse;
+
+export type GetTestRunApiV1ContinuousEvalsTestRunsTestRunIdGetError = HTTPValidationError;
+
+export type GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGetData = ListAgenticAnnotationsResponse;
+
+export type GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGetError = HTTPValidationError;
+
+export interface GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGetParams {
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Test Run ID
+   * The id of the test run.
+   * @format uuid
+   */
+  testRunId: string;
 }
 
 /** Response Get Token Usage Api V2 Usage Tokens Get */
@@ -4290,7 +4504,7 @@ export interface LLMBaseConfigSettings {
    */
   temperature?: number | null;
   /** Anthropic-specific thinking parameter for Claude models */
-  thinking?: AnthropicThinkingParam | null;
+  thinking?: AnthropicThinkingParamOutput | null;
   /**
    * Timeout
    * Request timeout in seconds
@@ -4365,7 +4579,7 @@ export interface LLMConfigSettings {
    */
   temperature?: number | null;
   /** Anthropic-specific thinking parameter for Claude models */
-  thinking?: AnthropicThinkingParam | null;
+  thinking?: AnthropicThinkingParamOutput | null;
   /**
    * Timeout
    * Request timeout in seconds
@@ -4587,7 +4801,7 @@ export interface LLMPromptRequestConfigSettings {
    */
   temperature?: number | null;
   /** Anthropic-specific thinking parameter for Claude models */
-  thinking?: AnthropicThinkingParam | null;
+  thinking?: AnthropicThinkingParamInput | null;
   /**
    * Timeout
    * Request timeout in seconds
@@ -4660,7 +4874,7 @@ export interface LLMRequestConfigSettings {
    */
   temperature?: number | null;
   /** Anthropic-specific thinking parameter for Claude models */
-  thinking?: AnthropicThinkingParam | null;
+  thinking?: AnthropicThinkingParamInput | null;
   /**
    * Timeout
    * Request timeout in seconds
@@ -4791,8 +5005,11 @@ export interface LLMVersionResponse {
    * Model name chosen for this version of the llm eval
    */
   model_name: string;
-  /** Model provider chosen for this version of the llm eval */
-  model_provider: ModelProvider;
+  /**
+   * Model Provider
+   * Model provider chosen for this version of the llm eval
+   */
+  model_provider: ModelProvider | "empty";
   /**
    * Tags
    * List of tags for the llm asset
@@ -5011,6 +5228,20 @@ export interface ListContinuousEvalRunResultsApiV1TasksTaskIdContinuousEvalsResu
    * List of trace IDs to filter on.
    */
   trace_ids?: string[] | null;
+}
+
+/** ListContinuousEvalTestRunsResponse */
+export interface ListContinuousEvalTestRunsResponse {
+  /**
+   * Count
+   * Total number of test runs.
+   */
+  count: number;
+  /**
+   * Test Runs
+   * List of test runs.
+   */
+  test_runs: ContinuousEvalTestRunResponse[];
 }
 
 export type ListContinuousEvalsApiV1TasksTaskIdContinuousEvalsGetData = ListContinuousEvalsResponse;
@@ -5683,9 +5914,39 @@ export interface ListSpansMetadataApiV1TracesSpansGetParams {
   trace_ids?: string[];
   /**
    * User Ids
-   * User IDs to filter on. Optional.
+   * User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.
    */
   user_ids?: string[];
+}
+
+export type ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGetData = ListContinuousEvalTestRunsResponse;
+
+export type ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGetError = HTTPValidationError;
+
+export interface ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGetParams {
+  /**
+   * Continuous Eval ID
+   * The id of the continuous eval.
+   * @format uuid
+   */
+  evalId: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
 }
 
 /** ListTraceTransformsResponse */
@@ -6041,7 +6302,7 @@ export interface ListTracesMetadataApiV1TracesGetParams {
   trace_ids?: string[];
   /**
    * User Ids
-   * User IDs to filter on. Optional.
+   * User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.
    */
   user_ids?: string[];
 }
@@ -6199,6 +6460,11 @@ export interface MetadataQuery {
    */
   last_update_time?: boolean;
   /**
+   * Query Profile
+   * @default false
+   */
+  query_profile?: boolean;
+  /**
    * Score
    * @default false
    */
@@ -6305,7 +6571,7 @@ export interface MetricResultResponse {
 export type MetricType = "QueryRelevance" | "ResponseRelevance" | "ToolSelection";
 
 /** ModelProvider */
-export type ModelProvider = "anthropic" | "openai" | "gemini" | "bedrock" | "vertex_ai" | "hosted_vllm";
+export type ModelProvider = "anthropic" | "openai" | "gemini" | "bedrock" | "vertex_ai" | "hosted_vllm" | "azure";
 
 /** ModelProviderList */
 export interface ModelProviderList {
@@ -7498,7 +7764,7 @@ export interface PromptVersionResultListResponse {
 export interface PutModelProviderCredentials {
   /**
    * Api Base
-   * The API base URL. Used for VLLM models.
+   * The API base URL. Required for Azure (endpoint URL) and vLLM models.
    */
   api_base?: string | null;
   /**
@@ -7506,6 +7772,11 @@ export interface PutModelProviderCredentials {
    * The API key for the provider.
    */
   api_key?: string | null;
+  /**
+   * Api Version
+   * The API version. Required for Azure (e.g. '2024-02-01').
+   */
+  api_version?: string | null;
   /**
    * Aws Access Key Id
    * The AWS access key ID.
@@ -8154,7 +8425,7 @@ export interface QuerySpansV1TracesQueryGetParams {
   trace_ids?: string[];
   /**
    * User Ids
-   * User IDs to filter on. Optional.
+   * User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.
    */
   user_ids?: string[];
 }
@@ -8492,7 +8763,7 @@ export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
   trace_ids?: string[];
   /**
    * User Ids
-   * User IDs to filter on. Optional.
+   * User ID substrings to filter on (case-insensitive). Returns results where user_id contains any of the provided values. Optional.
    */
   user_ids?: string[];
 }
@@ -10527,6 +10798,25 @@ export interface SyntheticDataGenerationResponse {
   rows_removed?: string[];
 }
 
+/** SyntheticDataPromptStatus */
+export interface SyntheticDataPromptStatus {
+  /**
+   * Is Placeholder
+   * True when the prompt uses the empty placeholder model
+   */
+  is_placeholder: boolean;
+  /**
+   * Model Name
+   * Model name stored in the SDG system prompt
+   */
+  model_name: string;
+  /**
+   * Model Provider
+   * Model provider stored in the SDG system prompt. The sentinel 'empty' indicates the prompt has not yet been configured.
+   */
+  model_provider: ModelProvider | "empty";
+}
+
 /**
  * SyntheticDataRowResponse
  * A single generated row with a temporary client-side ID for tracking.
@@ -10725,6 +11015,9 @@ export type TestCaseStatus = "queued" | "running" | "evaluating" | "failed" | "c
 export type TestRagProviderConnectionApiV1TasksTaskIdRagProvidersTestConnectionPostData = ConnectionCheckResult;
 
 export type TestRagProviderConnectionApiV1TasksTaskIdRagProvidersTestConnectionPostError = HTTPValidationError;
+
+/** TestRunStatus */
+export type TestRunStatus = "running" | "completed" | "partial_failure" | "error";
 
 /** TokenUsageCount */
 export interface TokenUsageCount {
@@ -11609,6 +11902,10 @@ export type UpdateChatbotConfigApiV1ChatbotConfigPutData = ChatbotConfigResponse
 
 export type UpdateChatbotConfigApiV1ChatbotConfigPutError = HTTPValidationError;
 
+export type UpdateConfigurationApiV2ConfigurationPostData = ApplicationConfigurationResponse;
+
+export type UpdateConfigurationApiV2ConfigurationPostError = HTTPValidationError;
+
 export type UpdateContinuousEvalApiV1ContinuousEvalsEvalIdPatchData = ContinuousEvalResponse;
 
 export type UpdateContinuousEvalApiV1ContinuousEvalsEvalIdPatchError = HTTPValidationError;
@@ -11945,7 +12242,8 @@ export type WeaviateHybridSearchSettingsConfigurationRequestReturnMetadataEnum =
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateHybridSearchSettingsConfigurationResponse */
 export interface WeaviateHybridSearchSettingsConfigurationResponse {
@@ -12037,7 +12335,8 @@ export type WeaviateHybridSearchSettingsConfigurationResponseReturnMetadataEnum 
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateHybridSearchSettingsRequest */
 export interface WeaviateHybridSearchSettingsRequest {
@@ -12129,7 +12428,8 @@ export type WeaviateHybridSearchSettingsRequestReturnMetadataEnum =
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateKeywordSearchSettingsConfigurationRequest */
 export interface WeaviateKeywordSearchSettingsConfigurationRequest {
@@ -12198,7 +12498,8 @@ export type WeaviateKeywordSearchSettingsConfigurationRequestReturnMetadataEnum 
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateKeywordSearchSettingsConfigurationResponse */
 export interface WeaviateKeywordSearchSettingsConfigurationResponse {
@@ -12267,7 +12568,8 @@ export type WeaviateKeywordSearchSettingsConfigurationResponseReturnMetadataEnum
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateKeywordSearchSettingsRequest */
 export interface WeaviateKeywordSearchSettingsRequest {
@@ -12336,7 +12638,8 @@ export type WeaviateKeywordSearchSettingsRequestReturnMetadataEnum =
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /**
  * WeaviateQueryResult
@@ -12495,7 +12798,8 @@ export type WeaviateVectorSimilarityTextSearchSettingsConfigurationRequestReturn
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse */
 export interface WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse {
@@ -12569,7 +12873,8 @@ export type WeaviateVectorSimilarityTextSearchSettingsConfigurationResponseRetur
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateVectorSimilarityTextSearchSettingsRequest */
 export interface WeaviateVectorSimilarityTextSearchSettingsRequest {
@@ -12643,7 +12948,8 @@ export type WeaviateVectorSimilarityTextSearchSettingsRequestReturnMetadataEnum 
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, HeadersDefaults, ResponseType } from "axios";
 import axios from "axios";
@@ -12776,7 +13082,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.491
+ * @version 2.1.549
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -13435,6 +13741,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Run a continuous eval against specific traces as a test. Results are stored separately from production annotations.
+     *
+     * @tags Continuous Eval Test Runs
+     * @name CreateTestRunApiV1ContinuousEvalsEvalIdTestRunsPost
+     * @summary Create and start a test run for a continuous eval
+     * @request POST:/api/v1/continuous_evals/{eval_id}/test_runs
+     * @secure
+     */
+    createTestRunApiV1ContinuousEvalsEvalIdTestRunsPost: (evalId: string, data: CreateTestRunRequest, params: RequestParams = {}) =>
+      this.request<CreateTestRunApiV1ContinuousEvalsEvalIdTestRunsPostData, CreateTestRunApiV1ContinuousEvalsEvalIdTestRunsPostError>({
+        path: `/api/v1/continuous_evals/${evalId}/test_runs`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Create a new transform for a task.
      *
      * @tags Transforms
@@ -13850,6 +14176,23 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         DeleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsTagDeleteError
       >({
         path: `/api/v1/tasks/${taskId}/llm_evals/${evalName}/versions/${evalVersion}/tags/${tag}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Delete a test run and all its associated annotation results.
+     *
+     * @tags Continuous Eval Test Runs
+     * @name DeleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDelete
+     * @summary Delete a test run
+     * @request DELETE:/api/v1/continuous_evals/test_runs/{test_run_id}
+     * @secure
+     */
+    deleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDelete: (testRunId: string, params: RequestParams = {}) =>
+      this.request<DeleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDeleteData, DeleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDeleteError>({
+        path: `/api/v1/continuous_evals/test_runs/${testRunId}`,
         method: "DELETE",
         secure: true,
         ...params,
@@ -14363,6 +14706,23 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getChatbotConfigApiV1ChatbotConfigGet: (params: RequestParams = {}) =>
       this.request<GetChatbotConfigApiV1ChatbotConfigGetData, any>({
         path: `/api/v1/chatbot/config`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get application configuration settings.
+     *
+     * @name GetConfigurationApiV2ConfigurationGet
+     * @summary Get Configuration
+     * @request GET:/api/v2/configuration
+     * @secure
+     */
+    getConfigurationApiV2ConfigurationGet: (params: RequestParams = {}) =>
+      this.request<GetConfigurationApiV2ConfigurationGetData, any>({
+        path: `/api/v2/configuration`,
         method: "GET",
         secure: true,
         format: "json",
@@ -15149,6 +15509,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * No description
+     *
+     * @tags Datasets
+     * @name GetSyntheticDataPromptStatusApiV2DatasetsSyntheticDataPromptStatusGet
+     * @summary Get the model configuration stored in the SDG system prompt.
+     * @request GET:/api/v2/datasets/synthetic-data/prompt-status
+     * @secure
+     */
+    getSyntheticDataPromptStatusApiV2DatasetsSyntheticDataPromptStatusGet: (params: RequestParams = {}) =>
+      this.request<GetSyntheticDataPromptStatusApiV2DatasetsSyntheticDataPromptStatusGetData, any>({
+        path: `/api/v2/datasets/synthetic-data/prompt-status`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get tasks.
      *
      * @tags Tasks
@@ -15184,6 +15562,49 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         GetTaskRagSearchSettingsApiV1TasksTaskIdRagSearchSettingsGetError
       >({
         path: `/api/v1/tasks/${taskId}/rag_search_settings`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get the status and counters for a specific test run. Use this endpoint for polling progress.
+     *
+     * @tags Continuous Eval Test Runs
+     * @name GetTestRunApiV1ContinuousEvalsTestRunsTestRunIdGet
+     * @summary Get a test run by id
+     * @request GET:/api/v1/continuous_evals/test_runs/{test_run_id}
+     * @secure
+     */
+    getTestRunApiV1ContinuousEvalsTestRunsTestRunIdGet: (testRunId: string, params: RequestParams = {}) =>
+      this.request<GetTestRunApiV1ContinuousEvalsTestRunsTestRunIdGetData, GetTestRunApiV1ContinuousEvalsTestRunsTestRunIdGetError>({
+        path: `/api/v1/continuous_evals/test_runs/${testRunId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get the per-trace results of a test run, including scores, reasons, and input variables.
+     *
+     * @tags Continuous Eval Test Runs
+     * @name GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGet
+     * @summary Get individual test case results for a test run
+     * @request GET:/api/v1/continuous_evals/test_runs/{test_run_id}/results
+     * @secure
+     */
+    getTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGet: (
+      { testRunId, ...query }: GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGetData,
+        GetTestRunResultsApiV1ContinuousEvalsTestRunsTestRunIdResultsGetError
+      >({
+        path: `/api/v1/continuous_evals/test_runs/${testRunId}/results`,
         method: "GET",
         query: query,
         secure: true,
@@ -15580,6 +16001,28 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     listSpansMetadataApiV1TracesSpansGet: (query: ListSpansMetadataApiV1TracesSpansGetParams, params: RequestParams = {}) =>
       this.request<ListSpansMetadataApiV1TracesSpansGetData, ListSpansMetadataApiV1TracesSpansGetError>({
         path: `/api/v1/traces/spans`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get all test runs for a specific continuous eval.
+     *
+     * @tags Continuous Eval Test Runs
+     * @name ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGet
+     * @summary List test runs for a continuous eval
+     * @request GET:/api/v1/continuous_evals/{eval_id}/test_runs
+     * @secure
+     */
+    listTestRunsApiV1ContinuousEvalsEvalIdTestRunsGet: (
+      { evalId, ...query }: ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGetData, ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGetError>({
+        path: `/api/v1/continuous_evals/${evalId}/test_runs`,
         method: "GET",
         query: query,
         secure: true,
@@ -16249,6 +16692,25 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       this.request<UpdateChatbotConfigApiV1ChatbotConfigPutData, UpdateChatbotConfigApiV1ChatbotConfigPutError>({
         path: `/api/v1/chatbot/config`,
         method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Update application configuration settings.
+     *
+     * @name UpdateConfigurationApiV2ConfigurationPost
+     * @summary Update Configuration
+     * @request POST:/api/v2/configuration
+     * @secure
+     */
+    updateConfigurationApiV2ConfigurationPost: (data: ApplicationConfigurationUpdateRequest, params: RequestParams = {}) =>
+      this.request<UpdateConfigurationApiV2ConfigurationPostData, UpdateConfigurationApiV2ConfigurationPostError>({
+        path: `/api/v2/configuration`,
+        method: "POST",
         body: data,
         secure: true,
         type: ContentType.Json,

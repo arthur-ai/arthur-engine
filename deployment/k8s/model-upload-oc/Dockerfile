@@ -10,17 +10,17 @@ FROM python:3.12-slim AS downloader
 
 WORKDIR /app
 
-# Install poetry
-RUN pip install --no-cache-dir poetry
+# Install uv
+RUN pip install --no-cache-dir uv==0.11.7
 
-# Copy poetry files
-COPY pyproject.toml poetry.lock* ./
+# Copy project files
+COPY pyproject.toml uv.lock* ./
 
 # Install dependencies (only main dependencies needed for download)
-# If poetry.lock doesn't exist, poetry will generate it
-RUN poetry config virtualenvs.create false && \
-    (poetry install --no-interaction --no-ansi --only main --no-root || \
-     poetry lock --no-update && poetry install --no-interaction --no-ansi --only main --no-root)
+RUN uv export --frozen \
+    --no-emit-project \
+    -o /tmp/requirements.txt \
+    && uv pip install --system --no-cache -r /tmp/requirements.txt
 
 # Copy download script
 COPY download_models.py .
@@ -49,11 +49,13 @@ WORKDIR /app
 COPY --from=builder --chown=nonroot:nonroot /app/copy_models.py /app/copy_models.py
 
 # Copy downloaded models from stage 1
-COPY --from=downloader /models /models
+COPY --chown=nonroot:nonroot --from=downloader /models /models
 
 # Environment variables
 ENV MODELS_DIR=/models
 ENV LOG_LEVEL=INFO
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 # Run as non-root user (distroless nonroot image runs as uid 65532)
 USER nonroot

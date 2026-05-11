@@ -10,15 +10,18 @@ FROM python:3.12-slim AS downloader
 
 WORKDIR /app
 
-# Install poetry
-RUN pip install --no-cache-dir poetry
+# Install uv
+RUN pip install --no-cache-dir uv==0.11.7
 
-# Copy poetry files
-COPY pyproject.toml poetry.lock* ./
+# Copy project files
+COPY pyproject.toml uv.lock* ./
 
 # Install dependencies (only main dependencies needed for download)
-RUN poetry config virtualenvs.create false && \
-    poetry install --no-interaction --no-ansi --only main --no-root
+RUN uv export --frozen \
+    --no-emit-project \
+    --no-group dev \
+    -o /tmp/requirements.txt \
+    && uv pip install --system --no-cache -r /tmp/requirements.txt
 
 # Copy download script
 COPY download_models.py .
@@ -33,15 +36,14 @@ FROM python:3.12-slim AS builder
 
 WORKDIR /app
 
-# Install poetry
-RUN pip install --no-cache-dir poetry
+# Install uv
+RUN pip install --no-cache-dir uv==0.11.7
 
-# Copy poetry files
-COPY pyproject.toml poetry.lock* ./
+# Copy project files
+COPY pyproject.toml uv.lock* ./
 
 # Install dependencies to virtual environment
-RUN poetry config virtualenvs.in-project true && \
-    poetry install --no-interaction --no-ansi --only main --no-root
+RUN uv sync --frozen --no-install-project
 
 # Copy upload script
 COPY upload_models.py .
@@ -54,18 +56,20 @@ FROM gcr.io/distroless/python3-debian12:nonroot AS runtime
 WORKDIR /app
 
 # Copy virtual environment from builder
-COPY --from=builder /app/.venv/lib/python3.12/site-packages /app/site-packages
+COPY --chown=nonroot:nonroot --from=builder /app/.venv/lib/python3.12/site-packages /app/site-packages
 
 # Copy application code
-COPY --from=builder /app/upload_models.py .
+COPY --chown=nonroot:nonroot --from=builder /app/upload_models.py .
 
 # Copy downloaded models from stage 1
-COPY --from=downloader /models /models
+COPY --chown=nonroot:nonroot --from=downloader /models /models
 
 # Set Python path to include our dependencies
 ENV PYTHONPATH=/app/site-packages
 ENV MODELS_DIR=/models
 ENV LOG_LEVEL=INFO
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 # Run as non-root user (distroless nonroot image runs as uid 65532)
 USER nonroot
