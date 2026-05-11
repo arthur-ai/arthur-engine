@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from typing import List, Optional, Tuple
 
 from arthur_client.api_bindings import (
@@ -8,6 +8,7 @@ from arthur_client.api_bindings import (
 from arthur_client.api_bindings import AlertRule as ClientAlertRule
 from arthur_client.api_bindings import (
     AlertRulesV1Api,
+    AlertSort,
     AlertsV1Api,
     ComplianceAlertRuleResults,
     ComplianceAlertSummary,
@@ -32,7 +33,10 @@ from arthur_client.api_bindings import (
     PolicyAttestationRule,
     PostMetricsVersions,
     SetComplianceStatusRequest,
+    SortOrder,
 )
+
+from job_executors._interval_utils import alert_interval_to_timedelta
 
 _PAGE_SIZE = 100
 
@@ -53,11 +57,25 @@ class CompliancePolicyCheckExecutor:
         self.logger = logger
 
     def execute(self, job: Job, job_spec: CompliancePolicyCheckJobSpec) -> None:
-        model_id = job_spec.scope_model_id
-        self._now = datetime.now(timezone.utc)
-        self._alert_window_start = self._now - timedelta(hours=24)
+        self._run_compliance_checks(
+            model_id=job_spec.scope_model_id,
+            window_start=job_spec.check_range_start_timestamp,
+            window_end=job_spec.check_range_end_timestamp,
+            policy_assignment_id=(
+                str(job_spec.policy_assignment_id)
+                if job_spec.policy_assignment_id is not None
+                else None
+            ),
+        )
 
-        assignments = self._fetch_assignments(model_id, job_spec.policy_assignment_id)
+    def _run_compliance_checks(
+        self,
+        model_id: str,
+        window_start: datetime,
+        window_end: datetime,
+        policy_assignment_id: Optional[str] = None,
+    ) -> None:
+        assignments = self._fetch_assignments(model_id, policy_assignment_id)
         if not assignments:
             self.logger.info("No policy assignments found. Nothing to check.")
             return
@@ -68,7 +86,7 @@ class CompliancePolicyCheckExecutor:
         errors: list[Exception] = []
         for assignment in assignments:
             try:
-                self._process_assignment(assignment, model_id)
+                self._process_assignment(assignment, model_id, window_start, window_end)
             except Exception as e:
                 self.logger.error(
                     f"Error checking compliance for assignment {assignment.id}",
@@ -85,6 +103,8 @@ class CompliancePolicyCheckExecutor:
         self,
         assignment: PolicyAssignment,
         model_id: str,
+        window_start: datetime,
+        window_end: datetime,
     ) -> None:
         self.logger.info(
             f"Checking compliance for assignment {assignment.id} "
@@ -93,16 +113,16 @@ class CompliancePolicyCheckExecutor:
         policy = self.policies_client.get_policy(policy_id=assignment.policy.id)
 
         attestation_results = self._check_attestation_rules(
-            assignment, policy.attestation_rules, self._now
+            assignment, policy.attestation_rules, window_end
         )
-        alert_rule_results = self._check_alert_rules(assignment)
+        alert_rule_results = self._check_alert_rules(assignment, window_end)
 
         has_violations = any(not passed for _, passed, _ in attestation_results) or any(
-            not passed for _, passed, _, _count in alert_rule_results
+            not passed for _, passed, _ in alert_rule_results
         )
 
         status = self._resolve_status(
-            has_violations, assignment.enforcement_starts_at, self._now
+            has_violations, assignment.enforcement_starts_at, window_end
         )
         self.logger.info(f"Assignment {assignment.id} resolved to {status.value}")
 
@@ -115,7 +135,7 @@ class CompliancePolicyCheckExecutor:
             status,
             attestation_results,
             alert_rule_results,
-            self._now,
+            window_end,
         )
 
     def _fetch_assignments(
@@ -194,8 +214,60 @@ class CompliancePolicyCheckExecutor:
     def _check_alert_rules(
         self,
         assignment: PolicyAssignment,
-    ) -> List[Tuple[ClientAlertRule, bool, Optional[Alert], int]]:
-        """Returns list of (alert_rule, passed, triggering_alert, violation_count) tuples."""
+        window_end: datetime,
+    ) -> List[Tuple[ClientAlertRule, bool, Optional[Alert]]]:
+        """Returns list of (alert_rule, passed, triggering_alert) tuples.
+
+        Per rule, query a sliding window of (window_end - 2*rule.interval,
+        window_end] and report non-compliant iff any alert exists in there.
+
+        Why 2*interval, not 1: alert timestamps land at fixed bucket
+        boundaries, but window_end is arbitrary. The most recent completed
+        bucket has a timestamp T satisfying window_end - 2*interval < T <=
+        window_end - interval (worst case: window_end falls just before a
+        boundary, so the latest completed bucket started almost 2 intervals
+        ago). Looking back exactly 1 interval would miss the latest bucket
+        whenever window_end is mid-bucket. 2 intervals always catches it,
+        and at most one bucket fits in a 2-interval window so we can't pick
+        up a stale older one — the user's window_start is irrelevant here
+        because we only ever consider the latest bucket, never a sweep.
+        """
+        alert_rules = self._fetch_alert_rules(assignment)
+        if not alert_rules:
+            return []
+
+        results: List[Tuple[ClientAlertRule, bool, Optional[Alert]]] = []
+        for rule in alert_rules:
+            sliding_window_start = window_end - 2 * alert_interval_to_timedelta(
+                rule.interval
+            )
+            resp = self.alerts_client.get_model_alerts(
+                model_id=assignment.model.id,
+                alert_rule_ids=[rule.id],
+                time_from=sliding_window_start,
+                time_to=window_end,
+                sort=AlertSort.TIMESTAMP,
+                order=SortOrder.DESC,
+                page=1,
+                page_size=1,
+            )
+            triggering = resp.records[0] if resp.records else None
+            if triggering is not None:
+                self.logger.info(
+                    f"Alert rule {rule.id} ({rule.name}): VIOLATION "
+                    f"(latest_bucket_alert={triggering.id})"
+                )
+                results.append((rule, False, triggering))
+            else:
+                self.logger.info(f"Alert rule {rule.id} ({rule.name}): PASSING")
+                results.append((rule, True, None))
+
+        return results
+
+    def _fetch_alert_rules(
+        self,
+        assignment: PolicyAssignment,
+    ) -> List[ClientAlertRule]:
         self.logger.info(
             f"Fetching alert rules for model={assignment.model.id}, "
             f"assignment={assignment.id}"
@@ -203,17 +275,17 @@ class CompliancePolicyCheckExecutor:
         alert_rules: List[ClientAlertRule] = []
         page = 1
         while True:
-            alert_rules_resp = self.alert_rules_client.get_model_alert_rules(
+            resp = self.alert_rules_client.get_model_alert_rules(
                 model_id=assignment.model.id,
                 policy_model_assignment_id=str(assignment.id),
                 page=page,
                 page_size=_PAGE_SIZE,
             )
             self.logger.info(
-                f"Alert rules page {page}: got {len(alert_rules_resp.records)} records"
+                f"Alert rules page {page}: got {len(resp.records)} records"
             )
-            alert_rules.extend(alert_rules_resp.records)
-            if len(alert_rules_resp.records) < _PAGE_SIZE:
+            alert_rules.extend(resp.records)
+            if len(resp.records) < _PAGE_SIZE:
                 break
             page += 1
 
@@ -223,52 +295,11 @@ class CompliancePolicyCheckExecutor:
                 f"on model={assignment.model.id}. "
                 f"Check that alert rules are linked to this policy assignment."
             )
-            return []
-
-        alert_rule_ids = [r.id for r in alert_rules]
-        self.logger.info(f"Found {len(alert_rules)} alert rules: {alert_rule_ids}")
-
-        all_alerts: List[Alert] = []
-        page = 1
-        while True:
-            alerts_resp = self.alerts_client.get_model_alerts(
-                model_id=assignment.model.id,
-                alert_rule_ids=alert_rule_ids,
-                created_at_from=self._alert_window_start,
-                created_at_to=self._now,
-                page=page,
-                page_size=_PAGE_SIZE,
+        else:
+            self.logger.info(
+                f"Found {len(alert_rules)} alert rules: {[r.id for r in alert_rules]}"
             )
-            all_alerts.extend(alerts_resp.records)
-            if len(alerts_resp.records) < _PAGE_SIZE:
-                break
-            page += 1
-
-        # Index first alert per rule and count total violations
-        alert_by_rule_id: dict[str, Alert] = {}
-        alert_count_by_rule_id: dict[str, int] = {}
-        for alert in all_alerts:
-            if alert.alert_rule_id not in alert_by_rule_id:
-                alert_by_rule_id[alert.alert_rule_id] = alert
-            alert_count_by_rule_id[alert.alert_rule_id] = (
-                alert_count_by_rule_id.get(alert.alert_rule_id, 0) + 1
-            )
-
-        results: List[Tuple[ClientAlertRule, bool, Optional[Alert], int]] = []
-        for rule in alert_rules:
-            triggering_alert = alert_by_rule_id.get(rule.id)
-            violation_count = alert_count_by_rule_id.get(rule.id, 0)
-            if triggering_alert:
-                self.logger.info(
-                    f"Alert rule {rule.id} ({rule.name}): VIOLATION "
-                    f"(alerts={violation_count}, first={triggering_alert.id})"
-                )
-                results.append((rule, False, triggering_alert, violation_count))
-            else:
-                self.logger.info(f"Alert rule {rule.id} ({rule.name}): PASSING")
-                results.append((rule, True, None, 0))
-
-        return results
+        return alert_rules
 
     @staticmethod
     def _resolve_status(
@@ -286,12 +317,12 @@ class CompliancePolicyCheckExecutor:
         self,
         assignment_id: str,
         status: ComplianceStatus,
-        alert_rule_results: List[Tuple[ClientAlertRule, bool, Optional[Alert], int]],
+        alert_rule_results: List[Tuple[ClientAlertRule, bool, Optional[Alert]]],
         attestation_results: List[Tuple[PolicyAttestationRule, bool, str]],
     ) -> None:
         compliant_alert_rules: List[CompliantAlertRuleStatus] = []
         non_compliant_alert_rules: List[NonCompliantAlertRuleStatus] = []
-        for rule, passed, triggering_alert, _violation_count in alert_rule_results:
+        for rule, passed, triggering_alert in alert_rule_results:
             if passed:
                 compliant_alert_rules.append(
                     CompliantAlertRuleStatus(id=rule.id, name=rule.name)
@@ -351,7 +382,7 @@ class CompliancePolicyCheckExecutor:
         assignment: PolicyAssignment,
         status: ComplianceStatus,
         attestation_results: List[Tuple[PolicyAttestationRule, bool, str]],
-        alert_rule_results: List[Tuple[ClientAlertRule, bool, Optional[Alert], int]],
+        alert_rule_results: List[Tuple[ClientAlertRule, bool, Optional[Alert]]],
         now: datetime,
     ) -> None:
         metric_ts = self._align_to_5min(now)
@@ -438,44 +469,43 @@ class CompliancePolicyCheckExecutor:
                 )
             )
 
-        # Per-alert-rule violation count metric
-        for rule, _passed, _triggering_alert, violation_count in alert_rule_results:
+        # Per-alert-rule violation flag metric. value=1.0 if the rule's latest
+        # interval bucket is currently violating, else 0.0. Dashboards read
+        # `value` directly and SUM it over time to chart violations per rule.
+        #
+        # For violations, key the metric to the triggering alert (its aligned
+        # timestamp + id) instead of the check run. Re-running compliance over
+        # the same persistent alert then produces metrics with identical
+        # (model_id, metric_name, timestamp) tuples — the platform's existing
+        # version-cleanup collapses them to one row, so dashboards stop
+        # over-counting a single ongoing violation as N separate ones.
+        for rule, passed, triggering_alert in alert_rule_results:
+            dimensions = [
+                Dimension(name="policy_id", value=str(assignment.policy.id)),
+                Dimension(name="policy_name", value=assignment.policy.name),
+                Dimension(name="assignment_id", value=str(assignment.id)),
+                Dimension(name="model_name", value=assignment.model.name),
+                Dimension(name="alert_rule_id", value=str(rule.id)),
+                Dimension(name="alert_rule_name", value=rule.name),
+            ]
+            if passed:
+                point_ts = metric_ts
+                value = 0.0
+            else:
+                assert triggering_alert is not None
+                point_ts = self._align_to_5min(triggering_alert.timestamp)
+                value = 1.0
+                dimensions.append(
+                    Dimension(name="alert_id", value=str(triggering_alert.id))
+                )
+
             metrics.append(
                 NumericMetric(
                     name="policy_alert_rule_check_count",
                     numeric_series=[
                         NumericTimeSeries(
-                            dimensions=[
-                                Dimension(
-                                    name="policy_id",
-                                    value=str(assignment.policy.id),
-                                ),
-                                Dimension(
-                                    name="policy_name",
-                                    value=assignment.policy.name,
-                                ),
-                                Dimension(
-                                    name="assignment_id",
-                                    value=str(assignment.id),
-                                ),
-                                Dimension(
-                                    name="model_name",
-                                    value=assignment.model.name,
-                                ),
-                                Dimension(
-                                    name="alert_rule_id",
-                                    value=str(rule.id),
-                                ),
-                                Dimension(
-                                    name="alert_rule_name",
-                                    value=rule.name,
-                                ),
-                            ],
-                            values=[
-                                NumericPoint(
-                                    timestamp=metric_ts, value=float(violation_count)
-                                ),
-                            ],
+                            dimensions=dimensions,
+                            values=[NumericPoint(timestamp=point_ts, value=value)],
                         ),
                     ],
                 )
