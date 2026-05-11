@@ -8,6 +8,7 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  endpoint added
 - **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  endpoint added
 - **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  endpoint added
+- **CHANGE** for **URL**: /api/v2/engine-config  endpoint added
 
 # 05/01/2026
 # 04/30/2026
