@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{ read -r json; f=$(echo \"$json\" | jq -r '.tool_input.file_path // .tool_response.filePath // empty'); if echo \"$f\" | grep -qE 'genai-engine/ui/src/.*\\.(ts|tsx|js|jsx)$'; then cd /home/user/arthur-engine/genai-engine/ui && node_modules/.bin/eslint --fix \"$f\" 2>/dev/null; node_modules/.bin/prettier --write \"$f\" 2>/dev/null; fi; } 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  }
+}
