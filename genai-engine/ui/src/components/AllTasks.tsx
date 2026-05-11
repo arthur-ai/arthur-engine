@@ -272,7 +272,7 @@ export const AllTasks: React.FC = () => {
                     )}
                   </Box>
                 ) : (
-                  <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" } }}>
+                  <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(3, minmax(0, 1fr))" } }}>
                     {filteredTasks.map((task) => (
                       <TaskCard key={task.id} task={task} onArchiveToggle={invalidateTaskQueries} />
                     ))}

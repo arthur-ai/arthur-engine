@@ -132,6 +132,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, onArchiveTo
                     fontWeight: 600,
                     lineHeight: 1.3,
                     flex: 1,
+                    minWidth: 0,
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
