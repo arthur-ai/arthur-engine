@@ -127,7 +127,7 @@ wheels = [
 
 [[package]]
 name = "arthur-common"
-version = "2.4.58"
+version = "2.4.59"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datasketches" },
@@ -143,14 +143,14 @@ dependencies = [
     { name = "types-requests" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/25/bd/102c0958b3caaa40ec46d18b4a3018cafc679ae7ff83a678b2d9121b7f0e/arthur_common-2.4.58.tar.gz", hash = "sha256:e61dedb6d31e1d855128ba7e918d5445abbc45ba65a44620aa6a081c23eca2c9", size = 14636286 }
+sdist = { url = "https://files.pythonhosted.org/packages/37/7f/87ee6fd469ad519c74a0a0f8f5c8c78709fe215baa3e2817184b58e5bc36/arthur_common-2.4.59.tar.gz", hash = "sha256:e32a44411486a5b40e94ecf07c2b0cb435920e44795d14e3e783005a5cef1039", size = 14636316 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/27/8b/1eebe1bc7d91690545028790a9f5ba0d63b4ba9c3669affa3f8735a88542/arthur_common-2.4.58-py3-none-any.whl", hash = "sha256:065a0cf358bc9523da3fd3159594045fa71fab96578964405cf2c44d291cf3be", size = 85917 },
+    { url = "https://files.pythonhosted.org/packages/09/3c/2a8f929163edc32f410f17eb29748eac1b05dbd658770029e00c5d575c0e/arthur_common-2.4.59-py3-none-any.whl", hash = "sha256:2cbae01652a339a8d60e33070be6a19d77471f04c3156ecb9c56374b5a1e6224", size = 85954 },
 ]
 
 [[package]]
 name = "arthur-genai-engine"
-version = "2.1.546"
+version = "2.1.552"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
@@ -242,7 +242,7 @@ performance = [
 requires-dist = [
     { name = "alembic", specifier = "==1.17.2" },
     { name = "amplitude-analytics", specifier = ">=1.1.5,<2" },
-    { name = "arthur-common", specifier = "==2.4.58" },
+    { name = "arthur-common", specifier = "==2.4.59" },
     { name = "authlib", specifier = "==1.6.9" },
     { name = "azure-storage-blob", specifier = "==12.27.1" },
     { name = "bcrypt", specifier = "==4.3.0" },

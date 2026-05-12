@@ -30,6 +30,8 @@ from schemas.request_schemas import (
     TransformListFilterRequest,
 )
 from schemas.response_schemas import (
+    ListTraceTransformVersionsResponse,
+    TraceTransformVersionResponse,
     TransformDependents,
     TransformExtractionResponseList,
 )
@@ -171,11 +173,94 @@ def update_transform(
 ) -> TraceTransformResponse:
     try:
         trace_transform_repo = TraceTransformRepository(db_session)
-        trace_transform = trace_transform_repo.update_transform(
-            transform_id,
-            request,
-        )
+        trace_transform = trace_transform_repo.update_transform(transform_id, request)
         return trace_transform.to_response_model()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@transform_routes.get(
+    "/traces/transforms/{transform_id}/versions",
+    description="List all version snapshots for a transform, ordered by version number descending.",
+    response_model=ListTraceTransformVersionsResponse,
+    tags=["Transforms"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def list_transform_versions(
+    transform_id: UUID = Path(description="ID of the transform."),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> ListTraceTransformVersionsResponse:
+    try:
+        repo = TraceTransformRepository(db_session)
+        if not repo.get_transform_by_id(transform_id):
+            raise HTTPException(
+                status_code=404,
+                detail=f"Transform {transform_id} not found",
+            )
+        return repo.list_versions(transform_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@transform_routes.get(
+    "/traces/transforms/{transform_id}/versions/{version_id}",
+    description="Get a specific version snapshot of a transform.",
+    response_model=TraceTransformVersionResponse,
+    tags=["Transforms"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def get_transform_version(
+    transform_id: UUID = Path(description="ID of the transform."),
+    version_id: UUID = Path(description="ID of the version to fetch."),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> TraceTransformVersionResponse:
+    try:
+        repo = TraceTransformRepository(db_session)
+        if not repo.get_transform_by_id(transform_id):
+            raise HTTPException(
+                status_code=404,
+                detail=f"Transform {transform_id} not found",
+            )
+        return repo.get_version_by_id(transform_id, version_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@transform_routes.delete(
+    "/traces/transforms/{transform_id}/versions/{version_id}",
+    description="Delete a specific version of a transform. Returns 409 if it is the only version or is pinned by a continuous eval.",
+    tags=["Transforms"],
+    status_code=HTTP_204_NO_CONTENT,
+    responses={
+        409: {
+            "description": "Version is the only one remaining or is pinned by a continuous eval.",
+        },
+    },
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+def delete_transform_version(
+    transform_id: UUID = Path(description="ID of the transform."),
+    version_id: UUID = Path(description="ID of the version to delete."),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> Response:
+    try:
+        repo = TraceTransformRepository(db_session)
+        if not repo.get_transform_by_id(transform_id):
+            raise HTTPException(
+                status_code=404,
+                detail=f"Transform {transform_id} not found",
+            )
+        repo.delete_version(transform_id, version_id)
+        return Response(status_code=HTTP_204_NO_CONTENT)
     except HTTPException:
         raise
     except Exception as e:
@@ -189,8 +274,8 @@ def update_transform(
     status_code=HTTP_204_NO_CONTENT,
     responses={
         409: {
-            "description": "Transform has dependent resources that must be removed first."
-        }
+            "description": "Transform has dependent resources that must be removed first.",
+        },
     },
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
@@ -255,10 +340,18 @@ def execute_trace_transform_extraction(
                 detail=f"Trace with ID {trace_id} not found",
             )
 
+        # Fetch the latest version to get the transform definition
+        versions = trace_transform_repo.list_versions(transform_id).versions
+        if not versions:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No versions found for transform {transform_id}",
+            )
+
         # Execute the transform
         return execute_transform(
             trace=trace,
-            transform_definition=trace_transform.definition,
+            transform_definition=versions[0].definition,
         )
 
     except ValueError as e:

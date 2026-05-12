@@ -51,7 +51,6 @@ def test_create_transform_success(
         assert transform.task_id == task.id
         assert transform.name == "test_transform"
         assert transform.description == "test transform description"
-        assert transform.definition.model_dump() == transform_definition
         assert transform.created_at is not None
         assert transform.updated_at is not None
     finally:
@@ -104,7 +103,6 @@ def test_get_transform_by_id_success(
         assert transform.task_id == task.id
         assert transform.name == "test_transform"
         assert transform.description == "test transform description"
-        assert transform.definition.model_dump() == transform_definition
         assert transform.created_at is not None
         assert transform.updated_at is not None
 
@@ -117,7 +115,6 @@ def test_get_transform_by_id_success(
         assert retrieved_transform.task_id == task.id
         assert retrieved_transform.name == "test_transform"
         assert retrieved_transform.description == "test transform description"
-        assert retrieved_transform.definition.model_dump() == transform_definition
     finally:
         client.delete_task(task.id)
 
@@ -177,7 +174,6 @@ def test_list_all_transforms_success(
             assert transform.task_id == task.id
             assert transform.name == transforms[i].name
             assert transform.description == transforms[i].description
-            assert transform.definition.model_dump() == transform_definition
     finally:
         client.delete_task(task.id)
 
@@ -220,7 +216,6 @@ def test_list_all_transforms_pagination(
             assert transform.task_id == task.id
             assert transform.name == transforms[i].name
             assert transform.description == transforms[i].description
-            assert transform.definition.model_dump() == transform_definition
 
         # Page size is half the total number of transforms
         status_code, retrieved_transforms = client.list_transforms(
@@ -235,7 +230,6 @@ def test_list_all_transforms_pagination(
             assert transform.task_id == task.id
             assert transform.name == transforms[i].name
             assert transform.description == transforms[i].description
-            assert transform.definition.model_dump() == transform_definition
 
         # Page size is half the total number of transforms
         status_code, retrieved_transforms = client.list_transforms(
@@ -251,7 +245,6 @@ def test_list_all_transforms_pagination(
             assert transform.task_id == task.id
             assert transform.name == transforms[transform_idx].name
             assert transform.description == transforms[transform_idx].description
-            assert transform.definition.model_dump() == transform_definition
 
         # Page size is half the total number of transforms
         status_code, retrieved_transforms = client.list_transforms(
@@ -345,7 +338,6 @@ def test_update_transform_success(
         assert transform.task_id == task.id
         assert transform.name == "test_transform"
         assert transform.description == "test transform description"
-        assert transform.definition.model_dump() == transform_definition
         assert transform.created_at is not None
         assert transform.updated_at is not None
 
@@ -360,7 +352,6 @@ def test_update_transform_success(
         assert updated_transform.task_id == task.id
         assert updated_transform.name == "test_updated_transform"
         assert updated_transform.description == "test updated transform description"
-        assert updated_transform.definition.model_dump() == transform_definition
         assert updated_transform.created_at == transform.created_at
         assert updated_transform.updated_at != transform.updated_at
     finally:
@@ -409,7 +400,6 @@ def test_deleting_transform_success(
         assert transform.task_id == task.id
         assert transform.name == "test_transform"
         assert transform.description == "test transform description"
-        assert transform.definition.model_dump() == transform_definition
         assert transform.created_at is not None
         assert transform.updated_at is not None
 
@@ -492,7 +482,7 @@ def insert_agentic_experiment(task_id: str, transform_id: str) -> str:
                 "version": 1,
                 "transform_id": transform_id,
                 "variable_mapping": [],
-            }
+            },
         ],
         total_rows=0,
         completed_rows=0,
@@ -517,7 +507,7 @@ def insert_agentic_notebook(task_id: str, transform_id: str) -> str:
                 "version": 1,
                 "transform_id": transform_id,
                 "variable_mapping": [],
-            }
+            },
         ],
         created_at=datetime.now(),
         updated_at=datetime.now(),
@@ -543,7 +533,8 @@ def test_get_transform_dependents_empty(
     """Test getting dependents for a transform with no dependents returns empty lists."""
     # Create a task
     status_code, task = client.create_task(
-        name="test_dependents_empty", is_agentic=True
+        name="test_dependents_empty",
+        is_agentic=True,
     )
     assert status_code == 200
 
@@ -573,9 +564,7 @@ def test_get_transform_dependents_with_continuous_eval(
 ) -> None:
     """Test getting dependents returns continuous evals that reference the transform."""
     # Create a task
-    status_code, task = client.create_task(
-        name="test_dependents_ce", is_agentic=True
-    )
+    status_code, task = client.create_task(name="test_dependents_ce", is_agentic=True)
     assert status_code == 200
 
     try:
@@ -593,7 +582,11 @@ def test_get_transform_dependents_with_continuous_eval(
 
         # Create a continuous eval referencing the transform
         status_code, ce = create_continuous_eval_for_transform(
-            client, task.id, str(transform.id), llm_eval.name, llm_eval.version
+            client,
+            task.id,
+            str(transform.id),
+            llm_eval.name,
+            llm_eval.version,
         )
         assert status_code == 200
 
@@ -618,7 +611,8 @@ def test_get_transform_dependents_with_experiment_and_notebook(
     """Test getting dependents returns agentic experiments and notebooks."""
     # Create a task
     status_code, task = client.create_task(
-        name="test_dependents_exp_nb", is_agentic=True
+        name="test_dependents_exp_nb",
+        is_agentic=True,
     )
     assert status_code == 200
 
@@ -676,7 +670,8 @@ def test_delete_transform_blocked_by_continuous_eval(
     """Test deleting a transform returns 409 when a continuous eval depends on it."""
     # Create a task
     status_code, task = client.create_task(
-        name="test_delete_blocked_ce", is_agentic=True
+        name="test_delete_blocked_ce",
+        is_agentic=True,
     )
     assert status_code == 200
 
@@ -695,7 +690,11 @@ def test_delete_transform_blocked_by_continuous_eval(
 
         # Create a continuous eval referencing the transform
         status_code, ce = create_continuous_eval_for_transform(
-            client, task.id, str(transform.id), llm_eval.name, llm_eval.version
+            client,
+            task.id,
+            str(transform.id),
+            llm_eval.name,
+            llm_eval.version,
         )
         assert status_code == 200
 
@@ -720,7 +719,8 @@ def test_delete_transform_blocked_by_experiment_and_notebook(
     """Test deleting a transform returns 409 when agentic resources depend on it."""
     # Create a task
     status_code, task = client.create_task(
-        name="test_delete_blocked_exp_nb", is_agentic=True
+        name="test_delete_blocked_exp_nb",
+        is_agentic=True,
     )
     assert status_code == 200
 
