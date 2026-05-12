@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List, Optional, Set, Tuple
 
 from arthur_client.api_bindings import (
@@ -32,20 +32,17 @@ from arthur_client.api_bindings import (
     Policy,
     PolicyAssignment,
     PolicyAttestationRule,
-    PostMetricsQuery,
-    PostMetricsQueryTimeRange,
     PostMetricsVersions,
     RuleType,
     SetComplianceStatusRequest,
     SortOrder,
-    TasksV1Api,
 )
 
+from connectors.shield_connector import ShieldBaseConnector
 from job_executors._interval_utils import alert_interval_to_timedelta
+from job_executors.task_management_job_executors import _TaskManagementJobExecutor
 
 _PAGE_SIZE = 100
-
-_GUARDRAIL_DATA_LOOKBACK_DAYS = 7
 
 
 class GuardrailCheckResult:
@@ -75,14 +72,14 @@ class CompliancePolicyCheckExecutor:
         alert_rules_client: AlertRulesV1Api,
         alerts_client: AlertsV1Api,
         metrics_client: MetricsV1Api,
-        tasks_client: TasksV1Api,
+        tasks_management_job_executor: _TaskManagementJobExecutor,
         logger: logging.Logger,
     ) -> None:
         self.policies_client = policies_client
         self.alert_rules_client = alert_rules_client
         self.alerts_client = alerts_client
         self.metrics_client = metrics_client
-        self.tasks_client = tasks_client
+        self.tasks_management_job_executor = tasks_management_job_executor
         self.logger = logger
 
     def execute(self, job: Job, job_spec: CompliancePolicyCheckJobSpec) -> None:
@@ -145,11 +142,13 @@ class CompliancePolicyCheckExecutor:
             assignment, policy.attestation_rules, window_end
         )
         alert_rule_results = self._check_alert_rules(assignment, window_end)
-        guardrail_results = self._check_guardrail_rules(policy, model_id)
+        guardrail_results = self._check_guardrail_rules(
+            policy, model_id, window_start, window_end
+        )
 
         has_violations = (
             any(not passed for _, passed, _ in attestation_results)
-            or any(not passed for _, passed, _, _count in alert_rule_results)
+            or any(not passed for _, passed, _ in alert_rule_results)
             or any(not r.passed for r in guardrail_results)
         )
 
@@ -342,9 +341,11 @@ class CompliancePolicyCheckExecutor:
         self,
         policy: Policy,
         model_id: str,
+        window_start: datetime,
+        window_end: datetime,
     ) -> List[GuardrailCheckResult]:
         """Validate that guardrail rule types on the policy are enabled on the
-        model's task and have received data in the last 7 days."""
+        model's task and have received data within the check window."""
         required_types: Set[RuleType] = set()
         for alert_rule in policy.alert_rules:
             if (
@@ -360,7 +361,19 @@ class CompliancePolicyCheckExecutor:
             f"Policy {policy.id} requires guardrail types: {required_types}"
         )
 
-        enabled_guardrail_types = self._get_enabled_guardrail_types(model_id)
+        try:
+            _, _, conn, task_id = (
+                self.tasks_management_job_executor.retrieve_task_management_resources_from_model_id(
+                    model_id=model_id
+                )
+            )
+        except Exception as e:
+            self.logger.warning(
+                f"Could not fetch task state cache for model {model_id}: {e}"
+            )
+            return []
+
+        enabled_guardrail_types = self._get_enabled_guardrail_types(task_id, conn)
 
         results: List[GuardrailCheckResult] = []
         for rule_type in sorted(required_types):
@@ -379,13 +392,15 @@ class CompliancePolicyCheckExecutor:
                 )
                 continue
 
-            guardrail_utilized = self._is_guardrail_utilized(model_id, rule_type.value)
+            guardrail_utilized = self._is_guardrail_utilized(
+                task_id, rule_type, window_start, window_end, conn
+            )
             if guardrail_utilized:
                 self.logger.info(f"Guardrail {rule_type.value}: ENABLED and utilized")
             else:
                 self.logger.info(
-                    f"Guardrail {rule_type.value}: ENABLED but NOT UTILIZED on "
-                    f"in the last {_GUARDRAIL_DATA_LOOKBACK_DAYS} days"
+                    f"Guardrail {rule_type.value}: ENABLED but NOT UTILIZED in the "
+                    f"check window {window_start.isoformat()} to {window_end.isoformat()}"
                 )
 
             results.append(
@@ -396,35 +411,34 @@ class CompliancePolicyCheckExecutor:
                     reason=(
                         "ok"
                         if guardrail_utilized
-                        else f"Guardrail {rule_type.value} has not run in the last "
-                        f"{_GUARDRAIL_DATA_LOOKBACK_DAYS} days while new traces were received"
+                        else f"Guardrail {rule_type.value} has not run in the "
+                        f"check window while new traces were received"
                     ),
                 )
             )
 
         return results
 
-    def _get_enabled_guardrail_types(self, model_id: str) -> Set[str]:
-        """Fetch the model's cached task state and return the set of enabled
-        guardrail rule types."""
-        try:
-            task_read = self.tasks_client.get_task_state_cache(model_id=model_id)
-        except Exception as e:
-            self.logger.warning(
-                f"Could not fetch task state cache for model {model_id}: {e}"
-            )
-            return set()
-
-        if task_read.task is None or not task_read.task.rules:
-            return set()
+    def _get_enabled_guardrail_types(
+        self, task_id: str, conn: ShieldBaseConnector
+    ) -> Set[str]:
+        """Get all enabled guardrail rules for the specified task"""
+        task_response = conn.read_task(task_id=task_id)
 
         enabled: Set[str] = set()
-        for rule in task_read.task.rules:
+        for rule in task_response.rules:
             if rule.enabled:
                 enabled.add(rule.type.value)
         return enabled
 
-    def _is_guardrail_utilized(self, model_id: str, rule_type: str) -> bool:
+    def _is_guardrail_utilized(
+        self,
+        task_id: str,
+        rule_type: RuleType,
+        window_start: datetime,
+        window_end: datetime,
+        conn: ShieldBaseConnector,
+    ) -> bool:
         """
         Checks whether the guardrail has run in the specified time period
         given that new traces were received in the same time period.
@@ -433,47 +447,35 @@ class CompliancePolicyCheckExecutor:
         being actively used, but they only have guardrails enabled to meet
         compliance and are not actually enforcing any guardrails.
         """
-        lookback_start = self._now - timedelta(days=_GUARDRAIL_DATA_LOOKBACK_DAYS)
-
-        query = (
-            "SELECT "
-            "  sum(CASE WHEN metric_name = 'trace_count' "
-            "    THEN value ELSE 0 END) AS trace_total, "
-            "  sum(CASE WHEN metric_name = 'rule_count' "
-            f"    AND dimensions ->> 'rule_type' = '{rule_type}' "
-            "    THEN value ELSE 0 END) AS guardrail_total "
-            "FROM metrics_numeric_latest_version "
-            "WHERE metric_name IN ('trace_count', 'rule_count') "
-            "AND timestamp >= '{{dateStart}}' AND timestamp < '{{dateEnd}}'"
-        )
 
         try:
-            result = self.metrics_client.post_model_metrics_query(
-                model_id=model_id,
-                post_metrics_query=PostMetricsQuery(
-                    query=query,
-                    time_range=PostMetricsQueryTimeRange(
-                        start=lookback_start,
-                        end=self._now,
-                    ),
-                    limit=1,
-                ),
-            )
-            if not result.results:
-                return True
-
-            first = result.results[0] or {}
-            trace_total = first.get("trace_total") or 0
-            guardrail_total = first.get("guardrail_total") or 0
-
-            return not (trace_total > 0 and guardrail_total == 0)
+            num_traces = conn.list_trace_metadata(
+                task_ids=[task_id], start_time=window_start, end_time=window_end
+            ).count
         except Exception:
             self.logger.warning(
-                f"Could not query metrics for guardrail {rule_type} "
-                f"on model {model_id}",
+                f"Could not query traces for guardrail {rule_type} "
+                f"on task {task_id}",
                 exc_info=True,
             )
             return False
+
+        try:
+            num_inferences = conn.query_inferences(
+                task_ids=[task_id],
+                start_time=window_start,
+                end_time=window_end,
+                rule_types=[rule_type],
+            ).count
+        except Exception:
+            self.logger.warning(
+                f"Could not query inferences for guardrail {rule_type} "
+                f"on task {task_id}",
+                exc_info=True,
+            )
+            return False
+
+        return not (num_traces > 0 and num_inferences == 0)
 
     @staticmethod
     def _resolve_status(

@@ -53,8 +53,10 @@ from genai_client import (
     ContinuousEvalsApi,
     InferencesApi,
     LLMEvalsApi,
+    QueryInferencesResponse,
     SpansApi,
     TasksApi,
+    TraceListResponse,
     TracesApi,
     TransformsApi,
 )
@@ -492,6 +494,38 @@ class ShieldBaseConnector(Connector, ABC):
         )
         data = json.loads(resp.raw_data)
         return LLMEval.model_validate(data)
+
+    def list_trace_metadata(
+        self, task_ids: list[str], **kwargs: Any
+    ) -> TraceListResponse:
+        """
+        Lists trace metadata
+        """
+        if len(task_ids) == 0:
+            raise ValueError("task_ids must not be empty")
+
+        resp = (
+            self._traces_client.list_traces_metadata_api_v1_traces_get_with_http_info(
+                task_ids=task_ids,
+                **kwargs,
+            )
+        )
+        data = json.loads(resp.raw_data)
+        return TraceListResponse.model_validate(data)
+
+    def query_inferences(
+        self, task_ids: list[str], **kwargs: Any
+    ) -> QueryInferencesResponse:
+        """
+        Queries inferences
+        """
+        if len(task_ids) == 0:
+            raise ValueError("task_ids must not be empty")
+
+        return self._inferences_client.query_inferences_api_v2_inferences_query_get(
+            task_ids=task_ids,
+            **kwargs,
+        )
 
     def read_continuous_evals(
         self,

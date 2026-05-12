@@ -194,14 +194,18 @@ def _make_policy(
 
 
 def _make_policy_alert_rule(dependent_resource: PolicyAlertGuardrailRule = None, policy_id: str = None) -> PolicyAlertRule:
+    alert_rule_id = str(uuid4())
+    label = dependent_resource.resource_name.value if dependent_resource else alert_rule_id
+    
     return PolicyAlertRule(
-        id=str(uuid4()),
+        id=alert_rule_id,
         policy_id=policy_id or str(uuid4()),
-        name=f"Alert for {dependent_resource.name}",
+        name=f"Alert for {label}",
         threshold=0.8,
         bound=AlertBound.UPPER_BOUND,
         query="SELECT ...",
         metric_name="rule_count",
+        interval=AlertRuleInterval(unit=IntervalUnit.DAYS, count=7),
         dependent_resource=dependent_resource,
         created_at=NOW,
         updated_at=NOW,
@@ -216,52 +220,21 @@ def _make_task_read_response(enabled_rule_types: list[str]) -> Mock:
         rule.enabled = True
         rule.type = RuleType(rt)
         rules.append(rule)
-    task = Mock()
-    task.rules = rules
     task_read = Mock()
-    task_read.task = task
+    task_read.rules = rules
     return task_read
 
 
-def _make_metrics_query_result(has_data: bool) -> Mock:
+def _make_metrics_query_result(trace_total: int = 0, guardrail_total: int = 0) -> Mock:
+    """Build a mock metrics query result with given trace and guardrail counts.
+
+    `trace_total > 0 and guardrail_total == 0` means the guardrail is enabled
+    but not actually running on real traffic — i.e. NOT utilized.
+    """
     result = Mock()
-    result.results = [{"metric_value": 42}] if has_data else []
-    return result
-
-
-def _make_policy_alert_rule(dependent_resource: PolicyAlertGuardrailRule = None, policy_id: str = None) -> PolicyAlertRule:
-    return PolicyAlertRule(
-        id=str(uuid4()),
-        policy_id=policy_id or str(uuid4()),
-        name=f"Alert for {dependent_resource.name}",
-        threshold=0.8,
-        bound=AlertBound.UPPER_BOUND,
-        query="SELECT ...",
-        metric_name="rule_count",
-        dependent_resource=dependent_resource,
-        created_at=NOW,
-        updated_at=NOW,
-    )
-
-
-def _make_task_read_response(enabled_rule_types: list[str]) -> Mock:
-    """Build a mock TaskReadResponse with the given rule types enabled."""
-    rules = []
-    for rt in enabled_rule_types:
-        rule = Mock()
-        rule.enabled = True
-        rule.type = RuleType(rt)
-        rules.append(rule)
-    task = Mock()
-    task.rules = rules
-    task_read = Mock()
-    task_read.task = task
-    return task_read
-
-
-def _make_metrics_query_result(has_data: bool) -> Mock:
-    result = Mock()
-    result.results = [{"metric_value": 42}] if has_data else []
+    result.results = [
+        {"trace_total": trace_total, "guardrail_total": guardrail_total}
+    ]
     return result
 
 
@@ -300,7 +273,14 @@ def _make_executor():
     alert_rules_client = Mock()
     alerts_client = Mock()
     metrics_client = Mock()
-    tasks_client = Mock()
+    tasks_management_job_executor = Mock()
+    tasks_conn = Mock()
+    tasks_management_job_executor.retrieve_task_management_resources_from_model_id.return_value = (
+        None,
+        None,
+        tasks_conn,
+        "task-id",
+    )
     logger = Mock()
 
     executor = CompliancePolicyCheckExecutor(
@@ -308,27 +288,23 @@ def _make_executor():
         alert_rules_client=alert_rules_client,
         alerts_client=alerts_client,
         metrics_client=metrics_client,
-        tasks_client=tasks_client,
+        tasks_management_job_executor=tasks_management_job_executor,
         logger=logger,
     )
 
-    # Default: metrics version creation returns a mock with version_num
     metrics_version = Mock()
     metrics_version.version_num = 1
     metrics_client.post_model_metrics_version.return_value = metrics_version
 
-    # Default: no task state cache (guardrail checks will find no enabled rules)
-    task_read = Mock()
-    task_read.task = None
-    tasks_client.get_task_state_cache.return_value = task_read
+    tasks_conn.read_task.return_value = _make_task_read_response([])
 
     return (
         executor,
         policies_client,
         alert_rules_client,
         alerts_client,
-        metrics_client, 
-        tasks_client,
+        metrics_client,
+        tasks_conn,
         logger,
     )
 
@@ -935,7 +911,7 @@ def test_alert_outside_latest_bucket_is_compliant(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = (
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _, _ = (
         _make_executor()
     )
 
@@ -993,7 +969,7 @@ def test_per_rule_query_uses_rule_interval(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = (
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _, _ = (
         _make_executor()
     )
 
@@ -1071,7 +1047,7 @@ def test_alert_rule_metric_has_no_status_dimension(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _ = (
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, _, _ = (
         _make_executor()
     )
 
@@ -1161,7 +1137,7 @@ def test_guardrail_not_enabled_non_compliant(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, tasks_client, _ = _make_executor()
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, tasks_conn, _ = _make_executor()
 
     model_id = str(uuid4())
     policy_id = str(uuid4())
@@ -1170,7 +1146,7 @@ def test_guardrail_not_enabled_non_compliant(mock_datetime):
         model_summary=_make_model_summary(model_id),
     )
 
-    pii_alert_rule = _make_policy_alert_rule(dependent_resource=PolicyAlertGuardrailRule(name=RuleType.PIIDATARULE), policy_id=policy_id)
+    pii_alert_rule = _make_policy_alert_rule(dependent_resource=PolicyAlertGuardrailRule(resource_name=RuleType.PIIDATARULE), policy_id=policy_id)
     policy = _make_policy(policy_id, alert_rules=[pii_alert_rule])
     materialized_pii = _make_alert_rule(
         model_id=model_id,
@@ -1186,7 +1162,7 @@ def test_guardrail_not_enabled_non_compliant(mock_datetime):
     alert_rules_client.get_model_alert_rules.return_value = _paginated_response([materialized_pii])
     alerts_client.get_model_alerts.return_value = _paginated_response([])
     # Task has no rules enabled
-    tasks_client.get_task_state_cache.return_value = _make_task_read_response([])
+    tasks_conn.read_task.return_value = _make_task_read_response([])
 
     executor.execute(job, job_spec)
 
@@ -1194,7 +1170,7 @@ def test_guardrail_not_enabled_non_compliant(mock_datetime):
     assert detail.status == ComplianceStatus.NON_COMPLIANT
     assert len(detail.alert_rules.non_compliant) == 1
     assert detail.alert_rules.non_compliant[0].id == materialized_pii.id
-    assert "PIIDataRule is not enabled" in detail.alert_rules.non_compliant[0].alert.description
+    assert "PIIDataRule is not enabled" in detail.alert_rules.non_compliant[0].error_message
 
 
 @patch("job_executors.compliance_policy_check_executor.datetime")
@@ -1203,7 +1179,7 @@ def test_guardrail_enabled_but_no_data_non_compliant(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, tasks_client, _ = _make_executor()
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, tasks_conn, _ = _make_executor()
 
     model_id = str(uuid4())
     policy_id = str(uuid4())
@@ -1212,7 +1188,7 @@ def test_guardrail_enabled_but_no_data_non_compliant(mock_datetime):
         model_summary=_make_model_summary(model_id),
     )
 
-    pii_alert_rule = _make_policy_alert_rule(dependent_resource=PolicyAlertGuardrailRule(name=RuleType.PIIDATARULE), policy_id=policy_id)
+    pii_alert_rule = _make_policy_alert_rule(dependent_resource=PolicyAlertGuardrailRule(resource_name=RuleType.PIIDATARULE), policy_id=policy_id)
     policy = _make_policy(policy_id, alert_rules=[pii_alert_rule])
     materialized_pii = _make_alert_rule(
         model_id=model_id,
@@ -1227,15 +1203,15 @@ def test_guardrail_enabled_but_no_data_non_compliant(mock_datetime):
     policies_client.list_model_attestations.return_value = _paginated_response([])
     alert_rules_client.get_model_alert_rules.return_value = _paginated_response([materialized_pii])
     alerts_client.get_model_alerts.return_value = _paginated_response([])
-    tasks_client.get_task_state_cache.return_value = _make_task_read_response(["PIIDataRule"])
-    metrics_client.post_model_metrics_query.return_value = _make_metrics_query_result(has_data=False)
+    tasks_conn.read_task.return_value = _make_task_read_response(["PIIDataRule"])
+    metrics_client.post_model_metrics_query.return_value = _make_metrics_query_result(trace_total=10, guardrail_total=0)
 
     executor.execute(job, job_spec)
 
     detail = policies_client.set_compliance_status.call_args.kwargs["set_compliance_status_request"].compliance_status
     assert detail.status == ComplianceStatus.NON_COMPLIANT
     assert len(detail.alert_rules.non_compliant) == 1
-    assert "has not received data" in detail.alert_rules.non_compliant[0].alert.description
+    assert "has not run" in detail.alert_rules.non_compliant[0].error_message
 
 
 @patch("job_executors.compliance_policy_check_executor.datetime")
@@ -1244,7 +1220,7 @@ def test_guardrail_enabled_and_has_data_compliant(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, tasks_client, _ = _make_executor()
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, tasks_conn, _ = _make_executor()
 
     model_id = str(uuid4())
     policy_id = str(uuid4())
@@ -1253,7 +1229,7 @@ def test_guardrail_enabled_and_has_data_compliant(mock_datetime):
         model_summary=_make_model_summary(model_id),
     )
 
-    pii_alert_rule = _make_policy_alert_rule(dependent_resource=PolicyAlertGuardrailRule(name=RuleType.PIIDATARULE), policy_id=policy_id)
+    pii_alert_rule = _make_policy_alert_rule(dependent_resource=PolicyAlertGuardrailRule(resource_name=RuleType.PIIDATARULE), policy_id=policy_id)
     policy = _make_policy(policy_id, alert_rules=[pii_alert_rule])
     materialized_pii = _make_alert_rule(
         model_id=model_id,
@@ -1268,8 +1244,8 @@ def test_guardrail_enabled_and_has_data_compliant(mock_datetime):
     policies_client.list_model_attestations.return_value = _paginated_response([])
     alert_rules_client.get_model_alert_rules.return_value = _paginated_response([materialized_pii])
     alerts_client.get_model_alerts.return_value = _paginated_response([])
-    tasks_client.get_task_state_cache.return_value = _make_task_read_response(["PIIDataRule"])
-    metrics_client.post_model_metrics_query.return_value = _make_metrics_query_result(has_data=True)
+    tasks_conn.read_task.return_value = _make_task_read_response(["PIIDataRule"])
+    metrics_client.post_model_metrics_query.return_value = _make_metrics_query_result(trace_total=10, guardrail_total=5)
 
     executor.execute(job, job_spec)
 
@@ -1283,7 +1259,7 @@ def test_guardrail_custom_rule_type_skips_check(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, tasks_client, _ = _make_executor()
+    executor, policies_client, alert_rules_client, _, _, tasks_conn, _ = _make_executor()
 
     model_id = str(uuid4())
     policy_id = str(uuid4())
@@ -1304,7 +1280,7 @@ def test_guardrail_custom_rule_type_skips_check(mock_datetime):
 
     executor.execute(job, job_spec)
 
-    tasks_client.get_task_state_cache.assert_not_called()
+    tasks_conn.read_task.assert_not_called()
     detail = policies_client.set_compliance_status.call_args.kwargs["set_compliance_status_request"].compliance_status
     assert detail.status == ComplianceStatus.COMPLIANT
 
@@ -1315,7 +1291,7 @@ def test_guardrail_before_enforcement_needs_attention(mock_datetime):
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, tasks_client, _ = _make_executor()
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, tasks_conn, _ = _make_executor()
 
     model_id = str(uuid4())
     policy_id = str(uuid4())
@@ -1325,7 +1301,7 @@ def test_guardrail_before_enforcement_needs_attention(mock_datetime):
         enforcement_in_past=False,
     )
 
-    pii_alert_rule = _make_policy_alert_rule(dependent_resource=PolicyAlertGuardrailRule(name=RuleType.PIIDATARULE), policy_id=policy_id)
+    pii_alert_rule = _make_policy_alert_rule(dependent_resource=PolicyAlertGuardrailRule(resource_name=RuleType.PIIDATARULE), policy_id=policy_id)
     policy = _make_policy(policy_id, alert_rules=[pii_alert_rule])
     materialized_pii = _make_alert_rule(
         model_id=model_id,
@@ -1340,7 +1316,7 @@ def test_guardrail_before_enforcement_needs_attention(mock_datetime):
     policies_client.list_model_attestations.return_value = _paginated_response([])
     alert_rules_client.get_model_alert_rules.return_value = _paginated_response([materialized_pii])
     alerts_client.get_model_alerts.return_value = _paginated_response([])
-    tasks_client.get_task_state_cache.return_value = _make_task_read_response([])
+    tasks_conn.read_task.return_value = _make_task_read_response([])
 
     executor.execute(job, job_spec)
 
@@ -1355,7 +1331,7 @@ def test_guardrail_failure_without_materialized_rule_still_reported(mock_datetim
     mock_datetime.now.return_value = NOW
     mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-    executor, policies_client, alert_rules_client, alerts_client, metrics_client, tasks_client, _ = _make_executor()
+    executor, policies_client, alert_rules_client, alerts_client, metrics_client, tasks_conn, _ = _make_executor()
 
     model_id = str(uuid4())
     policy_id = str(uuid4())
@@ -1364,7 +1340,7 @@ def test_guardrail_failure_without_materialized_rule_still_reported(mock_datetim
         model_summary=_make_model_summary(model_id),
     )
 
-    pii_alert_rule = _make_policy_alert_rule(dependent_resource=PolicyAlertGuardrailRule(name=RuleType.PIIDATARULE), policy_id=policy_id)
+    pii_alert_rule = _make_policy_alert_rule(dependent_resource=PolicyAlertGuardrailRule(resource_name=RuleType.PIIDATARULE), policy_id=policy_id)
     policy = _make_policy(policy_id, alert_rules=[pii_alert_rule])
 
     job, job_spec = _make_job_and_spec(model_id)
@@ -1374,7 +1350,7 @@ def test_guardrail_failure_without_materialized_rule_still_reported(mock_datetim
     policies_client.list_model_attestations.return_value = _paginated_response([])
     # No materialized alert rule for the policy rule
     alert_rules_client.get_model_alert_rules.return_value = _paginated_response([])
-    tasks_client.get_task_state_cache.return_value = _make_task_read_response([])
+    tasks_conn.read_task.return_value = _make_task_read_response([])
 
     executor.execute(job, job_spec)
 
@@ -1383,4 +1359,4 @@ def test_guardrail_failure_without_materialized_rule_still_reported(mock_datetim
     assert len(detail.alert_rules.non_compliant) == 1
     assert detail.alert_rules.non_compliant[0].id == pii_alert_rule.id
     assert detail.alert_rules.non_compliant[0].name == pii_alert_rule.name
-    assert "PIIDataRule is not enabled" in detail.alert_rules.non_compliant[0].alert.description
+    assert "PIIDataRule is not enabled" in detail.alert_rules.non_compliant[0].error_message
