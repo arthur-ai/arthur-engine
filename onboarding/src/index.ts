@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+declare const __BUILD_TIME__: string;
+
 import figlet from 'figlet';
 import chalk from 'chalk';
 import { intro, outro } from '@clack/prompts';
@@ -12,6 +14,10 @@ async function main(): Promise<void> {
   const bannerLines = banner.split('\n').filter(l => l.length > 0).map(l => chalk.hex('#CE93D8').bold(l));
   await playStartupAnimation(bannerLines);
   console.log(chalk.dim('  Arthur GenAI Engine Onboarding Agent'));
+  const buildTime = typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : null;
+  if (buildTime) {
+    console.log(chalk.dim(`  Build: ${new Date(buildTime).toLocaleString()}`));
+  }
   console.log();
 
   // Intro
