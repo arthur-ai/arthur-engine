@@ -22,6 +22,7 @@ import { LiveEvalsNew } from "./components/live-evals/new";
 import { LoginPage } from "./components/LoginPage";
 import { ModelProviders } from "./components/model-providers";
 import Notebooks from "./components/notebooks/Notebooks";
+import { OnboardingPage } from "./components/onboarding/OnboardingPage";
 import { ExperimentDetailView } from "./components/prompt-experiments/ExperimentDetailView";
 import { PromptExperimentsView } from "./components/prompt-experiments/PromptExperimentsView";
 import { PromptsView } from "./components/prompts/PromptsView";
@@ -66,6 +67,7 @@ function App() {
                         <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
                           <Routes>
                             {/* Public routes */}
+                            <Route path="/welcome" element={<OnboardingPage />} />
                             <Route path="/login" element={<LoginPage />} />
 
                             {/* Protected routes */}
