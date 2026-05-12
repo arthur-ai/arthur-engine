@@ -2,9 +2,31 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.552"
+        "version": "2.1.554"
     },
     "paths": {
+        "/api/v2/engine-config": {
+            "get": {
+                "tags": [
+                    "Engine Config"
+                ],
+                "summary": "Get Engine Config",
+                "description": "Returns engine-level configuration for the frontend. Public endpoint \u2014 no authentication required.",
+                "operationId": "get_engine_config_api_v2_engine_config_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EngineConfigResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v2/usage/tokens": {
             "get": {
                 "tags": [
@@ -21114,6 +21136,20 @@
                     "azure"
                 ],
                 "title": "DocumentStorageEnvironment"
+            },
+            "EngineConfigResponse": {
+                "properties": {
+                    "demo_mode": {
+                        "type": "boolean",
+                        "title": "Demo Mode",
+                        "description": "Whether the engine is running in demo mode."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "demo_mode"
+                ],
+                "title": "EngineConfigResponse"
             },
             "EnrichedTaskResponse": {
                 "properties": {
