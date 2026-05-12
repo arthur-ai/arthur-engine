@@ -1,5 +1,11 @@
-import React, { useState, useEffect } from "react";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
+import VpnKeyOutlinedIcon from "@mui/icons-material/VpnKeyOutlined";
+import { Alert, Box, Button, CircularProgress, InputAdornment, Stack, TextField, Typography } from "@mui/material";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+
+import { EngineTopNav } from "./onboarding/EngineTopNav";
 
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -9,7 +15,6 @@ export const LoginPage: React.FC = () => {
   const { login, error, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect to tasks page when authenticated
   useEffect(() => {
     if (isAuthenticated) {
       navigate("/", { replace: true });
@@ -24,93 +29,184 @@ export const LoginPage: React.FC = () => {
     try {
       const success = await login(token.trim());
       if (!success) {
-        // Error will be handled by the auth context
         console.error("Login failed");
       }
-    } catch (error) {
-      console.error("Login error:", error);
+    } catch (err) {
+      console.error("Login error:", err);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-gray-100">Sign in to Arthur GenAI Engine</h2>
-          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">Enter your API token to access the application</p>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div>
-              <label htmlFor="token" className="sr-only">
-                API Token
-              </label>
-              <input
-                id="token"
-                name="token"
-                type="password"
-                autoComplete="current-password"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-gray-100 dark:bg-gray-800 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Enter your API token"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                disabled={isSubmitting}
-              />
-            </div>
-          </div>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        minHeight: "100vh",
+        backgroundColor: "background.default",
+      }}
+    >
+      <EngineTopNav />
+      <Box
+        sx={{
+          flex: 1,
+          display: "flex",
+          alignItems: "safe center",
+          justifyContent: "safe center",
+          px: 3,
+          py: 4,
+          overflowY: "auto",
+        }}
+      >
+        <Box sx={{ width: "100%", maxWidth: 420, textAlign: "center" }}>
+          <Box
+            sx={{
+              width: 56,
+              height: 56,
+              borderRadius: "999px",
+              backgroundColor: "background.paper",
+              border: "1px solid",
+              borderColor: "divider",
+              display: "grid",
+              placeItems: "center",
+              mx: "auto",
+              mb: 2.5,
+              color: "text.secondary",
+            }}
+          >
+            <VpnKeyOutlinedIcon sx={{ fontSize: 28 }} />
+          </Box>
 
-          {error && (
-            <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800 dark:text-red-300">Authentication Error</h3>
-                  <div className="mt-2 text-sm text-red-700 dark:text-red-400">{error}</div>
-                </div>
-              </div>
-            </div>
-          )}
+          <Typography
+            component="h1"
+            sx={{
+              fontSize: 22,
+              fontWeight: 700,
+              color: "text.primary",
+              letterSpacing: "-0.01em",
+              lineHeight: 1.25,
+              mb: 1,
+            }}
+          >
+            Sign in with an API token
+          </Typography>
 
-          <div>
-            <button
+          <Typography
+            sx={{
+              fontSize: 14,
+              color: "text.secondary",
+              lineHeight: 1.55,
+              mb: 3,
+            }}
+          >
+            Authenticate to your Arthur workspace using your existing API token.
+          </Typography>
+
+          <Box
+            component="form"
+            onSubmit={handleSubmit}
+            sx={{
+              backgroundColor: "background.paper",
+              border: "1px solid",
+              borderColor: "divider",
+              borderRadius: "12px",
+              p: 3.5,
+              textAlign: "left",
+              display: "flex",
+              flexDirection: "column",
+              gap: 2,
+            }}
+          >
+            <TextField
+              id="token"
+              name="token"
+              type="password"
+              autoComplete="current-password"
+              fullWidth
+              variant="outlined"
+              size="small"
+              placeholder="Enter your API token"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              disabled={isSubmitting}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <VpnKeyOutlinedIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+                    </InputAdornment>
+                  ),
+                  sx: { fontSize: 14, borderRadius: "8px", backgroundColor: "background.paper" },
+                },
+              }}
+            />
+
+            {error && (
+              <Alert severity="error" icon={<ErrorOutlineIcon fontSize="small" />} sx={{ alignItems: "flex-start", fontSize: 13 }}>
+                <Typography component="div" sx={{ fontSize: 13, fontWeight: 600 }}>
+                  Authentication error
+                </Typography>
+                <Typography component="div" sx={{ fontSize: 13, mt: 0.25 }}>
+                  {error}
+                </Typography>
+              </Alert>
+            )}
+
+            <Button
               type="submit"
+              variant="contained"
+              color="primary"
+              size="large"
+              disableElevation
               disabled={isSubmitting || !token.trim()}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              sx={{ textTransform: "none", fontSize: 15, fontWeight: 600, borderRadius: "8px", py: 1.25 }}
             >
               {isSubmitting ? (
-                <div className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Signing in...
-                </div>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <CircularProgress size={16} thickness={5} sx={{ color: "inherit" }} />
+                  <Typography component="span" sx={{ fontSize: 15, fontWeight: 600, color: "inherit" }}>
+                    Signing in…
+                  </Typography>
+                </Stack>
               ) : (
                 "Sign in"
               )}
-            </button>
-          </div>
+            </Button>
 
-          <div className="text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Don&apos;t have a token? Contact your administrator to get access.</p>
-          </div>
-        </form>
-      </div>
-    </div>
+            <Typography
+              component="div"
+              sx={{
+                textAlign: "center",
+                fontSize: 12,
+                color: "text.disabled",
+                mt: 0.5,
+              }}
+            >
+              Don&apos;t have a token? Contact your administrator to get access.
+            </Typography>
+          </Box>
+
+          <Box sx={{ mt: 2.5 }}>
+            <Button
+              variant="text"
+              color="inherit"
+              size="small"
+              startIcon={<ArrowBackIcon sx={{ fontSize: 14 }} />}
+              onClick={() => navigate("/welcome")}
+              sx={{
+                textTransform: "none",
+                fontSize: 13,
+                fontWeight: 500,
+                color: "text.secondary",
+                "&:hover": { color: "text.primary", backgroundColor: "transparent" },
+              }}
+            >
+              Back to start
+            </Button>
+          </Box>
+        </Box>
+      </Box>
+    </Box>
   );
 };
