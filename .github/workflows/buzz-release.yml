@@ -1,0 +1,39 @@
+name: Publish @arthur-ai/buzz to npm
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+
+jobs:
+  publish-buzz:
+    if: contains(github.event.head_commit.message, 'Increment arthur-engine version')
+    runs-on: ubuntu-latest
+    environment: shared-protected-branch-secrets
+    defaults:
+      run:
+        working-directory: onboarding
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Set version and dist-tag
+        run: |
+          VERSION=$(cat ../version)
+          if [ "${{ github.ref }}" == "refs/heads/dev" ]; then
+            NPM_VERSION="${VERSION}-dev.0"
+            NPM_TAG="dev"
+          else
+            NPM_VERSION="${VERSION}"
+            NPM_TAG="latest"
+          fi
+          npm version "$NPM_VERSION" --no-git-tag-version --allow-same-version
+          echo "NPM_TAG=$NPM_TAG" >> $GITHUB_ENV
+      - run: npm ci
+      - run: npm run build
+      - run: npm publish --tag "$NPM_TAG"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

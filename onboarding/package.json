@@ -2,13 +2,28 @@
   "name": "@arthur-ai/buzz",
   "version": "1.0.0",
   "description": "Buzz — Arthur GenAI Engine onboarding agent",
+  "license": "MIT",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "bin": {
     "buzz": "./dist/index.js"
   },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "arthur",
+    "genai",
+    "llm",
+    "monitoring",
+    "onboarding"
+  ],
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsup src/index.ts --format esm --target node20",
+    "prepublishOnly": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest"
   },
