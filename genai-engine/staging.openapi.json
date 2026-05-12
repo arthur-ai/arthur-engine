@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.543"
+        "version": "2.1.551"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -24073,6 +24073,11 @@
                         "type": "boolean",
                         "title": "Is Consistent",
                         "default": false
+                    },
+                    "query_profile": {
+                        "type": "boolean",
+                        "title": "Query Profile",
+                        "default": false
                     }
                 },
                 "additionalProperties": false,
@@ -24241,7 +24246,8 @@
                     "gemini",
                     "bedrock",
                     "vertex_ai",
-                    "hosted_vllm"
+                    "hosted_vllm",
+                    "azure"
                 ],
                 "title": "ModelProvider"
             },
@@ -26731,7 +26737,19 @@
                             }
                         ],
                         "title": "Api Base",
-                        "description": "The API base URL. Used for VLLM models."
+                        "description": "The API base URL. Required for Azure (endpoint URL) and vLLM models."
+                    },
+                    "api_version": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Api Version",
+                        "description": "The API version. Required for Azure (e.g. '2024-02-01')."
                     },
                     "credentials_file": {
                         "anyOf": [
@@ -32695,7 +32713,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -32910,7 +32929,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -33125,7 +33145,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -33340,7 +33361,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -33490,7 +33512,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -33640,7 +33663,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -33972,7 +33996,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -34145,7 +34170,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -34318,7 +34344,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"

@@ -9,6 +9,7 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
   # No boto3 needed - uses only Python standard library for PVC copy
   "huggingface-hub>=0.36.0",  # Only needed for download_models.py during build
+  "tiktoken>=0.7.0",  # Only needed for download_models.py during build
 ]
 
 [project.scripts]

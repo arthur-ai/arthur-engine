@@ -97,7 +97,7 @@ class ApplicationConfigurationUpdateRequest(BaseModel):
             self.trace_retention_days not in ALLOWED_TRACE_RETENTION_DAYS
         ):
             raise ValueError(
-                f"trace_retention_days must be one of {ALLOWED_TRACE_RETENTION_DAYS}"
+                f"trace_retention_days must be one of {ALLOWED_TRACE_RETENTION_DAYS}",
             )
         return self
 
@@ -229,7 +229,11 @@ class PutModelProviderCredentials(BaseModel):
     )
     api_base: Optional[SecretStr] = Field(
         default=None,
-        description="The API base URL. Used for VLLM models.",
+        description="The API base URL. Required for Azure (endpoint URL) and vLLM models.",
+    )
+    api_version: Optional[str] = Field(
+        default=None,
+        description="The API version. Required for Azure (e.g. '2024-02-01').",
     )
     credentials_file: Optional[GCPServiceAccountCredentialsRequest] = Field(
         default=None,

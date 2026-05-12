@@ -6471,6 +6471,11 @@ export interface MetadataQuery {
    */
   last_update_time?: boolean;
   /**
+   * Query Profile
+   * @default false
+   */
+  query_profile?: boolean;
+  /**
    * Score
    * @default false
    */
@@ -6577,7 +6582,7 @@ export interface MetricResultResponse {
 export type MetricType = "QueryRelevance" | "ResponseRelevance" | "ToolSelection";
 
 /** ModelProvider */
-export type ModelProvider = "anthropic" | "openai" | "gemini" | "bedrock" | "vertex_ai" | "hosted_vllm";
+export type ModelProvider = "anthropic" | "openai" | "gemini" | "bedrock" | "vertex_ai" | "hosted_vllm" | "azure";
 
 /** ModelProviderList */
 export interface ModelProviderList {
@@ -7770,7 +7775,7 @@ export interface PromptVersionResultListResponse {
 export interface PutModelProviderCredentials {
   /**
    * Api Base
-   * The API base URL. Used for VLLM models.
+   * The API base URL. Required for Azure (endpoint URL) and vLLM models.
    */
   api_base?: string | null;
   /**
@@ -7778,6 +7783,11 @@ export interface PutModelProviderCredentials {
    * The API key for the provider.
    */
   api_key?: string | null;
+  /**
+   * Api Version
+   * The API version. Required for Azure (e.g. '2024-02-01').
+   */
+  api_version?: string | null;
   /**
    * Aws Access Key Id
    * The AWS access key ID.
@@ -12243,7 +12253,8 @@ export type WeaviateHybridSearchSettingsConfigurationRequestReturnMetadataEnum =
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateHybridSearchSettingsConfigurationResponse */
 export interface WeaviateHybridSearchSettingsConfigurationResponse {
@@ -12335,7 +12346,8 @@ export type WeaviateHybridSearchSettingsConfigurationResponseReturnMetadataEnum 
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateHybridSearchSettingsRequest */
 export interface WeaviateHybridSearchSettingsRequest {
@@ -12427,7 +12439,8 @@ export type WeaviateHybridSearchSettingsRequestReturnMetadataEnum =
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateKeywordSearchSettingsConfigurationRequest */
 export interface WeaviateKeywordSearchSettingsConfigurationRequest {
@@ -12496,7 +12509,8 @@ export type WeaviateKeywordSearchSettingsConfigurationRequestReturnMetadataEnum 
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateKeywordSearchSettingsConfigurationResponse */
 export interface WeaviateKeywordSearchSettingsConfigurationResponse {
@@ -12565,7 +12579,8 @@ export type WeaviateKeywordSearchSettingsConfigurationResponseReturnMetadataEnum
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateKeywordSearchSettingsRequest */
 export interface WeaviateKeywordSearchSettingsRequest {
@@ -12634,7 +12649,8 @@ export type WeaviateKeywordSearchSettingsRequestReturnMetadataEnum =
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /**
  * WeaviateQueryResult
@@ -12793,7 +12809,8 @@ export type WeaviateVectorSimilarityTextSearchSettingsConfigurationRequestReturn
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse */
 export interface WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse {
@@ -12867,7 +12884,8 @@ export type WeaviateVectorSimilarityTextSearchSettingsConfigurationResponseRetur
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateVectorSimilarityTextSearchSettingsRequest */
 export interface WeaviateVectorSimilarityTextSearchSettingsRequest {
@@ -12941,7 +12959,8 @@ export type WeaviateVectorSimilarityTextSearchSettingsRequestReturnMetadataEnum 
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, HeadersDefaults, ResponseType } from "axios";
 import axios from "axios";
@@ -13074,7 +13093,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.543
+ * @version 2.1.549
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
