@@ -14,7 +14,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    #image: arthurplatform/genai-engine-models-k8s:<genai_engine_models_version>
+    #image: arthurplatform/genai-engine-models-fs:<genai_engine_models_version>
     container_name: arthur-genai-engine-models-k8s
     # Override user to root for local testing to avoid permission issues
     # In production (K8s), the container runs as nonroot (uid 65532)

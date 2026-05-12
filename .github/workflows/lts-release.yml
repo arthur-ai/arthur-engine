@@ -62,7 +62,7 @@ jobs:
         # unlike docker pull/tag/push which only retags the host architecture.
         run: |
           set -e
-          for IMG in genai-engine-cpu genai-engine-gpu ml-engine genai-engine-models-s3 genai-engine-models-gcs genai-engine-models-k8s; do
+          for IMG in genai-engine-cpu genai-engine-gpu ml-engine genai-engine-models-s3 genai-engine-models-gcs genai-engine-models-fs; do
             echo "==== arthurplatform/${IMG}: ${SRC} -> ${LTS} ===="
             docker buildx imagetools create --tag "arthurplatform/${IMG}:${LTS}" "arthurplatform/${IMG}:${SRC}"
           done

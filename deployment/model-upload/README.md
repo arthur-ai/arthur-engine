@@ -20,8 +20,8 @@ docker build --build-arg BACKEND=gcs --target runtime-gcs \
   -t arthurplatform/genai-engine-models-gcs:<version> .
 
 # K8s / PVC
-docker build --build-arg BACKEND=pvc --target runtime-pvc \
-  -t arthurplatform/genai-engine-models-k8s:<version> .
+docker build --build-arg BACKEND=fs --target runtime-fs \
+  -t arthurplatform/genai-engine-models-fs:<version> .
 ```
 
 ## Deploy

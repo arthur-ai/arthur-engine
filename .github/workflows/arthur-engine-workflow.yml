@@ -531,8 +531,8 @@ jobs:
             docker push arthurplatform/genai-engine-models-s3:latest
           fi
 
-  build-genai-engine-models-k8s-docker-image:
-    uses: ./.github/workflows/build-k8s-model-upload.yml
+  build-genai-engine-models-fs-docker-image:
+    uses: ./.github/workflows/build-fs-model-upload.yml
     needs: [check-models-updates]
     if: |
       needs.check-models-updates.outputs.has_updates == 'true' &&
@@ -540,10 +540,10 @@ jobs:
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     with:
       push: true
-      image: arthurplatform/genai-engine-models-k8s
+      image: arthurplatform/genai-engine-models-fs
     secrets: inherit
 
-  tag-genai-engine-models-k8s-docker-image:
+  tag-genai-engine-models-fs-docker-image:
     needs: [check-models-updates]
     environment: shared-protected-branch-secrets
     if: |
@@ -564,16 +564,16 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-      - name: Retag previous models k8s image with new version
+      - name: Retag previous models fs image with new version
         run: |
           SOURCE_TAG=${{ github.ref == 'refs/heads/main' && 'latest' || 'latest-dev' }}
           echo "No model updates detected - retagging ${SOURCE_TAG} as ${{ env.VERSION }}"
-          docker pull arthurplatform/genai-engine-models-k8s:${SOURCE_TAG}
-          docker tag arthurplatform/genai-engine-models-k8s:${SOURCE_TAG} arthurplatform/genai-engine-models-k8s:${{ env.VERSION }}
-          docker push arthurplatform/genai-engine-models-k8s:${{ env.VERSION }}
+          docker pull arthurplatform/genai-engine-models-fs:${SOURCE_TAG}
+          docker tag arthurplatform/genai-engine-models-fs:${SOURCE_TAG} arthurplatform/genai-engine-models-fs:${{ env.VERSION }}
+          docker push arthurplatform/genai-engine-models-fs:${{ env.VERSION }}
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            docker tag arthurplatform/genai-engine-models-k8s:${SOURCE_TAG} arthurplatform/genai-engine-models-k8s:latest
-            docker push arthurplatform/genai-engine-models-k8s:latest
+            docker tag arthurplatform/genai-engine-models-fs:${SOURCE_TAG} arthurplatform/genai-engine-models-fs:latest
+            docker push arthurplatform/genai-engine-models-fs:latest
           fi
 
   build-gcp-model-upload-docker-image:

@@ -1,12 +1,12 @@
 # Model Upload - Multi-stage build with three named runtime targets
 #
 # Build args:
-#   BACKEND: s3 (ECS) | gcs (GCP) | pvc (K8s/OpenShift)  [default: s3]
+#   BACKEND: s3 (ECS) | gcs (GCP) | fs (K8s PVC / EFS / any mounted volume)  [default: s3]
 #
 # Build commands:
 #   docker build --build-arg BACKEND=s3  --target runtime-s3  -t <image> .
 #   docker build --build-arg BACKEND=gcs --target runtime-gcs -t <image> .
-#   docker build --build-arg BACKEND=pvc --target runtime-pvc -t <image> .
+#   docker build --build-arg BACKEND=fs  --target runtime-fs  -t <image> .
 
 ARG BACKEND=s3
 
@@ -40,7 +40,7 @@ WORKDIR /app
 RUN pip install --no-cache-dir uv==0.11.7
 COPY pyproject.toml uv.lock* ./
 
-RUN if [ "$BACKEND" != "pvc" ]; then \
+RUN if [ "$BACKEND" != "fs" ]; then \
       uv export --frozen --no-emit-project --no-hashes --extra "$BACKEND" \
         -o /tmp/requirements.txt \
       && pip install --target=/app/site-packages --no-cache \
@@ -66,15 +66,17 @@ USER nonroot
 ENTRYPOINT ["python", "/app/upload_models.py"]
 
 # =============================================================================
-# Runtime: K8s / PVC  (distroless — no extra deps, stdlib only)
+# Runtime: Filesystem / FS  (distroless — no extra deps, stdlib only)
+# Covers any mounted volume: K8s PVC, AWS EFS, OpenShift, etc.
+# Set TARGET_DIR to the mount path at runtime (default: /models-output)
 # =============================================================================
-FROM gcr.io/distroless/python3-debian12:nonroot AS runtime-pvc
+FROM gcr.io/distroless/python3-debian12:nonroot AS runtime-fs
 
 WORKDIR /app
 COPY --from=downloader /models /models
 COPY --chown=nonroot:nonroot upload_models.py /app/
 
-ENV BACKEND=pvc \
+ENV BACKEND=fs \
     MODELS_DIR=/models \
     TARGET_DIR=/models-output \
     LOG_LEVEL=INFO

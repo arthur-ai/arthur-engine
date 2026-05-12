@@ -5,7 +5,7 @@ Transfer pre-downloaded models to storage backend.
 Supports three backends selected via the BACKEND environment variable:
   s3  — upload to AWS S3 (ECS deployments)
   gcs — upload to Google Cloud Storage (GCP Cloud Run)
-  pvc — copy to mounted PersistentVolume (Kubernetes/OpenShift)
+  fs  — copy to any mounted filesystem (Kubernetes PVC, AWS EFS, OpenShift)
 
 Environment variables (all backends):
     BACKEND:    Storage backend: s3, gcs, or pvc (default: s3)
@@ -21,7 +21,7 @@ GCS-specific:
     GCS_PREFIX:          Prefix for GCS object names (optional)
     CONTAINER_MODELS_DIR: Mount path where consumer pods access models (default: /models-storage)
 
-PVC-specific:
+FS-specific:
     TARGET_DIR: Target directory on the mounted volume (default: /models-output)
 """
 
@@ -193,7 +193,7 @@ def _post_process_gcs(
 # ── PVC backend ───────────────────────────────────────────────────────────────
 
 
-def _run_pvc(models_dir: Path) -> dict[str, int]:
+def _run_fs(models_dir: Path) -> dict[str, int]:
     target_dir = Path(os.getenv("TARGET_DIR", "/models-output"))
     logger.info(f"Target Dir: {target_dir}")
 
@@ -228,11 +228,11 @@ def _run_pvc(models_dir: Path) -> dict[str, int]:
             logger.error(f"❌ Failed to copy {relative_path}: {e}")
             stats["failed"] += 1
 
-    _post_process_pvc(target_dir)
+    _post_process_fs(target_dir)
     return stats
 
 
-def _post_process_pvc(target_dir: Path) -> None:
+def _post_process_fs(target_dir: Path) -> None:
     """Create config.json for GLiNER model and update model_name to local mount path."""
     logger.info("🔧 Post-processing GLiNER model config...")
     gliner_model_dir = target_dir / "urchade" / "gliner_multi_pii-v1"
@@ -278,7 +278,7 @@ def main() -> int:
         logger.error(f"Models directory does not exist: {models_dir}")
         return 1
 
-    backends = {"s3": _run_s3, "gcs": _run_gcs, "pvc": _run_pvc}
+    backends = {"s3": _run_s3, "gcs": _run_gcs, "fs": _run_fs}
     if BACKEND not in backends:
         logger.error(f"Unknown backend: {BACKEND!r}. Must be one of: {list(backends)}")
         return 1
