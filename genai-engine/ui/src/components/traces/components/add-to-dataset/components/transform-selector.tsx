@@ -8,6 +8,7 @@ import { useExecuteTransform } from "../hooks/useExecuteTransform";
 import { MatchStatus, useMatchingVariables } from "../hooks/useMatchingVariables";
 
 import { getNestedValue, getNestedValueWildcard } from "@/components/traces/utils/spans";
+import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
 import { useTransforms } from "@/hooks/transforms/useTransforms";
 import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
 import { DatasetVersionMetadataResponse, NestedSpanWithMetricsResponse, TraceTransformResponse } from "@/lib/api-client/api-client";
@@ -43,12 +44,15 @@ export const TransformSelector = withFieldGroup({
 
     const selectedTransform = transforms?.find((t) => t.id === transform);
 
+    const { data: selectedTransformVersions = [] } = useTransformVersions(selectedTransform?.id);
+    const selectedTransformDefinition = selectedTransformVersions[0]?.definition;
+
     const executeTransformMutation = useExecuteTransform(traceId, {
       onSuccess: (data) => {
         if (!data.variables.length || !selectedTransform) return;
 
         const executedColumns = data.variables.map((variable) => {
-          const variableDef = selectedTransform.definition.variables.find((v) => v.variable_name === variable.name);
+          const variableDef = selectedTransformDefinition?.variables.find((v) => v.variable_name === variable.name);
 
           if (!variableDef) {
             return {
@@ -156,9 +160,11 @@ export const TransformSelector = withFieldGroup({
 });
 
 const SelectorOption = ({ option, dataset }: { option: TraceTransformResponse; dataset: DatasetVersionMetadataResponse | undefined }) => {
+  const { data: versions = [] } = useTransformVersions(option.id);
+  const definition = versions[0]?.definition;
   const { matchCount, matchStatus, unmatchedTransform } = useMatchingVariables({
     columnNames: dataset?.column_names ?? [],
-    variables: option.definition.variables ?? [],
+    variables: definition?.variables ?? [],
   });
 
   return (
@@ -191,7 +197,7 @@ const SelectorOption = ({ option, dataset }: { option: TraceTransformResponse; d
           }}
         >
           <Typography variant="caption" fontWeight={500} color="inherit">
-            {matchCount} of {option.definition.variables.length} match
+            {matchCount} of {definition?.variables.length ?? 0} match
           </Typography>
         </Box>
         {unmatchedTransform.length > 0 && (
