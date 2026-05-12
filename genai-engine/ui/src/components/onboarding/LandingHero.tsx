@@ -1,11 +1,10 @@
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import CheckIcon from "@mui/icons-material/Check";
-import { Box, Button, Stack, Typography } from "@mui/material";
+import BoltOutlinedIcon from "@mui/icons-material/BoltOutlined";
+import VpnKeyOutlinedIcon from "@mui/icons-material/VpnKeyOutlined";
+import { Box, Card, CardActionArea, Chip, Link, Stack, Typography } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 
 import { EngineTopNav } from "./EngineTopNav";
-
-const BRAND_PURPLE = "#7C3AED";
-const METRIC_SUCCESS = "#10B981";
 
 interface LandingHeroProps {
   onTry: () => void;
@@ -18,7 +17,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onTry, onLogin }) => (
       display: "flex",
       flexDirection: "column",
       minHeight: "100vh",
-      background: "radial-gradient(ellipse 80% 50% at 50% 0%, rgba(124,58,237,0.06), transparent 60%), #F9FAFB",
+      backgroundColor: "background.default",
     }}
   >
     <EngineTopNav />
@@ -33,43 +32,25 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onTry, onLogin }) => (
         overflowY: "auto",
       }}
     >
-      <Box sx={{ width: "100%", maxWidth: 640 }}>
-        {/* Pill */}
-        <Stack
-          direction="row"
-          alignItems="center"
-          spacing={1}
+      <Box sx={{ width: "100%", maxWidth: 880 }}>
+        <Typography
+          component="div"
           sx={{
-            display: "inline-flex",
             fontSize: 12,
             fontWeight: 600,
-            color: BRAND_PURPLE,
-            backgroundColor: "rgba(124,58,237,0.08)",
-            px: 1.5,
-            py: 0.75,
-            borderRadius: "999px",
-            mb: 2.5,
+            color: "secondary.main",
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            mb: 1.5,
           }}
         >
-          <Box
-            sx={{
-              width: 6,
-              height: 6,
-              borderRadius: "999px",
-              backgroundColor: BRAND_PURPLE,
-              boxShadow: "0 0 0 4px rgba(124,58,237,0.15)",
-            }}
-          />
-          <Typography component="span" sx={{ fontSize: 12, fontWeight: 600, color: "inherit" }}>
-            Live demo · 30s setup
-          </Typography>
-        </Stack>
+          Welcome
+        </Typography>
 
-        {/* Headline */}
         <Typography
           component="h1"
           sx={{
-            fontSize: 30,
+            fontSize: 32,
             fontWeight: 700,
             color: "text.primary",
             letterSpacing: "-0.02em",
@@ -78,10 +59,9 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onTry, onLogin }) => (
             textWrap: "balance",
           }}
         >
-          See your agent&apos;s traces, tokens &amp; evals in real time.
+          Get started with Arthur Engine
         </Typography>
 
-        {/* Lede */}
         <Typography
           sx={{
             fontSize: 15,
@@ -91,65 +71,176 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onTry, onLogin }) => (
             textWrap: "pretty",
           }}
         >
-          The fastest way to see what Arthur Engine does — a working task, populated with a demo agent, waiting for you.
+          Observability, evals, and guardrails for production LLM agents. Pick a path below.
         </Typography>
 
-        {/* Hero actions */}
-        <Stack direction="row" alignItems="center" spacing={1.75} sx={{ mt: 1, mb: 4, flexWrap: "wrap" }}>
-          <Button
-            variant="contained"
-            disableElevation
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+            gap: 2,
+            mt: 1,
+          }}
+        >
+          <PickCard
+            variant="primary"
+            icon={<BoltOutlinedIcon sx={{ fontSize: 18 }} />}
+            badge="No account needed"
+            title="Try it out right now"
+            description="Spin up a sandbox task pre-loaded with a demo agent. You'll be in the engine in under 30 seconds."
+            cta="Start the demo"
             onClick={onTry}
-            endIcon={<ArrowForwardIcon sx={{ fontSize: 16 }} />}
-            sx={{
-              backgroundColor: "#2563EB",
-              color: "common.white",
-              textTransform: "none",
-              fontSize: 15,
-              fontWeight: 600,
-              borderRadius: "8px",
-              px: 2.75,
-              py: 1.5,
-              "&:hover": { backgroundColor: "#1D4ED8" },
-            }}
-          >
-            Try it out right now
-          </Button>
-          <Typography component="span" sx={{ fontSize: 13, color: "grey.400" }}>
-            or
-          </Typography>
-          <Button
-            variant="outlined"
+          />
+          <PickCard
+            variant="default"
+            icon={<VpnKeyOutlinedIcon sx={{ fontSize: 18 }} />}
+            title="Sign up for an account"
+            description="Full Arthur platform access — your own workspace, persistent tasks, and team collaboration."
+            cta="Continue to sign in"
             onClick={onLogin}
-            sx={{
-              textTransform: "none",
-              fontSize: 14,
-              fontWeight: 600,
-              borderRadius: "8px",
-              borderColor: "grey.300",
-              color: "text.primary",
-              backgroundColor: "transparent",
-              px: 2.25,
-              py: 1.25,
-              "&:hover": { backgroundColor: "grey.50", borderColor: "grey.400" },
-            }}
-          >
-            Sign up for an account
-          </Button>
-        </Stack>
+          />
+        </Box>
 
-        {/* Bullets */}
-        <Stack component="ul" direction="row" spacing={3} sx={{ flexWrap: "wrap", p: 0, m: 0, listStyle: "none" }}>
-          {["Pre-loaded demo agent", "Task-scoped API key", "No card, no signup"].map((text) => (
-            <Stack key={text} component="li" direction="row" alignItems="center" spacing={1} sx={{ fontSize: 13, color: "text.secondary" }}>
-              <CheckIcon sx={{ fontSize: 14, color: METRIC_SUCCESS }} />
-              <Typography component="span" sx={{ fontSize: 13, color: "inherit" }}>
-                {text}
-              </Typography>
-            </Stack>
-          ))}
-        </Stack>
+        <Typography
+          component="div"
+          sx={{
+            mt: 3.5,
+            textAlign: "center",
+            fontSize: 12,
+            color: "text.disabled",
+          }}
+        >
+          By continuing you agree to Arthur&apos;s{" "}
+          <Link href="#" underline="always" sx={{ color: "text.secondary", fontWeight: 500 }}>
+            Terms
+          </Link>{" "}
+          and{" "}
+          <Link href="#" underline="always" sx={{ color: "text.secondary", fontWeight: 500 }}>
+            Privacy Policy
+          </Link>
+          .
+        </Typography>
       </Box>
     </Box>
   </Box>
 );
+
+interface PickCardProps {
+  variant: "primary" | "default";
+  icon: React.ReactNode;
+  badge?: string;
+  title: string;
+  description: string;
+  cta: string;
+  onClick: () => void;
+}
+
+const PickCard: React.FC<PickCardProps> = ({ variant, icon, badge, title, description, cta, onClick }) => {
+  const isPrimary = variant === "primary";
+  return (
+    <Card
+      variant="outlined"
+      sx={(theme) => ({
+        borderRadius: "12px",
+        borderColor: isPrimary ? "primary.light" : "divider",
+        background: isPrimary
+          ? `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${theme.palette.background.paper} 60%)`
+          : theme.palette.background.paper,
+        transition: "border-color 0.15s, background 0.15s",
+        "&:hover": {
+          borderColor: isPrimary ? "primary.main" : "text.disabled",
+          background: isPrimary
+            ? `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${theme.palette.background.paper} 100%)`
+            : theme.palette.action.hover,
+        },
+      })}
+    >
+      <CardActionArea
+        onClick={onClick}
+        sx={{
+          p: 3,
+          minHeight: 220,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "stretch",
+          justifyContent: "flex-start",
+          textAlign: "left",
+          gap: 1.5,
+          "& .MuiCardActionArea-focusHighlight": { background: "transparent" },
+        }}
+      >
+        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ width: "100%" }}>
+          <Box
+            sx={{
+              width: 36,
+              height: 36,
+              borderRadius: "8px",
+              display: "grid",
+              placeItems: "center",
+              backgroundColor: isPrimary ? "primary.50" : "action.hover",
+              color: isPrimary ? "primary.dark" : "text.secondary",
+            }}
+          >
+            {icon}
+          </Box>
+          {badge && (
+            <Chip
+              size="small"
+              label={badge}
+              sx={{
+                height: "auto",
+                py: 0.5,
+                fontSize: 11,
+                fontWeight: 600,
+                color: "primary.dark",
+                backgroundColor: "primary.50",
+                letterSpacing: "0.01em",
+                "& .MuiChip-label": { px: 1 },
+              }}
+            />
+          )}
+        </Stack>
+
+        <Typography
+          sx={{
+            fontSize: 17,
+            fontWeight: 600,
+            color: "text.primary",
+            letterSpacing: "-0.01em",
+            mt: 0.5,
+          }}
+        >
+          {title}
+        </Typography>
+
+        <Typography
+          sx={{
+            fontSize: 13,
+            color: "text.secondary",
+            lineHeight: 1.5,
+            flex: 1,
+          }}
+        >
+          {description}
+        </Typography>
+
+        <Stack
+          direction="row"
+          alignItems="center"
+          spacing={0.75}
+          sx={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: isPrimary ? "primary.dark" : "text.primary",
+            mt: 0.5,
+          }}
+        >
+          <Typography component="span" sx={{ fontSize: 13, fontWeight: 600, color: "inherit" }}>
+            {cta}
+          </Typography>
+          <ArrowForwardIcon sx={{ fontSize: 14 }} />
+        </Stack>
+      </CardActionArea>
+    </Card>
+  );
+};

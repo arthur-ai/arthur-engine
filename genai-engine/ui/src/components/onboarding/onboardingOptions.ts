@@ -13,10 +13,10 @@ export type ChipOption = {
 };
 
 export const MATURITY_OPTIONS: RadioOption[] = [
-  { id: "prod", label: "Running AI in production", dot: "#2563EB" },
-  { id: "building", label: "Building toward production — not live yet", dot: "#F59E0B" },
-  { id: "evaluating", label: "Evaluating tools / doing early research", dot: "#F97316" },
-  { id: "exploring", label: "Just exploring out of curiosity", dot: "#D1D5DB" },
+  { id: "prod", label: "Running AI in production", dot: "success.main" },
+  { id: "building", label: "Building toward production — not live yet", dot: "warning.main" },
+  { id: "evaluating", label: "Evaluating tools / doing early research", dot: "info.main" },
+  { id: "exploring", label: "Just exploring out of curiosity", dot: "text.disabled" },
 ];
 
 export const BRINGS_OPTIONS: RadioOption[] = [

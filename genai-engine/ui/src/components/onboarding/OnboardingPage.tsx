@@ -1,11 +1,8 @@
-import { ThemeProvider } from "@mui/material/styles";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { LandingHero } from "./LandingHero";
 import { TryItOutForm, type TryItOutSubmission } from "./TryItOutForm";
-
-import { lightTheme } from "@/theme/mui-theme";
 
 type Screen = "landing" | "form";
 
@@ -18,13 +15,9 @@ export const OnboardingPage: React.FC = () => {
     console.log("Onboarding submission", data);
   };
 
-  return (
-    <ThemeProvider theme={lightTheme}>
-      {screen === "form" ? (
-        <TryItOutForm onBack={() => setScreen("landing")} onSubmit={handleSubmit} />
-      ) : (
-        <LandingHero onTry={() => setScreen("form")} onLogin={() => navigate("/login")} />
-      )}
-    </ThemeProvider>
+  return screen === "form" ? (
+    <TryItOutForm onBack={() => setScreen("landing")} onSubmit={handleSubmit} />
+  ) : (
+    <LandingHero onTry={() => setScreen("form")} onLogin={() => navigate("/login")} />
   );
 };
