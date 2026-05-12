@@ -946,3 +946,7 @@ class TransformDependents(BaseModel):
         return bool(
             self.continuous_evals or self.agentic_experiments or self.agentic_notebooks,
         )
+
+
+class EngineConfigResponse(BaseModel):
+    demo_mode: bool = Field(description="Whether the engine is running in demo mode.")

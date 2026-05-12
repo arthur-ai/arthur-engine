@@ -54,6 +54,13 @@ repos:
         fail_fast: true
   - repo: local
     hooks:
+      - id: genai-engine-ui-lint-format
+        name: "genai-engine: UI ESLint fix and Prettier format"
+        entry: bash -c "cd genai-engine/ui && node_modules/.bin/prettier --write src/ && node_modules/.bin/eslint --fix --cache --cache-location node_modules/.cache/eslint src/"
+        language: system
+        pass_filenames: false
+        always_run: false
+        files: ^genai-engine/ui/src/.*\.(ts|tsx|js|jsx)$
       - id: genai-engine-routes-security-check
         name: "genai-engine: check routes security"
         entry: bash -c "export GENAI_ENGINE_SECRET_STORE_KEY=changeme_secret_store_key && uv run --project genai-engine routes_security_check"
