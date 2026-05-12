@@ -23,7 +23,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: downloader
-    container_name: arthur-genai-engine-models-gcp-download
+    container_name: arthur-genai-engine-models-gcs-download
     # Override user to root for local testing to avoid permission issues
     # In production (Cloud Run), the container runs as nonroot (uid 65532)
     user: root
@@ -46,8 +46,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    #image: arthurplatform/genai-engine-models-gcp:latest
-    container_name: arthur-genai-engine-models-gcp-upload
+    #image: arthurplatform/genai-engine-models-gcs:latest
+    container_name: arthur-genai-engine-models-gcs-upload
     # Override user to root for local testing to avoid permission issues
     # In production (Cloud Run), the container runs as nonroot (uid 65532)
     user: root

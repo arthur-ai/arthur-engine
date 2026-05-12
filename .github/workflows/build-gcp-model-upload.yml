@@ -9,10 +9,10 @@ on:
         required: false
         default: true
       image:
-        description: "Image name (e.g. arthurplatform/genai-engine-models-gcp)"
+        description: "Image name (e.g. arthurplatform/genai-engine-models-gcs)"
         type: string
         required: false
-        default: "arthurplatform/genai-engine-models-gcp"
+        default: "arthurplatform/genai-engine-models-gcs"
   workflow_call:
     inputs:
       push:
@@ -21,10 +21,10 @@ on:
         required: false
         default: true
       image:
-        description: "Image name (e.g. arthurplatform/genai-engine-models-gcp)"
+        description: "Image name (e.g. arthurplatform/genai-engine-models-gcs)"
         type: string
         required: false
-        default: "arthurplatform/genai-engine-models-gcp"
+        default: "arthurplatform/genai-engine-models-gcs"
 
 jobs:
   build-gcp-model-upload:

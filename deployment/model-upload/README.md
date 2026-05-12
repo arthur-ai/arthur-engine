@@ -17,7 +17,7 @@ docker build --build-arg BACKEND=s3 --target runtime-s3 \
 
 # GCP / GCS
 docker build --build-arg BACKEND=gcs --target runtime-gcs \
-  -t arthurplatform/genai-engine-models-gcp:<version> .
+  -t arthurplatform/genai-engine-models-gcs:<version> .
 
 # K8s / PVC
 docker build --build-arg BACKEND=pvc --target runtime-pvc \

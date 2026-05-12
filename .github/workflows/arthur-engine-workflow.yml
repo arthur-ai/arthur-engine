@@ -584,7 +584,7 @@ jobs:
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     with:
       push: true
-      image: arthurplatform/genai-engine-models-gcp
+      image: arthurplatform/genai-engine-models-gcs
     secrets: inherit
 
   push-all-cfts:
