@@ -56,18 +56,20 @@ FROM gcr.io/distroless/python3-debian12:nonroot AS runtime
 WORKDIR /app
 
 # Copy virtual environment from builder
-COPY --from=builder /app/.venv/lib/python3.12/site-packages /app/site-packages
+COPY --chown=nonroot:nonroot --from=builder /app/.venv/lib/python3.12/site-packages /app/site-packages
 
 # Copy application code
-COPY --from=builder /app/upload_models.py .
+COPY --chown=nonroot:nonroot --from=builder /app/upload_models.py .
 
 # Copy downloaded models from stage 1
-COPY --from=downloader /models /models
+COPY --chown=nonroot:nonroot --from=downloader /models /models
 
 # Set Python path to include our dependencies
 ENV PYTHONPATH=/app/site-packages
 ENV MODELS_DIR=/models
 ENV LOG_LEVEL=INFO
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 # Run as non-root user (distroless nonroot image runs as uid 65532)
 USER nonroot

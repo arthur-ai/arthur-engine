@@ -83,6 +83,7 @@ class LLMClient:
         api_key: str | None = None,
         project_id: str | None = None,
         region: str | None = None,
+        api_version: str | None = None,
         api_base: str | None = None,
         vertex_credentials: dict[str, str] | None = None,
         aws_bedrock_credentials: dict[str, str] | None = None,
@@ -91,6 +92,7 @@ class LLMClient:
         self.api_key = api_key
         self.project_id = project_id
         self.region = region
+        self.api_version = api_version
         self.api_base = api_base
         self.vertex_credentials = vertex_credentials
         self.aws_bedrock_credentials = aws_bedrock_credentials
@@ -99,7 +101,16 @@ class LLMClient:
         if self.api_key:
             kwargs["api_key"] = self.api_key
 
-        if self.provider == ModelProvider.VERTEX_AI:
+        if self.provider == ModelProvider.AZURE:
+            if not self.api_base:
+                raise ValueError(
+                    "api_base (Azure endpoint URL) is required for Azure provider",
+                )
+            if not self.api_version:
+                raise ValueError("api_version is required for Azure provider")
+            kwargs["api_base"] = self.api_base
+            kwargs["api_version"] = self.api_version
+        elif self.provider == ModelProvider.VERTEX_AI:
             if self.project_id:
                 kwargs["vertex_project"] = self.project_id
             if self.region:
@@ -153,7 +164,8 @@ class LLMClient:
         return kwargs
 
     def calculate_cost(
-        self, response: Optional[Union[ModelResponse, TextCompletionResponse]]
+        self,
+        response: Optional[Union[ModelResponse, TextCompletionResponse]],
     ) -> str:
         """Calculate the cost of an LLM response, returning '0.00' if cost data is unavailable."""
         if response is None:
