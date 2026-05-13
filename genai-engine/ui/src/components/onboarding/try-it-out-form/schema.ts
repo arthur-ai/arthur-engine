@@ -4,7 +4,7 @@ export const onboardingSchema = z
   .object({
     firstName: z.string().trim().min(1, { error: "Required" }),
     lastName: z.string().trim().min(1, { error: "Required" }),
-    email: z.string().regex(/.+@.+\..+/, { error: "Enter a valid work email" }),
+    email: z.email({ error: "Enter a valid work email" }),
     jobTitle: z.string().trim().min(1, { error: "Required" }),
     company: z.string().trim().min(1, { error: "Required" }),
     building: z.string().trim().min(1, { error: "Tell us a bit" }),
@@ -17,10 +17,10 @@ export const onboardingSchema = z
   })
   .superRefine((data, ctx) => {
     if (data.brings === "other" && !data.bringsOther.trim()) {
-      ctx.addIssue({ code: "custom", path: ["bringsOther"], message: "Please specify" });
+      ctx.addIssue({ code: "custom", path: ["bringsOther"], error: "Please specify" });
     }
     if (data.competitors.includes("other") && !data.competitorOther.trim()) {
-      ctx.addIssue({ code: "custom", path: ["competitorOther"], message: "Please specify" });
+      ctx.addIssue({ code: "custom", path: ["competitorOther"], error: "Please specify" });
     }
   });
 
