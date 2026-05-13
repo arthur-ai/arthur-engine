@@ -311,7 +311,7 @@ Arthur Engine URL: <ARTHUR_ENGINE_URL>
 Arthur Task ID: <ARTHUR_TASK_ID>
 
 RULES:
-- Never hardcode API keys. Always read from env vars (ARTHUR_API_KEY).
+- Never hardcode API keys. Always read from env vars.
 - Add to .env (create if missing; ensure .env is gitignored):
     ARTHUR_API_KEY=$ARTHUR_API_KEY
     ARTHUR_BASE_URL=<ARTHUR_ENGINE_URL>
@@ -323,66 +323,130 @@ RULES:
 STEP 1 — ANALYSIS:
 - Read requirements.txt / pyproject.toml (note package manager: pip/uv/poetry)
 - Find the entry point (main.py, app.py, __main__.py, or similar)
-- Identify the LLM framework: openai, langchain, anthropic, crewai, etc.
+- Identify the LLM framework in use. Match it to one of the supported SDK extras below.
 - Check if arthur_observability_sdk already installed (skip STEP 2 if yes)
 
 STEP 2 — IMPLEMENTATION:
 
 PART A — SDK SETUP:
-  Add "arthur-observability-sdk[<framework>]" to requirements.txt / pyproject.toml.
-  In the entry point:
+
+  Supported framework extras and their instrument methods — pick the one that matches:
+    openai              → instrument_openai()
+    langchain           → instrument_langchain()
+    anthropic           → instrument_anthropic()
+    crewai              → instrument_crewai()
+    autogen             → instrument_autogen()
+    autogen-agentchat   → instrument_autogen_agentchat()
+    llama-index         → instrument_llama_index()
+    bedrock             → instrument_bedrock()
+    vertexai            → instrument_vertexai()
+    google-genai        → instrument_google_genai()
+    google-adk          → instrument_google_adk()
+    mistralai           → instrument_mistralai()
+    groq                → instrument_groq()
+    litellm             → instrument_litellm()
+    pydantic-ai         → instrument_pydantic_ai()
+    openai-agents       → instrument_openai_agents()
+    claude-agent-sdk    → instrument_claude_agent_sdk()
+    haystack            → instrument_haystack()
+    dspy                → instrument_dspy()
+    smolagents          → instrument_smolagents()
+    strands-agents      → instrument_strands_agents()
+    mcp                 → instrument_mcp()
+    (others: agno, agentspec, agent-framework, beeai, guardrails, instructor,
+             monkai-agent, openlit, openllmetry, pipecat, portkey)
+
+  If the framework is not in the list, fall back to the OpenInference instrumentation
+  approach instead (see the OpenInference task prompt).
+
+  Add "arthur-observability-sdk[<extra>]" to requirements.txt / pyproject.toml.
+  Use "arthur-observability-sdk[all]" if unsure or if multiple frameworks are used.
+
+  In the entry point, add Arthur initialization (after any existing imports):
     from arthur_observability_sdk import Arthur
     import os
-    task_id = os.environ.get("ARTHUR_TASK_ID", "<ARTHUR_TASK_ID>")
-    arthur = Arthur(
-        api_key=os.environ.get("ARTHUR_API_KEY"),
-        base_url=os.environ.get("ARTHUR_BASE_URL", "<ARTHUR_ENGINE_URL>"),
-        task_id=task_id,
-        service_name="<app-name>",
-        resource_attributes={"arthur.task": task_id},
-    )
-    arthur.instrument_<framework>()
 
-PART B — ROOT CHAIN SPAN + SESSION (CRITICAL — without this each LLM call is a separate trace):
-  Add imports near arthur initialization:
-    from opentelemetry import trace
+    # Arthur raises ValueError if none of task_id / task_name / service_name is given.
+    # NOTE: ARTHUR_TASK_ID env var is NOT read automatically — must be passed explicitly.
+    # NOTE: ARTHUR_BASE_URL and ARTHUR_API_KEY ARE read automatically from env.
+    arthur = Arthur(
+        api_key=os.environ.get("ARTHUR_API_KEY"),        # auto-read, but explicit is cleaner
+        base_url=os.environ.get("ARTHUR_BASE_URL", "<ARTHUR_ENGINE_URL>"),  # auto-read
+        task_id=os.environ.get("ARTHUR_TASK_ID", "<ARTHUR_TASK_ID>"),       # NOT auto-read
+        service_name="<app-name>",
+        # resource_attributes: arthur.task is set automatically from task_id — don't add it
+    )
+    arthur.instrument_<framework>()   # call once; patches the framework's HTTP client
+
+  At process exit / application teardown, flush pending spans:
+    arthur.shutdown()
+
+PART B — SESSION + USER CONTEXT (CRITICAL — without this each LLM call is a separate trace):
+
+  The preferred way to tag spans with session and user is arthur.attributes(), which
+  works as both a context manager and a decorator:
+
+    import uuid
+    session_id = <derive from app state, or str(uuid.uuid4())>
+
+    # Context manager form (use around the full request handler body):
+    with arthur.attributes(session_id=session_id, user_id=<user_id_or_None>):
+        # all existing processing code here — LLM calls are recorded automatically
+
+    # Decorator form:
+    @arthur.attributes(session_id=session_id)
+    def handle_request(message):
+        ...
+
+  Session-only: use arthur.session(session_id) as context manager or decorator.
+  User-only:    use arthur.user(user_id)        as context manager or decorator.
+
+  For streaming/generator handlers (yield), use explicit OTel attach/detach because
+  Python context managers cannot straddle yield points.
+  IMPORTANT: use otel_set_value to store session_id in the OTel context (not just as a
+  span attribute) — otherwise child auto-instrumented spans won't inherit session.id:
+    from opentelemetry import trace, context as otel_ctx
+    from opentelemetry.trace import set_span_in_context
+    from opentelemetry.context import set_value as otel_set_value
     from openinference.semconv.trace import SpanAttributes, OpenInferenceSpanKindValues
-    import json, uuid
+
     tracer = trace.get_tracer(__name__)
 
-  Find the main request handler (processes one complete user message end-to-end).
-  Wrap its body:
-    session_id = <derive from app state, or str(uuid.uuid4())>
-    with arthur.session(session_id):
+    def streaming_handler(message, session_id, ...):
+        root_span = tracer.start_span("handler_name")
+        root_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND,
+                                OpenInferenceSpanKindValues.CHAIN.value)
+        root_span.set_attribute(SpanAttributes.INPUT_VALUE, message)
+        # Build context with root span as parent AND session_id in OTel context
+        # so that all child auto-instrumented spans inherit both correctly:
+        ctx = otel_set_value(SpanAttributes.SESSION_ID, session_id,
+                             context=set_span_in_context(root_span))
+        token = otel_ctx.attach(ctx)
+        try:
+            for chunk in <inner_generator>:
+                otel_ctx.detach(token)
+                yield chunk
+                token = otel_ctx.attach(ctx)
+            root_span.set_attribute(SpanAttributes.OUTPUT_VALUE, <final_response>)
+        finally:
+            root_span.end()
+            otel_ctx.detach(token)
+
+  For non-streaming handlers that need a root CHAIN span (e.g., to group multiple LLM
+  calls into one trace), add an explicit root span inside the arthur.attributes() block:
+    from opentelemetry import trace
+    from openinference.semconv.trace import SpanAttributes, OpenInferenceSpanKindValues
+    import json
+
+    tracer = trace.get_tracer(__name__)
+
+    with arthur.attributes(session_id=session_id):
         with tracer.start_as_current_span("<handler_name>") as root_span:
             root_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND,
                                     OpenInferenceSpanKindValues.CHAIN.value)
             root_span.set_attribute(SpanAttributes.INPUT_VALUE, <user_input>)
             # all existing processing code here
             root_span.set_attribute(SpanAttributes.OUTPUT_VALUE, <response>)
-
-  For streaming/generator handlers (use yield), use explicit attach/detach to preserve context:
-    from opentelemetry import context as otel_ctx
-    from opentelemetry.trace import set_span_in_context
-    from opentelemetry.context import set_value as otel_set_value
-
-    def handler(message, ...):
-        root_span = tracer.start_span("handler_name")
-        root_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND,
-                                OpenInferenceSpanKindValues.CHAIN.value)
-        root_span.set_attribute(SpanAttributes.INPUT_VALUE, message)
-        span_ctx = set_span_in_context(
-            root_span, otel_set_value(SpanAttributes.SESSION_ID, session_id))
-        token = otel_ctx.attach(span_ctx)
-        try:
-            for chunk in <inner_generator>:
-                otel_ctx.detach(token)
-                yield chunk
-                token = otel_ctx.attach(span_ctx)
-            root_span.set_attribute(SpanAttributes.OUTPUT_VALUE, <final_response>)
-        finally:
-            root_span.end()
-            otel_ctx.detach(token)
 
 PART C — TOOL SPANS (if app uses LLM tool-calling):
     with tracer.start_as_current_span("<tool_name>") as tool_span:
@@ -414,7 +478,7 @@ PART D — RETRIEVER SPANS (if app does RAG/vector search):
         ret_span.set_attribute(SpanAttributes.OUTPUT_VALUE, json.dumps(retrieved))
 
 STEP 3 — VALIDATION:
-  Install: pip install 'arthur-observability-sdk[<framework>]' (or: uv sync)
+  Install: pip install 'arthur-observability-sdk[<extra>]' (or: uv sync)
   Check: python -c "from arthur_observability_sdk import Arthur; print('import OK')"
   Run existing test suite if present; fix any new failures you introduced.
   Print final JSON result on the last line.
