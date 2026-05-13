@@ -497,41 +497,67 @@ Arthur Task ID: <ARTHUR_TASK_ID>
 RULES: no hardcoded API keys; add env vars to .env and .env.example; smallest possible changes.
 Print final JSON on the last line: {"success":true,"testsPassed":true,"summary":"<one sentence>"}
 
-STEP 1 — Find the Mastra instance file (usually src/mastra/index.ts). Check if @mastra/arthur
-already installed (skip if yes).
+STEP 1 — Find the Mastra instance file (usually src/mastra/index.ts). Read it fully.
+Check if @mastra/arthur is already in package.json dependencies (skip STEP 2 if yes).
 
 STEP 2 — Implementation:
-  Install: npm install @mastra/arthur
 
-  In the Mastra instance file:
-    import { Mastra } from '@mastra/core'
-    import { Observability } from '@mastra/observability'
-    import { ArthurExporter } from '@mastra/arthur'
+  Install the package:
+    npm install @mastra/arthur    # or yarn add / pnpm add
+
+  In the Mastra instance file, add the ArthurExporter to the observability config.
+
+  IMPORTANT — correct import and wiring pattern:
+    // Correct import path (note the /mastra subpath):
+    import { Mastra } from "@mastra/core/mastra";
+    import { ArthurExporter } from "@mastra/arthur";
 
     export const mastra = new Mastra({
-      observability: new Observability({
+      // ... preserve all existing config (agents, storage, logger, etc.) ...
+      observability: {
         configs: {
           arthur: {
-            serviceName: '<app-name>',
-            exporters: [new ArthurExporter()],
+            serviceName: "<app-name>",   // descriptive name for this service
+            exporters: [
+              new ArthurExporter({
+                apiKey: process.env.ARTHUR_API_KEY!,
+                endpoint: process.env.ARTHUR_BASE_URL ?? "<ARTHUR_ENGINE_URL>",
+                taskId: process.env.ARTHUR_TASK_ID,  // optional but recommended
+              }),
+            ],
           },
         },
-      }),
-    })
+      },
+    });
 
-  The ArthurExporter reads these env vars automatically (no constructor args needed):
-    ARTHUR_API_KEY, ARTHUR_BASE_URL, ARTHUR_TASK_ID
+  Constructor notes:
+  - `endpoint` is the Arthur Engine base URL (e.g. "http://localhost:3030") — NOT the
+    full traces path; the exporter appends /api/v1/traces automatically.
+  - `apiKey` is added as Authorization: Bearer header automatically.
+  - `taskId` is optional; omit if ARTHUR_TASK_ID will always be set in the environment.
+  - Zero-config alternative: `new ArthurExporter()` with no args reads ARTHUR_API_KEY
+    and ARTHUR_BASE_URL from env automatically (ARTHUR_TASK_ID is also read if set).
+  - DO NOT wrap observability in `new Observability(...)` — it is a plain object.
+  - DO NOT import from `@mastra/observability` — that package does not exist.
 
   Add to .env (gitignored):
+    ARTHUR_API_KEY=<ARTHUR_API_KEY>
     ARTHUR_BASE_URL=<ARTHUR_ENGINE_URL>
-    ARTHUR_API_KEY=$ARTHUR_API_KEY
     ARTHUR_TASK_ID=<ARTHUR_TASK_ID>
-  Add placeholders to .env.example.
+  Add placeholder lines to .env.example.
+
+  Optional — trace tagging at call sites (useful for filtering in Arthur UI):
+    const result = await agent.generate("Hello", {
+      tracingOptions: {
+        tags: ["production", "experiment-v2"],
+        metadata: { companyId: "acme", tier: "enterprise" },
+      },
+    });
 
 STEP 3 — Validation:
-  Run: npm install (or yarn/pnpm)
+  Run: npm install (or yarn/pnpm install)
   Run: npx tsc --noEmit
-  Run existing tests if present; fix new failures.
+  Run existing tests if present; fix any new failures you introduced.
   Print final JSON result.
 ```
 
