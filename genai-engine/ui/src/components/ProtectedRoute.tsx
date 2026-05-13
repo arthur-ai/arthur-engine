@@ -2,6 +2,7 @@ import React from "react";
 import { Navigate } from "react-router-dom";
 
 import { useAuth } from "../contexts/AuthContext";
+import { useDemoMode } from "../contexts/EngineConfigContext";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -9,6 +10,7 @@ interface ProtectedRouteProps {
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
+  const { demoMode } = useDemoMode();
 
   if (isLoading) {
     return (
@@ -19,7 +21,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/welcome" replace />;
+    return <Navigate to={demoMode ? "/welcome" : "/login"} replace />;
   }
 
   return <>{children}</>;
