@@ -127,27 +127,36 @@ GENAI_ENGINE_OPENAI_GPT_ENDPOINT=<endpoint_or_empty> \
 GENAI_ENGINE_OPENAI_GPT_API_KEY=$(cat "<KEY_FILE_PATH>" && rm -f "<KEY_FILE_PATH>") \
 bash <(curl -sSL https://get-genai-engine.arthur.ai/mac)
 
-Step 2 — Poll until ready (max 15 minutes). The first startup downloads AI models and takes
-significantly longer than subsequent starts. Print a status line every 30 seconds so the user
-knows progress is being made.
+Step 2 — Poll until ready (max 15 minutes), streaming engine logs so the user can see what's happening.
+The first startup downloads AI models and takes significantly longer than subsequent starts.
 
+COMPOSE_DIR="$HOME/.arthur-engine/local-stack/genai-engine"
 echo "Engine starting up — first-time launch downloads AI models and may take 10-15 minutes..."
+echo "Streaming engine logs (Ctrl+C will not interrupt this — wait for ENGINE_READY)..."
+# Stream Docker logs in the background so the user sees real-time output
+if [ -f "$COMPOSE_DIR/docker-compose.yml" ]; then
+  docker compose -f "$COMPOSE_DIR/docker-compose.yml" logs -f --no-color 2>&1 &
+  LOG_PID=$!
+fi
 ELAPSED=0
+STATUS="000"
 for i in $(seq 1 180); do
   STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3030/api/v2/tasks?page=0&page_size=1" 2>/dev/null || echo "000")
   if [ "$STATUS" = "200" ] || [ "$STATUS" = "401" ]; then
-    echo "ENGINE_READY=true STATUS=$STATUS elapsed=${ELAPSED}s"; break
+    echo "ENGINE_READY=true STATUS=$STATUS elapsed=${ELAPSED}s"
+    [ -n "$LOG_PID" ] && kill "$LOG_PID" 2>/dev/null; wait "$LOG_PID" 2>/dev/null || true
+    break
   fi
   ELAPSED=$((i * 5))
   MINS=$((ELAPSED / 60))
   SECS=$((ELAPSED % 60))
-  # Print an update every 30 seconds (every 6th iteration)
   if [ $((i % 6)) -eq 0 ]; then
-    echo "Still starting up... ${MINS}m${SECS}s elapsed (models may still be downloading)"
+    echo "--- still starting up: ${MINS}m${SECS}s elapsed ---"
   fi
   sleep 5
 done
 if [ "$STATUS" != "200" ] && [ "$STATUS" != "401" ]; then
+  [ -n "$LOG_PID" ] && kill "$LOG_PID" 2>/dev/null; wait "$LOG_PID" 2>/dev/null || true
   echo "ENGINE_READY=false — timed out after 15 minutes"
 fi
 
@@ -174,27 +183,37 @@ powershell.exe -Command "
   irm https://get-genai-engine.arthur.ai/win | iex
 "
 
-Step 2 — Poll until ready (max 15 minutes). The first startup downloads AI models and takes
-significantly longer than subsequent starts. Print a status line every 30 seconds so the user
-knows progress is being made.
+Step 2 — Poll until ready (max 15 minutes), streaming engine logs so the user can see what's happening.
+The first startup downloads AI models and takes significantly longer than subsequent starts.
 
+COMPOSE_DIR="$USERPROFILE/.arthur-engine/local-stack/genai-engine"
 echo "Engine starting up — first-time launch downloads AI models and may take 10-15 minutes..."
+echo "Streaming engine logs (Ctrl+C will not interrupt this — wait for ENGINE_READY)..."
+# Stream Docker logs in the background so the user sees real-time output
+COMPOSE_FILE=$(wslpath "$COMPOSE_DIR/docker-compose.yml" 2>/dev/null || echo "$COMPOSE_DIR/docker-compose.yml")
+if [ -f "$COMPOSE_FILE" ]; then
+  docker compose -f "$COMPOSE_FILE" logs -f --no-color 2>&1 &
+  LOG_PID=$!
+fi
 ELAPSED=0
+STATUS="000"
 for i in $(seq 1 180); do
   STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3030/api/v2/tasks?page=0&page_size=1" 2>/dev/null || echo "000")
   if [ "$STATUS" = "200" ] || [ "$STATUS" = "401" ]; then
-    echo "ENGINE_READY=true STATUS=$STATUS elapsed=${ELAPSED}s"; break
+    echo "ENGINE_READY=true STATUS=$STATUS elapsed=${ELAPSED}s"
+    [ -n "$LOG_PID" ] && kill "$LOG_PID" 2>/dev/null; wait "$LOG_PID" 2>/dev/null || true
+    break
   fi
   ELAPSED=$((i * 5))
   MINS=$((ELAPSED / 60))
   SECS=$((ELAPSED % 60))
-  # Print an update every 30 seconds (every 6th iteration)
   if [ $((i % 6)) -eq 0 ]; then
-    echo "Still starting up... ${MINS}m${SECS}s elapsed (models may still be downloading)"
+    echo "--- still starting up: ${MINS}m${SECS}s elapsed ---"
   fi
   sleep 5
 done
 if [ "$STATUS" != "200" ] && [ "$STATUS" != "401" ]; then
+  [ -n "$LOG_PID" ] && kill "$LOG_PID" 2>/dev/null; wait "$LOG_PID" 2>/dev/null || true
   echo "ENGINE_READY=false — timed out after 15 minutes"
 fi
 
