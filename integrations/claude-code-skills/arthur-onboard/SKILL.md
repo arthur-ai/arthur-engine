@@ -390,7 +390,8 @@ PART B — SESSION + USER CONTEXT (CRITICAL — without this each LLM call is a 
     session_id = <derive from app state, or str(uuid.uuid4())>
 
     # Context manager form (use around the full request handler body):
-    with arthur.attributes(session_id=session_id, user_id=<user_id_or_None>):
+    with arthur.attributes(session_id=session_id,
+                           user_id=user_id):  # omit this kwarg if not tracking users
         # all existing processing code here — LLM calls are recorded automatically
 
     # Decorator form:
@@ -449,14 +450,18 @@ PART B — SESSION + USER CONTEXT (CRITICAL — without this each LLM call is a 
             root_span.set_attribute(SpanAttributes.OUTPUT_VALUE, <response>)
 
 PART C — TOOL SPANS (if app uses LLM tool-calling):
+  # Uses `tracer` defined in PART B. If not using PART B, add after arthur initialization:
+  #   from opentelemetry import trace; tracer = trace.get_tracer(__name__)
     with tracer.start_as_current_span("<tool_name>") as tool_span:
         tool_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND,
                                 OpenInferenceSpanKindValues.TOOL.value)
         tool_span.set_attribute(SpanAttributes.TOOL_NAME, "<tool_name>")
         tool_span.set_attribute(SpanAttributes.INPUT_VALUE, json.dumps(<tool_input>))
+        tool_span.set_attribute(SpanAttributes.INPUT_MIME_TYPE, "application/json")
         result = <execute_tool(tool_input)>
-        tool_span.set_attribute(SpanAttributes.OUTPUT_VALUE,
-                                json.dumps(result) if not isinstance(result, str) else result)
+        output_str = json.dumps(result) if not isinstance(result, str) else result
+        tool_span.set_attribute(SpanAttributes.OUTPUT_VALUE, output_str)
+        tool_span.set_attribute(SpanAttributes.OUTPUT_MIME_TYPE, "application/json")
 
 PART D — RETRIEVER SPANS (if app does RAG/vector search):
     with tracer.start_as_current_span("retrieval") as ret_span:
@@ -664,7 +669,7 @@ PART A — OTel setup:
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
     from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
     from openinference.instrumentation.<framework> import <Framework>Instrumentor
-    from openinference.instrumentation import using_attributes, using_session, using_user
+    from openinference.instrumentation import using_attributes  # using_session, using_user also available
     from openinference.semconv.trace import SpanAttributes, OpenInferenceSpanKindValues
     import os, json, uuid
 
@@ -682,7 +687,8 @@ PART B — ROOT CHAIN SPAN + SESSION + USER CONTEXT:
 
   # Non-streaming — context manager form (preferred):
   session_id = <from app state or str(uuid.uuid4())>
-  with using_attributes(session_id=session_id, user_id=<user_id_or_None>,
+  with using_attributes(session_id=session_id,
+                        user_id=user_id,  # omit this kwarg if not tracking users
                         metadata=json.dumps(<extra_metadata_dict_or_None>)):
       with tracer.start_as_current_span("<handler_name>") as root_span:
           root_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND,
@@ -728,8 +734,9 @@ PART C — TOOL SPANS (when app uses LLM tool-calling):
       tool_span.set_attribute(SpanAttributes.INPUT_VALUE, json.dumps(<tool_arguments>))
       tool_span.set_attribute(SpanAttributes.INPUT_MIME_TYPE, "application/json")
       result = <execute_tool(tool_arguments)>
-      tool_span.set_attribute(SpanAttributes.OUTPUT_VALUE,
-                              json.dumps(result) if not isinstance(result, str) else result)
+      output_str = json.dumps(result) if not isinstance(result, str) else result
+      tool_span.set_attribute(SpanAttributes.OUTPUT_VALUE, output_str)
+      tool_span.set_attribute(SpanAttributes.OUTPUT_MIME_TYPE, "application/json")
 
 PART D — RETRIEVER SPANS (when app does RAG/vector search):
   with tracer.start_as_current_span("retrieval") as ret_span:
@@ -796,11 +803,10 @@ PART B — Setup (e.g. in instrumentation.ts or at top of entry point):
   import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
   import { Resource } from "@opentelemetry/resources";
   import { trace, context, SpanKind } from "@opentelemetry/api";
-  import { SEMRESATTRS_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
   import { SemanticConventions } from "@arizeai/openinference-semantic-conventions";
 
   const provider = new NodeTracerProvider({
-    resource: new Resource({ [SEMRESATTRS_SERVICE_NAME]: "<app-name>" }),
+    resource: new Resource({ "service.name": "<app-name>" }),
     spanProcessors: [
       new BatchSpanProcessor(
         new OTLPTraceExporter({
@@ -819,18 +825,16 @@ PART B — Setup (e.g. in instrumentation.ts or at top of entry point):
   const tracer = trace.getTracer("<app-name>");
 
 PART C — Root CHAIN span wrapping the request handler:
-  import { SemanticConventions as OI } from "@arizeai/openinference-semantic-conventions";
-
   async function handleRequest(userInput: string, sessionId: string): Promise<string> {
     const span = tracer.startSpan("handle_request");
-    span.setAttribute(OI.OPENINFERENCE_SPAN_KIND, "CHAIN");
-    span.setAttribute(OI.INPUT_VALUE, userInput);
+    span.setAttribute(SemanticConventions.OPENINFERENCE_SPAN_KIND, "CHAIN");
+    span.setAttribute(SemanticConventions.INPUT_VALUE, userInput);
     span.setAttribute("session.id", sessionId);
 
     return context.with(trace.setSpan(context.active(), span), async () => {
       try {
         const result = await <existing_handler_logic>(userInput);
-        span.setAttribute(OI.OUTPUT_VALUE, result);
+        span.setAttribute(SemanticConventions.OUTPUT_VALUE, result);
         return result;
       } catch (err) {
         span.recordException(err as Error);
@@ -843,13 +847,15 @@ PART C — Root CHAIN span wrapping the request handler:
 
 PART D — Tool spans (TypeScript):
   const toolSpan = tracer.startSpan(toolName);
-  toolSpan.setAttribute(OI.OPENINFERENCE_SPAN_KIND, "TOOL");
-  toolSpan.setAttribute(OI.TOOL_NAME, toolName);
+  toolSpan.setAttribute(SemanticConventions.OPENINFERENCE_SPAN_KIND, "TOOL");
+  toolSpan.setAttribute(SemanticConventions.TOOL_NAME, toolName);
   toolSpan.setAttribute("tool.id", toolCallId);
-  toolSpan.setAttribute(OI.INPUT_VALUE, JSON.stringify(toolArgs));
+  toolSpan.setAttribute(SemanticConventions.INPUT_VALUE, JSON.stringify(toolArgs));
+  toolSpan.setAttribute(SemanticConventions.INPUT_MIME_TYPE, "application/json");
   try {
     const result = await executeTool(toolArgs);
-    toolSpan.setAttribute(OI.OUTPUT_VALUE, JSON.stringify(result));
+    toolSpan.setAttribute(SemanticConventions.OUTPUT_VALUE, JSON.stringify(result));
+    toolSpan.setAttribute(SemanticConventions.OUTPUT_MIME_TYPE, "application/json");
     return result;
   } finally {
     toolSpan.end();
