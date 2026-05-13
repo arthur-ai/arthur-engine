@@ -1,19 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 
-import { API_BASE_URL } from "@/lib/api";
-
-interface EngineConfigResponse {
-  demo_mode: boolean;
-}
+import { createApiClient } from "@/lib/api";
 
 export function useEngineConfig() {
-  const { data, isPending } = useQuery<EngineConfigResponse>({
+  const apiClient = useMemo(() => createApiClient(), []);
+
+  const { data, isPending } = useQuery({
     queryKey: ["engine-config"],
-    queryFn: async () => {
-      const res = await fetch(`${API_BASE_URL}/api/v2/engine-config`);
-      if (!res.ok) throw new Error("Failed to fetch engine config");
-      return res.json() as Promise<EngineConfigResponse>;
-    },
+    queryFn: () => apiClient.api.getEngineConfigApiV2EngineConfigGet().then((r) => r.data),
     staleTime: Infinity,
   });
 
