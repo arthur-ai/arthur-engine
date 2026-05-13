@@ -93,14 +93,14 @@ If yes, collect:
 1. Provider — `OpenAI` or `Azure` (default: `OpenAI`)
 2. Model name (default: `gpt-4o-mini-2024-07-18`)
 3. Endpoint — required for Azure; leave blank for standard OpenAI
-4. API key — collect via masked terminal prompt, stored in a temp file (do **not** ask the user to type it in chat):
-   ```bash
-   OPENAI_KEY_FILE=$(mktemp)
-   chmod 600 "$OPENAI_KEY_FILE"
-   python3 -c "import getpass; print(getpass.getpass('OpenAI API key (input hidden): '))" > "$OPENAI_KEY_FILE"
-   echo "KEY_FILE=$OPENAI_KEY_FILE"
-   ```
-   Note the `KEY_FILE` path from the output. Substitute it as `<KEY_FILE_PATH>` in the sub-agent prompt below.
+4. API key — show the user this message and wait for their confirmation before proceeding (do **not** ask them to type the key in chat; do **not** run getpass via the Bash tool — it has no TTY):
+   > To keep your API key secure, please run this command directly in your terminal (the `!` prefix runs it in your shell where input is masked):
+   >
+   > `! python3 -c "import getpass, os, stat; p=os.path.expanduser('~/.ae_tmp_key'); key=getpass.getpass('OpenAI API key (hidden): '); open(p,'w').write(key); os.chmod(p, 0o600); print('Key saved.')"`
+   >
+   > Let me know once you've run it and I'll continue.
+
+   After the user confirms, use `~/.ae_tmp_key` as `<KEY_FILE_PATH>` in the sub-agent prompt below.
 
 If no, set `SETUP_SKIP_OPENAI=true`.
 
@@ -652,9 +652,16 @@ for p in d.get('providers', []):
 - `vertex_ai` → model `gemini-1.5-flash`
 - Skip → configure in the Arthur Engine UI later
 
-If a provider is chosen, collect the API key via masked terminal prompt and configure in a single command (do **not** ask the user to type it in chat):
+If a provider is chosen, show the user this message and wait for their confirmation (do **not** ask them to type the key in chat; do **not** run getpass via the Bash tool — it has no TTY):
+> Please run this to securely enter your `<Provider>` API key (replace `<Provider>` with the actual provider name in the prompt):
+>
+> `! python3 -c "import getpass, os, stat; p=os.path.expanduser('~/.ae_tmp_key'); key=getpass.getpass('<Provider> API key (hidden): '); open(p,'w').write(key); os.chmod(p, 0o600); print('Key saved.')"`
+>
+> Let me know when done.
+
+Then read the key from the temp file and configure:
 ```bash
-PROVIDER_API_KEY=$(python3 -c "import getpass; print(getpass.getpass('<Provider> API key (input hidden): '))") && \
+PROVIDER_API_KEY=$(cat ~/.ae_tmp_key && rm -f ~/.ae_tmp_key)
 curl -s -X PUT \
   -H "Authorization: Bearer $ARTHUR_API_KEY" \
   -H "Content-Type: application/json" \
