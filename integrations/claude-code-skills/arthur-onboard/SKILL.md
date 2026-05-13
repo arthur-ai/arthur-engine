@@ -110,7 +110,7 @@ It is **separate** from the eval model provider in Step 8, which is configured v
 Before launching the sub-agent, tell the user:
 > "Starting the Arthur GenAI Engine installer now. **Note:** the first time the engine starts, it needs to download several AI models (this can take 10–15 minutes depending on your connection). I'll keep you updated as it boots."
 
-Now delegate to a Task sub-agent with `subagent_type="Bash"`, filling in the values collected above:
+Now delegate to a sub-agent using the Agent tool. **IMPORTANT: set `run_in_background=false` (the default) — do NOT background this agent.** The user needs to see the engine logs streaming in real-time during startup. Fill in the values collected above:
 
 **Mac/Linux sub-agent prompt:**
 ```
