@@ -569,37 +569,108 @@ STEP 3 — Validation:
 You are an expert developer. Instrument the agentic application at: <REPO_PATH>
 using OpenInference / OpenTelemetry for Arthur GenAI Engine.
 
-Reference: https://github.com/arthur-ai/arthur-engine/tree/dev/genai-engine/examples/agents
-
 Arthur Engine URL: <ARTHUR_ENGINE_URL>
 Arthur Task ID: <ARTHUR_TASK_ID>
 
 RULES: no hardcoded keys; add env vars to .env and .env.example; smallest possible changes.
 Print final JSON: {"success":true,"testsPassed":true,"summary":"<one sentence>"}
 
-STEP 1 — Detect language (Python/TypeScript) and LLM framework.
+--- OPENINFERENCE SPAN KIND REFERENCE ---
+Every span MUST have openinference.span.kind set to one of:
+  CHAIN     — root entry point or glue between steps (use for the request handler)
+  LLM       — a call to an LLM provider (auto-set by instrumentors; set manually if wrapping raw API calls)
+  TOOL      — execution of an external tool/function called by an LLM
+  RETRIEVER — a data retrieval step (vector store, database, search)
+  AGENT     — a reasoning block that acts on tools using LLM guidance
+  RERANKER  — reranking a set of retrieved documents
+  EMBEDDING — a call to an embedding model
+  GUARDRAIL — content filtering / safety check
+  EVALUATOR — an evaluation function assessing LLM output quality
+  PROMPT    — rendering a prompt template with variable substitution
 
-STEP 2 — Python implementation:
+--- ATTRIBUTE FLATTENING RULE ---
+OpenTelemetry span attributes are key-value pairs where values must be scalars.
+Lists of objects are flattened with zero-based indexed dot notation:
+  List item 0, field "message.role"  → "llm.input_messages.0.message.role"
+  List item 1, field "message.content" → "llm.input_messages.1.message.content"
+Never pass a list of dicts directly; always flatten.
+
+--- KEY ATTRIBUTE REFERENCE ---
+Universal (any span kind):
+  input.value           String  — the span's input (plain text or JSON string)
+  input.mime_type       String  — "text/plain" or "application/json"
+  output.value          String  — the span's output (plain text or JSON string)
+  output.mime_type      String  — "text/plain" or "application/json"
+
+Context (propagated to all spans via using_attributes / using_session / using_user):
+  session.id            String  — groups all spans from one conversation/request chain
+  user.id               String  — identifies the end user
+  metadata              String  — JSON string of arbitrary key-value metadata
+  tag.tags              List[str] — categories for filtering
+
+LLM spans (openinference.span.kind = LLM):
+  llm.system            String  — REQUIRED: AI product e.g. "openai", "anthropic", "cohere"
+  llm.model_name        String  — model identifier e.g. "gpt-4o", "claude-3-5-haiku-20241022"
+  llm.invocation_parameters  String — JSON of params sent to model (temperature, max_tokens, etc.)
+  llm.input_messages.{i}.message.role     String — "system", "user", "assistant", "tool"
+  llm.input_messages.{i}.message.content  String — message text
+  llm.output_messages.{i}.message.role    String — "assistant"
+  llm.output_messages.{i}.message.content String — response text
+  llm.output_messages.{i}.message.tool_calls.{j}.tool_call.id              String
+  llm.output_messages.{i}.message.tool_calls.{j}.tool_call.function.name   String
+  llm.output_messages.{i}.message.tool_calls.{j}.tool_call.function.arguments String (JSON)
+  llm.token_count.prompt      Integer
+  llm.token_count.completion  Integer
+  llm.token_count.total       Integer
+  llm.tools.{i}.tool.json_schema  String — JSON schema of tools available to the LLM
+
+Tool spans (openinference.span.kind = TOOL):
+  tool.name             String  — name of the tool/function
+  tool.description      String  — what the tool does
+  tool.parameters       String  — JSON schema of the tool's input parameters
+  tool.id               String  — tool_call.id from the LLM response (links call to result)
+  input.value           String  — tool input (JSON string of arguments)
+  output.value          String  — tool output (JSON string of result)
+
+Retriever spans (openinference.span.kind = RETRIEVER):
+  input.value                               String — the search query
+  retrieval.documents.{i}.document.content  String — REQUIRED: text of retrieved doc
+  retrieval.documents.{i}.document.score    Float  — relevance score
+  retrieval.documents.{i}.document.id       String — document identifier
+  retrieval.documents.{i}.document.metadata String — JSON metadata about the doc
+  output.value  String — REQUIRED: JSON-encoded list of retrieved docs (for Arthur UI)
+
+Tool result messages (role="tool" in next LLM input):
+  llm.input_messages.{i}.message.role          = "tool"
+  llm.input_messages.{i}.message.content       = result as string
+  llm.input_messages.{i}.message.tool_call_id  = matching tool_call.id
+  llm.input_messages.{i}.message.name          = function name (optional)
+---
+
+STEP 1 — Detect language (Python/TypeScript/JavaScript) and LLM framework.
+
+===== PYTHON IMPLEMENTATION =====
 
 PART A — OTel setup:
-  Add to requirements.txt:
+  Add to requirements.txt / pyproject.toml:
     opentelemetry-sdk
     opentelemetry-exporter-otlp-proto-http
-    openinference-instrumentation-<framework>
+    openinference-instrumentation-<framework>   # e.g. openai, langchain, anthropic
     openinference-semantic-conventions
 
-  In entry point:
+  In the entry point:
     from opentelemetry import trace
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
     from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
     from openinference.instrumentation.<framework> import <Framework>Instrumentor
+    from openinference.instrumentation import using_attributes, using_session, using_user
     from openinference.semconv.trace import SpanAttributes, OpenInferenceSpanKindValues
     import os, json, uuid
 
     provider = TracerProvider()
     exporter = OTLPSpanExporter(
-        endpoint="<ARTHUR_ENGINE_URL>/api/v1/traces",
+        endpoint=f"{os.environ.get('ARTHUR_BASE_URL', '<ARTHUR_ENGINE_URL>')}/api/v1/traces",
         headers={"Authorization": f"Bearer {os.environ.get('ARTHUR_API_KEY', '')}"},
     )
     provider.add_span_processor(BatchSpanProcessor(exporter))
@@ -607,26 +678,190 @@ PART A — OTel setup:
     <Framework>Instrumentor().instrument()
     tracer = trace.get_tracer(__name__)
 
-PART B — ROOT CHAIN SPAN + SESSION (CRITICAL — same reason as arthur-sdk approach):
-  from openinference.instrumentation import using_session
+PART B — ROOT CHAIN SPAN + SESSION + USER CONTEXT:
 
+  # Non-streaming — context manager form (preferred):
   session_id = <from app state or str(uuid.uuid4())>
-  with using_session(session_id=session_id):
+  with using_attributes(session_id=session_id, user_id=<user_id_or_None>,
+                        metadata=json.dumps(<extra_metadata_dict_or_None>)):
       with tracer.start_as_current_span("<handler_name>") as root_span:
           root_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND,
                                   OpenInferenceSpanKindValues.CHAIN.value)
-          root_span.set_attribute(SpanAttributes.INPUT_VALUE, <input>)
-          # all existing code here
-          root_span.set_attribute(SpanAttributes.OUTPUT_VALUE, <output>)
+          root_span.set_attribute(SpanAttributes.INPUT_VALUE, <user_input>)
+          root_span.set_attribute(SpanAttributes.INPUT_MIME_TYPE, "text/plain")
+          # all existing processing code here
+          root_span.set_attribute(SpanAttributes.OUTPUT_VALUE, <response>)
+          root_span.set_attribute(SpanAttributes.OUTPUT_MIME_TYPE, "text/plain")
 
-PART C — TOOL SPANS: wrap each tool execution (same pattern as arthur-sdk above).
-PART D — RETRIEVER SPANS: wrap each retrieval call (same pattern as arthur-sdk above).
+  # Streaming/generator (yield) — use explicit attach/detach:
+  from opentelemetry import context as otel_ctx
+  from opentelemetry.trace import set_span_in_context
+  from opentelemetry.context import set_value as otel_set_value
 
-STEP 2 (TypeScript) — Follow OTel OTLP exporter pattern pointing to
-<ARTHUR_ENGINE_URL>/api/v1/traces with Authorization: Bearer $ARTHUR_API_KEY header.
-Add root span around the request handler.
+  def streaming_handler(message, session_id, ...):
+      root_span = tracer.start_span("handler_name")
+      root_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND,
+                              OpenInferenceSpanKindValues.CHAIN.value)
+      root_span.set_attribute(SpanAttributes.INPUT_VALUE, message)
+      # Store session_id in OTel context so child spans inherit it:
+      ctx = otel_set_value(SpanAttributes.SESSION_ID, session_id,
+                           context=set_span_in_context(root_span))
+      token = otel_ctx.attach(ctx)
+      try:
+          for chunk in <inner_generator>:
+              otel_ctx.detach(token)
+              yield chunk
+              token = otel_ctx.attach(ctx)
+          root_span.set_attribute(SpanAttributes.OUTPUT_VALUE, <final_response>)
+      finally:
+          root_span.end()
+          otel_ctx.detach(token)
 
-STEP 3 — Install deps, run import check, run tests, print JSON result.
+PART C — TOOL SPANS (when app uses LLM tool-calling):
+  with tracer.start_as_current_span("<tool_name>") as tool_span:
+      tool_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND,
+                              OpenInferenceSpanKindValues.TOOL.value)
+      tool_span.set_attribute(SpanAttributes.TOOL_NAME, "<tool_name>")
+      tool_span.set_attribute(SpanAttributes.TOOL_DESCRIPTION, "<what it does>")
+      # tool.id links this execution back to the LLM's tool_call.id:
+      tool_span.set_attribute("tool.id", <tool_call_id_from_llm_response>)
+      tool_span.set_attribute(SpanAttributes.INPUT_VALUE, json.dumps(<tool_arguments>))
+      tool_span.set_attribute(SpanAttributes.INPUT_MIME_TYPE, "application/json")
+      result = <execute_tool(tool_arguments)>
+      tool_span.set_attribute(SpanAttributes.OUTPUT_VALUE,
+                              json.dumps(result) if not isinstance(result, str) else result)
+
+PART D — RETRIEVER SPANS (when app does RAG/vector search):
+  with tracer.start_as_current_span("retrieval") as ret_span:
+      ret_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND,
+                             OpenInferenceSpanKindValues.RETRIEVER.value)
+      ret_span.set_attribute(SpanAttributes.INPUT_VALUE, <search_query>)
+      docs = <execute_retrieval(search_query)>
+      retrieved = []
+      for i, doc in enumerate(docs):
+          doc_text = <doc_content>
+          ret_span.set_attribute(f"retrieval.documents.{i}.document.content", doc_text)
+          entry = {"document_content": doc_text}
+          if <doc_id_available>:
+              ret_span.set_attribute(f"retrieval.documents.{i}.document.id", str(<doc_id>))
+          if <score_available>:
+              score = float(<doc_score>)
+              ret_span.set_attribute(f"retrieval.documents.{i}.document.score", score)
+              entry["score"] = score
+          retrieved.append(entry)
+      # REQUIRED: Arthur Engine reads output.value to display retrieved docs in UI:
+      ret_span.set_attribute(SpanAttributes.OUTPUT_VALUE, json.dumps(retrieved))
+      ret_span.set_attribute(SpanAttributes.OUTPUT_MIME_TYPE, "application/json")
+
+PART E — MANUAL LLM SPANS (only if the framework has no auto-instrumentor):
+  with tracer.start_as_current_span("llm_call") as llm_span:
+      llm_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND,
+                             OpenInferenceSpanKindValues.LLM.value)
+      llm_span.set_attribute("llm.system", "<openai|anthropic|cohere|...>")
+      llm_span.set_attribute("llm.model_name", "<model-id>")
+      llm_span.set_attribute("llm.invocation_parameters",
+                             json.dumps({"temperature": 0.7, "max_tokens": 1024}))
+      # Flatten input messages:
+      for i, msg in enumerate(messages):
+          llm_span.set_attribute(f"llm.input_messages.{i}.message.role", msg["role"])
+          llm_span.set_attribute(f"llm.input_messages.{i}.message.content", msg["content"])
+      response = <call_llm(messages)>
+      llm_span.set_attribute(f"llm.output_messages.0.message.role", "assistant")
+      llm_span.set_attribute(f"llm.output_messages.0.message.content", response.text)
+      llm_span.set_attribute("llm.token_count.prompt", response.usage.prompt_tokens)
+      llm_span.set_attribute("llm.token_count.completion", response.usage.completion_tokens)
+      llm_span.set_attribute("llm.token_count.total", response.usage.total_tokens)
+      llm_span.set_attribute(SpanAttributes.OUTPUT_VALUE, response.text)
+
+===== TYPESCRIPT / JAVASCRIPT IMPLEMENTATION =====
+
+PART A — Install packages:
+  npm install \
+    @opentelemetry/sdk-trace-node \
+    @opentelemetry/exporter-trace-otlp-proto \
+    @opentelemetry/sdk-trace-base \
+    @opentelemetry/resources \
+    @opentelemetry/semantic-conventions \
+    @arizeai/openinference-semantic-conventions
+
+  # Framework auto-instrumentors (install the one that matches):
+    @arizeai/openinference-instrumentation-openai
+    @arizeai/openinference-instrumentation-langchain
+    @arizeai/openinference-instrumentation-anthropic
+    @arizeai/openinference-instrumentation-llama-index
+
+PART B — Setup (e.g. in instrumentation.ts or at top of entry point):
+  import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
+  import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
+  import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
+  import { Resource } from "@opentelemetry/resources";
+  import { trace, context, SpanKind } from "@opentelemetry/api";
+  import { SEMRESATTRS_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
+  import { SemanticConventions } from "@arizeai/openinference-semantic-conventions";
+
+  const provider = new NodeTracerProvider({
+    resource: new Resource({ [SEMRESATTRS_SERVICE_NAME]: "<app-name>" }),
+    spanProcessors: [
+      new BatchSpanProcessor(
+        new OTLPTraceExporter({
+          url: `${process.env.ARTHUR_BASE_URL ?? "<ARTHUR_ENGINE_URL>"}/api/v1/traces`,
+          headers: { Authorization: `Bearer ${process.env.ARTHUR_API_KEY}` },
+        })
+      ),
+    ],
+  });
+  provider.register();
+
+  // Instrument the framework (call once before any LLM calls):
+  // import { OpenAIInstrumentation } from "@arizeai/openinference-instrumentation-openai";
+  // new OpenAIInstrumentation().manuallyInstrument(openaiModule);
+
+  const tracer = trace.getTracer("<app-name>");
+
+PART C — Root CHAIN span wrapping the request handler:
+  import { SemanticConventions as OI } from "@arizeai/openinference-semantic-conventions";
+
+  async function handleRequest(userInput: string, sessionId: string): Promise<string> {
+    const span = tracer.startSpan("handle_request");
+    span.setAttribute(OI.OPENINFERENCE_SPAN_KIND, "CHAIN");
+    span.setAttribute(OI.INPUT_VALUE, userInput);
+    span.setAttribute("session.id", sessionId);
+
+    return context.with(trace.setSpan(context.active(), span), async () => {
+      try {
+        const result = await <existing_handler_logic>(userInput);
+        span.setAttribute(OI.OUTPUT_VALUE, result);
+        return result;
+      } catch (err) {
+        span.recordException(err as Error);
+        throw err;
+      } finally {
+        span.end();
+      }
+    });
+  }
+
+PART D — Tool spans (TypeScript):
+  const toolSpan = tracer.startSpan(toolName);
+  toolSpan.setAttribute(OI.OPENINFERENCE_SPAN_KIND, "TOOL");
+  toolSpan.setAttribute(OI.TOOL_NAME, toolName);
+  toolSpan.setAttribute("tool.id", toolCallId);
+  toolSpan.setAttribute(OI.INPUT_VALUE, JSON.stringify(toolArgs));
+  try {
+    const result = await executeTool(toolArgs);
+    toolSpan.setAttribute(OI.OUTPUT_VALUE, JSON.stringify(result));
+    return result;
+  } finally {
+    toolSpan.end();
+  }
+
+STEP 3 — Add to .env and .env.example:
+  ARTHUR_API_KEY=<ARTHUR_API_KEY>
+  ARTHUR_BASE_URL=<ARTHUR_ENGINE_URL>
+  ARTHUR_TASK_ID=<ARTHUR_TASK_ID>
+
+STEP 4 — Install deps, run import/type check, run existing tests if present,
+fix any new failures you introduced, print final JSON result.
 ```
 
 ---
