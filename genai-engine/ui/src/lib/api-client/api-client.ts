@@ -2500,6 +2500,15 @@ export interface DocumentStorageConfigurationUpdateRequest {
 /** DocumentStorageEnvironment */
 export type DocumentStorageEnvironment = "aws" | "azure";
 
+/** EngineConfigResponse */
+export interface EngineConfigResponse {
+  /**
+   * Demo Mode
+   * Whether the engine is running in demo mode.
+   */
+  demo_mode: boolean;
+}
+
 /**
  * EnrichedTaskResponse
  * Response model for agent-tasks endpoint with enriched metadata.
@@ -3694,6 +3703,8 @@ export type GetDefaultRulesApiV2DefaultRulesGetData = RuleResponse[];
 export type GetDefaultTaskApiChatDefaultTaskGetData = ChatDefaultTaskResponse;
 
 export type GetDisplaySettingsApiV2DisplaySettingsGetData = DisplaySettingsResponse;
+
+export type GetEngineConfigApiV2EngineConfigGetData = EngineConfigResponse;
 
 export type GetExperimentTestCasesApiV1PromptExperimentsExperimentIdTestCasesGetData = TestCaseListResponse;
 
@@ -13161,7 +13172,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.503
+ * @version 2.1.554
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -15077,6 +15088,22 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getDisplaySettingsApiV2DisplaySettingsGet: (params: RequestParams = {}) =>
       this.request<GetDisplaySettingsApiV2DisplaySettingsGetData, any>({
         path: `/api/v2/display-settings`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Returns engine-level configuration for the frontend. Public endpoint — no authentication required.
+     *
+     * @tags Engine Config
+     * @name GetEngineConfigApiV2EngineConfigGet
+     * @summary Get Engine Config
+     * @request GET:/api/v2/engine-config
+     */
+    getEngineConfigApiV2EngineConfigGet: (params: RequestParams = {}) =>
+      this.request<GetEngineConfigApiV2EngineConfigGetData, any>({
+        path: `/api/v2/engine-config`,
         method: "GET",
         format: "json",
         ...params,
