@@ -204,6 +204,7 @@ curl -s \
 import sys, json
 d = json.load(sys.stdin)
 tasks = d.get('tasks') or d.get('data') or []
+tasks = [t for t in tasks if not t.get('is_system_task')]
 for t in tasks:
     print(f'  {t[\"id\"]}: {t[\"name\"]}')
 "
