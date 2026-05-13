@@ -351,7 +351,8 @@ class CompliancePolicyCheckExecutor:
         for alert_rule in policy.alert_rules:
             if (
                 alert_rule.dependent_resource is not None
-                and alert_rule.dependent_resource.resource_type == GUARDRAIL_DEPENDENT_RESOURCE_TYPE
+                and alert_rule.dependent_resource.resource_type
+                == GUARDRAIL_DEPENDENT_RESOURCE_TYPE
             ):
                 required_types.add(alert_rule.dependent_resource.resource_name)
 

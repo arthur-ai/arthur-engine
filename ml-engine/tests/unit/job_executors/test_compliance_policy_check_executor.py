@@ -1204,7 +1204,8 @@ def test_guardrail_enabled_but_no_data_non_compliant(mock_datetime):
     alert_rules_client.get_model_alert_rules.return_value = _paginated_response([materialized_pii])
     alerts_client.get_model_alerts.return_value = _paginated_response([])
     tasks_conn.read_task.return_value = _make_task_read_response(["PIIDataRule"])
-    metrics_client.post_model_metrics_query.return_value = _make_metrics_query_result(trace_total=10, guardrail_total=0)
+    tasks_conn.list_trace_metadata.return_value = Mock(count=10)
+    tasks_conn.query_inferences.return_value = Mock(count=0)
 
     executor.execute(job, job_spec)
 
@@ -1245,7 +1246,8 @@ def test_guardrail_enabled_and_has_data_compliant(mock_datetime):
     alert_rules_client.get_model_alert_rules.return_value = _paginated_response([materialized_pii])
     alerts_client.get_model_alerts.return_value = _paginated_response([])
     tasks_conn.read_task.return_value = _make_task_read_response(["PIIDataRule"])
-    metrics_client.post_model_metrics_query.return_value = _make_metrics_query_result(trace_total=10, guardrail_total=5)
+    tasks_conn.list_trace_metadata.return_value = Mock(count=10)
+    tasks_conn.query_inferences.return_value = Mock(count=5)
 
     executor.execute(job, job_spec)
 

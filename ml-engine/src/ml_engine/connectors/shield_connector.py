@@ -523,7 +523,7 @@ class ShieldBaseConnector(Connector, ABC):
             raise ValueError("task_ids must not be empty")
 
         return self._inferences_client.query_inferences_api_v2_inferences_query_get(
-            task_ids=task_ids,
+            task_ids=task_ids,  # type: ignore[arg-type, unused-ignore]
             **kwargs,
         )
 
