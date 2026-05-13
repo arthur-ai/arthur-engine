@@ -18,6 +18,18 @@ This skill runs directly inside Claude Code CLI using your existing authenticati
 
 ---
 
+## Quick start (no install)
+
+Paste this prompt directly into Claude Code — no installation needed:
+
+```
+Fetch https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/integrations/claude-code-skills/arthur-onboard/SKILL.md, save it to ~/.claude/skills/arthur-onboard/SKILL.md (create the directory if it doesn't exist), read the saved file, and follow its instructions.
+```
+
+This fetches the skill on the fly and runs it immediately.
+
+---
+
 ## Installation
 
 Skills live in a `.claude/skills/` directory. Claude Code loads them from two places:
@@ -33,7 +45,7 @@ One-liner — installs the skill for all your projects:
 
 ```bash
 mkdir -p ~/.claude/skills/arthur-onboard && \
-  curl -sSL https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/onboarding/.claude/skills/arthur-onboard/SKILL.md \
+  curl -sSLf https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integrations/claude-code-skills/arthur-onboard/SKILL.md \
   > ~/.claude/skills/arthur-onboard/SKILL.md
 ```
 
@@ -43,7 +55,7 @@ Add to a specific repository so your team gets it automatically when they open C
 
 ```bash
 mkdir -p .claude/skills/arthur-onboard && \
-  curl -sSL https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/onboarding/.claude/skills/arthur-onboard/SKILL.md \
+  curl -sSLf https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integrations/claude-code-skills/arthur-onboard/SKILL.md \
   > .claude/skills/arthur-onboard/SKILL.md
 git add .claude/skills/arthur-onboard/SKILL.md
 git commit -m "Add Arthur GenAI Engine onboarding skill"
