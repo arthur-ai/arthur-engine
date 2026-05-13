@@ -43,6 +43,7 @@ from job_executors._interval_utils import alert_interval_to_timedelta
 from job_executors.task_management_job_executors import TaskManagementJobExecutor
 
 _PAGE_SIZE = 100
+GUARDRAIL_DEPENDENT_RESOURCE_TYPE = "guardrail"
 
 
 class GuardrailCheckResult:
@@ -350,7 +351,7 @@ class CompliancePolicyCheckExecutor:
         for alert_rule in policy.alert_rules:
             if (
                 alert_rule.dependent_resource is not None
-                and alert_rule.dependent_resource.resource_type == "guardrail"
+                and alert_rule.dependent_resource.resource_type == GUARDRAIL_DEPENDENT_RESOURCE_TYPE
             ):
                 required_types.add(alert_rule.dependent_resource.resource_name)
 
