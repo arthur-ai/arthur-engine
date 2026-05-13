@@ -132,31 +132,28 @@ The first startup downloads AI models and takes significantly longer than subseq
 
 COMPOSE_DIR="$HOME/.arthur-engine/local-stack/genai-engine"
 echo "Engine starting up — first-time launch downloads AI models and may take 10-15 minutes..."
-echo "Streaming engine logs (Ctrl+C will not interrupt this — wait for ENGINE_READY)..."
-# Stream Docker logs in the background so the user sees real-time output
-if [ -f "$COMPOSE_DIR/docker-compose.yml" ]; then
-  docker compose -f "$COMPOSE_DIR/docker-compose.yml" logs -f --no-color 2>&1 &
-  LOG_PID=$!
-fi
 ELAPSED=0
 STATUS="000"
+LOG_SINCE=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
 for i in $(seq 1 180); do
-  STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3030/api/v2/tasks?page=0&page_size=1" 2>/dev/null || echo "000")
-  if [ "$STATUS" = "200" ] || [ "$STATUS" = "401" ]; then
-    echo "ENGINE_READY=true STATUS=$STATUS elapsed=${ELAPSED}s"
-    [ -n "$LOG_PID" ] && kill "$LOG_PID" 2>/dev/null; wait "$LOG_PID" 2>/dev/null || true
-    break
-  fi
+  sleep 5
   ELAPSED=$((i * 5))
   MINS=$((ELAPSED / 60))
   SECS=$((ELAPSED % 60))
+  if [ -f "$COMPOSE_DIR/docker-compose.yml" ]; then
+    docker compose -f "$COMPOSE_DIR/docker-compose.yml" logs --no-color --since="$LOG_SINCE" 2>&1 || true
+    LOG_SINCE=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
+  fi
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3030/api/v2/tasks?page=0&page_size=1" 2>/dev/null || echo "000")
+  if [ "$STATUS" = "200" ] || [ "$STATUS" = "401" ]; then
+    echo "ENGINE_READY=true STATUS=$STATUS elapsed=${ELAPSED}s"
+    break
+  fi
   if [ $((i % 6)) -eq 0 ]; then
     echo "--- still starting up: ${MINS}m${SECS}s elapsed ---"
   fi
-  sleep 5
 done
 if [ "$STATUS" != "200" ] && [ "$STATUS" != "401" ]; then
-  [ -n "$LOG_PID" ] && kill "$LOG_PID" 2>/dev/null; wait "$LOG_PID" 2>/dev/null || true
   echo "ENGINE_READY=false — timed out after 15 minutes"
 fi
 
@@ -188,32 +185,29 @@ The first startup downloads AI models and takes significantly longer than subseq
 
 COMPOSE_DIR="$USERPROFILE/.arthur-engine/local-stack/genai-engine"
 echo "Engine starting up — first-time launch downloads AI models and may take 10-15 minutes..."
-echo "Streaming engine logs (Ctrl+C will not interrupt this — wait for ENGINE_READY)..."
-# Stream Docker logs in the background so the user sees real-time output
-COMPOSE_FILE=$(wslpath "$COMPOSE_DIR/docker-compose.yml" 2>/dev/null || echo "$COMPOSE_DIR/docker-compose.yml")
-if [ -f "$COMPOSE_FILE" ]; then
-  docker compose -f "$COMPOSE_FILE" logs -f --no-color 2>&1 &
-  LOG_PID=$!
-fi
 ELAPSED=0
 STATUS="000"
+LOG_SINCE=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
+COMPOSE_FILE=$(wslpath "$COMPOSE_DIR/docker-compose.yml" 2>/dev/null || echo "$COMPOSE_DIR/docker-compose.yml")
 for i in $(seq 1 180); do
-  STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3030/api/v2/tasks?page=0&page_size=1" 2>/dev/null || echo "000")
-  if [ "$STATUS" = "200" ] || [ "$STATUS" = "401" ]; then
-    echo "ENGINE_READY=true STATUS=$STATUS elapsed=${ELAPSED}s"
-    [ -n "$LOG_PID" ] && kill "$LOG_PID" 2>/dev/null; wait "$LOG_PID" 2>/dev/null || true
-    break
-  fi
+  sleep 5
   ELAPSED=$((i * 5))
   MINS=$((ELAPSED / 60))
   SECS=$((ELAPSED % 60))
+  if [ -f "$COMPOSE_FILE" ]; then
+    docker compose -f "$COMPOSE_FILE" logs --no-color --since="$LOG_SINCE" 2>&1 || true
+    LOG_SINCE=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
+  fi
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3030/api/v2/tasks?page=0&page_size=1" 2>/dev/null || echo "000")
+  if [ "$STATUS" = "200" ] || [ "$STATUS" = "401" ]; then
+    echo "ENGINE_READY=true STATUS=$STATUS elapsed=${ELAPSED}s"
+    break
+  fi
   if [ $((i % 6)) -eq 0 ]; then
     echo "--- still starting up: ${MINS}m${SECS}s elapsed ---"
   fi
-  sleep 5
 done
 if [ "$STATUS" != "200" ] && [ "$STATUS" != "401" ]; then
-  [ -n "$LOG_PID" ] && kill "$LOG_PID" 2>/dev/null; wait "$LOG_PID" 2>/dev/null || true
   echo "ENGINE_READY=false — timed out after 15 minutes"
 fi
 
