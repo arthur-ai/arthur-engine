@@ -8,11 +8,13 @@ import { useNavigate } from "react-router-dom";
 import { EngineTopNav } from "./onboarding/engine-top-nav";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useDemoMode } from "@/contexts/EngineConfigContext";
 
 export const LoginPage: React.FC = () => {
   const [token, setToken] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { login, error, isAuthenticated } = useAuth();
+  const { demoMode } = useDemoMode();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -187,24 +189,26 @@ export const LoginPage: React.FC = () => {
             </Typography>
           </Box>
 
-          <Box sx={{ mt: 2.5 }}>
-            <Button
-              variant="text"
-              color="inherit"
-              size="small"
-              startIcon={<ArrowBackIcon sx={{ fontSize: 14 }} />}
-              onClick={() => navigate("/welcome")}
-              sx={{
-                textTransform: "none",
-                fontSize: 13,
-                fontWeight: 500,
-                color: "text.secondary",
-                "&:hover": { color: "text.primary", backgroundColor: "transparent" },
-              }}
-            >
-              Back to start
-            </Button>
-          </Box>
+          {demoMode && (
+            <Box sx={{ mt: 2.5 }}>
+              <Button
+                variant="text"
+                color="inherit"
+                size="small"
+                startIcon={<ArrowBackIcon sx={{ fontSize: 14 }} />}
+                onClick={() => navigate("/welcome")}
+                sx={{
+                  textTransform: "none",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: "text.secondary",
+                  "&:hover": { color: "text.primary", backgroundColor: "transparent" },
+                }}
+              >
+                Back to start
+              </Button>
+            </Box>
+          )}
         </Box>
       </Box>
     </Box>
