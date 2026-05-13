@@ -93,7 +93,14 @@ If yes, collect:
 1. Provider — `OpenAI` or `Azure` (default: `OpenAI`)
 2. Model name (default: `gpt-4o-mini-2024-07-18`)
 3. Endpoint — required for Azure; leave blank for standard OpenAI
-4. API key
+4. API key — collect via masked terminal prompt, stored in a temp file (do **not** ask the user to type it in chat):
+   ```bash
+   OPENAI_KEY_FILE=$(mktemp)
+   chmod 600 "$OPENAI_KEY_FILE"
+   python3 -c "import getpass; print(getpass.getpass('OpenAI API key (input hidden): '))" > "$OPENAI_KEY_FILE"
+   echo "KEY_FILE=$OPENAI_KEY_FILE"
+   ```
+   Note the `KEY_FILE` path from the output. Substitute it as `<KEY_FILE_PATH>` in the sub-agent prompt below.
 
 If no, set `SETUP_SKIP_OPENAI=true`.
 
@@ -114,7 +121,7 @@ SETUP_SKIP_OPENAI=<true_if_no_openai|false> \
 GENAI_ENGINE_OPENAI_PROVIDER=<provider> \
 GENAI_ENGINE_OPENAI_GPT_NAME=<model_name> \
 GENAI_ENGINE_OPENAI_GPT_ENDPOINT=<endpoint_or_empty> \
-GENAI_ENGINE_OPENAI_GPT_API_KEY=<api_key_or_changeme> \
+GENAI_ENGINE_OPENAI_GPT_API_KEY=$(cat "<KEY_FILE_PATH>" && rm -f "<KEY_FILE_PATH>") \
 bash <(curl -sSL https://get-genai-engine.arthur.ai/mac)
 
 Step 2 — Poll until ready (max 3 minutes):
@@ -145,7 +152,7 @@ powershell.exe -Command "
   \$env:GENAI_ENGINE_OPENAI_PROVIDER = '<provider>'
   \$env:GENAI_ENGINE_OPENAI_GPT_NAME = '<model_name>'
   \$env:GENAI_ENGINE_OPENAI_GPT_ENDPOINT = '<endpoint_or_empty>'
-  \$env:GENAI_ENGINE_OPENAI_GPT_API_KEY = '<api_key_or_changeme>'
+  \$env:GENAI_ENGINE_OPENAI_GPT_API_KEY = (Get-Content -Path '<KEY_FILE_PATH>' -Raw).Trim(); Remove-Item -Path '<KEY_FILE_PATH>' -Force
   irm https://get-genai-engine.arthur.ai/win | iex
 "
 
@@ -644,8 +651,9 @@ for p in d.get('providers', []):
 - `vertex_ai` → model `gemini-1.5-flash`
 - Skip → configure in the Arthur Engine UI later
 
-If a provider is chosen, ask for the API key, then configure:
+If a provider is chosen, collect the API key via masked terminal prompt and configure in a single command (do **not** ask the user to type it in chat):
 ```bash
+PROVIDER_API_KEY=$(python3 -c "import getpass; print(getpass.getpass('<Provider> API key (input hidden): '))") && \
 curl -s -X PUT \
   -H "Authorization: Bearer $ARTHUR_API_KEY" \
   -H "Content-Type: application/json" \
