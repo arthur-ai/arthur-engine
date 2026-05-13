@@ -67,8 +67,8 @@ from job_executors.task_management_job_executors import (
     FetchTaskJobExecutor,
     LinkTaskJobExecutor,
     RegenerateTaskValidationKeyJobExecutor,
+    TaskManagementJobExecutor,
     UpdateTaskJobExecutor,
-    _TaskManagementJobExecutor,
 )
 from job_log_exporter import ExportContextedLogger, ScopeJobLogExporter
 from tools.connector_constructor import ConnectorConstructor
@@ -395,7 +395,7 @@ class JobExecutor:
                                 f"Expected CompliancePolicyCheckJobSpec type, got {type(job.job_spec.actual_instance)}.",
                             )
 
-                        tasks_management_job_executor = _TaskManagementJobExecutor(
+                        tasks_management_job_executor = TaskManagementJobExecutor(
                             self.models_client,
                             self.datasets_client,
                             self.tasks_client,

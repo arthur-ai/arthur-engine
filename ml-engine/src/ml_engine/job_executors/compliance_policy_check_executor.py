@@ -40,7 +40,7 @@ from arthur_client.api_bindings import (
 
 from connectors.shield_connector import ShieldBaseConnector
 from job_executors._interval_utils import alert_interval_to_timedelta
-from job_executors.task_management_job_executors import _TaskManagementJobExecutor
+from job_executors.task_management_job_executors import TaskManagementJobExecutor
 
 _PAGE_SIZE = 100
 
@@ -72,7 +72,7 @@ class CompliancePolicyCheckExecutor:
         alert_rules_client: AlertRulesV1Api,
         alerts_client: AlertsV1Api,
         metrics_client: MetricsV1Api,
-        tasks_management_job_executor: _TaskManagementJobExecutor,
+        tasks_management_job_executor: TaskManagementJobExecutor,
         logger: logging.Logger,
     ) -> None:
         self.policies_client = policies_client
