@@ -12,6 +12,7 @@ import { NewAgentExperiment } from "./components/agent-experiments/new";
 import { AgentNotebookDetail } from "./components/agent-notebook/[notebookId]";
 import { AllTasks } from "./components/AllTasks";
 import { ApiKeysManagement } from "./components/ApiKeysManagement";
+import { EngineConfigGate } from "./components/common/engine-config-gate";
 import { DatasetDetailView } from "./components/datasets/DatasetDetailView";
 import { DatasetExperimentsView } from "./components/datasets/DatasetExperimentsView";
 import { DatasetsView } from "./components/datasets/DatasetsView";
@@ -65,118 +66,120 @@ function App() {
                     <DisplaySettingsProvider>
                       <Router>
                         <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-                          <Routes>
-                            {/* Public routes */}
-                            <Route path="/welcome" element={<OnboardingPage />} />
-                            <Route path="/login" element={<LoginPage />} />
+                          <EngineConfigGate>
+                            <Routes>
+                              {/* Public routes */}
+                              <Route path="/welcome" element={<OnboardingPage />} />
+                              <Route path="/login" element={<LoginPage />} />
 
-                            {/* Protected routes */}
-                            <Route
-                              path="/"
-                              element={
-                                <ProtectedRoute>
-                                  <AllTasks />
-                                </ProtectedRoute>
-                              }
-                            />
+                              {/* Protected routes */}
+                              <Route
+                                path="/"
+                                element={
+                                  <ProtectedRoute>
+                                    <AllTasks />
+                                  </ProtectedRoute>
+                                }
+                              />
 
-                            {/* Settings routes - global/org-level pages */}
-                            <Route
-                              path="/settings/model-providers"
-                              element={
-                                <ProtectedRoute>
-                                  <SettingsPage>
-                                    <ModelProviders />
-                                  </SettingsPage>
-                                </ProtectedRoute>
-                              }
-                            />
-                            <Route
-                              path="/settings/api-keys"
-                              element={
-                                <ProtectedRoute>
-                                  <SettingsPage>
-                                    <ApiKeysManagement />
-                                  </SettingsPage>
-                                </ProtectedRoute>
-                              }
-                            />
+                              {/* Settings routes - global/org-level pages */}
+                              <Route
+                                path="/settings/model-providers"
+                                element={
+                                  <ProtectedRoute>
+                                    <SettingsPage>
+                                      <ModelProviders />
+                                    </SettingsPage>
+                                  </ProtectedRoute>
+                                }
+                              />
+                              <Route
+                                path="/settings/api-keys"
+                                element={
+                                  <ProtectedRoute>
+                                    <SettingsPage>
+                                      <ApiKeysManagement />
+                                    </SettingsPage>
+                                  </ProtectedRoute>
+                                }
+                              />
 
-                            {/* Task layout route: single layout with nested section routes */}
-                            <Route
-                              path="/tasks/:id"
-                              element={
-                                <ProtectedRoute>
-                                  <TaskLayout />
-                                </ProtectedRoute>
-                              }
-                            >
-                              <Route index element={<Navigate to="overview" replace />} />
-                              <Route path="overview" element={<TaskOverview />} />
-                              <Route path="model-providers" element={<Navigate to="/settings/model-providers" replace />} />
-                              <Route path="api-keys" element={<Navigate to="/settings/api-keys" replace />} />
-                              <Route path="application-config" element={<Navigate to="/" replace />} />
-                              <Route path="rag-configurations" element={<RagConfigurationsPage />} />
-                              <Route path="rag-configurations/:configId" element={<RagConfigurationsPage />} />
-                              <Route path="rag-configurations/:configId/versions/:version" element={<RagConfigurationsPage />} />
+                              {/* Task layout route: single layout with nested section routes */}
+                              <Route
+                                path="/tasks/:id"
+                                element={
+                                  <ProtectedRoute>
+                                    <TaskLayout />
+                                  </ProtectedRoute>
+                                }
+                              >
+                                <Route index element={<Navigate to="overview" replace />} />
+                                <Route path="overview" element={<TaskOverview />} />
+                                <Route path="model-providers" element={<Navigate to="/settings/model-providers" replace />} />
+                                <Route path="api-keys" element={<Navigate to="/settings/api-keys" replace />} />
+                                <Route path="application-config" element={<Navigate to="/" replace />} />
+                                <Route path="rag-configurations" element={<RagConfigurationsPage />} />
+                                <Route path="rag-configurations/:configId" element={<RagConfigurationsPage />} />
+                                <Route path="rag-configurations/:configId/versions/:version" element={<RagConfigurationsPage />} />
 
-                              <Route path="test" element={<TestView />} />
+                                <Route path="test" element={<TestView />} />
 
-                              {/* Legacy redirects: old agent routes → /test */}
-                              <Route path="agent-experiments" element={<Navigate to="../test?section=agent-experiments" replace />} />
-                              <Route path="agent-experiments/new" element={<NewAgentExperiment />} />
-                              <Route path="agent-experiments/:experimentId" element={<AgentExperimentDetail />} />
+                                {/* Legacy redirects: old agent routes → /test */}
+                                <Route path="agent-experiments" element={<Navigate to="../test?section=agent-experiments" replace />} />
+                                <Route path="agent-experiments/new" element={<NewAgentExperiment />} />
+                                <Route path="agent-experiments/:experimentId" element={<AgentExperimentDetail />} />
 
-                              <Route path="agentic-notebooks" element={<Navigate to="../test?section=agentic-notebooks" replace />} />
-                              <Route path="agentic-notebooks/:notebookId" element={<AgentNotebookDetail />} />
+                                <Route path="agentic-notebooks" element={<Navigate to="../test?section=agentic-notebooks" replace />} />
+                                <Route path="agentic-notebooks/:notebookId" element={<AgentNotebookDetail />} />
 
-                              <Route path="datasets" element={<DatasetsView />} />
-                              <Route path="datasets/:datasetId" element={<DatasetDetailView />} />
-                              <Route path="transforms" element={<TransformsManagement />} />
-                              <Route path="transforms/:transformId" element={<TransformsManagement />} />
-                              <Route path="transforms/:transformId/versions/:versionId" element={<TransformsManagement />} />
-                              <Route path="datasets/:datasetId/experiments" element={<DatasetExperimentsView />} />
+                                <Route path="datasets" element={<DatasetsView />} />
+                                <Route path="datasets/:datasetId" element={<DatasetDetailView />} />
+                                <Route path="transforms" element={<TransformsManagement />} />
+                                <Route path="transforms/:transformId" element={<TransformsManagement />} />
+                                <Route path="transforms/:transformId/versions/:versionId" element={<TransformsManagement />} />
+                                <Route path="datasets/:datasetId/experiments" element={<DatasetExperimentsView />} />
 
-                              <Route path="evaluate" element={<EvaluateView />} />
+                                <Route path="evaluate" element={<EvaluateView />} />
 
-                              {/* Legacy redirect: /evaluators → /evaluate */}
-                              <Route path="evaluators" element={<Navigate to="../evaluate" replace />} />
-                              <Route path="evaluators/:evaluatorName" element={<Evaluators />} />
-                              <Route path="evaluators/:evaluatorName/versions/:version" element={<Evaluators />} />
+                                {/* Legacy redirect: /evaluators → /evaluate */}
+                                <Route path="evaluators" element={<Navigate to="../evaluate" replace />} />
+                                <Route path="evaluators/:evaluatorName" element={<Evaluators />} />
+                                <Route path="evaluators/:evaluatorName/versions/:version" element={<Evaluators />} />
 
-                              <Route path="continuous-evals">
-                                {/* Legacy redirect: /continuous-evals → /evaluate */}
-                                <Route index element={<Navigate to="../evaluate" replace />} />
-                                <Route path="new" element={<LiveEvalsNew />} />
-                                <Route path=":evalId" element={<LiveEvalDetail />} />
+                                <Route path="continuous-evals">
+                                  {/* Legacy redirect: /continuous-evals → /evaluate */}
+                                  <Route index element={<Navigate to="../evaluate" replace />} />
+                                  <Route path="new" element={<LiveEvalsNew />} />
+                                  <Route path=":evalId" element={<LiveEvalDetail />} />
+                                </Route>
+
+                                <Route path="prompts-management" element={<PromptsManagement />} />
+                                <Route path="prompts/:promptName" element={<PromptsManagement />} />
+                                <Route path="prompts/:promptName/versions/:version" element={<PromptsManagement />} />
+
+                                <Route path="prompts" element={<PromptsView />} />
+
+                                <Route path="notebooks" element={<Notebooks />} />
+                                <Route path="playgrounds/prompts" element={<PromptsPlayground />} />
+
+                                <Route path="prompt-experiments" element={<PromptExperimentsView />} />
+                                <Route path="prompt-experiments/:experimentId" element={<ExperimentDetailView />} />
+
+                                <Route path="rag" element={<RagView />} />
+
+                                <Route path="rag-experiments" element={<RagExperimentsListView />} />
+                                <Route path="rag-experiments/:experimentId" element={<RagExperimentDetailView />} />
+
+                                <Route path="rag-notebooks" element={<RagNotebooks />} />
+                                <Route path="rag-notebooks/:notebookId" element={<RagExperimentsPage />} />
+
+                                <Route path="traces" element={<TracesView />} />
                               </Route>
 
-                              <Route path="prompts-management" element={<PromptsManagement />} />
-                              <Route path="prompts/:promptName" element={<PromptsManagement />} />
-                              <Route path="prompts/:promptName/versions/:version" element={<PromptsManagement />} />
-
-                              <Route path="prompts" element={<PromptsView />} />
-
-                              <Route path="notebooks" element={<Notebooks />} />
-                              <Route path="playgrounds/prompts" element={<PromptsPlayground />} />
-
-                              <Route path="prompt-experiments" element={<PromptExperimentsView />} />
-                              <Route path="prompt-experiments/:experimentId" element={<ExperimentDetailView />} />
-
-                              <Route path="rag" element={<RagView />} />
-
-                              <Route path="rag-experiments" element={<RagExperimentsListView />} />
-                              <Route path="rag-experiments/:experimentId" element={<RagExperimentDetailView />} />
-
-                              <Route path="rag-notebooks" element={<RagNotebooks />} />
-                              <Route path="rag-notebooks/:notebookId" element={<RagExperimentsPage />} />
-
-                              <Route path="traces" element={<TracesView />} />
-                            </Route>
-
-                            {/* Redirect root to tasks */}
-                            <Route path="*" element={<Navigate to="/" replace />} />
-                          </Routes>
+                              {/* Redirect root to tasks */}
+                              <Route path="*" element={<Navigate to="/" replace />} />
+                            </Routes>
+                          </EngineConfigGate>
                         </div>
                       </Router>
                     </DisplaySettingsProvider>
