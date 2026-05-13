@@ -33,7 +33,7 @@ One-liner — installs the skill for all your projects:
 
 ```bash
 mkdir -p ~/.claude/skills/arthur-onboard && \
-  curl -sSL https://raw.githubusercontent.com/arthur-ai/arthur-engine/dev/onboarding/.claude/skills/arthur-onboard/SKILL.md \
+  curl -sSL https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/onboarding/.claude/skills/arthur-onboard/SKILL.md \
   > ~/.claude/skills/arthur-onboard/SKILL.md
 ```
 
@@ -43,7 +43,7 @@ Add to a specific repository so your team gets it automatically when they open C
 
 ```bash
 mkdir -p .claude/skills/arthur-onboard && \
-  curl -sSL https://raw.githubusercontent.com/arthur-ai/arthur-engine/dev/onboarding/.claude/skills/arthur-onboard/SKILL.md \
+  curl -sSL https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/onboarding/.claude/skills/arthur-onboard/SKILL.md \
   > .claude/skills/arthur-onboard/SKILL.md
 git add .claude/skills/arthur-onboard/SKILL.md
 git commit -m "Add Arthur GenAI Engine onboarding skill"

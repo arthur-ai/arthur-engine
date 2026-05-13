@@ -72,17 +72,49 @@ echo "HTTP_STATUS=$HTTP_STATUS"
 ### Set up engine (if no existing config or unreachable):
 
 Ask the user: "How would you like to connect to Arthur GenAI Engine?"
-- **A) Install locally on this Mac (requires Docker)**
+- **A) Install locally on this machine (requires Docker)**
 - **B) Connect to a remote Arthur Engine**
 
 **Option A — Local install:**
 
-Delegate to a Task sub-agent with `subagent_type="Bash"`:
-
+First, detect the OS:
+```bash
+OS_TYPE=$(uname -s 2>/dev/null || echo "Windows_NT")
+echo "OS_TYPE=$OS_TYPE"
 ```
-Run the Arthur GenAI Engine local Mac installer and wait until the engine is ready.
+`Darwin` = Mac, `Linux` = Linux, anything else = Windows.
 
-Step 1 — Run the installer (takes 2-3 minutes):
+Next, ask the user for OpenAI/Azure OpenAI config for guardrails:
+> "Do you have an OpenAI or Azure OpenAI API key to configure for Arthur Engine guardrails?
+> This is used for hallucination and sensitive data checks. You can skip and add it manually to
+> `~/.arthur-engine/local-stack/genai-engine/.env` later."
+
+If yes, collect:
+1. Provider — `OpenAI` or `Azure` (default: `OpenAI`)
+2. Model name (default: `gpt-4o-mini-2024-07-18`)
+3. Endpoint — required for Azure; leave blank for standard OpenAI
+4. API key
+
+If no, set `SETUP_SKIP_OPENAI=true`.
+
+**Note:** This key goes into the Docker `.env` and configures the engine's built-in guardrails.
+It is **separate** from the eval model provider in Step 8, which is configured via the Arthur Engine API.
+
+Now delegate to a Task sub-agent with `subagent_type="Bash"`, filling in the values collected above:
+
+**Mac/Linux sub-agent prompt:**
+```
+Run the Arthur GenAI Engine local installer and wait until the engine is ready.
+
+Step 1 — Run the installer non-interactively (takes 2-3 minutes).
+Replace <VALUES> with the actual values collected from the user:
+
+SETUP_NON_INTERACTIVE=true \
+SETUP_SKIP_OPENAI=<true_if_no_openai|false> \
+GENAI_ENGINE_OPENAI_PROVIDER=<provider> \
+GENAI_ENGINE_OPENAI_GPT_NAME=<model_name> \
+GENAI_ENGINE_OPENAI_GPT_ENDPOINT=<endpoint_or_empty> \
+GENAI_ENGINE_OPENAI_GPT_API_KEY=<api_key_or_changeme> \
 bash <(curl -sSL https://get-genai-engine.arthur.ai/mac)
 
 Step 2 — Poll until ready (max 3 minutes):
@@ -96,7 +128,39 @@ done
 
 Step 3 — Extract the admin API key:
 cat "$HOME/.arthur-engine/local-stack/genai-engine/.env" 2>/dev/null | grep -E "GENAI_ENGINE_ADMIN_KEY|ARTHUR_API_KEY" | head -1
-grep -A2 "GENAI_ENGINE_ADMIN_KEY" "$HOME/.arthur-engine/local-stack/genai-engine/docker-compose.yml" 2>/dev/null | head -5
+
+Report: engine ready (yes/no), the API key found (full value or "NOT_FOUND"), any errors.
+```
+
+**Windows sub-agent prompt:**
+```
+Run the Arthur GenAI Engine local Windows installer and wait until the engine is ready.
+
+Step 1 — Run the installer non-interactively via PowerShell (takes 2-3 minutes).
+Replace <VALUES> with the actual values collected from the user:
+
+powershell.exe -Command "
+  \$env:SETUP_NON_INTERACTIVE = 'true'
+  \$env:SETUP_SKIP_OPENAI = '<true_if_no_openai|false>'
+  \$env:GENAI_ENGINE_OPENAI_PROVIDER = '<provider>'
+  \$env:GENAI_ENGINE_OPENAI_GPT_NAME = '<model_name>'
+  \$env:GENAI_ENGINE_OPENAI_GPT_ENDPOINT = '<endpoint_or_empty>'
+  \$env:GENAI_ENGINE_OPENAI_GPT_API_KEY = '<api_key_or_changeme>'
+  irm https://get-genai-engine.arthur.ai/win | iex
+"
+
+Step 2 — Poll until ready (max 3 minutes):
+for i in $(seq 1 36); do
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3030/api/v2/tasks?page=0&page_size=1 2>/dev/null || echo "000")
+  if [ "$STATUS" = "200" ] || [ "$STATUS" = "401" ]; then
+    echo "ENGINE_READY=true STATUS=$STATUS"; break
+  fi
+  echo "Waiting... attempt $i/36"; sleep 5
+done
+
+Step 3 — Extract the admin API key (try bash path first, fall back to PowerShell):
+cat "$USERPROFILE/.arthur-engine/local-stack/genai-engine/.env" 2>/dev/null | grep -E "GENAI_ENGINE_ADMIN_KEY|ARTHUR_API_KEY" | head -1 || \
+powershell.exe -Command "Get-Content (Join-Path \$env:USERPROFILE '.arthur-engine\local-stack\genai-engine\.env') | Select-String 'GENAI_ENGINE_ADMIN_KEY|ARTHUR_API_KEY' | Select-Object -First 1"
 
 Report: engine ready (yes/no), the API key found (full value or "NOT_FOUND"), any errors.
 ```
@@ -505,13 +569,23 @@ This step is non-blocking — log a warning and continue if it errors.
 
 ## Step 7/10 — Verify Instrumentation
 
-Tell the user to run their application. Show the required env vars:
+Tell the user to run their application. Show the required env vars for their platform:
 
 ```
-Set these before running your app:
+# Mac / Linux:
   export ARTHUR_API_KEY=<ARTHUR_API_KEY>
   export ARTHUR_BASE_URL=<ARTHUR_ENGINE_URL>
   export ARTHUR_TASK_ID=<ARTHUR_TASK_ID>
+
+# Windows PowerShell:
+  $env:ARTHUR_API_KEY  = "<ARTHUR_API_KEY>"
+  $env:ARTHUR_BASE_URL = "<ARTHUR_ENGINE_URL>"
+  $env:ARTHUR_TASK_ID  = "<ARTHUR_TASK_ID>"
+
+# Windows CMD:
+  set ARTHUR_API_KEY=<ARTHUR_API_KEY>
+  set ARTHUR_BASE_URL=<ARTHUR_ENGINE_URL>
+  set ARTHUR_TASK_ID=<ARTHUR_TASK_ID>
 ```
 
 Once the user confirms they've run the app, poll for traces (up to 60 seconds):
