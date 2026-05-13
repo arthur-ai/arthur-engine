@@ -2,10 +2,6 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
-# 05/12/2026
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals  added the new optional `query` request parameter `sort_by`
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  added the new optional `query` request parameter `sort_by`
-
 # 05/11/2026
 - **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the new optional request property 'transform_version_id'
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional request property 'transform_version_id'
