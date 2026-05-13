@@ -1,6 +1,6 @@
 import { Box, Link, Stack, Typography } from "@mui/material";
 
-import { ArthurLogo } from "../common/ArthurLogo";
+import { ArthurLogo } from "../../common/ArthurLogo";
 
 export const EngineTopNav: React.FC = () => (
   <Box

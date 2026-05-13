@@ -22,7 +22,7 @@ import { LiveEvalsNew } from "./components/live-evals/new";
 import { LoginPage } from "./components/LoginPage";
 import { ModelProviders } from "./components/model-providers";
 import Notebooks from "./components/notebooks/Notebooks";
-import { OnboardingPage } from "./components/onboarding/OnboardingPage";
+import { OnboardingPage } from "./components/onboarding/onboarding-page";
 import { ExperimentDetailView } from "./components/prompt-experiments/ExperimentDetailView";
 import { PromptExperimentsView } from "./components/prompt-experiments/PromptExperimentsView";
 import { PromptsView } from "./components/prompts/PromptsView";

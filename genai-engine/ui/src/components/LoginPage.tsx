@@ -5,7 +5,7 @@ import { Alert, Box, Button, CircularProgress, InputAdornment, Stack, TextField,
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { EngineTopNav } from "./onboarding/EngineTopNav";
+import { EngineTopNav } from "./onboarding/engine-top-nav";
 
 import { useAuth } from "@/contexts/AuthContext";
 

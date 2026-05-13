@@ -21,41 +21,14 @@ import {
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { useForm, type AnyFieldApi } from "@tanstack/react-form";
-import { z } from "zod";
 
-import { EngineTopNav } from "./EngineTopNav";
-import { ATTRIBUTION_OPTIONS, BRINGS_OPTIONS, COMPETITOR_OPTIONS, MATURITY_OPTIONS } from "./onboardingOptions";
+import { EngineTopNav } from "../engine-top-nav";
+import { ATTRIBUTION_OPTIONS, BRINGS_OPTIONS, COMPETITOR_OPTIONS, MATURITY_OPTIONS } from "../onboarding-options";
 
-const onboardingSchema = z
-  .object({
-    firstName: z.string().trim().min(1, { error: "Required" }),
-    lastName: z.string().trim().min(1, { error: "Required" }),
-    email: z.string().regex(/.+@.+\..+/, { error: "Enter a valid work email" }),
-    jobTitle: z.string().trim().min(1, { error: "Required" }),
-    company: z.string().trim().min(1, { error: "Required" }),
-    building: z.string().trim().min(1, { error: "Tell us a bit" }),
-    maturity: z.string().min(1, { error: "Pick one" }),
-    brings: z.string().min(1, { error: "Pick one" }),
-    bringsOther: z.string(),
-    competitors: z.array(z.string()).min(1, { error: "Pick at least one" }),
-    competitorOther: z.string(),
-    attribution: z.string().min(1, { error: "Pick one" }),
-  })
-  .superRefine((data, ctx) => {
-    if (data.brings === "other" && !data.bringsOther.trim()) {
-      ctx.addIssue({ code: "custom", path: ["bringsOther"], message: "Please specify" });
-    }
-    if (data.competitors.includes("other") && !data.competitorOther.trim()) {
-      ctx.addIssue({ code: "custom", path: ["competitorOther"], message: "Please specify" });
-    }
-  });
+import { onboardingSchema } from "./schema";
+import type { TryItOutFormProps } from "./types";
 
-export type TryItOutSubmission = z.infer<typeof onboardingSchema>;
-
-interface TryItOutFormProps {
-  onBack: () => void;
-  onSubmit: (data: TryItOutSubmission) => void;
-}
+export type { TryItOutSubmission } from "./schema";
 
 const labelSx = { fontSize: 13, fontWeight: 500, color: "text.primary" };
 const sectionLabelSx = { fontSize: 13, fontWeight: 600, color: "text.primary" };

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { LandingHero } from "./LandingHero";
-import { TryItOutForm, type TryItOutSubmission } from "./TryItOutForm";
+import { LandingHero } from "../landing-hero";
+import { TryItOutForm, type TryItOutSubmission } from "../try-it-out-form";
 
 type Screen = "landing" | "form";
 
