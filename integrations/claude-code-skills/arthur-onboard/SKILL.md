@@ -107,6 +107,9 @@ If no, set `SETUP_SKIP_OPENAI=true`.
 **Note:** This key goes into the Docker `.env` and configures the engine's built-in guardrails.
 It is **separate** from the eval model provider in Step 8, which is configured via the Arthur Engine API.
 
+Before launching the sub-agent, tell the user:
+> "Starting the Arthur GenAI Engine installer now. **Note:** the first time the engine starts, it needs to download several AI models (this can take 10–15 minutes depending on your connection). I'll keep you updated as it boots."
+
 Now delegate to a Task sub-agent with `subagent_type="Bash"`, filling in the values collected above:
 
 **Mac/Linux sub-agent prompt:**
@@ -124,19 +127,34 @@ GENAI_ENGINE_OPENAI_GPT_ENDPOINT=<endpoint_or_empty> \
 GENAI_ENGINE_OPENAI_GPT_API_KEY=$(cat "<KEY_FILE_PATH>" && rm -f "<KEY_FILE_PATH>") \
 bash <(curl -sSL https://get-genai-engine.arthur.ai/mac)
 
-Step 2 — Poll until ready (max 3 minutes):
-for i in $(seq 1 36); do
-  STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3030/api/v2/tasks?page=0&page_size=1 2>/dev/null || echo "000")
+Step 2 — Poll until ready (max 15 minutes). The first startup downloads AI models and takes
+significantly longer than subsequent starts. Print a status line every 30 seconds so the user
+knows progress is being made.
+
+echo "Engine starting up — first-time launch downloads AI models and may take 10-15 minutes..."
+ELAPSED=0
+for i in $(seq 1 180); do
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3030/api/v2/tasks?page=0&page_size=1" 2>/dev/null || echo "000")
   if [ "$STATUS" = "200" ] || [ "$STATUS" = "401" ]; then
-    echo "ENGINE_READY=true STATUS=$STATUS"; break
+    echo "ENGINE_READY=true STATUS=$STATUS elapsed=${ELAPSED}s"; break
   fi
-  echo "Waiting... attempt $i/36"; sleep 5
+  ELAPSED=$((i * 5))
+  MINS=$((ELAPSED / 60))
+  SECS=$((ELAPSED % 60))
+  # Print an update every 30 seconds (every 6th iteration)
+  if [ $((i % 6)) -eq 0 ]; then
+    echo "Still starting up... ${MINS}m${SECS}s elapsed (models may still be downloading)"
+  fi
+  sleep 5
 done
+if [ "$STATUS" != "200" ] && [ "$STATUS" != "401" ]; then
+  echo "ENGINE_READY=false — timed out after 15 minutes"
+fi
 
 Step 3 — Extract the admin API key:
 cat "$HOME/.arthur-engine/local-stack/genai-engine/.env" 2>/dev/null | grep -E "GENAI_ENGINE_ADMIN_KEY|ARTHUR_API_KEY" | head -1
 
-Report: engine ready (yes/no), the API key found (full value or "NOT_FOUND"), any errors.
+Report: engine ready (yes/no), total elapsed time, the API key found (full value or "NOT_FOUND"), any errors.
 ```
 
 **Windows sub-agent prompt:**
@@ -156,20 +174,35 @@ powershell.exe -Command "
   irm https://get-genai-engine.arthur.ai/win | iex
 "
 
-Step 2 — Poll until ready (max 3 minutes):
-for i in $(seq 1 36); do
-  STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3030/api/v2/tasks?page=0&page_size=1 2>/dev/null || echo "000")
+Step 2 — Poll until ready (max 15 minutes). The first startup downloads AI models and takes
+significantly longer than subsequent starts. Print a status line every 30 seconds so the user
+knows progress is being made.
+
+echo "Engine starting up — first-time launch downloads AI models and may take 10-15 minutes..."
+ELAPSED=0
+for i in $(seq 1 180); do
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3030/api/v2/tasks?page=0&page_size=1" 2>/dev/null || echo "000")
   if [ "$STATUS" = "200" ] || [ "$STATUS" = "401" ]; then
-    echo "ENGINE_READY=true STATUS=$STATUS"; break
+    echo "ENGINE_READY=true STATUS=$STATUS elapsed=${ELAPSED}s"; break
   fi
-  echo "Waiting... attempt $i/36"; sleep 5
+  ELAPSED=$((i * 5))
+  MINS=$((ELAPSED / 60))
+  SECS=$((ELAPSED % 60))
+  # Print an update every 30 seconds (every 6th iteration)
+  if [ $((i % 6)) -eq 0 ]; then
+    echo "Still starting up... ${MINS}m${SECS}s elapsed (models may still be downloading)"
+  fi
+  sleep 5
 done
+if [ "$STATUS" != "200" ] && [ "$STATUS" != "401" ]; then
+  echo "ENGINE_READY=false — timed out after 15 minutes"
+fi
 
 Step 3 — Extract the admin API key (try bash path first, fall back to PowerShell):
 cat "$USERPROFILE/.arthur-engine/local-stack/genai-engine/.env" 2>/dev/null | grep -E "GENAI_ENGINE_ADMIN_KEY|ARTHUR_API_KEY" | head -1 || \
 powershell.exe -Command "Get-Content (Join-Path \$env:USERPROFILE '.arthur-engine\local-stack\genai-engine\.env') | Select-String 'GENAI_ENGINE_ADMIN_KEY|ARTHUR_API_KEY' | Select-Object -First 1"
 
-Report: engine ready (yes/no), the API key found (full value or "NOT_FOUND"), any errors.
+Report: engine ready (yes/no), total elapsed time, the API key found (full value or "NOT_FOUND"), any errors.
 ```
 
 After sub-agent:
