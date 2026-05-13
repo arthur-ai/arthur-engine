@@ -1,0 +1,49 @@
+# Example — agents-from-scratch
+
+This walkthrough uses LangChain’s **agents-from-scratch** repo as a sample agentic app.
+Buzz wires Arthur GenAI Engine to your code;
+this file demonstrates cloning the LangChain app and running the **trace verification** command when Buzz reaches Step 7.
+
+---
+
+## 1. Clone and enter the repo
+
+```bash
+git clone https://github.com/langchain-ai/agents-from-scratch
+cd agents-from-scratch
+```
+
+## 2. Set up the app
+
+```bash
+pip install uv
+uv sync --extra dev
+source .venv/bin/activate
+cp .env.example .env
+```
+
+.env file content:
+```
+OPENAI_API_KEY=<your valid OpenAI API key>
+LANGSMITH_TRACING=false
+ARTHUR_API_KEY=<set by buzz>
+ARTHUR_BASE_URL=<set by buzz>
+ARTHUR_TASK_ID=<set by buzz>
+```
+
+---
+
+## 3. Run the agent for trace verification
+
+When Buzz asks you to run the agent for **trace verification (Step 7)**, run this from the **root** of `agents-from-scratch` (where `pyproject.toml` / `uv` expects to run):
+
+```bash
+uv run python -c "
+from src.email_assistant.email_assistant import email_assistant
+from src.email_assistant.eval.email_dataset import email_inputs, email_names
+
+for name, email in zip(email_names, email_inputs):
+    result = email_assistant.invoke({'email_input': email})
+    print(f'{name}: {result[\"classification_decision\"]}')
+"
+```

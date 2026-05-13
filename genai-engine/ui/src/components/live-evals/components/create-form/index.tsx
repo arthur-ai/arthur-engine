@@ -2,7 +2,7 @@ import { useAppForm } from "@arthur/shared-components";
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Divider, FormControlLabel, Stack, Switch, Typography } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
 import { useSnackbar } from "notistack";
-import { useId } from "react";
+import { useId, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import z from "zod";
 
@@ -11,6 +11,7 @@ import { useCreateContinuousEval } from "../../hooks/useCreateContinuousEval";
 import { DetailsFieldGroup, EvaluatorSelector, TransformSelector } from "../../new";
 import { VariableMappingSection } from "../variable-mapping";
 
+import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
 import type { ContinuousEvalTransformVariableMappingRequest } from "@/lib/api-client/api-client";
 
 type Props = {
@@ -44,6 +45,7 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
       },
       transform: {
         transformId: null as string | null,
+        transformVersionId: null as string | null,
       },
       variableMappings: [] as ContinuousEvalTransformVariableMappingRequest[],
     },
@@ -58,6 +60,7 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
         }),
         transform: z.object({
           transformId: z.string().min(1, "Transform ID is required"),
+          transformVersionId: z.string().nullable(),
         }),
         variableMappings: z.array(
           z.object({
@@ -76,6 +79,7 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
         }),
         transform: z.object({
           transformId: z.string().min(1, "Transform ID is required"),
+          transformVersionId: z.string().nullable(),
         }),
         variableMappings: z.array(
           z.object({
@@ -93,6 +97,7 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
         llm_eval_name: value.evaluator.name!,
         llm_eval_version: value.evaluator.version!,
         transform_id: value.transform.transformId!,
+        transform_version_id: value.transform.transformVersionId ?? undefined,
         transform_variable_mapping: value.variableMappings,
       });
 
@@ -105,12 +110,26 @@ const CreateForm = ({ taskId, onClose }: { taskId: string; onClose: () => void }
   const evaluator = useStore(form.store, (state) => state.values.evaluator);
   const transform = useStore(form.store, (state) => state.values.transform);
 
-  const { data: variableMappingData, isLoading: isLoadingVariableMapping } = useContinuousEvalVariableMapping(
+  const { data: versions = [] } = useTransformVersions(transform.transformId);
+  const selectedVersion = transform.transformVersionId ? versions.find((v) => v.id === transform.transformVersionId) : null;
+
+  const { data: apiVariableMappingData, isLoading: isLoadingVariableMapping } = useContinuousEvalVariableMapping(
     taskId,
     transform.transformId ?? undefined,
     evaluator.name ?? undefined,
     evaluator.version ?? undefined
   );
+
+  const variableMappingData = useMemo(() => {
+    if (!selectedVersion || !apiVariableMappingData) return apiVariableMappingData;
+    const snapshot = selectedVersion.definition as { variables?: { variable_name: string }[] };
+    const transformVars = snapshot?.variables?.map((v) => v.variable_name) ?? [];
+    return {
+      ...apiVariableMappingData,
+      transform_variables: transformVars,
+      matching_variables: apiVariableMappingData.eval_variables.filter((v) => transformVars.includes(v)),
+    };
+  }, [selectedVersion, apiVariableMappingData]);
 
   const variableMappings = useStore(form.store, (state) => state.values.variableMappings);
 

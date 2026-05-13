@@ -110,13 +110,14 @@ from schemas.response_schemas import (
     ConnectionCheckResult,
     ContinuousEvalRerunResponse,
     ContinuousEvalTestRunResponse,
-    ListContinuousEvalTestRunsResponse,
     DatasetResponse,
     DatasetVersionResponse,
     DatasetVersionRowResponse,
+    ListContinuousEvalTestRunsResponse,
     ListDatasetVersionsResponse,
     ListRagSearchSettingConfigurationsResponse,
     ListRagSearchSettingConfigurationVersionsResponse,
+    ListTraceTransformVersionsResponse,
     RagProviderConfigurationResponse,
     RagProviderQueryResponse,
     RagSearchSettingConfigurationResponse,
@@ -128,6 +129,7 @@ from schemas.response_schemas import (
     SessionTracesResponse,
     SpanListResponse,
     TraceListResponse,
+    TraceTransformVersionResponse,
     TraceUserListResponse,
     TraceUserMetadataResponse,
     TransformExtractionResponseList,
@@ -202,7 +204,12 @@ from dependencies import (
 from repositories.system_task_repository import SystemTaskRepository
 from server import get_test_app
 
-TEST_AUDIT_LOG_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "test_audit_logs")
+TEST_AUDIT_LOG_DIR = os.path.join(
+    os.path.dirname(__file__),
+    "..",
+    "..",
+    "test_audit_logs",
+)
 os.environ["AUDIT_LOG_OVERRIDE_PATH"] = TEST_AUDIT_LOG_DIR
 
 app = get_test_app()
@@ -1229,6 +1236,43 @@ class GenaiEngineTestClientBase(httpx.Client):
         if resp.status_code == 200:
             return resp.status_code, TransformExtractionResponseList(**resp.json())
         return resp.status_code, resp.json() if resp.content else None
+
+    def list_transform_versions(
+        self,
+        transform_id: str,
+    ) -> tuple[int, Any]:
+        resp = self.base_client.get(
+            f"/api/v1/traces/transforms/{transform_id}/versions",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+        return (
+            resp.status_code,
+            (
+                ListTraceTransformVersionsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
+
+    def get_transform_version(
+        self,
+        transform_id: str,
+        version_id: str,
+    ) -> tuple[int, Any]:
+        resp = self.base_client.get(
+            f"/api/v1/traces/transforms/{transform_id}/versions/{version_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+        return (
+            resp.status_code,
+            (
+                TraceTransformVersionResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.json()
+            ),
+        )
 
     def search_datasets(
         self,

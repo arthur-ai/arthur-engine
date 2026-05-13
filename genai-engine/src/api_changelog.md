@@ -6,6 +6,14 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals  added the new optional `query` request parameter `sort_by`
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  added the new optional `query` request parameter `sort_by`
 
+# 05/11/2026
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the new optional request property 'transform_version_id'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional request property 'transform_version_id'
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}/versions/{version_id}  endpoint added
+- **CHANGE** for **URL**: /api/v2/engine-config  endpoint added
+
 # 05/01/2026
 # 04/30/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  the response property 'llm_eval_name' became optional for the status '200'
