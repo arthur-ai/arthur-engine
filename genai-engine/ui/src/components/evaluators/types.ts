@@ -1,13 +1,4 @@
-import { LLMGetAllMetadataResponse, LLMEval, CreateEvalRequest, LLMMetadataSortField } from "@/lib/api-client/api-client";
-
-interface EvalsTableProps {
-  evals: LLMGetAllMetadataResponse[];
-  sortColumn: string | null;
-  sortDirection: "asc" | "desc";
-  onSort: (column: string) => void;
-  onExpandToFullScreen: (evalName: string) => void;
-  onDelete?: (evalName: string) => Promise<void>;
-}
+import { LLMEval, CreateEvalRequest, LLMMetadataSortField } from "@/lib/api-client/api-client";
 
 interface EvalVersionDrawerProps {
   open: boolean;
@@ -71,7 +62,6 @@ interface EvalFormModalProps {
 }
 
 export type {
-  EvalsTableProps,
   EvalVersionDrawerProps,
   EvalFullScreenViewProps,
   EvalDetailViewProps,
