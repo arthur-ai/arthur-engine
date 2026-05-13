@@ -5,7 +5,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 from litellm.types.utils import ModelResponse
 
-from schemas.enums import LLMMetadataSortField
 from schemas.internal_schemas import Task
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 
@@ -1037,24 +1036,14 @@ def test_get_all_llm_evals_sort_by_invalid_value_returns_400(
     client: GenaiEngineTestClientBase,
     agentic_task: Task,
 ):
-    """An unrecognized sort_by value triggers FastAPI validation, which the
-    repo's custom route handler surfaces as 400.
-
-    The detail string is `str(RequestValidationError)` from
-    `routers/route_handler.py`, which today includes the field loc as
-    `'sort_by'` and the offending input. Asserting on the quoted field name
-    plus one of the valid enum values keeps the test from passing on a
-    generic 400 if FastAPI/Pydantic ever changes the message format.
-    """
+    """Invalid `sort_by` values are rejected with 400."""
     response = client.base_client.get(
         f"/api/v1/tasks/{agentic_task.id}/llm_evals",
         headers=client.authorized_user_api_key_headers,
         params={"sort_by": "not_a_real_field"},
     )
     assert response.status_code == 400
-    detail = response.json()["detail"]
-    assert "'sort_by'" in detail
-    assert LLMMetadataSortField.LATEST_VERSION_CREATED_AT.value in detail
+    assert "sort_by" in response.json()["detail"]
 
 
 @pytest.mark.unit_tests

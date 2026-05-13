@@ -2,7 +2,7 @@ import logging
 import os
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Any, Generator, Optional
+from typing import Annotated, Any, Generator, Optional
 from uuid import UUID
 
 from arthur_common.models.llm_model_providers import ModelProvider
@@ -386,9 +386,9 @@ def llm_get_versions_filter_parameters(
     )
 
 
-def llm_metadata_sort_by_parameter(
-    sort_by: LLMMetadataSortField = Query(
-        LLMMetadataSortField.NAME,
+LLMMetadataSortByParam = Annotated[
+    LLMMetadataSortField,
+    Query(
         description=(
             "Field to sort the metadata list by. 'name' (default) preserves the "
             "historical alphabetical ordering. 'latest_version_created_at' orders "
@@ -396,8 +396,7 @@ def llm_metadata_sort_by_parameter(
             "matches the 'last updated' display."
         ),
     ),
-) -> LLMMetadataSortField:
-    return sort_by
+]
 
 
 def llm_get_all_filter_parameters(

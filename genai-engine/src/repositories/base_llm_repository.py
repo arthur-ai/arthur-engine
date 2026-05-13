@@ -241,7 +241,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         query: QueryT,
         pagination_parameters: PaginationParameters,
         sort_column: ColumnElement[Any],
-        secondary_sort_columns: Optional[Sequence[ColumnElement[Any]]] = None,
+        ascending_tiebreaker_columns: Optional[Sequence[ColumnElement[Any]]] = None,
     ) -> Tuple[QueryT, int]:
         """
         Apply sorting and pagination to a query and return the total count.
@@ -250,8 +250,10 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
             query: Query - the SQLAlchemy query to sort and paginate
             pagination_parameters: PaginationParameters - pagination and sorting params
             sort_column - the column or label to sort by
-            secondary_sort_columns - optional ascending tie-breaker columns
-                applied after the primary sort to keep pagination stable
+            ascending_tiebreaker_columns - optional columns applied as `ASC`
+                tie-breakers after the primary sort. Always ascending regardless
+                of `pagination_parameters.sort` so pagination remains stable
+                when the primary sort has duplicate values.
 
         Returns:
             Tuple[Query, int] - the sorted and paginated query, and total count
@@ -262,8 +264,8 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         else:  # ASCENDING or default
             query = query.order_by(asc(sort_column))
 
-        if secondary_sort_columns:
-            query = query.order_by(*(asc(c) for c in secondary_sort_columns))
+        if ascending_tiebreaker_columns:
+            query = query.order_by(*(asc(c) for c in ascending_tiebreaker_columns))
 
         # Get total count BEFORE applying pagination
         total_count = query.count()
@@ -572,17 +574,17 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         # paginate deterministically.
         if sort_by == LLMMetadataSortField.LATEST_VERSION_CREATED_AT:
             primary_sort_column = latest_version_created_at_col
-            secondary_sort_columns = [self.db_model.name]
+            ascending_tiebreaker_columns = [self.db_model.name]
         else:
             primary_sort_column = self.db_model.name
-            secondary_sort_columns = None
+            ascending_tiebreaker_columns = None
 
         # Apply sorting, pagination, and get count
         base_query, total_count = self._apply_sorting_pagination_and_count(
             base_query,
             pagination_parameters,
             primary_sort_column,
-            secondary_sort_columns=secondary_sort_columns,
+            ascending_tiebreaker_columns=ascending_tiebreaker_columns,
         )
 
         results = base_query.all()

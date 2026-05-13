@@ -770,7 +770,7 @@ def test_get_all_llm_eval_metadata_sorted_by_latest_version_created_at(
     Names and update times are deliberately interleaved so that a name-sort
     would yield a different order than the timestamp-sort.
     """
-    task_id = "test_sort_by_updated_task"
+    task_id = f"test_sort_by_updated_task_{uuid4()}"
 
     # Create three evals with two versions each. After save we explicitly
     # rewrite created_at so the test is independent of clock resolution.
@@ -795,6 +795,9 @@ def test_get_all_llm_eval_metadata_sorted_by_latest_version_created_at(
         )
         rows[0].created_at = latest_ts - timedelta(days=1)
         rows[1].created_at = latest_ts
+    # Commit is required so the subsequent SELECTs see the rewritten
+    # `created_at` values; the `finally` block below deletes the rows even
+    # though they were committed.
     llm_evals_repo.db_session.commit()
 
     try:
@@ -866,7 +869,7 @@ def test_get_all_llm_eval_metadata_default_sort_is_name(
     sample_create_eval_request,
 ):
     """Without an explicit sort_by, the default is sort by name (BC)."""
-    task_id = "test_default_sort_name_task"
+    task_id = f"test_default_sort_name_task_{uuid4()}"
 
     # Save in non-alphabetical order so a timestamp-sort would differ.
     for name in ("gamma", "alpha", "beta"):
