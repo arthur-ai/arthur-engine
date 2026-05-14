@@ -2,9 +2,31 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.548"
+        "version": "2.1.563"
     },
     "paths": {
+        "/api/v2/engine-config": {
+            "get": {
+                "tags": [
+                    "Engine Config"
+                ],
+                "summary": "Get Engine Config",
+                "description": "Returns engine-level configuration for the frontend. Public endpoint \u2014 no authentication required.",
+                "operationId": "get_engine_config_api_v2_engine_config_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EngineConfigResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v2/usage/tokens": {
             "get": {
                 "tags": [
@@ -14737,6 +14759,177 @@
                 }
             }
         },
+        "/api/v1/traces/transforms/{transform_id}/versions": {
+            "get": {
+                "tags": [
+                    "Transforms"
+                ],
+                "summary": "List Transform Versions",
+                "description": "List all version snapshots for a transform, ordered by version number descending.",
+                "operationId": "list_transform_versions_api_v1_traces_transforms__transform_id__versions_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "transform_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the transform.",
+                            "title": "Transform Id"
+                        },
+                        "description": "ID of the transform."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListTraceTransformVersionsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/traces/transforms/{transform_id}/versions/{version_id}": {
+            "get": {
+                "tags": [
+                    "Transforms"
+                ],
+                "summary": "Get Transform Version",
+                "description": "Get a specific version snapshot of a transform.",
+                "operationId": "get_transform_version_api_v1_traces_transforms__transform_id__versions__version_id__get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "transform_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the transform.",
+                            "title": "Transform Id"
+                        },
+                        "description": "ID of the transform."
+                    },
+                    {
+                        "name": "version_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the version to fetch.",
+                            "title": "Version Id"
+                        },
+                        "description": "ID of the version to fetch."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TraceTransformVersionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Transforms"
+                ],
+                "summary": "Delete Transform Version",
+                "description": "Delete a specific version of a transform. Returns 409 if it is the only version or is pinned by a continuous eval.",
+                "operationId": "delete_transform_version_api_v1_traces_transforms__transform_id__versions__version_id__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "transform_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the transform.",
+                            "title": "Transform Id"
+                        },
+                        "description": "ID of the transform."
+                    },
+                    {
+                        "name": "version_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the version to delete.",
+                            "title": "Version Id"
+                        },
+                        "description": "ID of the version to delete."
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "409": {
+                        "description": "Version is the only one remaining or is pinned by a continuous eval."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/traces/{trace_id}/transforms/{transform_id}/extractions": {
             "post": {
                 "tags": [
@@ -19487,6 +19680,19 @@
                         "title": "Transform Id",
                         "description": "ID of the transform to create the continuous eval for"
                     },
+                    "transform_version_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Transform Version Id",
+                        "description": "ID of the transform version to pin. When set, the continuous eval will always execute using this version's configuration snapshot."
+                    },
                     "transform_variable_mapping": {
                         "items": {
                             "$ref": "#/components/schemas/ContinuousEvalTransformVariableMappingRequest"
@@ -19579,6 +19785,19 @@
                         "format": "uuid",
                         "title": "Transform Id",
                         "description": "ID of the transform."
+                    },
+                    "transform_version_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Transform Version Id",
+                        "description": "ID of the pinned transform version. When set, the continuous eval will always execute using this version's configuration snapshot."
                     },
                     "transform_variable_mapping": {
                         "items": {
@@ -20917,6 +21136,20 @@
                     "azure"
                 ],
                 "title": "DocumentStorageEnvironment"
+            },
+            "EngineConfigResponse": {
+                "properties": {
+                    "demo_mode": {
+                        "type": "boolean",
+                        "title": "Demo Mode",
+                        "description": "Whether the engine is running in demo mode."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "demo_mode"
+                ],
+                "title": "EngineConfigResponse"
             },
             "EnrichedTaskResponse": {
                 "properties": {
@@ -23937,6 +24170,29 @@
                 ],
                 "title": "ListRagSearchSettingConfigurationsResponse"
             },
+            "ListTraceTransformVersionsResponse": {
+                "properties": {
+                    "versions": {
+                        "items": {
+                            "$ref": "#/components/schemas/TraceTransformVersionResponse"
+                        },
+                        "type": "array",
+                        "title": "Versions",
+                        "description": "List of versions for the transform, ordered by version_number descending."
+                    },
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "Total number of versions."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "versions",
+                    "count"
+                ],
+                "title": "ListTraceTransformVersionsResponse"
+            },
             "ListTraceTransformsResponse": {
                 "properties": {
                     "transforms": {
@@ -26706,7 +26962,19 @@
                             }
                         ],
                         "title": "Api Base",
-                        "description": "The API base URL. Used for VLLM models."
+                        "description": "The API base URL. Required for Azure (endpoint URL) and vLLM models."
+                    },
+                    "api_version": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Api Version",
+                        "description": "The API version. Required for Azure (e.g. '2024-02-01')."
                     },
                     "credentials_file": {
                         "anyOf": [
@@ -31449,10 +31717,6 @@
                         "title": "Description",
                         "description": "Description of the transform."
                     },
-                    "definition": {
-                        "$ref": "#/components/schemas/TraceTransformDefinition",
-                        "description": "Transform definition specifying extraction rules."
-                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
@@ -31471,7 +31735,6 @@
                     "id",
                     "task_id",
                     "name",
-                    "definition",
                     "created_at",
                     "updated_at"
                 ],
@@ -31555,6 +31818,46 @@
                     "attribute_path"
                 ],
                 "title": "TraceTransformVariableDefinition"
+            },
+            "TraceTransformVersionResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id",
+                        "description": "ID of the version."
+                    },
+                    "transform_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Transform Id",
+                        "description": "ID of the parent transform."
+                    },
+                    "version_number": {
+                        "type": "integer",
+                        "title": "Version Number",
+                        "description": "Monotonically increasing version number."
+                    },
+                    "definition": {
+                        "$ref": "#/components/schemas/TraceTransformDefinition",
+                        "description": "Snapshot of the transform definition at the time of this version."
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "Timestamp when this version was created."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "transform_id",
+                    "version_number",
+                    "definition",
+                    "created_at"
+                ],
+                "title": "TraceTransformVersionResponse"
             },
             "TraceUserListResponse": {
                 "properties": {
@@ -32244,6 +32547,19 @@
                         ],
                         "title": "Transform Id",
                         "description": "ID of the transform to create the continuous eval for"
+                    },
+                    "transform_version_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Transform Version Id",
+                        "description": "ID of the transform version to pin. When set, the continuous eval will always execute using this version's configuration snapshot."
                     },
                     "transform_variable_mapping": {
                         "anyOf": [

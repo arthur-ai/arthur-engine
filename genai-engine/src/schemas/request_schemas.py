@@ -97,7 +97,7 @@ class ApplicationConfigurationUpdateRequest(BaseModel):
             self.trace_retention_days not in ALLOWED_TRACE_RETENTION_DAYS
         ):
             raise ValueError(
-                f"trace_retention_days must be one of {ALLOWED_TRACE_RETENTION_DAYS}"
+                f"trace_retention_days must be one of {ALLOWED_TRACE_RETENTION_DAYS}",
             )
         return self
 
@@ -229,7 +229,11 @@ class PutModelProviderCredentials(BaseModel):
     )
     api_base: Optional[SecretStr] = Field(
         default=None,
-        description="The API base URL. Used for VLLM models.",
+        description="The API base URL. Required for Azure (endpoint URL) and vLLM models.",
+    )
+    api_version: Optional[str] = Field(
+        default=None,
+        description="The API version. Required for Azure (e.g. '2024-02-01').",
     )
     credentials_file: Optional[GCPServiceAccountCredentialsRequest] = Field(
         default=None,
@@ -977,6 +981,10 @@ class ContinuousEvalCreateRequest(BaseModel):
     transform_id: UUID = Field(
         description="ID of the transform to create the continuous eval for",
     )
+    transform_version_id: Optional[UUID] = Field(
+        default=None,
+        description="ID of the transform version to pin. When set, the continuous eval will always execute using this version's configuration snapshot.",
+    )
     transform_variable_mapping: List[ContinuousEvalTransformVariableMappingRequest] = (
         Field(
             description="Mapping of transform variables to eval variables.",
@@ -1007,6 +1015,10 @@ class UpdateContinuousEvalRequest(BaseModel):
     transform_id: Optional[UUID] = Field(
         default=None,
         description="ID of the transform to create the continuous eval for",
+    )
+    transform_version_id: Optional[UUID] = Field(
+        default=None,
+        description="ID of the transform version to pin. When set, the continuous eval will always execute using this version's configuration snapshot.",
     )
     transform_variable_mapping: Optional[
         List[ContinuousEvalTransformVariableMappingRequest]

@@ -1,6 +1,6 @@
 [project]
 name = "arthur-genai-engine"
-version = "2.1.548"
+version = "2.1.563"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 readme = "README.md"
@@ -67,7 +67,7 @@ dependencies = [
   "jinja2>=3.1.6,<4",
   "python-benedict>=0.35.0,<0.36",
   "weaviate-client>=4.17.0,<5",
-  "arthur-common==2.4.58",
+  "arthur-common==2.4.59",
   "google-auth>=2.48.0,<3",
   "google-cloud-aiplatform>=1.38",
   "google-cloud-trace>=1.11.0,<2",

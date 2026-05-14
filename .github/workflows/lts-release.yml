@@ -62,18 +62,10 @@ jobs:
         # unlike docker pull/tag/push which only retags the host architecture.
         run: |
           set -e
-          for IMG in genai-engine-cpu genai-engine-gpu ml-engine genai-engine-models genai-engine-models-k8s; do
+          for IMG in genai-engine-cpu genai-engine-gpu ml-engine genai-engine-models-s3 genai-engine-models-gcs genai-engine-models-fs; do
             echo "==== arthurplatform/${IMG}: ${SRC} -> ${LTS} ===="
             docker buildx imagetools create --tag "arthurplatform/${IMG}:${LTS}" "arthurplatform/${IMG}:${SRC}"
           done
-      - name: Retag arthur-model-upload on Docker Hub
-        env:
-          SRC: ${{ steps.src.outputs.source }}
-          LTS: ${{ github.ref_name }}
-        run: |
-          set -e
-          echo "==== arthurplatform/arthur-model-upload: ${SRC}-gcp -> ${LTS}-gcp ===="
-          docker buildx imagetools create --tag "arthurplatform/arthur-model-upload:${LTS}-gcp" "arthurplatform/arthur-model-upload:${SRC}-gcp"
 
   # ── 2. Package + push Helm charts (genai-engine, ml-engine) ─────────────
   publish-helm-charts:

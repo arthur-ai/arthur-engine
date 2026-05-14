@@ -1,0 +1,55 @@
+# Job to copy models from container to PVC
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: arthur-genai-engine-models-k8s
+  labels:
+    app: arthur-genai-engine-models-k8s
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 3600  # 1 hour
+  ttlSecondsAfterFinished: 86400  # Keep completed job for 24 hours
+  template:
+    metadata:
+      labels:
+        app: arthur-genai-engine-models-k8s
+    spec:
+      imagePullSecrets:
+        - name: arthurai-repo-creds
+      serviceAccountName: arthur-genai-engine-models-k8s-sa
+      restartPolicy: Never
+      containers:
+      - name: model-upload
+        image: arthurplatform/genai-engine-models-fs:<genai_engine_models_version>  # Use version tag to ensure new image is pulled
+        imagePullPolicy: Always  # Always pull to get the new version
+        command: ["python", "-u", "/app/upload_models.py"]
+        env:
+        - name: SOURCE_DIR
+          value: "/models"  # Models are pre-downloaded here in the container
+        - name: TARGET_DIR
+          value: "/models-output"  # Mounted PVC location
+        - name: LOG_LEVEL
+          value: "INFO"
+        volumeMounts:
+        - name: models-storage
+          mountPath: /models-output
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "1000m"
+            memory: "1Gi"
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000760000  # UID in allowed range for restricted-v2 SCC [1000760000, 1000769999]
+          runAsGroup: 1000760000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+              - ALL
+      volumes:
+      - name: models-storage
+        persistentVolumeClaim:
+          claimName: arthur-models-pvc
