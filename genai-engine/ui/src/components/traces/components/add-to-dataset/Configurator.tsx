@@ -4,14 +4,14 @@ import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import { Alert, Autocomplete, Badge, Button, Skeleton, TextField, Tooltip, Typography } from "@mui/material";
 import { Stack } from "@mui/material";
 import { Link } from "@mui/material";
-import { useField } from "@tanstack/react-form";
+import { useField, useStore } from "@tanstack/react-form";
 import { useEffect, useRef } from "react";
 import { Link as RouterLink } from "react-router-dom";
 
 import { withForm } from "../filtering/hooks/form";
 
 import { FillFromObjectButton } from "./FillFromObjectButton";
-import { addToDatasetFormOptions, Column } from "./form/shared";
+import { addToDatasetFormOptions, Column, hasSelectedTransform } from "./form/shared";
 import { SpanSelector } from "./SpanSelector";
 
 import { MAX_DATASET_ROWS } from "@/constants/datasetConstants";
@@ -23,23 +23,29 @@ export const Configurator = withForm({
   ...addToDatasetFormOptions,
   props: {} as {
     dataset: DatasetResponse;
+    datasetSchemaColumns: string[];
     spans: NestedSpanWithMetricsResponse[];
     onAddColumn: () => void;
+    ignoredTransformVariables: string[];
   },
-  render: function Render({ form, dataset, spans, onAddColumn }) {
+  render: function Render({ form, dataset, datasetSchemaColumns, spans, onAddColumn, ignoredTransformVariables }) {
     const { task } = useTask();
     const ref = useRef<HTMLDivElement>(null);
     const { version, isLoading } = useDatasetVersionData(dataset.id, dataset.latest_version_number!, 0, 1);
 
-    useEffect(() => {
-      if (!version) return;
+    const transform = useStore(form.store, (state) => state.values.transform);
+    const transformSelected = hasSelectedTransform(transform);
 
-      // Get existing columns (from transform or previous state)
-      const existingColumns = form.state.values.columns || [];
+    useEffect(() => {
+      // When a transform is selected, transform-selector is authoritative for
+      // the columns array. Skip seeding here to avoid re-introducing dropped
+      // transform-only variables or stale entries.
+      if (transformSelected) return;
+
+      const existingColumns = form.state.values.columns ?? [];
       const existingColumnNames = new Set(existingColumns.map((col) => col.name));
 
-      // Add dataset columns that don't exist yet
-      const newColumns = version.column_names
+      const additions = datasetSchemaColumns
         .filter((columnName) => !existingColumnNames.has(columnName))
         .map((columnName) => ({
           name: columnName,
@@ -47,9 +53,10 @@ export const Configurator = withForm({
           path: "",
         }));
 
-      // Merge existing columns with new dataset columns
-      form.setFieldValue("columns", [...existingColumns, ...newColumns]);
-    }, [form, version]);
+      if (additions.length === 0) return;
+
+      form.setFieldValue("columns", [...existingColumns, ...additions]);
+    }, [form, datasetSchemaColumns, transformSelected]);
 
     const field = useField({ form, name: "columns" as const });
 
@@ -81,6 +88,13 @@ export const Configurator = withForm({
 
     return (
       <Stack direction="column" gap={2}>
+        {transformSelected && ignoredTransformVariables.length > 0 && (
+          <Alert severity="warning">
+            The following transform {ignoredTransformVariables.length === 1 ? "variable is" : "variables are"} not part of this dataset's schema and
+            will be ignored: {ignoredTransformVariables.join(", ")}. Add a matching column to the dataset to capture{" "}
+            {ignoredTransformVariables.length === 1 ? "it" : "them"}.
+          </Alert>
+        )}
         {field.state.value.length > 0 && <FillFromObjectButton spans={spans} columns={field.state.value} onFillColumns={handleFillColumns} />}
         <div className="grid grid-cols-[1fr_2fr] gap-2" ref={ref}>
           {field.state.value.map((column, index) => (

@@ -32,12 +32,13 @@ export const TransformSelector = withFieldGroup({
   props: {} as {
     traceId: string;
     flatSpans: NestedSpanWithMetricsResponse[];
+    datasetSchemaColumns: string[];
   },
-  render: function Render({ group, traceId, flatSpans }) {
+  render: function Render({ group, traceId, flatSpans, datasetSchemaColumns }) {
     const dataset = useStore(group.store, (state) => state.values.dataset);
     const transform = useStore(group.store, (state) => state.values.transform);
 
-    const { latestVersion } = useDatasetLatestVersion(dataset);
+    const { latestVersion, isLoading: isLoadingLatestVersion } = useDatasetLatestVersion(dataset);
 
     const { data } = useTransforms();
     const transforms = data?.transforms;
@@ -48,23 +49,34 @@ export const TransformSelector = withFieldGroup({
     const selectedTransformDefinition = selectedTransformVersions[0]?.definition;
 
     const executeTransformMutation = useExecuteTransform(traceId, {
-      onSuccess: (data) => {
-        if (!data.variables.length || !selectedTransform) return;
+      onSuccess: (executionResult) => {
+        if (!executionResult.variables.length || !selectedTransform || !selectedTransformDefinition) return;
 
-        const executedColumns = data.variables.map((variable) => {
-          const variableDef = selectedTransformDefinition?.variables.find((v) => v.variable_name === variable.name);
+        // If the dataset schema hasn't loaded yet (e.g. a stale mutation resolved
+        // after the user switched datasets), skip applying transform results.
+        // The Autocomplete is also disabled while loading, so this is a backstop.
+        if (!latestVersion) return;
+
+        const transformVariablesByName = new Map(selectedTransformDefinition.variables.map((v) => [v.variable_name, v]));
+        const executedValuesByName = new Map(executionResult.variables.map((v) => [v.name, v.value]));
+
+        // Dataset schema is the source of truth: iterate its columns and fill
+        // values from any matching transform variable. Transform variables that
+        // don't match a dataset column are intentionally dropped here; the
+        // Configurator surfaces them in an inline warning.
+        const columns = datasetSchemaColumns.map((columnName) => {
+          const variableDef = transformVariablesByName.get(columnName);
 
           if (!variableDef) {
             return {
-              name: variable.name,
-              value: variable.value,
+              name: columnName,
+              value: "",
               path: "",
               span_name: "",
               attribute_path: "",
             };
           }
 
-          // Validate that the path exists in the trace data
           const span = flatSpans.find((s) => s.span_name === variableDef.span_name);
           let validatedPath = "";
           let validatedSpanName = "";
@@ -72,11 +84,11 @@ export const TransformSelector = withFieldGroup({
 
           if (span) {
             const hasWildcard = variableDef.attribute_path.includes("*");
-            const data = hasWildcard
+            const extracted = hasWildcard
               ? getNestedValueWildcard(span.raw_data, variableDef.attribute_path)
               : getNestedValue(span.raw_data, variableDef.attribute_path);
 
-            if (data !== undefined && (Array.isArray(data) ? data.length > 0 : true)) {
+            if (extracted !== undefined && (Array.isArray(extracted) ? extracted.length > 0 : true)) {
               validatedPath = `${variableDef.span_name}.${variableDef.attribute_path}`;
               validatedSpanName = variableDef.span_name;
               validatedAttributePath = variableDef.attribute_path;
@@ -84,29 +96,15 @@ export const TransformSelector = withFieldGroup({
           }
 
           return {
-            name: variable.name,
-            value: variable.value,
+            name: columnName,
+            value: executedValuesByName.get(columnName) ?? "",
             path: validatedPath,
             span_name: validatedSpanName,
             attribute_path: validatedAttributePath,
           };
         });
 
-        const existingDatasetColumns = latestVersion?.column_names || [];
-        const executedColumnNames = new Set(executedColumns.map((col) => col.name));
-
-        // Create columns for dataset columns that aren't in the transform
-        const datasetOnlyColumns = existingDatasetColumns
-          .filter((columnName) => !executedColumnNames.has(columnName))
-          .map((columnName) => ({
-            name: columnName,
-            value: "",
-            path: "",
-            span_name: "",
-            attribute_path: "",
-          }));
-
-        group.setFieldValue("columns", [...executedColumns, ...datasetOnlyColumns]);
+        group.setFieldValue("columns", columns);
       },
     });
 
@@ -124,24 +122,24 @@ export const TransformSelector = withFieldGroup({
       >
         {(field) => {
           const selected = transforms?.find((t) => t.id === field.state.value) ?? null;
+          const isDisabled = !dataset || isLoadingLatestVersion;
+          const helperText = !dataset
+            ? "Select a dataset first"
+            : isLoadingLatestVersion
+              ? "Loading dataset schema…"
+              : !transforms
+                ? "No transforms available for this dataset"
+                : "Select a saved transform";
 
           return (
             <Autocomplete
               loading={executeTransformMutation.isPending}
               options={transforms ?? []}
               value={selected}
-              disabled={!dataset}
+              disabled={isDisabled}
               disablePortal
               sx={{ flex: 1 }}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Transform"
-                  helperText={
-                    !dataset ? "Select a dataset first" : !transforms ? "No transforms available for this dataset" : "Select a saved transform"
-                  }
-                />
-              )}
+              renderInput={(params) => <TextField {...params} label="Transform" helperText={helperText} />}
               onChange={(_event, value) => field.handleChange(value?.id ?? "")}
               renderOption={(props, option) => {
                 return (
