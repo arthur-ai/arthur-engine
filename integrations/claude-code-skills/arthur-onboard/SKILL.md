@@ -110,7 +110,13 @@ It is **separate** from the eval model provider in Step 8, which is configured v
 Before launching the sub-agent, tell the user:
 > "Starting the Arthur GenAI Engine installer now. **Note:** the first time the engine starts, it needs to download several AI models (this can take 10–15 minutes depending on your connection). I'll keep you updated as it boots."
 
-Now delegate to a sub-agent using the Agent tool. **IMPORTANT: set `run_in_background=false` (the default) — do NOT background this agent.** The user needs to see the engine logs streaming in real-time during startup. Fill in the values collected above:
+Then run this to capture a timestamp before the installer starts (you'll use it later to display startup logs):
+```bash
+date -u "+%Y-%m-%dT%H:%M:%SZ"
+```
+Remember this value as `PRE_INSTALL_TIME`.
+
+Now delegate to a sub-agent using the Agent tool. **IMPORTANT: set `run_in_background=false` (the default) — do NOT background this agent.** Fill in the values collected above:
 
 **Mac/Linux sub-agent prompt:**
 ```
@@ -162,58 +168,41 @@ After sub-agent:
 - Set `ARTHUR_ENGINE_URL=http://localhost:3030`
 - Save both to state file
 
-Then **run the engine readiness poll directly yourself** — do NOT delegate this to a sub-agent. Run it as your own Bash call with `timeout: 600000` so the docker logs stream visibly to the user in real-time.
+Then poll for engine readiness by making **individual Bash calls — one per check cycle, NOT a single long loop**. Each completed call's output is immediately visible in the conversation. Make calls roughly 10 seconds apart until the engine is ready or 10 minutes have elapsed.
 
-**Mac/Linux — run directly:**
+Use `PRE_INSTALL_TIME` (captured before the installer ran) as the initial `--since` value so the first check shows all startup logs. Each call prints `NEXT_LOG_SINCE` — use that as `--since` for the next call.
+
+**Each individual Bash call (Mac/Linux):**
 ```bash
 COMPOSE_DIR="$HOME/.arthur-engine/local-stack/genai-engine"
-echo "Waiting for engine to be ready — logs will appear below..."
-LOG_SINCE=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
-STATUS="000"
-for i in $(seq 1 120); do
-  sleep 5
-  if [ -f "$COMPOSE_DIR/docker-compose.yml" ]; then
-    docker compose -f "$COMPOSE_DIR/docker-compose.yml" logs --no-color --since="$LOG_SINCE" 2>&1 || true
-    LOG_SINCE=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
-  fi
-  STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3030/api/v2/tasks?page=0&page_size=1" 2>/dev/null || echo "000")
-  if [ "$STATUS" = "200" ] || [ "$STATUS" = "401" ]; then
-    echo "ENGINE_READY=true elapsed=$((i*5))s"
-    break
-  fi
-  if [ $((i % 6)) -eq 0 ]; then
-    echo "--- still starting: $((i*5/60))m$((i*5%60))s elapsed ---"
-  fi
-done
-[ "$STATUS" != "200" ] && [ "$STATUS" != "401" ] && echo "ENGINE_READY=false"
+sleep 10
+if [ -f "$COMPOSE_DIR/docker-compose.yml" ]; then
+  docker compose -f "$COMPOSE_DIR/docker-compose.yml" logs --no-color \
+    --since="<LAST_LOG_SINCE>" 2>&1 || true
+fi
+echo "NEXT_LOG_SINCE=$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+  "http://localhost:3030/api/v2/tasks?page=0&page_size=1" 2>/dev/null || echo "000")
+echo "ENGINE_STATUS=$STATUS"
 ```
 
-**Windows — run directly:**
+Replace `<LAST_LOG_SINCE>` with `PRE_INSTALL_TIME` on the first call, then with `NEXT_LOG_SINCE` from the previous call on each subsequent call.
+
+**Each individual Bash call (Windows):**
 ```bash
-COMPOSE_DIR="$USERPROFILE/.arthur-engine/local-stack/genai-engine"
-echo "Waiting for engine to be ready — logs will appear below..."
-LOG_SINCE=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
-STATUS="000"
-COMPOSE_FILE=$(wslpath "$COMPOSE_DIR/docker-compose.yml" 2>/dev/null || echo "$COMPOSE_DIR/docker-compose.yml")
-for i in $(seq 1 120); do
-  sleep 5
-  if [ -f "$COMPOSE_FILE" ]; then
-    docker compose -f "$COMPOSE_FILE" logs --no-color --since="$LOG_SINCE" 2>&1 || true
-    LOG_SINCE=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
-  fi
-  STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3030/api/v2/tasks?page=0&page_size=1" 2>/dev/null || echo "000")
-  if [ "$STATUS" = "200" ] || [ "$STATUS" = "401" ]; then
-    echo "ENGINE_READY=true elapsed=$((i*5))s"
-    break
-  fi
-  if [ $((i % 6)) -eq 0 ]; then
-    echo "--- still starting: $((i*5/60))m$((i*5%60))s elapsed ---"
-  fi
-done
-[ "$STATUS" != "200" ] && [ "$STATUS" != "401" ] && echo "ENGINE_READY=false"
+COMPOSE_FILE=$(wslpath "$USERPROFILE/.arthur-engine/local-stack/genai-engine/docker-compose.yml" \
+  2>/dev/null || echo "$USERPROFILE/.arthur-engine/local-stack/genai-engine/docker-compose.yml")
+sleep 10
+if [ -f "$COMPOSE_FILE" ]; then
+  docker compose -f "$COMPOSE_FILE" logs --no-color --since="<LAST_LOG_SINCE>" 2>&1 || true
+fi
+echo "NEXT_LOG_SINCE=$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+  "http://localhost:3030/api/v2/tasks?page=0&page_size=1" 2>/dev/null || echo "000")
+echo "ENGINE_STATUS=$STATUS"
 ```
 
-If `ENGINE_READY=false` (timed out at 10 min): first-time model downloads may need more time. Ask the user if they want to keep waiting and, if so, run the poll script again.
+Stop when `ENGINE_STATUS=200` or `ENGINE_STATUS=401`. Max 60 calls (~10 min). If not ready after 60 calls: inform the user and ask if they want to keep waiting.
 
 **Option B — Remote:**
 
