@@ -42,7 +42,7 @@ The SDK has three layers:
 
 **`setup_telemetry`** (`telemetry.py`) — creates a `TracerProvider` with a `BatchSpanProcessor` backed by an OTLP HTTP exporter. Passes `Authorization: Bearer {api_key}` in the exporter headers. Called by `Arthur.__init__` when `enable_telemetry=True`. Registers the provider globally via `trace.set_tracer_provider()`.
 
-**`ArthurAPIClient`** (`_client.py`) — thin wrapper around the generated `arthur_genai_client`. Exposes `get_prompt_by_version`, `get_prompt_by_tag`, `render_prompt`, and `resolve_task_id`. All `ApiException`s are converted to `ArthurAPIError(status_code, detail)`.
+**`ArthurAPIClient`** (`_client.py`) — thin wrapper around the generated `arthur_genai_client`. Exposes `get_prompt_by_version`, `get_prompt_by_tag`, `render_prompt`, `validate_prompt`, `validate_response`, and `resolve_task_id`. All `ApiException`s are converted to `ArthurAPIError(status_code, detail)`.
 
 ## Generated Client (`arthur_genai_client`)
 
@@ -52,7 +52,7 @@ This package is auto-generated from `genai-engine/staging.openapi.json` using Op
 ./scripts/generate_openapi_client.sh generate python
 ```
 
-`ArthurAPIClient` uses only `PromptsApi` and `TasksApi`. Two calling styles are acceptable depending on the response shape:
+`ArthurAPIClient` uses `PromptsApi`, `TasksApi`, and `TaskBasedValidationApi`. Two calling styles are acceptable depending on the response shape:
 
 **Use `*_with_http_info()` + `response.raw_data`** when the response contains fields that the generated Pydantic models cannot reliably serialise:
 ```python
@@ -77,7 +77,14 @@ Use `*_with_http_info()` + `raw_data` whenever the response includes prompts, me
 
 **Task ID resolution** is lazy: if `task_name` is given instead of `task_id`, the name is resolved to a UUID on the first prompt call via `_api_client.resolve_task_id()` and cached in `_resolved_task_id`.
 
-**PROMPT spans** (`get_prompt`, `render_prompt`) are created manually, not via an instrumentor. Because of this they bypass the OpenInference span processor, so `_apply_openinference_context()` must be called explicitly to copy `session.id`, `user.id`, etc. from the OTel context onto the span.
+**PROMPT spans** (`get_prompt`, `render_prompt`) and **GUARDRAIL spans** (`validate_prompt`, `validate_response`) are created manually, not via an instrumentor. Because of this they bypass the OpenInference span processor, so `_apply_openinference_context()` must be called explicitly to copy `session.id`, `user.id`, etc. from the OTel context onto the span.
+
+**`validate_prompt` / `validate_response` span attributes**:
+- `openinference.span.kind` → `GUARDRAIL`
+- `arthur.task.id` → resolved task UUID
+- `arthur.inference.id` → from the API response (`validate_prompt`) or from the caller-supplied parameter (`validate_response`)
+- `input.value` → JSON-encoded `{"prompt": ...}` or `{"response": ..., "context": ...}`
+- `output.value` → JSON-encoded `ValidationResult` dict
 
 **`render_prompt` span attributes** deliberately distinguish template from result:
 - `llm.prompt_template` / `input.value` → original unrendered messages + variable values

@@ -12,11 +12,18 @@ import logging
 from typing import Any, Dict, Optional
 
 from arthur_genai_client.api.prompts_api import PromptsApi
+from arthur_genai_client.api.task_based_validation_api import TaskBasedValidationApi
 from arthur_genai_client.api.tasks_api import TasksApi
 from arthur_genai_client.api_client import ApiClient
 from arthur_genai_client.configuration import Configuration
 from arthur_genai_client.exceptions import (
     ApiException,
+)
+from arthur_genai_client.models.prompt_validation_request import (
+    PromptValidationRequest,
+)
+from arthur_genai_client.models.response_validation_request import (
+    ResponseValidationRequest,
 )
 from arthur_genai_client.models.saved_prompt_rendering_request import (
     SavedPromptRenderingRequest,
@@ -64,6 +71,7 @@ class ArthurAPIClient:
         self._api_client = ApiClient(configuration=config)
         self._prompts_api = PromptsApi(api_client=self._api_client)
         self._tasks_api = TasksApi(api_client=self._api_client)
+        self._validation_api = TaskBasedValidationApi(api_client=self._api_client)
 
     def get_prompt_by_version(self, task_id: str, name: str, version: str) -> Dict[str, Any]:
         try:
@@ -116,6 +124,43 @@ class ArthurAPIClient:
         except ApiException as exc:
             raise _api_exception_to_arthur(exc) from exc
         return json.loads(response.raw_data)
+
+    def validate_prompt(self, task_id: str, prompt: str) -> Dict[str, Any]:
+        """
+        POST to ``/api/v2/tasks/{task_id}/validate_prompt``. Returns the parsed
+        ``ValidationResult`` dict ``{"inference_id": ..., "rule_results": [...]}``.
+        """
+        request = PromptValidationRequest(prompt=prompt)
+        try:
+            response = self._validation_api.validate_prompt_endpoint_api_v2_tasks_task_id_validate_prompt_post_with_http_info(
+                task_id=task_id,
+                prompt_validation_request=request,
+            )
+        except ApiException as exc:
+            raise _api_exception_to_arthur(exc) from exc
+        return json.loads(response.raw_data)
+
+    def validate_response(
+        self,
+        task_id: str,
+        inference_id: str,
+        response: str,
+        context: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        POST to ``/api/v2/tasks/{task_id}/validate_response/{inference_id}``.
+        Returns the parsed ``ValidationResult`` dict.
+        """
+        request = ResponseValidationRequest(response=response, context=context)
+        try:
+            api_response = self._validation_api.validate_response_endpoint_api_v2_tasks_task_id_validate_response_inference_id_post_with_http_info(
+                inference_id=inference_id,
+                task_id=task_id,
+                response_validation_request=request,
+            )
+        except ApiException as exc:
+            raise _api_exception_to_arthur(exc) from exc
+        return json.loads(api_response.raw_data)
 
     def resolve_task_id(self, task_name: str) -> str:
         """
