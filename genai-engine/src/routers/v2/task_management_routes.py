@@ -582,7 +582,7 @@ def create_demo_task(
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> TaskResponse:
-    if not Config.demo_mode_enabled():
+    if not Config.demo_mode():
         raise HTTPException(
             status_code=400,
             detail="Demo mode is not enabled",
