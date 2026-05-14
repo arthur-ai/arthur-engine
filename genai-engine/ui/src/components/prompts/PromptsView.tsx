@@ -8,6 +8,10 @@ import Notebooks from "../notebooks/Notebooks";
 import { PromptExperimentsView } from "../prompt-experiments/PromptExperimentsView";
 import PromptsManagement from "../prompts-management/PromptsManagement";
 
+import { DATA_TOUR } from "@/components/onboarding/data-tour";
+import { useCompleteStep } from "@/components/onboarding/hooks/useCompleteStep";
+import { useStepAction } from "@/components/onboarding/hooks/useStepAction";
+import { STEP_IDS } from "@/components/onboarding/steps";
 import { getContentHeight } from "@/constants/layout";
 
 const TAB_TITLES: Record<string, string> = {
@@ -29,12 +33,30 @@ export const PromptsView = () => {
   );
 
   const [experimentsMenuAnchor, setExperimentsMenuAnchor] = useState<null | HTMLElement>(null);
+  const experimentButtonRef = useRef<HTMLButtonElement>(null);
+
+  const completeRunExperimentStep = useCompleteStep(STEP_IDS.RUN_EXPERIMENT);
+  const completeChooseExperimentTypeStep = useCompleteStep(STEP_IDS.CHOOSE_EXPERIMENT_TYPE);
 
   // Stable create handler refs — children register their handlers on mount
   const notebooksCreateFn = useRef<() => void>(() => {});
   const promptsCreateFn = useRef<() => void>(() => {});
   const experimentsCreateFn = useRef<() => void>(() => {});
   const experimentsCreateFromExistingFn = useRef<() => void>(() => {});
+
+  const handleCreateNewExperiment = () => {
+    setExperimentsMenuAnchor(null);
+    experimentsCreateFn.current();
+    completeChooseExperimentTypeStep();
+  };
+
+  // The tour's Next button funnels through the same code paths the user takes,
+  // so completion fires exactly once via the onClick / shared helper.
+  useStepAction(STEP_IDS.RUN_EXPERIMENT, () => {
+    experimentButtonRef.current?.click();
+  });
+
+  useStepAction(STEP_IDS.CHOOSE_EXPERIMENT_TYPE, handleCreateNewExperiment);
 
   // Stable registration callbacks (extracted from refs so identity never changes)
   const registerNotebooksCreate = useRef((fn: () => void) => {
@@ -89,11 +111,16 @@ export const PromptsView = () => {
         {activeTab === "prompt-experiments" && (
           <>
             <Button
+              ref={experimentButtonRef}
               variant="contained"
               color="primary"
               startIcon={<AddIcon />}
               endIcon={<ArrowDropDownIcon />}
-              onClick={(e) => setExperimentsMenuAnchor(e.currentTarget)}
+              onClick={(e) => {
+                setExperimentsMenuAnchor(e.currentTarget);
+                completeRunExperimentStep();
+              }}
+              data-tour={DATA_TOUR.CREATE_EXPERIMENT_BUTTON}
             >
               Experiment
             </Button>
@@ -105,18 +132,12 @@ export const PromptsView = () => {
               transformOrigin={{ vertical: "top", horizontal: "right" }}
               slotProps={{ paper: { sx: { minWidth: experimentsMenuAnchor?.offsetWidth } } }}
             >
-              <MenuItem
-                onClick={() => {
-                  setExperimentsMenuAnchor(null);
-                  experimentsCreateFn.current();
-                }}
-              >
-                Create New
-              </MenuItem>
+              <MenuItem onClick={handleCreateNewExperiment}>Create New</MenuItem>
               <MenuItem
                 onClick={() => {
                   setExperimentsMenuAnchor(null);
                   experimentsCreateFromExistingFn.current();
+                  completeChooseExperimentTypeStep();
                 }}
               >
                 Create from Existing

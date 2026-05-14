@@ -13,6 +13,14 @@ import { Link, Typography } from "@mui/material";
 import React from "react";
 import { useParams } from "react-router-dom";
 
+import { DATA_TOUR, type DataTourValue } from "@/components/onboarding/data-tour";
+
+const TOUR_ATTR_BY_NAV_ID: Partial<Record<string, DataTourValue>> = {
+  traces: DATA_TOUR.NAV_TRACES,
+  datasets: DATA_TOUR.NAV_DATASETS,
+  prompts: DATA_TOUR.NAV_PROMPTS,
+};
+
 interface SidebarNavigationProps {
   onBackToDashboard: () => void;
   onNavigate: (sectionId: string) => void;
@@ -113,6 +121,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
           {navigationSections.flatMap((section) =>
             section.items.map((item) => {
               const isActive = item.id === activeSection;
+              const tourAttr = TOUR_ATTR_BY_NAV_ID[item.id];
               return (
                 <li key={item.id}>
                   <Link
@@ -122,6 +131,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
                       e.preventDefault();
                       onNavigate(item.id);
                     }}
+                    data-tour={tourAttr}
                     className={`w-full text-left px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 flex items-center gap-3 ${
                       isActive
                         ? "text-blue-700 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/30"

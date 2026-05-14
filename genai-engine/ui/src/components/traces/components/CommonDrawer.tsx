@@ -7,6 +7,7 @@ import { useSelection } from "../hooks/useSelection";
 
 import { TraceContentSkeleton } from "./TraceDrawerContent";
 
+import { DATA_TOUR } from "@/components/onboarding/data-tour";
 import { EVENT_NAMES, track } from "@/services/amplitude";
 import { createTitle } from "@/utils/title";
 
@@ -85,7 +86,11 @@ export const CommonDrawer = () => {
           console.error(`Unknown drawer target: ${target}`);
           return null;
         }
-        return <Content id={contentId} />;
+        return (
+          <div data-tour={DATA_TOUR.TRACE_DRAWER} style={{ height: "100%" }}>
+            <Content id={contentId} />
+          </div>
+        );
       }}
       title={current ? createTitle(`${capitalize(current.target)} Details - ${current.id}`) : undefined}
       skeleton={<TraceContentSkeleton />}

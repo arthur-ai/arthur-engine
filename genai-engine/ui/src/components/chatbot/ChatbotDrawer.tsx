@@ -7,6 +7,10 @@ import { useEffect, useRef, useState } from "react";
 
 import { ChatMessage, ThinkingIndicator, ToolCallIndicator } from "./ChatMessage";
 
+import { DATA_TOUR } from "@/components/onboarding/data-tour";
+import { useCompleteStep } from "@/components/onboarding/hooks/useCompleteStep";
+import { useStepAction } from "@/components/onboarding/hooks/useStepAction";
+import { getStepDemo, STEP_IDS } from "@/components/onboarding/steps";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useChatbot } from "@/hooks/useChatbot";
 
@@ -20,6 +24,21 @@ export function ChatbotDrawer({ taskId }: ChatbotDrawerProps) {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLElement>(null);
   const { messages, isStreaming, activeToolCall, sendMessage, clearConversation, abort } = useChatbot(taskId);
+  const completeOpenChatStep = useCompleteStep(STEP_IDS.OPEN_CHAT);
+  const completeSendMessageStep = useCompleteStep(STEP_IDS.SEND_MESSAGE);
+
+  useStepAction(STEP_IDS.OPEN_CHAT, () => {
+    setOpen(true);
+    completeOpenChatStep();
+  });
+
+  useStepAction(STEP_IDS.SEND_MESSAGE, () => {
+    const message = getStepDemo(STEP_IDS.SEND_MESSAGE)?.message;
+    if (!message) return;
+    setInput("");
+    sendMessage(message);
+    completeSendMessageStep();
+  });
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -27,11 +46,17 @@ export function ChatbotDrawer({ taskId }: ChatbotDrawerProps) {
 
   if (!chatbotEnabled) return null;
 
+  const handleOpen = () => {
+    setOpen(true);
+    completeOpenChatStep();
+  };
+
   const handleSend = () => {
     const trimmed = input.trim();
     if (!trimmed || isStreaming) return;
     setInput("");
     sendMessage(trimmed);
+    completeSendMessageStep();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -44,7 +69,7 @@ export function ChatbotDrawer({ taskId }: ChatbotDrawerProps) {
   return (
     <>
       {!open && (
-        <Fab color="primary" onClick={() => setOpen(true)} sx={{ position: "fixed", bottom: 24, right: 24, zIndex: 1200 }}>
+        <Fab color="primary" onClick={handleOpen} sx={{ position: "fixed", bottom: 24, right: 24, zIndex: 1200 }} data-tour={DATA_TOUR.CHATBOT_FAB}>
           <ChatIcon />
         </Fab>
       )}
@@ -64,6 +89,7 @@ export function ChatbotDrawer({ taskId }: ChatbotDrawerProps) {
             borderRadius: 3,
             overflow: "hidden",
           }}
+          data-tour={DATA_TOUR.CHATBOT_PANEL}
         >
           <Stack sx={{ height: "100%" }}>
             {/* Header */}
