@@ -1,31 +1,40 @@
 from datetime import datetime
 from typing import List
 
-from arthur_common.models.llm_model_providers import MessageRole, ModelProvider, OpenAIMessage
+from arthur_common.models.llm_model_providers import (
+    MessageRole,
+    ModelProvider,
+    OpenAIMessage,
+)
 from sqlalchemy.orm import Session
 
 from clients.llm.llm_client import LLMClient
+from repositories.agentic_prompts_repository import AgenticPromptRepository
 from repositories.continuous_evals_repository import ContinuousEvalsRepository
 from repositories.datasets_repository import DatasetRepository
-from repositories.agentic_prompts_repository import AgenticPromptRepository
 from repositories.llm_evals_repository import LLMEvalsRepository
 from repositories.model_provider_repository import ModelProviderRepository
 from repositories.trace_transform_repository import TraceTransformRepository
 from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.internal_schemas import Dataset, NewTraceTransformRequest
-from schemas.request_schemas import ContinuousEvalCreateRequest, ContinuousEvalTransformVariableMappingRequest, CreateEvalRequest, CreateAgenticPromptRequest
+from schemas.request_schemas import (
+    ContinuousEvalCreateRequest,
+    ContinuousEvalTransformVariableMappingRequest,
+    CreateAgenticPromptRequest,
+    CreateEvalRequest,
+)
 from schemas.response_schemas import TraceTransformVersionResponse
 from services.prompt.chat_completion_service import ChatCompletionService
 from services.trace.internal_trace_service import InternalTraceService
 from utils.demo_task_resources import (
+    DEMO_TASK_CONCISENESS_EVAL_PROMPT,
+    DEMO_TASK_CONCISENESS_EVAL_TRANSFORM,
     DEMO_TASK_DATASET_REQUEST,
     DEMO_TASK_DATASET_ROWS,
     DEMO_TASK_DATASET_VERSION_REQUEST,
     DEMO_TASK_PROMPT_ADHERENCE_EVAL_PROMPT,
     DEMO_TASK_PROMPT_ADHERENCE_EVAL_TRANSFORM,
     DEMO_TASK_SYSTEM_PROMPT,
-    DEMO_TASK_CONCISENESS_EVAL_PROMPT,
-    DEMO_TASK_CONCISENESS_EVAL_TRANSFORM,
 )
 
 
@@ -42,24 +51,36 @@ class DemoTaskRepository:
         self.demo_prompt_name = "demo_task_prompt"
 
     def _get_model_provider_and_name(self) -> tuple[ModelProvider, str]:
-        if self.model_provider_repo.get_model_provider_client(ModelProvider.ANTHROPIC) is not None:
+        if (
+            self.model_provider_repo.get_model_provider_client(ModelProvider.ANTHROPIC)
+            is not None
+        ):
             return ModelProvider.ANTHROPIC, "claude-sonnet-4-6"
-        if self.model_provider_repo.get_model_provider_client(ModelProvider.OPENAI) is not None:
+        if (
+            self.model_provider_repo.get_model_provider_client(ModelProvider.OPENAI)
+            is not None
+        ):
             return ModelProvider.OPENAI, "gpt-4o"
         else:
             raise ValueError("No model provider found")
 
-    def _create_transform_variable_mapping(self, transform_version: TraceTransformVersionResponse) -> List[ContinuousEvalTransformVariableMappingRequest]:
+    def _create_transform_variable_mapping(
+        self,
+        transform_version: TraceTransformVersionResponse,
+    ) -> List[ContinuousEvalTransformVariableMappingRequest]:
         return [
             ContinuousEvalTransformVariableMappingRequest(
-                transform_variable=transform_version.definition.variables[i].variable_name,
+                transform_variable=transform_version.definition.variables[
+                    i
+                ].variable_name,
                 eval_variable=transform_version.definition.variables[i].variable_name,
-            ) for i in range(len(transform_version.definition.variables))
+            )
+            for i in range(len(transform_version.definition.variables))
         ]
 
     def _create_continuous_eval(
-        self, 
-        task_id: str, 
+        self,
+        task_id: str,
         eval_name: str,
         eval_instructions: str,
         continuous_eval_name: str,
@@ -70,7 +91,7 @@ class DemoTaskRepository:
     ) -> None:
         llm_eval = self.llm_evals_repo.save_llm_item(
             task_id=task_id,
-            item_name = eval_name,
+            item_name=eval_name,
             item=CreateEvalRequest(
                 model_name=model_name,
                 model_provider=model_provider,
@@ -99,11 +120,18 @@ class DemoTaskRepository:
                 llm_eval_version=llm_eval.version,
                 transform_id=transform.id,
                 transform_version_id=transform_version.versions[0].id,
-                transform_variable_mapping=self._create_transform_variable_mapping(transform_version.versions[0]),
+                transform_variable_mapping=self._create_transform_variable_mapping(
+                    transform_version.versions[0],
+                ),
             ),
         )
 
-    def _create_demo_prompt(self, task_id: str, model_provider: ModelProvider, model_name: str) -> None:
+    def _create_demo_prompt(
+        self,
+        task_id: str,
+        model_provider: ModelProvider,
+        model_name: str,
+    ) -> None:
         """
         Create the demo prompt
         """
@@ -114,8 +142,12 @@ class DemoTaskRepository:
                 model_name=model_name,
                 model_provider=model_provider,
                 messages=[
-                    OpenAIMessage(role=MessageRole.SYSTEM, content=DEMO_TASK_SYSTEM_PROMPT),
+                    OpenAIMessage(
+                        role=MessageRole.SYSTEM,
+                        content=DEMO_TASK_SYSTEM_PROMPT,
+                    ),
                 ],
+                tools=None,
                 config=None,
             ),
         )
@@ -150,6 +182,7 @@ class DemoTaskRepository:
                 messages=messages,
                 model_name=model_name,
                 model_provider=model_provider,
+                tools=None,
                 created_at=datetime.now(),
             )
 
@@ -169,7 +202,10 @@ class DemoTaskRepository:
             llm_span = tracing.start_llm_span(agent_span, model_name, model_provider)
             tracing.set_llm_input_messages(llm_span, messages)
 
-            response = self.chat_completion_service.run_chat_completion(prompt, llm_client)
+            response = self.chat_completion_service.run_chat_completion(
+                prompt,
+                llm_client,
+            )
             response_content = response.content or ""
 
             tracing.set_llm_response(
@@ -190,7 +226,11 @@ class DemoTaskRepository:
         llm_client = self.model_provider_repo.get_model_provider_client(model_provider)
 
         # Create demo prompt
-        self._create_demo_prompt(task_id=task_id, model_provider=model_provider, model_name=model_name)
+        self._create_demo_prompt(
+            task_id=task_id,
+            model_provider=model_provider,
+            model_name=model_name,
+        )
 
         # Create demo continuous evals
         self._create_continuous_eval(
@@ -219,4 +259,9 @@ class DemoTaskRepository:
         self._create_demo_dataset(task_id=task_id)
 
         # Generate traces
-        self._generate_traces(task_id=task_id, model_provider=model_provider, model_name=model_name, llm_client=llm_client)
+        self._generate_traces(
+            task_id=task_id,
+            model_provider=model_provider,
+            model_name=model_name,
+            llm_client=llm_client,
+        )

@@ -216,9 +216,12 @@ def test_create_demo_task_succeeds_when_demo_mode_enabled(
     client: GenaiEngineTestClientBase,
 ):
     """Demo task is created (agentic) when demo mode is enabled and demo item creation succeeds."""
-    with patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE_ENABLED": "true"}), patch(
-        "routers.v2.task_management_routes.DemoTaskRepository.create_demo_items_for_task",
-        return_value=None,
+    with (
+        patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE_ENABLED": "true"}),
+        patch(
+            "routers.v2.task_management_routes.DemoTaskRepository.create_demo_items_for_task",
+            return_value=None,
+        ),
     ):
         status_code, task = client.create_demo_task()
 
@@ -258,9 +261,12 @@ def test_create_demo_task_archives_task_when_demo_items_raise(
         captured_task_ids.append(task_id)
         raise raised_exception
 
-    with patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE_ENABLED": "true"}), patch(
-        "routers.v2.task_management_routes.DemoTaskRepository.create_demo_items_for_task",
-        new=raise_on_create_items,
+    with (
+        patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE_ENABLED": "true"}),
+        patch(
+            "routers.v2.task_management_routes.DemoTaskRepository.create_demo_items_for_task",
+            new=raise_on_create_items,
+        ),
     ):
         status_code, task = client.create_demo_task()
 
