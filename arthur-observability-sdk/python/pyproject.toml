@@ -21,13 +21,16 @@ dependencies = [
 
 [project.optional-dependencies]
 agent-framework = ["openinference-instrumentation-agent-framework"]
+agentminds = ["openinference-instrumentation-agentminds"]
 agentspec = ["openinference-instrumentation-agentspec"]
 agno = ["openinference-instrumentation-agno"]
 anthropic = ["openinference-instrumentation-anthropic"]
 autogen = ["openinference-instrumentation-autogen"]
 autogen-agentchat = ["openinference-instrumentation-autogen-agentchat"]
+baml = ["openinference-instrumentation-baml"]
 bedrock = ["openinference-instrumentation-bedrock"]
 beeai = ["openinference-instrumentation-beeai ; python_version >= '3.11'"]
+codex = ["openinference-instrumentation-codex"]
 crewai = ["openinference-instrumentation-crewai"]
 dspy = ["openinference-instrumentation-dspy"]
 google-adk = ["openinference-instrumentation-google-adk"]
@@ -55,13 +58,16 @@ vertexai = ["openinference-instrumentation-vertexai"]
 claude-agent-sdk = ["openinference-instrumentation-claude-agent-sdk"]
 all = [
   "openinference-instrumentation-agent-framework",
+  "openinference-instrumentation-agentminds",
   "openinference-instrumentation-agentspec",
   "openinference-instrumentation-agno",
   "openinference-instrumentation-anthropic",
   "openinference-instrumentation-autogen",
   "openinference-instrumentation-autogen-agentchat",
+  "openinference-instrumentation-baml",
   "openinference-instrumentation-bedrock",
   "openinference-instrumentation-beeai ; python_version >= '3.11'",
+  "openinference-instrumentation-codex",
   "openinference-instrumentation-crewai",
   "openinference-instrumentation-dspy",
   "openinference-instrumentation-google-adk",
