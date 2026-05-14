@@ -33,6 +33,7 @@ The Arthur Engine provides a **complete service** for developing, monitoring, an
 ## Quickstart
 
 **Claude Code users**
+
 Paste this prompt directly into Claude Code — no installation needed:
 
 ```
@@ -40,7 +41,8 @@ Fetch https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/
 ```
 
 **Everyone else**
-Run the engine installer with the below command:
+
+1. Run the engine installer with the below command:
 
 Mac
 ```
@@ -52,7 +54,7 @@ Windows
 iex (iwr -Uri "https://get-genai-engine.arthur.ai/win" -UseBasicParsing).Content
 ```
 
-Instrument your agents for evaluations and LLM guardrailing by referencing the examples:
+2. Instrument your agents for evaluations and LLM guardrailing by referencing the examples:
 
 https://github.com/arthur-ai/arthur-engine/tree/dev/genai-engine/examples
 
