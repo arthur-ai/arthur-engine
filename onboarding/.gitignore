@@ -1,2 +1,0 @@
-# Override root-level ignores that must be tracked for this npm package
-!package-lock.json

@@ -1,4 +1,4 @@
-name: Build GCP Model Upload Image
+name: Build FS Model Upload Image
 
 on:
   workflow_dispatch:
@@ -9,10 +9,10 @@ on:
         required: false
         default: true
       image:
-        description: "Image name (e.g. arthurplatform/genai-engine-models-gcs)"
+        description: "Image name (e.g. arthurplatform/genai-engine-models-fs)"
         type: string
         required: false
-        default: "arthurplatform/genai-engine-models-gcs"
+        default: "arthurplatform/genai-engine-models-fs"
   workflow_call:
     inputs:
       push:
@@ -21,13 +21,13 @@ on:
         required: false
         default: true
       image:
-        description: "Image name (e.g. arthurplatform/genai-engine-models-gcs)"
+        description: "Image name (e.g. arthurplatform/genai-engine-models-fs)"
         type: string
         required: false
-        default: "arthurplatform/genai-engine-models-gcs"
+        default: "arthurplatform/genai-engine-models-fs"
 
 jobs:
-  build-gcp-model-upload:
+  build-fs-model-upload:
     environment: shared-protected-branch-secrets
     runs-on: ubuntu-latest
     steps:
@@ -74,8 +74,8 @@ jobs:
         with:
           context: "{{defaultContext}}:deployment/model-upload"
           file: Dockerfile
-          build-args: BACKEND=gcs
-          target: runtime-gcs
+          build-args: BACKEND=fs
+          target: runtime-fs
           tags: |
             ${{ inputs.image }}:${{ env.VERSION }}
             ${{ github.ref == 'refs/heads/main' && format('{0}:latest', inputs.image) || '' }}
@@ -90,7 +90,7 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          # Pull latest changes in case ECS or K8s job already committed
+          # Pull latest changes in case ECS job already committed
           export GH_TOKEN=${{ steps.generate-token.outputs.token }}
           git pull --rebase origin ${{ github.ref_name }} || true
           git add deployment/model-upload/models-manifest.json

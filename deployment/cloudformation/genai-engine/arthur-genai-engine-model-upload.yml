@@ -59,14 +59,20 @@ Parameters:
     Type: Number
     Default: 4096
     Description: 'Memory value for AWS Fargate for the Model Upload ECS task'
+  ExistingModelsBucketName:
+    Type: String
+    Default: ''
+    Description: 'Name of an existing S3 bucket to use for model storage. If empty, a new bucket will be created.'
 
 Conditions:
   IsContainerRepositoryCredentialRequired: !Equals [ !Ref ContainerRepositoryCredentialRequired, 'true' ]
+  CreateModelsBucket: !Equals [ !Ref ExistingModelsBucketName, '' ]
 
 Resources:
-  # S3 Bucket for storing models
+  # S3 Bucket for storing models (only created if ExistingModelsBucketName is not provided)
   GenaiEngineModelsBucket:
     Type: AWS::S3::Bucket
+    Condition: CreateModelsBucket
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
@@ -88,9 +94,10 @@ Resources:
         - Key: Purpose
           Value: 'Arthur GenAI Engine Model Storage'
 
-  # S3 Bucket Policy - restrict access to GenAI Engine only
+  # S3 Bucket Policy - only applied to newly created bucket
   GenaiEngineModelsBucketPolicy:
     Type: AWS::S3::BucketPolicy
+    Condition: CreateModelsBucket
     Properties:
       Bucket: !Ref GenaiEngineModelsBucket
       PolicyDocument:
@@ -138,9 +145,11 @@ Resources:
           Essential: true
           Environment:
             - Name: 'S3_BUCKET'
-              Value: !Ref GenaiEngineModelsBucket
+              Value: !If [ CreateModelsBucket, !Ref GenaiEngineModelsBucket, !Ref ExistingModelsBucketName ]
             - Name: 'S3_PREFIX'
               Value: 'models'
+            - Name: 'MODELS_DIR'
+              Value: '/models'
             - Name: 'LOG_LEVEL'
               Value: 'INFO'
           LogConfiguration:
@@ -242,7 +251,7 @@ Resources:
                           'awsvpcConfiguration': {
                               'subnets': subnets,
                               'securityGroups': security_groups,
-                              'assignPublicIp': 'DISABLED'
+                              'assignPublicIp': 'ENABLED'
                           }
                       },
                       count=1
@@ -313,7 +322,6 @@ Resources:
   ModelUploadTrigger:
     Type: Custom::ModelUploadTrigger
     DependsOn:
-      - GenaiEngineModelsBucket
       - GenaiEngineModelUploadTaskDefinition
     Properties:
       ServiceToken: !GetAtt ModelUploadLambdaFunction.Arn
@@ -323,13 +331,10 @@ Resources:
 Outputs:
   GenaiEngineModelsBucketName:
     Description: 'S3 bucket name for GenAI Engine models'
-    Value: !Ref GenaiEngineModelsBucket
-  GenaiEngineModelsBucketArn:
-    Description: 'S3 bucket ARN for GenAI Engine models'
-    Value: !GetAtt GenaiEngineModelsBucket.Arn
+    Value: !If [ CreateModelsBucket, !Ref GenaiEngineModelsBucket, !Ref ExistingModelsBucketName ]
   GenaiEngineModelRepositoryURL:
     Description: 'URL for GenAI Engine to access models from S3'
-    Value: !Sub "s3://${GenaiEngineModelsBucket}/models"
+    Value: !If [ CreateModelsBucket, !Sub "s3://${GenaiEngineModelsBucket}/models", !Sub "s3://${ExistingModelsBucketName}/models" ]
   GenaiEngineModelUploadTaskDefinitionArn:
     Description: 'ARN of the model upload task definition'
     Value: !Ref GenaiEngineModelUploadTaskDefinition
