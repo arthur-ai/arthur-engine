@@ -56,7 +56,7 @@ The intended outcome is one engine binary that runs in two modes — single-tena
 | 11 | Trace upload: strict reject on `arthur.task` mismatch | Honest failure beats silent rewrite. Easier to debug client misconfigurations. |
 | 12 | Service-name → task mapping disabled for tenant keys | Implicit task routing is too easy to abuse. Tenant keys must send explicit `arthur.task`. Admin keys keep existing fallback. |
 | 13 | User-attribution fields (`feedback.user_id`, etc.) deferred to v2 | Lower severity (within-tenant forgery, not cross-tenant breach). Tracked in "What This Doc Is Not Doing". |
-| 14 | Tenant model access: ship Option A in v1, hold BYOK for v2 | Blocking `model_providers` endpoints (per design rev 3) leaves tenants with no way to discover models. Three paths considered (see "Tenant Model Access" section). Option A — a sanitized `GET /api/v2/models` endpoint with Arthur-hosted providers — is ~10% the build cost of BYOK and forward-compatible with adding BYOK later (Option C). |
+| 14 | Tenant model access: allow tenant reads on existing `GET /api/v1/model_providers*` endpoints; writes stay admin-only | Verified the read response models (`ModelProviderResponse`, `ModelProviderModelList`) contain zero credential or infra fields — only `{provider, enabled}` and `{provider, available_models}`. The list of supported providers is a public enum already in the OpenAPI spec, and whether each is enabled is not meaningfully secret. The original "leaks infra" rationale was incorrect. Zero UI changes; the UI continues to call the same endpoints. BYOK (per-tenant providers) is deferred to v2 — see "Tenant Model Access" section for the forward-compat path. |
 
 ---
 
@@ -256,10 +256,10 @@ FEEDBACK_WRITE = frozenset([..., TENANT_USER])
 TRACES_WRITE = frozenset([..., TENANT_USER])         # POST /api/v1/traces
 DEFAULT_RULES_READ = frozenset([..., TENANT_USER])   # they need to know which apply
 USAGE_READ = frozenset([..., TENANT_USER])           # for their own task
-MODELS_READ = frozenset([ORG_ADMIN, ORG_AUDITOR, TASK_ADMIN, TENANT_USER])  # NEW — sanitized model registry (see "Tenant Model Access")
+MODEL_PROVIDER_READ = frozenset([..., TENANT_USER])  # read responses contain no credentials (see "Tenant Model Access" Option 0)
 
 # Deliberately NOT adding TENANT-USER to:
-TASK_WRITE, API_KEY_WRITE, API_KEY_READ, USER_*, MODEL_PROVIDER_*,
+TASK_WRITE, API_KEY_WRITE, API_KEY_READ, USER_*, MODEL_PROVIDER_WRITE,
 DEFAULT_RULES_WRITE, APP_CONFIG_*, ROTATE_SECRETS, PASSWORD_RESET
 ```
 
@@ -602,10 +602,9 @@ See "Trace ingestion isolation" subsection in Architecture. Pattern-B-style vali
 | `POST /api/v2/default_rules` | ❌ | Affects all tasks. |
 | `DELETE /api/v2/default_rules/{id}` | ❌ | Affects all tasks. |
 | `POST /api/v2/rules/search` | 🪟 | Return defaults + their task's rules. |
-| `GET /api/v1/model_providers` | ❌ | Leaks which providers are configured. |
-| `GET /api/v1/model_providers/{p}/available_models` | ❌ | Per-provider read is also a leak vector — a tenant can probe known provider IDs (`anthropic`, `openai`, `azure`, …) and infer the configured set from 200 vs 404, which is the same information the list endpoint blocks. Both must be admin-only. Tenants discover available models via the new sanitized endpoint (see "Tenant Model Access" section). |
-| `GET /api/v2/models` (NEW) | ✅ | Sanitized model registry. Returns model identifiers tenants can use, without provider configuration. See "Tenant Model Access" section. |
-| `PUT/DELETE /api/v1/model_providers/{p}` | ❌ | |
+| `GET /api/v1/model_providers` | ✅ | Response is `[{provider, enabled}]` per `ModelProviderResponse` (`src/schemas/response_schemas.py:334`) — no credentials, no endpoints, no deployment names. Tenants need this to know which models they can use. |
+| `GET /api/v1/model_providers/{p}/available_models` | ✅ | Response is `{provider, available_models}` per `ModelProviderModelList` (`src/schemas/response_schemas.py:347`) — model identifiers only. The UI populates model dropdowns from this. |
+| `PUT/DELETE /api/v1/model_providers/{p}` | ❌ | Write side accepts credentials. Admin-only. |
 | `POST /api/v1/secrets/rotation` | ❌ | |
 | `GET /api/v2/configuration` | ❌ | System-level config (chat task ID, etc.). |
 | `POST /api/v2/configuration` | ❌ | |
@@ -659,105 +658,128 @@ See "Trace ingestion isolation" subsection in Architecture. Pattern-B-style vali
 
 ## Tenant Model Access
 
-Blocking `GET /api/v1/model_providers` and the per-provider `available_models` endpoint (per the enumeration-leak fix in design rev 3) closes the infra leak but leaves tenant users with no way to discover which models they can use. We have to pick one of three paths.
+Tenant users need to know which models they can use. The original draft (design rev 3) blocked all `model_providers` endpoints from tenant keys, leaving the UI without a way to populate model dropdowns. After reading the actual response schemas, the simpler answer is to allow tenant reads on the existing endpoints — verified safe — and keep writes admin-only. No new endpoint, no UI changes.
 
-### Option A — Arthur hosts, sanitized model registry (RECOMMENDED for v1)
+We considered four paths. Option 0 is the v1 recommendation; A/B/C are documented for completeness and forward-compat.
 
-Arthur (the engine operator) configures `model_providers` globally, admin-only. Tenants discover models through a new endpoint that returns model identifiers without exposing provider configuration.
+### Option 0 — Allow tenant reads on existing endpoints (RECOMMENDED for v1)
+
+The existing `GET` endpoints on `/api/v1/model_providers*` already return responses that contain no credentials, no endpoints, and no deployment names. The full schemas (`src/schemas/response_schemas.py:334-351`):
+
+```python
+class ModelProviderResponse(BaseModel):
+    provider: ModelProvider              # enum value, public
+    enabled: bool                        # whether credentials are configured
+
+class ModelProviderModelList(BaseModel):
+    provider: ModelProvider              # enum value, public
+    available_models: List[str]          # list of model identifiers
+```
+
+FastAPI's `response_model` enforces these schemas — nothing additional can leak through. The supported `ModelProvider` enum is part of the public OpenAPI surface (it appears in path parameters and request bodies that customers consume). Whether a given deployment has each provider enabled is not a meaningful secret on a customer deployment, and on a demo env all providers are intentionally exposed to all tenants anyway.
 
 **Mechanism:**
-- New endpoint: `GET /api/v2/models`, accessible to tenant keys
-- Response shape (illustrative):
-  ```json
-  [
-    { "id": "claude-opus-4-7",        "display_name": "Claude Opus 4.7",        "context_window": 1000000 },
-    { "id": "gpt-4o",                  "display_name": "GPT-4o",                  "context_window": 128000 },
-    { "id": "gemini-2.0-pro",          "display_name": "Gemini 2.0 Pro",          "context_window": 2000000 }
-  ]
-  ```
-- Strictly no provider field. No credentials. No deployment names. No endpoints.
-- Optional v1.1: admin-set flag `model_providers.expose_to_tenants BOOLEAN NOT NULL DEFAULT FALSE` for explicit opt-in per provider. Defer to v1.1 if it makes v1 too big.
-- The existing `GET /api/v1/model_providers*` endpoints stay admin-only.
-- New permission: `MODELS_READ = frozenset([ORG_ADMIN, ORG_AUDITOR, TASK_ADMIN, TENANT_USER])`.
+- Add `TENANT-USER` to the `MODEL_PROVIDER_READ` permission frozenset.
+- Leave `MODEL_PROVIDER_WRITE` admin-only (no `TENANT-USER`).
+- No new endpoints, no new permissions, no schema changes, no UI changes.
 
 **Tradeoffs:**
 
 | Pro | Con |
 |---|---|
-| Zero tenant setup — works the moment a user signs up | Arthur pays all LLM bills |
-| Demo env stays clickable | Tenants can't use models Arthur didn't pre-configure |
-| Tenants never hand their API keys to Arthur | Tenants on enterprise plans usually want their own billing/compliance relationship |
-| Forward-compatible with Option B (same endpoint, response shape extends cleanly) | Limits choice to Arthur's curated set |
-| ~1-2 days to implement | Sanitization is on the engine: model IDs that contain provider names (`gpt-4o`, fine; `anthropic-prod-deployment-1`, leak) need a renaming pass |
+| Zero UI changes — existing UI flow continues to work end-to-end | Tenants on a customer deployment learn which providers the customer has configured (e.g., "anthropic + openai"). This is not credential leakage, but it is a small fingerprint. If a future deployment considers this sensitive, fall back to Option A. |
+| One frozenset change — minutes to ship | Limits tenants to Arthur's curated provider set (no BYOK in v1) |
+| No code path that could accidentally leak more than the schema says | Arthur pays all LLM bills in the demo env |
+| Forward-compatible with Option B for BYOK | |
 
-**Implementation cost:** ~1-2 days human / ~30 min CC.
+**Implementation cost:** ~0.5 day human / ~10 min CC.
+
+### Option A — Add a new sanitized `GET /api/v2/models` endpoint (fallback)
+
+Only needed if Option 0's exposure of `{provider, enabled}` is judged sensitive on production customer deployments. In that case, block the existing read endpoints for tenant keys and add a new endpoint that returns a flat list of `{id, display_name, context_window}` with the `provider` field stripped.
+
+**Mechanism:**
+- New endpoint: `GET /api/v2/models`, accessible to tenant keys.
+- New permission: `MODELS_READ = frozenset([ORG_ADMIN, ORG_AUDITOR, TASK_ADMIN, TENANT_USER])`.
+- Block `GET /api/v1/model_providers*` for tenant keys.
+- **UI changes required:** every UI flow that currently calls `GET /api/v1/model_providers*` to populate model dropdowns must be updated to call `GET /api/v2/models`.
+- Sanitization pass on model IDs to remove provider-identifying strings (custom Azure deployment names, self-hosted endpoint hostnames).
+
+**Tradeoffs:**
+
+| Pro | Con |
+|---|---|
+| Tenants don't learn which providers a deployment has configured | Requires UI changes — every model-selection screen swaps endpoint |
+| Cleaner separation of concerns ("models" is a tenant concept, "providers" is an admin concept) | New endpoint + new permission frozenset to maintain |
+| Sanitization layer guarantees no provider-string leakage even for weird deployments | Sanitization is engine-side work and a per-provider testing burden |
+| | ~1-2 days vs. ~0.5 day for Option 0 |
+
+**Implementation cost:** ~1-2 days human / ~30 min CC. **Plus UI work.**
 
 ### Option B — Bring Your Own Keys (BYOK), per-tenant model providers
 
-Each tenant configures their own model providers within their task. Arthur runs the inference; the LLM API keys belong to the tenant.
+Each tenant configures their own model providers within their task. Arthur runs the inference; the LLM API keys belong to the tenant. Real production multi-tenancy.
 
 **Mechanism:**
 - Schema: add `task_id UUID NULL` to `model_providers`. NULL = global/admin (existing). Non-null = tenant-scoped. Same nullable pattern as `api_keys.task_id`.
-- Schema: add `task_id UUID NULL` to `secret_storage` for the encrypted credential rows the provider config references.
+- Schema: add `task_id UUID NULL` to `secret_storage` for the encrypted credential rows that provider configs reference.
 - New endpoints (Pattern A — path-scoped):
   - `POST /api/v2/tasks/{task_id}/model_providers`
   - `GET  /api/v2/tasks/{task_id}/model_providers`
   - `PUT  /api/v2/tasks/{task_id}/model_providers/{provider_id}`
   - `DELETE /api/v2/tasks/{task_id}/model_providers/{provider_id}`
-- Inference path: when a tenant key triggers inference, resolve providers in priority order: tenant-task-scoped → global. Tenant config overrides global silently.
+- Inference path: resolve providers in priority order — tenant-task-scoped → global. Tenant config overrides global silently.
 - UI: new provider-config screen scoped to the user's task. Form fields per provider (API key, endpoint URL for self-hosted, etc.).
-- Secret encryption: existing `secret_storage` table and master key are sufficient for v1 BYOK. Per-tenant encryption keys are a separate v3 hardening; not blocking.
+- Secret encryption: existing `secret_storage` master-key approach works for v1 BYOK. Per-tenant encryption keys are a separate v3 hardening; not blocking.
 
 **Tradeoffs:**
 
 | Pro | Con |
 |---|---|
 | Tenants own their LLM costs and billing | Tenants must onboard their own API keys (real friction for demo) |
-| Tenants get a data-locality story (their cloud, their compliance) | Bigger schema change — `task_id` on `model_providers` AND `secret_storage`, plus the routes |
+| Tenants get a data-locality story (their cloud, their compliance) | Bigger schema change — `task_id` on `model_providers` AND `secret_storage` |
 | Production-grade multi-tenancy story | New attack surface (per-tenant secret handling) |
 | Tenants can use models Arthur doesn't support | UI work: a scoped provider-config screen |
-| | ~1-2 weeks of work vs. ~1-2 days for A |
+| | ~1-2 weeks of work vs. ~0.5 day for Option 0 |
 | | Demo env onboarding loses the "just sign up and go" UX |
 
 **Implementation cost:** ~1-2 weeks human / ~6-8 hours CC.
 
-### Option C — Hybrid (A in v1, B layered on later)
+### Option C — Hybrid (Option 0 in v1, Option B layered on in v2)
 
-Ship A in v1. Add B on top as v2 once we have multi-tenant customers who need their own billing or compliance story.
+Ship Option 0 in v1. Add B on top as v2 once we have multi-tenant customers who need their own billing or compliance story.
 
 **Mechanism:**
-- v1: Option A. Tenants use Arthur-hosted models via `GET /api/v2/models`.
-- v2: Add Option B. `GET /api/v2/models` response merges Arthur defaults + tenant-configured models. Tenants who never configure a provider see only defaults (Option A behavior preserved). Tenants who configure providers see defaults plus their own.
+- v1: Option 0. Tenant keys can read the existing `model_providers` endpoints.
+- v2: Add Option B. The same `GET /api/v1/model_providers` endpoint, when called with a tenant key, returns global providers PLUS the tenant's own task-scoped providers merged into the same list. Tenants who never configure a provider see only globals (Option 0 behavior preserved). Tenants who configure providers see both.
 
 **Tradeoffs:**
 
 | Pro | Con |
 |---|---|
-| Demo env stays frictionless for casual users | `GET /api/v2/models` response shape must be designed v1 so it can later merge BYOK models without breaking changes |
-| Production tenants get BYOK when they actually need it | Two systems to maintain long-term |
-| Forward-compatible | Slightly more design care up front |
+| Demo env stays frictionless for casual users | Two systems to maintain long-term |
+| Production tenants get BYOK when they actually need it | Response shape merging needs care to stay backwards-compatible |
+| Forward-compatible — no UI changes in v1 | |
 | Lowest-risk path | |
 
-**Implementation cost:** Same as A in v1, plus B's cost when v2 lands.
+**Implementation cost:** Same as Option 0 in v1, plus Option B's cost when v2 lands.
 
-### Recommendation for v1: Option A (with Option C as the long-term path)
+### Recommendation for v1: Option 0 (with Option C as the long-term path)
 
 **Why:**
-1. The demo env's target user is "evaluating genai-engine," and friction matters more than billing flexibility.
-2. Implementation cost is ~10% of Option B.
-3. Forward-compatible: BYOK can be added later as Option C without breaking the v1 response shape.
-4. Cost concern for Arthur is bounded — we can rate-limit per-task and cap demo usage if abuse becomes a concern (a separate concern from this design doc).
+1. The existing read responses are already safe (verified against the response schemas). The original "leaks infra" rationale was based on a wrong premise.
+2. Zero UI changes — every existing call works as-is. This is the lowest-friction outcome.
+3. Implementation cost is a single line in the permission frozenset.
+4. Forward-compatible: BYOK can be added later (Option C path) without breaking the v1 response shape — the existing endpoints just start returning tenant-scoped providers in addition to globals.
 
 **Required for v1:**
-- New endpoint: `GET /api/v2/models`, returning sanitized model identifiers (id, display_name, context_window). No provider field.
-- New permission frozenset: `MODELS_READ` including `TENANT-USER`.
-- Sanitization pass on model IDs to make sure no provider-identifying strings sneak through (especially for custom Azure deployment names or self-hosted endpoints).
-- Existing `MODEL_PROVIDER_*` permissions stay admin-only (unchanged from rev 3).
+- Add `TENANT-USER` to `MODEL_PROVIDER_READ` frozenset.
+- Leave `MODEL_PROVIDER_WRITE` admin-only.
 
 **Open for team discussion:**
-1. Is "Arthur eats LLM costs for demo tenants" acceptable financially? If not, jump straight to Option C with BYOK as the v1 path for cost-sensitive deployments.
-2. Do paying multi-tenant customers ever expect to BYOK? If yes, schedule Option B sooner (target v2 quarter X).
-3. Should we expose `context_window` and other model capabilities in the v1 response, or keep it minimal (just id + display_name)? More capability fields = better UI, but also more sanitization to do.
+1. Is "tenants learn which providers a customer deployment has configured" acceptable? If not, fall back to Option A and budget the UI work.
+2. Do paying multi-tenant customers expect to BYOK? If yes, schedule Option B sooner (target v2 quarter X).
+3. Is "Arthur eats LLM costs for demo tenants" acceptable financially? If not, jump straight to Option C with BYOK as the v1 path for cost-sensitive deployments.
 
 ---
 
@@ -806,9 +828,8 @@ This is one new conditional layer in the route guard. Estimated 1-2 days of UI w
    - `chatbot_repository.get_chatbot_by_id`
    - `annotation_repository.get_annotation_by_id`
 6. Update `trace_ingestion_service._resolve_task_id` per "Trace ingestion isolation" — strict reject + disable service-name fallback for tenant keys.
-7. Add `TENANT-USER` to the permission frozensets per the table above (including new `MODELS_READ`).
-8. Implement `GET /api/v2/models` (Option A from "Tenant Model Access"). Returns sanitized model identifiers + display names + context windows. Sources from existing `model_providers` config; sanitization layer strips provider-identifying strings from model IDs. New router `src/routers/v2/model_routes.py`.
-9. **Existing admin keys (task_id=NULL) continue to work unchanged.** Tests confirm this.
+7. Add `TENANT-USER` to the permission frozensets per the table above, including `MODEL_PROVIDER_READ` (Option 0 from "Tenant Model Access" — allows tenant reads on existing `model_providers` endpoints, which return no credentials).
+8. **Existing admin keys (task_id=NULL) continue to work unchanged.** Tests confirm this.
 
 **Revised estimate:** human ~10-12 days / CC ~6-8 hours. Up from the original ~5 days / ~3 hours estimate because the audit surfaced ~35 resource-id-scoped endpoints + 12 body-task_id endpoints + 7 query-param endpoints + the trace-ingestion rewrite, all of which were under-counted in revision 1.
 
@@ -867,9 +888,10 @@ Risk areas where someone could miss something:
 - **Cross-task enumeration:** K1 calls `GET /api/v2/tasks`, expects only T1 in the list. K1 calls `GET /api/v2/tasks/search`, expects only T1.
 - **Admin still works:** A calls every endpoint above; expects unchanged behavior (full visibility, no filtering).
 - **Aggregate filtering:** K1 calls `GET /api/v2/usage/tokens`; expects only T1's usage.
-- **Admin-only blocks (Pattern E):** K1 calls `POST /auth/api_keys/`, `GET /users`, `GET /api/v2/configuration`, `POST /api/v2/default_rules`, `POST /api/chat/default_task`, `GET /api/v1/model_providers`, `GET /api/v1/model_providers/anthropic/available_models` (and other known provider IDs — probe-resistance), `POST /api/v1/secrets/rotation`. Expect 403 each.
+- **Admin-only blocks (Pattern E):** K1 calls `POST /auth/api_keys/`, `GET /users`, `GET /api/v2/configuration`, `POST /api/v2/default_rules`, `POST /api/chat/default_task`, `PUT /api/v1/model_providers/anthropic` (write side — admin-only), `POST /api/v1/secrets/rotation`. Expect 403 each.
+
+**Model provider reads (Option 0):** K1 calls `GET /api/v1/model_providers`. Expect 200 with `[{provider, enabled}]` for each registered provider. K1 calls `GET /api/v1/model_providers/anthropic/available_models`. Expect 200 with `{provider, available_models}`. Verify the response payloads contain no credential fields (no `api_key`, `endpoint`, `deployment`, `region`, `project_id`, etc.) — schema enforcement should make this automatic, but the test pins the behavior.
 - **API key tampering:** K1 calls `DELETE /auth/api_keys/deactivate/{A_key_id}` (admin key). Expect 403. (Today: would succeed.)
-- **Tenant model registry:** K1 calls `GET /api/v2/models`. Expect 200 with a list of `{id, display_name, context_window}` entries. Assert every entry has no `provider` field, no credential fields, no internal deployment names. Anonymous request: 401/403. Admin (A): same response as tenant (the endpoint is a sanitized view, not a privileged one).
 - **Tenant signup flow A:** A calls `POST /api/v2/tasks` with `create_tenant_key=true`; receives a new task + key. New key only sees that task.
 - **Tenant signup flow B:** anonymous request to `/api/v2/tenant/signup` with feature flag off returns 404. With feature flag on, returns 201 + a new task + key. Subsequent calls share rate limit per IP.
 
@@ -967,7 +989,6 @@ Pattern C (repository-level) is harder to assert generically. Coverage test for 
 ### Backend — routers
 - `src/routers/v2/task_management_routes.py` (extend POST `/tasks` + add `/tenant/signup`)
 - `src/routers/api_key_routes.py` (apply scope checks)
-- `src/routers/v2/model_routes.py` (NEW — `GET /api/v2/models` sanitized model registry, see "Tenant Model Access")
 - Apply `@enforce_task_scope` (Pattern A):
   - `src/routers/v2/task_management_routes.py` (all `{task_id}` endpoints)
   - `src/routers/v1/continuous_eval_routes.py` (all `{task_id}` endpoints)
@@ -1023,4 +1044,4 @@ Calling these out so they don't get lost:
 - Not touching documents/embeddings. (Tenant keys 403 in v1.)
 - Not building a tenant admin tier between admin and tenant. (Could be added in v2 by introducing a new role.)
 - **Not validating `feedback.user_id` / `inference.user_id` body fields.** These let a caller attribute feedback or an inference to any user string. Within-tenant only — not a cross-tenant breach — so deferred. Track for v2 if forgery within a tenant becomes a concern. Affected endpoints: `POST /api/v2/feedback/{inference_id}`, `POST /api/v2/validate_prompt`, `POST /api/v2/tasks/{task_id}/validate_response/{inference_id}`.
-- **Not implementing BYOK (bring-your-own-keys) model providers.** Option B from the "Tenant Model Access" section. Deferred to v2 per the path-C strategy: v1 ships sanitized Arthur-hosted models (Option A), v2 layers BYOK on top without breaking the response shape. The schema change required (adding `task_id` to `model_providers` and `secret_storage`) is documented but not in scope for v1.
+- **Not implementing BYOK (bring-your-own-keys) model providers.** Option B from the "Tenant Model Access" section. Deferred to v2 per the path-C strategy: v1 ships Option 0 (tenant reads on existing `model_providers` endpoints, no UI change), v2 layers BYOK on top — same endpoints start returning tenant-scoped providers in addition to globals. The schema change required (adding `task_id` to `model_providers` and `secret_storage`) is documented but not in scope for v1.
