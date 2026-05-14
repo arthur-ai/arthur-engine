@@ -222,6 +222,10 @@ Estimated migration time on a typical customer DB: under 5 minutes for tables wi
 
 Per decision 6, tenant keys can't touch documents/embeddings. No schema change.
 
+### Existing columns reused (no new migration needed)
+
+The signup flow (B) and the demo data-retention recommendation both reference `tasks.is_autocreated`. This is an existing column — added in migration `2026_02_09_1744-843e2d3f46d5_service_name_map_and_default_task_.py:25` (BOOLEAN, NOT NULL, default false). The tenant signup flow sets `is_autocreated=True`; the cleanup job filters on it. No new migration is required for this discriminator.
+
 ---
 
 ## Auth Model
@@ -596,8 +600,8 @@ See "Trace ingestion isolation" subsection in Architecture. Pattern-B-style vali
 | `POST /api/v2/default_rules` | ❌ | Affects all tasks. |
 | `DELETE /api/v2/default_rules/{id}` | ❌ | Affects all tasks. |
 | `POST /api/v2/rules/search` | 🪟 | Return defaults + their task's rules. |
-| `GET /api/v1/model_providers` | ❌ | Leaks infra. |
-| `GET /api/v1/model_providers/{p}/available_models` | ✅ | Read-only model registry. |
+| `GET /api/v1/model_providers` | ❌ | Leaks which providers are configured. |
+| `GET /api/v1/model_providers/{p}/available_models` | ❌ | Per-provider read is also a leak vector — a tenant can probe known provider IDs (`anthropic`, `openai`, `azure`, …) and infer the configured set from 200 vs 404, which is the same information the list endpoint blocks. Both must be admin-only. If tenants ever need a "what models can my task use" view, expose a new endpoint that returns model names without revealing provider configuration. |
 | `PUT/DELETE /api/v1/model_providers/{p}` | ❌ | |
 | `POST /api/v1/secrets/rotation` | ❌ | |
 | `GET /api/v2/configuration` | ❌ | System-level config (chat task ID, etc.). |
@@ -755,7 +759,7 @@ Risk areas where someone could miss something:
 - **Cross-task enumeration:** K1 calls `GET /api/v2/tasks`, expects only T1 in the list. K1 calls `GET /api/v2/tasks/search`, expects only T1.
 - **Admin still works:** A calls every endpoint above; expects unchanged behavior (full visibility, no filtering).
 - **Aggregate filtering:** K1 calls `GET /api/v2/usage/tokens`; expects only T1's usage.
-- **Admin-only blocks (Pattern E):** K1 calls `POST /auth/api_keys/`, `GET /users`, `GET /api/v2/configuration`, `POST /api/v2/default_rules`, `POST /api/chat/default_task`, `GET /api/v1/model_providers`, `POST /api/v1/secrets/rotation`. Expect 403 each.
+- **Admin-only blocks (Pattern E):** K1 calls `POST /auth/api_keys/`, `GET /users`, `GET /api/v2/configuration`, `POST /api/v2/default_rules`, `POST /api/chat/default_task`, `GET /api/v1/model_providers`, `GET /api/v1/model_providers/anthropic/available_models` (and other known provider IDs — probe-resistance), `POST /api/v1/secrets/rotation`. Expect 403 each.
 - **API key tampering:** K1 calls `DELETE /auth/api_keys/deactivate/{A_key_id}` (admin key). Expect 403. (Today: would succeed.)
 - **Tenant signup flow A:** A calls `POST /api/v2/tasks` with `create_tenant_key=true`; receives a new task + key. New key only sees that task.
 - **Tenant signup flow B:** anonymous request to `/api/v2/tenant/signup` with feature flag off returns 404. With feature flag on, returns 201 + a new task + key. Subsequent calls share rate limit per IP.
