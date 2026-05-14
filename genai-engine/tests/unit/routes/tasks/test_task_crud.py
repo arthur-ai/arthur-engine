@@ -1,8 +1,11 @@
+import os
 import random
+from unittest.mock import patch
 
 import pytest
 from arthur_common.models.enums import RegisteredAgentProvider, RuleScope, RuleType
 from arthur_common.models.request_schemas import AgentMetadata, GCPAgentMetadata
+from fastapi import HTTPException
 
 from db_models import DatabaseTask
 from tests.clients.base_test_client import (
@@ -193,3 +196,84 @@ def test_create_task_with_agent_metadata_stores_creation_source(
     # Clean up
     status_code = client.delete_task(task_response.id)
     assert status_code == 204
+
+
+@pytest.mark.unit_tests
+def test_create_demo_task_returns_400_when_demo_mode_disabled(
+    client: GenaiEngineTestClientBase,
+):
+    """Demo task creation is rejected when demo mode is not enabled."""
+    with patch.dict(os.environ, {}, clear=False):
+        os.environ.pop("GENAI_ENGINE_DEMO_MODE_ENABLED", None)
+        status_code, task = client.create_demo_task()
+
+    assert status_code == 400
+    assert task is None
+
+
+@pytest.mark.unit_tests
+def test_create_demo_task_succeeds_when_demo_mode_enabled(
+    client: GenaiEngineTestClientBase,
+):
+    """Demo task is created (agentic) when demo mode is enabled and demo item creation succeeds."""
+    with (
+        patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE_ENABLED": "true"}),
+        patch(
+            "routers.v2.task_management_routes.DemoTaskRepository.create_demo_items_for_task",
+            return_value=None,
+        ),
+    ):
+        status_code, task = client.create_demo_task()
+
+    assert status_code == 200
+    assert task is not None
+    assert task.name == "Demo Task"
+    assert task.is_agentic is True
+
+    status_code, fetched_task = client.get_task(task.id)
+    assert status_code == 200
+    assert fetched_task.id == task.id
+
+    # Clean up
+    status_code = client.delete_task(task.id)
+    assert status_code == 204
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "raised_exception,expected_status",
+    [
+        (ValueError("no model provider"), 400),
+        (HTTPException(status_code=422, detail="bad demo data"), 422),
+        (RuntimeError("kaboom"), 500),
+    ],
+    ids=["value_error", "http_exception", "unexpected_exception"],
+)
+def test_create_demo_task_archives_task_when_demo_items_raise(
+    client: GenaiEngineTestClientBase,
+    raised_exception: Exception,
+    expected_status: int,
+):
+    """If demo item creation raises, route returns mapped status and archives the partial task."""
+    captured_task_ids: list[str] = []
+
+    def raise_on_create_items(self, task_id: str) -> None:
+        captured_task_ids.append(task_id)
+        raise raised_exception
+
+    with (
+        patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE_ENABLED": "true"}),
+        patch(
+            "routers.v2.task_management_routes.DemoTaskRepository.create_demo_items_for_task",
+            new=raise_on_create_items,
+        ),
+    ):
+        status_code, task = client.create_demo_task()
+
+    assert status_code == expected_status
+    assert task is None
+    assert len(captured_task_ids) == 1
+
+    # The partial task should be archived, so get_task returns 404
+    status_code, _ = client.get_task(captured_task_ids[0])
+    assert status_code == 404

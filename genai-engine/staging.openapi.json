@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.562"
+        "version": "2.1.503"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -1986,6 +1986,33 @@
                         }
                     }
                 }
+            }
+        },
+        "/api/v2/tasks/demos": {
+            "post": {
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Create Demo Task",
+                "description": "Create a new demo task.",
+                "operationId": "create_demo_task_api_v2_tasks_demos_post",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TaskResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
             }
         },
         "/api/v2/validate_prompt": {

@@ -29,7 +29,9 @@ from clients.telemetry.telemetry_client import (
     send_telemetry_event_for_task_rule_create_completed,
 )
 from config.cache_config import cache_config
+from config.config import Config
 from dependencies import get_application_config, get_db_session
+from repositories.demo_task_repository import DemoTaskRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.task_polling_state_repository import TaskPollingStateRepository
@@ -561,3 +563,64 @@ def archive_task_metric(
     metric_repo.archive_metric(str(metric_id))
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+#############################
+###### Demo Mode Routes #####
+#############################
+
+
+@task_management_routes.post(
+    "/tasks/demos",
+    description="Create a new demo task.",
+    response_model=TaskResponse,
+    tags=["Tasks"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+def create_demo_task(
+    db_session: Session = Depends(get_db_session),
+    application_config: ApplicationConfiguration = Depends(get_application_config),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> TaskResponse:
+    if not Config.demo_mode_enabled():
+        raise HTTPException(
+            status_code=400,
+            detail="Demo mode is not enabled",
+        )
+
+    rules_repo = RuleRepository(db_session)
+    tasks_repo = TaskRepository(
+        db_session,
+        rules_repo,
+        MetricRepository(db_session),
+        application_config,
+    )
+
+    send_telemetry_event(TelemetryEventTypes.TASK_CREATE_INITIATED)
+    demo_task_request = NewTaskRequest(
+        name="Demo Task",
+        is_agentic=True,
+    )
+    task = tasks_repo.create_task(Task._from_request_model(demo_task_request))
+    send_telemetry_event(TelemetryEventTypes.TASK_CREATE_COMPLETED)
+
+    try:
+        demo_task_repo = DemoTaskRepository(db_session)
+        demo_task_repo.create_demo_items_for_task(task.id)
+
+        return task._to_response_model()
+    except ValueError as e:
+        tasks_repo.archive_task(task.id)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Failed to create demo task: {e}",
+        )
+    except HTTPException as e:
+        tasks_repo.archive_task(task.id)
+        raise e
+    except Exception as e:
+        tasks_repo.archive_task(task.id)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to create demo task: {e}",
+        )

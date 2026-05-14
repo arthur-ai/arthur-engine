@@ -89,3 +89,11 @@ class Config:
             return override.strip()
 
         return os.path.join(os.path.dirname(__file__), "..", "..", "audit_logs")
+
+    @classmethod
+    def demo_mode_enabled(cls) -> bool:
+        demo_mode_enabled = get_env_var(
+            constants.GENAI_ENGINE_DEMO_MODE_ENABLED_ENV_VAR,
+            default="false",
+        )
+        return demo_mode_enabled.lower() == "true"
