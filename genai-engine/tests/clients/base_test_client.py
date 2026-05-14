@@ -524,6 +524,23 @@ class GenaiEngineTestClientBase(httpx.Client):
             ),
         )
 
+    def create_demo_task(self) -> tuple[int, TaskResponse]:
+        resp = self.base_client.post(
+            "/api/v2/tasks/demos",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                TaskResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
     def create_task_metric(
         self,
         task_id: str,
