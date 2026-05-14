@@ -355,49 +355,6 @@ jobs:
         run: |
           uv run --directory ml-engine pytest tests/unit
 
-  check-buzz-changes:
-    if: |
-      (
-        github.event_name == 'pull_request' ||
-        (github.event_name == 'push' && github.ref_type == 'branch')
-      ) &&
-      github.ref != 'refs/heads/main' &&
-      github.ref != 'refs/heads/dev'
-    runs-on: ubuntu-latest
-    outputs:
-      onboarding: ${{ steps.changes.outputs.onboarding }}
-    steps:
-      - uses: actions/checkout@v5
-      - uses: dorny/paths-filter@v2
-        id: changes
-        with:
-          filters: |
-            onboarding:
-              - 'onboarding/**'
-
-  run-buzz-build-and-test:
-    needs: check-buzz-changes
-    if: |
-      (
-        github.event_name == 'pull_request' ||
-        (github.event_name == 'push' && github.ref_type == 'branch')
-      ) &&
-      github.ref != 'refs/heads/main' &&
-      github.ref != 'refs/heads/dev' &&
-      needs.check-buzz-changes.outputs.onboarding == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: onboarding
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - run: npm ci
-      - run: npm run build
-      - run: npm test
-
   build-genai-engine-docker-images:
     environment: shared-protected-branch-secrets
     if: |
