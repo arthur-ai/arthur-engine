@@ -10,6 +10,7 @@ export function useEngineConfig() {
     queryKey: ["engine-config"],
     queryFn: () => apiClient.api.getEngineConfigApiV2EngineConfigGet().then((r) => r.data),
     staleTime: Infinity,
+    refetchOnWindowFocus: false,
   });
 
   return {
