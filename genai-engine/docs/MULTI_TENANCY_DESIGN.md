@@ -1,6 +1,6 @@
 # GenAI Engine — Multi-Tenant Tasks Design Doc
 
-> **Status:** Draft for team review
+> **Status:** Draft for team review — revision 2 (adds enforcement pattern coverage from endpoint audit)
 > **Author:** Ian McGraw
 > **Date:** 2026-05-14
 
@@ -51,6 +51,11 @@ The intended outcome is one engine binary that runs in two modes — single-tena
 | 6 | Documents/embeddings = admin-only in v1 | Owner-scoped today, no clean tenant story without bigger schema work. Defer. |
 | 7 | Add a single new role: `TENANT-USER` | Existing role system already supports adding roles; the permission frozensets just need this role added where appropriate. |
 | 8 | `task_id` on `api_keys` is **nullable** | Null = cross-task admin key (existing behavior). Non-null = tenant-scoped key. Clean backwards-compat. |
+| 9 | Four enforcement patterns, not one | Audit revealed task is identified four different ways: path, body, resource-id (via FK), query param. Each needs its own mitigation. A single decorator can't cover all four. |
+| 10 | Body-`task_id` mismatch returns 404 | Consistent with path-mismatch behavior. Prevents enumeration. |
+| 11 | Trace upload: strict reject on `arthur.task` mismatch | Honest failure beats silent rewrite. Easier to debug client misconfigurations. |
+| 12 | Service-name → task mapping disabled for tenant keys | Implicit task routing is too easy to abuse. Tenant keys must send explicit `arthur.task`. Admin keys keep existing fallback. |
+| 13 | User-attribution fields (`feedback.user_id`, etc.) deferred to v2 | Lower severity (within-tenant forgery, not cross-tenant breach). Tracked in "What This Doc Is Not Doing". |
 
 ---
 
@@ -109,6 +114,60 @@ Before (src/db_models/auth_models.py:18)        After
 
       task_id IS NULL      →  cross-task admin key (existing behavior)
       task_id IS NOT NULL  →  tenant-scoped key; can only access task_id
+```
+
+### Trace ingestion isolation
+
+The trace upload endpoint (`POST /api/v1/traces`) needs its own threat model because the task identifier sits inside an opaque protobuf payload, not the URL. The audit found three resolution paths today, two of which are exploitable under multi-tenancy.
+
+```
+POST /api/v1/traces  (body = OTLP protobuf bytes)
+    │
+    ▼
+parse ResourceSpan attributes
+(src/services/trace/trace_ingestion_service.py:181-200)
+    │
+    ├── Path 1: arthur.task attribute present
+    │           → use that task_id directly
+    │
+    ├── Path 2: only service.name attribute present
+    │           → look up service_name_map (INSTANCE-WIDE, not tenant-aware)
+    │
+    └── Path 3: neither present
+                → route to UNMAPPED_TASK_ID (global __unmapped__ task)
+```
+
+**Threats:**
+1. Tenant K1 (scope=T1) sets `arthur.task=T2` in the protobuf → spans land in T2.
+2. Tenant K1 omits `arthur.task` but sets `service.name="<another tenant's service>"` (matches their mapping) → spans land in the other tenant's task without an explicit task_id ever appearing.
+3. UNMAPPED_TASK_ID is globally readable today; if tenant keys can read it, traces accidentally routed there become a cross-tenant leak channel.
+
+**Mitigations:**
+
+1. **Strict reject on explicit `arthur.task` mismatch.** When `request.state.task_scope is not None` and the protobuf carries an explicit `arthur.task` that differs from scope, return 403. No silent override (per decision 11).
+
+2. **Disable service-name fallback for tenant-scoped keys.** When `task_scope is not None`, the resolver skips Path 2 entirely. Tenant must send explicit `arthur.task`. If neither is present, return 400 `arthur.task resource attribute is required for tenant-scoped keys`. Admin keys (`task_scope is None`) keep the existing Path 2 fallback.
+
+3. **`UNMAPPED_TASK_ID` admin-only.** Any read or query that surfaces traces in the unmapped task requires admin scope. Tenant keys 403. Write side already gated by the two changes above.
+
+Updated resolver shape (pseudocode):
+
+```python
+def _resolve_task_id(span, task_scope: UUID | None) -> str:
+    explicit = _extract_task_id_from_resource_attributes(span)
+    if task_scope is not None:
+        if explicit is not None and str(explicit) != str(task_scope):
+            raise HTTPException(403, "explicit arthur.task does not match key scope")
+        if explicit is None:
+            raise HTTPException(400, "tenant-scoped keys must set arthur.task")
+        return str(task_scope)
+    # Admin path: existing logic preserved (explicit → service_name_map → UNMAPPED)
+    if explicit is not None:
+        return explicit
+    mapped = service_name_map.lookup(span.service_name)
+    if mapped is not None:
+        return mapped
+    return UNMAPPED_TASK_ID
 ```
 
 ### Permission resolution rule
@@ -280,9 +339,219 @@ When `create_tenant_key` is false (existing clients), response shape is unchange
 
 ---
 
+## Enforcement Patterns
+
+The endpoint audit identified four ways genai-engine endpoints today identify which task they operate on, plus a fifth admin-only category. The `@enforce_task_scope` decorator from the original draft only handles the first one. We need four enforcement mechanisms total.
+
+| Pattern | How task is identified | Enforcement mechanism |
+|---|---|---|
+| **A** — Path task_id | `/tasks/{task_id}/...` | `@enforce_task_scope` decorator (path-level) |
+| **B** — Body task_id | request body has `task_id` field | `@enforce_body_task_scope` decorator (body-level) |
+| **C** — Resource-id-scoped | path has `/inferences/{id}` etc.; task reached via FK on the resource | Repository-level filter; every `get_X_by_id()` accepts `task_scope` |
+| **D** — Query-param task_ids | `?task_ids=...` query string | `@enforce_query_task_scope` decorator (query-level) |
+| **E** — Unscoped / admin-only | no task concept (model_providers, users, default_rules write) | Existing `@permission_checker` frozensets exclude `TENANT-USER` |
+
+### Pattern A — `@enforce_task_scope(path_param="task_id")`
+
+(Existing.) Wraps endpoints with `{task_id}` in the URL path. See "Auth Model" above for the implementation.
+
+### Pattern B — `@enforce_body_task_scope(body_field="task_id")` — NEW
+
+Wraps endpoints where the task identifier lives in the request body. Reads the field off the parsed Pydantic body model and compares to `request.state.task_scope`.
+
+```python
+def enforce_body_task_scope(body_field: str = "task_id"):
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            request = kwargs.get("request")
+            scope = request.state.task_scope
+            if scope is None:
+                return await func(*args, **kwargs)  # admin key, passthrough
+            # find the body Pydantic model in kwargs that has the field
+            body = next((v for v in kwargs.values() if hasattr(v, body_field)), None)
+            if body is None:
+                raise HTTPException(500, f"body_field={body_field} not found in handler args")
+            body_value = getattr(body, body_field)
+            if body_value is None:
+                raise HTTPException(400, f"{body_field} required in body")
+            if str(body_value) != str(scope):
+                raise HTTPException(404, "Task not found")  # 404 not 403 — prevents enumeration
+            return await func(*args, **kwargs)
+        return wrapper
+    return decorator
+```
+
+### Pattern C — Repository-level filter for resource-id lookups — NEW
+
+No decorator. The fix lives in the repository so we can't forget it in a handler.
+
+Every `get_X_by_id()` repository method that fetches a task-scoped resource gains an optional `task_scope: UUID | None` parameter. When set, the query adds a `.filter(Table.task_id == task_scope)`. The handler always passes `request.state.task_scope`:
+
+```python
+# Before
+def get_inference(self, inference_id: str) -> Inference | None:
+    return (self.db_session.query(DatabaseInference)
+            .filter(DatabaseInference.id == inference_id)
+            .first())
+
+# After
+def get_inference(self, inference_id: str, task_scope: UUID | None = None) -> Inference | None:
+    q = self.db_session.query(DatabaseInference).filter(DatabaseInference.id == inference_id)
+    if task_scope is not None:
+        q = q.filter(DatabaseInference.task_id == str(task_scope))
+    return q.first()
+```
+
+When the row isn't found (either because the id doesn't exist, OR because it exists but belongs to a different task), the handler returns 404. Identical response shape — no enumeration.
+
+Why repository-level instead of a decorator: handlers for resource-id-scoped endpoints almost always need to read the resource anyway. A decorator would have to fetch the resource separately, then the handler fetches it again. Pushing the filter into the existing fetch keeps it to one query.
+
+### Pattern D — `@enforce_query_task_scope(query_param="task_ids")` — NEW
+
+Wraps endpoints that accept a `task_ids` query parameter. If scope is set, intersect with scope.
+
+```python
+def enforce_query_task_scope(query_param: str = "task_ids"):
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            request = kwargs.get("request")
+            scope = request.state.task_scope
+            if scope is None:
+                return await func(*args, **kwargs)  # admin key, passthrough
+            user_task_ids = kwargs.get(query_param) or []
+            if not user_task_ids:
+                # no filter specified — inject scope as the filter
+                kwargs[query_param] = [str(scope)]
+            else:
+                # filter specified — any task_id outside scope is a 403
+                outside = [t for t in user_task_ids if str(t) != str(scope)]
+                if outside:
+                    raise HTTPException(403, "task_ids outside scope")
+            return await func(*args, **kwargs)
+        return wrapper
+    return decorator
+```
+
+### Pattern E — Admin-only via permission frozensets (existing mechanism)
+
+Endpoints that operate on platform-level resources (model_providers, default_rules write, users CRUD, app configuration, secrets rotation) are already gated by `@permission_checker`. Their permission frozensets deliberately omit `TENANT-USER`. No new mechanism needed — see "New role: `TENANT-USER`" above for the frozenset additions.
+
+---
+
 ## Endpoint-by-endpoint policy
 
-Symbols: ✅ = allowed for tenant keys, ❌ = 403/404, 🪟 = allowed but filtered to their task.
+Symbols: ✅ = allowed for tenant keys, ❌ = 403/404, 🪟 = allowed but filtered to their task. The "Pattern" column maps each endpoint to its enforcement mechanism (A/B/C/D/E from the Enforcement Patterns section).
+
+### Pattern coverage at a glance
+
+This subsection maps every audited task-sensitive endpoint to its enforcement pattern. For the access decision (allow / 403 / filter), see the per-category tables below.
+
+#### Pattern B — Body-task_id endpoints (12 — `@enforce_body_task_scope`)
+
+These accept `task_id` (or similar) in the request body. Without enforcement, a tenant key could POST claiming `task_id=<other_tenant>` and write into another task.
+
+| Endpoint | Body field | File:line |
+|---|---|---|
+| `POST /api/v1/inferences` | `task_id` | `routers/v1/legacy_span_routes.py:450` |
+| `POST /api/v1/agentic-prompts` | `task_id` | `routers/v1/agentic_prompt_routes.py:165` |
+| `POST /api/v1/agentic-experiments` | `task_id` | `routers/v1/agentic_experiment_routes.py:86` |
+| `POST /api/v1/agentic-notebooks` | `task_id` | `routers/v1/agentic_notebook_routes.py:33` |
+| `POST /api/v1/prompt_experiments` | `task_id` | `routers/v1/prompt_experiment_routes.py:93` |
+| `POST /api/v1/agent_polling/register` | `task_id` | `routers/v1/agent_polling_routes.py:25` |
+| `POST /api/v1/agent_polling/start` | `task_id` | `routers/v1/agent_polling_routes.py:54` |
+| `POST /api/v1/chatbots` | `task_id` | `routers/v1/chatbot_routes.py:29` |
+| `POST /api/v1/chat` | `task_id` | `routers/v1/chat_routes.py:64` |
+| `POST /chat` (v2 app chat) | `task_id` | `routers/v2/chat_routes.py:64` |
+| `POST /api/chat/default_task` | `task_id` (system-wide config) | `routers/chat_routes.py:366` — **admin-only** |
+| `POST /api/v2/configuration` | `chat_task_id` (system-wide config) | `routers/v2/system_management_routes.py:112` — **admin-only** |
+
+The last two set system-wide configuration to point at a task. They stay admin-only (Pattern E) — `@enforce_body_task_scope` is not enough by itself.
+
+#### Pattern C — Resource-id-scoped endpoints (~35 — repository-level filter)
+
+The path takes a resource ID (not a task_id), and the resource has `task_id` via FK. Repository method needs the `task_scope` parameter.
+
+**Trace and span lookups:**
+- `GET /api/v1/traces/{trace_id}` → `span_repository.get_trace_by_id`
+- `GET /api/v1/traces/{trace_id}/metrics` → `span_repository.get_trace_by_id`
+- `GET /api/v1/traces/spans/{span_id}` → `span_repository.get_span_by_id`
+- `GET /api/v1/traces/spans/{span_id}/metrics` → `span_repository.get_span_by_id`
+- `GET /api/v1/traces/sessions/{session_id}` → `span_repository.get_session_by_id`
+- `GET /api/v1/traces/sessions/{session_id}/metrics` → same
+- `GET /api/v1/traces/annotations/{annotation_id}` → annotation lookup
+- `GET /api/v1/traces/{trace_id}/annotations` → trace ownership check (also Pattern A-adjacent — uses trace_id not task_id but treated as resource-id)
+- `POST /api/v1/traces/{trace_id}/annotations` → same; **write side**
+- `DELETE /api/v1/traces/{trace_id}/annotations` → same; **write side**
+
+**Inference/feedback lookups:**
+- `GET /api/v1/inferences/{inference_id}` → `inference_repository.get_inference`
+- `GET /api/v1/inferences/{inference_id}/feedback` → same
+- `GET /api/v1/inferences/{inference_id}/rule_results` → same
+- `POST /api/v2/feedback/{inference_id}` → must resolve inference's task_id before write
+- `POST /api/v2/validate_response/{inference_id}` (deprecated, tenant=❌ anyway)
+
+**Agentic prompt / experiment / notebook:**
+- `GET/POST/DELETE /api/v1/agentic-prompts/{prompt_id}/*` (10+ endpoints) → `agentic_prompt_repository._get_db_prompt`
+- `GET/PATCH/DELETE /api/v1/agentic-experiments/{experiment_id}` → `agentic_experiment_repository._get_db_experiment`
+- `GET /api/v1/agentic-experiments/{experiment_id}/runs` → same
+- `GET/PUT/DELETE /api/v1/agentic-notebooks/{notebook_id}` → `agentic_notebook_repository._get_db_notebook`
+- `GET/PUT /api/v1/agentic-notebooks/{notebook_id}/state` → same
+- `GET /api/v1/agentic-notebooks/{notebook_id}/history` → same
+
+**Continuous eval:**
+- `GET/DELETE /api/v1/continuous_evals/{eval_id}` → continuous_eval_repository
+- `GET /api/v1/continuous_evals/{eval_id}/results` → same
+- `GET/POST /api/v1/continuous_evals/{eval_id}/runs` → same
+- `GET/DELETE /api/v1/continuous_evals/{eval_id}/runs/{run_id}` → same
+- `GET /api/v1/continuous_evals/{eval_id}/runs/{run_id}/results` → same
+- `GET /api/v1/continuous_evals/{eval_id}/runs/{run_id}/status` → same
+
+**Prompt experiments (separate from agentic):**
+- `GET/PATCH/DELETE /api/v1/prompt_experiments/{experiment_id}` → `prompt_experiment_repository`
+- `GET /api/v1/prompt_experiments/{experiment_id}/versions` → same
+- `GET /api/v1/prompt_experiments/{experiment_id}/results` → same
+
+**Chat conversations:**
+- `GET/DELETE /api/v1/chat/{conversation_id}` → chat repository
+- `POST /api/v1/chat/{conversation_id}/message` → same; **write side**
+- `POST /api/v1/chat/{conversation_id}/regenerate` → same; **write side**
+- `GET /chat/conversation/{conversation_id}` → same
+- `PUT /chat/conversation/{conversation_id}` → same; **write side**
+
+**Chatbots:**
+- `PUT /api/v1/chatbots/{chatbot_id}` → chatbot repo
+- `DELETE /api/v1/chatbots/{chatbot_id}` → same
+
+**Datasets:**
+- `PATCH /api/v2/datasets/{dataset_id}` → `datasets_repository._get_db_dataset`
+- `DELETE /api/v2/datasets/{dataset_id}` → same
+- `GET /api/v2/datasets/{dataset_id}/versions/{version_number}/rows/{row_id}` → same
+
+#### Pattern D — Query-param `task_ids` endpoints (7 — `@enforce_query_task_scope`)
+
+| Endpoint | Notes |
+|---|---|
+| `GET /api/v1/traces` | optional `task_ids` |
+| `GET /api/v1/traces/spans` | optional `task_ids` |
+| `GET /api/v1/traces/sessions` | **required** `task_ids` |
+| `GET /api/v1/traces/users` | **required** `task_ids` |
+| `GET /api/v1/inferences` | optional `task_ids` |
+| `GET /api/v2/inferences/query` | optional `task_ids` |
+| `GET /api/v2/feedback/query` | optional `task_ids` |
+
+For "required" cases, decorator behavior unchanged — caller must still supply, but values are intersected against scope.
+
+#### Pattern E — Unscoped / admin-only (frozenset exclusion of `TENANT-USER`)
+
+`POST/DELETE /api/v2/default_rules*`, `GET/PUT/DELETE /api/v1/model_providers*`, `POST /api/v1/secrets/rotation`, `POST/GET/DELETE /users*`, `POST/GET/DELETE /auth/api_keys*`, `POST /api/v2/configuration`, `POST /api/chat/default_task`, and any future endpoint operating on global state.
+
+#### Special: `POST /api/v1/traces`
+
+See "Trace ingestion isolation" subsection in Architecture. Pattern-B-style validation plus disabling the service-name fallback.
+
+---
 
 ### Public utility — no change
 
@@ -408,12 +677,28 @@ This is one new conditional layer in the route guard. Estimated 1-2 days of UI w
 7. **All existing tests pass without modification** (no behavior change yet — `task_id` is always NULL on existing keys).
 
 ### Phase 2 — Enforcement (still backwards-compatible)
-1. Add `@enforce_task_scope` decorator.
-2. Apply to every endpoint that accepts a path `task_id` (the task-scoped endpoints).
-3. Update repository methods to accept `task_scope` and inject filter when set.
-4. Update list/search/usage endpoints to filter by `task_scope` when set.
-5. Add `TENANT-USER` to the permission frozensets per the table above.
-6. **Existing admin keys (task_id=NULL) continue to work unchanged.** Tests confirm this.
+1. Add four decorators: `@enforce_task_scope` (path), `@enforce_body_task_scope` (body), `@enforce_query_task_scope` (query). Pattern C is repository-level, no decorator.
+2. Apply pattern-A decorator to every endpoint with `{task_id}` in path.
+3. Apply pattern-B decorator to all 12 body-task_id endpoints from the audit.
+4. Apply pattern-D decorator to all 7 query-param `task_ids` endpoints.
+5. Update repository methods to accept `task_scope` and inject filter when set. Concrete method list:
+   - `inference_repository.get_inference`
+   - `span_repository.get_trace_by_id`, `get_span_by_id`, `get_session_by_id`, `compute_span_metrics`
+   - `feedback_repository.create_feedback` (also handles the resource-lookup-before-write pattern)
+   - `datasets_repository._get_db_dataset` (and all callers: `get_dataset`, `update_dataset`, `delete_dataset`, version/row methods)
+   - `agentic_notebook_repository._get_db_notebook` (and all callers)
+   - `agentic_prompt_repository._get_db_prompt` (and all callers)
+   - `agentic_experiment_repository._get_db_experiment` (and all callers)
+   - `prompt_experiment_repository._get_db_experiment` (and all callers)
+   - `continuous_eval_repository.get_eval_by_id`, run lookups
+   - `chat_repository.get_conversation_by_id` and message/regenerate paths
+   - `chatbot_repository.get_chatbot_by_id`
+   - `annotation_repository.get_annotation_by_id`
+6. Update `trace_ingestion_service._resolve_task_id` per "Trace ingestion isolation" — strict reject + disable service-name fallback for tenant keys.
+7. Add `TENANT-USER` to the permission frozensets per the table above.
+8. **Existing admin keys (task_id=NULL) continue to work unchanged.** Tests confirm this.
+
+**Revised estimate:** human ~10-12 days / CC ~6-8 hours. Up from the original ~5 days / ~3 hours estimate because the audit surfaced ~35 resource-id-scoped endpoints + 12 body-task_id endpoints + 7 query-param endpoints + the trace-ingestion rewrite, all of which were under-counted in revision 1.
 
 ### Phase 3 — Provisioning flows
 1. Extend `POST /api/v2/tasks` with `create_tenant_key` option (Flow A).
@@ -453,30 +738,51 @@ Risk areas where someone could miss something:
 ### Unit tests
 - Migration produces `task_id` column on `api_keys` and on denormalized tables. (Use Alembic test harness.)
 - `MultiMethodValidator` sets `request.state.task_scope` correctly for API key, JWT, and admin paths.
-- `@enforce_task_scope` raises 404 when scope mismatches path.
+- `@enforce_task_scope` raises 404 when path scope mismatches.
+- `@enforce_body_task_scope` raises 404 when body field mismatches scope, 400 when field is missing.
+- `@enforce_query_task_scope` raises 403 when `task_ids` query contains anything outside scope; injects scope when query is empty.
+- Repository methods (Pattern C): `get_X(id, task_scope=T2)` returns None for a row that exists with `task_id=T1`. With `task_scope=None`, the row is returned regardless.
+- Trace ingestion: `_resolve_task_id` raises 403 when explicit `arthur.task` differs from scope; 400 when explicit absent and scope is non-null; passes through with admin path.
 - `permission_checker` correctly admits/rejects `TENANT-USER` per the updated frozensets.
 
 ### Integration tests
-- Create two tasks (T1, T2) and tenant keys (K1→T1, K2→T2) and one admin key (A).
-- **Cross-task read isolation:** K1 hits every task-scoped GET endpoint with `task_id=T2`. Expect 404 on every one.
-- **Cross-task write isolation:** K1 tries to POST inferences, traces, rules, metrics for T2. Expect 404/403 on every one.
+- Create two tasks (T1, T2) and tenant keys (K1→T1, K2→T2) and one admin key (A). Seed each task with at least one inference, feedback row, trace, span, annotation, dataset, notebook, prompt, experiment, and conversation.
+- **Pattern A — Path scope:** K1 hits every `/tasks/{task_id}/*` endpoint with `task_id=T2`. Expect 404.
+- **Pattern B — Body scope:** K1 POSTs to every body-task_id endpoint with `body.task_id=T2`. Expect 404. With `body.task_id=T1`, expect normal success.
+- **Pattern C — Resource ID scope:** K1 calls every resource-id-scoped GET/PATCH/DELETE with a T2-owned resource's ID (inference, span, trace, dataset, notebook, prompt, experiment, conversation, feedback target). Expect 404 on every one. **Feedback planting test:** K1 POSTs `/api/v2/feedback/{T2_inference_id}` — expect 404 and verify no feedback row was written.
+- **Pattern D — Query-param scope:** K1 calls every `task_ids`-accepting endpoint with `?task_ids=T2`. Expect 403. With no `task_ids`, expect transparent filter to T1. With `?task_ids=T1`, expect 200.
+- **Trace ingestion strict reject:** K1 posts an OTLP protobuf with `arthur.task=T2`. Expect 403, verify no spans written. K1 posts a protobuf with no `arthur.task` and only `service.name`. Expect 400 (tenant must send explicit). Admin posts the same payload with no explicit task → falls back to service-name map (existing behavior).
 - **Cross-task enumeration:** K1 calls `GET /api/v2/tasks`, expects only T1 in the list. K1 calls `GET /api/v2/tasks/search`, expects only T1.
-- **Admin still works:** A calls everything; expects unchanged behavior.
+- **Admin still works:** A calls every endpoint above; expects unchanged behavior (full visibility, no filtering).
 - **Aggregate filtering:** K1 calls `GET /api/v2/usage/tokens`; expects only T1's usage.
-- **Admin-only blocks:** K1 calls `POST /auth/api_keys/`, `GET /users`, `GET /api/v2/configuration`, `POST /api/v2/default_rules`. Expect 403 each.
+- **Admin-only blocks (Pattern E):** K1 calls `POST /auth/api_keys/`, `GET /users`, `GET /api/v2/configuration`, `POST /api/v2/default_rules`, `POST /api/chat/default_task`, `GET /api/v1/model_providers`, `POST /api/v1/secrets/rotation`. Expect 403 each.
+- **API key tampering:** K1 calls `DELETE /auth/api_keys/deactivate/{A_key_id}` (admin key). Expect 403. (Today: would succeed.)
 - **Tenant signup flow A:** A calls `POST /api/v2/tasks` with `create_tenant_key=true`; receives a new task + key. New key only sees that task.
 - **Tenant signup flow B:** anonymous request to `/api/v2/tenant/signup` with feature flag off returns 404. With feature flag on, returns 201 + a new task + key. Subsequent calls share rate limit per IP.
 
 ### Fuzz / coverage test
-A test that enumerates every FastAPI route in the app, identifies which take a `task_id` in path/query, and asserts each one has `@enforce_task_scope` applied. Failing assertion = a developer added an endpoint without scope enforcement.
+A test that enumerates every FastAPI route in the app and asserts the right enforcement is wired up. One assertion per pattern. Failing assertion = a developer added an endpoint without scope enforcement.
 
 ```python
 # Pseudocode
 for route in app.routes:
+    handler = route.endpoint
+    # Pattern A
     if "task_id" in route.path_params:
-        assert has_decorator(route.endpoint, enforce_task_scope), \
-            f"{route.path} takes task_id but is missing @enforce_task_scope"
+        assert has_decorator(handler, enforce_task_scope), \
+            f"{route.path} has {{task_id}} but is missing @enforce_task_scope"
+    # Pattern B
+    body_model = inspect_body_model(handler)
+    if body_model is not None and "task_id" in body_model.__fields__:
+        assert has_decorator(handler, enforce_body_task_scope), \
+            f"{route.path} body has task_id but missing @enforce_body_task_scope"
+    # Pattern D
+    if "task_ids" in inspect_query_params(handler):
+        assert has_decorator(handler, enforce_query_task_scope), \
+            f"{route.path} accepts task_ids query but missing @enforce_query_task_scope"
 ```
+
+Pattern C (repository-level) is harder to assert generically. Coverage test for repos: assert every method on a `TaskScopedRepository` base class that takes a resource_id-shaped parameter also accepts `task_scope: UUID | None`. Mark this as a stretch goal — easier to enforce via code review.
 
 ### Manual smoke test
 1. Run engine in single-tenant mode (default config). Existing admin key works as before.
@@ -506,27 +812,71 @@ for route in app.routes:
 
 ## Files To Be Modified (concrete list)
 
-### Backend
+### Backend — migrations
 - `alembic/versions/{new}_add_task_id_to_api_keys.py` (new)
 - `alembic/versions/{new}_denorm_task_id_to_rule_results.py` (new)
-- `src/db_models/auth_models.py`
+
+### Backend — models / schemas
+- `src/db_models/auth_models.py` (api_keys `task_id`)
 - `src/db_models/inference_models.py` (feedback `task_id`)
-- `src/db_models/rule_result_models.py`
-- `src/db_models/agentic_annotation_models.py`
-- `src/schemas/internal_schemas.py`
-- `src/auth/multi_validator.py:25-74`
-- `src/dependencies.py`
-- `src/utils/constants.py:194` (new role)
-- `src/utils/users.py` (new `enforce_task_scope` decorator)
-- `src/schemas/enums.py:70` (extend frozensets)
+- `src/db_models/rule_result_models.py` (denorm `task_id`)
+- `src/db_models/agentic_annotation_models.py` (denorm `task_id`)
+- `src/schemas/internal_schemas.py` (ApiKey pydantic, User propagation)
+- `src/schemas/enums.py:70` (extend permission frozensets with TENANT-USER)
+
+### Backend — auth + dependencies + utils
+- `src/auth/multi_validator.py:25-74` (set `request.state.task_scope`)
+- `src/dependencies.py` (new `get_task_scope()` dependency)
+- `src/utils/constants.py:194` (add TENANT-USER role)
+- `src/utils/users.py` (new decorators: `enforce_task_scope`, `enforce_body_task_scope`, `enforce_query_task_scope`)
+- `src/utils/config.py` (add `ENABLE_PUBLIC_TENANT_SIGNUP` flag)
+
+### Backend — repositories (Pattern C surface)
 - `src/repositories/api_key_repository.py`
 - `src/repositories/tasks_repository.py`
-- `src/repositories/inference_repository.py`
+- `src/repositories/inference_repository.py` (get_inference + task_scope)
+- `src/repositories/feedback_repository.py` (create_feedback + resource-lookup task_scope)
 - `src/repositories/rule_result_repository.py`
-- `src/repositories/telemetry_repository.py`
+- `src/repositories/telemetry_repository.py` (traces, annotations)
+- `src/repositories/span_repository.py` (get_trace_by_id, get_span_by_id, get_session_by_id, get_users_metadata)
+- `src/repositories/datasets_repository.py` (_get_db_dataset + all callers)
+- `src/repositories/agentic_notebook_repository.py` (_get_db_notebook + all callers)
+- `src/repositories/agentic_prompt_repository.py` (_get_db_prompt + all callers)
+- `src/repositories/agentic_experiment_repository.py` (_get_db_experiment + all callers)
+- `src/repositories/prompt_experiment_repository.py` (_get_db_experiment + all callers)
+- `src/repositories/continuous_eval_repository.py` (eval + run lookups)
+- `src/repositories/chat_repository.py` (conversation lookups)
+- `src/repositories/chatbot_repository.py` (chatbot lookups)
+
+### Backend — trace ingestion (the special case)
+- `src/services/trace/trace_ingestion_service.py` (refactor `_resolve_task_id` per "Trace ingestion isolation"; gate service_name_map for tenant keys)
+
+### Backend — routers
 - `src/routers/v2/task_management_routes.py` (extend POST `/tasks` + add `/tenant/signup`)
 - `src/routers/api_key_routes.py` (apply scope checks)
-- (Most other router files in `src/routers/v1/` and `src/routers/v2/` for `@enforce_task_scope`)
+- Apply `@enforce_task_scope` (Pattern A):
+  - `src/routers/v2/task_management_routes.py` (all `{task_id}` endpoints)
+  - `src/routers/v1/continuous_eval_routes.py` (all `{task_id}` endpoints)
+  - `src/routers/v1/llm_eval_routes.py` (all `{task_id}` endpoints)
+  - `src/routers/v1/trace_api_routes.py` (`{trace_id}/annotations` endpoints — note: trace_id not task_id, treated similarly)
+  - `src/routers/v2/validate_routes.py` (`{task_id}` variants)
+- Apply `@enforce_body_task_scope` (Pattern B):
+  - `src/routers/v1/legacy_span_routes.py` (POST /inferences)
+  - `src/routers/v1/agentic_prompt_routes.py` (POST prompts)
+  - `src/routers/v1/agentic_experiment_routes.py` (POST experiments)
+  - `src/routers/v1/agentic_notebook_routes.py` (POST notebooks)
+  - `src/routers/v1/prompt_experiment_routes.py` (POST experiments)
+  - `src/routers/v1/agent_polling_routes.py` (register, start)
+  - `src/routers/v1/chatbot_routes.py` (POST chatbots)
+  - `src/routers/v1/chat_routes.py` (POST chat)
+  - `src/routers/v2/chat_routes.py` (POST chat)
+- Apply `@enforce_query_task_scope` (Pattern D):
+  - `src/routers/v1/trace_api_routes.py` (GET /traces, /traces/spans, /traces/sessions, /traces/users)
+  - `src/routers/v1/legacy_span_routes.py` (GET /inferences)
+  - `src/routers/v2/query_routes.py` (GET /inferences/query)
+  - `src/routers/v2/feedback_routes.py` (GET /feedback/query)
+- Resource-lookup task_scope wiring (Pattern C — handler-side passing only, no decorator):
+  - All endpoints in the "Pattern C — Resource-id-scoped endpoints" section above
 
 ### UI
 - `ui/src/lib/auth.ts`
@@ -558,3 +908,4 @@ Calling these out so they don't get lost:
 - Not changing the JWT/Keycloak admin user flow. (Untouched.)
 - Not touching documents/embeddings. (Tenant keys 403 in v1.)
 - Not building a tenant admin tier between admin and tenant. (Could be added in v2 by introducing a new role.)
+- **Not validating `feedback.user_id` / `inference.user_id` body fields.** These let a caller attribute feedback or an inference to any user string. Within-tenant only — not a cross-tenant breach — so deferred. Track for v2 if forgery within a tenant becomes a concern. Affected endpoints: `POST /api/v2/feedback/{inference_id}`, `POST /api/v2/validate_prompt`, `POST /api/v2/tasks/{task_id}/validate_response/{inference_id}`.
