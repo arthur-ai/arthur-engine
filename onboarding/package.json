@@ -1,6 +1,6 @@
 {
   "name": "@arthur-ai/buzz",
-  "version": "2.1.557",
+  "version": "2.1.558",
   "description": "Buzz — Arthur GenAI Engine onboarding agent",
   "license": "MIT",
   "type": "module",
