@@ -1,32 +1,33 @@
 # Arthur Model Upload
 
-Uploads pre-downloaded ML models to cloud storage for airgapped deployments. Supports three backends:
+Uploads pre-downloaded ML models to cloud storage for air-gapped deployments. Supports three backends:
 
 | Backend | Storage | Image suffix | Deployment |
 |---------|---------|--------------|------------|
-| `s3` | AWS S3 | `-s3` | ECS Fargate |
-| `gcs` | Google Cloud Storage | `-gcp` | Cloud Run |
-| `pvc` | Kubernetes PVC | `-k8s` | Helm / raw K8s |
+| `s3` | AWS S3 | `-s3` | ECS |
+| `gcs` | Google Cloud Storage | `-gcs` | Cloud Run with mounted GCS |
+| `pvc` | Kubernetes PVC | `-fs` | Helm / raw K8s |
+| `efs` | AWS EFS | `-fs` | ECS |
 
 ## Build Images
 
 ```bash
-# ECS / S3
+# ECS + S3 HTTP retrieval
 docker build --build-arg BACKEND=s3 --target runtime-s3 \
   -t arthurplatform/genai-engine-models-s3:<version> .
 
-# GCP / GCS
+# GCP + GCS mount
 docker build --build-arg BACKEND=gcs --target runtime-gcs \
   -t arthurplatform/genai-engine-models-gcs:<version> .
 
-# K8s / PVC
+# K8s + PVC mount or ECS + EFS mount
 docker build --build-arg BACKEND=fs --target runtime-fs \
   -t arthurplatform/genai-engine-models-fs:<version> .
 ```
 
 ## Deploy
 
-### ECS (S3)
+### S3
 
 Fill in the variables and register the task definition:
 
@@ -50,7 +51,12 @@ aws ecs run-task \
 
 **IAM permissions required** (task role): `s3:PutObject`, `s3:GetObject`, `s3:HeadObject`, `s3:ListBucket`
 
-### GCP (GCS)
+After upload, set the following envar:
+```
+MODEL_REPOSITORY_URL=https://s3-object
+```
+
+### GCS
 
 Fill in `gcp/cloud-run-job.yaml` then:
 
@@ -61,13 +67,13 @@ gcloud run jobs execute arthur-model-upload --region=<region>
 
 **IAM permissions required** (service account): `roles/storage.objectAdmin` on the bucket.
 
-After upload, mount the GCS bucket as a storage volume on the genai-engine Cloud Run service and set:
+After upload, mount the GCS bucket as a storage volume on the genai-engine Cloud Run service and set the following envars:
 ```
 MODEL_STORAGE_PATH=/home/nonroot/<GCS_PREFIX>
 HF_HUB_OFFLINE=1
 ```
 
-### K8s / OpenShift (PVC)
+### FS
 
 **Via Helm:**
 ```bash
@@ -85,6 +91,12 @@ kubectl apply -f k8s/04-job.yaml
 kubectl apply -f k8s/06-copy-config-job.yaml
 ```
 
+After upload, mount the PVC/EFS to the pod/task and set the following envars:
+```
+MODEL_STORAGE_PATH=/home/nonroot/<PREFIX>
+HF_HUB_OFFLINE=1
+```
+
 ## Environment Variables
 
 | Variable | Backends | Required | Default | Description |
@@ -94,12 +106,12 @@ kubectl apply -f k8s/06-copy-config-job.yaml
 | `GCS_BUCKET` | gcs | Yes | - | Target GCS bucket |
 | `GCS_PREFIX` | gcs | No | `` | GCS object prefix |
 | `MODELS_DIR` | all | No | `/models` | Local models directory |
-| `TARGET_DIR` | pvc | No | `/models-output` | PVC mount path |
+| `TARGET_DIR` | pvc/efs | No | `/models-output` | PVC/EFS mount path |
 | `LOG_LEVEL` | all | No | `INFO` | Logging level |
 
 ## Model Update Detection
 
-`check_model_updates.py` checks whether HuggingFace models have changed since the last build by comparing commit hashes against `models-manifest.json`. Used by CI to skip unnecessary image rebuilds.
+`check_model_updates.py` checks whether Hugging Face models have changed since the last build by comparing commit hashes against `models-manifest.json`. Used by CI to skip unnecessary image rebuilds.
 
 ```bash
 python check_model_updates.py             # check only
