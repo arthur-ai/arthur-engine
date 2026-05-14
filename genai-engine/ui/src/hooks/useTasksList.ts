@@ -7,7 +7,7 @@ import type { SearchTasksResponse, TaskResponse } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 
 const ACTIVE_PAGE_SIZE = 50;
-const ARCHIVED_PAGE_SIZE = 500;
+const ARCHIVED_PAGE_SIZE = 50;
 
 export function useActiveTasksQuery({ search }: { search: string }) {
   const { api } = useApi()!;
@@ -63,15 +63,26 @@ export function useArchivedTasksQuery({ enabled }: { enabled: boolean }) {
     },
     enabled: !!api && enabled,
     initialPageParam: 0,
-    getNextPageParam: () => undefined,
+    getNextPageParam: (lastPage, allPages) => {
+      if ((lastPage.tasks?.length ?? 0) === 0) return undefined;
+      const loaded = allPages.reduce((sum, p) => sum + (p.tasks?.length ?? 0), 0);
+      const total = lastPage.count ?? 0;
+      return loaded < total ? allPages.length : undefined;
+    },
   });
 
   const tasks: TaskResponse[] = useMemo(() => query.data?.pages.flatMap((p) => p.tasks ?? []) ?? [], [query.data]);
+  const lastPage = query.data?.pages[query.data.pages.length - 1];
+  const totalCount = lastPage?.count ?? 0;
 
   return {
     tasks,
+    totalCount,
     isLoading: query.isLoading,
     isError: query.isError,
     error: query.error,
+    isFetchingNextPage: query.isFetchingNextPage,
+    hasNextPage: query.hasNextPage,
+    fetchNextPage: query.fetchNextPage,
   };
 }

@@ -50,9 +50,19 @@ export const AllTasks: React.FC = () => {
     search: debouncedSearchQuery,
   });
 
-  const { tasks: archivedTasks, isLoading: isLoadingArchived, isError: archivedIsError } = useArchivedTasksQuery({ enabled: archivedDialogOpen });
+  const {
+    tasks: archivedTasks,
+    totalCount: archivedTotalCount,
+    isLoading: isLoadingArchived,
+    isError: archivedIsError,
+    isFetchingNextPage: archivedIsFetchingNextPage,
+    hasNextPage: archivedHasNextPage,
+    fetchNextPage: archivedFetchNextPage,
+  } = useArchivedTasksQuery({ enabled: archivedDialogOpen });
 
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const archivedSentinelRef = useRef<HTMLDivElement>(null);
+  const archivedScrollRef = useRef<HTMLDivElement>(null);
   const isSearching = debouncedSearchQuery.trim().length > 0;
 
   const filteredTasks = useMemo(() => {
@@ -110,6 +120,25 @@ export const AllTasks: React.FC = () => {
     observer.observe(sentinel);
     return () => observer.disconnect();
   }, [hasNextPage, isFetchingNextPage, isLoading, isError, fetchNextPage]);
+
+  useEffect(() => {
+    if (!archivedDialogOpen) return;
+    const sentinel = archivedSentinelRef.current;
+    const root = archivedScrollRef.current;
+    if (!sentinel || !root) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && archivedHasNextPage && !archivedIsFetchingNextPage && !isLoadingArchived && !archivedIsError) {
+          archivedFetchNextPage();
+        }
+      },
+      { root, threshold: 0.1 }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [archivedDialogOpen, archivedHasNextPage, archivedIsFetchingNextPage, isLoadingArchived, archivedIsError, archivedFetchNextPage]);
 
   const handleTaskCreated = (taskId: string) => {
     invalidateTaskQueries();
@@ -314,7 +343,17 @@ export const AllTasks: React.FC = () => {
                 <Stack direction="row" spacing={1} alignItems="center">
                   <InventoryIcon sx={{ fontSize: 20, color: "text.secondary" }} />
                   <Typography variant="h6">Archived Tasks</Typography>
-                  {!isLoadingArchived && archivedTasks.length > 0 && <Chip label={filteredArchivedTasks.length} size="small" variant="outlined" />}
+                  {!isLoadingArchived && archivedTasks.length > 0 && (
+                    <Chip
+                      label={
+                        filteredArchivedTasks.length === archivedTotalCount
+                          ? archivedTotalCount
+                          : `${filteredArchivedTasks.length} of ${archivedTotalCount}`
+                      }
+                      size="small"
+                      variant="outlined"
+                    />
+                  )}
                 </Stack>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                   Unarchive a task to restore it to your active list
@@ -325,7 +364,7 @@ export const AllTasks: React.FC = () => {
               </IconButton>
             </Stack>
           </DialogTitle>
-          <DialogContent dividers>
+          <DialogContent dividers ref={archivedScrollRef}>
             {isLoadingArchived ? (
               <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 200 }}>
                 <CircularProgress />
@@ -343,11 +382,26 @@ export const AllTasks: React.FC = () => {
                 </Typography>
               </Box>
             ) : (
-              <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" }, pb: 1 }}>
-                {filteredArchivedTasks.map((task) => (
-                  <TaskCard key={task.id} task={task} onArchiveToggle={invalidateTaskQueries} />
-                ))}
-              </Box>
+              <>
+                <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" }, pb: 1 }}>
+                  {filteredArchivedTasks.map((task) => (
+                    <TaskCard key={task.id} task={task} onArchiveToggle={invalidateTaskQueries} />
+                  ))}
+                </Box>
+                <Box ref={archivedSentinelRef} sx={{ height: 1 }} />
+                {archivedIsFetchingNextPage && (
+                  <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+                    <CircularProgress size={24} />
+                  </Box>
+                )}
+                {!archivedHasNextPage && archivedTasks.length > 0 && (
+                  <Box sx={{ textAlign: "center", py: 2 }}>
+                    <Typography variant="caption" color="text.disabled">
+                      All {archivedTotalCount} archived tasks loaded
+                    </Typography>
+                  </Box>
+                )}
+              </>
             )}
           </DialogContent>
         </Dialog>
