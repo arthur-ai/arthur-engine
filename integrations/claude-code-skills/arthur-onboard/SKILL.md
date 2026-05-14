@@ -114,7 +114,7 @@ Now delegate to a sub-agent using the Agent tool. **IMPORTANT: set `run_in_backg
 
 **Mac/Linux sub-agent prompt:**
 ```
-Run the Arthur GenAI Engine local installer and wait until the engine is ready.
+Run the Arthur GenAI Engine local installer.
 
 Step 1 — Run the installer non-interactively (takes 2-3 minutes).
 Replace <VALUES> with the actual values collected from the user:
@@ -127,45 +127,15 @@ GENAI_ENGINE_OPENAI_GPT_ENDPOINT=<endpoint_or_empty> \
 GENAI_ENGINE_OPENAI_GPT_API_KEY=$(cat "<KEY_FILE_PATH>" && rm -f "<KEY_FILE_PATH>") \
 bash <(curl -sSL https://get-genai-engine.arthur.ai/mac)
 
-Step 2 — Poll until ready (max 15 minutes), streaming engine logs so the user can see what's happening.
-The first startup downloads AI models and takes significantly longer than subsequent starts.
-
-COMPOSE_DIR="$HOME/.arthur-engine/local-stack/genai-engine"
-echo "Engine starting up — first-time launch downloads AI models and may take 10-15 minutes..."
-ELAPSED=0
-STATUS="000"
-LOG_SINCE=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
-for i in $(seq 1 180); do
-  sleep 5
-  ELAPSED=$((i * 5))
-  MINS=$((ELAPSED / 60))
-  SECS=$((ELAPSED % 60))
-  if [ -f "$COMPOSE_DIR/docker-compose.yml" ]; then
-    docker compose -f "$COMPOSE_DIR/docker-compose.yml" logs --no-color --since="$LOG_SINCE" 2>&1 || true
-    LOG_SINCE=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
-  fi
-  STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3030/api/v2/tasks?page=0&page_size=1" 2>/dev/null || echo "000")
-  if [ "$STATUS" = "200" ] || [ "$STATUS" = "401" ]; then
-    echo "ENGINE_READY=true STATUS=$STATUS elapsed=${ELAPSED}s"
-    break
-  fi
-  if [ $((i % 6)) -eq 0 ]; then
-    echo "--- still starting up: ${MINS}m${SECS}s elapsed ---"
-  fi
-done
-if [ "$STATUS" != "200" ] && [ "$STATUS" != "401" ]; then
-  echo "ENGINE_READY=false — timed out after 15 minutes"
-fi
-
-Step 3 — Extract the admin API key:
+Step 2 — Extract the admin API key:
 cat "$HOME/.arthur-engine/local-stack/genai-engine/.env" 2>/dev/null | grep -E "GENAI_ENGINE_ADMIN_KEY|ARTHUR_API_KEY" | head -1
 
-Report: engine ready (yes/no), total elapsed time, the API key found (full value or "NOT_FOUND"), any errors.
+Report: installer exit code (0=success), the API key found (full value or "NOT_FOUND"), any errors.
 ```
 
 **Windows sub-agent prompt:**
 ```
-Run the Arthur GenAI Engine local Windows installer and wait until the engine is ready.
+Run the Arthur GenAI Engine local Windows installer.
 
 Step 1 — Run the installer non-interactively via PowerShell (takes 2-3 minutes).
 Replace <VALUES> with the actual values collected from the user:
@@ -180,48 +150,70 @@ powershell.exe -Command "
   irm https://get-genai-engine.arthur.ai/win | iex
 "
 
-Step 2 — Poll until ready (max 15 minutes), streaming engine logs so the user can see what's happening.
-The first startup downloads AI models and takes significantly longer than subsequent starts.
+Step 2 — Extract the admin API key (try bash path first, fall back to PowerShell):
+cat "$USERPROFILE/.arthur-engine/local-stack/genai-engine/.env" 2>/dev/null | grep -E "GENAI_ENGINE_ADMIN_KEY|ARTHUR_API_KEY" | head -1 || \
+powershell.exe -Command "Get-Content (Join-Path \$env:USERPROFILE '.arthur-engine\local-stack\genai-engine\.env') | Select-String 'GENAI_ENGINE_ADMIN_KEY|ARTHUR_API_KEY' | Select-Object -First 1"
 
-COMPOSE_DIR="$USERPROFILE/.arthur-engine/local-stack/genai-engine"
-echo "Engine starting up — first-time launch downloads AI models and may take 10-15 minutes..."
-ELAPSED=0
-STATUS="000"
+Report: installer exit code (0=success), the API key found (full value or "NOT_FOUND"), any errors.
+```
+
+After sub-agent:
+- Set `ARTHUR_API_KEY` to extracted key (or ask user if not found)
+- Set `ARTHUR_ENGINE_URL=http://localhost:3030`
+- Save both to state file
+
+Then **run the engine readiness poll directly yourself** — do NOT delegate this to a sub-agent. Run it as your own Bash call with `timeout: 600000` so the docker logs stream visibly to the user in real-time.
+
+**Mac/Linux — run directly:**
+```bash
+COMPOSE_DIR="$HOME/.arthur-engine/local-stack/genai-engine"
+echo "Waiting for engine to be ready — logs will appear below..."
 LOG_SINCE=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
-COMPOSE_FILE=$(wslpath "$COMPOSE_DIR/docker-compose.yml" 2>/dev/null || echo "$COMPOSE_DIR/docker-compose.yml")
-for i in $(seq 1 180); do
+STATUS="000"
+for i in $(seq 1 120); do
   sleep 5
-  ELAPSED=$((i * 5))
-  MINS=$((ELAPSED / 60))
-  SECS=$((ELAPSED % 60))
+  if [ -f "$COMPOSE_DIR/docker-compose.yml" ]; then
+    docker compose -f "$COMPOSE_DIR/docker-compose.yml" logs --no-color --since="$LOG_SINCE" 2>&1 || true
+    LOG_SINCE=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
+  fi
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3030/api/v2/tasks?page=0&page_size=1" 2>/dev/null || echo "000")
+  if [ "$STATUS" = "200" ] || [ "$STATUS" = "401" ]; then
+    echo "ENGINE_READY=true elapsed=$((i*5))s"
+    break
+  fi
+  if [ $((i % 6)) -eq 0 ]; then
+    echo "--- still starting: $((i*5/60))m$((i*5%60))s elapsed ---"
+  fi
+done
+[ "$STATUS" != "200" ] && [ "$STATUS" != "401" ] && echo "ENGINE_READY=false"
+```
+
+**Windows — run directly:**
+```bash
+COMPOSE_DIR="$USERPROFILE/.arthur-engine/local-stack/genai-engine"
+echo "Waiting for engine to be ready — logs will appear below..."
+LOG_SINCE=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
+STATUS="000"
+COMPOSE_FILE=$(wslpath "$COMPOSE_DIR/docker-compose.yml" 2>/dev/null || echo "$COMPOSE_DIR/docker-compose.yml")
+for i in $(seq 1 120); do
+  sleep 5
   if [ -f "$COMPOSE_FILE" ]; then
     docker compose -f "$COMPOSE_FILE" logs --no-color --since="$LOG_SINCE" 2>&1 || true
     LOG_SINCE=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
   fi
   STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3030/api/v2/tasks?page=0&page_size=1" 2>/dev/null || echo "000")
   if [ "$STATUS" = "200" ] || [ "$STATUS" = "401" ]; then
-    echo "ENGINE_READY=true STATUS=$STATUS elapsed=${ELAPSED}s"
+    echo "ENGINE_READY=true elapsed=$((i*5))s"
     break
   fi
   if [ $((i % 6)) -eq 0 ]; then
-    echo "--- still starting up: ${MINS}m${SECS}s elapsed ---"
+    echo "--- still starting: $((i*5/60))m$((i*5%60))s elapsed ---"
   fi
 done
-if [ "$STATUS" != "200" ] && [ "$STATUS" != "401" ]; then
-  echo "ENGINE_READY=false — timed out after 15 minutes"
-fi
-
-Step 3 — Extract the admin API key (try bash path first, fall back to PowerShell):
-cat "$USERPROFILE/.arthur-engine/local-stack/genai-engine/.env" 2>/dev/null | grep -E "GENAI_ENGINE_ADMIN_KEY|ARTHUR_API_KEY" | head -1 || \
-powershell.exe -Command "Get-Content (Join-Path \$env:USERPROFILE '.arthur-engine\local-stack\genai-engine\.env') | Select-String 'GENAI_ENGINE_ADMIN_KEY|ARTHUR_API_KEY' | Select-Object -First 1"
-
-Report: engine ready (yes/no), total elapsed time, the API key found (full value or "NOT_FOUND"), any errors.
+[ "$STATUS" != "200" ] && [ "$STATUS" != "401" ] && echo "ENGINE_READY=false"
 ```
 
-After sub-agent:
-- Set `ARTHUR_ENGINE_URL=http://localhost:3030`
-- Set `ARTHUR_API_KEY` to extracted key (or ask user if not found)
-- Save to state file
+If `ENGINE_READY=false` (timed out at 10 min): first-time model downloads may need more time. Ask the user if they want to keep waiting and, if so, run the poll script again.
 
 **Option B — Remote:**
 
