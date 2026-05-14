@@ -17,7 +17,7 @@ The Arthur Engine provides a **complete service** for developing, monitoring, an
 
 - **Enforcing guardrails in your LLM Applications and Generative AI Workflows**
   - Configurable metrics for real-time detection of PII or Sensitive Data leakage, Hallucination, Prompt Injection attempts, Toxic language, and other quality metrics
-- **Observing and Governing Agentic Applications**
+- **Building, Observing and Governing Agentic Applications**
   - Collect and analyze OpenInference traces from any agentic workflow or LLM application
   - Run continuous evaluations on live traces to catch regressions and quality issues automatically
   - Manage, version, and iterate on prompts across your applications
