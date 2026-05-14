@@ -569,6 +569,7 @@ def archive_task_metric(
 ###### Demo Mode Routes #####
 #############################
 
+
 @task_management_routes.post(
     "/tasks/demos",
     description="Create a new demo task.",
@@ -599,7 +600,7 @@ def create_demo_task(
     demo_task_request = NewTaskRequest(
         name="Demo Task",
         is_agentic=True,
-    ) 
+    )
     task = tasks_repo.create_task(Task._from_request_model(demo_task_request))
     send_telemetry_event(TelemetryEventTypes.TASK_CREATE_COMPLETED)
 

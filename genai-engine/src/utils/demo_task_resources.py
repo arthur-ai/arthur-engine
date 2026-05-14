@@ -1,6 +1,12 @@
-from arthur_common.models.task_eval_schemas import TraceTransformDefinition, TraceTransformVariableDefinition
+from arthur_common.models.task_eval_schemas import (
+    TraceTransformDefinition,
+    TraceTransformVariableDefinition,
+)
 
-from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest, NewDatasetVersionRowRequest
+from schemas.common_schemas import (
+    NewDatasetVersionRowColumnItemRequest,
+    NewDatasetVersionRowRequest,
+)
 from schemas.internal_schemas import NewTraceTransformRequest
 from schemas.request_schemas import NewDatasetRequest, NewDatasetVersionRequest
 
@@ -42,7 +48,7 @@ DEMO_TASK_PROMPT_ADHERENCE_EVAL_TRANSFORM = NewTraceTransformRequest(
 
 # NOTE: This eval is meant to be incorrect so users can see a failing eval and try
 # to come up with a plan to fix it.
-DEMO_TASK_CONCISENESS_EVAL_PROMPT = """Given a response, determine if the response is concise. 
+DEMO_TASK_CONCISENESS_EVAL_PROMPT = """Given a response, determine if the response is concise.
 Respond with a 0 if the response is two sentences or less and 1 if it is longer.
 
 response:
@@ -86,8 +92,14 @@ DEMO_TASK_DATASET_VERSION_REQUEST = NewDatasetVersionRequest(
     rows_to_add=[
         NewDatasetVersionRowRequest(
             data=[
-                NewDatasetVersionRowColumnItemRequest(column_name="query", column_value=query),
-                NewDatasetVersionRowColumnItemRequest(column_name="response", column_value=response),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="query",
+                    column_value=query,
+                ),
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="response",
+                    column_value=response,
+                ),
             ],
         )
         for query, response in DEMO_TASK_DATASET_ROWS
