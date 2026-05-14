@@ -21,6 +21,10 @@
           "value": "${S3_PREFIX}"
         },
         {
+          "name": "MODELS_DIR",
+          "value": "/models"
+        },
+        {
           "name": "LOG_LEVEL",
           "value": "INFO"
         }

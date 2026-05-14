@@ -9,12 +9,10 @@ with the structure expected by the model repository server.
 import argparse
 import json
 import logging
-import os
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-import tiktoken
 from huggingface_hub import hf_hub_download
 
 try:
@@ -100,28 +98,15 @@ def download_file(
     filename: str,
     output_dir: Path,
 ) -> tuple[str, str, bool, str]:
-    """
-    Download a single file from Hugging Face Hub.
-
-    Args:
-        model_name: The HF model repository name (e.g., 'sentence-transformers/all-MiniLM-L12-v2')
-        filename: The file to download
-        output_dir: Base directory to save models
-
-    Returns:
-        Tuple of (model_name, filename, success, message)
-    """
+    """Download a single file from Hugging Face Hub."""
     try:
-        # Download to HF cache first
         cached_path = hf_hub_download(
             repo_id=model_name,
             filename=filename,
             local_dir=output_dir / model_name,
             local_dir_use_symlinks=False,
         )
-
         return (model_name, filename, True, f"Downloaded to {cached_path}")
-
     except RepositoryNotFoundError:
         return (model_name, filename, False, f"Repository not found: {model_name}")
     except HfHubHTTPError as e:
@@ -134,81 +119,41 @@ def download_models(
     models: dict[str, list[str]],
     output_dir: Path,
     max_workers: int = 4,
-) -> dict[str, dict[str, any]]:
-    """
-    Download all specified models.
-
-    Args:
-        models: Dict mapping model names to lists of files
-        output_dir: Base directory to save models
-        max_workers: Number of parallel downloads
-
-    Returns:
-        Dict with download results
-    """
-    results: dict[str, dict[str, any]] = {
+) -> dict[str, list[dict[str, str]] | int]:
+    """Download all specified models in parallel."""
+    results: dict[str, list[dict[str, str]] | int] = {
         "successful": [],
         "failed": [],
         "total_files": 0,
         "downloaded_files": 0,
     }
 
-    # Prepare download tasks
-    tasks = []
-    for model_name, filenames in models.items():
-        for filename in filenames:
-            tasks.append((model_name, filename))
-
+    tasks = [
+        (model_name, filename)
+        for model_name, filenames in models.items()
+        for filename in filenames
+    ]
     results["total_files"] = len(tasks)
     logger.info(f"Downloading {len(tasks)} files from {len(models)} models...")
 
-    # Download in parallel
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {
             executor.submit(download_file, model, file, output_dir): (model, file)
             for model, file in tasks
         }
-
         for future in as_completed(futures):
             model_name, filename, success, message = future.result()
-
             if success:
-                results["downloaded_files"] += 1
-                results["successful"].append(
+                results["downloaded_files"] += 1  # type: ignore[operator]
+                results["successful"].append(  # type: ignore[union-attr]
                     {"model": model_name, "file": filename, "message": message},
                 )
                 logger.info(f"✓ {model_name}/{filename}")
             else:
-                results["failed"].append(
+                results["failed"].append(  # type: ignore[union-attr]
                     {"model": model_name, "file": filename, "error": message},
                 )
                 logger.error(f"✗ {model_name}/{filename}: {message}")
-
-    return results
-
-
-TIKTOKEN_ENCODINGS = ["cl100k_base", "p50k_base", "r50k_base", "o200k_base"]
-
-
-def download_tiktoken_encodings(output_dir: Path) -> dict[str, list[str]]:
-    """Download tiktoken encoding files for airgapped deployment.
-
-    Files are cached using tiktoken's SHA1-hashed filename scheme so they are
-    picked up automatically at runtime when TIKTOKEN_CACHE_DIR points here.
-    """
-    tiktoken_dir = output_dir / "tiktoken"
-    tiktoken_dir.mkdir(parents=True, exist_ok=True)
-    os.environ["TIKTOKEN_CACHE_DIR"] = str(tiktoken_dir)
-
-    results: dict[str, list[str]] = {"successful": [], "failed": []}
-    for encoding_name in TIKTOKEN_ENCODINGS:
-        try:
-            tiktoken.get_encoding(encoding_name)
-            logger.info(f"✓ tiktoken/{encoding_name}")
-            results["successful"].append(encoding_name)
-        except Exception as e:
-            logger.error(f"✗ tiktoken/{encoding_name}: {e}")
-            results["failed"].append(encoding_name)
 
     return results
 
@@ -219,7 +164,7 @@ def load_models_config(config_path: str) -> dict[str, list[str]]:
         return json.load(f)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Download Hugging Face models for airgapped deployment",
     )
@@ -244,20 +189,12 @@ def main():
         help="Number of parallel download workers (default: 4)",
     )
     parser.add_argument(
-        "--include-relevance",
-        action="store_true",
-        default=True,
-        help="Include relevance models (microsoft/deberta-v2-xlarge-mnli)",
-    )
-    parser.add_argument(
         "--exclude-relevance",
         action="store_true",
-        help="Exclude relevance models to reduce image size",
+        help="Exclude relevance models (microsoft/deberta-v2-xlarge-mnli) to reduce image size",
     )
-
     args = parser.parse_args()
 
-    # Load models configuration
     if args.config:
         logger.info(f"Loading models configuration from: {args.config}")
         models = load_models_config(args.config)
@@ -265,55 +202,35 @@ def main():
         logger.info("Using default models configuration")
         models = DEFAULT_MODELS.copy()
 
-    # Handle relevance models
     if args.exclude_relevance and "microsoft/deberta-v2-xlarge-mnli" in models:
         logger.info("Excluding relevance models (microsoft/deberta-v2-xlarge-mnli)")
         del models["microsoft/deberta-v2-xlarge-mnli"]
 
-    # Create output directory
     args.output_dir.mkdir(parents=True, exist_ok=True)
     logger.info(f"Output directory: {args.output_dir}")
 
-    # Download models
     results = download_models(models, args.output_dir, args.workers)
 
-    # Download tiktoken encoding files
-    logger.info("Downloading tiktoken encoding files...")
-    tiktoken_results = download_tiktoken_encodings(args.output_dir)
-
-    # Print summary
     print("\n" + "=" * 60)
     print("DOWNLOAD SUMMARY")
     print("=" * 60)
     print(f"Total files: {results['total_files']}")
     print(f"Downloaded:  {results['downloaded_files']}")
-    print(f"Failed:      {len(results['failed'])}")
-    print(
-        f"Tiktoken encodings: {len(tiktoken_results['successful'])}/{len(TIKTOKEN_ENCODINGS)}",
-    )
+    print(f"Failed:      {len(results['failed'])}")  # type: ignore[arg-type]
     print("=" * 60)
 
-    if results["failed"] or tiktoken_results["failed"]:
-        if results["failed"]:
-            print("\nFailed model downloads:")
-            for item in results["failed"]:
-                print(f"  - {item['model']}/{item['file']}: {item['error']}")
-        if tiktoken_results["failed"]:
-            print("\nFailed tiktoken encodings:")
-            for name in tiktoken_results["failed"]:
-                print(f"  - {name}")
+    if results["failed"]:
+        print("\nFailed model downloads:")
+        for item in results["failed"]:  # type: ignore[union-attr]
+            print(f"  - {item['model']}/{item['file']}: {item['error']}")
         sys.exit(1)
 
-    print("\n✓ All models and tiktoken encodings downloaded successfully!")
+    print("\n✓ All models downloaded successfully!")
 
-    # Save manifest
     manifest_path = args.output_dir / "manifest.json"
     with open(manifest_path, "w") as f:
         json.dump(
-            {
-                "models": list(models.keys()),
-                "files": results["successful"],
-            },
+            {"models": list(models.keys()), "files": results["successful"]},
             f,
             indent=2,
         )

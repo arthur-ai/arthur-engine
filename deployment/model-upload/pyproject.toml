@@ -1,18 +1,21 @@
 [project]
-name = "arthur-genai-engine-models"
+name = "arthur-model-upload"
 version = "1.0.0"
-description = "ECS task to upload ML models to S3 for airgapped environments"
+description = "Job to transfer ML models to storage for airgapped environments (S3/GCS/PVC)"
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 
 dependencies = [
-  "boto3>=1.28.0,<2",
   "huggingface-hub>=0.36.0",
 ]
 
+[project.optional-dependencies]
+s3  = ["boto3>=1.28.0,<2"]
+gcs = ["google-cloud-storage>=2.10.0"]
+
 [project.scripts]
-upload = "upload_models:main"
+upload   = "upload_models:main"
 download = "download_models:main"
 
 [dependency-groups]
@@ -32,7 +35,6 @@ build-backend = "hatchling.build"
 
 [tool.uv]
 package = false
-exclude-newer = "3 days"
 
 [tool.mypy]
 python_version = "3.12"
