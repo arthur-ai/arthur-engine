@@ -70,13 +70,16 @@ Pass `--extras` to install any of these alongside the SDK.
 | Extra | Framework | Method |
 |-------|-----------|--------|
 | `agent-framework` | Agent Framework | `instrument_agent_framework()` |
+| `agentminds` | AgentMinds | `instrument_agentminds()` |
 | `agentspec` | AgentSpec | `instrument_agentspec()` |
 | `agno` | Agno | `instrument_agno()` |
 | `anthropic` | Anthropic | `instrument_anthropic()` |
 | `autogen` | AutoGen | `instrument_autogen()` |
 | `autogen-agentchat` | AutoGen AgentChat | `instrument_autogen_agentchat()` |
+| `baml` | BAML | `instrument_baml()` |
 | `bedrock` | AWS Bedrock | `instrument_bedrock()` |
 | `beeai` | BeeAI | `instrument_beeai()` |
+| `codex` | OpenAI Codex | `instrument_codex()` |
 | `crewai` | CrewAI | `instrument_crewai()` |
 | `dspy` | DSPy | `instrument_dspy()` |
 | `google-adk` | Google ADK | `instrument_google_adk()` |
