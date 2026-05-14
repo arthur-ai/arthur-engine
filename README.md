@@ -52,6 +52,10 @@ Windows
 iex (iwr -Uri "https://get-genai-engine.arthur.ai/win" -UseBasicParsing).Content
 ```
 
+Instrument your agents for evaluations and LLM guardrailing by referencing the examples:
+
+https://github.com/arthur-ai/arthur-engine/tree/dev/genai-engine/examples
+
 ![Arthur Engine](./docs/images/arthur-engine.png)
 
 ## Arthur Platform Free Version
