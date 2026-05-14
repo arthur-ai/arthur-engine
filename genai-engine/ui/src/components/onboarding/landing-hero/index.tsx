@@ -102,9 +102,9 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onTry, onLogin }) => (
             <PickCard
               variant="default"
               icon={<VpnKeyOutlinedIcon sx={{ fontSize: 18 }} />}
-              title="Sign up for an account"
+              title="Log in with API key"
               description="Full Arthur platform access — your own workspace, persistent tasks, and team collaboration."
-              cta="Continue to sign in"
+              cta="Continue to log in"
               onClick={onLogin}
             />
           </Box>
