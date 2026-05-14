@@ -28,7 +28,6 @@ from arthur_client.api_bindings import (
     ModelsV1Api,
     PoliciesV1Api,
     RegenerateTaskValidationKeyJobSpec,
-    ScheduleComplianceJobsJobSpec,
     ScheduleJobsJobSpec,
     SchemaInspectionJobSpec,
     TasksV1Api,
@@ -49,7 +48,9 @@ from pydantic import StrictBytes
 
 from config import Config
 from job_executors.alert_check_executor import AlertCheckExecutor
-from job_executors.compliance_policy_check_executor import CompliancePolicyCheckExecutor
+from job_executors.compliance_policy_check_executor import (
+    CompliancePolicyCheckExecutor,
+)
 from job_executors.connector_test_executor import ConnectorTestExecutor
 from job_executors.discover_agents_executor import DiscoverAgentsExecutor
 from job_executors.fetch_data_executor import FetchDataExecutor
@@ -57,9 +58,6 @@ from job_executors.list_datasets_executor import ListDatasetsExecutor
 from job_executors.metrics_calculation_executor import (
     CustomAggregationTestExecutor,
     MetricsCalculationExecutor,
-)
-from job_executors.schedule_compliance_jobs_executor import (
-    ScheduleComplianceJobsExecutor,
 )
 from job_executors.schedule_jobs_executor import ScheduleJobsExecutor
 from job_executors.schema_inference_executor import SchemaInferenceExecutor
@@ -69,6 +67,7 @@ from job_executors.task_management_job_executors import (
     FetchTaskJobExecutor,
     LinkTaskJobExecutor,
     RegenerateTaskValidationKeyJobExecutor,
+    TaskManagementJobExecutor,
     UpdateTaskJobExecutor,
 )
 from job_log_exporter import ExportContextedLogger, ScopeJobLogExporter
@@ -181,6 +180,7 @@ class JobExecutor:
                             self.datasets_client,
                             self.metrics_client,
                             self.jobs_client,
+                            self.policies_client,
                             self.custom_aggregations_client,
                             self.custom_aggregation_tests_client,
                             self.connector_constructor,
@@ -199,6 +199,7 @@ class JobExecutor:
                             self.datasets_client,
                             self.metrics_client,
                             self.jobs_client,
+                            self.policies_client,
                             self.custom_aggregations_client,
                             self.custom_aggregation_tests_client,
                             self.connector_constructor,
@@ -249,6 +250,7 @@ class JobExecutor:
                             self.alert_rules_client,
                             self.jobs_client,
                             self.metrics_client,
+                            self.policies_client,
                             self.logger,
                         ).execute(job, job.job_spec.actual_instance)
                     case JobKind.SCHEDULE_JOBS:
@@ -392,25 +394,21 @@ class JobExecutor:
                             raise ValueError(
                                 f"Expected CompliancePolicyCheckJobSpec type, got {type(job.job_spec.actual_instance)}.",
                             )
+
+                        tasks_management_job_executor = TaskManagementJobExecutor(
+                            self.models_client,
+                            self.datasets_client,
+                            self.tasks_client,
+                            self.connector_constructor,
+                            self.logger,
+                        )
+
                         CompliancePolicyCheckExecutor(
                             self.policies_client,
                             self.alert_rules_client,
                             self.alerts_client,
                             self.metrics_client,
-                            self.logger,
-                        ).execute(job, job.job_spec.actual_instance)
-                    case JobKind.SCHEDULE_COMPLIANCE_JOBS:
-                        if not isinstance(
-                            job.job_spec.actual_instance,
-                            ScheduleComplianceJobsJobSpec,
-                        ):
-                            raise ValueError(
-                                f"Expected ScheduleComplianceJobsJobSpec type, got {type(job.job_spec.actual_instance)}.",
-                            )
-                        ScheduleComplianceJobsExecutor(
-                            self.models_client,
-                            self.jobs_client,
-                            self.policies_client,
+                            tasks_management_job_executor,
                             self.logger,
                         ).execute(job, job.job_spec.actual_instance)
                     case _:

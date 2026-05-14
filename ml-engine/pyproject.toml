@@ -1,6 +1,6 @@
 [project]
 name = "ml-engine"
-version = "2.1.543"
+version = "2.1.556"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 license = "MIT"
@@ -24,7 +24,7 @@ dependencies = [
   "s3fs==2025.9.0",
   "simple-settings==1.2.0",
   "httpx==0.28.1",
-  "duckdb==1.4.4",
+  "duckdb==1.5.2",
   "fsspec==2025.9.0",
   "datasketches==5.2.0",
   "numpy==2.3.2",
@@ -33,13 +33,13 @@ dependencies = [
   "types-requests==2.32.4.20260324",
   "psutil==7.0.0",
   "pyarrow==21.0.0",
-  "arthur-common==2.4.53",
+  "arthur-common==2.4.59",
   "gunicorn>=23.0.0,<24",
   "sqlalchemy==2.0.48",
   "snowflake-sqlalchemy==1.7.7",
   "databricks-sqlalchemy>=2.0,<3",
   "databricks-sdk>=0.84.0,<1",
-  "arthur-client==1.4.2007",
+  "arthur-client==1.4.2139",
 ]
 
 [dependency-groups]
@@ -62,7 +62,7 @@ linters = [
 
 [tool.uv]
 exclude-newer = "3 days"
-exclude-newer-package = { arthur-client = false }
+exclude-newer-package = { arthur-client = false, arthur-common = false }
 
 [build-system]
 requires = ["hatchling"]

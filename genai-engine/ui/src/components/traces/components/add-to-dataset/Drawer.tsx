@@ -32,6 +32,7 @@ import { addToDatasetFormOptions, TransformDefinition } from "./form/shared";
 import { PreviewTable } from "./PreviewTable";
 import { SaveTransformDialog } from "./SaveTransformDialog";
 
+import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
 import { useCreateDatasetMutation } from "@/hooks/datasets/useCreateDatasetMutation";
 import { useTransforms } from "@/hooks/transforms/useTransforms";
 import { useApi } from "@/hooks/useApi";
@@ -149,6 +150,8 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
 
   const selectedTransformId = useStore(form.store, (state) => state.values.transform);
   const selectedTransform = transformsQuery.data?.transforms?.find((t) => t.id === selectedTransformId);
+  const { data: selectedTransformVersions = [] } = useTransformVersions(selectedTransform?.id);
+  const selectedTransformDefinition = selectedTransformVersions[0]?.definition;
 
   // Dataset columns are the canonical schema. Pending columns (from
   // AddColumnDialog) extend the schema once set. Transform variables that
@@ -159,7 +162,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
 
   const datasetColumnsSet = new Set(datasetColumns);
   const ignoredTransformVariables =
-    selectedTransform?.definition.variables.filter((v) => !datasetColumnsSet.has(v.variable_name)).map((v) => v.variable_name) ?? [];
+    selectedTransformDefinition?.variables.filter((v) => !datasetColumnsSet.has(v.variable_name)).map((v) => v.variable_name) ?? [];
 
   const createDatasetMutation = useCreateDatasetMutation(task?.id, (newDataset) => {
     datasetsQuery.refetch();

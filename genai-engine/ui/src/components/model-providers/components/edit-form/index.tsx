@@ -3,11 +3,12 @@ import { Button, Dialog, DialogActions, DialogContent } from "@mui/material";
 import { useState } from "react";
 
 import { APIKeyFields } from "./components/api";
+import { AzureFields } from "./components/azure";
 import { BedrockFields } from "./components/bedrock";
 import { ConfirmationDialog } from "./components/confirmation-dialog";
 import { VertexAIFields } from "./components/vertex";
 import { VllmFields } from "./components/vllm";
-import { BedrockFormValues, editFormOptions, VertexAIFormValues, VllmFormValues } from "./form";
+import { AzureFormValues, BedrockFormValues, editFormOptions, VertexAIFormValues, VllmFormValues } from "./form";
 import { parseCredentials } from "./utils";
 
 import { ModelProvider, PutModelProviderCredentials } from "@/lib/api-client/api-client";
@@ -120,6 +121,16 @@ export const EditForm = ({ provider, onSubmit, onClose }: Props) => {
         });
       }
 
+      if (provider === "azure") {
+        const values = value as AzureFormValues;
+
+        return onSubmit({
+          api_key: values.api_key,
+          api_base: values.api_base,
+          api_version: values.api_version,
+        });
+      }
+
       return onSubmit({
         ...value,
       });
@@ -175,6 +186,16 @@ export const EditForm = ({ provider, onSubmit, onClose }: Props) => {
               fields={{
                 api_base: "api_base",
                 api_key: "api_key",
+              }}
+            />
+          )}
+          {provider === "azure" && (
+            <AzureFields
+              form={form}
+              fields={{
+                api_key: "api_key",
+                api_base: "api_base",
+                api_version: "api_version",
               }}
             />
           )}

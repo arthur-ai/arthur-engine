@@ -12,6 +12,7 @@ from arthur_common.models.response_schemas import (
     TokenCountCostSchema,
     TraceResponse,
 )
+from arthur_common.models.task_eval_schemas import TraceTransformDefinition
 from litellm.types.utils import ChatCompletionMessageToolCall
 from pydantic import BaseModel, Field
 from pydantic_core import Url
@@ -803,7 +804,7 @@ class ContinuousEvalRerunResponse(BaseModel):
 class ContinuousEvalTestRunResponse(BaseModel):
     id: UUID = Field(description="ID of the test run.")
     continuous_eval_id: UUID = Field(
-        description="ID of the continuous eval being tested."
+        description="ID of the continuous eval being tested.",
     )
     task_id: str = Field(description="ID of the parent task.")
     status: TestRunStatus = Field(description="Status of the test run.")
@@ -872,10 +873,12 @@ class SyntheticDataPromptStatus(BaseModel):
         "The sentinel 'empty' indicates the prompt has not yet been configured.",
     )
     model_name: str = Field(
-        ..., description="Model name stored in the SDG system prompt"
+        ...,
+        description="Model name stored in the SDG system prompt",
     )
     is_placeholder: bool = Field(
-        ..., description="True when the prompt uses the empty placeholder model"
+        ...,
+        description="True when the prompt uses the empty placeholder model",
     )
 
 
@@ -902,6 +905,23 @@ class AgenticAnnotationAnalyticsResponse(BaseModel):
     count: int = Field(description="Number of days with data")
 
 
+class TraceTransformVersionResponse(BaseModel):
+    id: UUID = Field(description="ID of the version.")
+    transform_id: UUID = Field(description="ID of the parent transform.")
+    version_number: int = Field(description="Monotonically increasing version number.")
+    definition: TraceTransformDefinition = Field(
+        description="Snapshot of the transform definition at the time of this version.",
+    )
+    created_at: datetime = Field(description="Timestamp when this version was created.")
+
+
+class ListTraceTransformVersionsResponse(BaseModel):
+    versions: List[TraceTransformVersionResponse] = Field(
+        description="List of versions for the transform, ordered by version_number descending.",
+    )
+    count: int = Field(description="Total number of versions.")
+
+
 class TransformDependentRef(BaseModel):
     id: str = Field(description="ID of the dependent resource.")
     name: str = Field(description="Name of the dependent resource.")
@@ -926,3 +946,7 @@ class TransformDependents(BaseModel):
         return bool(
             self.continuous_evals or self.agentic_experiments or self.agentic_notebooks,
         )
+
+
+class EngineConfigResponse(BaseModel):
+    demo_mode: bool = Field(description="Whether the engine is running in demo mode.")

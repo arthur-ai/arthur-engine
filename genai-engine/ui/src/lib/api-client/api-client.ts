@@ -1479,6 +1479,11 @@ export interface ContinuousEvalCreateRequest {
    * Mapping of transform variables to eval variables.
    */
   transform_variable_mapping: ContinuousEvalTransformVariableMappingRequest[];
+  /**
+   * Transform Version Id
+   * ID of the transform version to pin. When set, the continuous eval will always execute using this version's configuration snapshot.
+   */
+  transform_version_id?: string | null;
 }
 
 /** ContinuousEvalRerunResponse */
@@ -1552,6 +1557,11 @@ export interface ContinuousEvalResponse {
    * Mapping of transform variables to eval variables.
    */
   transform_variable_mapping?: ContinuousEvalTransformVariableMappingResponse[];
+  /**
+   * Transform Version Id
+   * ID of the pinned transform version. When set, the continuous eval will always execute using this version's configuration snapshot.
+   */
+  transform_version_id?: string | null;
   /**
    * Updated At
    * Timestamp representing the time the continuous eval was last updated.
@@ -2414,6 +2424,10 @@ export type DeleteTestRunApiV1ContinuousEvalsTestRunsTestRunIdDeleteError = HTTP
 export type DeleteTransformApiV1TracesTransformsTransformIdDeleteData = any;
 
 export type DeleteTransformApiV1TracesTransformsTransformIdDeleteError = HTTPValidationError;
+
+export type DeleteTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdDeleteData = any;
+
+export type DeleteTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdDeleteError = HTTPValidationError;
 
 export type DeleteUserUsersUserIdDeleteData = any;
 
@@ -4150,6 +4164,10 @@ export type GetTransformApiV1TracesTransformsTransformIdGetError = HTTPValidatio
 export type GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGetData = TransformDependents;
 
 export type GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGetError = HTTPValidationError;
+
+export type GetTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdGetData = TraceTransformVersionResponse;
+
+export type GetTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdGetError = HTTPValidationError;
 
 export type GetUnregisteredRootSpansApiV1TracesSpansUnregisteredGetData = UnregisteredRootSpansResponse;
 
@@ -5944,6 +5962,20 @@ export interface ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGetParams {
   sort?: PaginationSortMethod;
 }
 
+/** ListTraceTransformVersionsResponse */
+export interface ListTraceTransformVersionsResponse {
+  /**
+   * Count
+   * Total number of versions.
+   */
+  count: number;
+  /**
+   * Versions
+   * List of versions for the transform, ordered by version_number descending.
+   */
+  versions: TraceTransformVersionResponse[];
+}
+
 /** ListTraceTransformsResponse */
 export interface ListTraceTransformsResponse {
   /**
@@ -6302,6 +6334,10 @@ export interface ListTracesMetadataApiV1TracesGetParams {
   user_ids?: string[];
 }
 
+export type ListTransformVersionsApiV1TracesTransformsTransformIdVersionsGetData = ListTraceTransformVersionsResponse;
+
+export type ListTransformVersionsApiV1TracesTransformsTransformIdVersionsGetError = HTTPValidationError;
+
 export type ListTransformsForTaskApiV1TasksTaskIdTracesTransformsGetData = ListTraceTransformsResponse;
 
 export type ListTransformsForTaskApiV1TasksTaskIdTracesTransformsGetError = HTTPValidationError;
@@ -6455,6 +6491,11 @@ export interface MetadataQuery {
    */
   last_update_time?: boolean;
   /**
+   * Query Profile
+   * @default false
+   */
+  query_profile?: boolean;
+  /**
    * Score
    * @default false
    */
@@ -6561,7 +6602,7 @@ export interface MetricResultResponse {
 export type MetricType = "QueryRelevance" | "ResponseRelevance" | "ToolSelection";
 
 /** ModelProvider */
-export type ModelProvider = "anthropic" | "openai" | "gemini" | "bedrock" | "vertex_ai" | "hosted_vllm";
+export type ModelProvider = "anthropic" | "openai" | "gemini" | "bedrock" | "vertex_ai" | "hosted_vllm" | "azure";
 
 /** ModelProviderList */
 export interface ModelProviderList {
@@ -7754,7 +7795,7 @@ export interface PromptVersionResultListResponse {
 export interface PutModelProviderCredentials {
   /**
    * Api Base
-   * The API base URL. Used for VLLM models.
+   * The API base URL. Required for Azure (endpoint URL) and vLLM models.
    */
   api_base?: string | null;
   /**
@@ -7762,6 +7803,11 @@ export interface PutModelProviderCredentials {
    * The API key for the provider.
    */
   api_key?: string | null;
+  /**
+   * Api Version
+   * The API version. Required for Azure (e.g. '2024-02-01').
+   */
+  api_version?: string | null;
   /**
    * Aws Access Key Id
    * The AWS access key ID.
@@ -10797,9 +10843,9 @@ export interface SyntheticDataPromptStatus {
   model_name: string;
   /**
    * Model Provider
-   * Model provider stored in the SDG system prompt
+   * Model provider stored in the SDG system prompt. The sentinel 'empty' indicates the prompt has not yet been configured.
    */
-  model_provider: string;
+  model_provider: ModelProvider | "empty";
 }
 
 /**
@@ -11432,8 +11478,6 @@ export interface TraceTransformResponse {
    * @format date-time
    */
   created_at: string;
-  /** Transform definition specifying extraction rules. */
-  definition: TraceTransformDefinition;
   /**
    * Description
    * Description of the transform.
@@ -11501,6 +11545,35 @@ export interface TraceTransformVariableDefinition {
    * Name of the variable to extract.
    */
   variable_name: string;
+}
+
+/** TraceTransformVersionResponse */
+export interface TraceTransformVersionResponse {
+  /**
+   * Created At
+   * Timestamp when this version was created.
+   * @format date-time
+   */
+  created_at: string;
+  /** Snapshot of the transform definition at the time of this version. */
+  definition: TraceTransformDefinition;
+  /**
+   * Id
+   * ID of the version.
+   * @format uuid
+   */
+  id: string;
+  /**
+   * Transform Id
+   * ID of the parent transform.
+   * @format uuid
+   */
+  transform_id: string;
+  /**
+   * Version Number
+   * Monotonically increasing version number.
+   */
+  version_number: number;
 }
 
 /**
@@ -11935,6 +12008,11 @@ export interface UpdateContinuousEvalRequest {
    * Mapping of transform variables to eval variables.
    */
   transform_variable_mapping?: ContinuousEvalTransformVariableMappingRequest[] | null;
+  /**
+   * Transform Version Id
+   * ID of the transform version to pin. When set, the continuous eval will always execute using this version's configuration snapshot.
+   */
+  transform_version_id?: string | null;
 }
 
 export type UpdateDatasetApiV2DatasetsDatasetIdPatchData = DatasetResponse;
@@ -12227,7 +12305,8 @@ export type WeaviateHybridSearchSettingsConfigurationRequestReturnMetadataEnum =
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateHybridSearchSettingsConfigurationResponse */
 export interface WeaviateHybridSearchSettingsConfigurationResponse {
@@ -12319,7 +12398,8 @@ export type WeaviateHybridSearchSettingsConfigurationResponseReturnMetadataEnum 
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateHybridSearchSettingsRequest */
 export interface WeaviateHybridSearchSettingsRequest {
@@ -12411,7 +12491,8 @@ export type WeaviateHybridSearchSettingsRequestReturnMetadataEnum =
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateKeywordSearchSettingsConfigurationRequest */
 export interface WeaviateKeywordSearchSettingsConfigurationRequest {
@@ -12480,7 +12561,8 @@ export type WeaviateKeywordSearchSettingsConfigurationRequestReturnMetadataEnum 
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateKeywordSearchSettingsConfigurationResponse */
 export interface WeaviateKeywordSearchSettingsConfigurationResponse {
@@ -12549,7 +12631,8 @@ export type WeaviateKeywordSearchSettingsConfigurationResponseReturnMetadataEnum
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateKeywordSearchSettingsRequest */
 export interface WeaviateKeywordSearchSettingsRequest {
@@ -12618,7 +12701,8 @@ export type WeaviateKeywordSearchSettingsRequestReturnMetadataEnum =
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /**
  * WeaviateQueryResult
@@ -12777,7 +12861,8 @@ export type WeaviateVectorSimilarityTextSearchSettingsConfigurationRequestReturn
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse */
 export interface WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse {
@@ -12851,7 +12936,8 @@ export type WeaviateVectorSimilarityTextSearchSettingsConfigurationResponseRetur
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 /** WeaviateVectorSimilarityTextSearchSettingsRequest */
 export interface WeaviateVectorSimilarityTextSearchSettingsRequest {
@@ -12925,7 +13011,8 @@ export type WeaviateVectorSimilarityTextSearchSettingsRequestReturnMetadataEnum 
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent";
+  | "is_consistent"
+  | "query_profile";
 
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, HeadersDefaults, ResponseType } from "axios";
 import axios from "axios";
@@ -13058,7 +13145,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.530
+ * @version 2.1.503
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -14186,6 +14273,30 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     deleteTransformApiV1TracesTransformsTransformIdDelete: (transformId: string, params: RequestParams = {}) =>
       this.request<DeleteTransformApiV1TracesTransformsTransformIdDeleteData, DeleteTransformApiV1TracesTransformsTransformIdDeleteError>({
         path: `/api/v1/traces/transforms/${transformId}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Delete a specific version of a transform. Returns 409 if it is the only version or is pinned by a continuous eval.
+     *
+     * @tags Transforms
+     * @name DeleteTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdDelete
+     * @summary Delete Transform Version
+     * @request DELETE:/api/v1/traces/transforms/{transform_id}/versions/{version_id}
+     * @secure
+     */
+    deleteTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdDelete: (
+      transformId: string,
+      versionId: string,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        DeleteTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdDeleteData,
+        DeleteTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdDeleteError
+      >({
+        path: `/api/v1/traces/transforms/${transformId}/versions/${versionId}`,
         method: "DELETE",
         secure: true,
         ...params,
@@ -15665,6 +15776,27 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Get a specific version snapshot of a transform.
+     *
+     * @tags Transforms
+     * @name GetTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdGet
+     * @summary Get Transform Version
+     * @request GET:/api/v1/traces/transforms/{transform_id}/versions/{version_id}
+     * @secure
+     */
+    getTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdGet: (transformId: string, versionId: string, params: RequestParams = {}) =>
+      this.request<
+        GetTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdGetData,
+        GetTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdGetError
+      >({
+        path: `/api/v1/traces/transforms/${transformId}/versions/${versionId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get grouped root spans for traces without task_id. Groups are ordered by count descending. Supports pagination. Time bounds (start_time/end_time) are recommended for performance on large datasets.
      *
      * @tags Spans
@@ -16042,6 +16174,27 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v1/tasks/${taskId}/traces/transforms`,
         method: "GET",
         query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description List all version snapshots for a transform, ordered by version number descending.
+     *
+     * @tags Transforms
+     * @name ListTransformVersionsApiV1TracesTransformsTransformIdVersionsGet
+     * @summary List Transform Versions
+     * @request GET:/api/v1/traces/transforms/{transform_id}/versions
+     * @secure
+     */
+    listTransformVersionsApiV1TracesTransformsTransformIdVersionsGet: (transformId: string, params: RequestParams = {}) =>
+      this.request<
+        ListTransformVersionsApiV1TracesTransformsTransformIdVersionsGetData,
+        ListTransformVersionsApiV1TracesTransformsTransformIdVersionsGetError
+      >({
+        path: `/api/v1/traces/transforms/${transformId}/versions`,
+        method: "GET",
         secure: true,
         format: "json",
         ...params,
