@@ -1007,6 +1007,6 @@ def test_classifier_drops_name_with_digits(classifier):
             for span in result.details.pii_entities
             if span.entity == PIIEntityTypes.PERSON
         ]
-        assert all(not any(ch.isdigit() for ch in span) for span in person_spans), (
-            f"PERSON spans containing digits were not filtered: {person_spans}"
-        )
+        assert all(
+            not any(ch.isdigit() for ch in span) for span in person_spans
+        ), f"PERSON spans containing digits were not filtered: {person_spans}"
