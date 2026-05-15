@@ -2500,6 +2500,15 @@ export interface DocumentStorageConfigurationUpdateRequest {
 /** DocumentStorageEnvironment */
 export type DocumentStorageEnvironment = "aws" | "azure";
 
+/** EngineConfigResponse */
+export interface EngineConfigResponse {
+  /**
+   * Demo Mode
+   * Whether the engine is running in demo mode.
+   */
+  demo_mode: boolean;
+}
+
 /**
  * EnrichedTaskResponse
  * Response model for agent-tasks endpoint with enriched metadata.
@@ -3351,6 +3360,11 @@ export interface GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Field to sort the metadata list by. 'name' (default) preserves the historical alphabetical ordering. 'latest_version_created_at' orders by the most recent version's creation timestamp so that pagination matches the 'last updated' display.
+   * @default "name"
+   */
+  sort_by?: LLMMetadataSortField;
+  /**
    * Tags
    * List of tags to filter for items that have any matching tag across any version.
    */
@@ -3476,6 +3490,11 @@ export interface GetAllLlmEvalsApiV1TasksTaskIdLlmEvalsGetParams {
    * @default "desc"
    */
   sort?: PaginationSortMethod;
+  /**
+   * Field to sort the metadata list by. 'name' (default) preserves the historical alphabetical ordering. 'latest_version_created_at' orders by the most recent version's creation timestamp so that pagination matches the 'last updated' display.
+   * @default "name"
+   */
+  sort_by?: LLMMetadataSortField;
   /**
    * Tags
    * List of tags to filter for items that have any matching tag across any version.
@@ -3684,6 +3703,8 @@ export type GetDefaultRulesApiV2DefaultRulesGetData = RuleResponse[];
 export type GetDefaultTaskApiChatDefaultTaskGetData = ChatDefaultTaskResponse;
 
 export type GetDisplaySettingsApiV2DisplaySettingsGetData = DisplaySettingsResponse;
+
+export type GetEngineConfigApiV2EngineConfigGetData = EngineConfigResponse;
 
 export type GetExperimentTestCasesApiV1PromptExperimentsExperimentIdTestCasesGetData = TestCaseListResponse;
 
@@ -4747,6 +4768,12 @@ export interface LLMGetAllMetadataResponse {
    */
   versions: number;
 }
+
+/**
+ * LLMMetadataSortField
+ * Sort field options for the LLM evals/prompts metadata list endpoints.
+ */
+export type LLMMetadataSortField = "name" | "latest_version_created_at";
 
 /**
  * LLMModel
@@ -13145,7 +13172,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.503
+ * @version 2.1.556
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -15061,6 +15088,22 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getDisplaySettingsApiV2DisplaySettingsGet: (params: RequestParams = {}) =>
       this.request<GetDisplaySettingsApiV2DisplaySettingsGetData, any>({
         path: `/api/v2/display-settings`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Returns engine-level configuration for the frontend. Public endpoint — no authentication required.
+     *
+     * @tags Engine Config
+     * @name GetEngineConfigApiV2EngineConfigGet
+     * @summary Get Engine Config
+     * @request GET:/api/v2/engine-config
+     */
+    getEngineConfigApiV2EngineConfigGet: (params: RequestParams = {}) =>
+      this.request<GetEngineConfigApiV2EngineConfigGetData, any>({
+        path: `/api/v2/engine-config`,
         method: "GET",
         format: "json",
         ...params,

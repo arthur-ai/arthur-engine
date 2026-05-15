@@ -972,6 +972,81 @@ def test_get_all_llm_evals_pagination_and_filtering(client: GenaiEngineTestClien
 
 
 @pytest.mark.unit_tests
+def test_get_all_llm_evals_sort_by_latest_version_created_at(
+    client: GenaiEngineTestClientBase,
+):
+    """sort_by=latest_version_created_at orders rows by their newest
+    version's created_at, and the default (no sort_by) preserves the
+    historical name-sort behavior.
+    """
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Save evals in an order that decouples name order from creation order:
+    # creation order -> beta, alpha, gamma
+    # name order     -> alpha, beta, gamma
+    creation_order = ["beta", "alpha", "gamma"]
+    eval_data = {
+        "model_name": "gpt-4o",
+        "model_provider": "openai",
+        "instructions": "test",
+    }
+    for name in creation_order:
+        response = client.base_client.post(
+            f"/api/v1/tasks/{task.id}/llm_evals/{name}",
+            json=eval_data,
+            headers=client.authorized_user_api_key_headers,
+        )
+        assert response.status_code == 200
+
+    # sort_by=latest_version_created_at, desc -> newest creation first
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals",
+        headers=client.authorized_user_api_key_headers,
+        params={"sort": "desc", "sort_by": "latest_version_created_at"},
+    )
+    assert response.status_code == 200
+    names = [m["name"] for m in response.json()["llm_metadata"]]
+    assert names == list(reversed(creation_order))
+
+    # sort_by=latest_version_created_at, asc -> oldest creation first
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals",
+        headers=client.authorized_user_api_key_headers,
+        params={"sort": "asc", "sort_by": "latest_version_created_at"},
+    )
+    assert response.status_code == 200
+    names = [m["name"] for m in response.json()["llm_metadata"]]
+    assert names == creation_order
+
+    # Default (no sort_by) still sorts by name asc -> alphabetical
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals",
+        headers=client.authorized_user_api_key_headers,
+        params={"sort": "asc"},
+    )
+    assert response.status_code == 200
+    names = [m["name"] for m in response.json()["llm_metadata"]]
+    assert names == ["alpha", "beta", "gamma"]
+
+
+@pytest.mark.unit_tests
+def test_get_all_llm_evals_sort_by_invalid_value_returns_400(
+    client: GenaiEngineTestClientBase,
+    agentic_task: Task,
+):
+    """Invalid `sort_by` values are rejected with 400."""
+    response = client.base_client.get(
+        f"/api/v1/tasks/{agentic_task.id}/llm_evals",
+        headers=client.authorized_user_api_key_headers,
+        params={"sort_by": "not_a_real_field"},
+    )
+    assert response.status_code == 400
+    assert "sort_by" in response.json()["detail"]
+
+
+@pytest.mark.unit_tests
 def test_get_unique_llm_eval_names(client: GenaiEngineTestClientBase):
     """Test retrieving all unique llm eval names"""
     # Create an agentic task

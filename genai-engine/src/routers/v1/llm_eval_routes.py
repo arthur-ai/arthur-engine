@@ -8,6 +8,7 @@ from pydantic import AfterValidator
 from sqlalchemy.orm import Session
 
 from dependencies import (
+    LLMMetadataSortByParam,
     get_db_session,
     get_validated_task,
     llm_get_all_filter_parameters,
@@ -16,7 +17,7 @@ from dependencies import (
 from repositories.llm_evals_repository import LLMEvalsRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
-from schemas.enums import PermissionLevelsEnum
+from schemas.enums import LLMMetadataSortField, PermissionLevelsEnum
 from schemas.internal_schemas import Task, User
 from schemas.request_schemas import (
     BaseCompletionRequest,
@@ -134,6 +135,7 @@ def get_all_llm_evals(
         LLMGetAllFilterRequest,
         Depends(llm_get_all_filter_parameters),
     ],
+    sort_by: LLMMetadataSortByParam = LLMMetadataSortField.NAME,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
@@ -144,6 +146,7 @@ def get_all_llm_evals(
             task.id,
             pagination_parameters,
             filter_request,
+            sort_by=sort_by,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
