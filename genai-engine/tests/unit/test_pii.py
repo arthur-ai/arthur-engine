@@ -989,3 +989,24 @@ def test_email_detection(classifier, text, expected_spans):
             spans.append(entity.span)
 
         assert spans == expected_spans
+
+
+@pytest.mark.unit_tests
+def test_classifier_drops_name_with_digits(classifier):
+    """PERSON spans containing digits (e.g. 'Order 7423', 'User 4') must be filtered."""
+    score_request = ScoreRequest(
+        scoring_text="The agent User 4 helped me with Order 7423 yesterday.",
+        rule_type=RuleType.PII_DATA,
+    )
+
+    result = classifier.score(score_request)
+
+    if result.result == RuleResultEnum.FAIL:
+        person_spans = [
+            span.span
+            for span in result.details.pii_entities
+            if span.entity == PIIEntityTypes.PERSON
+        ]
+        assert all(
+            not any(ch.isdigit() for ch in span) for span in person_spans
+        ), f"PERSON spans containing digits were not filtered: {person_spans}"

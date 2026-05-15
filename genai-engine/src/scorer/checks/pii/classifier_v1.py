@@ -9,6 +9,7 @@ from schemas.scorer_schemas import (
     ScorerPIIEntitySpan,
     ScorerRuleDetails,
 )
+from scorer.checks.pii.validations import is_name
 from scorer.scorer import RuleScorer
 
 logging.getLogger("presidio-analyzer").setLevel(logging.ERROR)
@@ -53,6 +54,15 @@ class BinaryPIIDataClassifierV1(RuleScorer):
 
         # Post PII analyzer - enforce our threshold on results, if there is one present
         results = [result for result in results if result.score >= confidence_threshold]
+
+        # Drop PERSON detections that fail name validation (e.g. contain digits) —
+        # Presidio's NER tags strings like "Order 7423" or "User 4" as PERSON.
+        results = [
+            result
+            for result in results
+            if result.entity_type != PIIEntityTypes.PERSON.value
+            or is_name(request.scoring_text[result.start : result.end])
+        ]
 
         if len(results) == 0:
             return RuleScore(

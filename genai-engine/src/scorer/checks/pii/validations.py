@@ -878,19 +878,19 @@ def is_name(text: str) -> bool:
     tokens = lowered.split()
 
     all_generic = True
-    all_contain_digits = True
+    any_contain_digits = False
 
     for token in tokens:
-        if not all_generic and not all_contain_digits:
-            break
-
         if token not in generic_exclusions:
             all_generic = False
 
-        if not any(c.isdigit() for c in token):
-            all_contain_digits = False
+        if any(c.isdigit() for c in token):
+            any_contain_digits = True
 
-    if all_generic or all_contain_digits:
+        if not all_generic and any_contain_digits:
+            break
+
+    if all_generic or any_contain_digits:
         return False
 
     # Apply additional name-specific validations
