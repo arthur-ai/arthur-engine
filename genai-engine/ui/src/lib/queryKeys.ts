@@ -127,4 +127,9 @@ export const queryKeys = {
   taskMetrics: {
     all: (taskId: string) => ["taskMetrics", "all", taskId] as const,
   },
+  tasks: {
+    all: () => ["searchTasksApiV2TasksSearchPost"] as const,
+    list: () => ["searchTasksApiV2TasksSearchPost", "active"] as const,
+    archived: () => ["searchTasksApiV2TasksSearchPost", "archived"] as const,
+  },
 } as const;

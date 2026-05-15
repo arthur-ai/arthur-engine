@@ -485,6 +485,18 @@ jobs:
         run: |
           cd deployment/model-upload
           python check_model_updates.py --output github >> $GITHUB_OUTPUT
+          # If either model image doesn't exist yet (bootstrap case), force a build
+          TAG=${{ github.ref == 'refs/heads/main' && 'latest' || 'latest-dev' }}
+          for IMAGE in "arthurplatform/genai-engine-models-s3" "arthurplatform/genai-engine-models-fs"; do
+            NAMESPACE="${IMAGE%%/*}"
+            REPO="${IMAGE##*/}"
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://hub.docker.com/v2/repositories/${NAMESPACE}/${REPO}/tags/${TAG}/")
+            if [ "$STATUS" != "200" ]; then
+              echo "::notice::${IMAGE}:${TAG} not found in Docker Hub (HTTP ${STATUS}) - forcing model image rebuild"
+              echo "has_updates=true" >> $GITHUB_OUTPUT
+              break
+            fi
+          done
 
   build-genai-engine-models-docker-image:
     uses: ./.github/workflows/build-ecs-model-upload.yml
