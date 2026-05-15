@@ -829,6 +829,28 @@ class GenaiEngineTestClientBase(httpx.Client):
             ),
         )
 
+    def builtin_validate(
+        self,
+        checks: list[dict],
+        prompt: str | None = None,
+        response: str | None = None,
+        context: str | None = None,
+    ) -> tuple[int, dict]:
+        body: dict = {"checks": checks}
+        if prompt is not None:
+            body["prompt"] = prompt
+        if response is not None:
+            body["response"] = response
+        if context is not None:
+            body["context"] = context
+        resp = self.base_client.post(
+            url="/api/v2/validate",
+            json=body,
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+        return resp.status_code, resp.json()
+
     def create_response(
         self,
         inference_id: str,
