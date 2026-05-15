@@ -1,6 +1,7 @@
 The intention of this changelog is to document API changes as they happen to effectively communicate them to customers.
 
 ---
+
 # 05/15/2026
 - **CHANGE** for **URL**: /api/v2/validate endpoint added
 

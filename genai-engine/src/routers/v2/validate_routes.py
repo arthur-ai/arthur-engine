@@ -15,8 +15,18 @@ from repositories.rules_repository import RuleRepository
 from repositories.tasks_rules_repository import TasksRulesRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
+from rules_engine import RuleEngine
+from schemas.builtin_validate_schemas import (
+    BuiltinValidationRequest,
+    BuiltinValidationResponse,
+)
 from schemas.enums import PermissionLevelsEnum
-from schemas.internal_schemas import User
+from schemas.internal_schemas import (
+    PromptRuleResult,
+    Rule,
+    User,
+    ValidationRequest,
+)
 from scorer.score import ScorerClient
 from utils.users import permission_checker
 from validation.prompt import validate_prompt
@@ -173,3 +183,43 @@ def validate_response_endpoint(
         )
     finally:
         db_session.close()
+
+
+@validate_routes.post(
+    "/validate",
+    description=(
+        "Stateless validation of arbitrary input against inline rule specs. Does NOT "
+        "persist results, does NOT create an inference, and is task-less. Intended for "
+        "ad-hoc checks such as validating tool-call output before passing it back to an "
+        "LLM.\n\n"
+        "Each entry in `checks` is a `NewRuleRequest` — the same shape accepted by the "
+        "rule-management API. `type` is a `RuleType` enum value: `PromptInjectionRule`, "
+        "`ToxicityRule`, `PIIDataRule`, `ModelHallucinationRuleV2`, `RegexRule`, "
+        "`KeywordRule`, `ModelSensitiveDataRule`.\n\n"
+        "Hallucination requires `response` + `context`; if `context` is missing the rule "
+        "engine returns a `Skipped` result. A check may return result=`Model Not "
+        "Available` if its underlying model has not finished loading; callers should "
+        "treat this as transient and retry."
+    ),
+    response_model=BuiltinValidationResponse,
+    response_model_exclude_none=True,
+    tags=["Stateless Validation"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_WRITE.value)
+def stateless_validate(
+    body: BuiltinValidationRequest,
+    scorer_client: ScorerClient = Depends(get_scorer_client),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> BuiltinValidationResponse:
+    rules = [Rule._from_request_model(c, RuleScope.DEFAULT) for c in body.checks]
+    request = ValidationRequest(
+        prompt=body.prompt,
+        response=body.response,
+        context=body.context,
+    )
+    engine_results = RuleEngine(scorer_client).evaluate(request, rules)
+    results = [
+        PromptRuleResult._from_rule_engine_model(r)._to_response_model()
+        for r in engine_results
+    ]
+    return BuiltinValidationResponse(results=results)
