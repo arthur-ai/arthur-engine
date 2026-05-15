@@ -24,8 +24,8 @@ def _count_rows(model) -> int:
 @pytest.mark.unit_tests
 def test_builtin_validate_single_check_shape(client: GenaiEngineTestClientBase):
     status_code, body = client.builtin_validate(
-        text="Tell me a joke about astronauts.",
-        checks=["prompt_injection"],
+        prompt="Tell me a joke about astronauts.",
+        checks=[{"type": "prompt_injection"}],
     )
     assert status_code == 200
     results = body["results"]
@@ -42,8 +42,8 @@ def test_builtin_validate_single_check_shape(client: GenaiEngineTestClientBase):
 @pytest.mark.unit_tests
 def test_builtin_validate_multiple_checks(client: GenaiEngineTestClientBase):
     status_code, body = client.builtin_validate(
-        text="My SSN is 123-45-6789",
-        checks=["pii", "toxicity"],
+        prompt="My SSN is 123-45-6789",
+        checks=[{"type": "pii"}, {"type": "toxicity"}],
     )
     assert status_code == 200
     results = body["results"]
@@ -61,8 +61,8 @@ def test_builtin_validate_unknown_check_returns_400(
     client: GenaiEngineTestClientBase,
 ):
     status_code, _ = client.builtin_validate(
-        text="hello",
-        checks=["not_a_real_check"],
+        prompt="hello",
+        checks=[{"type": "not_a_real_check"}],
     )
     assert status_code == 400
 
@@ -71,16 +71,185 @@ def test_builtin_validate_unknown_check_returns_400(
 def test_builtin_validate_empty_checks_returns_400(
     client: GenaiEngineTestClientBase,
 ):
-    status_code, _ = client.builtin_validate(text="hello", checks=[])
+    status_code, _ = client.builtin_validate(prompt="hello", checks=[])
     assert status_code == 400
 
 
 @pytest.mark.unit_tests
-def test_builtin_validate_empty_text_returns_400(
+def test_builtin_validate_no_text_fields_returns_400(
     client: GenaiEngineTestClientBase,
 ):
-    status_code, _ = client.builtin_validate(text="", checks=["prompt_injection"])
+    status_code, _ = client.builtin_validate(
+        checks=[{"type": "prompt_injection"}],
+    )
     assert status_code == 400
+
+
+@pytest.mark.unit_tests
+def test_builtin_validate_prompt_injection_requires_prompt_returns_400(
+    client: GenaiEngineTestClientBase,
+):
+    status_code, body = client.builtin_validate(
+        response="some response text",
+        checks=[{"type": "prompt_injection"}],
+    )
+    assert status_code == 400
+    assert "prompt_injection" in body["detail"]
+    assert "prompt" in body["detail"]
+
+
+@pytest.mark.unit_tests
+def test_builtin_validate_hallucination_requires_response_returns_400(
+    client: GenaiEngineTestClientBase,
+):
+    status_code, body = client.builtin_validate(
+        prompt="some prompt text",
+        context="some grounding context",
+        checks=[{"type": "hallucination"}],
+    )
+    assert status_code == 400
+    assert "hallucination" in body["detail"]
+    assert "response" in body["detail"]
+
+
+@pytest.mark.unit_tests
+def test_builtin_validate_hallucination_requires_context_returns_400(
+    client: GenaiEngineTestClientBase,
+):
+    status_code, body = client.builtin_validate(
+        response="The Eiffel Tower is in Berlin.",
+        checks=[{"type": "hallucination"}],
+    )
+    assert status_code == 400
+    assert "hallucination" in body["detail"]
+    assert "context" in body["detail"]
+
+
+@pytest.mark.unit_tests
+def test_builtin_validate_hallucination_runs_with_response_and_context(
+    client: GenaiEngineTestClientBase,
+):
+    status_code, body = client.builtin_validate(
+        response="The Eiffel Tower is located in Paris and is 330 meters tall.",
+        context="The Eiffel Tower is a wrought-iron lattice tower in Paris, France. "
+        "It is 330 metres tall.",
+        checks=[{"type": "hallucination"}],
+    )
+    assert status_code == 200
+    assert len(body["results"]) == 1
+    assert body["results"][0]["name"] == "hallucination"
+    assert body["results"][0]["rule_type"] == RuleType.MODEL_HALLUCINATION_V2.value
+
+
+@pytest.mark.unit_tests
+def test_builtin_validate_regex_with_inline_config(
+    client: GenaiEngineTestClientBase,
+):
+    status_code, body = client.builtin_validate(
+        prompt="My account number is 12345",
+        checks=[
+            {"type": "regex", "config": {"regex_patterns": ["\\d{5}"]}},
+        ],
+    )
+    assert status_code == 200
+    assert len(body["results"]) == 1
+    assert body["results"][0]["name"] == "regex"
+    assert body["results"][0]["rule_type"] == RuleType.REGEX.value
+    assert body["results"][0]["result"] == RuleResultEnum.FAIL.value
+
+
+@pytest.mark.unit_tests
+def test_builtin_validate_regex_requires_config_returns_400(
+    client: GenaiEngineTestClientBase,
+):
+    status_code, _ = client.builtin_validate(
+        prompt="hello",
+        checks=[{"type": "regex"}],
+    )
+    assert status_code == 400
+
+
+@pytest.mark.unit_tests
+def test_builtin_validate_keyword_with_inline_config(
+    client: GenaiEngineTestClientBase,
+):
+    status_code, body = client.builtin_validate(
+        prompt="The forbidden word is bananafish.",
+        checks=[
+            {"type": "keyword", "config": {"keywords": ["bananafish"]}},
+        ],
+    )
+    assert status_code == 200
+    assert len(body["results"]) == 1
+    assert body["results"][0]["name"] == "keyword"
+    assert body["results"][0]["rule_type"] == RuleType.KEYWORD.value
+    assert body["results"][0]["result"] == RuleResultEnum.FAIL.value
+
+
+@pytest.mark.unit_tests
+def test_builtin_validate_keyword_requires_config_returns_400(
+    client: GenaiEngineTestClientBase,
+):
+    status_code, _ = client.builtin_validate(
+        prompt="hello",
+        checks=[{"type": "keyword"}],
+    )
+    assert status_code == 400
+
+
+@pytest.mark.unit_tests
+def test_builtin_validate_sensitive_data_requires_config_returns_400(
+    client: GenaiEngineTestClientBase,
+):
+    status_code, _ = client.builtin_validate(
+        prompt="hello",
+        checks=[{"type": "sensitive_data"}],
+    )
+    assert status_code == 400
+
+
+@pytest.mark.unit_tests
+def test_builtin_validate_toxicity_with_inline_config(
+    client: GenaiEngineTestClientBase,
+):
+    status_code, body = client.builtin_validate(
+        prompt="A perfectly benign message.",
+        checks=[{"type": "toxicity", "config": {"threshold": 0.9}}],
+    )
+    assert status_code == 200
+    assert len(body["results"]) == 1
+    assert body["results"][0]["name"] == "toxicity"
+
+
+@pytest.mark.unit_tests
+def test_builtin_validate_pii_with_inline_config(
+    client: GenaiEngineTestClientBase,
+):
+    status_code, body = client.builtin_validate(
+        prompt="My email is alice@example.com",
+        checks=[
+            {
+                "type": "pii",
+                "config": {"allow_list": ["alice@example.com"]},
+            },
+        ],
+    )
+    assert status_code == 200
+    assert len(body["results"]) == 1
+    assert body["results"][0]["name"] == "pii"
+
+
+@pytest.mark.unit_tests
+def test_builtin_validate_runs_on_response_when_only_response_provided(
+    client: GenaiEngineTestClientBase,
+):
+    status_code, body = client.builtin_validate(
+        response="My SSN is 123-45-6789",
+        checks=[{"type": "pii"}],
+    )
+    assert status_code == 200
+    assert len(body["results"]) == 1
+    assert body["results"][0]["name"] == "pii"
 
 
 @pytest.mark.unit_tests
@@ -92,8 +261,12 @@ def test_builtin_validate_does_not_persist_rows(
     response_rule_results_before = _count_rows(DatabaseResponseRuleResult)
 
     status_code, _ = client.builtin_validate(
-        text="Validate this text statelessly please.",
-        checks=["prompt_injection", "toxicity", "pii"],
+        prompt="Validate this text statelessly please.",
+        checks=[
+            {"type": "prompt_injection"},
+            {"type": "toxicity"},
+            {"type": "pii"},
+        ],
     )
     assert status_code == 200
 
@@ -107,8 +280,12 @@ def test_builtin_validate_preserves_check_order_in_results(
     client: GenaiEngineTestClientBase,
 ):
     status_code, body = client.builtin_validate(
-        text="Some arbitrary tool-call output.",
-        checks=["toxicity", "prompt_injection", "pii"],
+        prompt="Some arbitrary tool-call output.",
+        checks=[
+            {"type": "toxicity"},
+            {"type": "prompt_injection"},
+            {"type": "pii"},
+        ],
     )
     assert status_code == 200
     names = [r["name"] for r in body["results"]]
