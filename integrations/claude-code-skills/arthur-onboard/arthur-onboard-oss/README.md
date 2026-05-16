@@ -41,7 +41,7 @@ The skill is modularized into a main orchestrator + 8 step sub-skills. The main 
 Paste this prompt directly into Claude Code — no installation needed:
 
 ```
-For each skill name in this list — arthur-onboard, arthur-onboard-oss-engine, arthur-onboard-task, arthur-onboard-analyze, arthur-onboard-instrument, arthur-onboard-prompts, arthur-onboard-verify, arthur-onboard-eval-provider, arthur-onboard-evals — fetch https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/integrations/claude-code-skills/<skill-name>/SKILL.md and save it to ~/.claude/skills/<skill-name>/SKILL.md (create the directory if it doesn't exist). Once all skills are saved, read ~/.claude/skills/arthur-onboard/SKILL.md and follow its instructions.
+For each skill name in this list — arthur-onboard, arthur-onboard-oss-engine, arthur-onboard-task, arthur-onboard-analyze, arthur-onboard-instrument, arthur-onboard-prompts, arthur-onboard-verify, arthur-onboard-eval-provider, arthur-onboard-evals — fetch https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/integrations/claude-code-skills/arthur-onboard/<skill-name>/SKILL.md and save it to ~/.claude/skills/<skill-name>/SKILL.md (create the directory if it doesn't exist). Once all skills are saved, read ~/.claude/skills/arthur-onboard/SKILL.md and follow its instructions.
 ```
 
 ---
@@ -60,7 +60,7 @@ Skills live in a `.claude/skills/` directory. Claude Code loads them from two pl
 Install all skills with one script:
 
 ```bash
-BASE="https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integrations/claude-code-skills"
+BASE="https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integrations/claude-code-skills/arthur-onboard"
 for skill in arthur-onboard-oss arthur-onboard-oss-engine arthur-onboard-task arthur-onboard-analyze \
              arthur-onboard-instrument arthur-onboard-prompts arthur-onboard-verify \
              arthur-onboard-eval-provider arthur-onboard-evals; do
@@ -74,7 +74,7 @@ done
 Add to a specific repository so your team gets it automatically when they open Claude Code:
 
 ```bash
-BASE="https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integrations/claude-code-skills"
+BASE="https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integrations/claude-code-skills/arthur-onboard"
 for skill in arthur-onboard-oss arthur-onboard-oss-engine arthur-onboard-task arthur-onboard-analyze \
              arthur-onboard-instrument arthur-onboard-prompts arthur-onboard-verify \
              arthur-onboard-eval-provider arthur-onboard-evals; do
