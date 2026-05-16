@@ -1,7 +1,7 @@
 """
 Unit tests for claude_code_tracer.py
 
-Run with:  python3 -m pytest integrations/claude-code/test_tracer.py -v
+Run with:  python3 -m pytest integrations/claude-code-observability/test_tracer.py -v
 """
 
 import json
@@ -790,7 +790,10 @@ class TestHandlePreTool:
         assert trace_id_after_first == trace_id_after_second
 
     def test_context_continuation_creates_new_trace(
-        self, tmp_path, tmp_transcript, monkeypatch
+        self,
+        tmp_path,
+        tmp_transcript,
+        monkeypatch,
     ):
         """When the transcript has 2+ more human messages than human_count_at_start,
         a context continuation happened without UserPromptSubmit.  The old trace must
@@ -800,34 +803,41 @@ class TestHandlePreTool:
         (tmp_path / "tracer").mkdir()
         exported = []
         monkeypatch.setattr(
-            tracer, "_build_and_export_spans", lambda **kw: exported.extend(kw["span_records"])
+            tracer,
+            "_build_and_export_spans",
+            lambda **kw: exported.extend(kw["span_records"]),
         )
 
         sid = "cont-sess"
         # Build a transcript with 3 human messages (simulating continuation).
-        p = tmp_transcript([
-            human_entry("Turn 1"),
-            human_entry("Turn 2 (continuation trigger)"),
-            human_entry("Turn 3 (continuation itself)"),
-        ])
+        p = tmp_transcript(
+            [
+                human_entry("Turn 1"),
+                human_entry("Turn 2 (continuation trigger)"),
+                human_entry("Turn 3 (continuation itself)"),
+            ],
+        )
 
         # Seed state as if turn 1 was in-progress (human_count_at_start=0,
         # which means the trace started after the 1st human message).
         old_trace_id = "a" * 32
-        tracer._save_state(sid, {
-            "session_id": sid,
-            "session_start_ns": 1,
-            "username": "u",
-            "human_msg_count": 1,
-            "turn_number": 1,
-            "current_trace": {
-                "trace_id": old_trace_id,
-                "root_span_id": "b" * 16,
-                "turn_start_ns": 1,
+        tracer._save_state(
+            sid,
+            {
+                "session_id": sid,
+                "session_start_ns": 1,
+                "username": "u",
+                "human_msg_count": 1,
                 "turn_number": 1,
-                "human_count_at_start": 0,
+                "current_trace": {
+                    "trace_id": old_trace_id,
+                    "root_span_id": "b" * 16,
+                    "turn_start_ns": 1,
+                    "turn_number": 1,
+                    "human_count_at_start": 0,
+                },
             },
-        })
+        )
 
         data = {
             "session_id": sid,
@@ -842,11 +852,18 @@ class TestHandlePreTool:
         # A new trace must have been created.
         assert new_trace_id != old_trace_id
         # The old CHAIN span must have been exported.
-        chain_spans = [s for s in exported if s.get("attributes", {}).get("openinference.span.kind") == "CHAIN"]
+        chain_spans = [
+            s
+            for s in exported
+            if s.get("attributes", {}).get("openinference.span.kind") == "CHAIN"
+        ]
         assert len(chain_spans) == 1
 
     def test_emit_pending_llm_always_updates_last_output(
-        self, tmp_path, tmp_transcript, monkeypatch
+        self,
+        tmp_path,
+        tmp_transcript,
+        monkeypatch,
     ):
         """last_llm_output is updated to the last known span's output even when all
         spans were already emitted (no new_spans), so the CHAIN span gets the correct
@@ -857,11 +874,16 @@ class TestHandlePreTool:
         monkeypatch.setattr(tracer, "_build_and_export_spans", MagicMock())
 
         sid = "last-out-sess"
-        p = tmp_transcript([
-            human_entry("Hello"),
-            llm_entry("First response with tool call", tool_use_blocks=[{"id": "t1", "name": "Bash", "input": {}}]),
-            llm_entry("Final text response — the summary"),
-        ])
+        p = tmp_transcript(
+            [
+                human_entry("Hello"),
+                llm_entry(
+                    "First response with tool call",
+                    tool_use_blocks=[{"id": "t1", "name": "Bash", "input": {}}],
+                ),
+                llm_entry("Final text response — the summary"),
+            ],
+        )
 
         state = {
             "session_id": sid,
@@ -1720,7 +1742,10 @@ class TestStateHelperErrorPaths:
 
 def _real_transcript_content() -> str:
     """Minimal transcript content with one human message — passes _is_real_transcript."""
-    return json.dumps({"type": "user", "message": {"role": "user", "content": "hi"}}) + "\n"
+    return (
+        json.dumps({"type": "user", "message": {"role": "user", "content": "hi"}})
+        + "\n"
+    )
 
 
 def _shadow_transcript_content() -> str:
@@ -1762,7 +1787,10 @@ class TestFindTranscriptPath:
 
         monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        result = tracer._find_transcript_path({"transcript_path": str(shadow)}, session_id)
+        result = tracer._find_transcript_path(
+            {"transcript_path": str(shadow)},
+            session_id,
+        )
         assert result == str(real)
 
     def test_glob_prefers_largest_file(self, tmp_path, monkeypatch):
@@ -1829,7 +1857,9 @@ class TestGetCachedTranscriptPath:
 
         state = {"transcript_path": str(real)}
         result = tracer._get_cached_transcript_path(
-            {"transcript_path": str(decoy)}, state, "any"
+            {"transcript_path": str(decoy)},
+            state,
+            "any",
         )
         assert result == str(real)
 
@@ -1839,7 +1869,9 @@ class TestGetCachedTranscriptPath:
         p.write_text(_real_transcript_content())
         state = {}
         result = tracer._get_cached_transcript_path(
-            {"transcript_path": str(p)}, state, "any"
+            {"transcript_path": str(p)},
+            state,
+            "any",
         )
         assert result == str(p)
         assert state["transcript_path"] == str(p)
@@ -1854,7 +1886,9 @@ class TestGetCachedTranscriptPath:
         new = tmp_path / "new.jsonl"
         new.write_text(_real_transcript_content())
         result = tracer._get_cached_transcript_path(
-            {"transcript_path": str(new)}, state, "any"
+            {"transcript_path": str(new)},
+            state,
+            "any",
         )
         assert result == str(new)
         assert state["transcript_path"] == str(new)
@@ -1870,10 +1904,20 @@ class TestGetCachedTranscriptPath:
         real_dir.mkdir(parents=True)
         real = real_dir / f"{session_id}.jsonl"
         real.write_text(
-            "\n".join([
-                json.dumps({"type": "user", "message": {"role": "user", "content": "hi"}}),
-                json.dumps({"type": "assistant", "message": {"role": "assistant", "content": []}}),
-            ]) + "\n"
+            "\n".join(
+                [
+                    json.dumps(
+                        {"type": "user", "message": {"role": "user", "content": "hi"}},
+                    ),
+                    json.dumps(
+                        {
+                            "type": "assistant",
+                            "message": {"role": "assistant", "content": []},
+                        },
+                    ),
+                ],
+            )
+            + "\n",
         )
 
         # State cached at UserPromptSubmit time, pointing to the real transcript
@@ -1887,7 +1931,9 @@ class TestGetCachedTranscriptPath:
 
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         result = tracer._get_cached_transcript_path(
-            {"transcript_path": str(shadow)}, state, session_id
+            {"transcript_path": str(shadow)},
+            state,
+            session_id,
         )
         # Must return the cached real transcript, not the shadow
         assert result == str(real)
@@ -1903,7 +1949,11 @@ class TestSubagentContextPropagation:
 
     def test_write_and_claim_round_trip(self, tmp_path, monkeypatch):
         monkeypatch.setattr(tracer, "STATE_DIR", tmp_path / "tracer")
-        monkeypatch.setattr(tracer, "_PENDING_AGENT_DIR", tmp_path / "tracer" / "pending_agent")
+        monkeypatch.setattr(
+            tracer,
+            "_PENDING_AGENT_DIR",
+            tmp_path / "tracer" / "pending_agent",
+        )
         tracer._write_pending_agent_context("parent-sess", "traceid-abc", "spanid-xyz")
         ctx = tracer._claim_pending_agent_context()
         assert ctx is not None
@@ -1927,8 +1977,18 @@ class TestSubagentContextPropagation:
     def test_claim_matches_by_prompt(self, tmp_path, monkeypatch):
         """Subagent claiming with a matching prompt should pick the right context."""
         monkeypatch.setattr(tracer, "_PENDING_AGENT_DIR", tmp_path / "pending_agent")
-        tracer._write_pending_agent_context("s", "trace-A", "span-A", agent_prompt="search the web")
-        tracer._write_pending_agent_context("s", "trace-B", "span-B", agent_prompt="write some code")
+        tracer._write_pending_agent_context(
+            "s",
+            "trace-A",
+            "span-A",
+            agent_prompt="search the web",
+        )
+        tracer._write_pending_agent_context(
+            "s",
+            "trace-B",
+            "span-B",
+            agent_prompt="write some code",
+        )
         # Claiming with "write some code" should get span-B, not the newer span-A
         ctx = tracer._claim_pending_agent_context(prompt="write some code")
         assert ctx is not None
@@ -1937,8 +1997,18 @@ class TestSubagentContextPropagation:
     def test_claim_parallel_agents_no_cross_contamination(self, tmp_path, monkeypatch):
         """Two parallel agents with distinct prompts each claim their own context."""
         monkeypatch.setattr(tracer, "_PENDING_AGENT_DIR", tmp_path / "pending_agent")
-        tracer._write_pending_agent_context("s", "trace-1", "span-1", agent_prompt="task one")
-        tracer._write_pending_agent_context("s", "trace-2", "span-2", agent_prompt="task two")
+        tracer._write_pending_agent_context(
+            "s",
+            "trace-1",
+            "span-1",
+            agent_prompt="task one",
+        )
+        tracer._write_pending_agent_context(
+            "s",
+            "trace-2",
+            "span-2",
+            agent_prompt="task two",
+        )
 
         ctx1 = tracer._claim_pending_agent_context(prompt="task one")
         ctx2 = tracer._claim_pending_agent_context(prompt="task two")
@@ -1947,7 +2017,11 @@ class TestSubagentContextPropagation:
         assert ctx2 is not None and ctx2["parent_span_id"] == "span-2"
         assert not any((tmp_path / "pending_agent").iterdir())
 
-    def test_claim_falls_back_to_newest_when_no_prompt_match(self, tmp_path, monkeypatch):
+    def test_claim_falls_back_to_newest_when_no_prompt_match(
+        self,
+        tmp_path,
+        monkeypatch,
+    ):
         """With no prompt match, fall back to newest-first (legacy behaviour)."""
         monkeypatch.setattr(tracer, "_PENDING_AGENT_DIR", tmp_path / "pending_agent")
         # Write two contexts without prompts (simulates older tracer versions)
@@ -1961,14 +2035,21 @@ class TestSubagentContextPropagation:
     def test_subagent_inherits_trace_id(self, tmp_path, monkeypatch):
         """UserPromptSubmit for a new session should inherit the parent trace ID."""
         monkeypatch.setattr(tracer, "STATE_DIR", tmp_path / "tracer")
-        monkeypatch.setattr(tracer, "_PENDING_AGENT_DIR", tmp_path / "tracer" / "pending_agent")
+        monkeypatch.setattr(
+            tracer,
+            "_PENDING_AGENT_DIR",
+            tmp_path / "tracer" / "pending_agent",
+        )
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
 
         parent_trace_id = "aabbccddeeff00112233445566778899"
         parent_span_id = "0011223344556677"
         tracer._write_pending_agent_context(
-            "parent-sess", parent_trace_id, parent_span_id, agent_prompt="do the task"
+            "parent-sess",
+            parent_trace_id,
+            parent_span_id,
+            agent_prompt="do the task",
         )
 
         exported: list[dict] = []
@@ -1977,14 +2058,21 @@ class TestSubagentContextPropagation:
             exported.extend(span_records)
 
         monkeypatch.setattr(tracer, "_build_and_export_spans", fake_export)
-        monkeypatch.setattr(tracer, "discover_config", lambda: {"api_key": "k", "task_id": "t", "endpoint": "https://x"})
+        monkeypatch.setattr(
+            tracer,
+            "discover_config",
+            lambda: {"api_key": "k", "task_id": "t", "endpoint": "https://x"},
+        )
 
         data = {"session_id": "child-sess", "prompt": "do the task"}
         state = {}
         monkeypatch.setattr(tracer, "_load_state", lambda sid: state)
         monkeypatch.setattr(tracer, "_save_state", lambda sid, s: state.update(s))
 
-        tracer.handle_user_prompt_submit(data, {"api_key": "k", "task_id": "t", "endpoint": "https://x"})
+        tracer.handle_user_prompt_submit(
+            data,
+            {"api_key": "k", "task_id": "t", "endpoint": "https://x"},
+        )
 
         # The new trace should use the parent's trace ID
         assert state["current_trace"]["trace_id"] == parent_trace_id
@@ -1994,7 +2082,11 @@ class TestSubagentContextPropagation:
     def test_handle_pre_tool_writes_context_for_agent(self, tmp_path, monkeypatch):
         """PreToolUse for the Agent tool should write a pending context file."""
         monkeypatch.setattr(tracer, "STATE_DIR", tmp_path / "tracer")
-        monkeypatch.setattr(tracer, "_PENDING_AGENT_DIR", tmp_path / "tracer" / "pending_agent")
+        monkeypatch.setattr(
+            tracer,
+            "_PENDING_AGENT_DIR",
+            tmp_path / "tracer" / "pending_agent",
+        )
 
         trace_id = "deadbeef" * 4
         root_span_id = "cafebabe" * 2
@@ -2019,7 +2111,10 @@ class TestSubagentContextPropagation:
             "tool_name": "Agent",
             "tool_input": {"prompt": "go do stuff"},
         }
-        tracer.handle_pre_tool(data, {"api_key": "k", "task_id": "t", "endpoint": "https://x"})
+        tracer.handle_pre_tool(
+            data,
+            {"api_key": "k", "task_id": "t", "endpoint": "https://x"},
+        )
 
         # A pending context file should now exist, with the prompt stored
         ctx = tracer._claim_pending_agent_context(prompt="go do stuff")
@@ -2033,7 +2128,11 @@ class TestSubagentContextPropagation:
         """Tool spans for the Agent tool should have AGENT span kind."""
         rec = tracer._build_tool_span_record(
             tool_name="Agent",
-            tool_input={"prompt": "do something", "description": "helper", "subagent_type": "general-purpose"},
+            tool_input={
+                "prompt": "do something",
+                "description": "helper",
+                "subagent_type": "general-purpose",
+            },
             tool_response="done",
             start_ns=1000,
             end_ns=2000,
@@ -2565,7 +2664,7 @@ class TestExtractLlmSpansMessageIdGrouping:
                 human_entry("Hello"),
                 llm_entry_with_id("msg_abc", text="", output_tokens=5),
                 llm_entry_with_id("msg_abc", text="Hi there", output_tokens=15),
-            ]
+            ],
         )
         spans = self._extract(p)
         assert len(spans) == 1
@@ -2581,7 +2680,7 @@ class TestExtractLlmSpansMessageIdGrouping:
                 human_entry("Hello"),
                 llm_entry_with_id("msg_abc", text="", output_tokens=5),
                 llm_entry_with_id("msg_abc", text="Answer", output_tokens=15),
-            ]
+            ],
         )
         spans = self._extract(p)
         assert len(spans) == 1
@@ -2593,9 +2692,19 @@ class TestExtractLlmSpansMessageIdGrouping:
         p = tmp_transcript(
             [
                 human_entry("Hello"),
-                llm_entry_with_id("msg_abc", text="", input_tokens=100, output_tokens=5),
-                llm_entry_with_id("msg_abc", text="Answer", input_tokens=100, output_tokens=15),
-            ]
+                llm_entry_with_id(
+                    "msg_abc",
+                    text="",
+                    input_tokens=100,
+                    output_tokens=5,
+                ),
+                llm_entry_with_id(
+                    "msg_abc",
+                    text="Answer",
+                    input_tokens=100,
+                    output_tokens=15,
+                ),
+            ],
         )
         spans = self._extract(p)
         assert len(spans) == 1
@@ -2609,7 +2718,7 @@ class TestExtractLlmSpansMessageIdGrouping:
                 llm_entry_with_id("msg_aaa", text="First response"),
                 tool_result_entry("t1", "tool output"),
                 llm_entry_with_id("msg_bbb", text="Second response"),
-            ]
+            ],
         )
         spans = self._extract(p)
         assert len(spans) == 2
@@ -2624,7 +2733,7 @@ class TestExtractLlmSpansMessageIdGrouping:
                 llm_entry_with_id("msg_xyz", text="", output_tokens=3),
                 llm_entry_with_id("msg_xyz", text="Hello ", output_tokens=4),
                 llm_entry_with_id("msg_xyz", text="world", output_tokens=5),
-            ]
+            ],
         )
         spans = self._extract(p)
         assert len(spans) == 1
@@ -2639,7 +2748,7 @@ class TestExtractLlmSpansMessageIdGrouping:
                 human_entry("Hello"),
                 llm_entry_with_id("msg_mix", tool_use_blocks=[tb], output_tokens=8),
                 llm_entry_with_id("msg_mix", text="Here is the file", output_tokens=10),
-            ]
+            ],
         )
         spans = self._extract(p)
         assert len(spans) == 1

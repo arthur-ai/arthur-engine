@@ -29,7 +29,7 @@ The installer supports two modes. Use **global** to trace all your Claude Code s
 ### Option A — Global install (trace all projects)
 
 ```bash
-cd integrations/claude-code
+cd integrations/claude-code-observability
 
 # Optional but recommended: add credentials so the installer writes the config for you
 cp .env.example .env   # or create .env manually (see below)
@@ -51,7 +51,7 @@ Restart Claude Code after the first install.
 ### Option B — Per-project install (scoped to one project)
 
 ```bash
-cd integrations/claude-code
+cd integrations/claude-code-observability
 ./install.sh --project-dir path/to/your/project
 ```
 
@@ -74,7 +74,7 @@ Restart Claude Code after the first install.
 Populate `.env` in this directory before running `install.sh` and the config file will be written automatically:
 
 ```bash
-# integrations/claude-code/.env
+# integrations/claude-code-observability/.env
 GENAI_ENGINE_API_KEY=<your-api-key>
 GENAI_ENGINE_TASK_ID=<your-task-id>
 GENAI_ENGINE_TRACE_ENDPOINT=https://<your-arthur-engine-host>/api/v1/traces
@@ -134,7 +134,7 @@ Set these under **Settings → Secrets and variables → Actions**.
 Unit tests cover config discovery, transcript parsing, turn detection, LLM span extraction, all five hook handlers, RETRIEVER span kind routing, and error span emission. No credentials or running services are required — OTLP export is mocked.
 
 ```bash
-cd integrations/claude-code
+cd integrations/claude-code-observability
 pip install pytest
 python3 -m pytest test_tracer.py -v
 ```

@@ -184,8 +184,8 @@ def _write_pending_agent_context(
                 "parent_span_id": parent_span_id,
                 "created_ns": time.time_ns(),
                 "agent_prompt": agent_prompt,
-            }
-        )
+            },
+        ),
     )
 
 
@@ -1033,7 +1033,8 @@ def _emit_pending_llm_spans(
     # and the final text response was already the last one processed).
     if all_llm_spans:
         current_trace["last_llm_output"] = all_llm_spans[-1]["attributes"].get(
-            "output.value", ""
+            "output.value",
+            "",
         )
 
     if not new_spans:
@@ -1556,7 +1557,9 @@ def handle_stop(data: dict, config: dict) -> None:
                     "turn_start_ns": end_ns,
                     "turn_number": turn_number,
                     "human_count_at_start": max(0, current_human_count - 1),
-                    "prompt_preview": _truncate(prompt_preview) if prompt_preview else "",
+                    "prompt_preview": (
+                        _truncate(prompt_preview) if prompt_preview else ""
+                    ),
                 }
 
         # Emit the final LLM span(s) — the last response has no tool call after it,
