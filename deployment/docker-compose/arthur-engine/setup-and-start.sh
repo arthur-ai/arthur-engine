@@ -13,9 +13,13 @@ prompt_env_var() {
   local output_key_pair=$3
   local input_value
 
-  read -p "$var_name [Default: $default_value]: " input_value
-  if [[ -z "$input_value" ]]; then
-    input_value=$default_value
+  if [[ "$NON_INTERACTIVE" == "true" ]]; then
+    input_value="${!var_name:-$default_value}"
+  else
+    read -p "$var_name [Default: $default_value]: " input_value
+    if [[ -z "$input_value" ]]; then
+      input_value=$default_value
+    fi
   fi
 
   if [[ -n "$output_key_pair" ]]; then
@@ -120,6 +124,8 @@ echo "└───────────────────────�
 
 check_docker_compose
 
+NON_INTERACTIVE="${SETUP_NON_INTERACTIVE:-false}"
+
 # create necessary directories if not already present
 root_dir="$HOME/.arthur-engine/local-stack"
 engine_subdir="$root_dir/arthur-engine"
@@ -184,8 +190,16 @@ else
         echo "You can use a new or existing key tied to the OpenAI project/org your LLM calls are billed to."
         echo "Don't have a key? You can skip for now and add it later. Just note: hallucination & sensitive data guardrails won't run without it."
         echo ""
-        read -p "Do you have access to OpenAI? (y/n) [Default: y]: " has_openai
-        has_openai=${has_openai:-y}
+        if [[ "$NON_INTERACTIVE" == "true" ]]; then
+            if [[ "${SETUP_SKIP_OPENAI:-false}" == "true" ]]; then
+                has_openai="n"
+            else
+                has_openai="y"
+            fi
+        else
+            read -p "Do you have access to OpenAI? (y/n) [Default: y]: " has_openai
+            has_openai=${has_openai:-y}
+        fi
 
         if [[ $has_openai =~ ^[Yy]$ ]]; then
             echo ""
