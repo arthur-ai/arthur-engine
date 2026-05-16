@@ -40,7 +40,7 @@ done
 TRACER_SRC="$SCRIPT_DIR/claude_code_tracer.py"
 if [[ ! -f "$TRACER_SRC" ]]; then
     echo "Error: tracer not found at $TRACER_SRC" >&2
-    echo "Run this script from the repo, e.g. ./integrations/claude-code/install.sh" >&2
+    echo "Run this script from the repo, e.g. ./integrations/claude-code-observability/install.sh" >&2
     exit 1
 fi
 
