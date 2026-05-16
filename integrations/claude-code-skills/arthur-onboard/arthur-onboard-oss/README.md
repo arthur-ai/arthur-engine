@@ -41,7 +41,7 @@ The skill is modularized into a main orchestrator + 8 step sub-skills. The main 
 Paste this prompt directly into Claude Code — no installation needed:
 
 ```
-For each skill name in this list — arthur-onboard, arthur-onboard-oss-engine, arthur-onboard-task, arthur-onboard-analyze, arthur-onboard-instrument, arthur-onboard-prompts, arthur-onboard-verify, arthur-onboard-eval-provider, arthur-onboard-evals — fetch https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/integrations/claude-code-skills/arthur-onboard/<skill-name>/SKILL.md and save it to ~/.claude/skills/<skill-name>/SKILL.md (create the directory if it doesn't exist). Once all skills are saved, read ~/.claude/skills/arthur-onboard/SKILL.md and follow its instructions.
+For each skill name in this list — arthur-onboard-oss, arthur-onboard-oss-engine, arthur-onboard-task, arthur-onboard-analyze, arthur-onboard-instrument, arthur-onboard-prompts, arthur-onboard-verify, arthur-onboard-eval-provider, arthur-onboard-evals — fetch https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/integrations/claude-code-skills/arthur-onboard/<skill-name>/SKILL.md and save it to ~/.claude/skills/<skill-name>/SKILL.md (create the directory if it doesn't exist). Once all skills are saved, read ~/.claude/skills/arthur-onboard-oss/SKILL.md and follow its instructions.
 ```
 
 ---
@@ -102,7 +102,7 @@ Re-run the same install script — it overwrites files in place.
 Open Claude Code CLI in your agentic application's repository and run:
 
 ```
-/arthur-onboard
+/arthur-onboard-oss
 ```
 
 Claude will guide you through each step interactively, asking for confirmation before making any changes to your code.
