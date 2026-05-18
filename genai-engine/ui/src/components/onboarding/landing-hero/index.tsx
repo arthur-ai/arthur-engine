@@ -1,6 +1,7 @@
 import BoltOutlinedIcon from "@mui/icons-material/BoltOutlined";
 import VpnKeyOutlinedIcon from "@mui/icons-material/VpnKeyOutlined";
 import { Box, Link, Typography } from "@mui/material";
+import { useEffect } from "react";
 
 import { BackgroundAurora } from "../background-aurora";
 import { BackgroundGrid } from "../background-grid";
@@ -9,7 +10,14 @@ import { PickCard } from "../pick-card";
 
 import type { LandingHeroProps } from "./types";
 
-export const LandingHero: React.FC<LandingHeroProps> = ({ onTry, onLogin }) => (
+import { EVENT_NAMES, track } from "@/services/amplitude";
+
+export const LandingHero: React.FC<LandingHeroProps> = ({ onTry, onLogin }) => {
+  useEffect(() => {
+    track(EVENT_NAMES.ONBOARDING_LANDING_VIEWED);
+  }, []);
+
+  return (
   <Box
     sx={{
       position: "relative",
@@ -67,7 +75,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onTry, onLogin }) => (
               textWrap: "balance",
             }}
           >
-            Get started with Arthur Engine
+            Get started with the Arthur Evaluation Engine
           </Typography>
 
           <Typography
@@ -132,4 +140,5 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onTry, onLogin }) => (
       </Box>
     </Box>
   </Box>
-);
+  );
+};

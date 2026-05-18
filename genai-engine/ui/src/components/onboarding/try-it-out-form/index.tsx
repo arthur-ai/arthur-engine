@@ -21,12 +21,15 @@ import {
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { useForm, type AnyFieldApi } from "@tanstack/react-form";
+import { useRef } from "react";
 
 import { EngineTopNav } from "../engine-top-nav";
 import { ATTRIBUTION_OPTIONS, BRINGS_OPTIONS, COMPETITOR_OPTIONS, MATURITY_OPTIONS } from "../onboarding-options";
 
 import { onboardingSchema } from "./schema";
 import type { TryItOutFormProps } from "./types";
+
+import { EVENT_NAMES, identify, track } from "@/services/amplitude";
 
 export type { TryItOutSubmission } from "./schema";
 
@@ -77,6 +80,8 @@ const chipSx = (selected: boolean) => (theme: import("@mui/material").Theme) => 
 });
 
 export const TryItOutForm: React.FC<TryItOutFormProps> = ({ onBack, onSubmit }) => {
+  const formStartedRef = useRef(false);
+
   const form = useForm({
     defaultValues: {
       firstName: "",
@@ -84,19 +89,58 @@ export const TryItOutForm: React.FC<TryItOutFormProps> = ({ onBack, onSubmit }) 
       email: "",
       jobTitle: "",
       company: "",
-      building: "",
       maturity: "",
       brings: "",
       bringsOther: "",
       competitors: [] as string[],
       competitorOther: "",
       attribution: "",
+      attributionOther: "",
     },
     validators: { onSubmit: onboardingSchema },
+    listeners: {
+      onMount: () => {
+        track(EVENT_NAMES.ONBOARDING_FORM_VIEWED);
+      },
+      onChange: () => {
+        if (!formStartedRef.current) {
+          formStartedRef.current = true;
+          track(EVENT_NAMES.ONBOARDING_FORM_STARTED);
+        }
+      },
+    },
     onSubmit: ({ value }) => {
+      track(EVENT_NAMES.ONBOARDING_FORM_SUBMITTED, {
+        maturity: value.maturity,
+        brings: value.brings,
+        bringsOther: value.bringsOther,
+        competitors: value.competitors,
+        competitorOther: value.competitorOther,
+        attribution: value.attribution,
+        attributionOther: value.attributionOther,
+        company: value.company,
+      });
+      identify(value.email, {
+        firstName: value.firstName,
+        lastName: value.lastName,
+        email: value.email,
+        jobTitle: value.jobTitle,
+        company: value.company,
+      });
       onSubmit(value);
     },
+    onSubmitInvalid: ({ formApi }) => {
+      const invalidFields = Object.entries(formApi.state.fieldMeta)
+        .filter(([, meta]) => (meta?.errors?.length ?? 0) > 0)
+        .map(([name]) => name);
+      track(EVENT_NAMES.ONBOARDING_FORM_SUBMIT_FAILED, { invalid_fields: invalidFields });
+    },
   });
+
+  const handleBack = () => {
+    track(EVENT_NAMES.ONBOARDING_FORM_BACK_CLICKED);
+    onBack();
+  };
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh", backgroundColor: "background.default" }}>
@@ -114,7 +158,7 @@ export const TryItOutForm: React.FC<TryItOutFormProps> = ({ onBack, onSubmit }) 
       >
         <Box sx={{ width: "100%", maxWidth: 520 }}>
           <Button
-            onClick={onBack}
+            onClick={handleBack}
             startIcon={<ArrowBackIcon sx={{ fontSize: 16 }} />}
             sx={{
               textTransform: "none",
@@ -277,29 +321,6 @@ export const TryItOutForm: React.FC<TryItOutFormProps> = ({ onBack, onSubmit }) 
                 )}
               </form.Field>
             </Stack>
-
-            <form.Field name="building">
-              {(field) => (
-                <Stack spacing={0.75}>
-                  <FormLabel htmlFor="eo-building" sx={labelSx}>
-                    What are you building?
-                  </FormLabel>
-                  <TextField
-                    id="eo-building"
-                    placeholder="e.g. A customer-support agent that summarises tickets and drafts replies."
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    error={field.state.meta.errors.length > 0}
-                    helperText={fieldErrorMessage(field)}
-                    multiline
-                    rows={3}
-                    fullWidth
-                    sx={textFieldSx}
-                  />
-                </Stack>
-              )}
-            </form.Field>
 
             <form.Field name="maturity">
               {(field) => {
@@ -482,6 +503,28 @@ export const TryItOutForm: React.FC<TryItOutFormProps> = ({ onBack, onSubmit }) 
                 );
               }}
             </form.Field>
+
+            <form.Subscribe selector={(s) => s.values.attribution === "other"}>
+              {(show) =>
+                show ? (
+                  <form.Field name="attributionOther">
+                    {(field) => (
+                      <TextField
+                        placeholder="Please specify…"
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        error={field.state.meta.errors.length > 0}
+                        helperText={fieldErrorMessage(field)}
+                        size="small"
+                        fullWidth
+                        sx={{ ...textFieldSx, mt: -1 }}
+                      />
+                    )}
+                  </form.Field>
+                ) : null
+              }
+            </form.Subscribe>
 
             <Button
               type="submit"

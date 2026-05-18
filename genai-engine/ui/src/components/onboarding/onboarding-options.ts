@@ -42,5 +42,5 @@ export const ATTRIBUTION_OPTIONS: ChipOption[] = [
   { id: "wom", label: "Word of mouth / colleague" },
   { id: "event", label: "Event or meetup" },
   { id: "blog", label: "Blog or article" },
-  { id: "other", label: "Other" },
+  { id: "other", label: "Other", other: true },
 ];

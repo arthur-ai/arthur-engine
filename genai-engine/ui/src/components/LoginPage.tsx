@@ -9,6 +9,7 @@ import { EngineTopNav } from "./onboarding/engine-top-nav";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useDemoMode } from "@/contexts/EngineConfigContext";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 
 export const LoginPage: React.FC = () => {
   const [token, setToken] = useState("");
@@ -16,6 +17,10 @@ export const LoginPage: React.FC = () => {
   const { login, error, isAuthenticated } = useAuth();
   const { demoMode } = useDemoMode();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    track(EVENT_NAMES.ONBOARDING_LOGIN_VIEWED);
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -91,7 +96,7 @@ export const LoginPage: React.FC = () => {
               mb: 1,
             }}
           >
-            Sign in with an API token
+            Sign in to Arthur Engine with your API token
           </Typography>
 
           <Typography
