@@ -1,3 +1,4 @@
+import { formOptions } from "@tanstack/react-form";
 import { z } from "zod";
 
 import type { TryItOutSubmission } from "../linear/schema";
@@ -59,6 +60,10 @@ export const wizardDefaultValues: WizardValues = {
   about: { maturity: "", brings: "", bringsOther: "" },
   discovery: { competitors: [], competitorOther: "", attribution: "", attributionOther: "" },
 };
+
+export const wizardFormOpts = formOptions({
+  defaultValues: wizardDefaultValues,
+});
 
 export const flattenWizardValues = (values: WizardValues): TryItOutSubmission => ({
   firstName: values.identity.firstName,
