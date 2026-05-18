@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import TIMESTAMP, Boolean, ForeignKey, String, text
+from sqlalchemy import TIMESTAMP, Boolean, ForeignKey, Index, String, text
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -36,6 +36,14 @@ class DatabaseApiKey(Base):
         postgresql.UUID(as_uuid=True),
         ForeignKey("organizations.id"),
         nullable=True,
+    )
+
+    __table_args__ = (
+        Index(
+            "ix_api_keys_org_id",
+            "org_id",
+            postgresql_where=text("org_id IS NOT NULL"),
+        ),
     )
 
     def deactivate(self) -> None:

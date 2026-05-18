@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import TIMESTAMP, Boolean, String, text
+from sqlalchemy import TIMESTAMP, Boolean, Index, String, text
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -24,4 +24,13 @@ class DatabaseOrganization(Base):
         TIMESTAMP(timezone=True),
         nullable=False,
         server_default=text("now()"),
+    )
+
+    __table_args__ = (
+        Index(
+            "uq_organizations_is_system_true",
+            "is_system",
+            unique=True,
+            postgresql_where=text("is_system = TRUE"),
+        ),
     )
