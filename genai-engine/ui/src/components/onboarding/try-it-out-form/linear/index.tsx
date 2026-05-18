@@ -54,17 +54,18 @@ export const TryItOutFormLinear: React.FC<TryItOutFormProps> = ({ onBack, onSubm
     validators: { onSubmit: onboardingSchema },
     listeners: {
       onMount: () => {
-        track(EVENT_NAMES.ONBOARDING_FORM_VIEWED);
+        track(EVENT_NAMES.ONBOARDING_FORM_VIEWED, { variant: "linear" });
       },
       onChange: () => {
         if (!formStartedRef.current) {
           formStartedRef.current = true;
-          track(EVENT_NAMES.ONBOARDING_FORM_STARTED);
+          track(EVENT_NAMES.ONBOARDING_FORM_STARTED, { variant: "linear" });
         }
       },
     },
     onSubmit: ({ value }) => {
       track(EVENT_NAMES.ONBOARDING_FORM_SUBMITTED, {
+        variant: "linear",
         maturity: value.maturity,
         brings: value.brings,
         bringsOther: value.bringsOther,
@@ -87,12 +88,12 @@ export const TryItOutFormLinear: React.FC<TryItOutFormProps> = ({ onBack, onSubm
       const invalidFields = Object.entries(formApi.state.fieldMeta)
         .filter(([, meta]) => (meta?.errors?.length ?? 0) > 0)
         .map(([name]) => name);
-      track(EVENT_NAMES.ONBOARDING_FORM_SUBMIT_FAILED, { invalid_fields: invalidFields });
+      track(EVENT_NAMES.ONBOARDING_FORM_SUBMIT_FAILED, { variant: "linear", invalid_fields: invalidFields });
     },
   });
 
   const handleBack = () => {
-    track(EVENT_NAMES.ONBOARDING_FORM_BACK_CLICKED);
+    track(EVENT_NAMES.ONBOARDING_FORM_BACK_CLICKED, { variant: "linear" });
     onBack();
   };
 
