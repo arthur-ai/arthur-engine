@@ -1,22 +1,14 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { Box, Button, Paper, Slide, Step, StepLabel, Stepper, Typography } from "@mui/material";
-import { revalidateLogic, useForm, useStore } from "@tanstack/react-form";
+import { revalidateLogic, useStore } from "@tanstack/react-form";
 import { useEffect, useRef, useState } from "react";
 
 import { EngineTopNav } from "../../engine-top-nav";
 import type { TryItOutFormProps } from "../types";
 
+import { useAppForm } from "./hooks/form";
 import { STEP_COUNT, STEP_LABELS, STEP_NAMES, type StepIndex, type StepName } from "./options";
-import {
-  aboutSchema,
-  discoverySchema,
-  flattenWizardValues,
-  getInvalidGroupFields,
-  identitySchema,
-  wizardDefaultValues,
-  wizardSchema,
-  type WizardValues,
-} from "./schema";
+import { flattenWizardValues, getInvalidGroupFields, wizardFormOpts, wizardSchema, type WizardValues } from "./schema";
 import { TryItOutFormWizardAboutStep } from "./steps/about";
 import { TryItOutFormWizardDiscoveryStep } from "./steps/discovery";
 import { TryItOutFormWizardIdentityStep } from "./steps/identity";
@@ -30,8 +22,8 @@ export const TryItOutFormWizard: React.FC<TryItOutFormProps> = ({ onBack, onSubm
   const [transitionDirection, setTransitionDirection] = useState<"left" | "right">("left");
   const formStartedRef = useRef(false);
 
-  const form = useForm({
-    defaultValues: wizardDefaultValues,
+  const form = useAppForm({
+    ...wizardFormOpts,
     validationLogic: revalidateLogic(),
     validators: {
       onDynamic: wizardSchema,
@@ -99,7 +91,7 @@ export const TryItOutFormWizard: React.FC<TryItOutFormProps> = ({ onBack, onSubm
     setStep(target);
   };
 
-  const handleGroupSubmit = (currentStep: StepIndex) => {
+  const advance = (currentStep: StepIndex) => () => {
     const stepName: StepName = STEP_NAMES[currentStep];
     track(EVENT_NAMES.ONBOARDING_WIZARD_STEP_COMPLETED, {
       step: currentStep + 1,
@@ -113,7 +105,7 @@ export const TryItOutFormWizard: React.FC<TryItOutFormProps> = ({ onBack, onSubm
     setStep((currentStep + 1) as StepIndex);
   };
 
-  const handleGroupSubmitInvalid = (currentStep: StepIndex) => {
+  const reportInvalid = (currentStep: StepIndex) => () => {
     const stepName: StepName = STEP_NAMES[currentStep];
     const invalidFields = getInvalidGroupFields(form.state.fieldMeta, stepName as keyof WizardValues);
     track(EVENT_NAMES.ONBOARDING_WIZARD_STEP_SUBMIT_FAILED, {
@@ -205,42 +197,27 @@ export const TryItOutFormWizard: React.FC<TryItOutFormProps> = ({ onBack, onSubm
               {step === 0 && (
                 <Slide in direction={transitionDirection} mountOnEnter unmountOnExit>
                   <Box>
-                    <form.FormGroup
-                      name="identity"
-                      validators={{ onDynamic: identitySchema }}
-                      onGroupSubmit={() => handleGroupSubmit(0)}
-                      onGroupSubmitInvalid={() => handleGroupSubmitInvalid(0)}
-                    >
-                      {(group) => <TryItOutFormWizardIdentityStep form={form} group={group} onBack={() => goBack(0)} />}
-                    </form.FormGroup>
+                    <TryItOutFormWizardIdentityStep form={form} onBack={() => goBack(0)} onAdvance={advance(0)} onInvalid={reportInvalid(0)} />
                   </Box>
                 </Slide>
               )}
               {step === 1 && (
                 <Slide in direction={transitionDirection} mountOnEnter unmountOnExit>
                   <Box>
-                    <form.FormGroup
-                      name="about"
-                      validators={{ onDynamic: aboutSchema }}
-                      onGroupSubmit={() => handleGroupSubmit(1)}
-                      onGroupSubmitInvalid={() => handleGroupSubmitInvalid(1)}
-                    >
-                      {(group) => <TryItOutFormWizardAboutStep form={form} group={group} onBack={() => goBack(1)} />}
-                    </form.FormGroup>
+                    <TryItOutFormWizardAboutStep form={form} onBack={() => goBack(1)} onAdvance={advance(1)} onInvalid={reportInvalid(1)} />
                   </Box>
                 </Slide>
               )}
               {step === 2 && (
                 <Slide in direction={transitionDirection} mountOnEnter unmountOnExit>
                   <Box>
-                    <form.FormGroup
-                      name="discovery"
-                      validators={{ onDynamic: discoverySchema }}
-                      onGroupSubmit={() => handleGroupSubmit(2)}
-                      onGroupSubmitInvalid={() => handleGroupSubmitInvalid(2)}
-                    >
-                      {(group) => <TryItOutFormWizardDiscoveryStep form={form} group={group} onBack={() => goBack(2)} isSubmitting={isSubmitting} />}
-                    </form.FormGroup>
+                    <TryItOutFormWizardDiscoveryStep
+                      form={form}
+                      onBack={() => goBack(2)}
+                      onAdvance={advance(2)}
+                      onInvalid={reportInvalid(2)}
+                      isSubmitting={isSubmitting}
+                    />
                   </Box>
                 </Slide>
               )}
