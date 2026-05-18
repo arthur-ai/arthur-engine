@@ -1,7 +1,14 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useApi } from "@/hooks/useApi";
-import type { Api, NewRuleRequest, PromptValidationRequest, RuleResponse, TaskResponse, ValidationResult } from "@/lib/api-client/api-client";
+import type {
+  Api,
+  BuiltinValidationRequest,
+  BuiltinValidationResponse,
+  NewRuleRequest,
+  RuleResponse,
+  TaskResponse,
+} from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
 
 export const taskRulesQueryOptions = ({ api, taskId }: { api: Api<unknown>; taskId: string }) =>
@@ -69,13 +76,13 @@ export function useToggleRule(taskId: string) {
   });
 }
 
-export function useValidatePrompt(taskId: string) {
+export function useValidate() {
   const api = useApi();
 
-  return useMutation<ValidationResult, Error, PromptValidationRequest>({
+  return useMutation<BuiltinValidationResponse, Error, BuiltinValidationRequest>({
     mutationFn: async (request) => {
       if (!api) throw new Error("API client not available");
-      const response = await api.api.validatePromptEndpointApiV2TasksTaskIdValidatePromptPost(taskId, request);
+      const response = await api.api.statelessValidateApiV2ValidatePost(request);
       return response.data;
     },
   });
