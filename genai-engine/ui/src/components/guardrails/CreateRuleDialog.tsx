@@ -231,7 +231,7 @@ export const CreateRuleDialog: React.FC<CreateRuleDialogProps> = ({ open, onClos
             fullWidth
             disabled={submitting}
             helperText='Each example: {"example": string, "result": boolean}. result=true means the example is sensitive data.'
-            slotProps={{ htmlInput: { style: { fontFamily: "monospace", fontSize: 13 } } }}
+            sx={{ "& .MuiInputBase-input": { fontFamily: "monospace", fontSize: 13 } }}
           />
         );
     }
