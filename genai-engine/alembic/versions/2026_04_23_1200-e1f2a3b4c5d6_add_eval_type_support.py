@@ -1,7 +1,7 @@
 """add eval_type support to llm_evals and continuous_evals
 
 Revision ID: e1f2a3b4c5d6
-Revises: add_api_version_secret
+Revises: b3f7a2c1d9e0
 Create Date: 2026-04-23 12:00:00.000000
 
 - Adds eval_type discriminator to llm_evals so the table stores all eval types
@@ -19,7 +19,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "e1f2a3b4c5d6"
-down_revision = "add_api_version_secret"
+down_revision = "b3f7a2c1d9e0"
 branch_labels = None
 depends_on = None
 
