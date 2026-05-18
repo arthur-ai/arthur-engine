@@ -1,4 +1,5 @@
-import { Box, Link, Stack, Typography } from "@mui/material";
+import { Box, Link as MuiLink, Stack } from "@mui/material";
+import { Link } from "react-router-dom";
 
 import { ArthurLogo } from "../../common/ArthurLogo";
 
@@ -16,37 +17,26 @@ export const EngineTopNav: React.FC = () => (
       flexShrink: 0,
     }}
   >
-    <Stack direction="row" alignItems="center" spacing={1}>
-      <ArthurLogo style={{ width: 22, height: 22 }} />
-      <Typography component="span" sx={{ fontSize: 16, fontWeight: 700, color: "text.primary", letterSpacing: "-0.01em" }}>
-        Arthur
-      </Typography>
-      <Typography component="span" aria-hidden="true" sx={{ color: "text.disabled", fontWeight: 400, fontSize: 16, mx: 0.25 }}>
-        /
-      </Typography>
-      <Box
-        component="span"
-        sx={{
-          fontFamily: "Geist Mono, SF Mono, Menlo, Consolas, monospace",
-          fontSize: 13,
-          color: "text.secondary",
-          backgroundColor: "action.hover",
-          px: 1,
-          py: "2px",
-          borderRadius: "4px",
-          letterSpacing: "-0.01em",
-        }}
-      >
-        engine
-      </Box>
-    </Stack>
+    <MuiLink to="/" underline="none" component={Link}>
+      <ArthurLogo className="size-6" />
+    </MuiLink>
     <Stack direction="row" spacing={2.5}>
-      <Link href="#" underline="hover" sx={{ fontSize: 13, color: "text.secondary", fontWeight: 500, "&:hover": { color: "text.primary" } }}>
+      <MuiLink
+        to="#"
+        underline="hover"
+        component={Link}
+        sx={{ fontSize: 13, color: "text.secondary", fontWeight: 500, "&:hover": { color: "text.primary" } }}
+      >
         Docs
-      </Link>
-      <Link href="#" underline="hover" sx={{ fontSize: 13, color: "text.secondary", fontWeight: 500, "&:hover": { color: "text.primary" } }}>
+      </MuiLink>
+      <MuiLink
+        to="#"
+        underline="hover"
+        component={Link}
+        sx={{ fontSize: 13, color: "text.secondary", fontWeight: 500, "&:hover": { color: "text.primary" } }}
+      >
         Status
-      </Link>
+      </MuiLink>
     </Stack>
   </Box>
 );
