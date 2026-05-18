@@ -22,41 +22,48 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import { useQueryClient } from "@tanstack/react-query";
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { ArthurLogo } from "./common/ArthurLogo";
+import { SearchBar } from "./common/SearchBar";
 import { CreateTaskForm } from "./CreateTaskForm";
 import { TaskCard } from "./TaskCard";
 
 import { SettingsMenuButton } from "@/components/settings/SettingsMenuButton";
-import { useApi } from "@/hooks/useApi";
-import { TaskResponse } from "@/lib/api";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useActiveTasksQuery, useArchivedTasksQuery } from "@/hooks/useTasksList";
+import { queryKeys } from "@/lib/queryKeys";
 import { type InactiveDays, type SortBy, useTaskListStore } from "@/stores/task-list.store";
-
-const PAGE_SIZE = 50;
 
 export const AllTasks: React.FC = () => {
   const navigate = useNavigate();
-  const api = useApi();
-  const [tasks, setTasks] = useState<TaskResponse[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [currentPage, setCurrentPage] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isFetchingMore, setIsFetchingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [archivedTasks, setArchivedTasks] = useState<TaskResponse[]>([]);
-  const [isLoadingArchived, setIsLoadingArchived] = useState(false);
-  const [archivedError, setArchivedError] = useState<string | null>(null);
-  const [archivedLoaded, setArchivedLoaded] = useState(false);
+  const queryClient = useQueryClient();
   const [archivedDialogOpen, setArchivedDialogOpen] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
   const { hideSystemTasks, sortBy, inactiveDays, setHideSystemTasks, setSortBy, setInactiveDays } = useTaskListStore();
 
+  const { tasks, totalCount, isLoading, isError, isFetchingNextPage, hasNextPage, fetchNextPage } = useActiveTasksQuery({
+    search: debouncedSearchQuery,
+  });
+
+  const {
+    tasks: archivedTasks,
+    totalCount: archivedTotalCount,
+    isLoading: isLoadingArchived,
+    isError: archivedIsError,
+    isFetchingNextPage: archivedIsFetchingNextPage,
+    hasNextPage: archivedHasNextPage,
+    fetchNextPage: archivedFetchNextPage,
+  } = useArchivedTasksQuery({ enabled: archivedDialogOpen });
+
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const tasksRef = useRef<TaskResponse[]>(tasks);
-  tasksRef.current = tasks;
-  const hasMore = tasks.length < totalCount;
+  const archivedSentinelRef = useRef<HTMLDivElement>(null);
+  const archivedScrollRef = useRef<HTMLDivElement>(null);
+  const isSearching = debouncedSearchQuery.trim().length > 0;
 
   const filteredTasks = useMemo(() => {
     let result = [...tasks];
@@ -93,109 +100,18 @@ export const AllTasks: React.FC = () => {
     return result;
   }, [archivedTasks, hideSystemTasks, sortBy]);
 
-  const fetchActiveTasks = useCallback(
-    async (page = 0) => {
-      try {
-        if (page === 0) {
-          setIsLoading(true);
-        } else {
-          setIsFetchingMore(true);
-        }
-        setError(null);
+  const invalidateTaskQueries = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all() });
+  }, [queryClient]);
 
-        if (!api) {
-          throw new Error("API client not available");
-        }
-
-        const response = await api.api.searchTasksApiV2TasksSearchPost(
-          {
-            page_size: PAGE_SIZE,
-            page,
-          },
-          {}
-        );
-
-        const incoming = response.data.tasks || [];
-        const count = response.data.count ?? 0;
-
-        if (page > 0 && incoming.length === 0) {
-          // API returned empty despite count > 0 (tasks deleted mid-pagination).
-          // Clamp totalCount to the number actually loaded so hasMore becomes false.
-          setTotalCount(tasksRef.current.length);
-        } else {
-          setTotalCount(count);
-          setTasks((prev) => (page === 0 ? incoming : [...prev, ...incoming]));
-        }
-        setCurrentPage(page);
-      } catch (err) {
-        console.error("Failed to fetch tasks:", err);
-        setError("Failed to load tasks. Please check your authentication.");
-      } finally {
-        setIsLoading(false);
-        setIsFetchingMore(false);
-      }
-    },
-    [api]
-  );
-
-  const fetchArchivedTasks = useCallback(async () => {
-    try {
-      setIsLoadingArchived(true);
-      setArchivedError(null);
-
-      if (!api) {
-        throw new Error("API client not available");
-      }
-
-      const response = await api.api.searchTasksApiV2TasksSearchPost(
-        {
-          page_size: 500,
-          page: 0,
-        },
-        {
-          only_archived: true,
-        }
-      );
-
-      setArchivedTasks(response.data.tasks || []);
-      setArchivedLoaded(true);
-    } catch (err) {
-      console.error("Failed to fetch archived tasks:", err);
-      setArchivedError("Failed to load archived tasks. Please check your authentication.");
-    } finally {
-      setIsLoadingArchived(false);
-    }
-  }, [api]);
-
-  const handleArchiveToggle = useCallback(async () => {
-    await fetchActiveTasks(0);
-    if (archivedDialogOpen || archivedLoaded) {
-      await fetchArchivedTasks();
-    }
-  }, [fetchActiveTasks, fetchArchivedTasks, archivedDialogOpen, archivedLoaded]);
-
-  useEffect(() => {
-    if (api) {
-      fetchActiveTasks(0);
-    }
-  }, [api, fetchActiveTasks]);
-
-  // Lazy-load archived tasks the first time the dialog is opened
-  useEffect(() => {
-    if (api && archivedDialogOpen && !archivedLoaded) {
-      fetchArchivedTasks();
-    }
-  }, [api, archivedDialogOpen, archivedLoaded, fetchArchivedTasks]);
-
-  // Infinite scroll: observe the sentinel at the bottom of the task grid
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isFetchingMore && !isLoading && !error) {
-          fetchActiveTasks(currentPage + 1);
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage && !isLoading && !isError) {
+          fetchNextPage();
         }
       },
       { threshold: 0.1 }
@@ -203,10 +119,29 @@ export const AllTasks: React.FC = () => {
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMore, isFetchingMore, isLoading, error, currentPage, fetchActiveTasks]);
+  }, [hasNextPage, isFetchingNextPage, isLoading, isError, fetchNextPage]);
 
-  const handleTaskCreated = async (taskId: string) => {
-    await fetchActiveTasks(0);
+  useEffect(() => {
+    if (!archivedDialogOpen) return;
+    const sentinel = archivedSentinelRef.current;
+    const root = archivedScrollRef.current;
+    if (!sentinel || !root) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && archivedHasNextPage && !archivedIsFetchingNextPage && !isLoadingArchived && !archivedIsError) {
+          archivedFetchNextPage();
+        }
+      },
+      { root, threshold: 0.1 }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [archivedDialogOpen, archivedHasNextPage, archivedIsFetchingNextPage, isLoadingArchived, archivedIsError, archivedFetchNextPage]);
+
+  const handleTaskCreated = (taskId: string) => {
+    invalidateTaskQueries();
     navigate(`/tasks/${taskId}/overview`);
   };
 
@@ -262,6 +197,8 @@ export const AllTasks: React.FC = () => {
     </Stack>
   );
 
+  const hasNoResults = !isLoading && tasks.length === 0;
+
   return (
     <>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -286,9 +223,9 @@ export const AllTasks: React.FC = () => {
               <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 256 }}>
                 <CircularProgress />
               </Box>
-            ) : error ? (
-              <Alert severity="error">{error}</Alert>
-            ) : tasks.length === 0 ? (
+            ) : isError ? (
+              <Alert severity="error">Failed to load tasks. Please check your authentication.</Alert>
+            ) : hasNoResults && !isSearching ? (
               <Box sx={{ textAlign: "center", py: 6 }}>
                 <Typography variant="h6" color="text.secondary">
                   No tasks found
@@ -315,6 +252,11 @@ export const AllTasks: React.FC = () => {
                   </Button>
                 </Box>
 
+                {/* Search */}
+                <Box sx={{ mb: 2, maxWidth: 400 }}>
+                  <SearchBar value={searchQuery} onChange={setSearchQuery} onClear={() => setSearchQuery("")} placeholder="Search tasks by name..." />
+                </Box>
+
                 {/* Filter toolbar */}
                 <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
                   {filterToolbar}
@@ -334,7 +276,16 @@ export const AllTasks: React.FC = () => {
                 </Box>
 
                 {/* Active task grid */}
-                {filteredTasks.length === 0 ? (
+                {hasNoResults && isSearching ? (
+                  <Box sx={{ textAlign: "center", py: 6 }}>
+                    <Typography variant="h6" color="text.secondary">
+                      No tasks match &quot;{debouncedSearchQuery}&quot;
+                    </Typography>
+                    <Typography variant="body2" color="text.disabled">
+                      Try a different search term.
+                    </Typography>
+                  </Box>
+                ) : filteredTasks.length === 0 ? (
                   <Box sx={{ textAlign: "center", py: 6 }}>
                     <Typography variant="h6" color="text.secondary">
                       {inactiveDays === 0
@@ -350,9 +301,15 @@ export const AllTasks: React.FC = () => {
                     )}
                   </Box>
                 ) : (
-                  <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" } }}>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gap: 2,
+                      gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(3, minmax(0, 1fr))" },
+                    }}
+                  >
                     {filteredTasks.map((task) => (
-                      <TaskCard key={task.id} task={task} onArchiveToggle={handleArchiveToggle} />
+                      <TaskCard key={task.id} task={task} onArchiveToggle={invalidateTaskQueries} />
                     ))}
                   </Box>
                 )}
@@ -361,12 +318,12 @@ export const AllTasks: React.FC = () => {
                 <Box ref={sentinelRef} sx={{ height: 1 }} />
 
                 {/* Load-more feedback */}
-                {isFetchingMore && (
+                {isFetchingNextPage && (
                   <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
                     <CircularProgress size={24} />
                   </Box>
                 )}
-                {!hasMore && tasks.length > 0 && (
+                {!hasNextPage && tasks.length > 0 && (
                   <Box sx={{ textAlign: "center", py: 2 }}>
                     <Typography variant="caption" color="text.disabled">
                       All {totalCount} tasks loaded
@@ -386,7 +343,17 @@ export const AllTasks: React.FC = () => {
                 <Stack direction="row" spacing={1} alignItems="center">
                   <InventoryIcon sx={{ fontSize: 20, color: "text.secondary" }} />
                   <Typography variant="h6">Archived Tasks</Typography>
-                  {!isLoadingArchived && archivedTasks.length > 0 && <Chip label={filteredArchivedTasks.length} size="small" variant="outlined" />}
+                  {!isLoadingArchived && archivedTasks.length > 0 && (
+                    <Chip
+                      label={
+                        filteredArchivedTasks.length === archivedTotalCount
+                          ? archivedTotalCount
+                          : `${filteredArchivedTasks.length} of ${archivedTotalCount}`
+                      }
+                      size="small"
+                      variant="outlined"
+                    />
+                  )}
                 </Stack>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                   Unarchive a task to restore it to your active list
@@ -397,13 +364,13 @@ export const AllTasks: React.FC = () => {
               </IconButton>
             </Stack>
           </DialogTitle>
-          <DialogContent dividers>
+          <DialogContent dividers ref={archivedScrollRef}>
             {isLoadingArchived ? (
               <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 200 }}>
                 <CircularProgress />
               </Box>
-            ) : archivedError ? (
-              <Alert severity="error">{archivedError}</Alert>
+            ) : archivedIsError ? (
+              <Alert severity="error">Failed to load archived tasks. Please check your authentication.</Alert>
             ) : filteredArchivedTasks.length === 0 ? (
               <Box sx={{ textAlign: "center", py: 6 }}>
                 <InventoryIcon sx={{ fontSize: 40, color: "text.disabled", mb: 1 }} />
@@ -415,11 +382,26 @@ export const AllTasks: React.FC = () => {
                 </Typography>
               </Box>
             ) : (
-              <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" }, pb: 1 }}>
-                {filteredArchivedTasks.map((task) => (
-                  <TaskCard key={task.id} task={task} onArchiveToggle={handleArchiveToggle} />
-                ))}
-              </Box>
+              <>
+                <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" }, pb: 1 }}>
+                  {filteredArchivedTasks.map((task) => (
+                    <TaskCard key={task.id} task={task} onArchiveToggle={invalidateTaskQueries} />
+                  ))}
+                </Box>
+                <Box ref={archivedSentinelRef} sx={{ height: 1 }} />
+                {archivedIsFetchingNextPage && (
+                  <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+                    <CircularProgress size={24} />
+                  </Box>
+                )}
+                {!archivedHasNextPage && archivedTasks.length > 0 && (
+                  <Box sx={{ textAlign: "center", py: 2 }}>
+                    <Typography variant="caption" color="text.disabled">
+                      All {archivedTotalCount} archived tasks loaded
+                    </Typography>
+                  </Box>
+                )}
+              </>
             )}
           </DialogContent>
         </Dialog>

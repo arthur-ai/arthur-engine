@@ -12,6 +12,7 @@ export function useEvals(taskId: string | undefined, filters: EvalsFilters) {
         page: filters.page ?? 0,
         page_size: filters.pageSize ?? 10,
         sort: filters.sort ?? "desc",
+        sort_by: filters.sort_by,
         created_after: filters.created_after ?? null,
         created_before: filters.created_before ?? null,
         model_provider: filters.model_provider ?? null,

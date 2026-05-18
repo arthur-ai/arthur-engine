@@ -9,10 +9,10 @@ on:
         required: false
         default: true
       image:
-        description: "Image name (e.g. arthurplatform/arthur-model-upload)"
+        description: "Image name (e.g. arthurplatform/genai-engine-models-gcs)"
         type: string
         required: false
-        default: "arthurplatform/arthur-model-upload"
+        default: "arthurplatform/genai-engine-models-gcs"
   workflow_call:
     inputs:
       push:
@@ -21,21 +21,29 @@ on:
         required: false
         default: true
       image:
-        description: "Image name (e.g. arthurplatform/arthur-model-upload)"
+        description: "Image name (e.g. arthurplatform/genai-engine-models-gcs)"
         type: string
         required: false
-        default: "arthurplatform/arthur-model-upload"
+        default: "arthurplatform/genai-engine-models-gcs"
 
 jobs:
   build-gcp-model-upload:
     environment: shared-protected-branch-secrets
     runs-on: ubuntu-latest
     steps:
+      - name: Generate Arthur GitHub Automator App Token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_ID }}
+          private-key: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_PRIVATE_KEY }}
       - uses: mathio/gha-cleanup@v1
         with:
           remove-browsers: true
           verbose: true
       - uses: actions/checkout@v5
+        with:
+          token: ${{ steps.generate-token.outputs.token }}
       - uses: ./.github/workflows/composite-actions/setup-git
         with:
           safe-directory: ${{ runner.workspace }}
@@ -47,6 +55,12 @@ jobs:
         shell: bash
         run: |
           echo "VERSION=${VERSION%-dev}-test" >> $GITHUB_ENV
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install huggingface_hub
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.11.1
       - name: Log in to Docker Hub
@@ -58,11 +72,30 @@ jobs:
       - name: Build (and optionally push) docker image
         uses: docker/build-push-action@v6.18.0
         with:
-          context: "{{defaultContext}}:deployment/gcp/model-upload"
+          context: "{{defaultContext}}:deployment/model-upload"
           file: Dockerfile
+          build-args: BACKEND=gcs
+          target: runtime-gcs
           tags: |
-            ${{ inputs.image }}:${{ env.VERSION }}-gcp
-            ${{ github.ref == 'refs/heads/main' && format('{0}:latest-gcp', inputs.image) || '' }}
-            ${{ github.ref == 'refs/heads/dev' && format('{0}:latest-dev-gcp', inputs.image) || '' }}
+            ${{ inputs.image }}:${{ env.VERSION }}
+            ${{ github.ref == 'refs/heads/main' && format('{0}:latest', inputs.image) || '' }}
+            ${{ github.ref == 'refs/heads/dev' && format('{0}:latest-dev', inputs.image) || '' }}
           push: ${{ inputs.push }}
           platforms: linux/amd64
+      - name: Update models manifest
+        run: |
+          cd deployment/model-upload
+          python check_model_updates.py --update
+      - name: Commit updated manifest
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          # Pull latest changes in case ECS or K8s job already committed
+          export GH_TOKEN=${{ steps.generate-token.outputs.token }}
+          git pull --rebase origin ${{ github.ref_name }} || true
+          git add deployment/model-upload/models-manifest.json
+          # Commit only if there are changes (handles case where another job already committed)
+          if ! git diff --staged --quiet; then
+            git commit --no-verify -m "Update models manifest [skip ci]"
+            git push origin ${{ github.ref_name }}
+          fi

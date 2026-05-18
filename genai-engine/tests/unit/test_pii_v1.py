@@ -262,6 +262,43 @@ def test_pii_v1_config_allow_list_multiple_values():
             assert entity_span.span == "Wendy"
 
 
+@pytest.mark.unit_tests
+def test_pii_classifier_v1_drops_name_with_digits():
+    classifier = BinaryPIIDataClassifierV1()
+
+    score_request = ScoreRequest(
+        scoring_text="The agent User 4 helped me with Order 7423 yesterday.",
+        rule_type=RuleType.PII_DATA,
+    )
+
+    result = classifier.score(score_request)
+
+    if result.result == RuleResultEnum.FAIL:
+        person_spans = [
+            span.span
+            for span in result.details.pii_entities
+            if span.entity == PIIEntityTypes.PERSON
+        ]
+        assert all(
+            not any(ch.isdigit() for ch in span) for span in person_spans
+        ), f"PERSON spans containing digits were not filtered: {person_spans}"
+
+
+@pytest.mark.unit_tests
+def test_pii_classifier_v1_keeps_clean_names():
+    classifier = BinaryPIIDataClassifierV1()
+
+    score_request = ScoreRequest(
+        scoring_text="John Smith called yesterday to confirm.",
+        rule_type=RuleType.PII_DATA,
+    )
+
+    result = classifier.score(score_request)
+
+    assert result.result == RuleResultEnum.FAIL
+    assert PIIEntityTypes.PERSON in result.details.pii_results
+
+
 def test_pii_v1_config_trehsold_specified():
     classifier = BinaryPIIDataClassifierV1()
 

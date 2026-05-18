@@ -140,6 +140,52 @@ def test_get_all_agentic_prompts_success(client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
+def test_get_all_agentic_prompts_sort_by_latest_version_created_at(
+    client: GenaiEngineTestClientBase,
+):
+    """sort_by=latest_version_created_at orders prompt rows by their newest
+    version's created_at; the default still sorts by name.
+    """
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    creation_order = ["beta", "alpha", "gamma"]
+    prompt_data = {
+        "messages": [{"role": "user", "content": "hi"}],
+        "model_name": "gpt-4",
+        "model_provider": "openai",
+    }
+    for name in creation_order:
+        response = client.base_client.post(
+            f"/api/v1/tasks/{task.id}/prompts/{name}",
+            json=prompt_data,
+            headers=client.authorized_user_api_key_headers,
+        )
+        assert response.status_code == 200
+
+    # Newest creation first
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts",
+        headers=client.authorized_user_api_key_headers,
+        params={"sort": "desc", "sort_by": "latest_version_created_at"},
+    )
+    assert response.status_code == 200
+    names = [m["name"] for m in response.json()["llm_metadata"]]
+    assert names == list(reversed(creation_order))
+
+    # Default (no sort_by) -> alphabetical asc
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts",
+        headers=client.authorized_user_api_key_headers,
+        params={"sort": "asc"},
+    )
+    assert response.status_code == 200
+    names = [m["name"] for m in response.json()["llm_metadata"]]
+    assert names == ["alpha", "beta", "gamma"]
+
+
+@pytest.mark.unit_tests
 def test_get_all_agentic_prompts_empty(client: GenaiEngineTestClientBase):
     """Test getting all prompts when none exist"""
     # Create an agentic task
