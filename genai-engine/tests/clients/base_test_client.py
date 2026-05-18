@@ -526,7 +526,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
     def create_demo_task(self) -> tuple[int, TaskResponse]:
         resp = self.base_client.post(
-            "/api/v2/tasks/demos",
+            "/api/v1/tasks/demos",
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -540,6 +540,34 @@ class GenaiEngineTestClientBase(httpx.Client):
                 else None
             ),
         )
+
+    def clear_demo_chatbot_history(self, task_id: str) -> tuple[int, str | None]:
+        resp = self.base_client.delete(
+            f"/api/v1/tasks/{task_id}/demos/chatbot/history",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.text if resp.status_code != 204 else None,
+        )
+
+    def stream_demo_chatbot(
+        self,
+        task_id: str,
+        user_message: str,
+    ) -> tuple[int, str]:
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/demos/chatbot/stream",
+            json={"user_message": user_message},
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code, resp.text
 
     def create_task_metric(
         self,

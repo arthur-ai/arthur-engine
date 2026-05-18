@@ -2,7 +2,7 @@ import json
 from typing import Any, Dict, List, Optional
 
 from arthur_common.models.llm_model_providers import ModelProvider
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ChatbotConfigResponse(BaseModel):
@@ -24,6 +24,24 @@ class ChatbotConfigUpdateRequest(BaseModel):
 
 class SearchArthurApiArgs(BaseModel):
     query: str = ""
+
+
+class WikipediaSearchArgs(BaseModel):
+    query: str = ""
+
+
+class WikipediaFetchArgs(BaseModel):
+    title: str = ""
+
+
+class WikipediaSearchResult(BaseModel):
+    titles: List[str] = Field(default_factory=list)
+
+
+class WikipediaArticle(BaseModel):
+    title: str
+    extract: str
+    url: str = ""
 
 
 class CallArthurApiArgs(BaseModel):

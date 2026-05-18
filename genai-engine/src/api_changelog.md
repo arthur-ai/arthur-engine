@@ -13,11 +13,14 @@ The intention of this changelog is to document API changes as they happen to eff
 # 05/20/2026
 - **CHANGE** for **URL**: /users/me  endpoint added
 
+# 05/18/2026
+- **CHANGE** for **URL**: /api/v1/tasks/demos  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/demos/chatbot/history  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/demos/chatbot/stream  endpoint added
+
 # 05/15/2026
 - **CHANGE** for **URL**: /api/v2/validate endpoint added
 
-# 05/14/2026
-- **CHANGE** for **URL**: /api/v2/tasks/demos  endpoint added
 
 # 05/13/2026
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals  added the new optional `query` request parameter `sort_by`

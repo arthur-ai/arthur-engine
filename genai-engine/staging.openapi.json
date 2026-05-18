@@ -1988,33 +1988,6 @@
                 }
             }
         },
-        "/api/v2/tasks/demos": {
-            "post": {
-                "tags": [
-                    "Tasks"
-                ],
-                "summary": "Create Demo Task",
-                "description": "Create a new demo task.",
-                "operationId": "create_demo_task_api_v2_tasks_demos_post",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/TaskResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ]
-            }
-        },
         "/api/v2/validate_prompt": {
             "post": {
                 "tags": [
@@ -16636,6 +16609,129 @@
                 }
             }
         },
+        "/api/v1/tasks/demos": {
+            "post": {
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Create Demo Task",
+                "description": "Create a new demo task.",
+                "operationId": "create_demo_task_api_v1_tasks_demos_post",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TaskResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/tasks/{task_id}/demos/chatbot/stream": {
+            "post": {
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Stream Demo Chatbot",
+                "description": "Stream a demo chatbot response.",
+                "operationId": "stream_demo_chatbot_api_v1_tasks__task_id__demos_chatbot_stream_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DemoTaskChatbotRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks/{task_id}/demos/chatbot/history": {
+            "delete": {
+                "tags": [
+                    "Chatbot"
+                ],
+                "summary": "Clear demo chatbot conversation history",
+                "operationId": "clear_chatbot_history_api_v1_tasks__task_id__demos_chatbot_history_delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Demo chatbot conversation history cleared."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "post": {
                 "tags": [
@@ -21209,6 +21305,20 @@
                     "created_at"
                 ],
                 "title": "DatasetVersionRowResponse"
+            },
+            "DemoTaskChatbotRequest": {
+                "properties": {
+                    "user_message": {
+                        "type": "string",
+                        "title": "User Message",
+                        "description": "The user message to send to the chatbot."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "user_message"
+                ],
+                "title": "DemoTaskChatbotRequest"
             },
             "DemoTaskSignupResponse": {
                 "properties": {

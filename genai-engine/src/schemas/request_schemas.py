@@ -1415,3 +1415,9 @@ class SyntheticDataConversationRequest(BaseModel):
         default=None,
         description="Optional LLM configuration settings (temperature, max_tokens, etc.).",
     )
+
+
+class DemoTaskChatbotRequest(BaseModel):
+    user_message: str = Field(
+        description="The user message to send to the chatbot.",
+    )
