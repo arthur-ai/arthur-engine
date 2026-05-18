@@ -1,6 +1,9 @@
+import uuid
 from datetime import datetime
+from typing import Optional
 
-from sqlalchemy import TIMESTAMP, Boolean, String, text
+from sqlalchemy import TIMESTAMP, Boolean, ForeignKey, String, text
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db_models.base import Base
@@ -28,6 +31,11 @@ class DatabaseApiKey(Base):
         RoleType,
         server_default=text(f"'[\"{constants.DEFAULT_RULE_ADMIN}\"]'"),
         nullable=False,
+    )
+    org_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        postgresql.UUID(as_uuid=True),
+        ForeignKey("organizations.id"),
+        nullable=True,
     )
 
     def deactivate(self) -> None:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, List
 
@@ -14,6 +15,7 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base, CustomerDataString
@@ -39,6 +41,12 @@ class DatabasePromptRuleResult(Base):
     latency_ms: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP)
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP)
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        postgresql.UUID(as_uuid=True),
+        ForeignKey("organizations.id"),
+        nullable=False,
+        index=True,
+    )
     rule: Mapped["DatabaseRule"] = relationship(lazy="joined")
     UniqueConstraint("inference_prompt_id", "rule_id")
 
@@ -60,6 +68,12 @@ class DatabaseResponseRuleResult(Base):
     latency_ms: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP)
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP)
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        postgresql.UUID(as_uuid=True),
+        ForeignKey("organizations.id"),
+        nullable=False,
+        index=True,
+    )
     rule: Mapped["DatabaseRule"] = relationship(lazy="joined")
     UniqueConstraint("inference_response_id", "rule_id")
 
@@ -79,6 +93,12 @@ class DatabaseRuleResultDetail(Base):
     )
     score: Mapped[bool] = mapped_column(Boolean, nullable=True)
     message: Mapped[str] = mapped_column(String, nullable=True)
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        postgresql.UUID(as_uuid=True),
+        ForeignKey("organizations.id"),
+        nullable=False,
+        index=True,
+    )
     claims: Mapped[List["DatabaseHallucinationClaim"]] = relationship(lazy="joined")
     pii_entities: Mapped[List["DatabasePIIEntity"]] = relationship(lazy="joined")
     toxicity_score: Mapped["DatabaseToxicityScore"] = relationship(lazy="joined")
@@ -105,6 +125,12 @@ class DatabaseHallucinationClaim(Base):
     valid: Mapped[bool] = mapped_column(Boolean)
     reason: Mapped[str] = mapped_column(CustomerDataString)
     order_number: Mapped[int] = mapped_column(Integer, server_default=text("-1"))
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        postgresql.UUID(as_uuid=True),
+        ForeignKey("organizations.id"),
+        nullable=False,
+        index=True,
+    )
 
 
 class DatabasePIIEntity(Base):
@@ -118,6 +144,12 @@ class DatabasePIIEntity(Base):
     entity: Mapped[str] = mapped_column(String)
     span: Mapped[str] = mapped_column(CustomerDataString)
     confidence: Mapped[float] = mapped_column(Float, nullable=True)
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        postgresql.UUID(as_uuid=True),
+        ForeignKey("organizations.id"),
+        nullable=False,
+        index=True,
+    )
 
 
 class DatabaseKeywordEntity(Base):
@@ -129,6 +161,12 @@ class DatabaseKeywordEntity(Base):
         index=True,
     )
     keyword: Mapped[str] = mapped_column(String)
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        postgresql.UUID(as_uuid=True),
+        ForeignKey("organizations.id"),
+        nullable=False,
+        index=True,
+    )
 
 
 class DatabaseRegexEntity(Base):
@@ -142,6 +180,12 @@ class DatabaseRegexEntity(Base):
     matching_text: Mapped[str] = mapped_column(CustomerDataString)
     # Nullable for past inferences before this feature that won't have this field populated
     pattern: Mapped[str] = mapped_column(String, nullable=True)
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        postgresql.UUID(as_uuid=True),
+        ForeignKey("organizations.id"),
+        nullable=False,
+        index=True,
+    )
 
 
 class DatabaseToxicityScore(Base):
@@ -154,3 +198,9 @@ class DatabaseToxicityScore(Base):
     )
     toxicity_score: Mapped[float] = mapped_column(Float)
     toxicity_violation_type: Mapped[str] = mapped_column(String)
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        postgresql.UUID(as_uuid=True),
+        ForeignKey("organizations.id"),
+        nullable=False,
+        index=True,
+    )
