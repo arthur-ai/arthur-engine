@@ -501,12 +501,11 @@ def get_app_with_routes() -> FastAPI:
             transform_routes,
             continuous_eval_routes,
             agent_polling_routes,
+            demo_task_routes,
         ],
     )
     if extra_feature_config.CHATBOT_ENABLED:
         add_routers(app, [chatbot_routes])
-    if Config.demo_mode():
-        add_routers(app, [demo_task_routes])
     if extra_feature_config.DEMO_MODE:
         add_routers(app, [tenant_signup_routes])
     add_routers(app, [auth_routes, user_management_routes])

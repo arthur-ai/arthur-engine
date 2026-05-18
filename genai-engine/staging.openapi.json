@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.573"
+        "version": "2.1.503"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -16698,7 +16698,7 @@
                     "Chatbot"
                 ],
                 "summary": "Clear demo chatbot conversation history",
-                "operationId": "clear_chatbot_history_api_v1_tasks__task_id__demos_chatbot_history_delete",
+                "operationId": "clear_demo_chatbot_history_api_v1_tasks__task_id__demos_chatbot_history_delete",
                 "security": [
                     {
                         "API Key": []
