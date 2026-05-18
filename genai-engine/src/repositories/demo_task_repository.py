@@ -10,6 +10,7 @@ from arthur_common.models.llm_model_providers import (
     OpenAIMessage,
 )
 from arthur_common.models.task_eval_schemas import LLMEval
+from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 from openinference.semconv.trace import SpanAttributes
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
@@ -73,18 +74,29 @@ class DemoTaskRepository:
         self.demo_summarizer_prompt_name = "demo_chatbot_summarizer_prompt"
 
     def _get_model_provider_and_name(self) -> tuple[ModelProvider, str]:
-        if (
-            self.model_provider_repo.get_model_provider_client(ModelProvider.ANTHROPIC)
-            is not None
+        """
+        Returns the demo task's model provider and model name.
+
+        Prefers Anthropic, falls back to OpenAI. get_model_provider_client
+        raises an 400 err when a provider is not configured, so we
+        catch it to fall through to the next provider.
+
+        Raises a 400 err if neither provider is configured.
+        """
+        for provider, model_name in (
+            (ModelProvider.ANTHROPIC, "claude-sonnet-4-6"),
+            (ModelProvider.OPENAI, "gpt-4o"),
         ):
-            return ModelProvider.ANTHROPIC, "claude-sonnet-4-6"
-        if (
-            self.model_provider_repo.get_model_provider_client(ModelProvider.OPENAI)
-            is not None
-        ):
-            return ModelProvider.OPENAI, "gpt-4o"
-        else:
-            raise ValueError("No model provider found")
+            try:
+                self.model_provider_repo.get_model_provider_client(provider)
+                return provider, model_name
+            except HTTPException:
+                continue
+
+        raise HTTPException(
+            status_code=400,
+            detail="No model provider found",
+        )
 
     def _create_transform_variable_mapping(
         self,
