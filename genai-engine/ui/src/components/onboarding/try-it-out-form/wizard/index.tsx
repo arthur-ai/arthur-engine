@@ -1,6 +1,6 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { Box, Button, Paper, Slide, Step, StepLabel, Stepper, Typography } from "@mui/material";
-import { useForm, useStore } from "@tanstack/react-form";
+import { revalidateLogic, useForm, useStore } from "@tanstack/react-form";
 import { useEffect, useRef, useState } from "react";
 
 import { EngineTopNav } from "../../engine-top-nav";
@@ -14,6 +14,7 @@ import {
   getInvalidGroupFields,
   identitySchema,
   wizardDefaultValues,
+  wizardSchema,
   type WizardValues,
 } from "./schema";
 import { TryItOutFormWizardAboutStep } from "./steps/about";
@@ -31,6 +32,10 @@ export const TryItOutFormWizard: React.FC<TryItOutFormProps> = ({ onBack, onSubm
 
   const form = useForm({
     defaultValues: wizardDefaultValues,
+    validationLogic: revalidateLogic(),
+    validators: {
+      onDynamic: wizardSchema,
+    },
     listeners: {
       onMount: () => {
         track(EVENT_NAMES.ONBOARDING_FORM_VIEWED, { variant: VARIANT });
@@ -202,11 +207,11 @@ export const TryItOutFormWizard: React.FC<TryItOutFormProps> = ({ onBack, onSubm
                   <Box>
                     <form.FormGroup
                       name="identity"
-                      validators={{ onSubmit: identitySchema }}
+                      validators={{ onDynamic: identitySchema }}
                       onGroupSubmit={() => handleGroupSubmit(0)}
                       onGroupSubmitInvalid={() => handleGroupSubmitInvalid(0)}
                     >
-                      {(group) => <TryItOutFormWizardIdentityStep group={group} onBack={() => goBack(0)} />}
+                      {(group) => <TryItOutFormWizardIdentityStep form={form} group={group} onBack={() => goBack(0)} />}
                     </form.FormGroup>
                   </Box>
                 </Slide>
@@ -216,11 +221,11 @@ export const TryItOutFormWizard: React.FC<TryItOutFormProps> = ({ onBack, onSubm
                   <Box>
                     <form.FormGroup
                       name="about"
-                      validators={{ onSubmit: aboutSchema }}
+                      validators={{ onDynamic: aboutSchema }}
                       onGroupSubmit={() => handleGroupSubmit(1)}
                       onGroupSubmitInvalid={() => handleGroupSubmitInvalid(1)}
                     >
-                      {(group) => <TryItOutFormWizardAboutStep group={group} onBack={() => goBack(1)} />}
+                      {(group) => <TryItOutFormWizardAboutStep form={form} group={group} onBack={() => goBack(1)} />}
                     </form.FormGroup>
                   </Box>
                 </Slide>
@@ -230,11 +235,11 @@ export const TryItOutFormWizard: React.FC<TryItOutFormProps> = ({ onBack, onSubm
                   <Box>
                     <form.FormGroup
                       name="discovery"
-                      validators={{ onSubmit: discoverySchema }}
+                      validators={{ onDynamic: discoverySchema }}
                       onGroupSubmit={() => handleGroupSubmit(2)}
                       onGroupSubmitInvalid={() => handleGroupSubmitInvalid(2)}
                     >
-                      {(group) => <TryItOutFormWizardDiscoveryStep group={group} onBack={() => goBack(2)} isSubmitting={isSubmitting} />}
+                      {(group) => <TryItOutFormWizardDiscoveryStep form={form} group={group} onBack={() => goBack(2)} isSubmitting={isSubmitting} />}
                     </form.FormGroup>
                   </Box>
                 </Slide>
