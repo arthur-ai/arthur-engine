@@ -608,6 +608,7 @@ Symbols: ✅ allowed for tenant keys · ❌ 403 or 404 · 🪟 allowed but filte
 - **`POST /api/v2/feedback/{inference_id}` is Pattern C, not Pattern A.** The path takes `inference_id`, not `task_id`. The inference is resolved through the repository's `org_scope` filter before the feedback row is written. A tenant cannot plant feedback on another org's inference because the inference fetch returns `None` for them and the handler 404s.
 - **Aggregate endpoints stay shape-compatible.** `GET /api/v2/tasks` and `GET /api/v2/tasks/search` return the same response shape; tenants just see a smaller list. No SDK breaks.
 - **`GET /users/permissions/check` is unchanged** — it's a permission probe, not identity introspection. The new `GET /users/me` covers the identity use case.
+- **`org_id` is included in task response payloads** for all callers. `GET /api/v2/tasks`, `GET /api/v2/tasks/{task_id}`, and `POST /api/v2/tasks/search` gain `org_id` as a new top-level field on each task. Tenants see only their own org's id (they never receive cross-org tasks); admins see whichever org owns the task. Backwards-compatible — existing clients ignore the unknown field.
 
 ---
 
@@ -906,10 +907,8 @@ The hot tables (rule_results, feedback, annotations, etc.) get a denormalized `o
 
 Items that need a team decision before or during implementation. None gate the design — they're choices best made at review or implementation time.
 
-1. **Should `org_id` appear in `GET /api/v2/tasks*` responses for tenant callers?** After Migration 1, every task carries `org_id` and the existing response models will pick it up automatically. A tenant's response will include their own org's id on every task. Not a cross-org leak (they only ever see their own org), but it's a new field in the response shape. Options: (a) include unconditionally — simplest; (b) include for admin only — keeps the tenant API surface minimal; (c) include as a nested `org: {id, name}` for readability. Default in this doc is (a).
+1. **Org name format configurability.** The signup handler generates `demo-{8-char-hex}` with a hardcoded prefix. Should the prefix be a config option per deployment? Useful if a non-demo deployment ever wants to use the same signup flow with a different label. Default in this doc: hardcoded `demo-` prefix; revisit if needed.
 
-2. **Org name format configurability.** The signup handler generates `demo-{8-char-hex}` with a hardcoded prefix. Should the prefix be a config option per deployment? Useful if a non-demo deployment ever wants to use the same signup flow with a different label. Default in this doc: hardcoded `demo-` prefix; revisit if needed.
+2. **Service-name → task_id mapping under multi-tenancy.** Today the `service_name_task_mappings` table is instance-wide and unrelated to orgs. v1 doesn't change it because `POST /api/v1/traces` is admin-only and mappings only matter for the admin trace-ingestion path. When v2 enables tenant trace uploads, mappings need to become org-scoped (or use a different mechanism). Flagging so we don't accidentally introduce per-tenant trace ingest without addressing this.
 
-3. **Service-name → task_id mapping under multi-tenancy.** Today the `service_name_task_mappings` table is instance-wide and unrelated to orgs. v1 doesn't change it because `POST /api/v1/traces` is admin-only and mappings only matter for the admin trace-ingestion path. When v2 enables tenant trace uploads, mappings need to become org-scoped (or use a different mechanism). Flagging so we don't accidentally introduce per-tenant trace ingest without addressing this.
-
-4. **Org-name collision retry policy.** The signup handler retries once on `organizations.name` unique-constraint violation. With an 8-char hex suffix (2^32 possibilities), per-signup collision probability is effectively zero even at scale. One retry is plenty in practice. Flagged in case the team prefers a different strategy or a configurable retry budget.
+3. **Org-name collision retry policy.** The signup handler retries once on `organizations.name` unique-constraint violation. With an 8-char hex suffix (2^32 possibilities), per-signup collision probability is effectively zero even at scale. One retry is plenty in practice. Flagged in case the team prefers a different strategy or a configurable retry budget.
