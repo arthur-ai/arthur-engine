@@ -42,6 +42,12 @@ export type IdentityValues = z.infer<typeof identitySchema>;
 export type AboutValues = z.infer<typeof aboutSchema>;
 export type DiscoveryValues = z.infer<typeof discoverySchema>;
 
+export const wizardSchema = z.object({
+  identity: identitySchema,
+  about: aboutSchema,
+  discovery: discoverySchema,
+});
+
 export type WizardValues = {
   identity: IdentityValues;
   about: AboutValues;
