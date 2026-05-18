@@ -116,6 +116,10 @@ export const EVENT_NAMES = {
   ONBOARDING_FORM_SUBMIT_FAILED: "onboarding/form_submit_failed",
   ONBOARDING_FORM_SUBMITTED: "onboarding/form_submitted",
   ONBOARDING_LOGIN_VIEWED: "onboarding/login_viewed",
+  ONBOARDING_WIZARD_STEP_VIEWED: "onboarding/wizard_step_viewed",
+  ONBOARDING_WIZARD_STEP_COMPLETED: "onboarding/wizard_step_completed",
+  ONBOARDING_WIZARD_STEP_SUBMIT_FAILED: "onboarding/wizard_step_submit_failed",
+  ONBOARDING_WIZARD_STEP_BACK: "onboarding/wizard_step_back",
 
   // Cross-link events
   PLAYGROUND_OPEN_FROM_SPAN: "playground/open_from_span",
