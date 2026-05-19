@@ -12,7 +12,7 @@ import { Alert, Box, Button, Paper, Stack, TextField } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { type OnChangeFn, type PaginationState, type RowSelectionState, SortingState } from "@tanstack/react-table";
 import type { MRT_ColumnDef } from "material-react-table";
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { TokenCostTooltip, TokenCountTooltip } from "../../data/common";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
@@ -29,6 +29,10 @@ import { SelectionActionBar } from "./components/SelectionActionBar";
 import { TracingFilterModal } from "./components/TracingFilterModal";
 
 import { TestRunDialog } from "@/components/live-evals/components/TestRunDialog";
+import { DATA_TOUR } from "@/components/onboarding/data-tour";
+import { useCompleteStep } from "@/components/onboarding/hooks/useCompleteStep";
+import { useStepAction } from "@/components/onboarding/hooks/useStepAction";
+import { STEP_IDS } from "@/components/onboarding/steps";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
@@ -58,8 +62,22 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
   const { defaultCurrency, timezone, use24Hour } = useDisplaySettings();
   const { pagination, props } = useMRTPagination({ initialPageSize: FETCH_SIZE });
 
-  const [, setDrawerTarget] = useDrawerTarget();
+  const [drawerTarget, setDrawerTarget] = useDrawerTarget();
   const [searchInput, setSearchInput] = useState("");
+  const completeInspectTraceStep = useCompleteStep(STEP_IDS.INSPECT_TRACE);
+  const completeReviewTraceStep = useCompleteStep(STEP_IDS.REVIEW_TRACE);
+
+  const previousDrawerIdRef = useRef(drawerTarget?.id);
+  useEffect(() => {
+    if (previousDrawerIdRef.current && !drawerTarget?.id) {
+      completeReviewTraceStep();
+    }
+    previousDrawerIdRef.current = drawerTarget?.id;
+  }, [drawerTarget?.id, completeReviewTraceStep]);
+
+  useStepAction(STEP_IDS.REVIEW_TRACE, () => {
+    setDrawerTarget({ id: null });
+  });
 
   const timeRange = useFilterStore((state) => state.timeRange);
   const filters = useFilterStore((state) => state.filters);
@@ -170,9 +188,15 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
       });
 
       setDrawerTarget({ target: "trace", id: row.trace_id });
+      completeInspectTraceStep();
     },
-    [data?.traces, setContext, setDrawerTarget, task?.id]
+    [data?.traces, setContext, setDrawerTarget, task?.id, completeInspectTraceStep]
   );
+
+  useStepAction(STEP_IDS.INSPECT_TRACE, () => {
+    const firstTrace = data?.traces?.[0];
+    if (firstTrace) handleRowClick(firstTrace);
+  });
 
   const displayCurrency = data?.display_currency ?? defaultCurrency;
 
@@ -266,21 +290,23 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
 
         {hasData && (
           <BucketProvider thresholds={thresholds}>
-            <TracesTable
-              data={data?.traces ?? DEFAULT_DATA}
-              columns={columns as MRT_ColumnDef<TraceMetadataResponse, unknown>[]}
-              rowCount={data?.count ?? 0}
-              pagination={pagination}
-              onPaginationChange={handlePaginationChange}
-              isLoading={isLoading}
-              onRowClick={handleRowClick}
-              sorting={sorting}
-              onSortingChange={handleSortingChange}
-              enableRowSelection
-              rowSelection={rowSelection}
-              onRowSelectionChange={setRowSelection}
-              getRowId={(row) => row.trace_id}
-            />
+            <Box data-tour={DATA_TOUR.TRACES_TABLE} sx={{ minHeight: 0, display: "flex", flexDirection: "column" }}>
+              <TracesTable
+                data={data?.traces ?? DEFAULT_DATA}
+                columns={columns as MRT_ColumnDef<TraceMetadataResponse, unknown>[]}
+                rowCount={data?.count ?? 0}
+                pagination={pagination}
+                onPaginationChange={handlePaginationChange}
+                isLoading={isLoading}
+                onRowClick={handleRowClick}
+                sorting={sorting}
+                onSortingChange={handleSortingChange}
+                enableRowSelection
+                rowSelection={rowSelection}
+                onRowSelectionChange={setRowSelection}
+                getRowId={(row) => row.trace_id}
+              />
+            </Box>
           </BucketProvider>
         )}
       </DataContentGate>

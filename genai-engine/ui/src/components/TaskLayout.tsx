@@ -2,6 +2,10 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation, Outlet } from "react-router-dom";
 
 import { ChatbotDrawer } from "@/components/chatbot/ChatbotDrawer";
+import { OnboardingProgressWidget } from "@/components/onboarding/OnboardingProgressWidget";
+import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
+import { useOnboardingStore } from "@/components/onboarding/stores/onboarding.store";
+import { isDemoTask } from "@/components/onboarding/utils/isDemoTask";
 import { SidebarNavigation } from "@/components/SidebarNavigation";
 import { TaskErrorState } from "@/components/TaskErrorState";
 import { TaskLoadingState } from "@/components/TaskLoadingState";
@@ -71,6 +75,15 @@ export const TaskLayout: React.FC = () => {
     fetchTask();
   }, [api, taskId]);
 
+  const onboardingStatus = useOnboardingStore((s) => s.status);
+  const startOnboarding = useOnboardingStore((s) => s.start);
+
+  useEffect(() => {
+    if (!task || !isDemoTask(task)) return;
+    if (onboardingStatus !== "idle") return;
+    startOnboarding();
+  }, [task, onboardingStatus, startOnboarding]);
+
   const handleBack = () => {
     navigate("/");
   };
@@ -104,6 +117,12 @@ export const TaskLayout: React.FC = () => {
           {task && (
             <TaskProvider task={task}>
               <Outlet />
+              {isDemoTask(task) && (
+                <>
+                  <OnboardingTour />
+                  <OnboardingProgressWidget />
+                </>
+              )}
             </TaskProvider>
           )}
         </main>

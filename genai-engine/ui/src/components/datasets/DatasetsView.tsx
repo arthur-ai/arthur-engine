@@ -10,6 +10,7 @@ import { DatasetsSearchBar } from "./DatasetsSearchBar";
 import { DatasetsTable } from "./DatasetsTable";
 import { DatasetsViewHeader } from "./DatasetsViewHeader";
 
+import { DATA_TOUR } from "@/components/onboarding/data-tour";
 import { PAGE_SIZE_OPTIONS } from "@/constants/datasetConstants";
 import { getContentHeight } from "@/constants/layout";
 import { useCreateDatasetMutation } from "@/hooks/datasets/useCreateDatasetMutation";
@@ -157,20 +158,22 @@ export const DatasetsView: React.FC = () => {
             onCreateDataset={!search.debouncedSearchQuery ? handleOpenCreate : undefined}
           />
         ) : (
-          <DatasetsTable
-            datasets={datasets}
-            sortOrder={sorting.sortOrder}
-            onSort={() => {
-              track(EVENT_NAMES.DATASET_SORT_CHANGED, { task_id: task?.id });
-              sorting.handleSort();
-            }}
-            onRowClick={handleRowClick}
-            onEdit={(dataset) => {
-              track(EVENT_NAMES.DATASET_EDIT_OPENED, { dataset_id: dataset.id, task_id: task?.id });
-              modals.openEditModal(dataset);
-            }}
-            onDelete={deleteMutation.mutateAsync}
-          />
+          <Box data-tour={DATA_TOUR.DATASETS_TABLE}>
+            <DatasetsTable
+              datasets={datasets}
+              sortOrder={sorting.sortOrder}
+              onSort={() => {
+                track(EVENT_NAMES.DATASET_SORT_CHANGED, { task_id: task?.id });
+                sorting.handleSort();
+              }}
+              onRowClick={handleRowClick}
+              onEdit={(dataset) => {
+                track(EVENT_NAMES.DATASET_EDIT_OPENED, { dataset_id: dataset.id, task_id: task?.id });
+                modals.openEditModal(dataset);
+              }}
+              onDelete={deleteMutation.mutateAsync}
+            />
+          </Box>
         )}
       </Box>
 

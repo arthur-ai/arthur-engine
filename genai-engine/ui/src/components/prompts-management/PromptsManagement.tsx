@@ -16,6 +16,10 @@ import PromptsManagementHeader from "./PromptsManagementHeader";
 import PromptsTable from "./table/PromptsTable";
 import TagFilterControls from "./table/TagFilterControls";
 
+import { DATA_TOUR } from "@/components/onboarding/data-tour";
+import { useCompleteStep } from "@/components/onboarding/hooks/useCompleteStep";
+import { useStepAction } from "@/components/onboarding/hooks/useStepAction";
+import { STEP_IDS } from "@/components/onboarding/steps";
 import { getContentHeight } from "@/constants/layout";
 import { useTask } from "@/hooks/useTask";
 
@@ -100,14 +104,23 @@ const PromptsManagement: React.FC<PromptsManagementProps> = ({ onRegisterCreate 
     onRegisterCreateRef.current?.(handleCreatePrompt);
   }, [handleCreatePrompt]);
 
+  const completeEditPromptStep = useCompleteStep(STEP_IDS.EDIT_PROMPT);
+
   const handleExpandToFullScreen = useCallback(
     (promptName: string) => {
       setFullScreenPrompt(promptName);
       // Update URL to reflect the selected prompt
       navigate(`/tasks/${taskId}/prompts/${encodeURIComponent(promptName)}`);
+      completeEditPromptStep();
     },
-    [taskId, navigate]
+    [taskId, navigate, completeEditPromptStep]
   );
+
+  useStepAction(STEP_IDS.EDIT_PROMPT, () => {
+    if (prompts.length > 0) {
+      handleExpandToFullScreen(prompts[0].name);
+    }
+  });
 
   const handleCloseFullScreen = useCallback(() => {
     setFullScreenPrompt(null);
@@ -227,14 +240,16 @@ const PromptsManagement: React.FC<PromptsManagementProps> = ({ onRegisterCreate 
             </Button>
           </Box>
         ) : (
-          <PromptsTable
-            prompts={prompts}
-            sortColumn={sortColumn}
-            sortDirection={sortDirection}
-            onSort={handleSort}
-            onExpandToFullScreen={handleExpandToFullScreen}
-            onDelete={deleteMutation.mutateAsync}
-          />
+          <Box data-tour={DATA_TOUR.PROMPTS_TABLE}>
+            <PromptsTable
+              prompts={prompts}
+              sortColumn={sortColumn}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+              onExpandToFullScreen={handleExpandToFullScreen}
+              onDelete={deleteMutation.mutateAsync}
+            />
+          </Box>
         )}
       </Box>
 
