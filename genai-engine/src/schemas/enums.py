@@ -93,6 +93,7 @@ class PermissionLevelsEnum(Enum):
             constants.ORG_AUDITOR,
             constants.DEFAULT_RULE_ADMIN,
             constants.TASK_ADMIN,
+            constants.TENANT_USER,
         ],
     )
     FEEDBACK_READ = frozenset(
@@ -108,6 +109,7 @@ class PermissionLevelsEnum(Enum):
             constants.TASK_ADMIN,
             constants.VALIDATION_USER,
             constants.CHAT_USER,
+            constants.TENANT_USER,
         ],
     )
     INFERENCE_READ = frozenset(
@@ -115,6 +117,7 @@ class PermissionLevelsEnum(Enum):
             constants.ORG_ADMIN,
             constants.ORG_AUDITOR,
             constants.TASK_ADMIN,
+            constants.TENANT_USER,
         ],
     )
     INFERENCE_WRITE = frozenset(
@@ -123,6 +126,7 @@ class PermissionLevelsEnum(Enum):
             constants.TASK_ADMIN,
             constants.VALIDATION_USER,
             constants.CHAT_USER,
+            constants.TENANT_USER,
         ],
     )
     PASSWORD_RESET = frozenset(
@@ -140,15 +144,29 @@ class PermissionLevelsEnum(Enum):
             constants.ORG_ADMIN,
             constants.ORG_AUDITOR,
             constants.TASK_ADMIN,
+            constants.TENANT_USER,
         ],
     )
     TASK_WRITE = frozenset(
         [
             constants.ORG_ADMIN,
             constants.TASK_ADMIN,
+            constants.TENANT_USER,
         ],
     )
-    USAGE_READ = frozenset([constants.ORG_ADMIN, constants.ORG_AUDITOR])
+    TRACES_WRITE = frozenset(
+        [
+            constants.ORG_ADMIN,
+            constants.TASK_ADMIN,
+        ],
+    )
+    USAGE_READ = frozenset(
+        [
+            constants.ORG_ADMIN,
+            constants.ORG_AUDITOR,
+            constants.TENANT_USER,
+        ],
+    )
     USER_READ = frozenset([constants.ORG_ADMIN, constants.ORG_AUDITOR])
     USER_WRITE = frozenset([constants.ORG_ADMIN])
     DATASET_WRITE = frozenset(
@@ -164,7 +182,12 @@ class PermissionLevelsEnum(Enum):
         [constants.ORG_ADMIN, constants.TASK_ADMIN],
     )
     MODEL_PROVIDER_READ = frozenset(
-        [constants.ORG_ADMIN, constants.ORG_AUDITOR, constants.TASK_ADMIN],
+        [
+            constants.ORG_ADMIN,
+            constants.ORG_AUDITOR,
+            constants.TASK_ADMIN,
+            constants.TENANT_USER,
+        ],
     )
 
 

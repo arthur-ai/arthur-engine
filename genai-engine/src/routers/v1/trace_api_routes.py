@@ -78,7 +78,7 @@ def _get_span_repository(db_session: Session) -> SpanRepository:
     response_model_exclude_none=True,
     tags=["Traces"],
 )
-@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_WRITE.value)
+@permission_checker(permissions=PermissionLevelsEnum.TRACES_WRITE.value)
 def receive_traces(
     body: bytes = Body(...),
     db_session: Session = Depends(get_db_session),

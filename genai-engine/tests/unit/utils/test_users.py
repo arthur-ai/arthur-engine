@@ -1,10 +1,49 @@
 import pytest
-from fastapi import HTTPException
 from arthur_common.models.common_schemas import AuthUserRole
+from fastapi import HTTPException
+
+from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
+from utils import constants
 from utils.users import get_user_info_from_payload, permission_checker
 
 pytest_plugins = ("pytest_asyncio",)
+
+
+def _user_with_role(role: str) -> User:
+    return User(
+        id="dummy_id",
+        email="foo@example.com",
+        roles=[AuthUserRole(id="0", name=role, description="DUMMY", composite=True)],
+    )
+
+
+# Frozensets a TENANT-USER must be able to satisfy (per UP-4428).
+TENANT_USER_ALLOWED = [
+    PermissionLevelsEnum.TASK_READ,
+    PermissionLevelsEnum.TASK_WRITE,
+    PermissionLevelsEnum.INFERENCE_READ,
+    PermissionLevelsEnum.INFERENCE_WRITE,
+    PermissionLevelsEnum.FEEDBACK_WRITE,
+    PermissionLevelsEnum.DEFAULT_RULES_READ,
+    PermissionLevelsEnum.USAGE_READ,
+    PermissionLevelsEnum.MODEL_PROVIDER_READ,
+]
+
+# Admin-only frozensets a TENANT-USER must be rejected by.
+TENANT_USER_DISALLOWED = [
+    PermissionLevelsEnum.TRACES_WRITE,
+    PermissionLevelsEnum.API_KEY_READ,
+    PermissionLevelsEnum.API_KEY_WRITE,
+    PermissionLevelsEnum.USER_READ,
+    PermissionLevelsEnum.USER_WRITE,
+    PermissionLevelsEnum.MODEL_PROVIDER_WRITE,
+    PermissionLevelsEnum.DEFAULT_RULES_WRITE,
+    PermissionLevelsEnum.APP_CONFIG_READ,
+    PermissionLevelsEnum.APP_CONFIG_WRITE,
+    PermissionLevelsEnum.ROTATE_SECRETS,
+    PermissionLevelsEnum.PASSWORD_RESET,
+]
 
 
 @pytest.mark.parametrize(
@@ -156,3 +195,54 @@ async def test_permission_checker_user_forbidden():
             ),
         )
     assert error_info.value.status_code == 403
+
+
+@pytest.mark.asyncio
+@pytest.mark.unit_tests
+@pytest.mark.parametrize("permission", TENANT_USER_ALLOWED, ids=lambda p: p.name)
+async def test_tenant_user_passes_allowed_permissions(permission):
+    @permission_checker(permission.value)
+    def x(current_user) -> bool:
+        return True
+
+    result = await x(current_user=_user_with_role(constants.TENANT_USER))
+    assert result is True
+
+
+@pytest.mark.asyncio
+@pytest.mark.unit_tests
+@pytest.mark.parametrize("permission", TENANT_USER_DISALLOWED, ids=lambda p: p.name)
+async def test_tenant_user_rejected_for_admin_only_permissions(permission):
+    @permission_checker(permission.value)
+    def x(current_user) -> bool:
+        return True
+
+    with pytest.raises(HTTPException) as error_info:
+        await x(current_user=_user_with_role(constants.TENANT_USER))
+    assert error_info.value.status_code == 403
+
+
+@pytest.mark.unit_tests
+def test_traces_write_excludes_tenant_user():
+    """POST /api/v1/traces is admin-only in v1 (per design §2 Non-Goals)."""
+    assert constants.TENANT_USER not in PermissionLevelsEnum.TRACES_WRITE.value
+    assert constants.ORG_ADMIN in PermissionLevelsEnum.TRACES_WRITE.value
+    assert constants.TASK_ADMIN in PermissionLevelsEnum.TRACES_WRITE.value
+
+
+@pytest.mark.asyncio
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "permission",
+    list(PermissionLevelsEnum),
+    ids=lambda p: p.name,
+)
+async def test_org_admin_passes_every_permission(permission):
+    """Regression: ORG-ADMIN keeps satisfying every permission set."""
+
+    @permission_checker(permission.value)
+    def x(current_user) -> bool:
+        return True
+
+    result = await x(current_user=_user_with_role(constants.ORG_ADMIN))
+    assert result is True
