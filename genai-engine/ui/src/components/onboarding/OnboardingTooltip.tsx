@@ -54,7 +54,7 @@ export const OnboardingTooltip = ({ index, step, primaryProps, skipProps, toolti
 
         <Stack direction="row" justifyContent="flex-end" spacing={1} sx={{ pt: 0.5 }}>
           <Tooltip title={sectionName ? `Skip the rest of ${sectionName}` : "Skip this section"}>
-            <Button onClick={() => useOnboardingStore.getState().skipToNext()} variant="text" color="inherit" size="small">
+            <Button onClick={() => useOnboardingStore.getState().skipToNext("skip_section_button")} variant="text" color="inherit" size="small">
               Skip section
             </Button>
           </Tooltip>

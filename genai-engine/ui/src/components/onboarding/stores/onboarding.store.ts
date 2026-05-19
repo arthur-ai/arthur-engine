@@ -1,6 +1,20 @@
 import { create } from "zustand";
 import { devtools, persist, subscribeWithSelector } from "zustand/middleware";
 
+import {
+  type OnboardingSnapshot,
+  type OnboardingSource,
+  trackMajorTaskCompleted,
+  trackMajorTaskSkipped,
+  trackOnboardingCompleted,
+  trackOnboardingDismissed,
+  trackOnboardingReplayed,
+  trackOnboardingReset,
+  trackOnboardingStarted,
+  trackPanelToggled,
+  trackStepCompleted,
+  trackStepSkipped,
+} from "../analytics";
 import { findMajorTaskForStep, MAJOR_TASKS, STEPS, type StepId } from "../steps";
 
 import { runMajorTaskExit } from "./action-registry.store";
@@ -17,10 +31,10 @@ interface PersistedState {
 
 export interface OnboardingStore extends PersistedState {
   start: () => void;
-  next: () => void;
+  next: (source?: OnboardingSource) => void;
   goTo: (step: number) => void;
-  skipToNext: () => void;
-  dismiss: () => void;
+  skipToNext: (source?: OnboardingSource) => void;
+  dismiss: (source?: OnboardingSource) => void;
   restart: () => void;
   reset: () => void;
   setPanelCollapsed: (collapsed: boolean) => void;
@@ -58,6 +72,12 @@ const crossesMajorTaskBoundary = (fromIndex: number, toIndex: number): boolean =
   return !!toTask && toTask.id !== fromTask.id;
 };
 
+const snapshotAt = (state: PersistedState, stepIndex: number): OnboardingSnapshot => ({
+  step_index: stepIndex,
+  completed_count: state.completedSteps.length,
+  skipped_count: state.skippedSteps.length,
+});
+
 export const useOnboardingStore = create<OnboardingStore>()(
   devtools(
     subscribeWithSelector(
@@ -66,13 +86,17 @@ export const useOnboardingStore = create<OnboardingStore>()(
           ...initialState,
 
           start: () => {
-            const { status } = get();
-            if (status === "completed") return;
-            set({ status: "active", currentStep: status === "idle" ? 0 : get().currentStep }, false, "onboarding/start");
+            const state = get();
+            if (state.status === "completed") return;
+            const isResume = state.status !== "idle" && state.currentStep > 0;
+            const nextCurrentStep = state.status === "idle" ? 0 : state.currentStep;
+            set({ status: "active", currentStep: nextCurrentStep }, false, "onboarding/start");
+            trackOnboardingStarted(snapshotAt(get(), nextCurrentStep), isResume);
           },
 
-          next: () => {
-            const { currentStep, completedSteps, skippedSteps } = get();
+          next: (source: OnboardingSource = "unknown") => {
+            const state = get();
+            const { currentStep, completedSteps, skippedSteps } = state;
             const currentId = STEPS[currentStep]?.id;
             const newCompleted = currentId && !completedSteps.includes(currentId) ? [...completedSteps, currentId] : completedSteps;
             // Finishing a previously-skipped step promotes it from "skipped" to "completed".
@@ -80,8 +104,14 @@ export const useOnboardingStore = create<OnboardingStore>()(
 
             const nextStep = currentStep + 1;
             const currentTask = currentId ? findMajorTaskForStep(currentId) : undefined;
-            if (currentTask && crossesMajorTaskBoundary(currentStep, nextStep)) {
+            const crossesBoundary = !!currentTask && crossesMajorTaskBoundary(currentStep, nextStep);
+            if (crossesBoundary && currentTask) {
               runMajorTaskExit(currentTask.id);
+            }
+
+            trackStepCompleted(snapshotAt(state, currentStep), source);
+            if (crossesBoundary) {
+              trackMajorTaskCompleted(snapshotAt(state, currentStep));
             }
 
             if (nextStep >= STEPS.length) {
@@ -90,6 +120,7 @@ export const useOnboardingStore = create<OnboardingStore>()(
                 false,
                 "onboarding/next-complete"
               );
+              trackOnboardingCompleted(snapshotAt(get(), STEPS.length - 1));
               return;
             }
 
@@ -112,52 +143,75 @@ export const useOnboardingStore = create<OnboardingStore>()(
             set({ currentStep: step }, false, "onboarding/goTo");
           },
 
-          skipToNext: () => {
-            const startIndex = get().currentStep;
+          skipToNext: (source: OnboardingSource = "unknown") => {
+            const initial = get();
+            const startIndex = initial.currentStep;
             const startId = STEPS[startIndex]?.id;
             if (!startId) return;
 
             const currentTask = findMajorTaskForStep(startId);
             if (currentTask) runMajorTaskExit(currentTask.id);
 
-            const { completedSteps, skippedSteps } = get();
+            const { completedSteps, skippedSteps } = initial;
             const targetIndex = firstStepOfNextMajorTask(startIndex);
+            const skipEnd = targetIndex >= STEPS.length ? STEPS.length : targetIndex;
 
-            const collectSkipped = (fromIdx: number, toIdx: number): StepId[] => {
-              const next = [...skippedSteps];
-              for (let i = fromIdx; i < toIdx; i++) {
-                const id = STEPS[i]?.id;
-                if (id && !completedSteps.includes(id) && !next.includes(id)) {
-                  next.push(id);
-                }
+            const batch: StepId[] = [];
+            for (let i = startIndex; i < skipEnd; i++) {
+              const id = STEPS[i]?.id;
+              if (id && !completedSteps.includes(id) && !batch.includes(id)) {
+                batch.push(id);
               }
-              return next;
-            };
+            }
+            const newSkipped = [...skippedSteps];
+            for (const id of batch) {
+              if (!newSkipped.includes(id)) newSkipped.push(id);
+            }
+
+            for (const id of batch) {
+              const idx = STEPS.findIndex((s) => s.id === id);
+              trackStepSkipped(snapshotAt(initial, idx), source, batch);
+            }
+            if (currentTask) {
+              trackMajorTaskSkipped(snapshotAt(initial, startIndex), batch);
+            }
 
             if (targetIndex >= STEPS.length) {
-              const newSkipped = collectSkipped(startIndex, STEPS.length);
               set({ status: "dismissed", skippedSteps: newSkipped }, false, "onboarding/skip-to-end");
+              trackOnboardingDismissed(snapshotAt(get(), startIndex), "skip_to_end");
               return;
             }
 
-            const newSkipped = collectSkipped(startIndex, targetIndex);
             set({ currentStep: targetIndex, skippedSteps: newSkipped }, false, "onboarding/skip-to-step");
           },
 
-          dismiss: () => {
+          dismiss: (source: OnboardingSource = "unknown") => {
+            const state = get();
             set({ status: "dismissed" }, false, "onboarding/dismiss");
+            trackOnboardingDismissed(snapshotAt(state, state.currentStep), source);
           },
 
           restart: () => {
+            const state = get();
             set({ status: "active" }, false, "onboarding/restart");
+            trackOnboardingReplayed(snapshotAt(state, state.currentStep), "dismissed");
           },
 
           reset: () => {
-            set({ ...initialState, panelCollapsed: get().panelCollapsed }, false, "onboarding/reset");
+            const prior = get();
+            set({ ...initialState, panelCollapsed: prior.panelCollapsed }, false, "onboarding/reset");
+            const fresh = get();
+            if (prior.status === "completed") {
+              trackOnboardingReplayed(snapshotAt(fresh, fresh.currentStep), "completed");
+            } else {
+              trackOnboardingReset(snapshotAt(fresh, fresh.currentStep));
+            }
           },
 
           setPanelCollapsed: (collapsed) => {
             set({ panelCollapsed: collapsed }, false, "onboarding/setPanelCollapsed");
+            const state = get();
+            trackPanelToggled(snapshotAt(state, state.currentStep), collapsed);
           },
         }),
         {

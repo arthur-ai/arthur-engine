@@ -11,6 +11,6 @@ export const useCompleteStep = (stepId: StepId): (() => void) => {
   return useCallback(() => {
     if (status !== "active") return;
     if (STEPS[currentStep]?.id !== stepId) return;
-    next();
+    next("user_action");
   }, [status, currentStep, stepId, next]);
 };

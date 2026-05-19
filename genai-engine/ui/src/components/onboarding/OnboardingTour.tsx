@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from "react";
 import Joyride, { ACTIONS, EVENTS, STATUS, type CallBackProps, type Step } from "react-joyride";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
+import { trackStepViewed } from "./analytics";
 import { runStepAction, useStepAction } from "./hooks/useStepAction";
 import { useWaitForTarget } from "./hooks/useWaitForTarget";
 import { OnboardingTooltip } from "./OnboardingTooltip";
@@ -62,6 +63,13 @@ export const OnboardingTour = () => {
       if (!s) return;
       stepEntryPathRef.current = locationPathnameRef.current;
 
+      const state = useOnboardingStore.getState();
+      trackStepViewed({
+        step_index: stepIndex,
+        completed_count: state.completedSteps.length,
+        skipped_count: state.skippedSteps.length,
+      });
+
       const majorTask = findMajorTaskForStep(s.id);
       if (!majorTask) return;
 
@@ -104,7 +112,7 @@ export const OnboardingTour = () => {
     if (status !== "active" || !step || !taskId || !currentMajorTask) return;
     if (!matchesArrivalRoute(location.pathname, currentMajorTask, taskId, step)) return;
     if (stepEntryPathRef.current === location.pathname) return;
-    next();
+    next("auto_advance");
   }, [status, step?.id, location.pathname, taskId, next, step, currentMajorTask]);
 
   // Next-button shortcut for advanceOnArrival entry subtasks: natural flow expects the user
@@ -143,7 +151,7 @@ export const OnboardingTour = () => {
     const { action, type, status: joyrideStatus, index: callbackIndex } = data;
 
     if (joyrideStatus === STATUS.SKIPPED || action === ACTIONS.CLOSE) {
-      dismiss();
+      dismiss("tooltip_close");
       return;
     }
 
@@ -161,7 +169,7 @@ export const OnboardingTour = () => {
 
       runStepAction(stepConfig.id);
       const afterStep = useOnboardingStore.getState().currentStep;
-      if (afterStep === liveCurrentStep) next();
+      if (afterStep === liveCurrentStep) next("next_button");
     }
   };
 

@@ -25,6 +25,7 @@ import Typography from "@mui/material/Typography";
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
+import { trackChecklistSubtaskClicked } from "./analytics";
 import { runStepAction } from "./hooks/useStepAction";
 import { findMajorTaskForStep, findStep, type MajorTask, MAJOR_TASKS, type MajorTaskId, resolveStepTarget, STEPS, type StepId } from "./steps";
 import { useOnboardingStore } from "./stores/onboarding.store";
@@ -109,9 +110,22 @@ export const OnboardingProgressWidget = () => {
     const step = STEPS[index];
     const targetMajorTask = findMajorTaskForStep(subtaskId);
 
+    const currentTaskMajorId = currentStepConfig ? findMajorTaskForStep(currentStepConfig.id)?.id : undefined;
+    if (targetMajorTask) {
+      trackChecklistSubtaskClicked(
+        {
+          step_index: currentStep,
+          completed_count: completedSteps.length,
+          skipped_count: skippedSteps.length,
+        },
+        subtaskId,
+        targetMajorTask.id,
+        targetMajorTask.id !== currentTaskMajorId
+      );
+    }
+
     // Out-of-order jump: force-nav so the spotlight target exists. The tour respects
     // advanceOnArrival on natural flow and won't navigate here.
-    const currentTaskMajorId = currentStepConfig ? findMajorTaskForStep(currentStepConfig.id)?.id : undefined;
     if (taskId && targetMajorTask && targetMajorTask.id !== currentTaskMajorId && targetMajorTask.entry) {
       const targetHref = targetMajorTask.entry.route(taskId);
       if (window.location.pathname + window.location.search !== targetHref) {
@@ -228,7 +242,7 @@ export const OnboardingProgressWidget = () => {
           >
             {panelCollapsed ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
           </IconButton>
-          <IconButton size="small" onClick={dismiss} aria-label="Dismiss walkthrough" sx={{ color: "primary.contrastText" }}>
+          <IconButton size="small" onClick={() => dismiss("widget_close")} aria-label="Dismiss walkthrough" sx={{ color: "primary.contrastText" }}>
             <CloseIcon fontSize="small" />
           </IconButton>
         </Box>

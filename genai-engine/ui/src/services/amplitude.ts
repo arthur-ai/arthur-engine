@@ -109,6 +109,20 @@ export const EVENT_NAMES = {
   ONBOARDING_VIEW_TRACES_CLICKED: "onboarding/view_traces_clicked",
   ONBOARDING_SKIP_SETUP_CLICKED: "onboarding/skip_setup_clicked",
 
+  // Onboarding Tour events
+  ONBOARDING_TOUR_STARTED: "onboarding_tour/started",
+  ONBOARDING_TOUR_STEP_VIEWED: "onboarding_tour/step_viewed",
+  ONBOARDING_TOUR_STEP_COMPLETED: "onboarding_tour/step_completed",
+  ONBOARDING_TOUR_STEP_SKIPPED: "onboarding_tour/step_skipped",
+  ONBOARDING_TOUR_MAJOR_TASK_COMPLETED: "onboarding_tour/major_task_completed",
+  ONBOARDING_TOUR_MAJOR_TASK_SKIPPED: "onboarding_tour/major_task_skipped",
+  ONBOARDING_TOUR_COMPLETED: "onboarding_tour/completed",
+  ONBOARDING_TOUR_DISMISSED: "onboarding_tour/dismissed",
+  ONBOARDING_TOUR_REPLAYED: "onboarding_tour/replayed",
+  ONBOARDING_TOUR_RESET: "onboarding_tour/reset",
+  ONBOARDING_TOUR_PANEL_TOGGLED: "onboarding_tour/panel_toggled",
+  ONBOARDING_TOUR_CHECKLIST_SUBTASK_CLICKED: "onboarding_tour/checklist_subtask_clicked",
+
   // Cross-link events
   PLAYGROUND_OPEN_FROM_SPAN: "playground/open_from_span",
   CONTINUOUS_EVALS_NEW_FROM_TRACE: "continuous_evals/new_from_trace",
