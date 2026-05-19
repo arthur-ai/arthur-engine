@@ -10,18 +10,18 @@ MULTI_TENANCY_DESIGN doc into a single Alembic revision:
   0. Create organizations table; seed default + system orgs.
   1. tasks.org_id (NOT NULL). Backfill: is_system_task -> system, else default.
   2. api_keys.org_id (NULL). Existing keys stay NULL (admin behavior).
-  3. Denormalize org_id onto the rule-result and feedback/annotation tables
-     that today reach an org only via multi-hop joins:
+  3. Denormalize org_id onto every task-scoped table that today reaches an
+     org only via multi-hop joins:
        - inference_feedback        (1 hop via inferences)
        - prompt_rule_results       (2 hop via inference_prompts → inferences)
        - response_rule_results     (2 hop via inference_responses → inferences)
+       - rule_result_details       (3 hop via parent prompt/response rule_result)
+       - hallucination_claims      (3 hop via rule_result_details)
+       - pii_entities              (3 hop via rule_result_details)
+       - keyword_matches           (3 hop via rule_result_details)
+       - regex_matches             (3 hop via rule_result_details)
+       - toxicity_scores           (3 hop via rule_result_details)
        - agentic_annotations       (1 hop via trace_metadata)
-
-rule_result_details (1:1 child of prompt/response_rule_results) and the five
-per-check detail tables (hallucination_claims, pii_entities, keyword_matches,
-regex_matches, toxicity_scores) intentionally do NOT get org_id. Org-filtered
-queries on these tables join up to their parent rule_result, whose org_id is
-indexed.
 
 Every NOT NULL column is added in two phases (add nullable, backfill, set
 NOT NULL) so the migration can run safely against a populated database.
@@ -40,19 +40,31 @@ depends_on = None
 
 
 # Tables denormalized in Migration 3. Each backfill chain ultimately resolves
-# to tasks.org_id via inferences or trace_metadata.
-#
-# rule_result_details and its child detail tables (hallucination_claims,
-# pii_entities, keyword_matches, regex_matches, toxicity_scores) intentionally
-# do NOT get org_id: they live under prompt_rule_results / response_rule_results
-# (1:1 with the parent rule result), so org filtering is one extra join away
-# on an indexed column.
+# to tasks.org_id via inferences or trace_metadata. Order matters: parents
+# must be backfilled before children since child backfills join the parent's
+# already-populated org_id.
 DENORMALIZED_NOT_NULL_TABLES = [
     "inference_feedback",
     "prompt_rule_results",
     "response_rule_results",
+    "rule_result_details",
+    "hallucination_claims",
+    "pii_entities",
+    "keyword_matches",
+    "regex_matches",
+    "toxicity_scores",
     "agentic_annotations",
 ]
+
+# Per-check detail tables hanging off rule_result_details. Same backfill shape
+# for all of them (FK rule_result_detail_id → rule_result_details.org_id).
+RULE_RESULT_DETAIL_CHILD_TABLES = (
+    "hallucination_claims",
+    "pii_entities",
+    "keyword_matches",
+    "regex_matches",
+    "toxicity_scores",
+)
 
 
 def upgrade() -> None:
@@ -170,6 +182,32 @@ def upgrade() -> None:
           JOIN tasks t ON t.id = i.task_id
          WHERE rrr.inference_response_id = ir.id
         """)
+
+    # rule_result_details ← prompt_rule_results.org_id OR response_rule_results.org_id.
+    # Each row's parent FK chain points at exactly one of these (the other is NULL).
+    op.execute("""
+        UPDATE rule_result_details rrd
+           SET org_id = prr.org_id
+          FROM prompt_rule_results prr
+         WHERE rrd.prompt_rule_result_id = prr.id
+        """)
+    op.execute("""
+        UPDATE rule_result_details rrd
+           SET org_id = rrr.org_id
+          FROM response_rule_results rrr
+         WHERE rrd.response_rule_result_id = rrr.id
+           AND rrd.org_id IS NULL
+        """)
+
+    # Detail tables (hallucination_claims, pii_entities, keyword_matches,
+    # regex_matches, toxicity_scores) ← rule_result_details.org_id.
+    for child in RULE_RESULT_DETAIL_CHILD_TABLES:
+        op.execute(f"""
+            UPDATE {child} c
+               SET org_id = rrd.org_id
+              FROM rule_result_details rrd
+             WHERE c.rule_result_detail_id = rrd.id
+            """)
 
     # agentic_annotations: trace_id is nullable. Resolve via trace_metadata when
     # available, otherwise via continuous_evals.task_id.
