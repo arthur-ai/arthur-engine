@@ -34,7 +34,7 @@ The Arthur Engine provides a **complete service** for developing, monitoring, an
 
 **Claude Code users**
 
-Paste this prompt directly into Claude Code — no installation needed:
+Paste this prompt directly into Claude Code that's running on your agent application:
 
 ```
 For each skill name in this list — arthur-onboard-oss, arthur-onboard-oss-engine, arthur-onboard-task, arthur-onboard-analyze, arthur-onboard-instrument, arthur-onboard-prompts, arthur-onboard-verify, arthur-onboard-eval-provider, arthur-onboard-evals — fetch https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/integrations/claude-code-skills/arthur-onboard/<skill-name>/SKILL.md and save it to ~/.claude/skills/<skill-name>/SKILL.md (create the directory if it doesn't exist). Once all skills are saved, read ~/.claude/skills/arthur-onboard-oss/SKILL.md and follow its instructions.
