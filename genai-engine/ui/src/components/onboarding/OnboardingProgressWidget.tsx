@@ -8,6 +8,7 @@ import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import Box from "@mui/material/Box";
 import Collapse from "@mui/material/Collapse";
+import Divider from "@mui/material/Divider";
 import Fab from "@mui/material/Fab";
 import IconButton from "@mui/material/IconButton";
 import LinearProgress from "@mui/material/LinearProgress";
@@ -22,34 +23,115 @@ import { useTheme } from "@mui/material/styles";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
 import { runStepAction } from "./hooks/useStepAction";
-import { resolveStepTarget, STEPS } from "./steps";
+import { findMajorTaskForStep, findStep, type MajorTask, MAJOR_TASKS, type MajorTaskId, resolveStepTarget, STEPS, type StepId } from "./steps";
 import { useOnboardingStore } from "./stores/onboarding.store";
 import { waitForSelectorInDom } from "./utils/waitForSelector";
 
+type MajorTaskStatus = "pending" | "active" | "done";
+
+// Default expansion per phase. User toggles flip the default; phase changes naturally drop the toggle.
+const DEFAULT_EXPANDED_FOR_STATUS: Record<MajorTaskStatus, boolean> = {
+  active: true,
+  done: false,
+  pending: false,
+};
+
+type ToggleKey = `${MajorTaskId}:${MajorTaskStatus}`;
+const toggleKey = (taskId: MajorTaskId, status: MajorTaskStatus): ToggleKey => `${taskId}:${status}`;
+
+const computeMajorTaskStatus = (
+  task: MajorTask,
+  currentStepId: StepId | undefined,
+  completedSet: Set<StepId>,
+  skippedSet: Set<StepId>
+): MajorTaskStatus => {
+  const allFinished = task.subtaskIds.every((id) => completedSet.has(id) || skippedSet.has(id));
+  if (allFinished) return "done";
+  if (currentStepId && task.subtaskIds.includes(currentStepId)) return "active";
+  return "pending";
+};
+
+const countDoneSubtasks = (task: MajorTask, completedSet: Set<StepId>, skippedSet: Set<StepId>): number =>
+  task.subtaskIds.filter((id) => completedSet.has(id) || skippedSet.has(id)).length;
+
 export const OnboardingProgressWidget = () => {
   const theme = useTheme();
+  const navigate = useNavigate();
+  const { id: taskId } = useParams<{ id: string }>();
   const status = useOnboardingStore((s) => s.status);
   const currentStep = useOnboardingStore((s) => s.currentStep);
   const completedSteps = useOnboardingStore((s) => s.completedSteps);
   const skippedSteps = useOnboardingStore((s) => s.skippedSteps);
+  const panelCollapsed = useOnboardingStore((s) => s.panelCollapsed);
+  const setPanelCollapsed = useOnboardingStore((s) => s.setPanelCollapsed);
   const dismiss = useOnboardingStore((s) => s.dismiss);
   const restart = useOnboardingStore((s) => s.restart);
   const reset = useOnboardingStore((s) => s.reset);
   const goTo = useOnboardingStore((s) => s.goTo);
-  const [collapsed, setCollapsed] = useState(false);
 
   const widgetZIndex = theme.zIndex.modal + 11;
 
-  // Skipped counts as moved-past for the purposes of the progress bar.
-  const finishedCount = useMemo(() => new Set([...completedSteps, ...skippedSteps]).size, [completedSteps, skippedSteps]);
+  const completedSet = useMemo(() => new Set(completedSteps), [completedSteps]);
+  const skippedSet = useMemo(() => new Set(skippedSteps), [skippedSteps]);
 
-  // Replay each prereq's action so the UI is in the state the target step expects
-  const handleClickStep = async (index: number) => {
+  const currentStepConfig = STEPS[currentStep];
+  const currentMajorTask = currentStepConfig ? findMajorTaskForStep(currentStepConfig.id) : undefined;
+
+  const finishedMajorTaskCount = useMemo(
+    () => MAJOR_TASKS.filter((t) => t.subtaskIds.every((id) => completedSet.has(id) || skippedSet.has(id))).length,
+    [completedSet, skippedSet]
+  );
+
+  const [userToggles, setUserToggles] = useState<Set<ToggleKey>>(new Set());
+
+  const isExpanded = (taskId: MajorTaskId, status: MajorTaskStatus): boolean => {
+    const defaultExpanded = DEFAULT_EXPANDED_FOR_STATUS[status];
+    return userToggles.has(toggleKey(taskId, status)) ? !defaultExpanded : defaultExpanded;
+  };
+
+  const toggleTask = (taskId: MajorTaskId, status: MajorTaskStatus) => {
+    const key = toggleKey(taskId, status);
+    setUserToggles((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  // Replay each prereq's action so the UI is in the state the target step expects.
+  const handleClickSubtask = async (subtaskId: StepId) => {
+    const index = STEPS.findIndex((s) => s.id === subtaskId);
+    if (index < 0) return;
     const step = STEPS[index];
-    const prereqs = step.prerequisites ?? [];
+    const targetMajorTask = findMajorTaskForStep(subtaskId);
 
+    // Out-of-order jump: force-nav so the spotlight target exists. The tour respects
+    // advanceOnArrival on natural flow and won't navigate here.
+    const currentTaskMajorId = currentStepConfig ? findMajorTaskForStep(currentStepConfig.id)?.id : undefined;
+    if (taskId && targetMajorTask && targetMajorTask.id !== currentTaskMajorId && targetMajorTask.entry) {
+      const targetHref = targetMajorTask.entry.route(taskId);
+      if (window.location.pathname + window.location.search !== targetHref) {
+        navigate(targetHref);
+      }
+    }
+
+    // Clicking a subtask implies the parent should be expanded; drop any stale active-phase
+    // toggle from a prior pass that would otherwise keep it collapsed.
+    if (targetMajorTask) {
+      const staleKey = toggleKey(targetMajorTask.id, "active");
+      setUserToggles((prev) => {
+        if (!prev.has(staleKey)) return prev;
+        const next = new Set(prev);
+        next.delete(staleKey);
+        return next;
+      });
+    }
+
+    const prereqs = step.prerequisites ?? [];
     if (prereqs.length === 0) {
       goTo(index);
       return;
@@ -63,21 +145,26 @@ export const OnboardingProgressWidget = () => {
       const found = await waitForSelectorInDom(resolveStepTarget(STEPS[prereqIndex].target));
       if (!found) return;
       runStepAction(prereqId);
-      // Let React flush the action's state mutations before the next prereq runs.
+      // Yield so the action's state mutations flush before the next prereq runs.
       await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     }
+    goTo(index);
   };
 
   if (status === "idle") return null;
 
   if (status === "dismissed" || status === "completed") {
     const isCompleted = status === "completed";
+    const handleReplay = () => {
+      setUserToggles(new Set());
+      reset();
+    };
     return (
       <Tooltip title={isCompleted ? "Replay walkthrough" : "Resume walkthrough"}>
         <Fab
           size="medium"
           color="primary"
-          onClick={isCompleted ? reset : restart}
+          onClick={isCompleted ? handleReplay : restart}
           sx={{
             position: "fixed",
             bottom: 24,
@@ -92,7 +179,7 @@ export const OnboardingProgressWidget = () => {
     );
   }
 
-  const progress = (finishedCount / STEPS.length) * 100;
+  const progress = (finishedMajorTaskCount / MAJOR_TASKS.length) * 100;
 
   return (
     <Paper
@@ -124,7 +211,7 @@ export const OnboardingProgressWidget = () => {
             Get started with Arthur
           </Typography>
           <Typography variant="caption" sx={{ opacity: 0.9 }}>
-            {finishedCount} of {STEPS.length} done
+            {finishedMajorTaskCount} of {MAJOR_TASKS.length} tasks done
           </Typography>
         </Box>
         <Box>
@@ -135,11 +222,11 @@ export const OnboardingProgressWidget = () => {
           </Tooltip>
           <IconButton
             size="small"
-            onClick={() => setCollapsed((v) => !v)}
-            aria-label={collapsed ? "Expand walkthrough" : "Collapse walkthrough"}
+            onClick={() => setPanelCollapsed(!panelCollapsed)}
+            aria-label={panelCollapsed ? "Expand walkthrough" : "Collapse walkthrough"}
             sx={{ color: "primary.contrastText" }}
           >
-            {collapsed ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+            {panelCollapsed ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
           </IconButton>
           <IconButton size="small" onClick={dismiss} aria-label="Dismiss walkthrough" sx={{ color: "primary.contrastText" }}>
             <CloseIcon fontSize="small" />
@@ -149,36 +236,96 @@ export const OnboardingProgressWidget = () => {
 
       <LinearProgress variant="determinate" value={progress} />
 
-      <Collapse in={!collapsed}>
+      {panelCollapsed && currentMajorTask && (
+        <Box sx={{ px: 2, py: 1 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", lineHeight: 1.2 }}>
+            Now
+          </Typography>
+          <Typography variant="body2" color="text.primary" sx={{ fontWeight: 500 }}>
+            {currentMajorTask.label}
+          </Typography>
+        </Box>
+      )}
+
+      <Collapse in={!panelCollapsed}>
         <List dense sx={{ py: 0.5 }}>
-          {STEPS.map((step, index) => {
-            const isDone = completedSteps.includes(step.id);
-            const isSkipped = !isDone && skippedSteps.includes(step.id);
-            const isActive = !isDone && !isSkipped && index === currentStep;
-            const isFinished = isDone || isSkipped;
+          {MAJOR_TASKS.map((task, taskIdx) => {
+            const taskStatus = computeMajorTaskStatus(task, currentStepConfig?.id, completedSet, skippedSet);
+            const isActiveTask = taskStatus === "active";
+            const isDoneTask = taskStatus === "done";
+            const doneCount = countDoneSubtasks(task, completedSet, skippedSet);
+            const expanded = isExpanded(task.id, taskStatus);
+
             return (
-              <ListItem key={step.id} disablePadding sx={{ bgcolor: isActive ? "action.hover" : "transparent" }}>
-                <ListItemButton onClick={() => handleClickStep(index)} sx={{ py: 0.75 }}>
-                  <ListItemIcon sx={{ minWidth: 36 }}>
-                    {isDone ? (
-                      <CheckCircleIcon fontSize="small" sx={{ color: "success.main" }} />
-                    ) : isSkipped ? (
-                      <RemoveCircleOutlineIcon fontSize="small" sx={{ color: "text.disabled" }} />
-                    ) : (
-                      <RadioButtonUncheckedIcon fontSize="small" sx={{ color: isActive ? "primary.main" : "text.disabled" }} />
-                    )}
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={step.label}
-                    primaryTypographyProps={{
-                      variant: "body2",
-                      color: isFinished ? "text.secondary" : "text.primary",
-                      fontWeight: isActive ? 600 : 400,
-                      sx: isFinished ? { textDecoration: "line-through" } : undefined,
-                    }}
-                  />
-                </ListItemButton>
-              </ListItem>
+              <Box key={task.id}>
+                {taskIdx > 0 && <Divider component="li" />}
+                <ListItem disablePadding sx={{ bgcolor: isActiveTask ? "action.hover" : "transparent" }}>
+                  <ListItemButton onClick={() => toggleTask(task.id, taskStatus)} sx={{ py: 0.75 }}>
+                    <ListItemIcon sx={{ minWidth: 36 }}>
+                      {isDoneTask ? (
+                        <CheckCircleIcon fontSize="small" sx={{ color: "success.main" }} />
+                      ) : (
+                        <RadioButtonUncheckedIcon fontSize="small" sx={{ color: isActiveTask ? "primary.main" : "text.disabled" }} />
+                      )}
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={task.label}
+                      primaryTypographyProps={{
+                        variant: "body2",
+                        color: isDoneTask ? "text.secondary" : "text.primary",
+                        fontWeight: isActiveTask ? 600 : 500,
+                      }}
+                    />
+                    <Stack direction="row" alignItems="center" spacing={0.5}>
+                      <Typography variant="caption" color="text.secondary">
+                        {doneCount}/{task.subtaskIds.length}
+                      </Typography>
+                      {expanded ? (
+                        <ExpandLessIcon fontSize="small" sx={{ color: "text.secondary" }} />
+                      ) : (
+                        <ExpandMoreIcon fontSize="small" sx={{ color: "text.secondary" }} />
+                      )}
+                    </Stack>
+                  </ListItemButton>
+                </ListItem>
+                <Collapse in={expanded} unmountOnExit>
+                  <List dense disablePadding>
+                    {task.subtaskIds.map((subtaskId) => {
+                      const subtask = findStep(subtaskId);
+                      if (!subtask) return null;
+                      const isDone = completedSet.has(subtaskId);
+                      const isSkipped = !isDone && skippedSet.has(subtaskId);
+                      const isCurrent = currentStepConfig?.id === subtaskId;
+                      const isFinished = isDone || isSkipped;
+
+                      return (
+                        <ListItem key={subtaskId} disablePadding sx={{ bgcolor: isCurrent ? "action.hover" : "transparent" }}>
+                          <ListItemButton onClick={() => handleClickSubtask(subtaskId)} sx={{ py: 0.5, pl: 5 }}>
+                            <ListItemIcon sx={{ minWidth: 28 }}>
+                              {isDone ? (
+                                <CheckCircleIcon sx={{ fontSize: 16, color: "success.main" }} />
+                              ) : isSkipped ? (
+                                <RemoveCircleOutlineIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+                              ) : (
+                                <RadioButtonUncheckedIcon sx={{ fontSize: 16, color: isCurrent ? "primary.main" : "text.disabled" }} />
+                              )}
+                            </ListItemIcon>
+                            <ListItemText
+                              primary={subtask.title}
+                              primaryTypographyProps={{
+                                variant: "body2",
+                                color: isFinished ? "text.secondary" : "text.primary",
+                                fontWeight: isCurrent ? 600 : 400,
+                                sx: isFinished ? { textDecoration: "line-through" } : undefined,
+                              }}
+                            />
+                          </ListItemButton>
+                        </ListItem>
+                      );
+                    })}
+                  </List>
+                </Collapse>
+              </Box>
             );
           })}
         </List>
