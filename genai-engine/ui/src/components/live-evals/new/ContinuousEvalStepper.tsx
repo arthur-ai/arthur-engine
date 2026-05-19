@@ -393,7 +393,7 @@ export const ContinuousEvalStepper = ({
               <Stack gap={2}>
                 <EvaluatorSelector taskId={task?.id ?? ""} form={form} fields="evaluator" onSelectionChange={handleSelectionChange} />
 
-                {!isMLEvalType && llmEvaluatorData && (
+                {!isMLEvalType && llmEvaluatorData && llmEvaluatorData.instructions != null && (
                   <Paper variant="outlined" sx={{ p: 2 }}>
                     <Typography variant="body2" fontWeight="bold" mb={1}>
                       Instructions Preview
