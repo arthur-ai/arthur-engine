@@ -25,18 +25,50 @@ echo "ARTHUR_PLATFORM_TOKEN=$TOKEN" >> "$STATE_FILE"
 
 ---
 
-## If ARTHUR_PLATFORM_TOKEN Exists — Verify It
+## If ARTHUR_PLATFORM_TOKEN Exists — Verify or Auto-Refresh
+
+Platform tokens expire after ~5 minutes. If the token is expired but credentials are stored, refresh silently without asking the user again (all in one Bash call):
 
 ```bash
-HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+ARTHUR_PLATFORM_URL=$(grep '^ARTHUR_PLATFORM_URL=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
+ARTHUR_PLATFORM_TOKEN=$(grep '^ARTHUR_PLATFORM_TOKEN=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
+STORED_SECRET=$(grep '^ARTHUR_PLATFORM_CLIENT_SECRET=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
+
+AUTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
   -H "Authorization: Bearer $ARTHUR_PLATFORM_TOKEN" \
   "${ARTHUR_PLATFORM_URL}/api/v1/users/me" 2>/dev/null || echo "000")
-echo "AUTH_STATUS=$HTTP_STATUS"
+echo "AUTH_STATUS=$AUTH_STATUS"
+
+if [ "$AUTH_STATUS" = "200" ]; then
+  echo "TOKEN_VALID=yes"
+elif [ -n "$STORED_SECRET" ]; then
+  echo "Token expired — auto-refreshing with stored credentials..."
+  CLIENT_ID=$(grep '^ARTHUR_PLATFORM_CLIENT_ID=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
+  TOKEN_ENDPOINT=$(curl -s "${ARTHUR_PLATFORM_URL}/api/v1/auth/oidc/.well-known/openid-configuration" | \
+    python3 -c "import sys,json; print(json.load(sys.stdin).get('token_endpoint',''))" 2>/dev/null)
+  NEW_TOKEN=$(curl -s -X POST "$TOKEN_ENDPOINT" \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    --data-urlencode "grant_type=client_credentials" \
+    --data-urlencode "client_id=$CLIENT_ID" \
+    --data-urlencode "client_secret=$STORED_SECRET" \
+    --data-urlencode "scope=openid email profile" | \
+    python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null)
+  if [ -n "$NEW_TOKEN" ]; then
+    grep -v '^ARTHUR_PLATFORM_TOKEN=' .arthur-engine.env > /tmp/ae_env_tmp && mv /tmp/ae_env_tmp .arthur-engine.env
+    echo "ARTHUR_PLATFORM_TOKEN=$NEW_TOKEN" >> .arthur-engine.env
+    echo "TOKEN_REFRESHED=yes"
+  else
+    echo "TOKEN_REFRESH=FAILED"
+  fi
+else
+  echo "TOKEN_VALID=no — no stored credentials; must collect them"
+fi
 ```
 
-- `200` → token still valid; confirm reuse with user ("Still authenticated to Arthur Platform?"); if yes, exit this skill
-- `401` → token expired; proceed to "Collect Client Credentials" below (skip service account creation guidance if `ARTHUR_PLATFORM_CLIENT_ID` already exists)
-- anything else → network or platform issue; warn the user and exit with an error message
+- `TOKEN_VALID=yes` → confirm reuse with user ("Still authenticated to Arthur Platform?"); if yes, exit this skill
+- `TOKEN_REFRESHED=yes` → token refreshed silently; exit this skill
+- `TOKEN_REFRESH=FAILED` or `TOKEN_VALID=no` → proceed to "Collect Client Credentials" below
+- `AUTH_STATUS` is not `200` and no stored secret → warn the user and proceed to collect credentials
 
 ---
 
@@ -102,6 +134,10 @@ if [ -z "$CLIENT_SECRET" ]; then
   exit 0
 fi
 
+# Save secret to state file for automatic token refresh (tokens expire in ~5 minutes)
+grep -v '^ARTHUR_PLATFORM_CLIENT_SECRET=' .arthur-engine.env 2>/dev/null > /tmp/ae_env_tmp && mv /tmp/ae_env_tmp .arthur-engine.env || true
+echo "ARTHUR_PLATFORM_CLIENT_SECRET=$CLIENT_SECRET" >> .arthur-engine.env
+
 # Discover token endpoint via OIDC
 TOKEN_ENDPOINT=$(curl -s "${ARTHUR_PLATFORM_URL}/api/v1/auth/oidc/.well-known/openid-configuration" | \
   python3 -c "import sys,json; print(json.load(sys.stdin).get('token_endpoint',''))" 2>/dev/null)
@@ -158,4 +194,4 @@ After running this single Bash call:
 
 ## Token Expiry Note
 
-OAuth2 access tokens typically expire after ~1 hour. If any downstream sub-skill receives a `401` response from the Platform API, re-invoke this skill to refresh the token before retrying.
+Platform tokens expire after ~5 minutes. Because `ARTHUR_PLATFORM_CLIENT_SECRET` is stored in `.arthur-engine.env`, all downstream platform sub-skills refresh the token automatically without asking the user again. If a sub-skill reports `TOKEN_REFRESH=FAILED`, re-invoke this skill to re-authenticate.
