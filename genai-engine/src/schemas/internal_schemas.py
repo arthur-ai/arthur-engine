@@ -170,6 +170,7 @@ from schemas.rag_experiment_schemas import (
     RagConfig,
     RagConfigResponse,
     RagExperimentSummary,
+    SavedRagConfig,
     UnsavedRagConfigResponse,
 )
 from schemas.rag_notebook_schemas import (
@@ -1807,6 +1808,9 @@ class User(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     roles: list[AuthUserRole]
+    # Set from api_key.org_id on the API-key auth path. None for JWT users
+    # and for admin API keys (org_id IS NULL). Drives request.state.org_scope.
+    org_scope: Optional[uuid.UUID] = None
 
     @staticmethod
     def _from_database_model(user: DatabaseUser) -> "User":
@@ -1969,6 +1973,8 @@ class ApiKey(BaseModel):
     created_at: datetime
     deactivated_at: Optional[datetime] = None
     roles: list[str] = [constants.TASK_ADMIN]
+    # NULL = admin (cross-org). Non-null = tenant scoped to that org.
+    org_id: Optional[uuid.UUID] = None
 
     @staticmethod
     def _from_database_model(api_key: DatabaseApiKey) -> "ApiKey":
@@ -1980,6 +1986,7 @@ class ApiKey(BaseModel):
             created_at=api_key.created_at,
             deactivated_at=api_key.deactivated_at,
             roles=api_key.roles,
+            org_id=api_key.org_id,
         )
 
     def _to_response_model(self, message: str = "") -> ApiKeyResponse:
@@ -2005,6 +2012,7 @@ class ApiKey(BaseModel):
                 AuthUserRole(name=role, description="API Key user", composite=True)
                 for role in self.roles
             ],
+            org_scope=self.org_id,
         )
 
 
@@ -3975,8 +3983,6 @@ class InternalSavedRagConfig(BaseModel):
         This method handles the conversion between request and response schemas
         for RAG configurations, converting request settings types to response settings types.
         """
-        from schemas.rag_experiment_schemas import SavedRagConfig
-
         if config.type == "saved":
             # Saved configs don't need conversion - they're the same in both request and response
             return SavedRagConfig(
