@@ -14,7 +14,7 @@ from arthur_common.models.enums import MetricType, RuleType
 from authlib.integrations.starlette_client import OAuth
 from cachetools import TTLCache
 from dotenv import load_dotenv
-from fastapi import Depends, HTTPException, Query
+from fastapi import Depends, HTTPException, Query, Request
 from psycopg2 import OperationalError as Psycopg2OperationalError
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
@@ -326,6 +326,25 @@ def get_task_repository(
         MetricRepository(db_session),
         application_config,
     )
+
+
+def get_org_scope(request: Request) -> Optional[UUID]:
+    """Return the caller's org scope when authenticated, else None.
+
+    None has two meanings and callers must distinguish them by pairing this
+    dependency with the auth dependency:
+
+    1. Authenticated admin / JWT user (cross-org access). org_scope was
+       explicitly set to None by MultiMethodValidator from api_key.org_id.
+    2. Unauthenticated request. MultiMethodValidator never ran, so
+       request.state.org_scope was never set.
+
+    To distinguish case 2 from case 1, always combine this dependency with
+    `Depends(multi_validator.validate_api_multi_auth)` on the same handler.
+    Do NOT use this on a public route without an auth gate — None will be
+    indistinguishable from "admin" and may grant cross-org access.
+    """
+    return getattr(request.state, "org_scope", None)
 
 
 def get_validated_task(
