@@ -1,12 +1,25 @@
+import { useSuspenseQuery } from "@tanstack/react-query";
+
+import { TryItOutFormLinear } from "./linear";
 import type { TryItOutFormProps } from "./types";
 import { TryItOutFormWizard } from "./wizard";
+
+import { experimentVariantQueryOptions } from "@/hooks/useExperimentVariant";
 
 export { TryItOutFormLinear } from "./linear";
 export { TryItOutFormWizard } from "./wizard";
 export type { TryItOutSubmission } from "./schema";
 
-// TODO: replace with an Amplitude experiment lookup so that linear/wizard
-// can be A/B-tested. For now: always render the wizard.
+const VARIANT_MAP = {
+  wizard: TryItOutFormWizard,
+  linear: TryItOutFormLinear,
+};
+
 export const TryItOutForm: React.FC<TryItOutFormProps> = (props) => {
-  return <TryItOutFormWizard {...props} />;
+  const { data } = useSuspenseQuery(experimentVariantQueryOptions({ experimentName: "onboarding-form-version" }));
+
+  const variant = (data.value as keyof typeof VARIANT_MAP) ?? "linear";
+  const VariantForm = VARIANT_MAP[variant];
+
+  return <VariantForm {...props} />;
 };

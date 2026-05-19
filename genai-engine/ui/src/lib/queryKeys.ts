@@ -2,6 +2,11 @@ import type { GetFilteredSpansParams, GetFilteredTracesParams, GetSessionsParams
 import type { TimeInterval } from "@/utils/timeWindows";
 
 export const queryKeys = {
+  amplitude: {
+    experiments: {
+      variant: (experimentName: string) => ["amplitudeExperiments", experimentName] as const,
+    },
+  },
   prompts: {
     variables: (name: string, versions: number[]) => ["promptsVariables", { name, versions }] as const,
   },
