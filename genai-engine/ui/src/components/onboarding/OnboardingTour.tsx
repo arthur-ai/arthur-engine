@@ -7,14 +7,16 @@ import { runStepAction, useStepAction } from "./hooks/useStepAction";
 import { useWaitForTarget } from "./hooks/useWaitForTarget";
 import { OnboardingTooltip } from "./OnboardingTooltip";
 import { tourRoutes } from "./routes";
-import { resolveStepTarget, STEP_IDS, STEPS, type TourStep } from "./steps";
+import { findMajorTaskForStep, type MajorTask, resolveStepTarget, STEP_IDS, STEPS, type TourStep } from "./steps";
 import { useOnboardingStore } from "./stores/onboarding.store";
 
 const pathFromHref = (href: string): string => href.split("?")[0];
 
-const matchesArrival = (pathname: string, step: TourStep, taskId: string): boolean => {
-  if (!step.route?.advanceOnArrival) return false;
-  return pathname.endsWith(pathFromHref(step.route.href(taskId)));
+// Only the first subtask is eligible: later subtasks share the URL and shouldn't get skipped.
+const matchesArrivalRoute = (pathname: string, task: MajorTask, taskId: string, step: TourStep): boolean => {
+  if (!task.entry?.advanceOnArrival) return false;
+  if (task.subtaskIds[0] !== step.id) return false;
+  return pathname.endsWith(pathFromHref(task.entry.route(taskId)));
 };
 
 const joyrideSteps: Step[] = STEPS.map((s) => ({
@@ -41,7 +43,9 @@ export const OnboardingTour = () => {
   const dismiss = useOnboardingStore((s) => s.dismiss);
 
   const step = STEPS[currentStep];
+  const currentMajorTask = step ? findMajorTaskForStep(step.id) : undefined;
   const stepEntryPathRef = useRef<string | null>(null);
+  const lastEnteredMajorTaskRef = useRef<string | null>(null);
 
   const navigateRef = useRef(navigate);
   navigateRef.current = navigate;
@@ -50,17 +54,6 @@ export const OnboardingTour = () => {
   const locationPathnameRef = useRef(location.pathname);
   locationPathnameRef.current = location.pathname;
 
-  useStepAction(STEP_IDS.VIEW_TRACES, () => {
-    if (taskId) navigate(tourRoutes.traces(taskId));
-  });
-  useStepAction(STEP_IDS.VIEW_DATASETS, () => {
-    if (taskId) navigate(tourRoutes.datasets(taskId));
-  });
-  useStepAction(STEP_IDS.VIEW_PROMPTS, () => {
-    if (taskId) navigate(tourRoutes.promptsManagement(taskId));
-  });
-
-  // Navigate when a step is entered
   useEffect(() => {
     const handleStepEnter = (stepIndex: number) => {
       const tid = taskIdRef.current;
@@ -68,14 +61,31 @@ export const OnboardingTour = () => {
       const s = STEPS[stepIndex];
       if (!s) return;
       stepEntryPathRef.current = locationPathnameRef.current;
-      if (!s.route || s.route.advanceOnArrival) return;
-      const target = s.route.href(tid);
+
+      const majorTask = findMajorTaskForStep(s.id);
+      if (!majorTask) return;
+
+      const enteringNewMajorTask = lastEnteredMajorTaskRef.current !== majorTask.id;
+      lastEnteredMajorTaskRef.current = majorTask.id;
+
+      if (!enteringNewMajorTask) return;
+      const entry = majorTask.entry;
+      if (!entry || entry.advanceOnArrival) return;
+
+      const target = entry.route(tid);
       if (window.location.pathname + window.location.search === target) return;
       navigateRef.current(target);
     };
 
     const initial = useOnboardingStore.getState();
-    if (initial.status === "active") handleStepEnter(initial.currentStep);
+    if (initial.status === "active") {
+      const initialStep = STEPS[initial.currentStep];
+      if (initialStep) {
+        const initialTask = findMajorTaskForStep(initialStep.id);
+        lastEnteredMajorTaskRef.current = initialTask?.id ?? null;
+      }
+      handleStepEnter(initial.currentStep);
+    }
 
     return useOnboardingStore.subscribe(
       (s) => ({ status: s.status, currentStep: s.currentStep }),
@@ -90,13 +100,24 @@ export const OnboardingTour = () => {
     );
   }, []);
 
-  // Advance on arrival
   useEffect(() => {
-    if (status !== "active" || !step || !taskId) return;
-    if (!matchesArrival(location.pathname, step, taskId)) return;
+    if (status !== "active" || !step || !taskId || !currentMajorTask) return;
+    if (!matchesArrivalRoute(location.pathname, currentMajorTask, taskId, step)) return;
     if (stepEntryPathRef.current === location.pathname) return;
     next();
-  }, [status, step?.id, location.pathname, taskId, next, step]);
+  }, [status, step?.id, location.pathname, taskId, next, step, currentMajorTask]);
+
+  // Next-button shortcut for advanceOnArrival entry subtasks: natural flow expects the user
+  // to click the sidebar, but Next should still navigate.
+  useStepAction(STEP_IDS.VIEW_TRACES, () => {
+    if (taskId) navigate(tourRoutes.traces(taskId));
+  });
+  useStepAction(STEP_IDS.VIEW_DATASETS, () => {
+    if (taskId) navigate(tourRoutes.datasets(taskId));
+  });
+  useStepAction(STEP_IDS.VIEW_PROMPTS, () => {
+    if (taskId) navigate(tourRoutes.promptsManagement(taskId));
+  });
 
   const targetSelector = step ? resolveStepTarget(step.target) : null;
   const targetReady = useWaitForTarget(targetSelector, [currentStep]);

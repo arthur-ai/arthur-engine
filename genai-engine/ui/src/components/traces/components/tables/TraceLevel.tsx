@@ -31,8 +31,8 @@ import { TracingFilterModal } from "./components/TracingFilterModal";
 import { TestRunDialog } from "@/components/live-evals/components/TestRunDialog";
 import { DATA_TOUR } from "@/components/onboarding/data-tour";
 import { useCompleteStep } from "@/components/onboarding/hooks/useCompleteStep";
-import { useStepAction } from "@/components/onboarding/hooks/useStepAction";
-import { STEP_IDS } from "@/components/onboarding/steps";
+import { useMajorTaskExitAction, useStepAction } from "@/components/onboarding/hooks/useStepAction";
+import { MAJOR_TASK_IDS, STEP_IDS } from "@/components/onboarding/steps";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
@@ -75,7 +75,7 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
     previousDrawerIdRef.current = drawerTarget?.id;
   }, [drawerTarget?.id, completeReviewTraceStep]);
 
-  useStepAction(STEP_IDS.REVIEW_TRACE, () => {
+  useMajorTaskExitAction(MAJOR_TASK_IDS.OBSERVE, () => {
     setDrawerTarget({ id: null });
   });
 
