@@ -9,6 +9,7 @@ suite asserts it is set correctly on all three auth paths:
   - JWT request (admin) → org_scope = None
 """
 
+import asyncio
 import uuid
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -33,8 +34,6 @@ def _run(validator: MultiMethodValidator, request, *, api_key_user, jwt_user):
     matches (see api_key_validator_client.py). multi_validator catches it,
     logs, then falls through to the JWT path.
     """
-    import asyncio
-
     api_key_client = MagicMock()
     if api_key_user is None:
         api_key_client.validate.side_effect = BadCredentialsException()

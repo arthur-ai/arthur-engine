@@ -3,7 +3,9 @@ import datetime
 import uuid
 from unittest.mock import MagicMock
 
+import bcrypt
 import pytest
+from arthur_common.models.enums import APIKeysRolesEnum
 
 from db_models import DatabaseApiKey
 from repositories.api_key_repository import ApiKeyRepository
@@ -52,8 +54,6 @@ def test_validate_key_with_mocked_db_result():
 
 @pytest.mark.unit_tests
 def test_validate_key_with_real_hash():
-    import bcrypt
-
     # Create a real bcrypt hash for testing
     test_key_value = "test_key_value"
     real_hash = bcrypt.hashpw(
@@ -173,8 +173,6 @@ def test_get_user_representation_org_scope_none_for_admin_key():
 @pytest.mark.unit_tests
 def test_create_api_key_persists_org_id(monkeypatch):
     """create_api_key(org_id=X) passes org_id through to the DatabaseApiKey row."""
-    from arthur_common.models.enums import APIKeysRolesEnum
-
     db_session = MagicMock()
     # Zero existing keys so we pass the max_api_key_limit gate.
     db_session.query.return_value.filter.return_value.count.return_value = 0
@@ -208,8 +206,6 @@ def test_create_api_key_persists_org_id(monkeypatch):
 @pytest.mark.unit_tests
 def test_create_api_key_defaults_to_none_org_id_for_admin(monkeypatch):
     """create_api_key() without org_id (admin path) leaves the column NULL."""
-    from arthur_common.models.enums import APIKeysRolesEnum
-
     db_session = MagicMock()
     db_session.query.return_value.filter.return_value.count.return_value = 0
 

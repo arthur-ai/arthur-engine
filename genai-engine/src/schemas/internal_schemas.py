@@ -170,6 +170,7 @@ from schemas.rag_experiment_schemas import (
     RagConfig,
     RagConfigResponse,
     RagExperimentSummary,
+    SavedRagConfig,
     UnsavedRagConfigResponse,
 )
 from schemas.rag_notebook_schemas import (
@@ -3982,8 +3983,6 @@ class InternalSavedRagConfig(BaseModel):
         This method handles the conversion between request and response schemas
         for RAG configurations, converting request settings types to response settings types.
         """
-        from schemas.rag_experiment_schemas import SavedRagConfig
-
         if config.type == "saved":
             # Saved configs don't need conversion - they're the same in both request and response
             return SavedRagConfig(
