@@ -17,6 +17,7 @@ import pytest
 from arthur_common.models.common_schemas import AuthUserRole
 
 from auth.multi_validator import MultiMethodValidator
+from schemas.custom_exceptions import BadCredentialsException
 from schemas.internal_schemas import User
 
 
@@ -25,10 +26,20 @@ def _make_request() -> SimpleNamespace:
 
 
 def _run(validator: MultiMethodValidator, request, *, api_key_user, jwt_user):
+    """Drive validate_api_multi_auth with mocked clients.
+
+    When api_key_user is None we model the production failure path: the
+    APIKeyValidatorClient raises BadCredentialsException when no validator
+    matches (see api_key_validator_client.py). multi_validator catches it,
+    logs, then falls through to the JWT path.
+    """
     import asyncio
 
     api_key_client = MagicMock()
-    api_key_client.validate.return_value = api_key_user
+    if api_key_user is None:
+        api_key_client.validate.side_effect = BadCredentialsException()
+    else:
+        api_key_client.validate.return_value = api_key_user
     jwk_client = MagicMock()
     jwk_client.validate.return_value = jwt_user
 
@@ -94,7 +105,8 @@ def test_jwt_path_sets_org_scope_none():
     request = _make_request()
     validator = MultiMethodValidator(api_key_validator_creators=[])
 
-    # API key validation returns None so we fall through to JWT path.
+    # API key validation raises BadCredentialsException (production behavior
+    # when no validator matches the token) so we fall through to JWT.
     result = _run(validator, request, api_key_user=None, jwt_user=user)
 
     assert result is user
