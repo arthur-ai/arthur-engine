@@ -14,7 +14,7 @@ from arthur_common.models.enums import MetricType, RuleType
 from authlib.integrations.starlette_client import OAuth
 from cachetools import TTLCache
 from dotenv import load_dotenv
-from fastapi import Depends, HTTPException, Query
+from fastapi import Depends, HTTPException, Query, Request
 from psycopg2 import OperationalError as Psycopg2OperationalError
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
@@ -326,6 +326,16 @@ def get_task_repository(
         MetricRepository(db_session),
         application_config,
     )
+
+
+def get_org_scope(request: Request) -> Optional[UUID]:
+    """Return the caller's org scope, or None for admins/JWT users.
+
+    Set by MultiMethodValidator from api_key.org_id. Used by handlers that need
+    to make admin-vs-tenant decisions (e.g., routing newly-created tasks to the
+    default org for admins and to the caller's org for tenants).
+    """
+    return getattr(request.state, "org_scope", None)
 
 
 def get_validated_task(

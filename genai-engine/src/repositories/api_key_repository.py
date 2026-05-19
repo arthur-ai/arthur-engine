@@ -25,6 +25,7 @@ class ApiKeyRepository:
         self,
         description: Optional[str],
         roles: list[APIKeysRolesEnum],
+        org_id: Optional[uuid.UUID] = None,
     ) -> ApiKey:
         # Check the number of active keys
         active_keys_count = (
@@ -47,6 +48,7 @@ class ApiKeyRepository:
             key_hash=key_hash,
             description=description,
             roles=[role.value for role in roles],
+            org_id=org_id,
         )
         self.db_session.add(db_api_key)
         self.db_session.commit()

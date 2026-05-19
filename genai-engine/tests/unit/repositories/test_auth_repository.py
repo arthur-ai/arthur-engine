@@ -1,10 +1,13 @@
 import base64
+import datetime
+import uuid
 from unittest.mock import MagicMock
 
 import pytest
 
 from db_models import DatabaseApiKey
 from repositories.api_key_repository import ApiKeyRepository
+from schemas.internal_schemas import ApiKey
 
 
 @pytest.mark.unit_tests
@@ -65,6 +68,9 @@ def test_validate_key_with_real_hash():
     mock_db_api_key.description = "Test API Key"
     mock_db_api_key.roles = ["admin"]
     mock_db_api_key.is_active = True
+    mock_db_api_key.created_at = datetime.datetime(2026, 1, 1)
+    mock_db_api_key.deactivated_at = None
+    mock_db_api_key.org_id = None
 
     # Mock the database session and query chain
     db_session = MagicMock()
@@ -92,3 +98,137 @@ def test_validate_key_with_real_hash():
     assert result.id == "test_api_key_id"
     assert result.description == "Test API Key"
     assert result.roles == ["admin"]
+
+
+@pytest.mark.unit_tests
+def test_api_key_from_database_model_propagates_org_id_when_set():
+    """Tenant key (api_keys.org_id non-null) surfaces org_id on the ApiKey schema."""
+    org_id = uuid.uuid4()
+    db_api_key = MagicMock(spec=DatabaseApiKey)
+    db_api_key.id = "tenant-key-id"
+    db_api_key.key_hash = "hash"
+    db_api_key.description = "tenant key"
+    db_api_key.is_active = True
+    db_api_key.created_at = datetime.datetime(2026, 1, 1)
+    db_api_key.deactivated_at = None
+    db_api_key.roles = ["TENANT-USER"]
+    db_api_key.org_id = org_id
+
+    api_key = ApiKey._from_database_model(db_api_key)
+
+    assert api_key.org_id == org_id
+
+
+@pytest.mark.unit_tests
+def test_api_key_from_database_model_org_id_none_for_admin_keys():
+    """Admin key (api_keys.org_id IS NULL) yields org_id=None — existing behavior."""
+    db_api_key = MagicMock(spec=DatabaseApiKey)
+    db_api_key.id = "admin-key-id"
+    db_api_key.key_hash = "hash"
+    db_api_key.description = "admin key"
+    db_api_key.is_active = True
+    db_api_key.created_at = datetime.datetime(2026, 1, 1)
+    db_api_key.deactivated_at = None
+    db_api_key.roles = ["ORG_ADMIN"]
+    db_api_key.org_id = None
+
+    api_key = ApiKey._from_database_model(db_api_key)
+
+    assert api_key.org_id is None
+
+
+@pytest.mark.unit_tests
+def test_get_user_representation_propagates_org_id_as_org_scope():
+    """ApiKey.org_id flows into User.org_scope so multi_validator can pick it up."""
+    org_id = uuid.uuid4()
+    api_key = ApiKey(
+        id="tenant-key-id",
+        is_active=True,
+        created_at=datetime.datetime(2026, 1, 1),
+        roles=["TENANT-USER"],
+        org_id=org_id,
+    )
+
+    user = api_key.get_user_representation()
+
+    assert user.org_scope == org_id
+
+
+@pytest.mark.unit_tests
+def test_get_user_representation_org_scope_none_for_admin_key():
+    """Admin ApiKey (org_id=None) yields User.org_scope=None — cross-org access."""
+    api_key = ApiKey(
+        id="admin-key-id",
+        is_active=True,
+        created_at=datetime.datetime(2026, 1, 1),
+        roles=["ORG_ADMIN"],
+        org_id=None,
+    )
+
+    user = api_key.get_user_representation()
+
+    assert user.org_scope is None
+
+
+@pytest.mark.unit_tests
+def test_create_api_key_persists_org_id(monkeypatch):
+    """create_api_key(org_id=X) passes org_id through to the DatabaseApiKey row."""
+    from arthur_common.models.enums import APIKeysRolesEnum
+
+    db_session = MagicMock()
+    # Zero existing keys so we pass the max_api_key_limit gate.
+    db_session.query.return_value.filter.return_value.count.return_value = 0
+
+    # Bypass pydantic validation — create_api_key constructs DatabaseApiKey but
+    # doesn't commit, so SQLAlchemy defaults aren't applied yet. Return a thin
+    # stand-in that exposes the underlying ORM row for inspection.
+    class _Stub:
+        def __init__(self, db_api_key):
+            self.db = db_api_key
+
+        def set_key(self, key):
+            pass
+
+    monkeypatch.setattr(
+        ApiKey, "_from_database_model", staticmethod(lambda db: _Stub(db))
+    )
+    repo = ApiKeyRepository(db_session=db_session)
+    org_id = uuid.uuid4()
+    repo.create_api_key(
+        description="tenant key",
+        roles=[APIKeysRolesEnum.TASK_ADMIN],
+        org_id=org_id,
+    )
+
+    added = db_session.add.call_args[0][0]
+    assert isinstance(added, DatabaseApiKey)
+    assert added.org_id == org_id
+
+
+@pytest.mark.unit_tests
+def test_create_api_key_defaults_to_none_org_id_for_admin(monkeypatch):
+    """create_api_key() without org_id (admin path) leaves the column NULL."""
+    from arthur_common.models.enums import APIKeysRolesEnum
+
+    db_session = MagicMock()
+    db_session.query.return_value.filter.return_value.count.return_value = 0
+
+    class _Stub:
+        def __init__(self, db_api_key):
+            self.db = db_api_key
+
+        def set_key(self, key):
+            pass
+
+    monkeypatch.setattr(
+        ApiKey, "_from_database_model", staticmethod(lambda db: _Stub(db))
+    )
+    repo = ApiKeyRepository(db_session=db_session)
+    repo.create_api_key(
+        description="admin key",
+        roles=[APIKeysRolesEnum.ORG_ADMIN],
+    )
+
+    added = db_session.add.call_args[0][0]
+    assert isinstance(added, DatabaseApiKey)
+    assert added.org_id is None
