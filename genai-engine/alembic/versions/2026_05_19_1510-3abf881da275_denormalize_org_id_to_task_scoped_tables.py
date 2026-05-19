@@ -1,8 +1,8 @@
 """denormalize org_id to task-scoped tables
 
-Revision ID: mt_denormalize_org_id
-Revises: mt_orphan_inferences
-Create Date: 2026-05-19 10:40:00
+Revision ID: 3abf881da275
+Revises: d894934c8994
+Create Date: 2026-05-19 15:10:47.370611
 
 Multi-tenancy step 5 of 5. Denormalizes `org_id` onto every task-scoped
 table that today reaches its org only via multi-hop joins:
@@ -21,7 +21,7 @@ table that today reaches its org only via multi-hop joins:
 Two-phase nullable -> backfill -> SET NOT NULL, applied per-table. Backfill
 order respects FK dependencies: parents must finish before children.
 
-Step 4 (mt_orphan_inferences) guaranteed every inference has a non-null
+Step 4 (revision d894934c8994) guaranteed every inference has a non-null
 task_id, so the inference-derived backfills can't strand rows. The
 agentic_annotations chain has a continuous_evals fallback and finally a
 system-org fallback for the rare "no parent" annotation allowed by the
@@ -33,8 +33,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "mt_denormalize_org_id"
-down_revision = "mt_orphan_inferences"
+revision = "3abf881da275"
+down_revision = "d894934c8994"
 branch_labels = None
 depends_on = None
 

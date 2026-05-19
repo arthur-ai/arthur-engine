@@ -1,8 +1,8 @@
 """add org_id to tasks
 
-Revision ID: mt_tasks_org_id
-Revises: mt_create_organizations
-Create Date: 2026-05-19 10:10:00
+Revision ID: 697657f9af66
+Revises: 514464b8ca3d
+Create Date: 2026-05-19 15:10:16.081085
 
 Multi-tenancy step 2 of 5. Adds `tasks.org_id` (NOT NULL, FK to
 organizations, indexed). Two-phase nullable -> backfill -> SET NOT NULL
@@ -18,8 +18,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "mt_tasks_org_id"
-down_revision = "mt_create_organizations"
+revision = "697657f9af66"
+down_revision = "514464b8ca3d"
 branch_labels = None
 depends_on = None
 

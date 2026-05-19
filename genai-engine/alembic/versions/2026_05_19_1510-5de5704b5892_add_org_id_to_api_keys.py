@@ -1,8 +1,8 @@
-"""add org_id to api_keys (nullable)
+"""add org_id to api_keys
 
-Revision ID: mt_api_keys_org_id
-Revises: mt_tasks_org_id
-Create Date: 2026-05-19 10:20:00
+Revision ID: 5de5704b5892
+Revises: 697657f9af66
+Create Date: 2026-05-19 15:10:26.437815
 
 Multi-tenancy step 3 of 5. Adds `api_keys.org_id` as NULLABLE so existing
 keys stay admin (cross-org). Tenant keys minted by the future signup flow
@@ -17,8 +17,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "mt_api_keys_org_id"
-down_revision = "mt_tasks_org_id"
+revision = "5de5704b5892"
+down_revision = "697657f9af66"
 branch_labels = None
 depends_on = None
 
