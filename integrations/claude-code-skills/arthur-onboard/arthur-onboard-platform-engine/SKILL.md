@@ -85,7 +85,15 @@ Tell the user:
 
 Ask the user for an engine name (e.g., "Production Engine", "Dev Machine").
 
+Execute **all of the following in one Bash call** — the `client_secret` is only returned once from the API and must be saved to disk within the same shell execution. Shell variables do not persist between Bash calls.
+
 ```bash
+# Read state file values
+ARTHUR_PLATFORM_URL=$(grep '^ARTHUR_PLATFORM_URL=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
+ARTHUR_PLATFORM_TOKEN=$(grep '^ARTHUR_PLATFORM_TOKEN=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
+ARTHUR_PLATFORM_WORKSPACE_ID=$(grep '^ARTHUR_PLATFORM_WORKSPACE_ID=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
+
+# Create the data plane registration
 DP_CREATE_RESPONSE=$(curl -s -X POST \
   -H "Authorization: Bearer $ARTHUR_PLATFORM_TOKEN" \
   -H "Content-Type: application/json" \
@@ -97,25 +105,25 @@ DATA_PLANE_CLIENT_ID=$(echo "$DP_CREATE_RESPONSE" | \
   python3 -c "import sys,json; print(json.load(sys.stdin).get('client_id',''))" 2>/dev/null)
 DATA_PLANE_CLIENT_SECRET=$(echo "$DP_CREATE_RESPONSE" | \
   python3 -c "import sys,json; print(json.load(sys.stdin).get('client_secret',''))" 2>/dev/null)
+
 echo "DATA_PLANE_ID=$DATA_PLANE_ID"
 echo "DATA_PLANE_CLIENT_ID=$DATA_PLANE_CLIENT_ID"
 echo "HAS_SECRET=$([ -n "$DATA_PLANE_CLIENT_SECRET" ] && echo 'yes' || echo 'no')"
-```
 
-> **Critical:** The `client_secret` is only returned once. Save it immediately:
-
-```bash
-python3 -c "
+# Save the secret to disk immediately (only chance — not shown again)
+if [ -n "$DATA_PLANE_CLIENT_SECRET" ]; then
+  python3 -c "
 import os, stat
 p = os.path.expanduser('~/.ae_dp_secret')
 open(p, 'w').write('$DATA_PLANE_CLIENT_SECRET')
 os.chmod(p, 0o600)
 print('Data plane secret saved to ~/.ae_dp_secret')
 "
+fi
 ```
 
-If `DATA_PLANE_ID` is empty or `HAS_SECRET=no`: show the raw response; report the error.
-If the secret was lost, you can regenerate it later: `POST /api/v1/data_planes/{id}/credential_set`.
+If `DATA_PLANE_ID` is empty or `HAS_SECRET=no`: show the raw `DP_CREATE_RESPONSE`; report the error.
+If the secret was lost before saving, regenerate it: `POST /api/v1/data_planes/{id}/credential_set`.
 
 ### Step 2 — Choose Deployment Method
 

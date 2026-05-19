@@ -35,7 +35,7 @@ echo "AUTH_STATUS=$HTTP_STATUS"
 ```
 
 - `200` → token still valid; confirm reuse with user ("Still authenticated to Arthur Platform?"); if yes, exit this skill
-- `401` → token expired; proceed to "Acquire Token" section below (skip service account creation guidance if `ARTHUR_PLATFORM_CLIENT_ID` already exists)
+- `401` → token expired; proceed to "Collect Client Credentials" below (skip service account creation guidance if `ARTHUR_PLATFORM_CLIENT_ID` already exists)
 - anything else → network or platform issue; warn the user and exit with an error message
 
 ---
@@ -81,73 +81,78 @@ For the **Client Secret** (sensitive), show the user this message and wait for t
 >
 > Let me know once you've run it and I'll continue.
 
-After the user confirms, read and delete the temp file:
-```bash
-CLIENT_SECRET=$(cat ~/.ae_tmp_secret 2>/dev/null && rm -f ~/.ae_tmp_secret)
-echo "SECRET_READ=$([ -n "$CLIENT_SECRET" ] && echo 'OK' || echo 'EMPTY')"
-```
-
-If `SECRET_READ=EMPTY`: ask the user to re-run the command above.
-
 ---
 
-## Acquire OAuth2 Token
+## Acquire Token (single Bash call — do NOT split into multiple steps)
 
-**Step 1 — Discover the token endpoint via OIDC:**
+After the user confirms they ran the command above, execute **all of the following in one Bash call**: read the secret, discover the token endpoint, acquire the token, verify it, and save it to state. Shell variables do not persist between Bash calls, so splitting this into multiple steps will lose the secret.
+
 ```bash
-OIDC_RESPONSE=$(curl -s \
-  "${ARTHUR_PLATFORM_URL}/api/v1/auth/oidc/.well-known/openid-configuration")
-TOKEN_ENDPOINT=$(echo "$OIDC_RESPONSE" | \
+# Read state file for URL and client ID
+ARTHUR_PLATFORM_URL=$(grep '^ARTHUR_PLATFORM_URL=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
+CLIENT_ID=$(grep '^ARTHUR_PLATFORM_CLIENT_ID=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
+
+# Read and immediately delete the secret temp file
+CLIENT_SECRET=$(cat ~/.ae_tmp_secret 2>/dev/null)
+rm -f ~/.ae_tmp_secret
+echo "SECRET_READ=$([ -n "$CLIENT_SECRET" ] && echo 'OK' || echo 'EMPTY')"
+
+if [ -z "$CLIENT_SECRET" ]; then
+  echo "ERROR: Secret file not found or empty — ask user to re-run the getpass command"
+  exit 0
+fi
+
+# Discover token endpoint via OIDC
+TOKEN_ENDPOINT=$(curl -s "${ARTHUR_PLATFORM_URL}/api/v1/auth/oidc/.well-known/openid-configuration" | \
   python3 -c "import sys,json; print(json.load(sys.stdin).get('token_endpoint',''))" 2>/dev/null)
 echo "TOKEN_ENDPOINT=$TOKEN_ENDPOINT"
-```
 
-If `TOKEN_ENDPOINT` is empty: the platform URL may be wrong or unreachable. Show the raw OIDC response and exit with an error.
+if [ -z "$TOKEN_ENDPOINT" ]; then
+  echo "ERROR: Could not discover token endpoint — check ARTHUR_PLATFORM_URL"
+  exit 0
+fi
 
-**Step 2 — Acquire the access token:**
-```bash
+# Acquire access token using client credentials flow
 TOKEN_RESPONSE=$(curl -s -X POST "$TOKEN_ENDPOINT" \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "grant_type=client_credentials&client_id=${CLIENT_ID}&client_secret=${CLIENT_SECRET}&scope=openid+email+profile")
+  --data-urlencode "grant_type=client_credentials" \
+  --data-urlencode "client_id=$CLIENT_ID" \
+  --data-urlencode "client_secret=$CLIENT_SECRET" \
+  --data-urlencode "scope=openid email profile")
 ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | \
   python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null)
+TOKEN_ERROR=$(echo "$TOKEN_RESPONSE" | \
+  python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('error_description', d.get('error','')))" 2>/dev/null)
 echo "TOKEN_STATUS=$([ -n "$ACCESS_TOKEN" ] && echo 'OK' || echo 'FAILED')"
-```
+[ -n "$TOKEN_ERROR" ] && echo "TOKEN_ERROR=$TOKEN_ERROR"
 
-If `TOKEN_STATUS=FAILED`: show the error from `TOKEN_RESPONSE` (do NOT log the raw secret). Ask the user to verify their Client ID and Secret. Do not retry more than twice — exit and ask for human help.
+if [ -z "$ACCESS_TOKEN" ]; then
+  exit 0
+fi
 
----
-
-## Verify Token
-
-```bash
-ME_RESPONSE=$(curl -s \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  "${ARTHUR_PLATFORM_URL}/api/v1/users/me")
+# Verify token and get user identity
+ME_RESPONSE=$(curl -s -H "Authorization: Bearer $ACCESS_TOKEN" "${ARTHUR_PLATFORM_URL}/api/v1/users/me")
+ME_HTTP=$(echo "$ME_RESPONSE" | python3 -c "import sys; print('unknown')" 2>/dev/null)
 ME_HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  "${ARTHUR_PLATFORM_URL}/api/v1/users/me" 2>/dev/null || echo "000")
+  -H "Authorization: Bearer $ACCESS_TOKEN" "${ARTHUR_PLATFORM_URL}/api/v1/users/me" 2>/dev/null || echo "000")
 ME_EMAIL=$(echo "$ME_RESPONSE" | \
   python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('email', d.get('username','unknown')))" 2>/dev/null || echo "unknown")
 echo "ME_HTTP=$ME_HTTP"
 echo "ME_EMAIL=$ME_EMAIL"
-```
 
-- `200` → report: "Authenticated as: <ME_EMAIL>"
-- `401` → token acquired but rejected; check service account permissions
-- anything else → unexpected error; show raw response; exit with warning
-
----
-
-## Save Token to State
-
-```bash
+# Save token to state file
 STATE_FILE=".arthur-engine.env"
 grep -v '^ARTHUR_PLATFORM_TOKEN=' "$STATE_FILE" 2>/dev/null > /tmp/ae_env_tmp && mv /tmp/ae_env_tmp "$STATE_FILE" || true
 echo "ARTHUR_PLATFORM_TOKEN=$ACCESS_TOKEN" >> "$STATE_FILE"
+echo "TOKEN_SAVED=true"
 ```
 
-Exit this skill. The token is valid and ready for the next step.
+After running this single Bash call:
+- `SECRET_READ=EMPTY` → ask the user to re-run the getpass command above, then retry
+- `TOKEN_STATUS=FAILED` → show `TOKEN_ERROR` to the user; ask them to verify their credentials; do not retry more than twice
+- `ME_HTTP=200` → report "Authenticated as: <ME_EMAIL>" and exit this skill
+- `ME_HTTP=401` → token acquired but rejected by the API; check service account permissions
+- anything else → unexpected error; show raw `ME_RESPONSE`; exit with warning
 
 ---
 
