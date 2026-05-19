@@ -83,10 +83,11 @@ Tell the user:
 > 4. On the Identity & Access page, click the **Users** tab
 > 5. Click **+ USER** and choose **Service Account**
 > 6. Fill in a name and (optional) description
-> 7. For role assignment, practice the **least-privilege** model:
+> 7. After creation, the platform will display a **Client ID** and **Client Secret** — copy both now; the secret will not be shown again"
+> 8. For role assignment, practice the **least-privilege** model:
 >    - First-time setup / full onboarding: assign the **Organization Admin** role
 >    - Adding a single application to an existing workspace: assign only workspace member + project contributor
-> 8. After creation, the platform will display a **Client ID** and **Client Secret** — copy both now; the secret will not be shown again"
+> 9. If there are existing workspaces you want the service account to have access to, go to the "User Management" menu and configure accordingly
 
 Ask: "Do you already have a service account Client ID and Client Secret?"
 
