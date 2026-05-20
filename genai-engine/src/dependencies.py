@@ -351,10 +351,23 @@ def get_validated_task(
     task_id: UUID,
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> Task:
-    """Dependency that validates task exists"""
+    """Dependency that validates the task exists and (for tenant callers) belongs to caller's org.
+
+    Admin callers (org_scope is None) pass through and can resolve any task.
+    Tenant callers receive a 404 if the task does not exist or belongs to a
+    different org — 404 rather than 403 to prevent cross-org enumeration.
+    """
     task_repo = get_task_repository(db_session, application_config)
     task = task_repo.get_task_by_id(str(task_id))
+
+    if org_scope is not None and str(task.org_id) != str(org_scope):
+        raise HTTPException(
+            status_code=404,
+            detail="Task not found",
+            headers={"full_stacktrace": "false"},
+        )
 
     return task
 

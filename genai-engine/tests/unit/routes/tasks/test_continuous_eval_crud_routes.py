@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Optional
 from unittest.mock import MagicMock, patch
+from repositories.organizations_repository import DEFAULT_ORG_ID
 
 import pytest
 from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
@@ -77,6 +78,7 @@ def create_mock_annotation(
         run_status=run_status.value if run_status else None,
         created_at=datetime.now(),
         updated_at=datetime.now(),
+        org_id=DEFAULT_ORG_ID,
     )
     db_session.add(db_annotation)
     db_session.commit()
@@ -112,6 +114,7 @@ def setup_test_data():
         created_at=datetime.now(),
         updated_at=datetime.now(),
         is_agentic=True,
+        org_id=DEFAULT_ORG_ID,
     )
     db_session.add(task)
     db_session.commit()
@@ -2110,6 +2113,7 @@ def test_get_daily_annotation_analytics_time_filtering(
         cost=0.05,
         created_at=base_date,
         updated_at=base_date,
+        org_id=DEFAULT_ORG_ID,
     )
     annotation_passed_2 = DatabaseAgenticAnnotation(
         id=uuid.uuid4(),
@@ -2121,6 +2125,7 @@ def test_get_daily_annotation_analytics_time_filtering(
         cost=0.03,
         created_at=base_date,
         updated_at=base_date,
+        org_id=DEFAULT_ORG_ID,
     )
     annotation_failed = DatabaseAgenticAnnotation(
         id=uuid.uuid4(),
@@ -2132,6 +2137,7 @@ def test_get_daily_annotation_analytics_time_filtering(
         cost=0.02,
         created_at=base_date,
         updated_at=base_date,
+        org_id=DEFAULT_ORG_ID,
     )
     annotation_error = DatabaseAgenticAnnotation(
         id=uuid.uuid4(),
@@ -2143,6 +2149,7 @@ def test_get_daily_annotation_analytics_time_filtering(
         cost=0.01,
         created_at=base_date,
         updated_at=base_date,
+        org_id=DEFAULT_ORG_ID,
     )
     annotation_skipped = DatabaseAgenticAnnotation(
         id=uuid.uuid4(),
@@ -2154,6 +2161,7 @@ def test_get_daily_annotation_analytics_time_filtering(
         cost=None,
         created_at=base_date,
         updated_at=base_date,
+        org_id=DEFAULT_ORG_ID,
     )
 
     # Create annotations for yesterday
@@ -2168,6 +2176,7 @@ def test_get_daily_annotation_analytics_time_filtering(
         cost=0.04,
         created_at=yesterday,
         updated_at=yesterday,
+        org_id=DEFAULT_ORG_ID,
     )
     annotation_yesterday_failed = DatabaseAgenticAnnotation(
         id=uuid.uuid4(),
@@ -2179,6 +2188,7 @@ def test_get_daily_annotation_analytics_time_filtering(
         cost=0.02,
         created_at=yesterday,
         updated_at=yesterday,
+        org_id=DEFAULT_ORG_ID,
     )
 
     annotations = [

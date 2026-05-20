@@ -5,8 +5,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 
 from arthur_common.models.enums import InferenceFeedbackTarget
-from sqlalchemy import TIMESTAMP, ForeignKey, Index, Integer, String, UniqueConstraint
-from sqlalchemy.dialects import postgresql
+from sqlalchemy import TIMESTAMP, ForeignKey, Index, Integer, String, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base, CustomerDataString
@@ -137,7 +136,7 @@ class DatabaseInferenceFeedback(Base):
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
     org_id: Mapped[uuid.UUID] = mapped_column(
-        postgresql.UUID(as_uuid=True),
+        Uuid(as_uuid=True),
         ForeignKey("organizations.id"),
         nullable=False,
         index=True,

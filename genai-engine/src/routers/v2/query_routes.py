@@ -14,7 +14,7 @@ from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Inference, User
 from utils import constants as constants
-from utils.users import permission_checker
+from utils.users import enforce_query_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
 query_routes = APIRouter(
@@ -30,6 +30,7 @@ query_routes = APIRouter(
     response_model=QueryInferencesResponse,
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+@enforce_query_org_scope()
 def query_inferences(
     pagination_parameters: Annotated[
         PaginationParameters,

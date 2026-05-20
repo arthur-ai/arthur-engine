@@ -17,6 +17,7 @@ from db_models import (
     DatabaseInferenceResponse,
     DatabaseInferenceResponseContent,
 )
+from repositories.organizations_repository import DEFAULT_ORG_ID
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 from tests.unit.routes.feedback import FEEDBACK_DB_SESSION
 
@@ -105,6 +106,7 @@ def initialize_feedback(db_session: Session) -> None:
             score=score,
             reason=reason,
             user_id=user_id,
+            org_id=DEFAULT_ORG_ID,
         )
         db_session.add(db_feedback)
     db_session.commit()

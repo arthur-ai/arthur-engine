@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTestRun
 from db_models.llm_eval_models import DatabaseContinuousEval
+from db_models.task_models import DatabaseTask
 from db_models.telemetry_models import DatabaseTraceMetadata
 from schemas.enums import TestRunStatus
 from schemas.internal_schemas import AgenticAnnotation, ContinuousEvalTestRun
@@ -105,6 +106,12 @@ class ContinuousEvalTestRunRepository:
                 detail="Continuous eval queue service is not available.",
             )
 
+        task_org_id = (
+            self.db_session.query(DatabaseTask.org_id)
+            .filter(DatabaseTask.id == task_id)
+            .scalar()
+        )
+
         annotations = []
         for trace_id in existing_trace_ids:
             annotation = DatabaseAgenticAnnotation(
@@ -116,6 +123,7 @@ class ContinuousEvalTestRunRepository:
                 test_run_id=db_test_run.id,
                 created_at=now,
                 updated_at=now,
+                org_id=task_org_id,
             )
             self.db_session.add(annotation)
             annotations.append(annotation)

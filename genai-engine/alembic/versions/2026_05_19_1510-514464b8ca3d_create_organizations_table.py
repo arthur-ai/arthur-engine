@@ -5,14 +5,18 @@ Revises: b3f7a2c1d9e0
 Create Date: 2026-05-19 15:10:05.190824
 
 Multi-tenancy step 1 of 5. Creates the `organizations` table that owns
-tasks and (transitively) every task-scoped resource. Seeds two rows:
+tasks and (transitively) every task-scoped resource. Seeds two rows
+with well-known UUIDs so application code references them by id rather
+than by name (name is likely to become user-editable in v2):
 
-  - `default` — the bucket for pre-multi-tenancy tasks and any admin-
-    created task without tenant context. Tenants never carry org_id = default.
-  - `system`  — internal tasks (is_system_task=True) live here. Tenants
-    never carry org_id = system.
+  - `default` — id `00000000-0000-0000-0000-000000000001`. The bucket
+    for pre-multi-tenancy tasks and any admin-created task without
+    tenant context. Tenants never carry org_id = default.
+  - `system`  — id `00000000-0000-0000-0000-000000000002`. Internal
+    tasks (is_system_task=True) live here. Tenants never carry
+    org_id = system.
 
-Subsequent migrations backfill `tasks.org_id` from these orgs.
+Subsequent migrations backfill `tasks.org_id` from these orgs by id.
 
 Partial unique index `uq_organizations_is_system_true` enforces "at most
 one row with is_system=TRUE."
@@ -66,9 +70,14 @@ def upgrade() -> None:
         postgresql_where=sa.text("is_system = TRUE"),
     )
 
+    # Seed with well-known UUIDs so application code can reference them
+    # by id without a name lookup. These ids are also asserted in
+    # `repositories/organizations_repository.py` and used by the
+    # backfill step in the next migration.
     op.execute(
-        "INSERT INTO organizations (name, is_system) VALUES "
-        "('default', FALSE), ('system', TRUE) "
+        "INSERT INTO organizations (id, name, is_system) VALUES "
+        "('00000000-0000-0000-0000-000000000001', 'default', FALSE), "
+        "('00000000-0000-0000-0000-000000000002', 'system',  TRUE) "
         "ON CONFLICT (name) DO NOTHING"
     )
 

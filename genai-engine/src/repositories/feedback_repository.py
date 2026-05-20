@@ -10,8 +10,9 @@ from opentelemetry import trace
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
-from db_models import DatabaseInference, DatabaseInferenceFeedback
+from db_models import DatabaseInference, DatabaseInferenceFeedback, DatabaseTask
 from dependencies import get_db_session
+from repositories.organizations_repository import DEFAULT_ORG_ID
 
 logger = logging.getLogger()
 tracer = trace.get_tracer(__name__)
@@ -29,6 +30,14 @@ class FeedbackRepository:
         reason: str,
         user_id: str | None,
     ) -> DatabaseInferenceFeedback:
+        org_id = (
+            self.db_session.query(DatabaseTask.org_id)
+            .join(DatabaseInference, DatabaseInference.task_id == DatabaseTask.id)
+            .filter(DatabaseInference.id == inference_id)
+            .scalar()
+        )
+        if org_id is None:
+            org_id = DEFAULT_ORG_ID
         db_feedback = DatabaseInferenceFeedback(
             id=str(uuid.uuid4()),
             inference_id=inference_id,
@@ -38,6 +47,7 @@ class FeedbackRepository:
             user_id=user_id,
             created_at=datetime.now(),
             updated_at=datetime.now(),
+            org_id=org_id,
         )
         self.db_session.add(db_feedback)
         self.db_session.commit()

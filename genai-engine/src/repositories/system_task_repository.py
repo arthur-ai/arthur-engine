@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from db_models.task_models import DatabaseTask
 from repositories.agentic_prompts_repository import AgenticPromptRepository
+from repositories.organizations_repository import SYSTEM_ORG_ID
 from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.request_schemas import CreateAgenticPromptRequest
 from services.chatbot.chatbot_prompts import (
@@ -170,6 +171,7 @@ class SystemTaskRepository:
                     is_agentic=True,
                     is_autocreated=False,
                     is_system_task=True,
+                    org_id=SYSTEM_ORG_ID,
                 ),
             )
             self.db_session.commit()

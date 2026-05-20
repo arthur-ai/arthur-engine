@@ -20,7 +20,7 @@ from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import InferenceFeedback, User
 from utils import constants
-from utils.users import permission_checker
+from utils.users import enforce_query_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
 feedback_routes = APIRouter(
@@ -62,6 +62,7 @@ def post_feedback(
     response_model=QueryFeedbackResponse,
 )
 @permission_checker(permissions=PermissionLevelsEnum.FEEDBACK_READ.value)
+@enforce_query_org_scope(query_param="task_id")
 def query_feedback(
     pagination_parameters: Annotated[
         PaginationParameters,

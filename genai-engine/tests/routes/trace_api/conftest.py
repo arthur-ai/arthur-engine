@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timedelta
 from typing import Generator, List
+from repositories.organizations_repository import DEFAULT_ORG_ID
 
 import pytest
 from arthur_common.models.enums import MetricType
@@ -69,6 +70,7 @@ def unmapped_task():
         updated_at=current_time,
         is_agentic=True,
         archived=False,
+        org_id=DEFAULT_ORG_ID,
     )
     db_session.add(unmapped_task)
     db_session.commit()
@@ -708,12 +710,14 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
         name="API Test Task 1",
         created_at=base_time,
         updated_at=base_time,
+        org_id=DEFAULT_ORG_ID,
     )
     task2 = DatabaseTask(
         id="api_task2",
         name="API Test Task 2",
         created_at=base_time,
         updated_at=base_time,
+        org_id=DEFAULT_ORG_ID,
     )
     db_session.add(task1)
     db_session.add(task2)

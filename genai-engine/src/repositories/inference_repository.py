@@ -36,10 +36,43 @@ from schemas.internal_schemas import (
     ResponseRuleResult,
     RuleEngineResult,
 )
+from repositories.organizations_repository import DEFAULT_ORG_ID
 from utils.token_count import TokenCounter
 
 logger = logging.getLogger()
 tracer = trace.get_tracer(__name__)
+
+
+def _stamp_org_id_on_prompt(db_prompt, org_id) -> None:
+    if db_prompt is None:
+        return
+    for rr in db_prompt.prompt_rule_results or []:
+        rr.org_id = org_id
+        if rr.rule_details is not None:
+            _stamp_org_id_on_rule_details(rr.rule_details, org_id)
+
+
+def _stamp_org_id_on_response(db_response, org_id) -> None:
+    if db_response is None:
+        return
+    for rr in db_response.response_rule_results or []:
+        rr.org_id = org_id
+        if rr.rule_details is not None:
+            _stamp_org_id_on_rule_details(rr.rule_details, org_id)
+
+
+def _stamp_org_id_on_rule_details(details, org_id) -> None:
+    details.org_id = org_id
+    for c in details.claims or []:
+        c.org_id = org_id
+    for e in details.pii_entities or []:
+        e.org_id = org_id
+    for k in details.keyword_matches or []:
+        k.org_id = org_id
+    for r in details.regex_matches or []:
+        r.org_id = org_id
+    if details.toxicity_score is not None:
+        details.toxicity_score.org_id = org_id
 
 
 class InferenceRepository:
@@ -318,6 +351,18 @@ class InferenceRepository:
         ):
             logger.warning(f"Inference {inference.id} prompt had failed rule results.")
         db_inference = inference._to_database_model()
+
+        org_id = DEFAULT_ORG_ID
+        if task_id is not None:
+            task_org_id = (
+                self.db_session.query(DatabaseTask.org_id)
+                .filter(DatabaseTask.id == task_id)
+                .scalar()
+            )
+            if task_org_id is not None:
+                org_id = task_org_id
+        _stamp_org_id_on_prompt(db_inference.inference_prompt, org_id)
+
         self.db_session.add(db_inference)
         self.db_session.commit()
 
@@ -342,8 +387,18 @@ class InferenceRepository:
 
         db_inference_response = inference_response._to_database_model()
         try:
-            self.db_session.add(db_inference_response)
             db_inference = self.get_inference(inference_id)
+            org_id = DEFAULT_ORG_ID
+            if db_inference is not None and db_inference.task_id is not None:
+                task_org_id = (
+                    self.db_session.query(DatabaseTask.org_id)
+                    .filter(DatabaseTask.id == db_inference.task_id)
+                    .scalar()
+                )
+                if task_org_id is not None:
+                    org_id = task_org_id
+            _stamp_org_id_on_response(db_inference_response, org_id)
+            self.db_session.add(db_inference_response)
             db_inference.updated_at = datetime.now()
             db_inference.result = (
                 RuleResultEnum.PASS

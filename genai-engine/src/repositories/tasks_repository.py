@@ -364,6 +364,7 @@ class TaskRepository:
         - Are agentic (is_agentic=True)
         - Do NOT get default rules (with_default_rules=False)
         - Have no task_metadata (not a registered agent)
+        - Are owned by the `default` org (OTEL auto-discovery is an admin path)
 
         Args:
             service_name: The service name to create a task for
@@ -371,6 +372,8 @@ class TaskRepository:
         Returns:
             Task: The created task
         """
+        from repositories.organizations_repository import DEFAULT_ORG_ID
+
         task_id = str(uuid.uuid4())
 
         task = Task(
@@ -380,6 +383,7 @@ class TaskRepository:
             updated_at=datetime.now(),
             is_agentic=True,
             is_autocreated=True,
+            org_id=DEFAULT_ORG_ID,
         )
 
         return self.create_task(task, with_default_rules=False)

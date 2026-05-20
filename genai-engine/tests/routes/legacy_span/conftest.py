@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timedelta
 from typing import Generator, List
+from repositories.organizations_repository import DEFAULT_ORG_ID
 
 import pytest
 from arthur_common.models.enums import MetricType
@@ -547,12 +548,14 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
         name="Test Task 1",
         created_at=base_time,
         updated_at=base_time,
+        org_id=DEFAULT_ORG_ID,
     )
     task2 = DatabaseTask(
         id="task2",
         name="Test Task 2",
         created_at=base_time,
         updated_at=base_time,
+        org_id=DEFAULT_ORG_ID,
     )
     db_session.add(task1)
     db_session.add(task2)

@@ -27,14 +27,17 @@ depends_on = None
 def upgrade() -> None:
     op.add_column("tasks", sa.Column("org_id", sa.UUID(), nullable=True))
 
+    # Backfill against the well-known UUIDs seeded by the
+    # create_organizations_table migration. Looking up by id (not name)
+    # keeps the backfill robust against future name changes.
     op.execute("""
         UPDATE tasks
-           SET org_id = (SELECT id FROM organizations WHERE name = 'system')
+           SET org_id = '00000000-0000-0000-0000-000000000002'  -- system org
          WHERE is_system_task = TRUE
         """)
     op.execute("""
         UPDATE tasks
-           SET org_id = (SELECT id FROM organizations WHERE name = 'default')
+           SET org_id = '00000000-0000-0000-0000-000000000001'  -- default org
          WHERE org_id IS NULL
         """)
 

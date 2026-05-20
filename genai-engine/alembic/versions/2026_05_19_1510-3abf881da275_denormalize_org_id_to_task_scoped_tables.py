@@ -146,7 +146,7 @@ def upgrade() -> None:
         """)
     op.execute("""
         UPDATE agentic_annotations
-           SET org_id = (SELECT id FROM organizations WHERE name = 'system')
+           SET org_id = '00000000-0000-0000-0000-000000000002'  -- system org
          WHERE org_id IS NULL
         """)
 

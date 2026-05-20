@@ -5,6 +5,13 @@ from sqlalchemy.orm import Session
 
 from db_models import DatabaseOrganization
 
+# Well-known UUIDs for the seeded organizations. Mirrored in the
+# `create_organizations_table` migration's seed INSERT and in the
+# task / annotation backfills. Application code should reference these
+# constants (not the names) — names may eventually be user-editable.
+DEFAULT_ORG_ID: uuid.UUID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+SYSTEM_ORG_ID: uuid.UUID = uuid.UUID("00000000-0000-0000-0000-000000000002")
+
 
 class OrganizationsRepository:
     def __init__(self, db_session: Session) -> None:

@@ -7,6 +7,7 @@ from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunS
 
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.llm_eval_models import DatabaseContinuousEval
+from repositories.organizations_repository import DEFAULT_ORG_ID
 from schemas.internal_schemas import AgenticAnnotation
 from schemas.request_schemas import AgenticAnnotationRequest
 from tests.clients.base_test_client import (
@@ -113,6 +114,7 @@ def create_mock_continuous_eval_run_result(
         annotation_description=annotation_description,
         input_variables=input_variables,
         cost=cost,
+        org_id=DEFAULT_ORG_ID,
     )
     db_session.add(db_continuous_eval_run_result)
     db_session.commit()

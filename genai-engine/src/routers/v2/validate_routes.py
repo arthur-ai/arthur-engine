@@ -28,7 +28,7 @@ from schemas.internal_schemas import (
     ValidationRequest,
 )
 from scorer.score import ScorerClient
-from utils.users import permission_checker
+from utils.users import enforce_org_scope, permission_checker
 from validation.prompt import validate_prompt
 from validation.response import validate_response
 
@@ -119,6 +119,7 @@ def default_validate_response(
     tags=["Task Based Validation"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_WRITE.value)
+@enforce_org_scope()
 def validate_prompt_endpoint(
     body: PromptValidationRequest,
     task_id: UUID,
@@ -158,6 +159,7 @@ def validate_prompt_endpoint(
     tags=["Task Based Validation"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_WRITE.value)
+@enforce_org_scope()
 def validate_response_endpoint(
     inference_id: UUID,
     body: ResponseValidationRequest,

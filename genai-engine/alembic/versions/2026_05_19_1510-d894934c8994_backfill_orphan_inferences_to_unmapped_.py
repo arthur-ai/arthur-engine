@@ -55,7 +55,7 @@ def upgrade() -> None:
             '{UNMAPPED_TASK_ID}', '{DEFAULT_SERVICE_NAME}',
             CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
             false, false, false, true,
-            (SELECT id FROM organizations WHERE name = 'system')
+            '00000000-0000-0000-0000-000000000002'  -- system org
         )
         ON CONFLICT (id) DO NOTHING
         """)

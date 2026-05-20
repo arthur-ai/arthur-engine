@@ -2,8 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import TIMESTAMP, Boolean, ForeignKey, Index, String, text
-from sqlalchemy.dialects import postgresql
+from sqlalchemy import TIMESTAMP, Boolean, ForeignKey, Index, String, Uuid, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db_models.base import Base
@@ -33,7 +32,7 @@ class DatabaseApiKey(Base):
         nullable=False,
     )
     org_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        postgresql.UUID(as_uuid=True),
+        Uuid(as_uuid=True),
         ForeignKey("organizations.id"),
         nullable=True,
     )

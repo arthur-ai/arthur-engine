@@ -18,6 +18,7 @@ from db_models import DatabaseTask
 from dependencies import get_db_session
 from repositories.configuration_repository import ConfigurationRepository
 from repositories.metrics_repository import MetricRepository
+from repositories.organizations_repository import DEFAULT_ORG_ID
 from repositories.rules_repository import RuleRepository
 from repositories.service_name_mapping_repository import ServiceNameMappingRepository
 from repositories.span_repository import SpanRepository
@@ -237,6 +238,7 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
                         updated_at=datetime.now(),
                         is_agentic=True,
                         is_autocreated=True,
+                        org_id=DEFAULT_ORG_ID,
                         task_metadata=task_metadata,
                     )
                     created_task = task_repository.create_task(

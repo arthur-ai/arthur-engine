@@ -88,13 +88,15 @@ def create_prompt_in_db(
 
 @pytest.fixture
 def create_task() -> Generator[Task, None, None]:
+    from repositories.organizations_repository import DEFAULT_ORG_ID
+
     db_session = override_get_db_session()
     application_config = get_application_config(session=db_session)
     request = NewTaskRequest(name="dummy_task_name")
     rules_repo = RuleRepository(db_session)
     metric_repo = MetricRepository(db_session)
     tasks_repo = TaskRepository(db_session, rules_repo, metric_repo, application_config)
-    task = Task._from_request_model(request)
+    task = Task._from_request_model(request, org_id=DEFAULT_ORG_ID)
     task = tasks_repo.create_task(task)
 
     yield task
