@@ -27,11 +27,10 @@ from db_models.rag_experiment_models import (
     DatabaseRagExperimentTestCaseRagResult,
 )
 from dependencies import db_session_context
-from repositories.base_evaluator import get_evaluator
+from repositories.evaluator_factory import get_evaluator
 from repositories.llm_evals_repository import LLMEvalsRepository
 from repositories.llm_evaluator import LLMEvaluator
 from repositories.ml_evals_repository import MLEvaluator
-from repositories.model_provider_repository import ModelProviderRepository
 from schemas.agentic_experiment_schemas import RequestTimeParameter
 from schemas.base_experiment_schemas import (
     ExperimentStatus,
@@ -726,10 +725,7 @@ class BaseExperimentExecutor(ABC):
                     )
                 elif isinstance(evaluator, LLMEvaluator):
                     # LLM-as-a-judge evals run through the chat completion pipeline.
-                    model_provider_repo = ModelProviderRepository(db_session)
                     llm_evals_repo = LLMEvalsRepository(db_session)
-                    llm_evals_repo.model_provider_repo = model_provider_repo
-
                     completion_request = BaseCompletionRequest(
                         variables=[
                             VariableTemplateValue(name=k, value=v)

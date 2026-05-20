@@ -178,3 +178,12 @@ class DatabaseContinuousEval(Base):
         nullable=False,
     )
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["task_id", "llm_eval_name", "llm_eval_version"],
+            ["llm_evals.task_id", "llm_evals.name", "llm_evals.version"],
+            ondelete="CASCADE",
+            name="fk_llm_eval_transforms_eval",
+        ),
+    )

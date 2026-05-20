@@ -6,7 +6,7 @@ serve all eval types via LLMEvalsRepository.
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Path
+from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import AfterValidator
 from sqlalchemy.orm import Session
 
@@ -47,10 +47,6 @@ def save_ml_eval(
         repo = MLEvalsRepository(db_session)
         return repo.save_ml_eval(task.id, eval_name, create_request)
     except ValueError as e:
-        from fastapi import HTTPException
-
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        from fastapi import HTTPException
-
         raise HTTPException(status_code=500, detail=str(e))

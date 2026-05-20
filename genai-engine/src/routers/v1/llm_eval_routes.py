@@ -64,7 +64,8 @@ def get_llm_eval(
     eval_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
     eval_version: str = Path(
         ...,
-        description="'latest', version number, ISO datetime, or tag.",
+        description="The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
+        title="LLM Eval Version",
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
@@ -163,6 +164,7 @@ def get_all_llm_evals(
 @llm_eval_routes.post(
     "/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/completions",
     summary="Run a saved llm eval",
+    description="Run a saved llm eval",
     response_model=LLMEvalRunResponse,
     response_model_exclude_none=True,
     tags=["LLMEvals"],
@@ -172,7 +174,11 @@ def get_all_llm_evals(
 def run_saved_llm_eval(
     completion_request: BaseCompletionRequest,
     eval_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
-    eval_version: str = Path(...),
+    eval_version: str = Path(
+        ...,
+        description="The version of the llm eval to run. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
+        title="LLM Eval Version",
+    ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
@@ -227,6 +233,7 @@ def save_llm_eval(
 @llm_eval_routes.delete(
     "/tasks/{task_id}/llm_evals/{eval_name}",
     summary="Delete an llm eval",
+    description="Deletes an entire llm eval",
     status_code=status.HTTP_204_NO_CONTENT,
     responses={status.HTTP_204_NO_CONTENT: {"description": "LLM eval deleted."}},
     tags=["LLMEvals"],
@@ -241,13 +248,6 @@ def delete_llm_eval(
 ) -> Response:
     try:
         LLMEvalsRepository(db_session).delete_llm_item(task.id, eval_name)
-        disabled = ContinuousEvalsRepository(
-            db_session,
-        ).disable_continuous_evals_by_eval_name(task.id, eval_name)
-        if disabled:
-            logger.info(
-                f"Disabled {disabled} continuous eval(s) referencing deleted eval '{eval_name}' for task {task.id}",
-            )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except ValueError as e:
         if "not found" in str(e).lower():
@@ -260,6 +260,7 @@ def delete_llm_eval(
 @llm_eval_routes.delete(
     "/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}",
     summary="Delete an llm eval version",
+    description="Deletes a specific version of an llm eval",
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         status.HTTP_204_NO_CONTENT: {"description": "LLM eval version deleted."},
@@ -270,28 +271,32 @@ def delete_llm_eval(
 @enforce_org_scope()
 def soft_delete_llm_eval_version(
     eval_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
-    eval_version: str = Path(...),
+    eval_version: str = Path(
+        ...,
+        description="The version of the llm eval to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
+        title="LLM Eval Version",
+    ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
 ) -> Response:
     try:
-        LLMEvalsRepository(db_session).soft_delete_llm_item_version(
-            task.id,
-            eval_name,
-            eval_version,
-        )
+        repo = LLMEvalsRepository(db_session)
+        # Resolve version (e.g. "latest") to an actual integer before soft-deleting
         try:
-            version_int = int(eval_version)
-            disabled = ContinuousEvalsRepository(
-                db_session,
-            ).disable_continuous_evals_by_eval_name(task.id, eval_name, version_int)
-            if disabled:
-                logger.info(
-                    f"Disabled {disabled} continuous eval(s) referencing deleted eval '{eval_name}' v{eval_version} for task {task.id}",
-                )
+            actual_version = repo.get_llm_item(task.id, eval_name, eval_version).version
         except ValueError:
-            pass  # eval_version is not an integer (e.g. 'latest'), skip version-specific disable
+            raise ValueError(
+                f"No matching version of '{eval_name}' found for task '{task.id}'",
+            )
+        repo.soft_delete_llm_item_version(task.id, eval_name, eval_version)
+        disabled = ContinuousEvalsRepository(
+            db_session,
+        ).disable_continuous_evals_by_eval_name(task.id, eval_name, actual_version)
+        if disabled:
+            logger.info(
+                f"Disabled {disabled} continuous eval(s) referencing deleted eval '{eval_name}' v{actual_version} for task {task.id}",
+            )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except ValueError as e:
         if "no matching version" in str(e).lower():
@@ -304,6 +309,7 @@ def soft_delete_llm_eval_version(
 @llm_eval_routes.get(
     "/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}",
     summary="Get an llm eval by name and tag",
+    description="Get an llm eval by name and tag",
     response_model=LLMEval,
     response_model_exclude_none=True,
     tags=["LLMEvals"],
@@ -338,6 +344,7 @@ def get_llm_eval_by_tag(
 @llm_eval_routes.put(
     "/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags",
     summary="Add a tag to an llm eval version",
+    description="Add a tag to an llm eval version",
     response_model=LLMEval,
     response_model_exclude_none=True,
     tags=["LLMEvals"],
@@ -346,7 +353,11 @@ def get_llm_eval_by_tag(
 @enforce_org_scope()
 def add_tag_to_llm_eval_version(
     eval_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
-    eval_version: str = Path(...),
+    eval_version: str = Path(
+        ...,
+        description="The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
+        title="LLM Eval Version",
+    ),
     tag: str = Body(..., embed=True, description="Tag to add to this llm eval version"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
@@ -369,6 +380,7 @@ def add_tag_to_llm_eval_version(
 @llm_eval_routes.delete(
     "/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags/{tag}",
     summary="Remove a tag from an llm eval version",
+    description="Remove a tag from an llm eval version",
     status_code=status.HTTP_204_NO_CONTENT,
     responses={status.HTTP_204_NO_CONTENT: {"description": "Tag removed."}},
     tags=["LLMEvals"],
@@ -377,7 +389,13 @@ def add_tag_to_llm_eval_version(
 @enforce_org_scope()
 def delete_tag_from_llm_eval_version(
     eval_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
-    eval_version: Annotated[str, Path()],
+    eval_version: Annotated[
+        str,
+        Path(
+            description="The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.",
+            title="LLM Eval Version",
+        ),
+    ],
     tag: Annotated[str, Path(), AfterValidator(decode_path_param)],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),

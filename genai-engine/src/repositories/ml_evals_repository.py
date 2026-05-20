@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Type, cast
+from typing import Any, List, Optional, Type, cast
 
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
 from repositories.base_evaluator import BaseEvaluator
 from repositories.base_llm_repository import BaseLLMRepository
-from schemas.enums import EvalType
 from schemas.internal_schemas import ContinuousEvalTransformVariableMapping
 from schemas.llm_eval_schemas import MLEval
 from schemas.request_schemas import CreateMLEvalRequest
@@ -15,45 +14,7 @@ from schemas.response_schemas import (
     MLEvalsVersionListResponse,
     MLVersionResponse,
 )
-
-# Known ML eval types stored in the shared llm_evals table.
-# These are model-based evaluators that do not require an LLM-as-a-judge prompt.
-ML_EVAL_TYPES = [
-    EvalType.PII,
-    EvalType.PII_V1,
-    EvalType.TOXICITY,
-    EvalType.PROMPT_INJECTION,
-]
-
-# The single input variable every ML eval expects.
-ML_EVAL_INPUT_VARIABLE = "input"
-
-# Module-level scorer cache — scorers load heavyweight models on first use.
-_ML_SCORER_REGISTRY: Dict[str, Any] = {}
-
-
-def get_ml_scorer(eval_type: str) -> Optional[Any]:
-    """Return a cached BaseMLScorer for the given eval_type, or None if unknown."""
-    if eval_type not in ML_EVAL_TYPES:
-        return None
-    if eval_type not in _ML_SCORER_REGISTRY:
-        if eval_type == "pii":
-            from scorer.ml_scorers import PIIScorerV2
-
-            _ML_SCORER_REGISTRY[eval_type] = PIIScorerV2()
-        elif eval_type == "pii_v1":
-            from scorer.ml_scorers import PIIScorerV1
-
-            _ML_SCORER_REGISTRY[eval_type] = PIIScorerV1()
-        elif eval_type == "toxicity":
-            from scorer.ml_scorers import ToxicityMLScorer
-
-            _ML_SCORER_REGISTRY[eval_type] = ToxicityMLScorer()
-        elif eval_type == "prompt_injection":
-            from scorer.ml_scorers import PromptInjectionMLScorer
-
-            _ML_SCORER_REGISTRY[eval_type] = PromptInjectionMLScorer()
-    return _ML_SCORER_REGISTRY.get(eval_type)
+from scorer.ml_scorers import ML_EVAL_INPUT_VARIABLE, ML_EVAL_TYPES, run_ml_scorer
 
 
 class MLEvalsRepository(
@@ -171,19 +132,6 @@ class MLEvaluator(BaseEvaluator):
                 f"Cannot run eval '{eval_name}' version {ml_eval.version}: it has been deleted.",
             )
 
-        scorer = get_ml_scorer(ml_eval.eval_type)
-        if scorer is None:
-            raise ValueError(
-                f"No scorer registered for eval type '{ml_eval.eval_type}'. "
-                f"Supported types: {ML_EVAL_TYPES}",
-            )
-
         text = resolved_variables.get(ML_EVAL_INPUT_VARIABLE, "")
         config: dict[str, Any] = ml_eval.config or {}
-        result = scorer.score(text=text, config=config)
-
-        return EvalRunResponse(
-            reason=result.reason,
-            score=int(result.passed),
-            cost="",
-        )
+        return run_ml_scorer(str(ml_eval.eval_type), text, config)

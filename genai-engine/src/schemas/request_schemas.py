@@ -867,38 +867,47 @@ class PromptInjectionEvalConfig(BaseModel):
     """Configuration for prompt injection detection evals."""
 
 
-# Map from EvalType to its typed config model for validation.
-# Config is stored as a raw dict in the DB; these models define the valid fields.
-_ML_EVAL_CONFIG_MODELS: Dict[EvalType, type] = {
-    EvalType.PII: PIIEvalConfig,
-    EvalType.PII_V1: PIIEvalConfig,
-    EvalType.TOXICITY: ToxicityEvalConfig,
-    EvalType.PROMPT_INJECTION: PromptInjectionEvalConfig,
+MLEvalConfig = Union[PIIEvalConfig, ToxicityEvalConfig, PromptInjectionEvalConfig]
+
+_ML_EVAL_TYPES = {
+    EvalType.PII,
+    EvalType.PII_V1,
+    EvalType.TOXICITY,
+    EvalType.PROMPT_INJECTION,
 }
+
+
+def _coerce_ml_config(eval_type_val: str, raw: Any) -> MLEvalConfig:
+    if not isinstance(raw, dict):
+        return raw
+    if eval_type_val in (EvalType.PII.value, EvalType.PII_V1.value):
+        return PIIEvalConfig(**raw)
+    if eval_type_val == EvalType.TOXICITY.value:
+        return ToxicityEvalConfig(**raw)
+    return PromptInjectionEvalConfig(**raw)
 
 
 class CreateMLEvalRequest(BaseModel):
     eval_type: EvalType = Field(
         description="Type of ML eval (e.g. 'pii', 'toxicity', 'prompt_injection')",
     )
-    # Config is a free-form dict whose valid fields are defined by the typed models above
-    # (PIIEvalConfig, ToxicityEvalConfig, PromptInjectionEvalConfig).
-    config: Optional[Dict[str, Any]] = Field(
-        default=None,
-        description="Optional configuration for the ML eval. Valid fields depend on eval_type.",
+    config: MLEvalConfig = Field(
+        description="Configuration for the ML eval. Valid fields depend on eval_type.",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def coerce_config(cls, values: Any) -> Any:
+        eval_type_val = str(values.get("eval_type", ""))
+        raw = values.get("config") or {}
+        values["config"] = _coerce_ml_config(eval_type_val, raw)
+        return values
 
     @model_validator(mode="after")
     def validate_ml_eval_type(self) -> "CreateMLEvalRequest":
-        ml_eval_types = {
-            EvalType.PII,
-            EvalType.PII_V1,
-            EvalType.TOXICITY,
-            EvalType.PROMPT_INJECTION,
-        }
-        if self.eval_type not in ml_eval_types:
+        if self.eval_type not in _ML_EVAL_TYPES:
             raise ValueError(
-                f"eval_type must be one of {[e.value for e in ml_eval_types]}, got '{self.eval_type}'",
+                f"eval_type must be one of {[e.value for e in _ML_EVAL_TYPES]}, got '{self.eval_type}'",
             )
         return self
 
@@ -927,13 +936,26 @@ class CreateAnyEvalRequest(BaseModel):
         default=None,
         description="Eval instructions — required for llm_as_a_judge evals",
     )
-    config: Optional[Dict[str, Any]] = Field(
+    config: Optional[Union[MLEvalConfig, LLMRequestConfigSettings]] = Field(
         default=None,
         description=(
             "Optional configuration. For llm_as_a_judge: LLM settings (temperature, etc.). "
             "For ML evals: see PIIEvalConfig, ToxicityEvalConfig, PromptInjectionEvalConfig."
         ),
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def coerce_config(cls, values: Any) -> Any:
+        eval_type_val = str(values.get("eval_type", ""))
+        raw = values.get("config")
+        if not isinstance(raw, dict):
+            return values
+        if eval_type_val == EvalType.LLM_AS_A_JUDGE.value:
+            values["config"] = LLMRequestConfigSettings(**raw)
+        elif eval_type_val in (e.value for e in _ML_EVAL_TYPES):
+            values["config"] = _coerce_ml_config(eval_type_val, raw)
+        return values
 
     @model_validator(mode="after")
     def validate_for_type(self) -> "CreateAnyEvalRequest":

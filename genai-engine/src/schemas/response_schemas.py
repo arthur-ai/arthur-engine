@@ -800,7 +800,7 @@ class MLEvalsVersionListResponse(BaseModel):
     count: int = Field(description="Total number of ML evals matching filters")
 
 
-class LLMEvalRunResponse(BaseModel):
+class EvalRunResponse(BaseModel):
     reason: str = Field(
         ...,
         description="Explanation for how the llm arrived at this answer.",
@@ -809,8 +809,8 @@ class LLMEvalRunResponse(BaseModel):
     cost: str = Field(..., description="Cost of this llm completion")
 
 
-# Alias — ML evals share the same run response shape as LLM evals
-EvalRunResponse = LLMEvalRunResponse
+# Backward-compat alias
+LLMEvalRunResponse = EvalRunResponse
 
 
 class RenderedPromptResponse(BaseModel):

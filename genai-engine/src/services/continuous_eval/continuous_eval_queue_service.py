@@ -11,7 +11,7 @@ from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTestRun
 from db_models.llm_eval_models import DatabaseContinuousEval
 from dependencies import get_db_session
-from repositories.base_evaluator import get_evaluator
+from repositories.evaluator_factory import get_evaluator
 from repositories.llm_evals_repository import LLMEvalsRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
@@ -243,18 +243,11 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
             eval_version = str(continuous_eval.llm_eval_version)
 
             # Look up the eval via the repository to get its eval_type for dispatching.
-            try:
-                llm_eval = LLMEvalsRepository(db_session).get_llm_item(
-                    continuous_eval.task_id,
-                    eval_name,
-                    eval_version,
-                )
-            except ValueError:
-                raise ValueError(
-                    f"Eval '{eval_name}' version {continuous_eval.llm_eval_version} "
-                    f"not found for task {continuous_eval.task_id}. "
-                    "The eval may have been deleted or the continuous eval configuration is invalid.",
-                )
+            llm_eval = LLMEvalsRepository(db_session).get_llm_item(
+                continuous_eval.task_id,
+                eval_name,
+                eval_version,
+            )
             eval_type = EvalType(llm_eval.eval_type)
             evaluator = get_evaluator(db_session, eval_type)
 
