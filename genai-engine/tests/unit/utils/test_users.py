@@ -24,6 +24,7 @@ TENANT_USER_ALLOWED = [
     PermissionLevelsEnum.TASK_WRITE,
     PermissionLevelsEnum.INFERENCE_READ,
     PermissionLevelsEnum.INFERENCE_WRITE,
+    PermissionLevelsEnum.FEEDBACK_READ,
     PermissionLevelsEnum.FEEDBACK_WRITE,
     PermissionLevelsEnum.DEFAULT_RULES_READ,
     PermissionLevelsEnum.USAGE_READ,

@@ -101,6 +101,7 @@ class PermissionLevelsEnum(Enum):
             constants.ORG_ADMIN,
             constants.ORG_AUDITOR,
             constants.TASK_ADMIN,
+            constants.TENANT_USER,
         ],
     )
     FEEDBACK_WRITE = frozenset(
