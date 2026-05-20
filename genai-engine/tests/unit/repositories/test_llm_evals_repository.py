@@ -26,7 +26,7 @@ from schemas.request_schemas import (
     LLMRequestConfigSettings,
 )
 from schemas.response_schemas import (
-    LLMEvalRunResponse,
+    EvalRunResponse,
     LLMEvalsVersionListResponse,
     LLMGetAllMetadataListResponse,
     LLMGetAllMetadataResponse,
@@ -931,7 +931,7 @@ def test_run_saved_llm_eval(
 
     result = llm_evals_repo.run_llm_eval(task_id, eval_name)
 
-    assert isinstance(result, LLMEvalRunResponse)
+    assert isinstance(result, EvalRunResponse)
     assert (
         result.reason
         == "This answer is true because it is supported by the ground truth."

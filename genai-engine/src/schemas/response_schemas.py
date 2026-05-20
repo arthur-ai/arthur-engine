@@ -809,10 +809,6 @@ class EvalRunResponse(BaseModel):
     cost: str = Field(..., description="Cost of this llm completion")
 
 
-# Backward-compat alias
-LLMEvalRunResponse = EvalRunResponse
-
-
 class RenderedPromptResponse(BaseModel):
     messages: List[OpenAIMessage] = Field(
         description="List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])",

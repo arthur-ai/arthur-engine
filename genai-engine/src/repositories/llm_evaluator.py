@@ -13,6 +13,15 @@ from schemas.response_schemas import EvalRunResponse
 
 
 class LLMEvaluator(BaseEvaluator):
+    """Evaluator wrapper for LLM-as-a-judge evals.
+
+    Intentionally kept as a separate class from LLMEvalsRepository to preserve
+    separation of concerns: the repository handles data access while this class
+    owns execution logic. This makes it easier to swap the underlying LLM client,
+    add a non-DB-backed evaluator, or extract evaluation into a separate service
+    without touching the persistence layer.
+    """
+
     def __init__(self, db_session: Session) -> None:
         self._repo = LLMEvalsRepository(db_session)
 

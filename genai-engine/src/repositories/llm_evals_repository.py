@@ -24,7 +24,7 @@ from schemas.request_schemas import (
     PromptCompletionRequest,
 )
 from schemas.response_schemas import (
-    LLMEvalRunResponse,
+    EvalRunResponse,
     LLMEvalsVersionListResponse,
     LLMVersionResponse,
 )
@@ -175,7 +175,7 @@ class LLMEvalsRepository(
         eval_name: str,
         version: str = "latest",
         completion_request: Optional[BaseCompletionRequest] = None,
-    ) -> LLMEvalRunResponse:
+    ) -> EvalRunResponse:
         if not self.model_provider_repo:
             raise ValueError("Model provider repository not initialized")
 
@@ -248,7 +248,7 @@ class LLMEvalsRepository(
         ):
             raise TypeError("Structured output is not a ReasonedScore instance")
 
-        return LLMEvalRunResponse(
+        return EvalRunResponse(
             reason=llm_model_response.structured_output_response.reason,
             score=llm_model_response.structured_output_response.score,
             cost=llm_model_response.cost or "",

@@ -103,7 +103,14 @@ class MLEvalsRepository(
 
 
 class MLEvaluator(BaseEvaluator):
-    """BaseEvaluator implementation for ML-type evals (pii, toxicity, prompt_injection)."""
+    """Evaluator wrapper for ML-type evals (pii, toxicity, prompt_injection).
+
+    Intentionally kept as a separate class from MLEvalsRepository to preserve
+    separation of concerns: the repository handles data access while this class
+    owns execution logic. This makes it easier to swap the underlying scorer,
+    add a non-DB-backed evaluator, or extract evaluation into a separate service
+    without touching the persistence layer.
+    """
 
     def __init__(self, db_session: Session) -> None:
         self._repo = MLEvalsRepository(db_session)

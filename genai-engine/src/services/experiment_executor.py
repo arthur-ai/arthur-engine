@@ -715,7 +715,6 @@ class BaseExperimentExecutor(ABC):
 
             try:
                 if isinstance(evaluator, MLEvaluator):
-                    # ML evals (pii, toxicity, prompt_injection) run through the scorer directly.
                     eval_response = evaluator.run(
                         task_id=experiment.task_id,
                         eval_name=eval_score.eval_name,
@@ -724,15 +723,13 @@ class BaseExperimentExecutor(ABC):
                         resolved_variables=variable_map,
                     )
                 elif isinstance(evaluator, LLMEvaluator):
-                    # LLM-as-a-judge evals run through the chat completion pipeline.
-                    llm_evals_repo = LLMEvalsRepository(db_session)
                     completion_request = BaseCompletionRequest(
                         variables=[
                             VariableTemplateValue(name=k, value=v)
                             for k, v in variable_map.items()
                         ],
                     )
-                    eval_response = llm_evals_repo.run_llm_eval(
+                    eval_response = LLMEvalsRepository(db_session).run_llm_eval(
                         task_id=experiment.task_id,
                         eval_name=eval_score.eval_name,
                         version=str(eval_score.eval_version),

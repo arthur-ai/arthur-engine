@@ -34,7 +34,7 @@ from schemas.request_schemas import (
     LLMGetVersionsFilterRequest,
 )
 from schemas.response_schemas import (
-    LLMEvalRunResponse,
+    EvalRunResponse,
     LLMEvalsVersionListResponse,
     LLMGetAllMetadataListResponse,
 )
@@ -165,7 +165,7 @@ def get_all_llm_evals(
     "/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/completions",
     summary="Run a saved llm eval",
     description="Run a saved llm eval",
-    response_model=LLMEvalRunResponse,
+    response_model=EvalRunResponse,
     response_model_exclude_none=True,
     tags=["LLMEvals"],
 )
@@ -182,7 +182,7 @@ def run_saved_llm_eval(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-) -> LLMEvalRunResponse:
+) -> EvalRunResponse:
     try:
         return LLMEvalsRepository(db_session).run_llm_eval(
             task.id,
