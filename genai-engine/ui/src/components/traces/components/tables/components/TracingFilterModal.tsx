@@ -850,6 +850,10 @@ export const TracingFilterModal = () => {
                 variant="contained"
                 onClick={(e) => {
                   e.preventDefault();
+                  if (traceIdInput.trim()) handleAddId("trace", traceIdInput);
+                  if (sessionIdInput.trim()) handleAddId("session", sessionIdInput);
+                  if (spanIdInput.trim()) handleAddId("span", spanIdInput);
+                  if (userIdInput.trim()) handleAddId("user", userIdInput);
                   form.handleSubmit();
                 }}
               >
