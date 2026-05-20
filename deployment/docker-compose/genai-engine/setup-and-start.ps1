@@ -29,6 +29,31 @@ function Prompt-EnvVar {
     }
 }
 
+function Prompt-Secret {
+    param (
+        [string]$VarName,
+        [string]$DefaultValue,
+        [switch]$OutputKeyPair
+    )
+
+    if ($NonInteractive) {
+        $inputValue = [System.Environment]::GetEnvironmentVariable($VarName)
+        if ([string]::IsNullOrWhiteSpace($inputValue)) { $inputValue = $DefaultValue }
+    } else {
+        $secureStr = Read-Host "$VarName (hidden)" -AsSecureString
+        $ptr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureStr)
+        $inputValue = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
+        [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
+        if ([string]::IsNullOrWhiteSpace($inputValue)) { $inputValue = $DefaultValue }
+    }
+
+    if ($OutputKeyPair) {
+        return "$VarName=$inputValue"
+    } else {
+        return $inputValue
+    }
+}
+
 function Create-Directory-IfNotPresent {
     param ([string]$DirName)
     if (-not (Test-Path $DirName)) {
@@ -90,7 +115,7 @@ if ((Test-Path $envPath) -and (Get-Item $envPath -ErrorAction SilentlyContinue).
         $endpoint = Prompt-EnvVar -VarName "GENAI_ENGINE_OPENAI_GPT_ENDPOINT" -DefaultValue ""
         Write-Host ""
         Write-Host "Enter the OpenAI GPT API key:"
-        $apiKey = Prompt-EnvVar -VarName "GENAI_ENGINE_OPENAI_GPT_API_KEY" -DefaultValue "changeme_api_key"
+        $apiKey = Prompt-Secret -VarName "GENAI_ENGINE_OPENAI_GPT_API_KEY" -DefaultValue "changeme_api_key"
 
         $envContent = @"
 $provider

@@ -30,6 +30,32 @@ function Prompt-EnvVar {
     }
 }
 
+function Prompt-Secret {
+    param (
+        [string]$VarName,
+        [string]$DefaultValue,
+        [bool]$OutputKeyPair = $false
+    )
+    if ($NonInteractive) {
+        $inputValue = [System.Environment]::GetEnvironmentVariable($VarName)
+        if ([string]::IsNullOrWhiteSpace($inputValue)) { $inputValue = $DefaultValue }
+    } else {
+        $secureStr = Read-Host "$VarName (hidden)" -AsSecureString
+        $ptr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureStr)
+        $inputValue = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
+        [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
+        if ([string]::IsNullOrWhiteSpace($inputValue)) {
+            $inputValue = $DefaultValue
+        }
+    }
+
+    if ($OutputKeyPair) {
+        return "$VarName=$inputValue"
+    } else {
+        return $inputValue
+    }
+}
+
 function Parse-Boolean {
     param (
         [string]$FlagName,
@@ -194,7 +220,7 @@ if ($DEFAULT_GENAI_CONFIG -eq "true") {
             $envLines += Prompt-EnvVar -VarName "GENAI_ENGINE_OPENAI_PROVIDER" -DefaultValue "OpenAI" -OutputKeyPair $true
             $gptName = Prompt-EnvVar -VarName "GENAI_ENGINE_OPENAI_GPT_NAME" -DefaultValue "gpt-4o-mini-2024-07-18"
             $gptEndpoint = Prompt-EnvVar -VarName "GENAI_ENGINE_OPENAI_GPT_ENDPOINT" -DefaultValue ""
-            $gptKey = Prompt-EnvVar -VarName "GENAI_ENGINE_OPENAI_GPT_API_KEY" -DefaultValue "changeme_api_key"
+            $gptKey = Prompt-Secret -VarName "GENAI_ENGINE_OPENAI_GPT_API_KEY" -DefaultValue "changeme_api_key"
             $envLines += "GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$gptName::$gptEndpoint::$gptKey"
         } else {
             Write-Host "Skipping OpenAI configuration..."
