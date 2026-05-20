@@ -90,6 +90,7 @@ from db_models.transform_models import (
     DatabaseTraceTransform,
     DatabaseTraceTransformVersion,
 )
+from db_models.onboarding_models import DatabaseOnboardingSubmission
 
 __all__ = [
     # Base classes
@@ -184,4 +185,6 @@ __all__ = [
     "DatabaseTraceTransformVersion",
     # Agent Polling models
     "DatabaseTaskPollingState",
+    # Onboarding models
+    "DatabaseOnboardingSubmission",
 ]

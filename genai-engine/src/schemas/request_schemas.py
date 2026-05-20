@@ -1387,6 +1387,31 @@ class SyntheticDataGenerationRequest(BaseModel):
     )
 
 
+class OnboardingTryItOutFormData(BaseModel):
+    """Try-it-out onboarding form fields (matches UI TryItOutSubmission)."""
+
+    first_name: str = Field(min_length=1)
+    last_name: str = Field(min_length=1)
+    email: str = Field(min_length=1)
+    job_title: str = Field(min_length=1)
+    company: str = Field(min_length=1)
+    maturity: str = Field(min_length=1)
+    brings: str = Field(min_length=1)
+    brings_other: str = ""
+    competitors: list[str] = Field(min_length=1)
+    competitor_other: str = ""
+    attribution: str = Field(min_length=1)
+    attribution_other: str = ""
+
+
+class OnboardingSubmissionRequest(BaseModel):
+    form_variant: Literal["linear", "wizard"] | None = Field(
+        default=None,
+        description="Which onboarding form variant was submitted.",
+    )
+    form_data: OnboardingTryItOutFormData
+
+
 class SyntheticDataConversationRequest(BaseModel):
     """Request for continuing a synthetic data generation conversation."""
 

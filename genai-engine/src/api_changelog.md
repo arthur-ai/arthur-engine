@@ -13,6 +13,9 @@ The intention of this changelog is to document API changes as they happen to eff
 # 05/20/2026
 - **CHANGE** for **URL**: /users/me  endpoint added
 
+# 05/19/2026
+- **CHANGE** for **URL**: /api/v2/onboarding/submissions  endpoint added (public)
+
 # 05/18/2026
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/chatbot/stream  added the new optional request property 'session_id'
 - **BREAKING CHANGE** for **URL**: /api/v1/chatbot/history/{conversation_id}  api path removed without deprecation

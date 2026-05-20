@@ -69,6 +69,7 @@ from routers.v2.routers import (
     dataset_management_routes,
     engine_config_routes,
     feedback_routes,
+    onboarding_routes,
     query_routes,
     rule_management_routes,
     system_management_routes,
@@ -476,6 +477,7 @@ def get_app_with_routes() -> FastAPI:
         [
             health_router,
             engine_config_routes,
+            onboarding_routes,
             system_management_routes,
             feedback_routes,
             query_routes,
@@ -529,6 +531,7 @@ def get_test_app() -> FastAPI:
         [
             health_router,
             engine_config_routes,
+            onboarding_routes,
             system_management_routes,
             feedback_routes,
             query_routes,
@@ -591,6 +594,7 @@ def get_app() -> FastAPI:
         [
             health_router,
             engine_config_routes,
+            onboarding_routes,
             system_management_routes,
             feedback_routes,
             query_routes,
