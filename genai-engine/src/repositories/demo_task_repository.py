@@ -85,7 +85,7 @@ class DemoTaskRepository:
         """
         for provider, model_name in (
             (ModelProvider.ANTHROPIC, "claude-sonnet-4-6"),
-            (ModelProvider.OPENAI, "gpt-4o"),
+            (ModelProvider.OPENAI, "gpt-5-mini"),
         ):
             try:
                 self.model_provider_repo.get_model_provider_client(provider)
