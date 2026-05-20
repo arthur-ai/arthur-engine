@@ -79,9 +79,11 @@ All downstream state is already set. Confirm reuse with user ("Use existing task
 Ask the user:
 > "What type of application are you onboarding?
 >
-> **A) Agentic application** — LLM-powered agents, chatbots, RAG systems, or any app that emits traces
-> **B) ML Model** — classification, regression, tabular data models
-> **C) GenAI Model** — LLM completions, embeddings, or generative models"
+> **A) Agentic application** — LLM-powered agents, chatbots, RAG systems, or any app that emits traces. Creates an **Agentic Model** on the platform.
+> **B) ML Model** — classification, regression, or tabular data models
+> **C) GenAI Model** — LLM completions or generative models (non-agentic)"
+
+> **Note:** "Agentic Model" and "GenAI Model" are distinct model types on the Arthur Platform. This skill creates **Agentic Models** only. GenAI Models are a separate platform type and must be onboarded through the platform UI.
 
 **For B or C:**
 > "For ML and GenAI Models, please log in to **<ARTHUR_PLATFORM_URL>**, navigate to **Applications**, and follow the platform UI wizard to onboard your model. The platform provides a guided onboarding flow for these model types."
@@ -166,6 +168,8 @@ If the user selects an existing model, skip to "Poll for Task Connection Info" w
 ## Create Agentic Model
 
 Ask the user for the model name (e.g., "Customer Support Bot", "Code Assistant").
+
+> **No connector setup needed.** When an Agentic Model is created on the platform, an implicit connector is configured automatically — do not create a connector explicitly. The "Shield connector" visible in the platform UI is for the Arthur Shield product (a separate use case) and must **not** be created here.
 
 ```bash
 MODEL_PAYLOAD=$(python3 -c "
