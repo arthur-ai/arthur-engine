@@ -33,6 +33,18 @@ from schemas.enums import (
 )
 
 
+class OrganizationResponse(BaseModel):
+    id: UUID
+    name: str
+
+
+class MeResponse(BaseModel):
+    user_id: str
+    roles: list[str]
+    org_scope: Optional[UUID] = None
+    org: Optional[OrganizationResponse] = None
+
+
 class DocumentStorageConfigurationResponse(BaseModel):
     storage_environment: Optional[str] = None
     bucket_name: Optional[str] = None

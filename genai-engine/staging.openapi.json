@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.568"
+        "version": "2.1.503"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -16726,6 +16726,33 @@
                 }
             }
         },
+        "/users/me": {
+            "get": {
+                "tags": [
+                    "User Management"
+                ],
+                "summary": "Get Me",
+                "description": "Returns the current caller's identity, roles, org_scope, and (when scoped) the organization record. Used by the UI on login to decide between admin and tenant render branches. Admin callers and JWT callers receive org_scope=null and org=null.",
+                "operationId": "get_me_users_me_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MeResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            }
+        },
         "/users/permissions/check": {
             "get": {
                 "tags": [
@@ -17274,7 +17301,8 @@
                     "TASK-ADMIN",
                     "VALIDATION-USER",
                     "ORG-AUDITOR",
-                    "ORG-ADMIN"
+                    "ORG-ADMIN",
+                    "TENANT-USER"
                 ],
                 "title": "APIKeysRolesEnum"
             },
@@ -24414,6 +24442,49 @@
                 "title": "ManualAgentCreationSource",
                 "description": "Creation source for manually created tasks."
             },
+            "MeResponse": {
+                "properties": {
+                    "user_id": {
+                        "type": "string",
+                        "title": "User Id"
+                    },
+                    "roles": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Roles"
+                    },
+                    "org_scope": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Org Scope"
+                    },
+                    "org": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/OrganizationResponse"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "user_id",
+                    "roles"
+                ],
+                "title": "MeResponse"
+            },
             "MessageRole": {
                 "type": "string",
                 "enum": [
@@ -24964,7 +25035,7 @@
                             }
                         ],
                         "title": "Roles",
-                        "description": "Role that will be assigned to API key. Allowed values: [<APIKeysRolesEnum.DEFAULT_RULE_ADMIN: 'DEFAULT-RULE-ADMIN'>, <APIKeysRolesEnum.TASK_ADMIN: 'TASK-ADMIN'>, <APIKeysRolesEnum.VALIDATION_USER: 'VALIDATION-USER'>, <APIKeysRolesEnum.ORG_AUDITOR: 'ORG-AUDITOR'>, <APIKeysRolesEnum.ORG_ADMIN: 'ORG-ADMIN'>]",
+                        "description": "Role that will be assigned to API key. Allowed values: [<APIKeysRolesEnum.DEFAULT_RULE_ADMIN: 'DEFAULT-RULE-ADMIN'>, <APIKeysRolesEnum.TASK_ADMIN: 'TASK-ADMIN'>, <APIKeysRolesEnum.VALIDATION_USER: 'VALIDATION-USER'>, <APIKeysRolesEnum.ORG_AUDITOR: 'ORG-AUDITOR'>, <APIKeysRolesEnum.ORG_ADMIN: 'ORG-ADMIN'>, <APIKeysRolesEnum.TENANT_USER: 'TENANT-USER'>]",
                         "default": [
                             "VALIDATION-USER"
                         ]
@@ -26052,6 +26123,25 @@
                     "input_audio"
                 ],
                 "title": "OpenAIMessageType"
+            },
+            "OrganizationResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name"
+                ],
+                "title": "OrganizationResponse"
             },
             "PIIConfig": {
                 "properties": {
