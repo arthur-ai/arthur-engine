@@ -4,14 +4,13 @@ import { parseAsStringEnum, useQueryState } from "nuqs";
 import { Suspense, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { useCreateOnboardingSubmissionMutation } from "../hooks/useCreateOnboardingSubmissionMutation";
 import { LandingHero } from "../landing-hero";
 import { OnboardingContentFallback, OnboardingLayout } from "../onboarding-layout";
 import { TryItOutForm, type TryItOutSubmission } from "../try-it-out-form";
 import type { TryItOutSubmitMeta } from "../try-it-out-form/types";
 
-import { useApiMutation } from "@/hooks/useApiMutation";
 import { EVENT_NAMES, identify, track } from "@/services/amplitude";
-import { createOnboardingSubmission, toOnboardingFormData } from "@/services/onboardingApi";
 
 export const OnboardingPage: React.FC = () => {
   const [screen, setScreen] = useQueryState("screen", parseAsStringEnum(["landing", "form"]).withDefault("landing").withOptions({ history: "push" }));
@@ -19,19 +18,7 @@ export const OnboardingPage: React.FC = () => {
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
 
-  const submitMutation = useApiMutation({
-    mutationFn: async ({
-      data,
-      meta,
-    }: {
-      data: TryItOutSubmission;
-      meta: TryItOutSubmitMeta;
-    }) => {
-      return createOnboardingSubmission({
-        form_variant: meta.formVariant,
-        form_data: toOnboardingFormData(data),
-      });
-    },
+  const submitMutation = useCreateOnboardingSubmissionMutation({
     onSuccess: (_response, { data, meta }) => {
       track(EVENT_NAMES.ONBOARDING_FORM_SUBMITTED, {
         variant: meta.formVariant,
