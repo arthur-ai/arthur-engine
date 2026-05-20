@@ -171,7 +171,7 @@ If the secret was lost before saving, regenerate it: `POST /api/v1/data_planes/{
 ### Step 2 — Choose Deployment Method
 
 Ask the user which deployment method they want:
-- **A) Docker Compose** — recommended for single-machine setups (Mac, Linux, Windows)
+- **A) Docker Compose** — for a local setup on Mac or Windows
 - **B) AWS CloudFormation** — for AWS deployments
 - **C) Kubernetes (Helm)** — for Kubernetes clusters
 
