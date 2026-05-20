@@ -209,18 +209,57 @@ Run the Arthur Platform Engine installer for Mac/Linux.
 DATA_PLANE_CLIENT_ID: <DATA_PLANE_CLIENT_ID>
 ARTHUR_PLATFORM_URL: <ARTHUR_PLATFORM_URL>
 
-Step 1 — Read the data plane secret (read once and delete):
-  DP_SECRET=$(cat ~/.ae_dp_secret && rm -f ~/.ae_dp_secret)
+IMPORTANT: Read the secret and run the installer in a SINGLE Bash call.
+Shell variables do not persist between Bash calls — splitting these steps
+causes the secret to be consumed before the installer can use it.
 
-Step 2 — Run the installer non-interactively:
+Single Bash call — read secret and run installer together:
+  DP_SECRET=$(cat ~/.ae_dp_secret 2>/dev/null)
+  if [ -z "$DP_SECRET" ]; then
+    echo "ERROR: Secret file ~/.ae_dp_secret is missing or empty — cannot proceed"
+    exit 1
+  fi
+  rm -f ~/.ae_dp_secret
   bash <(curl -sSL https://engine.arthur.ai/mac) \
-    --arthur-client-id="$DATA_PLANE_CLIENT_ID" \
+    --arthur-client-id="<DATA_PLANE_CLIENT_ID>" \
     --arthur-client-secret="$DP_SECRET" \
     --arthur-api-host="<ARTHUR_PLATFORM_URL>" \
     --fetch-raw-data-enabled=true \
     --default-genai-config=false
 
 Report: installer exit code (0=success), any errors shown.
+```
+
+**If the secret file is missing** (was already consumed by a prior failed attempt), regenerate credentials and retry — all in one Bash call:
+
+```bash
+# Read state
+ARTHUR_PLATFORM_URL=$(grep '^ARTHUR_PLATFORM_URL=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
+ARTHUR_PLATFORM_TOKEN=$(grep '^ARTHUR_PLATFORM_TOKEN=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
+DATA_PLANE_ID=$(grep '^ARTHUR_PLATFORM_ENGINE_ID=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
+DATA_PLANE_CLIENT_ID=<DATA_PLANE_CLIENT_ID>
+
+# Regenerate credentials
+REGEN_RESPONSE=$(curl -s -X POST \
+  -H "Authorization: Bearer $ARTHUR_PLATFORM_TOKEN" \
+  "${ARTHUR_PLATFORM_URL}/api/v1/data_planes/${DATA_PLANE_ID}/credential_set")
+NEW_SECRET=$(echo "$REGEN_RESPONSE" | \
+  python3 -c "import sys,json; print(json.load(sys.stdin).get('client_secret',''))" 2>/dev/null)
+
+if [ -z "$NEW_SECRET" ]; then
+  echo "REGEN_FAILED"
+  echo "$REGEN_RESPONSE"
+  exit 1
+fi
+echo "REGEN_OK"
+
+# Immediately run the installer with the fresh secret — no intermediate file write
+bash <(curl -sSL https://engine.arthur.ai/mac) \
+  --arthur-client-id="$DATA_PLANE_CLIENT_ID" \
+  --arthur-client-secret="$NEW_SECRET" \
+  --arthur-api-host="$ARTHUR_PLATFORM_URL" \
+  --fetch-raw-data-enabled=true \
+  --default-genai-config=false
 ```
 
 **Windows** — show this command for the user to run manually in PowerShell:
