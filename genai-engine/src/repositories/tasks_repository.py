@@ -32,6 +32,7 @@ from db_models import (
     DatabaseTaskToRules,
 )
 from repositories.metrics_repository import MetricRepository
+from repositories.organizations_repository import DEFAULT_ORG_ID
 from repositories.rules_repository import RuleRepository
 from repositories.service_name_mapping_repository import (
     ServiceNameMappingRepository,
@@ -372,8 +373,6 @@ class TaskRepository:
         Returns:
             Task: The created task
         """
-        from repositories.organizations_repository import DEFAULT_ORG_ID
-
         task_id = str(uuid.uuid4())
 
         task = Task(

@@ -7,7 +7,7 @@ from arthur_common.models.response_schemas import QueryInferencesResponse
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from dependencies import get_db_session
+from dependencies import get_db_session, get_org_scope
 from repositories.inference_repository import InferenceRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
@@ -74,6 +74,7 @@ def query_inferences(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope=Depends(get_org_scope),
 ) -> QueryInferencesResponse:
     try:
         valid_stage_results = {RuleResultEnum.PASS, RuleResultEnum.FAIL}
@@ -94,13 +95,23 @@ def query_inferences(
         inference_repo = InferenceRepository(db_session)
         if inference_id:
             try:
-                results = [
-                    Inference._from_database_model(
-                        inference_repo.get_inference(inference_id=inference_id),
-                    ),
-                ]
+                db_inference = inference_repo.get_inference(inference_id=inference_id)
             except HTTPException:
-                results = []
+                db_inference = None
+            # Enforce tenant isolation: if the caller is org-scoped, the
+            # inference must belong to a task in their org. We bypass this
+            # for admin callers (org_scope is None).
+            if (
+                db_inference is not None
+                and org_scope is not None
+                and str(db_inference.task_id) not in {str(t) for t in (task_ids or [])}
+            ):
+                db_inference = None
+            results = (
+                [Inference._from_database_model(db_inference)]
+                if db_inference is not None
+                else []
+            )
             count = len(results)
         else:
             results, count = inference_repo.query_inferences(

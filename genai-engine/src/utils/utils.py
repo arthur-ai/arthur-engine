@@ -6,7 +6,7 @@ import re
 import traceback
 import urllib
 from concurrent.futures import Future, ThreadPoolExecutor
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Callable, Literal, overload
 
 from arthur_common.models.common_schemas import (
@@ -20,6 +20,7 @@ from langchain_community.callbacks import OpenAICallbackHandler
 from opentelemetry import context as otel_context
 from opentelemetry import trace
 from opentelemetry.trace import Tracer
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 import utils.constants as constants
@@ -188,10 +189,9 @@ def seed_database(db_session: Session) -> None:
     # the Postgres `now()` server default. We INSERT via raw SQL so SQLite
     # stores the UUIDs as CHAR text (matching the as_uuid=True read path)
     # rather than dialect-dependent integer/binary encodings.
-    from datetime import datetime, timezone
-
-    from sqlalchemy import text
-
+    # Imported lazily — repositories.organizations_repository -> db_models
+    # would create a circular import at module load time (db_models.base
+    # imports utils.utils for get_env_var).
     from repositories.organizations_repository import DEFAULT_ORG_ID, SYSTEM_ORG_ID
 
     now = datetime.now(timezone.utc).isoformat()
