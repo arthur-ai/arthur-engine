@@ -1918,6 +1918,10 @@ export interface CreateNotebookRequest {
   state?: NotebookStateInput | null;
 }
 
+export type CreateOnboardingSubmissionApiV2OnboardingSubmissionsPostData = OnboardingSubmissionResponse;
+
+export type CreateOnboardingSubmissionApiV2OnboardingSubmissionsPostError = HTTPValidationError;
+
 export type CreatePromptExperimentApiV1TasksTaskIdPromptExperimentsPostData = PromptExperimentSummary;
 
 export type CreatePromptExperimentApiV1TasksTaskIdPromptExperimentsPostError = HTTPValidationError;
@@ -7289,6 +7293,102 @@ export interface OTELAgentCreationSource {
    * @default "OTEL"
    */
   type?: "OTEL";
+}
+
+/** OnboardingSubmissionRequest */
+export interface OnboardingSubmissionRequest {
+  /** Try-it-out onboarding form fields (matches UI TryItOutSubmission). */
+  form_data: OnboardingTryItOutFormData;
+  /**
+   * Form Variant
+   * Which onboarding form variant was submitted.
+   */
+  form_variant?: OnboardingSubmissionRequestFormVariantEnum | null;
+}
+
+export type OnboardingSubmissionRequestFormVariantEnum = "linear" | "wizard";
+
+/** OnboardingSubmissionResponse */
+export interface OnboardingSubmissionResponse {
+  /**
+   * Created At
+   * When the submission was created.
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Id
+   * Created onboarding submission id.
+   * @format uuid
+   */
+  id: string;
+}
+
+/**
+ * OnboardingTryItOutFormData
+ * Try-it-out onboarding form fields (matches UI TryItOutSubmission).
+ */
+export interface OnboardingTryItOutFormData {
+  /**
+   * Attribution
+   * @minLength 1
+   */
+  attribution: string;
+  /**
+   * Attribution Other
+   * @default ""
+   */
+  attribution_other?: string;
+  /**
+   * Brings
+   * @minLength 1
+   */
+  brings: string;
+  /**
+   * Brings Other
+   * @default ""
+   */
+  brings_other?: string;
+  /**
+   * Company
+   * @minLength 1
+   */
+  company: string;
+  /**
+   * Competitor Other
+   * @default ""
+   */
+  competitor_other?: string;
+  /**
+   * Competitors
+   * @minItems 1
+   */
+  competitors: string[];
+  /**
+   * Email
+   * @minLength 1
+   */
+  email: string;
+  /**
+   * First Name
+   * @minLength 1
+   */
+  first_name: string;
+  /**
+   * Job Title
+   * @minLength 1
+   */
+  job_title: string;
+  /**
+   * Last Name
+   * @minLength 1
+   */
+  last_name: string;
+  /**
+   * Maturity
+   * @minLength 1
+   */
+  maturity: string;
 }
 
 /**
@@ -13742,6 +13842,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         method: "POST",
         body: data,
         secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Submit try-it-out onboarding form data.
+     *
+     * @tags Onboarding
+     * @name CreateOnboardingSubmissionApiV2OnboardingSubmissionsPost
+     * @summary Create Onboarding Submission
+     * @request POST:/api/v2/onboarding/submissions
+     */
+    createOnboardingSubmissionApiV2OnboardingSubmissionsPost: (data: OnboardingSubmissionRequest, params: RequestParams = {}) =>
+      this.request<CreateOnboardingSubmissionApiV2OnboardingSubmissionsPostData, CreateOnboardingSubmissionApiV2OnboardingSubmissionsPostError>({
+        path: `/api/v2/onboarding/submissions`,
+        method: "POST",
+        body: data,
         type: ContentType.Json,
         format: "json",
         ...params,
