@@ -501,6 +501,13 @@ export const TracingFilterModal = () => {
               handleAddId(type, inputValue);
             }
           }}
+          onPaste={(e) => {
+            const pastedText = e.clipboardData.getData("text").trim();
+            if (pastedText) {
+              e.preventDefault();
+              handleAddId(type, pastedText);
+            }
+          }}
           placeholder={`Enter ${label}`}
         />
         <IconButton size="small" onClick={() => handleAddId(type, inputValue)} disabled={!inputValue.trim()} color="primary">
