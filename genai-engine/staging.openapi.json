@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.570"
+        "version": "2.1.503"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -2325,7 +2325,7 @@
                     "API Keys"
                 ],
                 "summary": "Create Api Key",
-                "description": "Generates a new API key. Up to 1000 active keys can exist at the same time by default. Contact your system administrator if you need more. Allowed roles are: DEFAULT-RULE-ADMIN, TASK-ADMIN, VALIDATION-USER, ORG-AUDITOR, ORG-ADMIN.",
+                "description": "Generates a new API key. Up to 1000 active keys can exist at the same time by default. Contact your system administrator if you need more. Allowed roles are: DEFAULT-RULE-ADMIN, TASK-ADMIN, VALIDATION-USER, ORG-AUDITOR, ORG-ADMIN, TENANT-USER.",
                 "operationId": "create_api_key_auth_api_keys__post",
                 "requestBody": {
                     "content": {
@@ -17274,7 +17274,8 @@
                     "TASK-ADMIN",
                     "VALIDATION-USER",
                     "ORG-AUDITOR",
-                    "ORG-ADMIN"
+                    "ORG-ADMIN",
+                    "TENANT-USER"
                 ],
                 "title": "APIKeysRolesEnum"
             },
@@ -24964,7 +24965,7 @@
                             }
                         ],
                         "title": "Roles",
-                        "description": "Role that will be assigned to API key. Allowed values: [<APIKeysRolesEnum.DEFAULT_RULE_ADMIN: 'DEFAULT-RULE-ADMIN'>, <APIKeysRolesEnum.TASK_ADMIN: 'TASK-ADMIN'>, <APIKeysRolesEnum.VALIDATION_USER: 'VALIDATION-USER'>, <APIKeysRolesEnum.ORG_AUDITOR: 'ORG-AUDITOR'>, <APIKeysRolesEnum.ORG_ADMIN: 'ORG-ADMIN'>]",
+                        "description": "Role that will be assigned to API key. Allowed values: [<APIKeysRolesEnum.DEFAULT_RULE_ADMIN: 'DEFAULT-RULE-ADMIN'>, <APIKeysRolesEnum.TASK_ADMIN: 'TASK-ADMIN'>, <APIKeysRolesEnum.VALIDATION_USER: 'VALIDATION-USER'>, <APIKeysRolesEnum.ORG_AUDITOR: 'ORG-AUDITOR'>, <APIKeysRolesEnum.ORG_ADMIN: 'ORG-ADMIN'>, <APIKeysRolesEnum.TENANT_USER: 'TENANT-USER'>]",
                         "default": [
                             "VALIDATION-USER"
                         ]
@@ -31880,6 +31881,10 @@
                         "title": "Description",
                         "description": "Description of the transform."
                     },
+                    "definition": {
+                        "$ref": "#/components/schemas/TraceTransformDefinition",
+                        "description": "Latest version of the transform definition."
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
@@ -31898,6 +31903,7 @@
                     "id",
                     "task_id",
                     "name",
+                    "definition",
                     "created_at",
                     "updated_at"
                 ],
