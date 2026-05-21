@@ -500,11 +500,12 @@ def get_app_with_routes() -> FastAPI:
             transform_routes,
             continuous_eval_routes,
             agent_polling_routes,
-            tenant_signup_routes,
         ],
     )
     if extra_feature_config.CHATBOT_ENABLED:
         add_routers(app, [chatbot_routes])
+    if extra_feature_config.DEMO_MODE:
+        add_routers(app, [tenant_signup_routes])
     add_routers(app, [auth_routes, user_management_routes])
     add_routers(app, [app_chat_routes])
     return app
@@ -613,13 +614,14 @@ def get_app() -> FastAPI:
             transform_routes,
             continuous_eval_routes,
             agent_polling_routes,
-            tenant_signup_routes,
         ],
     )
     if extra_feature_config.CHATBOT_ENABLED:
         add_routers(app, [chatbot_routes])
     if extra_feature_config.CHAT_ENABLED:
         add_routers(app, [app_chat_routes])
+    if extra_feature_config.DEMO_MODE:
+        add_routers(app, [tenant_signup_routes])
     if not is_api_only_mode_enabled():
         add_routers(app, [auth_routes, user_management_routes])
 
