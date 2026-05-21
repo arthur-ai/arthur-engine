@@ -84,9 +84,10 @@ def test_create_tenant_signup_happy_path(fake_org, fake_task, fake_api_key):
     assert result.task_name == fake_task.name
     assert result.api_key == fake_api_key.key
 
-    # org was created with the expected name pattern + is_system=False
+    # org was created with the expected name pattern + is_system=False + commit=False
     create_org_call = orgs_cls.return_value.create_organization.call_args
     assert create_org_call.kwargs["is_system"] is False
+    assert create_org_call.kwargs["commit"] is False
     assert create_org_call.kwargs["name"].startswith("demo-")
     # secrets.token_hex(4) = 8 hex chars → name is exactly "demo-" + 8 chars
     assert len(create_org_call.kwargs["name"]) == len("demo-") + 8

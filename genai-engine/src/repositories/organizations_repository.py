@@ -51,11 +51,15 @@ class OrganizationsRepository:
         self,
         name: str,
         is_system: bool = False,
+        commit: bool = True,
     ) -> DatabaseOrganization:
         db_org = DatabaseOrganization(name=name, is_system=is_system)
         self.db_session.add(db_org)
-        # flush (not commit) so the caller controls the transaction boundary;
-        # raises IntegrityError on the unique(name) constraint without aborting
-        # any sibling work the caller has not yet committed.
-        self.db_session.flush()
+        # With commit=False the caller controls the transaction; the flush
+        # still surfaces the unique(name) IntegrityError so the caller can
+        # retry without leaving a poisoned session.
+        if commit:
+            self.db_session.commit()
+        else:
+            self.db_session.flush()
         return db_org

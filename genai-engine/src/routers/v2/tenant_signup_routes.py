@@ -70,7 +70,11 @@ def create_tenant_signup(
     for attempt in range(_ORG_NAME_RETRIES):
         name = f"demo-{secrets.token_hex(4)}"
         try:
-            db_org = orgs_repo.create_organization(name=name, is_system=False)
+            db_org = orgs_repo.create_organization(
+                name=name,
+                is_system=False,
+                commit=False,
+            )
             break
         except IntegrityError:
             db_session.rollback()
