@@ -64,40 +64,35 @@ def create_tenant_signup(
             detail="Not Found",
         )
 
-    orgs_repo = OrganizationsRepository(db_session)
-
-    db_org = None
-    for attempt in range(_ORG_NAME_RETRIES):
-        name = f"demo-{secrets.token_hex(4)}"
-        try:
-            db_org = orgs_repo.create_organization(
-                name=name,
-                is_system=False,
-                commit=False,
-            )
-            break
-        except IntegrityError:
-            db_session.rollback()
-            if attempt == _ORG_NAME_RETRIES - 1:
-                logger.exception(
-                    "Could not allocate a unique demo org name after retries",
-                )
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Could not allocate organization",
-                )
-
-    assert db_org is not None  # loop guarantees this or we already raised
-
     try:
-        rules_repo = RuleRepository(db_session)
-        tasks_repo = TaskRepository(
+        # Org-name collisions trigger IntegrityError; SQLAlchemy requires a
+        # rollback before the session can be reused, so the retry is its own
+        # tight catch — every other failure mode falls through to the outer
+        # except, which rolls the entire transaction back.
+        db_org = None
+        orgs_repo = OrganizationsRepository(db_session)
+        for _ in range(_ORG_NAME_RETRIES):
+            try:
+                db_org = orgs_repo.create_organization(
+                    name=f"demo-{secrets.token_hex(4)}",
+                    is_system=False,
+                    commit=False,
+                )
+                break
+            except IntegrityError:
+                db_session.rollback()
+        if db_org is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Could not allocate organization",
+            )
+
+        task = TaskRepository(
             db_session,
-            rules_repo,
+            RuleRepository(db_session),
             MetricRepository(db_session),
             application_config,
-        )
-        task = tasks_repo.create_task(
+        ).create_task(
             Task._from_request_model(
                 NewTaskRequest(name="Demo Task", is_agentic=True),
                 org_id=db_org.id,
@@ -105,8 +100,7 @@ def create_tenant_signup(
             commit=False,
         )
 
-        api_key_repo = ApiKeyRepository(db_session)
-        api_key = api_key_repo.create_api_key(
+        api_key = ApiKeyRepository(db_session).create_api_key(
             description=f"demo signup for org {db_org.name}",
             roles=[APIKeysRolesEnum.TENANT_USER],  # type: ignore[attr-defined]
             org_id=db_org.id,
