@@ -2,6 +2,7 @@ from logging import Logger
 
 from arthur_client.api_bindings import ConnectorsV1Api, ConnectorType
 
+from connectors.azure_blob_connector import AzureBlobConnector
 from connectors.big_query_connector import BigQueryConnector
 from connectors.connector import Connector
 from connectors.databricks_connector import DatabricksConnector
@@ -36,6 +37,8 @@ class ConnectorConstructor:
                 return SnowflakeConnector(connector_config, self.scope_logger)
             case ConnectorType.DATABRICKS:
                 return DatabricksConnector(connector_config, self.scope_logger)
+            case ConnectorType.AZURE_BLOB:
+                return AzureBlobConnector(connector_config, self.scope_logger)
             case _:
                 raise NotImplementedError(
                     f"Connector not available for type {connector_config.connector_type}",
