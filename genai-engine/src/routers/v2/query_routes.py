@@ -96,17 +96,14 @@ def query_inferences(
         inference_repo = InferenceRepository(db_session)
         if inference_id:
             try:
-                db_inference = inference_repo.get_inference(inference_id=inference_id)
+                # Pattern C: the repository filters by org_scope when set.
+                # For tenant callers cross-org or missing => 404; we catch and
+                # turn into an empty result set rather than surfacing the 404
+                # (matches the existing shape of this query endpoint).
+                db_inference = inference_repo.get_inference(
+                    inference_id=inference_id, org_scope=org_scope
+                )
             except HTTPException:
-                db_inference = None
-            # Enforce tenant isolation: if the caller is org-scoped, the
-            # inference must belong to a task in their org. We bypass this
-            # for admin callers (org_scope is None).
-            if (
-                db_inference is not None
-                and org_scope is not None
-                and str(db_inference.task_id) not in {str(t) for t in (task_ids or [])}
-            ):
                 db_inference = None
             results = (
                 [Inference._from_database_model(db_inference)]
@@ -121,6 +118,7 @@ def query_inferences(
                 task_ids=task_ids,
                 task_name=task_name,
                 conversation_id=conversation_id,
+                org_scope=org_scope,
                 page_size=pagination_parameters.page_size,
                 start_time=start_time,
                 end_time=end_time,

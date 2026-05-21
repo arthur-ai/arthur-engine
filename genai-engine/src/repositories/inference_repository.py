@@ -38,7 +38,7 @@ from schemas.internal_schemas import (
     ResponseRuleResult,
     RuleEngineResult,
 )
-from utils.constants import DEFAULT_ORG_ID
+from utils.constants import DEFAULT_ORG_ID, SYSTEM_ORG_ID
 from utils.token_count import TokenCounter
 
 logger = logging.getLogger()
@@ -91,13 +91,24 @@ class InferenceRepository:
         self.db_session: Session = db_session
         self.token_counter = TokenCounter()
 
-    def get_inference(self, inference_id: str) -> DatabaseInference:
-        inference = (
-            self.db_session.query(DatabaseInference)
-            .filter(DatabaseInference.id == inference_id)
-            .first()
+    def get_inference(
+        self,
+        inference_id: str,
+        org_scope: uuid.UUID | None = None,
+    ) -> DatabaseInference:
+        q = self.db_session.query(DatabaseInference).filter(
+            DatabaseInference.id == inference_id,
         )
+        # Inferences don't carry a denormalized org_id — join through tasks
+        # to enforce scope for tenant callers. Admin (org_scope is None) skips.
+        if org_scope is not None:
+            q = q.join(
+                DatabaseTask, DatabaseTask.id == DatabaseInference.task_id
+            ).filter(DatabaseTask.org_id == str(org_scope))
+        inference = q.first()
         if not inference:
+            # Same 404 body for "missing" and "in another org" — avoids the
+            # enumeration oracle when called from tenant-facing handlers.
             raise HTTPException(
                 status_code=404,
                 detail="Inference %s not found." % inference_id,
@@ -122,8 +133,17 @@ class InferenceRepository:
         prompt_statuses: list[RuleResultEnum] = [],
         response_statuses: list[RuleResultEnum] = [],
         include_count: bool = True,
+        org_scope: uuid.UUID | None = None,
     ) -> tuple[list[Inference], int]:
         stmt = self.db_session.query(DatabaseInference.id, DatabaseInference.created_at)
+
+        # Defense-in-depth: even though the @enforce_query_org_scope decorator
+        # already rewrites task_ids to the caller's org, we apply an explicit
+        # join filter here so this repo method is safe to call from any caller.
+        if org_scope is not None:
+            stmt = stmt.join(
+                DatabaseTask, DatabaseTask.id == DatabaseInference.task_id
+            ).filter(DatabaseTask.org_id == str(org_scope))
 
         # Rule types and rule results need this join as a prereq to their later joins
         if prompt_statuses or response_statuses or rule_types or rule_results:
@@ -360,6 +380,11 @@ class InferenceRepository:
             logger.warning(f"Inference {inference.id} prompt had failed rule results.")
         db_inference = inference._to_database_model()
 
+        # Task-less prompts (only produced by the deprecated
+        # /api/v2/validate_prompt endpoint) get backfilled to UNMAPPED_TASK_ID
+        # by migration d894934c8994, which lives under the system org. Stamping
+        # SYSTEM_ORG_ID here keeps the rule_results consistent with where the
+        # parent inference ends up post-backfill.
         org_id = (
             lookup_org_id(
                 self.db_session,
@@ -367,7 +392,7 @@ class InferenceRepository:
                 default=DEFAULT_ORG_ID,
             )
             if task_id is not None
-            else DEFAULT_ORG_ID
+            else SYSTEM_ORG_ID
         )
         _stamp_org_id_on_prompt(db_inference.inference_prompt, org_id)
 
@@ -396,6 +421,10 @@ class InferenceRepository:
         db_inference_response = inference_response._to_database_model()
         try:
             db_inference = self.get_inference(inference_id)
+            # Match the save_prompt convention: task-less inferences are
+            # backfilled to UNMAPPED_TASK_ID (system org) by migration
+            # d894934c8994, so their response rule_results should also live
+            # in the system org rather than the default org.
             org_id = (
                 lookup_org_id(
                     self.db_session,
@@ -405,7 +434,7 @@ class InferenceRepository:
                     default=DEFAULT_ORG_ID,
                 )
                 if db_inference is not None and db_inference.task_id is not None
-                else DEFAULT_ORG_ID
+                else SYSTEM_ORG_ID
             )
             _stamp_org_id_on_response(db_inference_response, org_id)
             self.db_session.add(db_inference_response)
@@ -495,16 +524,17 @@ class InferenceRepository:
         self,
         conversation_id: str,
         user_id: str,
+        org_scope: uuid.UUID | None = None,
     ) -> ConversationResponse | None:
-        inferences = (
-            self.db_session.query(DatabaseInference)
-            .filter(
-                DatabaseInference.conversation_id == conversation_id,
-                DatabaseInference.user_id == user_id,
-            )
-            .order_by(DatabaseInference.updated_at.desc())
-            .all()
+        q = self.db_session.query(DatabaseInference).filter(
+            DatabaseInference.conversation_id == conversation_id,
+            DatabaseInference.user_id == user_id,
         )
+        if org_scope is not None:
+            q = q.join(
+                DatabaseTask, DatabaseTask.id == DatabaseInference.task_id
+            ).filter(DatabaseTask.org_id == str(org_scope))
+        inferences = q.order_by(DatabaseInference.updated_at.desc()).all()
         if not inferences:
             return None
         return ConversationResponse(

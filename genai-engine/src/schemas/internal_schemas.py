@@ -836,21 +836,6 @@ class AgenticAnnotation(BaseModel):
             updated_at=db_annotation.updated_at,
         )
 
-    def to_db_model(self) -> DatabaseAgenticAnnotation:
-        return DatabaseAgenticAnnotation(
-            id=self.id,
-            annotation_type=self.annotation_type,
-            trace_id=self.trace_id,
-            continuous_eval_id=self.continuous_eval_id,
-            annotation_score=self.annotation_score,
-            annotation_description=self.annotation_description,
-            input_variables=self.input_variables,
-            cost=self.cost,
-            run_status=self.run_status,
-            created_at=self.created_at,
-            updated_at=self.updated_at,
-        )
-
     def to_response_model(self) -> AgenticAnnotationResponse:
         return AgenticAnnotationResponse(
             id=str(self.id),

@@ -17,7 +17,7 @@ from google.protobuf.message import DecodeError
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
-from dependencies import get_application_config, get_db_session
+from dependencies import get_application_config, get_db_session, get_org_scope
 from repositories.continuous_evals_repository import ContinuousEvalsRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
@@ -319,6 +319,7 @@ def get_span_by_id(
     span_id: str,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> SpanWithMetricsResponse:
     """Get single span with existing metrics (no computation)."""
     try:
@@ -327,6 +328,7 @@ def get_span_by_id(
             span_id=span_id,
             include_metrics=True,
             compute_new_metrics=False,
+            org_scope=org_scope,
         )
 
         if not span:
@@ -355,11 +357,12 @@ def compute_span_metrics(
     span_id: str,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> SpanWithMetricsResponse:
     """Compute all missing metrics for a single span on-demand."""
     try:
         span_repo = _get_span_repository(db_session)
-        span = span_repo.compute_span_metrics(span_id)
+        span = span_repo.compute_span_metrics(span_id, org_scope=org_scope)
 
         if not span:
             raise HTTPException(status_code=404, detail=f"Span {span_id} not found")
@@ -708,6 +711,7 @@ def get_trace_by_id(
     trace_id: str,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> TraceResponse:
     """Get complete trace tree with existing metrics (no computation)."""
     try:
@@ -716,6 +720,7 @@ def get_trace_by_id(
             trace_id=trace_id,
             include_metrics=True,
             compute_new_metrics=False,
+            org_scope=org_scope,
         )
 
         if not trace:
@@ -744,12 +749,14 @@ def compute_trace_metrics(
     trace_id: str,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> TraceResponse:
     """Compute all missing metrics for trace spans on-demand."""
     try:
         span_repo = _get_span_repository(db_session)
         trace = span_repo.compute_trace_metrics(
             trace_id=trace_id,
+            org_scope=org_scope,
         )
 
         if not trace:
@@ -778,12 +785,14 @@ def get_annotation_by_id(
     annotation_id: UUID,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> AgenticAnnotationResponse:
     """Annotate a trace with a score and description (1 = liked, 0 = disliked)."""
     try:
         span_repo = _get_span_repository(db_session)
         annotation = span_repo.get_annotation_by_id(
             annotation_id=annotation_id,
+            org_scope=org_scope,
         )
 
         if not annotation:
@@ -822,6 +831,7 @@ def list_annotations_for_trace(
     ],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> ListAgenticAnnotationsResponse:
     """Annotate a trace with a score and description (1 = liked, 0 = disliked)."""
     try:
@@ -830,6 +840,7 @@ def list_annotations_for_trace(
             trace_id=trace_id,
             pagination_parameters=pagination_parameters,
             filter_request=filter_request,
+            org_scope=org_scope,
         )
         return ListAgenticAnnotationsResponse(
             annotations=[annotation.to_response_model() for annotation in annotations],
@@ -860,6 +871,7 @@ def annotate_trace(
     annotation_request: AgenticAnnotationRequest,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> AgenticAnnotationResponse:
     """Annotate a trace with a score and description (1 = liked, 0 = disliked)."""
     try:
@@ -867,6 +879,7 @@ def annotate_trace(
         return span_repo.annotate_trace(
             trace_id=trace_id,
             annotation_request=annotation_request,
+            org_scope=org_scope,
         ).to_response_model()
     except ValueError as e:
         logger.error(f"Validation error: {e}")
@@ -894,12 +907,14 @@ def delete_annotation_from_trace(
     trace_id: str,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> Response:
     """Delete an annotation from a trace."""
     try:
         span_repo = _get_span_repository(db_session)
         span_repo.delete_annotation_from_trace(
             trace_id=trace_id,
+            org_scope=org_scope,
         )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except ValueError as e:

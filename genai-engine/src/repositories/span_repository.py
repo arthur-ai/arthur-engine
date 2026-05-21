@@ -11,10 +11,12 @@ from arthur_common.models.response_schemas import TraceResponse
 from google.protobuf.message import DecodeError
 from openinference.semconv.trace import SpanAttributes
 from opentelemetry import trace
-from sqlalchemy import insert
+from sqlalchemy import insert, select
 from sqlalchemy.orm import Session
 
 from db_models import DatabaseSpan
+from db_models.task_models import DatabaseTask
+from db_models.telemetry_models import DatabaseTraceMetadata
 from repositories.metrics_repository import MetricRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from schemas.internal_schemas import (
@@ -172,11 +174,20 @@ class SpanRepository:
         trace_id: str,
         include_metrics: bool = False,
         compute_new_metrics: bool = False,
+        org_scope: UUID | None = None,
     ) -> Optional[TraceResponse]:
         """Get complete trace tree with existing metrics (no computation).
 
         Returns full trace structure with spans.
         """
+        # Up-front ownership check for tenant callers: the trace's task must
+        # belong to the caller's org. Cheaper than threading org_scope through
+        # the span/metadata/tree-building service chain.
+        if org_scope is not None and not self._trace_belongs_to_org(
+            trace_id, org_scope
+        ):
+            return None
+
         # Query all spans for this trace
         spans, _ = self.span_query_service.query_spans_from_db(trace_ids=[trace_id])
 
@@ -218,6 +229,7 @@ class SpanRepository:
     def compute_trace_metrics(
         self,
         trace_id: str,
+        org_scope: UUID | None = None,
     ) -> Optional[TraceResponse]:
         """Compute all missing metrics for trace spans on-demand.
 
@@ -227,18 +239,47 @@ class SpanRepository:
             trace_id=trace_id,
             include_metrics=True,
             compute_new_metrics=True,
+            org_scope=org_scope,
         )
+
+    def _trace_belongs_to_org(self, trace_id: str, org_scope: UUID) -> bool:
+        """Return True if the trace's task belongs to org_scope."""
+        row = self.db_session.execute(
+            select(DatabaseTraceMetadata.trace_id)
+            .join(DatabaseTask, DatabaseTask.id == DatabaseTraceMetadata.task_id)
+            .where(
+                DatabaseTraceMetadata.trace_id == trace_id,
+                DatabaseTask.org_id == str(org_scope),
+            )
+        ).first()
+        return row is not None
+
+    def _span_belongs_to_org(self, span_id: str, org_scope: UUID) -> bool:
+        """Return True if the span's task belongs to org_scope."""
+        row = self.db_session.execute(
+            select(DatabaseSpan.span_id)
+            .join(DatabaseTask, DatabaseTask.id == DatabaseSpan.task_id)
+            .where(
+                DatabaseSpan.span_id == span_id,
+                DatabaseTask.org_id == str(org_scope),
+            )
+        ).first()
+        return row is not None
 
     def get_span_by_id(
         self,
         span_id: str,
         include_metrics: bool = False,
         compute_new_metrics: bool = False,
+        org_scope: UUID | None = None,
     ) -> Optional[Span]:
         """Get single span with existing metrics (no computation).
 
         Returns full span object with any existing metrics.
         """
+        if org_scope is not None and not self._span_belongs_to_org(span_id, org_scope):
+            return None
+
         # Query the specific span directly from database
         span = self.span_query_service.query_span_by_id(span_id)
 
@@ -263,11 +304,15 @@ class SpanRepository:
     def compute_span_metrics(
         self,
         span_id: str,
+        org_scope: UUID | None = None,
     ) -> Optional[Span]:
         """Compute missing span metrics on-demand.
 
         Returns span with computed metrics.
         """
+        if org_scope is not None and not self._span_belongs_to_org(span_id, org_scope):
+            return None
+
         # Query the specific span directly from database
         span = self.span_query_service.query_span_by_id(span_id)
 
@@ -700,8 +745,12 @@ class SpanRepository:
 
         return valid_spans, total_count
 
-    def query_span_by_span_id_with_metrics(self, span_id: str) -> Span:
+    def query_span_by_span_id_with_metrics(
+        self, span_id: str, org_scope: UUID | None = None
+    ) -> Span:
         """Query a single span by span_id and compute metrics for it."""
+        if org_scope is not None and not self._span_belongs_to_org(span_id, org_scope):
+            raise ValueError(f"Span with ID {span_id} not found")
         # Query the specific span directly from database
         span = self.span_query_service.query_span_by_id(span_id)
 
@@ -785,20 +834,24 @@ class SpanRepository:
         self,
         trace_id: str,
         annotation_request: AgenticAnnotationRequest,
+        org_scope: UUID | None = None,
     ) -> AgenticAnnotation:
         """Annotate a trace with a score and description (1 = liked, 0 = disliked)."""
         return self.trace_annotation_service.annotate_trace(
             trace_id=trace_id,
             annotation_request=annotation_request,
+            org_scope=org_scope,
         )
 
     def get_annotation_by_id(
         self,
         annotation_id: UUID,
+        org_scope: UUID | None = None,
     ) -> AgenticAnnotation | None:
         """Get an annotation by id."""
         return self.trace_annotation_service.get_annotation_by_id(
             annotation_id=annotation_id,
+            org_scope=org_scope,
         )
 
     def list_annotations_for_trace(
@@ -806,18 +859,23 @@ class SpanRepository:
         trace_id: str,
         pagination_parameters: PaginationParameters,
         filter_request: AgenticAnnotationListFilterRequest,
+        org_scope: UUID | None = None,
     ) -> List[AgenticAnnotation]:
         """List annotations for a trace."""
         return self.trace_annotation_service.list_annotations_for_trace(
             trace_id=trace_id,
             pagination_parameters=pagination_parameters,
             filter_request=filter_request,
+            org_scope=org_scope,
         )
 
-    def delete_annotation_from_trace(self, trace_id: str) -> None:
+    def delete_annotation_from_trace(
+        self, trace_id: str, org_scope: UUID | None = None
+    ) -> None:
         """Delete an annotation from a trace."""
         self.trace_annotation_service.delete_annotation_by_trace_id(
             trace_id=trace_id,
+            org_scope=org_scope,
         )
 
     def get_unregistered_root_spans_grouped(

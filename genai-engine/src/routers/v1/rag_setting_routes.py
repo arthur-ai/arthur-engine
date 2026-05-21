@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from starlette.responses import Response
 from starlette.status import HTTP_204_NO_CONTENT
 
-from dependencies import get_application_config, get_db_session
+from dependencies import get_application_config, get_db_session, get_org_scope
 from repositories.metrics_repository import MetricRepository
 from repositories.rag_providers_repository import RagProvidersRepository
 from repositories.rules_repository import RuleRepository
@@ -109,11 +109,13 @@ def get_rag_search_setting(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> RagSearchSettingConfigurationResponse:
     try:
         rag_providers_repo = RagProvidersRepository(db_session)
         config = rag_providers_repo.get_rag_setting_configuration(
             setting_configuration_id,
+            org_scope=org_scope,
         )
         return config.to_response_model()
     finally:
@@ -134,10 +136,13 @@ def delete_rag_search_setting(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> Response:
     try:
         rag_providers_repo = RagProvidersRepository(db_session)
-        rag_providers_repo.delete_rag_setting_configuration(setting_configuration_id)
+        rag_providers_repo.delete_rag_setting_configuration(
+            setting_configuration_id, org_scope=org_scope
+        )
         return Response(status_code=HTTP_204_NO_CONTENT)
     finally:
         db_session.close()
@@ -157,15 +162,18 @@ def update_rag_search_settings(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> RagSearchSettingConfigurationResponse:
     try:
         rag_providers_repo = RagProvidersRepository(db_session)
         rag_providers_repo.update_rag_provider_setting_configuration(
             setting_configuration_id,
             request,
+            org_scope=org_scope,
         )
         config = rag_providers_repo.get_rag_setting_configuration(
             setting_configuration_id,
+            org_scope=org_scope,
         )
         return config.to_response_model()
     finally:
@@ -235,12 +243,14 @@ def create_rag_search_settings_version(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> RagSearchSettingConfigurationVersionResponse:
     try:
         # get parent settings config
         rag_providers_repo = RagProvidersRepository(db_session)
         settings_config = rag_providers_repo.get_rag_setting_configuration(
             setting_configuration_id,
+            org_scope=org_scope,
         )
 
         # create new settings version
@@ -250,7 +260,9 @@ def create_rag_search_settings_version(
             setting_configuration_id,
             settings_config.latest_version_number + 1,
         )
-        rag_providers_repo.create_rag_setting_configuration_version(setting_config)
+        rag_providers_repo.create_rag_setting_configuration_version(
+            setting_config, org_scope=org_scope
+        )
 
         return setting_config.to_response_model()
     finally:
@@ -272,6 +284,7 @@ def get_rag_search_setting_version(
     version_number: int = Path(description="Version number of the version to fetch."),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> RagSearchSettingConfigurationVersionResponse:
     try:
         rag_providers_repo = RagProvidersRepository(db_session)
@@ -279,6 +292,7 @@ def get_rag_search_setting_version(
             setting_configuration_id,
             version_number,
             include_deleted_versions=True,
+            org_scope=org_scope,
         )
         return config.to_response_model()
     finally:
@@ -300,12 +314,14 @@ def delete_rag_search_setting_version(
     version_number: int = Path(description="Version number of the version to delete."),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> Response:
     try:
         rag_providers_repo = RagProvidersRepository(db_session)
         rag_providers_repo.soft_delete_rag_setting_configuration_version(
             setting_configuration_id,
             version_number,
+            org_scope=org_scope,
         )
         return Response(status_code=HTTP_204_NO_CONTENT)
     finally:
@@ -328,12 +344,14 @@ def get_rag_search_setting_version_by_tag(
     tag: Annotated[str, Path(), AfterValidator(decode_path_param)],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> RagSearchSettingConfigurationVersionResponse:
     try:
         rag_providers_repo = RagProvidersRepository(db_session)
         config = rag_providers_repo.get_rag_setting_configuration_version_by_tag(
             setting_configuration_id,
             tag,
+            org_scope=org_scope,
         )
         return config.to_response_model()
     finally:
@@ -355,6 +373,7 @@ def update_rag_search_settings_version(
     version_number: int = Path(description="Version number of the version to update."),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> RagSearchSettingConfigurationVersionResponse:
     try:
         rag_providers_repo = RagProvidersRepository(db_session)
@@ -362,10 +381,12 @@ def update_rag_search_settings_version(
             setting_configuration_id,
             version_number,
             request,
+            org_scope=org_scope,
         )
         config = rag_providers_repo.get_rag_setting_configuration_version(
             setting_configuration_id,
             version_number,
+            org_scope=org_scope,
         )
         return config.to_response_model()
     finally:
@@ -397,11 +418,14 @@ def get_rag_search_setting_configuration_versions(
         default=None,
         description="List of version numbers to filter for.",
     ),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> ListRagSearchSettingConfigurationVersionsResponse:
     try:
         rag_providers_repo = RagProvidersRepository(db_session)
-        # check setting config ID exists
-        rag_providers_repo.get_rag_setting_configuration(setting_configuration_id)
+        # check setting config ID exists (and lives in caller's org for tenants)
+        rag_providers_repo.get_rag_setting_configuration(
+            setting_configuration_id, org_scope=org_scope
+        )
 
         configs, total_count = (
             rag_providers_repo.get_rag_setting_configuration_versions(
@@ -409,6 +433,7 @@ def get_rag_search_setting_configuration_versions(
                 pagination_parameters,
                 tags=tags,
                 version_numbers=version_numbers,
+                org_scope=org_scope,
             )
         )
 
