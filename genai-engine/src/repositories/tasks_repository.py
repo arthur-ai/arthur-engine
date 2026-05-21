@@ -343,12 +343,9 @@ class TaskRepository:
         self,
         task: Task,
         with_default_rules: bool = True,
-        org_id: Optional[uuid.UUID] = None,
         commit: bool = True,
     ) -> Task:
         db_task = task._to_database_model()
-        if org_id is not None:
-            db_task.org_id = org_id
 
         if with_default_rules:
             db_default_rules, _ = self.rule_repository.query_rules(

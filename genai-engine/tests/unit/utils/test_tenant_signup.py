@@ -92,10 +92,12 @@ def test_create_tenant_signup_happy_path(fake_org, fake_task, fake_api_key):
     # secrets.token_hex(4) = 8 hex chars → name is exactly "demo-" + 8 chars
     assert len(create_org_call.kwargs["name"]) == len("demo-") + 8
 
-    # task was created with org_id wired to the new org and commit=False
+    # task was created with org_id threaded onto the Task schema + commit=False
     create_task_call = tasks_cls.return_value.create_task.call_args
-    assert create_task_call.kwargs["org_id"] == fake_org.id
     assert create_task_call.kwargs["commit"] is False
+    # the Task passed to create_task carries org_id from the new org
+    task_arg = create_task_call.args[0]
+    assert task_arg.org_id == fake_org.id
 
     # api key was created with TENANT-USER role, org_id, commit=False
     create_key_call = keys_cls.return_value.create_api_key.call_args

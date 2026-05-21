@@ -100,8 +100,8 @@ def create_tenant_signup(
         task = tasks_repo.create_task(
             Task._from_request_model(
                 NewTaskRequest(name="Demo Task", is_agentic=True),
+                org_id=db_org.id,
             ),
-            org_id=db_org.id,
             commit=False,
         )
 
