@@ -47,7 +47,8 @@ from schemas.internal_schemas import (
     User,
 )
 from utils import constants
-from utils.users import permission_checker
+from utils.constants import DEFAULT_ORG_ID
+from utils.users import enforce_org_scope, enforce_query_org_scope, permission_checker
 from utils.utils import common_pagination_parameters, public_endpoint
 
 task_management_routes = APIRouter(
@@ -89,7 +90,16 @@ def create_task(
         MetricRepository(db_session),
         application_config,
     )
-    task = Task._from_request_model(request)
+
+    # Determine the owning org from the caller's identity:
+    #   admin/JWT  (org_scope is None) -> default org
+    #   tenant key (org_scope is set)  -> caller's org
+    if current_user is not None and current_user.org_scope is not None:
+        org_id = current_user.org_scope
+    else:
+        org_id = DEFAULT_ORG_ID
+
+    task = Task._from_request_model(request, org_id=org_id)
     task = tasks_repo.create_task(task)
 
     send_telemetry_event(TelemetryEventTypes.TASK_CREATE_COMPLETED)
@@ -126,6 +136,7 @@ def get_all_tasks(
     tags=["Tasks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def archive_task(
     task_id: UUID,
     db_session: Session = Depends(get_db_session),
@@ -149,6 +160,7 @@ def archive_task(
     tags=["Tasks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def unarchive_task(
     task_id: UUID,
     db_session: Session = Depends(get_db_session),
@@ -173,6 +185,7 @@ def unarchive_task(
     tags=["Tasks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def get_task(
     task_id: UUID,
     db_session: Session = Depends(get_db_session),
@@ -306,6 +319,7 @@ def redirect_to_tasks() -> RedirectResponse:
     tags=["Tasks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_query_org_scope()
 def search_tasks(
     request: SearchTasksRequest,
     pagination_parameters: Annotated[
@@ -357,6 +371,7 @@ def search_tasks(
     tags=["Tasks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def create_task_rule(
     task_id: UUID,
     request: NewRuleRequest = Body(
@@ -395,6 +410,7 @@ def create_task_rule(
     tags=["Tasks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def update_task_rules(
     task_id: UUID,
     rule_id: UUID,
@@ -420,6 +436,7 @@ def update_task_rules(
     tags=["Tasks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def archive_task_rule(
     task_id: UUID,
     rule_id: UUID,
@@ -476,6 +493,7 @@ def archive_task_rule(
     tags=["Tasks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def create_task_metric(
     task_id: UUID,
     request: NewMetricRequest = Body(
@@ -506,6 +524,7 @@ def create_task_metric(
     tags=["Tasks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def update_task_metric(
     task_id: UUID,
     metric_id: UUID,
@@ -531,6 +550,7 @@ def update_task_metric(
     tags=["Tasks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def archive_task_metric(
     task_id: UUID,
     metric_id: UUID,

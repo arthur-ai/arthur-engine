@@ -19,7 +19,7 @@ from schemas.agentic_experiment_schemas import (
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Task, User
 from services.agentic_experiment_executor import AgenticExperimentExecutor
-from utils.users import permission_checker
+from utils.users import enforce_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
 agentic_experiment_routes = APIRouter(
@@ -37,6 +37,7 @@ agentic_experiment_routes = APIRouter(
     tags=["Agentic Experiments"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def list_agentic_experiments(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -93,6 +94,7 @@ def list_agentic_experiments(
     tags=["Agentic Experiments"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def create_agentic_experiment(
     experiment_request: CreateAgenticExperimentRequest,
     db_session: Session = Depends(get_db_session),

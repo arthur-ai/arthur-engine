@@ -11,7 +11,7 @@ from arthur_common.models.enums import (
 )
 from arthur_common.models.task_eval_schemas import LLMEval, TraceTransformDefinition
 from fastapi import HTTPException
-from sqlalchemy import asc, case, desc, func
+from sqlalchemy import asc, case, desc, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Query, Session
 
@@ -19,6 +19,8 @@ from db_models import DatabaseSpan
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTestRun
 from db_models.llm_eval_models import DatabaseContinuousEval
+from db_models.task_models import DatabaseTask
+from repositories.organizations_repository import lookup_org_id
 from schemas.internal_schemas import AgenticAnnotation, ContinuousEval
 from schemas.request_schemas import (
     ContinuousEvalCreateRequest,
@@ -450,6 +452,11 @@ class ContinuousEvalsRepository:
             if not continuous_evals:
                 return
 
+            task_org_id = lookup_org_id(
+                self.db_session,
+                select(DatabaseTask.org_id).where(DatabaseTask.id == task_id),
+            )
+
             # Create pending annotations and enqueue jobs
             for continuous_eval in continuous_evals:
                 annotation = DatabaseAgenticAnnotation(
@@ -460,6 +467,7 @@ class ContinuousEvalsRepository:
                     run_status=ContinuousEvalRunStatus.PENDING,
                     created_at=datetime.now(),
                     updated_at=datetime.now(),
+                    org_id=task_org_id,
                 )
                 self.db_session.add(annotation)
                 self.db_session.commit()

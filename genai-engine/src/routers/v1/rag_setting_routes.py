@@ -37,7 +37,7 @@ from schemas.response_schemas import (
     RagSearchSettingConfigurationVersionResponse,
 )
 from utils.url_encoding import decode_path_param
-from utils.users import permission_checker
+from utils.users import enforce_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
 rag_setting_routes = APIRouter(
@@ -59,6 +59,7 @@ rag_settings_router_tag = "RAG Settings"
     operation_id="create_rag_search_settings",
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def create_rag_search_settings(
     request: RagSearchSettingConfigurationRequest,
     task_id: str = Path(
@@ -178,6 +179,7 @@ def update_rag_search_settings(
     tags=[rag_settings_router_tag],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def get_task_rag_search_settings(
     pagination_parameters: Annotated[
         PaginationParameters,

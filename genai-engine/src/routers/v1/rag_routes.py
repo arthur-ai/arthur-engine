@@ -41,7 +41,7 @@ from schemas.response_schemas import (
     SearchRagProviderCollectionsResponse,
     SearchRagProviderConfigurationsResponse,
 )
-from utils.users import permission_checker
+from utils.users import enforce_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
 rag_routes = APIRouter(
@@ -62,6 +62,7 @@ rag_router_tag = "RAG Providers"
     tags=[rag_router_tag],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def create_rag_provider(
     request: RagProviderConfigurationRequest,
     task_id: str = Path(
@@ -100,6 +101,7 @@ def create_rag_provider(
     tags=[rag_router_tag],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def get_rag_providers(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -243,6 +245,7 @@ def list_rag_provider_collections(
     tags=[rag_router_tag],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def test_rag_provider_connection(
     request: RagProviderTestConfigurationRequest,
     task_id: str = Path(

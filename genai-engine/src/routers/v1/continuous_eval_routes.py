@@ -41,7 +41,7 @@ from schemas.response_schemas import (
     ListContinuousEvalTestRunsResponse,
 )
 from utils.url_encoding import decode_path_param
-from utils.users import permission_checker
+from utils.users import enforce_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
 continuous_eval_routes = APIRouter(
@@ -89,6 +89,7 @@ def get_continuous_eval_by_id(
     tags=["Continuous Evals"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def list_continuous_evals(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -129,6 +130,7 @@ def list_continuous_evals(
     tags=["Continuous Evals"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def list_continuous_eval_run_results(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -170,6 +172,7 @@ def list_continuous_eval_run_results(
     tags=["Continuous Evals"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def get_continuous_eval_variables_and_mappings(
     transform_id: Annotated[
         UUID,
@@ -244,6 +247,7 @@ def get_continuous_eval_variables_and_mappings(
     tags=["Continuous Evals"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def create_continuous_eval(
     create_request: ContinuousEvalCreateRequest,
     db_session: Session = Depends(get_db_session),
@@ -532,6 +536,7 @@ def delete_continuous_eval(
     tags=["Continuous Evals"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def get_daily_annotation_analytics(
     start_time: Annotated[
         Optional[datetime],

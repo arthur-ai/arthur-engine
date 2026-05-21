@@ -28,7 +28,11 @@ came from THIS migration.
 """
 
 from alembic import op
-from utils.constants import DEFAULT_SERVICE_NAME, UNMAPPED_TASK_ID
+from utils.constants import (
+    DEFAULT_SERVICE_NAME,
+    SYSTEM_ORG_ID,
+    UNMAPPED_TASK_ID,
+)
 
 # revision identifiers, used by Alembic.
 revision = "d894934c8994"
@@ -55,7 +59,7 @@ def upgrade() -> None:
             '{UNMAPPED_TASK_ID}', '{DEFAULT_SERVICE_NAME}',
             CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
             false, false, false, true,
-            (SELECT id FROM organizations WHERE name = 'system')
+            '{SYSTEM_ORG_ID}'
         )
         ON CONFLICT (id) DO NOTHING
         """)

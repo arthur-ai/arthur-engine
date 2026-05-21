@@ -32,7 +32,7 @@ from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
-from utils.users import permission_checker
+from utils.users import enforce_query_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
 logger = logging.getLogger(__name__)
@@ -487,6 +487,7 @@ def receive_traces(
     tags=["Spans"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+@enforce_query_org_scope()
 def query_spans(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -537,6 +538,7 @@ def query_spans(
     tags=["Spans"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+@enforce_query_org_scope()
 def query_spans_with_metrics(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -591,6 +593,7 @@ def query_spans_with_metrics(
     },
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+@enforce_query_org_scope()
 def query_spans_by_type(
     pagination_parameters: Annotated[
         PaginationParameters,
