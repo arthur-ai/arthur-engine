@@ -226,26 +226,26 @@ A single endpoint, gated by a feature flag, is the only way to create a new org 
 ### Endpoint
 
 ```
-POST /api/v2/tenant/signup       (no auth required)
+POST /api/v1/tasks/demos       (no auth required)
 ```
 
 ### Feature flag
 
-The endpoint exists in every deployment but only responds when `ENABLE_PUBLIC_TENANT_SIGNUP` is `true` in `src/utils/config.py`. Default: `false`. With the flag off, the endpoint returns 404 — clients cannot distinguish "feature unavailable" from "endpoint doesn't exist," which is the desired behavior on production customer deployments.
+The endpoint exists in every deployment but only responds when `GENAI_ENGINE_DEMO_MODE` is `ENABLED` (checked in `src/config/config.py` via `Config.demo_mode()`). Default: unset. With the flag off, the endpoint returns 404 — clients cannot distinguish "feature unavailable" from "endpoint doesn't exist," which is the desired behavior on production customer deployments.
 
 ### Request and response
 
 The request body is empty. The endpoint generates all identifiers server-side.
 
 ```
-POST /api/v2/tenant/signup
+POST /api/v1/tasks/demos
 Body: (none)
 
 201 Created
 {
   "org_id":    "uuid",
   "task_id":   "uuid",
-  "task_name": "demo-a3f9b2c1",
+  "task_name": "Demo Task",
   "api_key":   "<one-time visible Bearer token>"
 }
 ```
@@ -593,7 +593,7 @@ Symbols: ✅ allowed for tenant keys · ❌ 403 or 404 · 🪟 allowed but filte
 | User management (`/users` CRUD, `/reset_password`) | ❌ admin-only |
 | Documents and embeddings (`/documents/*`, embedding endpoints) | ❌ admin-only in v1 |
 | Identity introspection (`GET /users/me`) | ✅ any authenticated caller (returns own scope) |
-| Tenant signup (`POST /api/v2/tenant/signup`) | ✅ public, feature-flag-gated |
+| Tenant signup (`POST /api/v1/tasks/demos`) | ✅ public, feature-flag-gated |
 
 ### Notable specifics
 
@@ -674,7 +674,7 @@ The intent is that single-tenant customer deployments operate exactly as today a
 3. **No existing endpoint changes shape.** No new required request fields, no new required response fields, no renamed properties.
 4. **No existing client SDK breaks.** Aggregate endpoints (`GET /api/v2/tasks`, search endpoints, query endpoints) stay shape-compatible. Tenant clients see a scoped subset; admin clients see everything.
 5. **Existing role frozensets are not narrowed.** `TENANT-USER` is added to relevant frozensets; existing roles are not removed from any frozenset. Existing operator and admin users keep all their permissions.
-6. **Feature flag off by default.** `ENABLE_PUBLIC_TENANT_SIGNUP=false` means customer deployments never expose the signup endpoint unless explicitly enabled. Multi-tenant behavior on a customer deployment is opt-in.
+6. **Feature flag off by default.** `GENAI_ENGINE_DEMO_MODE` is unset (or any value other than `ENABLED`) by default, meaning customer deployments never expose the signup endpoint unless explicitly enabled. Multi-tenant behavior on a customer deployment is opt-in.
 7. **`POST /api/v1/traces` remains accessible to every admin client.** The endpoint narrows `TRACES_WRITE` to exclude `TENANT-USER`. Admin clients (the only callers that exist today, given no tenant keys have been issued yet) are unaffected.
 
 ### Risk areas
@@ -691,7 +691,7 @@ Effectively nothing on a deployment with the feature flag off. A new `org_id` co
 
 ### What admins notice after enabling the feature flag
 
-The `POST /api/v2/tenant/signup` endpoint starts responding 201 instead of 404. A new org is created for each signup. Admins inspecting the database see the new orgs accumulating in `organizations`. No effect on existing data or on the admin's own access.
+The `POST /api/v1/tasks/demos` endpoint starts responding 201 instead of 404. A new org is created for each signup. Admins inspecting the database see the new orgs accumulating in `organizations`. No effect on existing data or on the admin's own access.
 
 ---
 
@@ -751,8 +751,8 @@ Wires the four patterns into the endpoint surface. Still no user-visible behavio
 
 Adds the public signup endpoint and the feature flag.
 
-1. New `POST /api/v2/tenant/signup` endpoint at `src/routers/v2/task_management_routes.py` (or a new `tenant_routes.py` for clarity).
-2. Add `ENABLE_PUBLIC_TENANT_SIGNUP` boolean to `src/utils/config.py`, default `False`.
+1. New `POST /api/v1/tasks/demos` endpoint lives in `src/routers/v1/tenant_signup_routes.py`.
+2. The `GENAI_ENGINE_DEMO_MODE` env var is checked by `Config.demo_mode()` in `src/config/config.py`; the endpoint responds when it equals `ENABLED`.
 3. Handler runs the four-step transaction (create org, create task, apply default rules, create API key) inside a single `db_session` transaction. Reuses the existing `tasks_repository.create_task()` and `api_key_repository.create_api_key()` plus the new `organizations_repository.create_organization()`.
 
 **Estimated effort:** ~1-2 days human / ~30 min CC.
@@ -817,8 +817,8 @@ Seed two orgs (O1, O2), each with two tasks (O1 → {T1a, T1b}, O2 → {T2a, T2b
 - **System org isolation:** K1 attempts to read any task in the `system` org via every pattern. Every response is 404. A (admin) can read system tasks.
 - **API key tampering:** K1 calls `DELETE /auth/api_keys/deactivate/{A_key_id}`. Expect 403.
 - **`GET /users/me`:** K1 returns `roles=["TENANT-USER"]`, `org_scope=O1`, `org=O1`'s record. A returns `roles=admin set`, `org_scope=null`, `org=null`.
-- **Tenant signup (flag off):** anonymous `POST /api/v2/tenant/signup` returns 404.
-- **Tenant signup (flag on):** anonymous `POST /api/v2/tenant/signup` returns 201 with `(org_id, task_id, task_name, api_key)`. The returned key, used as a Bearer token, has `org_scope` set to the new org and can access the new task.
+- **Tenant signup (flag off):** anonymous `POST /api/v1/tasks/demos` returns 404.
+- **Tenant signup (flag on):** anonymous `POST /api/v1/tasks/demos` returns 201 with `(org_id, task_id, task_name, api_key)`. The returned key, used as a Bearer token, has `org_scope` set to the new org and can access the new task.
 - **Default org backfill:** an existing pre-migration task now has `org_id = default_org.id`. A task with `is_system_task=True` has `org_id = system_org.id`. Admin sees both; a fresh tenant key cannot reach either.
 
 ### Fuzz / coverage test
@@ -844,7 +844,7 @@ Pattern C is harder to assert generically. A complementary repository coverage t
 ### Manual smoke test
 
 1. Run engine in single-tenant mode (default config). Existing admin key sees all tasks in default + system orgs.
-2. Set `ENABLE_PUBLIC_TENANT_SIGNUP=true`. `curl POST /api/v2/tenant/signup` returns a fresh `(org, task, api_key)`.
+2. Set `GENAI_ENGINE_DEMO_MODE=ENABLED`. `curl POST /api/v1/tasks/demos` returns a fresh `(org, task, api_key)`.
 3. Paste the tenant key into the UI's login form. Confirm the UI loads with admin nav hidden and the task switcher showing only the new task.
 4. Hit an admin endpoint with the tenant key. Confirm 403.
 5. Send an inference via the tenant key. Confirm it lands in the tenant's task.

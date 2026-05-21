@@ -46,3 +46,16 @@ class OrganizationsRepository:
             .filter(DatabaseOrganization.id == organization_id)
             .one_or_none()
         )
+
+    def create_organization(
+        self,
+        name: str,
+        is_system: bool = False,
+    ) -> DatabaseOrganization:
+        db_org = DatabaseOrganization(name=name, is_system=is_system)
+        self.db_session.add(db_org)
+        # flush (not commit) so the caller controls the transaction boundary;
+        # raises IntegrityError on the unique(name) constraint without aborting
+        # any sibling work the caller has not yet committed.
+        self.db_session.flush()
+        return db_org

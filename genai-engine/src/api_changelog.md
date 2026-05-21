@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 05/21/2026
+- **CHANGE** for **URL**: /api/v1/tasks/demos  endpoint added
+
 # 05/20/2026
 - **CHANGE** for **URL**: /auth/api_keys/  added the new 'TENANT-USER' enum value to the request property 'roles/anyOf[subschema #1]/items/'
 - **CHANGE** for **URL**: /users/me  endpoint added
