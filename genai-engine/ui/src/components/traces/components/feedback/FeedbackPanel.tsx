@@ -14,6 +14,7 @@ import { useApi } from "@/hooks/useApi";
 import { AgenticAnnotationResponse, TraceResponse } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
 import { EVENT_NAMES, track } from "@/services/amplitude";
+import { onboardingTourEvents } from "@/tours/onboarding/events";
 
 type Props = {
   containerRef: React.RefObject<HTMLDivElement | null>;
@@ -64,6 +65,7 @@ export const FeedbackPanel = ({ containerRef, annotations, traceId }: Props) => 
     },
     onSuccess: () => {
       enqueueSnackbar("Feedback submitted", { variant: "success" });
+      onboardingTourEvents.emit("onboarding:feedback-submitted", undefined);
       track(EVENT_NAMES.FEEDBACK_SUBMITTED, {
         trace_id: traceId,
         feedback_type: form.state.values.feedback,
@@ -148,7 +150,7 @@ export const FeedbackPanel = ({ containerRef, annotations, traceId }: Props) => 
   const isMutating = sendFeedbackMutation.isPending || clearFeedbackMutation.isPending;
 
   return (
-    <>
+    <Stack data-tour-id="onboarding-feedback-panel" direction="row" alignItems="center">
       <ButtonGroup ref={anchor} size="small" disableElevation disabled={isMutating}>
         <Tooltip title="Helpful">
           <Popover.Trigger
@@ -283,7 +285,7 @@ export const FeedbackPanel = ({ containerRef, annotations, traceId }: Props) => 
           );
         }}
       </Popover.Root>
-    </>
+    </Stack>
   );
 };
 

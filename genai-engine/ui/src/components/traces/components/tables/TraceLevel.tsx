@@ -12,7 +12,7 @@ import { Alert, Box, Button, Paper, Stack, TextField } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { type OnChangeFn, type PaginationState, type RowSelectionState, SortingState } from "@tanstack/react-table";
 import type { MRT_ColumnDef } from "material-react-table";
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 
 import { TokenCostTooltip, TokenCountTooltip } from "../../data/common";
 import { useDrawerTarget } from "../../hooks/useDrawerTarget";
@@ -37,6 +37,7 @@ import type { TraceSortBy, TraceMetadataResponse } from "@/lib/api-client/api-cl
 import { FETCH_SIZE, MAX_TRACES_PER_TEST_RUN } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { EVENT_NAMES, track } from "@/services/amplitude";
+import { onboardingTourEvents } from "@/tours/onboarding/events";
 import { getFilteredTraces } from "@/services/tracing";
 import { formatCurrency, formatDateInTimezone } from "@/utils/formatters";
 
@@ -170,9 +171,25 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
       });
 
       setDrawerTarget({ target: "trace", id: row.trace_id });
+      onboardingTourEvents.emit("onboarding:trace-drawer-opened", { traceId: row.trace_id });
     },
     [data?.traces, setContext, setDrawerTarget, task?.id]
   );
+
+  useEffect(() => {
+    const openFirstTrace = () => {
+      const firstTrace = data?.traces?.[0];
+      if (firstTrace) {
+        handleRowClick(firstTrace);
+      }
+    };
+
+    onboardingTourEvents.on("onboarding:request-open-first-trace", openFirstTrace);
+
+    return () => {
+      onboardingTourEvents.off("onboarding:request-open-first-trace", openFirstTrace);
+    };
+  }, [data?.traces, handleRowClick]);
 
   const displayCurrency = data?.display_currency ?? defaultCurrency;
 
@@ -266,6 +283,7 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
 
         {hasData && (
           <BucketProvider thresholds={thresholds}>
+            <Box data-tour-id="onboarding-traces-table" sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
             <TracesTable
               data={data?.traces ?? DEFAULT_DATA}
               columns={columns as MRT_ColumnDef<TraceMetadataResponse, unknown>[]}
@@ -281,6 +299,7 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
               onRowSelectionChange={setRowSelection}
               getRowId={(row) => row.trace_id}
             />
+            </Box>
           </BucketProvider>
         )}
       </DataContentGate>

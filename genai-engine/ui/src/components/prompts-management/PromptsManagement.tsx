@@ -18,6 +18,7 @@ import TagFilterControls from "./table/TagFilterControls";
 
 import { getContentHeight } from "@/constants/layout";
 import { useTask } from "@/hooks/useTask";
+import { onboardingTourEvents } from "@/tours/onboarding/events";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -44,7 +45,9 @@ const PromptsManagement: React.FC<PromptsManagementProps> = ({ onRegisterCreate 
   // Sync fullScreenPrompt with URL parameter (one-way: URL -> state only)
   useEffect(() => {
     if (urlPromptName) {
-      setFullScreenPrompt(urlPromptName);
+      const decodedName = decodeURIComponent(urlPromptName);
+      setFullScreenPrompt(decodedName);
+      onboardingTourEvents.emit("onboarding:prompt-detail-opened", { promptName: decodedName });
     } else if (!urlPromptName && fullScreenPrompt) {
       setFullScreenPrompt(null);
     }
@@ -139,7 +142,7 @@ const PromptsManagement: React.FC<PromptsManagementProps> = ({ onRegisterCreate 
   if (fullScreenPrompt) {
     const initialVersion = urlVersion ? parseInt(urlVersion, 10) : null;
     return (
-      <Box sx={{ height: "100%", overflow: "hidden" }}>
+      <Box data-tour-id="onboarding-prompt-detail" sx={{ height: "100%", overflow: "hidden" }}>
         <PromptFullScreenView promptName={fullScreenPrompt} initialVersion={initialVersion} onClose={handleCloseFullScreen} />
       </Box>
     );
@@ -227,6 +230,7 @@ const PromptsManagement: React.FC<PromptsManagementProps> = ({ onRegisterCreate 
             </Button>
           </Box>
         ) : (
+          <Box data-tour-id="onboarding-prompts-table" sx={{ minHeight: 0 }}>
           <PromptsTable
             prompts={prompts}
             sortColumn={sortColumn}
@@ -235,6 +239,7 @@ const PromptsManagement: React.FC<PromptsManagementProps> = ({ onRegisterCreate 
             onExpandToFullScreen={handleExpandToFullScreen}
             onDelete={deleteMutation.mutateAsync}
           />
+          </Box>
         )}
       </Box>
 

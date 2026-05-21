@@ -8,7 +8,7 @@ import type { AnyTourEvents, Tour, TourStep } from "@/tours/types";
 import { isStepOnCurrentRoute } from "@/tours/utils";
 import { resolveStepRoute } from "@/tours/utils/resolveStepRoute";
 
-import { mapTourStepsToDriver } from "./mapStepToDriver";
+import { getDriverIndexForFlatStep, mapTourStepsToDriver } from "./mapStepToDriver";
 import type { OrchestratorTickResult, TourAnalyticsPayload, TourOrchestratorCallbacks, TourRuntimeStatus } from "./types";
 
 export class TourOrchestrator<Events extends AnyTourEvents = AnyTourEvents> {
@@ -24,7 +24,8 @@ export class TourOrchestrator<Events extends AnyTourEvents = AnyTourEvents> {
   constructor(
     private readonly emitter: Emitter<Events>,
     private readonly callbacks: TourOrchestratorCallbacks,
-    private readonly getRouteParams: () => Record<string, string>
+    private readonly getRouteParams: () => Record<string, string>,
+    private readonly getGuidanceVisible: () => boolean
   ) {}
 
   getStatus(): TourRuntimeStatus {
@@ -69,9 +70,51 @@ export class TourOrchestrator<Events extends AnyTourEvents = AnyTourEvents> {
     const routeParams = { ...this.getRouteParams(), ...step.routeParams };
     const resolvedRoute = resolveStepRoute(step.route, routeParams);
 
+    if (!resolvedRoute) {
+      return { action: "none" };
+    }
+
     if (!isStepOnCurrentRoute(step, pathname, routeParams)) {
       this.setStatus({ status: "navigating", stepId: step.id, route: resolvedRoute });
       return { action: "navigate", route: resolvedRoute };
+    }
+
+    if (step.type === "modal") {
+      this.destroyDriver();
+      if (!this.getGuidanceVisible()) {
+        this.setStatus({ status: "minimized", stepId: step.id });
+        return { action: "none" };
+      }
+      this.setStatus({ status: "modal", stepId: step.id });
+      this.emitAnalytics({
+        type: "step_viewed",
+        tourId: this.tour.id,
+        stepId: step.id,
+        sectionId: step.sectionId,
+      });
+      return { action: "none" };
+    }
+
+    if (step.type === "task") {
+      this.destroyDriver();
+      this.subscribeToTaskEvent(step);
+      if (!this.getGuidanceVisible()) {
+        this.setStatus({ status: "minimized", stepId: step.id });
+        return { action: "none" };
+      }
+      this.emitAnalytics({
+        type: "step_viewed",
+        tourId: this.tour.id,
+        stepId: step.id,
+        sectionId: step.sectionId,
+      });
+      return { action: "none" };
+    }
+
+    if (!this.getGuidanceVisible()) {
+      this.destroyDriver();
+      this.setStatus({ status: "minimized", stepId: step.id });
+      return { action: "none" };
     }
 
     this.setStatus({ status: "waitingTarget", stepId: step.id });
@@ -103,7 +146,8 @@ export class TourOrchestrator<Events extends AnyTourEvents = AnyTourEvents> {
       this.initDriver();
     }
 
-    this.driver?.drive(this.currentStepIndex);
+    const driverIndex = getDriverIndexForFlatStep(this.flatSteps, this.currentStepIndex);
+    this.driver?.drive(driverIndex);
     this.setStatus({ status: "showing", stepId: step.id, stepIndex: this.currentStepIndex });
     this.emitAnalytics({
       type: "step_viewed",
@@ -111,12 +155,7 @@ export class TourOrchestrator<Events extends AnyTourEvents = AnyTourEvents> {
       stepId: step.id,
       sectionId: step.sectionId,
     });
-
-    if (step.type === "task") {
-      this.subscribeToTaskEvent(step);
-    } else {
-      this.clearEventSubscription();
-    }
+    this.clearEventSubscription();
 
     return { action: "none" };
   }
@@ -125,6 +164,10 @@ export class TourOrchestrator<Events extends AnyTourEvents = AnyTourEvents> {
     const step = this.flatSteps[this.currentStepIndex];
     if (!step || !this.tour) {
       return;
+    }
+
+    if (step.type === "popover" && step.advanceAction === "open-first-trace") {
+      this.callbacks.onTourSideEffect?.({ type: "open-first-trace" });
     }
 
     this.emitAnalytics({
@@ -241,18 +284,18 @@ export class TourOrchestrator<Events extends AnyTourEvents = AnyTourEvents> {
         this.prev();
       },
       onCloseClick: () => {
-        this.handleDismiss();
+        this.minimizeGuidance();
       },
       onDestroyed: () => {
         if (this.destroyingDriver || !this.tour) {
           return;
         }
-        this.handleDismiss();
+        this.minimizeGuidance();
       },
     });
   }
 
-  private handleDismiss(): void {
+  private minimizeGuidance(): void {
     const step = this.flatSteps[this.currentStepIndex];
     const tourId = this.tour?.id;
 
@@ -262,20 +305,17 @@ export class TourOrchestrator<Events extends AnyTourEvents = AnyTourEvents> {
         tourId,
         stepId: step.id,
         sectionId: step.sectionId,
-        reason: "user_closed",
+        reason: "user_minimized",
       });
     }
 
     this.destroyDriver();
-    this.clearEventSubscription();
-    this.tour = null;
-    this.flatSteps = [];
-    this.currentStepIndex = 0;
-    this.setStatus({ status: "idle" });
 
-    if (tourId) {
-      this.callbacks.onTourDismiss(tourId);
+    if (step) {
+      this.setStatus({ status: "minimized", stepId: step.id });
     }
+
+    this.callbacks.onMinimizeGuidance();
   }
 
   private subscribeToTaskEvent(step: TourStep<Events> & { type: "task" }): void {

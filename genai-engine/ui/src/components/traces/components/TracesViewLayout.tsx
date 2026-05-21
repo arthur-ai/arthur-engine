@@ -40,7 +40,7 @@ export const TracesViewLayout = ({ level, timeRange, onLevelChange, onTimeRangeC
         }}
       >
         <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
-          <Box>
+          <Box data-tour-id="onboarding-traces-header">
             <Typography variant="h5" fontWeight={600} color="text.primary">
               Traces
             </Typography>

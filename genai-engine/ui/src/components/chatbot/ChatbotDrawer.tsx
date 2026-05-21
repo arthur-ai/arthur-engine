@@ -7,8 +7,10 @@ import { useEffect, useRef, useState } from "react";
 
 import { ChatMessage, ThinkingIndicator, ToolCallIndicator } from "./ChatMessage";
 
+import { useEmitTourEvent } from "@/components/tour/hooks/useEmitTourEvent";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useChatbot } from "@/hooks/useChatbot";
+import type { OnboardingTourEvents } from "@/tours/onboarding/events";
 
 interface ChatbotDrawerProps {
   taskId: string;
@@ -16,6 +18,7 @@ interface ChatbotDrawerProps {
 
 export function ChatbotDrawer({ taskId }: ChatbotDrawerProps) {
   const { chatbotEnabled } = useDisplaySettings();
+  const emitTourEvent = useEmitTourEvent<OnboardingTourEvents>();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLElement>(null);
@@ -27,11 +30,17 @@ export function ChatbotDrawer({ taskId }: ChatbotDrawerProps) {
 
   if (!chatbotEnabled) return null;
 
+  const handleOpen = () => {
+    setOpen(true);
+    emitTourEvent("onboarding:chatbot-opened", undefined);
+  };
+
   const handleSend = () => {
     const trimmed = input.trim();
     if (!trimmed || isStreaming) return;
     setInput("");
     sendMessage(trimmed);
+    emitTourEvent("onboarding:message-sent", { messageLength: trimmed.length });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -44,13 +53,19 @@ export function ChatbotDrawer({ taskId }: ChatbotDrawerProps) {
   return (
     <>
       {!open && (
-        <Fab color="primary" onClick={() => setOpen(true)} sx={{ position: "fixed", bottom: 24, right: 24, zIndex: 1200 }}>
+        <Fab
+          color="primary"
+          onClick={handleOpen}
+          data-tour-id="onboarding-chatbot-fab"
+          sx={{ position: "fixed", bottom: 24, right: 24, zIndex: 1200 }}
+        >
           <ChatIcon />
         </Fab>
       )}
 
       {open && (
         <Paper
+          data-tour-id="onboarding-chatbot-drawer"
           elevation={8}
           sx={{
             position: "fixed",
@@ -119,6 +134,7 @@ export function ChatbotDrawer({ taskId }: ChatbotDrawerProps) {
             {/* Input */}
             <Box sx={{ px: 2, py: 1.5, display: "flex", gap: 1, alignItems: "flex-end" }}>
               <TextField
+                data-tour-id="onboarding-chatbot-input"
                 variant="filled"
                 fullWidth
                 multiline

@@ -360,6 +360,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
             </Box>
           </Box>
         ) : (
+          <Box data-tour-id="onboarding-dataset-table" sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
           <DatasetTable
             datasetId={datasetId}
             columns={state.columns}
@@ -377,6 +378,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
             onFillColumn={handleFillColumn}
             searchQuery={state.searchQuery}
           />
+          </Box>
         )}
 
         {state.rows.length > 0 && (

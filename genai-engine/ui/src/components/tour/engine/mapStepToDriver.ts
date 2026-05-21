@@ -1,9 +1,11 @@
 import type { DriveStep } from "driver.js";
 
 import type { FlatTourStep } from "@/tours/registry";
-import type { AnyTourEvents } from "@/tours/types";
+import type { AnyTourEvents, TourStep } from "@/tours/types";
 
-export function mapStepToDriver<Events extends AnyTourEvents>(step: FlatTourStep<Events>): DriveStep {
+type DriverMappedTourStep<Events extends AnyTourEvents> = Extract<TourStep<Events>, { type: "popover" } | { type: "task" }>;
+
+export function mapStepToDriver<Events extends AnyTourEvents>(step: DriverMappedTourStep<Events>): DriveStep {
   const isTaskStep = step.type === "task";
 
   return {
@@ -20,5 +22,10 @@ export function mapStepToDriver<Events extends AnyTourEvents>(step: FlatTourStep
 }
 
 export function mapTourStepsToDriver<Events extends AnyTourEvents>(steps: FlatTourStep<Events>[]): DriveStep[] {
-  return steps.map(mapStepToDriver);
+  return steps.filter((step): step is FlatTourStep<Events> & DriverMappedTourStep<Events> => step.type !== "modal").map(mapStepToDriver);
+}
+
+export function getDriverIndexForFlatStep<Events extends AnyTourEvents>(steps: FlatTourStep<Events>[], flatIndex: number): number {
+  const nonModalStepsBefore = steps.slice(0, flatIndex + 1).filter((step) => step.type !== "modal");
+  return nonModalStepsBefore.length - 1;
 }

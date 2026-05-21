@@ -4,14 +4,20 @@ type TourStepBase<Events extends AnyTourEvents> = {
   id: string;
   route: string;
   routeParams?: Record<string, string>;
-  selector: string;
   title: string;
   description: string;
 };
 
+type TourStepWithTarget<Events extends AnyTourEvents> = TourStepBase<Events> & {
+  selector: string;
+};
+
+export type TourAdvanceAction = "open-first-trace";
+
 export type TourStep<Events extends AnyTourEvents> =
-  | (TourStepBase<Events> & { type: "popover" })
-  | (TourStepBase<Events> & { type: "task"; waitFor: keyof Events & string });
+  | (TourStepWithTarget<Events> & { type: "popover"; advanceAction?: TourAdvanceAction })
+  | (TourStepWithTarget<Events> & { type: "task"; waitFor: keyof Events & string })
+  | (TourStepBase<Events> & { type: "modal"; content?: string });
 
 export type TourSection<Events extends AnyTourEvents> = {
   id: string;

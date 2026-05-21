@@ -42,7 +42,7 @@ export const EvaluateView = () => {
         }}
       >
         <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
-          <Box>
+          <Box data-tour-id="onboarding-evaluate-header">
             <Typography variant="h5" fontWeight={600} color="text.primary">
               Evaluate
             </Typography>
@@ -51,7 +51,13 @@ export const EvaluateView = () => {
             </Typography>
           </Box>
           {activeTab === "evaluators" && (
-            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => setIsEvalsModalOpen(true)}>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddIcon />}
+              data-tour-id="onboarding-evaluator-create"
+              onClick={() => setIsEvalsModalOpen(true)}
+            >
               Evaluator
             </Button>
           )}

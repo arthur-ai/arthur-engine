@@ -7,11 +7,13 @@ import { Box, Divider, IconButton, ListItemIcon, ListItemText, Menu, MenuItem } 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSnackbar } from "notistack";
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import { ThemeToggle } from "../common/ThemeToggle";
 
 import { useStartTour } from "@/components/tour/hooks/useStartTour";
+import { onboardingExerciseTaskId } from "@/lib/tours-config";
+import { useTourStore } from "@/stores/tour.store";
 import { UserSettingsModal } from "@/components/UserSettingsModal";
 import type { UserSettings } from "@/components/UserSettingsModal/types";
 import { useAuth } from "@/contexts/AuthContext";
@@ -36,7 +38,9 @@ export const SettingsMenuButton: React.FC = () => {
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [userSettingsModalOpen, setUserSettingsModalOpen] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const { id: taskId } = useParams<{ id: string }>();
   const { startTour, toursEnabled } = useStartTour();
+  const setRouteParams = useTourStore((state) => state.actions.setRouteParams);
 
   const isMenuOpen = Boolean(menuAnchorEl);
 
@@ -167,7 +171,8 @@ export const SettingsMenuButton: React.FC = () => {
           <MenuItem
             onClick={() => {
               handleMenuClose();
-              startTour("onboarding", { force: true });
+              setRouteParams({ taskId: taskId ?? onboardingExerciseTaskId });
+              startTour("onboarding", { force: true, stepId: "intro-adlc" });
             }}
           >
             <ListItemIcon>

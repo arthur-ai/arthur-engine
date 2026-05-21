@@ -35,4 +35,20 @@ describe("isStepOnCurrentRoute", () => {
       )
     ).toBe(true);
   });
+
+  it("matches route patterns without resolving every param", () => {
+    expect(
+      isStepOnCurrentRoute(
+        {
+          type: "popover",
+          id: "dataset-detail",
+          route: "/tasks/:taskId/datasets/:datasetId",
+          selector: "[data-tour-id='dataset']",
+          title: "Dataset",
+          description: "Dataset",
+        },
+        "/tasks/task-1/datasets/ds-9"
+      )
+    ).toBe(true);
+  });
 });

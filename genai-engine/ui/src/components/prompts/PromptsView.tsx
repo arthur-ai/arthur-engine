@@ -89,6 +89,7 @@ export const PromptsView = () => {
         {activeTab === "prompt-experiments" && (
           <>
             <Button
+              data-tour-id="onboarding-experiment-menu"
               variant="contained"
               color="primary"
               startIcon={<AddIcon />}
@@ -133,7 +134,7 @@ export const PromptsView = () => {
         sx={{ backgroundColor: "background.paper", borderBottom: 1, borderColor: "divider" }}
       >
         <Tab label="Notebooks" value="notebooks" />
-        <Tab label="Prompts" value="prompts-management" />
+        <Tab label="Prompts" value="prompts-management" data-tour-id="onboarding-prompts-tab" />
         <Tab label="Runs" value="prompt-experiments" />
       </Tabs>
 

@@ -118,6 +118,17 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
                   <Link
                     href={`/tasks/${id}/${item.id}`}
                     underline="none"
+                    data-tour-id={
+                      item.id === "evaluate"
+                        ? "onboarding-sidebar-evaluate"
+                        : item.id === "traces"
+                          ? "onboarding-sidebar-traces"
+                          : item.id === "datasets"
+                            ? "onboarding-sidebar-datasets"
+                            : item.id === "prompts"
+                              ? "onboarding-sidebar-prompts"
+                              : undefined
+                    }
                     onClick={(e) => {
                       e.preventDefault();
                       onNavigate(item.id);

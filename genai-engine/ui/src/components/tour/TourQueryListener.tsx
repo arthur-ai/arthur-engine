@@ -2,7 +2,8 @@ import { useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { useStartTour } from "@/components/tour/hooks/useStartTour";
-import { toursEnabled } from "@/lib/tours-config";
+import { onboardingExerciseTaskId, toursEnabled } from "@/lib/tours-config";
+import { useTourStore } from "@/stores/tour.store";
 import type { TourId } from "@/tours/registry";
 import { tours } from "@/tours/registry";
 
@@ -27,7 +28,10 @@ export function TourQueryListener() {
       return;
     }
 
-    const started = startTour(tourParam, { force: true });
+    useTourStore.getState().actions.setRouteParams({
+      taskId: useTourStore.getState().routeParams.taskId ?? onboardingExerciseTaskId,
+    });
+    const started = startTour(tourParam, { force: true, stepId: tourParam === "onboarding" ? "intro-adlc" : undefined });
     if (started) {
       handledRef.current = tourParam;
       const nextParams = new URLSearchParams(searchParams);

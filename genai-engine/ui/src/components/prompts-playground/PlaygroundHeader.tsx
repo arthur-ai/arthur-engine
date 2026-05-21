@@ -69,7 +69,14 @@ export default function PlaygroundHeader({
   };
 
   return (
-    <Container component="div" maxWidth={false} disableGutters className="p-2 mt-1 shrink-0" sx={{ backgroundColor: "background.default" }}>
+    <Container
+      data-tour-id="onboarding-playground-header"
+      component="div"
+      maxWidth={false}
+      disableGutters
+      className="p-2 mt-1 shrink-0"
+      sx={{ backgroundColor: "background.default" }}
+    >
       <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2}>
         <Stack direction="row" alignItems="center" spacing={2}>
           {notebookId && (

@@ -140,6 +140,7 @@ export const DatasetHeader: React.FC<DatasetHeaderProps> = ({
           Import
         </Button>
         <Button
+          data-tour-id="onboarding-dataset-synthetic"
           variant="outlined"
           size="small"
           startIcon={<AutoAwesomeIcon />}

@@ -15,6 +15,7 @@ import { useAppForm } from "@/components/traces/components/filtering/hooks/form"
 import { useCreateExperiment, usePromptExperiment } from "@/hooks/usePromptExperiments";
 import { useTask } from "@/hooks/useTask";
 import { PromptExperimentDetail } from "@/lib/api-client/api-client";
+import { onboardingTourEvents } from "@/tours/onboarding/events";
 
 type Props = {
   templateId?: string;
@@ -27,7 +28,13 @@ export const CreateExperimentModal = ({ templateId, initialData, open, onClose }
   const { experiment, isLoading } = usePromptExperiment(templateId);
 
   return (
-    <Dialog open={open} maxWidth="md" fullWidth aria-labelledby="create-experiment-dialog-title">
+    <Dialog
+      data-tour-id="onboarding-create-experiment-modal"
+      open={open}
+      maxWidth="md"
+      fullWidth
+      aria-labelledby="create-experiment-dialog-title"
+    >
       <DialogTitle id="create-experiment-dialog-title">Create Experiment</DialogTitle>
       {isLoading ? (
         <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%", pb: 4 }}>
@@ -57,6 +64,7 @@ const CreateExperimentModalInner = ({
 
   const createExperiment = useCreateExperiment(task!.id, {
     onSuccess: (data) => {
+      onboardingTourEvents.emit("onboarding:experiment-created", undefined);
       enqueueSnackbar(`Experiment "${data.name}" created successfully!`, { variant: "success" });
       navigate(`/tasks/${task!.id}/prompt-experiments/${data.id}`);
       onClose();

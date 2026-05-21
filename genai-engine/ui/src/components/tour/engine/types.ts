@@ -2,8 +2,10 @@ export type TourRuntimeStatus =
   | { status: "idle" }
   | { status: "navigating"; stepId: string; route: string }
   | { status: "waitingTarget"; stepId: string }
+  | { status: "modal"; stepId: string }
   | { status: "showing"; stepId: string; stepIndex: number }
   | { status: "waitingEvent"; stepId: string; eventName: string }
+  | { status: "minimized"; stepId: string }
   | { status: "error"; stepId: string; reason: string }
   | { status: "completed"; tourId: string };
 
@@ -20,11 +22,16 @@ export type TourAnalyticsPayload =
   | { type: "completed"; tourId: string }
   | { type: "error"; tourId: string; stepId: string; sectionId: string; errorReason: string };
 
+export type TourSideEffect =
+  | { type: "open-first-trace" };
+
 export type TourOrchestratorCallbacks = {
   onStepChange: (stepId: string) => void;
   onTourComplete: (tourId: string) => void;
   onTourDismiss: (tourId: string) => void;
   onTourStop: () => void;
+  onMinimizeGuidance: () => void;
   onStatusChange: (status: TourRuntimeStatus) => void;
   onAnalytics: (payload: TourAnalyticsPayload) => void;
+  onTourSideEffect?: (effect: TourSideEffect) => void;
 };

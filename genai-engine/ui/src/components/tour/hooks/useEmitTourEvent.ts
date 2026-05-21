@@ -8,7 +8,7 @@ export function useEmitTourEvent<Events extends AnyTourEvents = AnyTourEvents>()
 
   return useCallback(
     <K extends keyof Events & string>(type: K, event: Events[K]) => {
-      emitter.emit(type, event);
+      emitter?.emit(type, event);
     },
     [emitter]
   );

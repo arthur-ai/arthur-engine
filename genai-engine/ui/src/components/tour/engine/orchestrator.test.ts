@@ -32,7 +32,30 @@ describe("TourOrchestrator", () => {
     isActive.mockReturnValue(true);
   });
 
-  it("requests navigation when the current route does not match the step", async () => {
+  it("does not navigate when route params are missing", async () => {
+    const emitter = mitt<OnboardingTourEvents>();
+    const orchestrator = new TourOrchestrator(
+      emitter,
+      {
+        onStepChange: vi.fn(),
+        onTourComplete: vi.fn(),
+        onTourDismiss: vi.fn(),
+        onTourStop: vi.fn(),
+        onMinimizeGuidance: vi.fn(),
+        onStatusChange: vi.fn(),
+        onAnalytics: vi.fn(),
+      },
+      () => ({}),
+      () => true
+    );
+
+    orchestrator.start(onboardingTour, "intro-adlc");
+    const result = await orchestrator.tick("/");
+
+    expect(result).toEqual({ action: "none" });
+  });
+
+  it("requests navigation to the resolved task route", async () => {
     const emitter = mitt<OnboardingTourEvents>();
     const onStepChange = vi.fn();
     const orchestrator = new TourOrchestrator(
@@ -42,20 +65,22 @@ describe("TourOrchestrator", () => {
         onTourComplete: vi.fn(),
         onTourDismiss: vi.fn(),
         onTourStop: vi.fn(),
+        onMinimizeGuidance: vi.fn(),
         onStatusChange: vi.fn(),
         onAnalytics: vi.fn(),
       },
-      () => ({})
+      () => ({ taskId: "task-abc" }),
+      () => true
     );
 
-    orchestrator.start(onboardingTour, "welcome");
-    const result = await orchestrator.tick("/settings");
+    orchestrator.start(onboardingTour, "intro-adlc");
+    const result = await orchestrator.tick("/");
 
-    expect(result).toEqual({ action: "navigate", route: "/" });
-    expect(onStepChange).toHaveBeenCalledWith("welcome");
+    expect(result).toEqual({ action: "navigate", route: "/tasks/task-abc/overview" });
+    expect(onStepChange).toHaveBeenCalledWith("intro-adlc");
   });
 
-  it("drives the active step when the route and target are ready", async () => {
+  it("shows modal step when already on the resolved task route", async () => {
     const emitter = mitt<OnboardingTourEvents>();
     const orchestrator = new TourOrchestrator(
       emitter,
@@ -64,16 +89,74 @@ describe("TourOrchestrator", () => {
         onTourComplete: vi.fn(),
         onTourDismiss: vi.fn(),
         onTourStop: vi.fn(),
+        onMinimizeGuidance: vi.fn(),
         onStatusChange: vi.fn(),
         onAnalytics: vi.fn(),
       },
-      () => ({})
+      () => ({ taskId: "task-abc" }),
+      () => true
     );
 
-    orchestrator.start(onboardingTour, "welcome");
-    const result = await orchestrator.tick("/");
+    orchestrator.start(onboardingTour, "intro-adlc");
+    const result = await orchestrator.tick("/tasks/task-abc/overview");
 
     expect(result).toEqual({ action: "none" });
-    expect(drive).toHaveBeenCalledWith(0);
+    expect(drive).not.toHaveBeenCalled();
+  });
+
+  it("hides driver and waits for events on task steps", async () => {
+    const emitter = mitt<OnboardingTourEvents>();
+    const orchestrator = new TourOrchestrator(
+      emitter,
+      {
+        onStepChange: vi.fn(),
+        onTourComplete: vi.fn(),
+        onTourDismiss: vi.fn(),
+        onTourStop: vi.fn(),
+        onMinimizeGuidance: vi.fn(),
+        onStatusChange: vi.fn(),
+        onAnalytics: vi.fn(),
+      },
+      () => ({ taskId: "task-abc" }),
+      () => true
+    );
+
+    orchestrator.start(onboardingTour, "chatbot-opened");
+    const result = await orchestrator.tick("/tasks/task-abc/overview");
+
+    expect(result).toEqual({ action: "none" });
+    expect(drive).not.toHaveBeenCalled();
+    expect(destroy).toHaveBeenCalled();
+    expect(orchestrator.getStatus()).toEqual({
+      status: "waitingEvent",
+      stepId: "chatbot-opened",
+      eventName: "onboarding:chatbot-opened",
+    });
+  });
+
+  it("skips driver popover when guidance is minimized", async () => {
+    const emitter = mitt<OnboardingTourEvents>();
+    const onMinimizeGuidance = vi.fn();
+    const orchestrator = new TourOrchestrator(
+      emitter,
+      {
+        onStepChange: vi.fn(),
+        onTourComplete: vi.fn(),
+        onTourDismiss: vi.fn(),
+        onTourStop: vi.fn(),
+        onMinimizeGuidance,
+        onStatusChange: vi.fn(),
+        onAnalytics: vi.fn(),
+      },
+      () => ({ taskId: "task-abc" }),
+      () => false
+    );
+
+    orchestrator.start(onboardingTour, "exercise-context");
+    const result = await orchestrator.tick("/tasks/task-abc/overview");
+
+    expect(result).toEqual({ action: "none" });
+    expect(drive).not.toHaveBeenCalled();
+    expect(orchestrator.getStatus()).toEqual({ status: "minimized", stepId: "exercise-context" });
   });
 });

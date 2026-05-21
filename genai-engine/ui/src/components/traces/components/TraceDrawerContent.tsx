@@ -22,6 +22,7 @@ import { useTask } from "@/hooks/useTask";
 import type { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
 import { EVENT_NAMES, track } from "@/services/amplitude";
+import { onboardingTourEvents } from "@/tours/onboarding/events";
 import { computeTraceMetrics, getTrace } from "@/services/tracing";
 import { wait } from "@/utils";
 
@@ -125,6 +126,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
   if (!trace) return null;
 
   return (
+    <Box data-tour-id="onboarding-trace-drawer" sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
     <TraceDrawerBody
       trace={trace}
       traceId={id}
@@ -135,6 +137,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
       onAddToDataset={() => {
         handleAddToDataset();
         setAddToDatasetOpen(true);
+        onboardingTourEvents.emit("onboarding:add-to-dataset-opened", undefined);
       }}
       onOpenSpanDrawer={(spanId) => setDrawerTarget({ target: "span", id: spanId })}
       onOpenPlayground={(spanId, taskId) => navigate(`/tasks/${taskId}/playgrounds/prompts?spanId=${spanId}`)}
@@ -145,10 +148,10 @@ export const TraceDrawerContent = ({ id }: Props) => {
       paginationContext={paginationContext}
       onNavigate={(target, navId) => setDrawerTarget({ target, id: navId })}
       renderAnnotationBar={({ annotations, traceId: tid, containerRef }) => (
-        <>
+        <Stack gap={1} data-tour-id="onboarding-trace-annotations">
           <AnnotationCell annotations={(annotations ?? []) as AgenticAnnotationResponse[]} traceId={tid} />
           <FeedbackPanel containerRef={containerRef} annotations={(annotations ?? []) as AgenticAnnotationResponse[]} traceId={tid} />
-        </>
+        </Stack>
       )}
       renderAfterDrawer={() => (
         <>
@@ -158,6 +161,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
       )}
       getSpanDetailsStrategy={getSpanDetailsStrategy as GetSpanDetailsStrategy}
     />
+    </Box>
   );
 };
 

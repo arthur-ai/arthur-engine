@@ -42,6 +42,8 @@ import { useDatasets } from "@/hooks/useDatasets";
 import { useTask } from "@/hooks/useTask";
 import { useTrace } from "@/hooks/useTrace";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
+import { useTourStore } from "@/stores/tour.store";
+import { onboardingTourEvents } from "@/tours/onboarding/events";
 
 type Props = {
   traceId: string;
@@ -108,6 +110,11 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
     },
     onSuccess: (_data, variables) => {
       enqueueSnackbar("Row added", { variant: "success" });
+      useTourStore.getState().actions.setRouteParams({
+        ...useTourStore.getState().routeParams,
+        datasetId: variables.datasetId,
+      });
+      onboardingTourEvents.emit("onboarding:trace-added-to-dataset", { datasetId: variables.datasetId });
       // Clear pending columns for this dataset
       setPendingColumns((prev) => {
         const updated = { ...prev };
@@ -291,7 +298,13 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
 
   return (
     <>
-      <Drawer open={open} onClose={handleClose} slotProps={{ paper: { sx: { width: "80%" } } }} anchor="right">
+      <Drawer
+        data-tour-id="onboarding-add-to-dataset-drawer"
+        open={open}
+        onClose={handleClose}
+        slotProps={{ paper: { sx: { width: "80%" } } }}
+        anchor="right"
+      >
         <form
           className="contents"
           onSubmit={(e) => {

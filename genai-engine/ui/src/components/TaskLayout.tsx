@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation, Outlet } from "react-router-dom";
 
 import { ChatbotDrawer } from "@/components/chatbot/ChatbotDrawer";
+import { TourTaskAutoStart } from "@/components/tour/TourTaskAutoStart";
 import { SidebarNavigation } from "@/components/SidebarNavigation";
 import { TaskErrorState } from "@/components/TaskErrorState";
 import { TaskLoadingState } from "@/components/TaskLoadingState";
@@ -81,11 +82,12 @@ export const TaskLayout: React.FC = () => {
 
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-950 flex flex-col overflow-hidden">
+      <TourTaskAutoStart taskId={taskId} />
       <ChatbotDrawer taskId={taskId} />
       <div className="flex flex-1 overflow-hidden">
         <SidebarNavigation onBackToDashboard={handleBack} onNavigate={handleNavigate} activeSection={activeSection} taskName={task?.name} />
 
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto" data-tour-id="onboarding-task-content">
           {loading && (
             <div className="py-6 px-6">
               <TaskLoadingState />

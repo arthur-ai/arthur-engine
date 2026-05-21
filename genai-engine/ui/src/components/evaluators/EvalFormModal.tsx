@@ -19,13 +19,16 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useEvaluatorTemplates } from "./hooks/useEvaluatorTemplates";
 import { EvalFormModalProps } from "./types";
 
+import { useEmitTourEvent } from "@/components/tour/hooks/useEmitTourEvent";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
+import type { OnboardingTourEvents } from "@/tours/onboarding/events";
 import type { CreateEvalRequest, LLMEval, ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";
 
 const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormModalProps) => {
   const apiClient = useApi();
   const { task } = useTask();
+  const emitTourEvent = useEmitTourEvent<OnboardingTourEvents>();
   const evaluatorTemplates = useEvaluatorTemplates();
   const [evalName, setEvalName] = useState("");
   const [instructions, setInstructions] = useState("");
@@ -169,6 +172,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
       };
 
       await onSubmit(evalName.trim(), data);
+      emitTourEvent("onboarding:eval-submitted", undefined);
 
       // Reset form on success
       setEvalName("");
@@ -325,7 +329,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
     <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
       <DialogTitle>Create New Eval</DialogTitle>
       <form onSubmit={handleSubmit}>
-        <DialogContent>
+        <DialogContent data-tour-id="onboarding-evaluator-form">
           <Box sx={{ display: "flex", flexDirection: "column", gap: 3, pt: 1 }}>
             <FormControl fullWidth>
               <FormLabel>

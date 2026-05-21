@@ -23,6 +23,7 @@ import { usePagination } from "@/hooks/usePagination";
 import { useTask } from "@/hooks/useTask";
 import type { DatasetResponse, NewDatasetRequest } from "@/lib/api-client/api-client";
 import { EVENT_NAMES, track } from "@/services/amplitude";
+import { onboardingTourEvents } from "@/tours/onboarding/events";
 
 export const DatasetsView: React.FC = () => {
   const { task } = useTask();
@@ -62,6 +63,7 @@ export const DatasetsView: React.FC = () => {
         dataset_id: dataset.id,
         task_id: task?.id,
       });
+      onboardingTourEvents.emit("onboarding:dataset-detail-opened", { datasetId: dataset.id });
       navigate(`/tasks/${task?.id}/datasets/${dataset.id}`);
     },
     [navigate, task?.id]
@@ -157,20 +159,22 @@ export const DatasetsView: React.FC = () => {
             onCreateDataset={!search.debouncedSearchQuery ? handleOpenCreate : undefined}
           />
         ) : (
-          <DatasetsTable
-            datasets={datasets}
-            sortOrder={sorting.sortOrder}
-            onSort={() => {
-              track(EVENT_NAMES.DATASET_SORT_CHANGED, { task_id: task?.id });
-              sorting.handleSort();
-            }}
-            onRowClick={handleRowClick}
-            onEdit={(dataset) => {
-              track(EVENT_NAMES.DATASET_EDIT_OPENED, { dataset_id: dataset.id, task_id: task?.id });
-              modals.openEditModal(dataset);
-            }}
-            onDelete={deleteMutation.mutateAsync}
-          />
+          <Box data-tour-id="onboarding-datasets-table" sx={{ minHeight: 0 }}>
+            <DatasetsTable
+              datasets={datasets}
+              sortOrder={sorting.sortOrder}
+              onSort={() => {
+                track(EVENT_NAMES.DATASET_SORT_CHANGED, { task_id: task?.id });
+                sorting.handleSort();
+              }}
+              onRowClick={handleRowClick}
+              onEdit={(dataset) => {
+                track(EVENT_NAMES.DATASET_EDIT_OPENED, { dataset_id: dataset.id, task_id: task?.id });
+                modals.openEditModal(dataset);
+              }}
+              onDelete={deleteMutation.mutateAsync}
+            />
+          </Box>
         )}
       </Box>
 
