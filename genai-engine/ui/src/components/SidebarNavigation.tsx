@@ -8,10 +8,13 @@ import {
   ArrowBackOutlined,
   InsightsOutlined,
   ChevronRightOutlined,
+  ChatOutlined,
 } from "@mui/icons-material";
 import { Link, Typography } from "@mui/material";
 import React from "react";
 import { useParams } from "react-router-dom";
+
+import { useDemoMode } from "@/contexts/EngineConfigContext";
 
 interface SidebarNavigationProps {
   onBackToDashboard: () => void;
@@ -33,40 +36,48 @@ interface NavigationItem {
   onClick?: () => void;
 }
 
-const navigationSections: NavigationSection[] = [
-  {
-    id: "observability",
-    label: "Observability",
-    items: [{ id: "traces", label: "Observe", icon: <TrendingUpOutlined /> }],
-  },
-  {
-    id: "prompts",
-    label: "Prompts",
-    items: [{ id: "prompts", label: "Prompt", icon: <DescriptionOutlined /> }],
-  },
-  {
-    id: "rag",
-    label: "RAG",
-    items: [{ id: "rag", label: "RAG", icon: <StorageOutlined /> }],
-  },
-  {
-    id: "evals",
-    label: "Evals",
-    items: [
-      { id: "evaluate", label: "Evaluate", icon: <BalanceOutlined /> },
-      { id: "datasets", label: "Dataset", icon: <TableChartOutlined /> },
-      { id: "transforms", label: "Transform", icon: <StorageOutlined /> },
-    ],
-  },
-  {
-    id: "agents",
-    label: "Agents",
-    items: [{ id: "test", label: "Test", icon: <ScienceOutlined /> }],
-  },
-];
+function buildNavigationSections(demoMode: boolean): NavigationSection[] {
+  const agentItems: NavigationItem[] = [{ id: "test", label: "Test", icon: <ScienceOutlined /> }];
+  if (demoMode) {
+    agentItems.push({ id: "chatbot", label: "Chatbot", icon: <ChatOutlined /> });
+  }
+  return [
+    {
+      id: "observability",
+      label: "Observability",
+      items: [{ id: "traces", label: "Observe", icon: <TrendingUpOutlined /> }],
+    },
+    {
+      id: "prompts",
+      label: "Prompts",
+      items: [{ id: "prompts", label: "Prompt", icon: <DescriptionOutlined /> }],
+    },
+    {
+      id: "rag",
+      label: "RAG",
+      items: [{ id: "rag", label: "RAG", icon: <StorageOutlined /> }],
+    },
+    {
+      id: "evals",
+      label: "Evals",
+      items: [
+        { id: "evaluate", label: "Evaluate", icon: <BalanceOutlined /> },
+        { id: "datasets", label: "Dataset", icon: <TableChartOutlined /> },
+        { id: "transforms", label: "Transform", icon: <StorageOutlined /> },
+      ],
+    },
+    {
+      id: "agents",
+      label: "Agents",
+      items: agentItems,
+    },
+  ];
+}
 
 export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDashboard, onNavigate, activeSection = "overview", taskName }) => {
   const { id } = useParams<{ id: string }>();
+  const { demoMode } = useDemoMode();
+  const navigationSections = buildNavigationSections(demoMode);
 
   return (
     <nav className="w-64 bg-white dark:bg-gray-900 shadow-sm border-r border-gray-200 dark:border-gray-700 flex flex-col h-full">
