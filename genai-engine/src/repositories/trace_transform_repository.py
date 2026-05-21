@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List
+from typing import Dict, List
 from uuid import UUID, uuid4
 
 from arthur_common.models.common_schemas import PaginationParameters
@@ -97,6 +97,32 @@ class TraceTransformRepository:
     def get_latest_definition(self, transform_id: UUID) -> TraceTransformDefinition:
         """Public accessor for the latest version's definition."""
         return self._get_latest_definition(transform_id)
+
+    def get_latest_definitions_for_transforms(
+        self,
+        transform_ids: List[UUID],
+    ) -> Dict[UUID, TraceTransformDefinition]:
+        """Fetch the latest version definition for each transform in a single query."""
+        if not transform_ids:
+            return {}
+
+        # Fetch all versions for these transforms, newest first.
+        # Since transforms are paginated, N is small so fetching all versions is fine.
+        versions = (
+            self.db_session.query(DatabaseTraceTransformVersion)
+            .filter(DatabaseTraceTransformVersion.transform_id.in_(transform_ids))
+            .order_by(desc(DatabaseTraceTransformVersion.version_number))
+            .all()
+        )
+
+        # Take the first (highest version number) seen per transform_id.
+        result: Dict[UUID, TraceTransformDefinition] = {}
+        for v in versions:
+            if v.transform_id not in result:
+                result[v.transform_id] = TraceTransformDefinition.model_validate(
+                    v.definition,
+                )
+        return result
 
     def get_transform_by_id(self, transform_id: UUID) -> TraceTransform | None:
         db_transform = self._get_db_transform_by_id(transform_id)
