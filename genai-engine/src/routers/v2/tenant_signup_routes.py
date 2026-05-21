@@ -87,6 +87,8 @@ def create_tenant_signup(
                 detail="Could not allocate organization",
             )
 
+        # Reuse the org's `demo-<hex>` name for the task so the two are easy
+        # to correlate by eye in dashboards and logs.
         task = TaskRepository(
             db_session,
             RuleRepository(db_session),
@@ -94,7 +96,7 @@ def create_tenant_signup(
             application_config,
         ).create_task(
             Task._from_request_model(
-                NewTaskRequest(name="Demo Task", is_agentic=True),
+                NewTaskRequest(name=db_org.name, is_agentic=True),
                 org_id=db_org.id,
             ),
             commit=False,

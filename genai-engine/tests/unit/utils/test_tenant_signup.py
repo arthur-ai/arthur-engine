@@ -33,7 +33,10 @@ def fake_org():
 
 @pytest.fixture
 def fake_task():
-    return SimpleNamespace(id=str(uuid.uuid4()), name="Demo Task")
+    # Task shares the org's demo-<hex> name in the new flow; the fake
+    # returned by the mocked repo just needs the same shape downstream code
+    # accesses (id + name).
+    return SimpleNamespace(id=str(uuid.uuid4()), name="demo-deadbeef")
 
 
 @pytest.fixture
@@ -95,9 +98,11 @@ def test_create_tenant_signup_happy_path(fake_org, fake_task, fake_api_key):
     # task was created with org_id threaded onto the Task schema + commit=False
     create_task_call = tasks_cls.return_value.create_task.call_args
     assert create_task_call.kwargs["commit"] is False
-    # the Task passed to create_task carries org_id from the new org
+    # the Task passed to create_task carries org_id from the new org AND
+    # reuses the org's demo-<hex> name (so the two correlate visually).
     task_arg = create_task_call.args[0]
     assert task_arg.org_id == fake_org.id
+    assert task_arg.name == fake_org.name
 
     # api key was created with TENANT-USER role, org_id, commit=False
     create_key_call = keys_cls.return_value.create_api_key.call_args
