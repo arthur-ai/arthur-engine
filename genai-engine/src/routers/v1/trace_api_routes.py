@@ -49,7 +49,7 @@ from utils.currency_display import (
     apply_currency_to_token_cost_item,
     get_display_currency,
 )
-from utils.users import permission_checker
+from utils.users import enforce_query_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
 logger = logging.getLogger(__name__)
@@ -113,6 +113,7 @@ def receive_traces(
     tags=["Traces"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+@enforce_query_org_scope()
 def list_traces_metadata(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -184,6 +185,7 @@ def list_traces_metadata(
     tags=["Spans"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+@enforce_query_org_scope()
 def list_spans_metadata(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -387,6 +389,7 @@ def compute_span_metrics(
     tags=["Sessions"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+@enforce_query_org_scope()
 def list_sessions_metadata(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -580,6 +583,7 @@ def compute_session_metrics(
     tags=["Users"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+@enforce_query_org_scope()
 def list_users_metadata(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -648,6 +652,7 @@ def list_users_metadata(
     tags=["Users"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+@enforce_query_org_scope()
 def get_user_details(
     user_id: str,
     task_ids: list[str] = Query(

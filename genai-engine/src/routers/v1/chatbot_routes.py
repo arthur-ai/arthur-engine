@@ -17,7 +17,7 @@ from schemas.chatbot_schemas import (
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Task, User
 from utils.constants import GENAI_ENGINE_INGRESS_URI_ENV_VAR
-from utils.users import permission_checker
+from utils.users import enforce_org_scope, permission_checker
 from utils.utils import get_env_var
 
 chatbot_routes = APIRouter(
@@ -33,6 +33,7 @@ chatbot_routes = APIRouter(
     tags=["Chatbot"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 async def stream_chatbot(
     request: Request,
     body: ChatbotRequest,

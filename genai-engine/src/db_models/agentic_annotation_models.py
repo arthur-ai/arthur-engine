@@ -11,8 +11,8 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    Uuid,
 )
-from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import TIMESTAMP
 
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 class DatabaseAgenticAnnotation(Base):
     __tablename__ = "agentic_annotations"
     id: Mapped[uuid.UUID] = mapped_column(
-        postgresql.UUID(as_uuid=True),
+        Uuid(as_uuid=True),
         primary_key=True,
         default=uuid.uuid4,
         index=True,
@@ -66,7 +66,7 @@ class DatabaseAgenticAnnotation(Base):
     )
 
     org_id: Mapped[uuid.UUID] = mapped_column(
-        postgresql.UUID(as_uuid=True),
+        Uuid(as_uuid=True),
         ForeignKey("organizations.id"),
         nullable=False,
         index=True,

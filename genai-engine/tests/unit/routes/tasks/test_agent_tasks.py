@@ -3,6 +3,7 @@ import random
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
+from utils.constants import DEFAULT_ORG_ID
 
 import pytest
 from openinference.semconv.trace import OpenInferenceSpanKindValues
@@ -107,6 +108,7 @@ def test_get_agent_tasks_gcp_task(client: GenaiEngineTestClientBase):
             is_autocreated=False,
             task_metadata=task_metadata.model_dump(mode="json"),
             archived=False,
+            org_id=DEFAULT_ORG_ID,
         )
         db_session.add(db_task)
         db_session.commit()
@@ -307,6 +309,7 @@ def test_get_agent_tasks_with_last_fetched(client: GenaiEngineTestClientBase):
             is_autocreated=False,
             task_metadata=task_metadata.model_dump(mode="json"),
             archived=False,
+            org_id=DEFAULT_ORG_ID,
         )
         db_session.add(db_task)
 
@@ -381,6 +384,7 @@ def test_get_agent_tasks_autocreated_otel_task(client: GenaiEngineTestClientBase
             is_autocreated=True,  # Key: auto-created from traces
             task_metadata=None,  # No provider metadata
             archived=False,
+            org_id=DEFAULT_ORG_ID,
         )
         db_session.add(db_task)
         db_session.commit()

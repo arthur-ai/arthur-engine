@@ -3,6 +3,7 @@
 import uuid
 from datetime import datetime, timedelta
 from typing import Generator
+from utils.constants import DEFAULT_ORG_ID
 
 import pytest
 
@@ -122,7 +123,7 @@ def spans_with_varied_counts() -> Generator:
             ),
         )
 
-    task = DatabaseTask(id="task_x", name="Test Task X", created_at=base_time, updated_at=base_time)
+    task = DatabaseTask(id="task_x", name="Test Task X", created_at=base_time, updated_at=base_time, org_id=DEFAULT_ORG_ID)
     db_session.add(task)
     db_session.commit()
 

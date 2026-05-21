@@ -3,6 +3,7 @@
 import json
 import uuid
 from datetime import datetime
+from utils.constants import DEFAULT_ORG_ID
 
 import pytest
 from sqlalchemy.orm import Session
@@ -31,6 +32,7 @@ def setup_test_data():
         name="Test Task for Transform Execution",
         created_at=datetime.now(),
         updated_at=datetime.now(),
+        org_id=DEFAULT_ORG_ID,
     )
     db_session.add(task)
     db_session.commit()
@@ -506,6 +508,7 @@ def test_execute_transform_with_multiple_matching_spans(
         created_at=datetime.now(),
         updated_at=datetime.now(),
         is_agentic=True,
+        org_id=DEFAULT_ORG_ID,
     )
     db_session.add(task)
     db_session.commit()

@@ -14,7 +14,7 @@ from schemas.agent_discovery_schemas import (
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
 from services.task.global_agent_polling_service import get_global_agent_polling_service
-from utils.users import permission_checker
+from utils.users import enforce_org_scope, permission_checker
 
 agent_polling_routes = APIRouter(
     prefix="/api/v1",
@@ -32,6 +32,7 @@ agent_polling_routes = APIRouter(
     status_code=status.HTTP_200_OK,
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def execute_agent_polling(
     task_id: str,
     db_session: Session = Depends(get_db_session),
