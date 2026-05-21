@@ -108,7 +108,7 @@ def create_tenant_signup(
         api_key_repo = ApiKeyRepository(db_session)
         api_key = api_key_repo.create_api_key(
             description=f"demo signup for org {db_org.name}",
-            roles=[APIKeysRolesEnum.TENANT_USER],
+            roles=[APIKeysRolesEnum.TENANT_USER],  # type: ignore[attr-defined]
             org_id=db_org.id,
             commit=False,
         )
@@ -118,6 +118,9 @@ def create_tenant_signup(
         db_session.rollback()
         raise
 
+    # create_api_key always populates .key via set_key() before returning;
+    # narrow the Optional[str] for the response model.
+    assert api_key.key is not None
     return DemoTaskSignupResponse(
         org_id=db_org.id,
         task_id=task.id,
