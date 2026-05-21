@@ -1,8 +1,8 @@
-# Tour (Phase 1)
+# Tour
 
-A driver.js-like guided tour library. Phase 1 ships the headless engine, React
-bindings, and a React Router 7 navigator adapter. The default MUI UI lands in
-Phase 2.
+A driver.js-like guided tour library. Ships a headless engine, React bindings,
+a React Router 7 navigator adapter, a default MUI UI, and a vendor-agnostic
+analytics plugin.
 
 ## Layers
 
@@ -22,13 +22,19 @@ features/tour/
 │   ├── useTourEvent.ts         # subscribe to a single bus event
 │   ├── adapters/reactRouter.ts # useReactRouterNavigator()
 │   └── primitives/             # TourPortal, Spotlight, PopoverAnchor, TargetTracker
+├── ui/                         # Default MUI UI
+│   ├── DefaultTour.tsx         # drop-in composition (portal + tracker + spotlight + popover)
+│   ├── DefaultIntroDialog.tsx  # section introduction modal
+│   └── DefaultStepPopover.tsx  # step popover body (Skip / Back / Next-Done)
+├── plugins/
+│   └── createAnalyticsPlugin.ts # forward all bus events to a caller-supplied tracker
 └── index.ts                    # barrel
 ```
 
-## Usage (Phase 1)
+## Usage
 
 ```tsx
-import { createTour, TourProvider, TargetTracker, TourPortal, Spotlight, PopoverAnchor, useTour, useReactRouterNavigator } from "@/features/tour";
+import { createTour, DefaultTour, TourProvider, useReactRouterNavigator } from "@/features/tour";
 
 const tour = createTour({
   config: {
@@ -70,45 +76,55 @@ const tour = createTour({
     ],
   },
 });
-```
 
-```tsx
 function TourBridge({ children }: { children: React.ReactNode }) {
   const navigator = useReactRouterNavigator();
   return (
     <TourProvider tour={tour} navigator={navigator}>
       {children}
-      <TourScene />
+      <DefaultTour />
     </TourProvider>
-  );
-}
-
-function TourScene() {
-  const { actions, activeStep } = useTour();
-  return (
-    <TourPortal>
-      <TargetTracker>
-        {({ rect }) => (
-          <>
-            <Spotlight rect={rect} highlight={activeStep?.step.highlight} />
-            <PopoverAnchor rect={rect} placement={activeStep?.step.placement ?? "bottom"}>
-              {activeStep ? (
-                <div style={{ background: "white", padding: 16, borderRadius: 8 }}>
-                  <p>{typeof activeStep.step.content === "function" ? null : activeStep.step.content}</p>
-                  <button onClick={() => actions.next()}>Next</button>
-                </div>
-              ) : null}
-            </PopoverAnchor>
-          </>
-        )}
-      </TargetTracker>
-    </TourPortal>
   );
 }
 ```
 
-The default MUI-based scene (popover + intro dialog + skip controls) ships in
-Phase 2, replacing the inline rendering above.
+`<DefaultTour />` is a drop-in that composes `TourPortal`, `TargetTracker`,
+`Spotlight`, `PopoverAnchor`, `DefaultIntroDialog`, and `DefaultStepPopover`. It
+returns `null` when the tour isn't running, so mount it once at the app root.
+
+If you need a custom scene, compose the headless primitives yourself — see the
+`ui/DefaultTour.tsx` source for the canonical pattern.
+
+## Default UI building blocks
+
+The components under `ui/` are exported individually so you can mix-and-match:
+
+- `<DefaultIntroDialog open section actions />` — the section introduction modal.
+- `<DefaultStepPopover activeStep actions />` — the popover body. Drop this inside your own `PopoverAnchor` if you want a custom backdrop or z-index.
+
+All three components use MUI theme tokens and the `sx` prop; no raw colors.
+
+## Analytics
+
+`createAnalyticsPlugin` forwards every event on the bus to a caller-supplied
+`track` function. It stays decoupled from any specific vendor — wire it up at
+the call site with whatever tracker the app uses:
+
+```tsx
+import { createAnalyticsPlugin, createTour } from "@/features/tour";
+import { track } from "@/services/amplitude";
+
+const tour = createTour({
+  config: {
+    /* ... */
+  },
+  plugins: [createAnalyticsPlugin({ track, prefix: "tour" })],
+});
+```
+
+Every bus event becomes a tracked event named `${prefix}.${eventName}` (e.g.
+`tour.step:enter`, `tour.section:skip`). The full payload is forwarded as the
+properties object.
 
 ## Routing
 
@@ -140,8 +156,18 @@ engine, or `useTourEvent(name, handler)` from React. Names:
 - `target:found | target:lost`
 - `navigation:before | navigation:after`
 
-## Plugins (preview)
+## Plugins
 
-Plugins receive `{ bus, registerTrigger, registerHighlight, use }`. Phase 1
-includes the plugin contract on the engine side; the analytics plugin and any
-custom highlight renderers ship as part of the default UI in Phase 2.
+Plugins receive `{ bus, registerTrigger, registerHighlight, use }`. They may:
+
+- Listen on `bus` for any tour lifecycle event (see Events above).
+- Register new advance triggers via `registerTrigger("key", factory)` and
+  reference them from `step.advanceOn` as `{ type: "custom", key: "key" }`.
+- Register custom highlight shapes via `registerHighlight("shape", renderer)`
+  (rendered by the default `Spotlight` once a plugin layer consumes the
+  registry — `box`, `circle`, and `none` are built-in today).
+- Push lifecycle middleware via `use(mw)` to run async side effects on every
+  step enter.
+
+Built-in plugins: [`createAnalyticsPlugin`](./plugins/createAnalyticsPlugin.ts).
+Plugin `install` may return a cleanup; `engine.destroy()` runs it.
