@@ -16413,14 +16413,14 @@
                 }
             }
         },
-        "/api/v1/tasks/demos": {
+        "/api/v2/tenant/signup": {
             "post": {
                 "tags": [
                     "Tenant Signup"
                 ],
                 "summary": "Create Tenant Signup",
                 "description": "Public tenant signup. Creates a new organization, a default demo task scoped to that org, and a TENANT-USER API key with `org_scope` set to the new org. Returns the four identifiers; the raw `api_key` value appears only in this response (the DB stores only its hash). Gated by GENAI_ENGINE_DEMO_MODE \u2014 returns 404 when disabled.",
-                "operationId": "create_tenant_signup_api_v1_tasks_demos_post",
+                "operationId": "create_tenant_signup_api_v2_tenant_signup_post",
                 "responses": {
                     "200": {
                         "description": "Successful Response",

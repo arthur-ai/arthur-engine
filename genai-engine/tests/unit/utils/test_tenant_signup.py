@@ -1,4 +1,4 @@
-"""POST /api/v1/tasks/demos public tenant signup (UP-4430).
+"""POST /api/v2/tenant/signup public tenant signup (UP-4430).
 
 Tests exercise the handler body directly via __wrapped__ (which the
 @public_endpoint decorator exposes through functools.wraps) so we don't
@@ -14,7 +14,7 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 
-from routers.v1.tenant_signup_routes import create_tenant_signup
+from routers.v2.tenant_signup_routes import create_tenant_signup
 
 
 def _call(db_session: MagicMock, application_config: MagicMock = None):
@@ -45,7 +45,7 @@ def fake_api_key():
 @pytest.mark.unit_tests
 def test_create_tenant_signup_demo_mode_off_returns_404():
     with patch(
-        "routers.v1.tenant_signup_routes.Config.demo_mode",
+        "routers.v2.tenant_signup_routes.Config.demo_mode",
         return_value=False,
     ):
         with pytest.raises(HTTPException) as exc:
@@ -59,17 +59,17 @@ def test_create_tenant_signup_happy_path(fake_org, fake_task, fake_api_key):
 
     with (
         patch(
-            "routers.v1.tenant_signup_routes.Config.demo_mode",
+            "routers.v2.tenant_signup_routes.Config.demo_mode",
             return_value=True,
         ),
         patch(
-            "routers.v1.tenant_signup_routes.OrganizationsRepository",
+            "routers.v2.tenant_signup_routes.OrganizationsRepository",
         ) as orgs_cls,
         patch(
-            "routers.v1.tenant_signup_routes.TaskRepository",
+            "routers.v2.tenant_signup_routes.TaskRepository",
         ) as tasks_cls,
         patch(
-            "routers.v1.tenant_signup_routes.ApiKeyRepository",
+            "routers.v2.tenant_signup_routes.ApiKeyRepository",
         ) as keys_cls,
     ):
         orgs_cls.return_value.create_organization.return_value = fake_org
@@ -119,17 +119,17 @@ def test_create_tenant_signup_retries_org_name_once_on_collision(
 
     with (
         patch(
-            "routers.v1.tenant_signup_routes.Config.demo_mode",
+            "routers.v2.tenant_signup_routes.Config.demo_mode",
             return_value=True,
         ),
         patch(
-            "routers.v1.tenant_signup_routes.OrganizationsRepository",
+            "routers.v2.tenant_signup_routes.OrganizationsRepository",
         ) as orgs_cls,
         patch(
-            "routers.v1.tenant_signup_routes.TaskRepository",
+            "routers.v2.tenant_signup_routes.TaskRepository",
         ) as tasks_cls,
         patch(
-            "routers.v1.tenant_signup_routes.ApiKeyRepository",
+            "routers.v2.tenant_signup_routes.ApiKeyRepository",
         ) as keys_cls,
     ):
         # First attempt collides, second succeeds.
@@ -160,17 +160,17 @@ def test_create_tenant_signup_returns_500_after_two_name_collisions():
 
     with (
         patch(
-            "routers.v1.tenant_signup_routes.Config.demo_mode",
+            "routers.v2.tenant_signup_routes.Config.demo_mode",
             return_value=True,
         ),
         patch(
-            "routers.v1.tenant_signup_routes.OrganizationsRepository",
+            "routers.v2.tenant_signup_routes.OrganizationsRepository",
         ) as orgs_cls,
         patch(
-            "routers.v1.tenant_signup_routes.TaskRepository",
+            "routers.v2.tenant_signup_routes.TaskRepository",
         ),
         patch(
-            "routers.v1.tenant_signup_routes.ApiKeyRepository",
+            "routers.v2.tenant_signup_routes.ApiKeyRepository",
         ),
     ):
         orgs_cls.return_value.create_organization.side_effect = [
@@ -194,17 +194,17 @@ def test_create_tenant_signup_rolls_back_when_api_key_step_fails(fake_org, fake_
 
     with (
         patch(
-            "routers.v1.tenant_signup_routes.Config.demo_mode",
+            "routers.v2.tenant_signup_routes.Config.demo_mode",
             return_value=True,
         ),
         patch(
-            "routers.v1.tenant_signup_routes.OrganizationsRepository",
+            "routers.v2.tenant_signup_routes.OrganizationsRepository",
         ) as orgs_cls,
         patch(
-            "routers.v1.tenant_signup_routes.TaskRepository",
+            "routers.v2.tenant_signup_routes.TaskRepository",
         ) as tasks_cls,
         patch(
-            "routers.v1.tenant_signup_routes.ApiKeyRepository",
+            "routers.v2.tenant_signup_routes.ApiKeyRepository",
         ) as keys_cls,
     ):
         orgs_cls.return_value.create_organization.return_value = fake_org

@@ -34,7 +34,7 @@ from utils.utils import public_endpoint
 logger = logging.getLogger(__name__)
 
 tenant_signup_routes = APIRouter(
-    prefix="/api/v1",
+    prefix="/api/v2",
     route_class=GenaiEngineRoute,
 )
 
@@ -42,7 +42,7 @@ _ORG_NAME_RETRIES = 2
 
 
 @tenant_signup_routes.post(
-    "/tasks/demos",
+    "/tenant/signup",
     description=(
         "Public tenant signup. Creates a new organization, a default demo "
         "task scoped to that org, and a TENANT-USER API key with `org_scope` "
