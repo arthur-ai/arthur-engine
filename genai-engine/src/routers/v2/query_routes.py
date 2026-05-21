@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from typing import Annotated
 
@@ -74,7 +75,7 @@ def query_inferences(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    org_scope=Depends(get_org_scope),
+    org_scope: uuid.UUID | None = Depends(get_org_scope),
 ) -> QueryInferencesResponse:
     try:
         valid_stage_results = {RuleResultEnum.PASS, RuleResultEnum.FAIL}

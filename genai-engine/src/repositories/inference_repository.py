@@ -26,6 +26,8 @@ from db_models import (
     DatabaseRule,
     DatabaseTask,
 )
+from db_models.rule_result_models import DatabaseRuleResultDetail
+from repositories.organizations_repository import DEFAULT_ORG_ID
 from schemas.custom_exceptions import AlreadyValidatedException
 from schemas.internal_schemas import (
     Embedding,
@@ -36,14 +38,15 @@ from schemas.internal_schemas import (
     ResponseRuleResult,
     RuleEngineResult,
 )
-from repositories.organizations_repository import DEFAULT_ORG_ID
 from utils.token_count import TokenCounter
 
 logger = logging.getLogger()
 tracer = trace.get_tracer(__name__)
 
 
-def _stamp_org_id_on_prompt(db_prompt, org_id) -> None:
+def _stamp_org_id_on_prompt(
+    db_prompt: Optional[DatabaseInferencePrompt], org_id: uuid.UUID
+) -> None:
     if db_prompt is None:
         return
     for rr in db_prompt.prompt_rule_results or []:
@@ -52,7 +55,9 @@ def _stamp_org_id_on_prompt(db_prompt, org_id) -> None:
             _stamp_org_id_on_rule_details(rr.rule_details, org_id)
 
 
-def _stamp_org_id_on_response(db_response, org_id) -> None:
+def _stamp_org_id_on_response(
+    db_response: Optional[DatabaseInferenceResponse], org_id: uuid.UUID
+) -> None:
     if db_response is None:
         return
     for rr in db_response.response_rule_results or []:
@@ -61,7 +66,9 @@ def _stamp_org_id_on_response(db_response, org_id) -> None:
             _stamp_org_id_on_rule_details(rr.rule_details, org_id)
 
 
-def _stamp_org_id_on_rule_details(details, org_id) -> None:
+def _stamp_org_id_on_rule_details(
+    details: DatabaseRuleResultDetail, org_id: uuid.UUID
+) -> None:
     details.org_id = org_id
     for c in details.claims or []:
         c.org_id = org_id

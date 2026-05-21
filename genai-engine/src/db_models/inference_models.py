@@ -5,7 +5,15 @@ from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 
 from arthur_common.models.enums import InferenceFeedbackTarget
-from sqlalchemy import TIMESTAMP, ForeignKey, Index, Integer, String, UniqueConstraint, Uuid
+from sqlalchemy import (
+    TIMESTAMP,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    UniqueConstraint,
+    Uuid,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base, CustomerDataString
