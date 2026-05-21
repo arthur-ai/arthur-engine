@@ -10,7 +10,7 @@ from arthur_common.models.enums import (
     PaginationSortMethod,
 )
 from fastapi import HTTPException
-from sqlalchemy import asc, desc
+from sqlalchemy import asc, desc, select
 from sqlalchemy.orm import Session
 
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
@@ -18,6 +18,7 @@ from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTest
 from db_models.llm_eval_models import DatabaseContinuousEval
 from db_models.task_models import DatabaseTask
 from db_models.telemetry_models import DatabaseTraceMetadata
+from repositories.organizations_repository import lookup_org_id
 from schemas.enums import TestRunStatus
 from schemas.internal_schemas import AgenticAnnotation, ContinuousEvalTestRun
 from services.continuous_eval import (
@@ -106,10 +107,9 @@ class ContinuousEvalTestRunRepository:
                 detail="Continuous eval queue service is not available.",
             )
 
-        task_org_id = (
-            self.db_session.query(DatabaseTask.org_id)
-            .filter(DatabaseTask.id == task_id)
-            .scalar()
+        task_org_id = lookup_org_id(
+            self.db_session,
+            select(DatabaseTask.org_id).where(DatabaseTask.id == task_id),
         )
 
         annotations = []

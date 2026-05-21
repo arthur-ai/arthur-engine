@@ -31,7 +31,6 @@ from clients.telemetry.telemetry_client import (
 from config.cache_config import cache_config
 from dependencies import get_application_config, get_db_session
 from repositories.metrics_repository import MetricRepository
-from repositories.organizations_repository import DEFAULT_ORG_ID
 from repositories.rules_repository import RuleRepository
 from repositories.task_polling_state_repository import TaskPollingStateRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
@@ -48,6 +47,7 @@ from schemas.internal_schemas import (
     User,
 )
 from utils import constants
+from utils.constants import DEFAULT_ORG_ID
 from utils.users import enforce_org_scope, enforce_query_org_scope, permission_checker
 from utils.utils import common_pagination_parameters, public_endpoint
 

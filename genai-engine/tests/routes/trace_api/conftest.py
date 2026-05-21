@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timedelta
 from typing import Generator, List
-from repositories.organizations_repository import DEFAULT_ORG_ID
+from utils.constants import DEFAULT_ORG_ID
 
 import pytest
 from arthur_common.models.enums import MetricType

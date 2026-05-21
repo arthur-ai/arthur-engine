@@ -15,7 +15,6 @@ from db_models.agentic_prompt_models import (
     DatabaseAgenticPromptVersionTag,
 )
 from db_models.task_models import DatabaseTask
-from repositories.organizations_repository import SYSTEM_ORG_ID
 from services.synthetic_data_prompts import (
     CONVERSATION_USER_PROMPT_TEMPLATE,
     INITIAL_GENERATION_USER_PROMPT_TEMPLATE,
@@ -30,6 +29,7 @@ from utils.constants import (
     SYNTHETIC_DATA_SYSTEM_PROMPT_NAME,
     SYNTHETIC_DATASET_TASK_ID,
     SYNTHETIC_DATASET_TASK_NAME,
+    SYSTEM_ORG_ID,
 )
 
 logger = logging.getLogger(__name__)

@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session
 
 import utils.constants as constants
 from custom_types import P, PadTextT, T
+from utils.constants import DEFAULT_ORG_ID, SYSTEM_ORG_ID
 
 _root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _genai_engine_version = None
@@ -189,11 +190,6 @@ def seed_database(db_session: Session) -> None:
     # the Postgres `now()` server default. We INSERT via raw SQL so SQLite
     # stores the UUIDs as CHAR text (matching the as_uuid=True read path)
     # rather than dialect-dependent integer/binary encodings.
-    # Imported lazily — repositories.organizations_repository -> db_models
-    # would create a circular import at module load time (db_models.base
-    # imports utils.utils for get_env_var).
-    from repositories.organizations_repository import DEFAULT_ORG_ID, SYSTEM_ORG_ID
-
     now = datetime.now(timezone.utc).isoformat()
     db_session.execute(
         text(

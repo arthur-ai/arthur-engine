@@ -3,7 +3,7 @@
 import json
 import uuid
 from datetime import datetime
-from repositories.organizations_repository import DEFAULT_ORG_ID
+from utils.constants import DEFAULT_ORG_ID
 
 import pytest
 from sqlalchemy.orm import Session

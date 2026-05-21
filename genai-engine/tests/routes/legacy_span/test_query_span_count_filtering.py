@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime, timedelta
 from typing import Generator
-from repositories.organizations_repository import DEFAULT_ORG_ID
+from utils.constants import DEFAULT_ORG_ID
 
 import pytest
 

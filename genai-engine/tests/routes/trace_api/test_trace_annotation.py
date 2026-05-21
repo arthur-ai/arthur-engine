@@ -8,7 +8,7 @@ from arthur_common.models.response_schemas import TraceResponse
 
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.llm_eval_models import DatabaseContinuousEval
-from repositories.organizations_repository import DEFAULT_ORG_ID
+from utils.constants import DEFAULT_ORG_ID
 from schemas.internal_schemas import AgenticAnnotation
 from schemas.request_schemas import AgenticAnnotationRequest
 from schemas.response_schemas import SessionTracesResponse

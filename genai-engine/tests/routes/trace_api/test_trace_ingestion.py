@@ -3,7 +3,7 @@ import random
 from datetime import datetime
 from unittest.mock import patch
 from uuid import uuid4
-from repositories.organizations_repository import DEFAULT_ORG_ID
+from utils.constants import DEFAULT_ORG_ID
 
 import pytest
 from opentelemetry.proto.common.v1.common_pb2 import AnyValue, KeyValue

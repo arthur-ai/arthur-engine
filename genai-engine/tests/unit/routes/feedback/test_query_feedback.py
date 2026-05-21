@@ -17,7 +17,7 @@ from db_models import (
     DatabaseInferenceResponse,
     DatabaseInferenceResponseContent,
 )
-from repositories.organizations_repository import DEFAULT_ORG_ID
+from utils.constants import DEFAULT_ORG_ID
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 from tests.unit.routes.feedback import FEEDBACK_DB_SESSION
 

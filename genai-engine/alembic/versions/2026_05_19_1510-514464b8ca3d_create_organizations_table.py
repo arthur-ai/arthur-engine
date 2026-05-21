@@ -29,6 +29,7 @@ doesn't double-insert.
 import sqlalchemy as sa
 
 from alembic import op
+from utils.constants import DEFAULT_ORG_ID, SYSTEM_ORG_ID
 
 # revision identifiers, used by Alembic.
 revision = "514464b8ca3d"
@@ -71,14 +72,19 @@ def upgrade() -> None:
     )
 
     # Seed with well-known UUIDs so application code can reference them
-    # by id without a name lookup. These ids are also asserted in
-    # `repositories/organizations_repository.py` and used by the
-    # backfill step in the next migration.
+    # by id without a name lookup. UUIDs are sourced from `utils.constants`
+    # — the single source of truth shared with app code and the
+    # task / annotation backfill migrations below.
     op.execute(
-        "INSERT INTO organizations (id, name, is_system) VALUES "
-        "('00000000-0000-0000-0000-000000000001', 'default', FALSE), "
-        "('00000000-0000-0000-0000-000000000002', 'system',  TRUE) "
-        "ON CONFLICT (name) DO NOTHING"
+        sa.text(
+            "INSERT INTO organizations (id, name, is_system) VALUES "
+            "(:default_id, 'default', FALSE), "
+            "(:system_id,  'system',  TRUE) "
+            "ON CONFLICT (name) DO NOTHING"
+        ).bindparams(
+            default_id=str(DEFAULT_ORG_ID),
+            system_id=str(SYSTEM_ORG_ID),
+        )
     )
 
 

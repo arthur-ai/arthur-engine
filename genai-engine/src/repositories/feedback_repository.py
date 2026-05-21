@@ -7,12 +7,13 @@ from arthur_common.models.enums import InferenceFeedbackTarget, PaginationSortMe
 from arthur_common.models.response_schemas import InferenceFeedbackResponse
 from fastapi import Depends
 from opentelemetry import trace
-from sqlalchemy import asc, desc
+from sqlalchemy import asc, desc, select
 from sqlalchemy.orm import Session
 
 from db_models import DatabaseInference, DatabaseInferenceFeedback, DatabaseTask
 from dependencies import get_db_session
-from repositories.organizations_repository import DEFAULT_ORG_ID
+from repositories.organizations_repository import lookup_org_id
+from utils.constants import DEFAULT_ORG_ID
 
 logger = logging.getLogger()
 tracer = trace.get_tracer(__name__)
@@ -30,14 +31,13 @@ class FeedbackRepository:
         reason: str,
         user_id: str | None,
     ) -> DatabaseInferenceFeedback:
-        org_id = (
-            self.db_session.query(DatabaseTask.org_id)
+        org_id = lookup_org_id(
+            self.db_session,
+            select(DatabaseTask.org_id)
             .join(DatabaseInference, DatabaseInference.task_id == DatabaseTask.id)
-            .filter(DatabaseInference.id == inference_id)
-            .scalar()
+            .where(DatabaseInference.id == inference_id),
+            default=DEFAULT_ORG_ID,
         )
-        if org_id is None:
-            org_id = DEFAULT_ORG_ID
         db_feedback = DatabaseInferenceFeedback(
             id=str(uuid.uuid4()),
             inference_id=inference_id,

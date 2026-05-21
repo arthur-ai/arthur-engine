@@ -32,7 +32,6 @@ from db_models import (
     DatabaseTaskToRules,
 )
 from repositories.metrics_repository import MetricRepository
-from repositories.organizations_repository import DEFAULT_ORG_ID
 from repositories.rules_repository import RuleRepository
 from repositories.service_name_mapping_repository import (
     ServiceNameMappingRepository,
@@ -43,6 +42,7 @@ from schemas.internal_schemas import (
     Task,
 )
 from utils import constants
+from utils.constants import DEFAULT_ORG_ID
 from utils.trace import get_nested_value
 
 tracer = trace.get_tracer(__name__)

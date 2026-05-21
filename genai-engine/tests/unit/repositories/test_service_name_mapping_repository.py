@@ -1,6 +1,6 @@
 import logging
 import uuid
-from repositories.organizations_repository import DEFAULT_ORG_ID
+from utils.constants import DEFAULT_ORG_ID
 
 import pytest
 import sqlalchemy as sa

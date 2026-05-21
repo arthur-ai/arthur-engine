@@ -31,6 +31,7 @@ CK constraints on that table.
 import sqlalchemy as sa
 
 from alembic import op
+from utils.constants import SYSTEM_ORG_ID
 
 # revision identifiers, used by Alembic.
 revision = "3abf881da275"
@@ -144,11 +145,12 @@ def upgrade() -> None:
          WHERE aa.continuous_eval_id = ce.id
            AND aa.org_id IS NULL
         """)
-    op.execute("""
-        UPDATE agentic_annotations
-           SET org_id = '00000000-0000-0000-0000-000000000002'  -- system org
-         WHERE org_id IS NULL
-        """)
+    op.execute(
+        sa.text(
+            "UPDATE agentic_annotations SET org_id = :system_id "
+            "WHERE org_id IS NULL"
+        ).bindparams(system_id=str(SYSTEM_ORG_ID))
+    )
 
     # Step C: SET NOT NULL + index + FK on every table. If any row's parent
     # chain was broken (orphan data not covered by the fallbacks above),

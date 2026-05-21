@@ -16,7 +16,7 @@ from arthur_common.models.request_schemas import NewRuleRequest, NewTaskRequest
 from dependencies import get_application_config
 from repositories.inference_repository import InferenceRepository
 from repositories.metrics_repository import MetricRepository
-from repositories.organizations_repository import DEFAULT_ORG_ID
+from utils.constants import DEFAULT_ORG_ID
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
 from schemas.internal_schemas import InferencePrompt, Rule, Task

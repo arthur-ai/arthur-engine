@@ -3,7 +3,7 @@ import random
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
-from repositories.organizations_repository import DEFAULT_ORG_ID
+from utils.constants import DEFAULT_ORG_ID
 
 import pytest
 from openinference.semconv.trace import OpenInferenceSpanKindValues

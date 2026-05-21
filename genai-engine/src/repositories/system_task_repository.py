@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session
 
 from db_models.task_models import DatabaseTask
 from repositories.agentic_prompts_repository import AgenticPromptRepository
-from repositories.organizations_repository import SYSTEM_ORG_ID
 from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.request_schemas import CreateAgenticPromptRequest
 from services.chatbot.chatbot_prompts import (
@@ -27,6 +26,7 @@ from utils.constants import (
     CHATBOT_PROMPT_NAME,
     CHATBOT_SUMMARIZER_PROMPT_NAME,
     EMPTY_MODEL_PROVIDER,
+    SYSTEM_ORG_ID,
 )
 
 logger = logging.getLogger(__name__)

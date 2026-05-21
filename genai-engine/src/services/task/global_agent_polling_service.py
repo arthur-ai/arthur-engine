@@ -18,7 +18,6 @@ from db_models import DatabaseTask
 from dependencies import get_db_session
 from repositories.configuration_repository import ConfigurationRepository
 from repositories.metrics_repository import MetricRepository
-from repositories.organizations_repository import DEFAULT_ORG_ID
 from repositories.rules_repository import RuleRepository
 from repositories.service_name_mapping_repository import ServiceNameMappingRepository
 from repositories.span_repository import SpanRepository
@@ -32,6 +31,7 @@ from services.trace.external_trace_retrieval_service import (
     ExternalTraceRetrievalService,
 )
 from utils import constants
+from utils.constants import DEFAULT_ORG_ID
 from utils.gcp import parse_gcp_resource_path
 from utils.utils import get_env_var
 

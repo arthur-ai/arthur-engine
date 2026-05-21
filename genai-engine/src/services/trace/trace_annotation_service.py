@@ -7,13 +7,14 @@ from arthur_common.models.enums import AgenticAnnotationType, PaginationSortMeth
 from arthur_common.models.response_schemas import (
     TraceResponse,
 )
-from sqlalchemy import asc, desc
+from sqlalchemy import asc, desc, select
 from sqlalchemy.orm import Session
 
 from custom_types import QueryT
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.task_models import DatabaseTask
 from db_models.telemetry_models import DatabaseTraceMetadata
+from repositories.organizations_repository import lookup_org_id
 from schemas.internal_schemas import AgenticAnnotation
 from schemas.request_schemas import (
     AgenticAnnotationListFilterRequest,
@@ -91,10 +92,9 @@ class TraceAnnotationService:
             existing_annotation.updated_at = datetime.now()
             db_annotation = existing_annotation
         else:
-            task_org_id = (
-                self.db_session.query(DatabaseTask.org_id)
-                .filter(DatabaseTask.id == trace.task_id)
-                .scalar()
+            task_org_id = lookup_org_id(
+                self.db_session,
+                select(DatabaseTask.org_id).where(DatabaseTask.id == trace.task_id),
             )
             db_annotation = DatabaseAgenticAnnotation(
                 id=uuid.uuid4(),

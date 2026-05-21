@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 from unittest.mock import MagicMock, patch
-from repositories.organizations_repository import DEFAULT_ORG_ID
+from utils.constants import DEFAULT_ORG_ID
 
 import pytest
 from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus

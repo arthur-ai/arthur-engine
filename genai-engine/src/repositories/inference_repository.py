@@ -12,7 +12,7 @@ from fastapi import HTTPException
 from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlalchemy import paginate
 from opentelemetry import trace
-from sqlalchemy import and_, asc, desc, func, or_
+from sqlalchemy import and_, asc, desc, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased, selectinload
 
@@ -27,7 +27,7 @@ from db_models import (
     DatabaseTask,
 )
 from db_models.rule_result_models import DatabaseRuleResultDetail
-from repositories.organizations_repository import DEFAULT_ORG_ID
+from repositories.organizations_repository import lookup_org_id
 from schemas.custom_exceptions import AlreadyValidatedException
 from schemas.internal_schemas import (
     Embedding,
@@ -38,6 +38,7 @@ from schemas.internal_schemas import (
     ResponseRuleResult,
     RuleEngineResult,
 )
+from utils.constants import DEFAULT_ORG_ID
 from utils.token_count import TokenCounter
 
 logger = logging.getLogger()
@@ -359,15 +360,15 @@ class InferenceRepository:
             logger.warning(f"Inference {inference.id} prompt had failed rule results.")
         db_inference = inference._to_database_model()
 
-        org_id = DEFAULT_ORG_ID
-        if task_id is not None:
-            task_org_id = (
-                self.db_session.query(DatabaseTask.org_id)
-                .filter(DatabaseTask.id == task_id)
-                .scalar()
+        org_id = (
+            lookup_org_id(
+                self.db_session,
+                select(DatabaseTask.org_id).where(DatabaseTask.id == task_id),
+                default=DEFAULT_ORG_ID,
             )
-            if task_org_id is not None:
-                org_id = task_org_id
+            if task_id is not None
+            else DEFAULT_ORG_ID
+        )
         _stamp_org_id_on_prompt(db_inference.inference_prompt, org_id)
 
         self.db_session.add(db_inference)
@@ -395,15 +396,17 @@ class InferenceRepository:
         db_inference_response = inference_response._to_database_model()
         try:
             db_inference = self.get_inference(inference_id)
-            org_id = DEFAULT_ORG_ID
-            if db_inference is not None and db_inference.task_id is not None:
-                task_org_id = (
-                    self.db_session.query(DatabaseTask.org_id)
-                    .filter(DatabaseTask.id == db_inference.task_id)
-                    .scalar()
+            org_id = (
+                lookup_org_id(
+                    self.db_session,
+                    select(DatabaseTask.org_id).where(
+                        DatabaseTask.id == db_inference.task_id
+                    ),
+                    default=DEFAULT_ORG_ID,
                 )
-                if task_org_id is not None:
-                    org_id = task_org_id
+                if db_inference is not None and db_inference.task_id is not None
+                else DEFAULT_ORG_ID
+            )
             _stamp_org_id_on_response(db_inference_response, org_id)
             self.db_session.add(db_inference_response)
             db_inference.updated_at = datetime.now()
