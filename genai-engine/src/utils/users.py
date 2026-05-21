@@ -144,55 +144,6 @@ def enforce_org_scope(
     return decorator
 
 
-def enforce_body_org_scope(
-    body_field: str = "task_id",
-) -> Callable[[FunctionT], FunctionT]:
-    """Pattern B: enforce that the request body's `task_id` belongs to the caller's org.
-
-    Locates the Pydantic body model in handler kwargs by attribute presence
-    (the first kwarg that exposes `body_field`). Admin callers pass through;
-    tenants get 404 on mismatch or 400 when the field is missing.
-    """
-
-    def decorator(func: FunctionT) -> FunctionT:
-        @wraps(func)
-        async def wrapper(*args: Any, **kwargs: Any) -> Any:
-            user: User | None = kwargs.get("current_user")
-            if _is_admin(user):
-                return await _call(func, *args, **kwargs)
-
-            assert user is not None
-            body_task_id: Any = None
-            for value in kwargs.values():
-                if value is user:
-                    continue
-                if hasattr(value, body_field):
-                    body_task_id = getattr(value, body_field)
-                    if body_task_id is not None:
-                        break
-
-            if body_task_id is None:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"{body_field!r} is required in the request body",
-                )
-
-            db_session = _get_db_session_from_kwargs(kwargs)
-            task_org_id = _fetch_task_org_id(db_session, body_task_id)
-            if task_org_id is None or task_org_id != str(user.org_scope):
-                raise HTTPException(
-                    status_code=404,
-                    detail="Task not found",
-                    headers={"full_stacktrace": "false"},
-                )
-
-            return await _call(func, *args, **kwargs)
-
-        return cast(FunctionT, wrapper)
-
-    return decorator
-
-
 def _find_task_ids_holder(
     kwargs: dict[str, Any],
     field: str,

@@ -36,7 +36,7 @@ from schemas.response_schemas import (
     TransformExtractionResponseList,
 )
 from utils.transform_executor import execute_transform
-from utils.users import permission_checker
+from utils.users import enforce_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
 transform_routes = APIRouter(
@@ -52,6 +52,7 @@ transform_routes = APIRouter(
     tags=["Transforms"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def list_transforms_for_task(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -142,6 +143,7 @@ def get_transform_dependents(
     tags=["Transforms"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def create_transform_for_task(
     request: NewTraceTransformRequest,
     db_session: Session = Depends(get_db_session),

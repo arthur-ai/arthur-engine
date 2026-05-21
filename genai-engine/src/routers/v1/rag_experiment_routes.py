@@ -20,7 +20,7 @@ from schemas.rag_experiment_schemas import (
     RagTestCaseListResponse,
 )
 from services.rag_experiment_executor import RagExperimentExecutor
-from utils.users import permission_checker
+from utils.users import enforce_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
 rag_experiment_routes = APIRouter(
@@ -38,6 +38,7 @@ rag_experiment_routes = APIRouter(
     tags=["RAG Experiments"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def list_rag_experiments(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -100,6 +101,7 @@ def list_rag_experiments(
     tags=["RAG Experiments"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def create_rag_experiment(
     experiment_request: CreateRagExperimentRequest,
     db_session: Session = Depends(get_db_session),

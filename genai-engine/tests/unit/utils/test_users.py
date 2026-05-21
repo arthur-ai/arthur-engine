@@ -4,13 +4,11 @@ from unittest.mock import MagicMock
 import pytest
 from arthur_common.models.common_schemas import AuthUserRole
 from fastapi import HTTPException
-from pydantic import BaseModel
 
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
 from utils import constants
 from utils.users import (
-    enforce_body_org_scope,
     enforce_org_scope,
     enforce_query_org_scope,
     get_user_info_from_payload,
@@ -303,7 +301,9 @@ def _tenant(org_id: uuid.UUID) -> User:
     )
 
 
-def _mock_session_with_task_org_map(task_to_org: dict[uuid.UUID, uuid.UUID]) -> MagicMock:
+def _mock_session_with_task_org_map(
+    task_to_org: dict[uuid.UUID, uuid.UUID],
+) -> MagicMock:
     """Build a MagicMock SQLAlchemy session that responds to:
 
     - select(DatabaseTask.org_id).where(DatabaseTask.id == <id>)   -> scalar_one_or_none
@@ -344,9 +344,7 @@ async def test_enforce_org_scope_admin_passthrough():
     def handler(task_id, db_session, current_user) -> bool:
         return True
 
-    result = await handler(
-        task_id=T2A, db_session=MagicMock(), current_user=_admin()
-    )
+    result = await handler(task_id=T2A, db_session=MagicMock(), current_user=_admin())
     assert result is True
 
 
@@ -358,9 +356,7 @@ async def test_enforce_org_scope_tenant_match():
         return True
 
     session = _mock_session_with_task_org_map({T1A: O1, T1B: O1, T2A: O2})
-    result = await handler(
-        task_id=T1A, db_session=session, current_user=_tenant(O1)
-    )
+    result = await handler(task_id=T1A, db_session=session, current_user=_tenant(O1))
     assert result is True
 
 
@@ -387,62 +383,6 @@ async def test_enforce_org_scope_tenant_task_missing_returns_404():
     session = _mock_session_with_task_org_map({})  # no tasks
     with pytest.raises(HTTPException) as exc:
         await handler(task_id=T1A, db_session=session, current_user=_tenant(O1))
-    assert exc.value.status_code == 404
-
-
-# Pattern B — @enforce_body_org_scope
-
-
-class _BodyWithTaskId(BaseModel):
-    task_id: uuid.UUID
-    name: str = "x"
-
-
-@pytest.mark.asyncio
-@pytest.mark.unit_tests
-async def test_enforce_body_org_scope_admin_passthrough():
-    @enforce_body_org_scope()
-    def handler(body, db_session, current_user) -> bool:
-        return True
-
-    result = await handler(
-        body=_BodyWithTaskId(task_id=T2A),
-        db_session=MagicMock(),
-        current_user=_admin(),
-    )
-    assert result is True
-
-
-@pytest.mark.asyncio
-@pytest.mark.unit_tests
-async def test_enforce_body_org_scope_tenant_match():
-    @enforce_body_org_scope()
-    def handler(body, db_session, current_user) -> bool:
-        return True
-
-    session = _mock_session_with_task_org_map({T1A: O1, T2A: O2})
-    result = await handler(
-        body=_BodyWithTaskId(task_id=T1A),
-        db_session=session,
-        current_user=_tenant(O1),
-    )
-    assert result is True
-
-
-@pytest.mark.asyncio
-@pytest.mark.unit_tests
-async def test_enforce_body_org_scope_tenant_mismatch_returns_404():
-    @enforce_body_org_scope()
-    def handler(body, db_session, current_user) -> bool:
-        return True
-
-    session = _mock_session_with_task_org_map({T1A: O1, T2A: O2})
-    with pytest.raises(HTTPException) as exc:
-        await handler(
-            body=_BodyWithTaskId(task_id=T2A),
-            db_session=session,
-            current_user=_tenant(O1),
-        )
     assert exc.value.status_code == 404
 
 
@@ -485,9 +425,7 @@ async def test_enforce_query_org_scope_tenant_outside_returns_403():
 
     session = _mock_session_with_task_org_map({T1A: O1, T2A: O2})
     with pytest.raises(HTTPException) as exc:
-        await handler(
-            task_ids=[T2A], db_session=session, current_user=_tenant(O1)
-        )
+        await handler(task_ids=[T2A], db_session=session, current_user=_tenant(O1))
     assert exc.value.status_code == 403
 
 
