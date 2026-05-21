@@ -590,6 +590,10 @@ class Task(BaseModel):
     is_autocreated: bool = False
     is_system_task: bool = False
     is_archived: bool = False
+    # FK to organizations.id; required after multi-tenancy. Caller identity
+    # determines the value at create time (admin -> default org, tenant ->
+    # caller's org). Not user-settable via request bodies.
+    org_id: uuid.UUID
     task_metadata: Optional[TaskMetadata] = None
     service_names: List[str] = Field(
         default_factory=list,
@@ -599,7 +603,7 @@ class Task(BaseModel):
     metric_links: Optional[List[TaskToMetricLink]] = None
 
     @staticmethod
-    def _from_request_model(x: NewTaskRequest) -> "Task":
+    def _from_request_model(x: NewTaskRequest, org_id: uuid.UUID) -> "Task":
         # Convert AgentMetadata request to new TaskMetadata format for DB storage
         task_metadata = None
         if x.agent_metadata:
@@ -629,6 +633,7 @@ class Task(BaseModel):
             created_at=datetime.now(),
             updated_at=datetime.now(),
             is_agentic=x.is_agentic,
+            org_id=org_id,
             task_metadata=task_metadata,
         )
 
@@ -643,6 +648,7 @@ class Task(BaseModel):
             is_autocreated=x.is_autocreated,
             is_system_task=x.is_system_task,
             is_archived=x.archived,
+            org_id=x.org_id,
             task_metadata=(
                 TaskMetadata.model_validate(x.task_metadata)
                 if x.task_metadata
@@ -665,6 +671,7 @@ class Task(BaseModel):
             is_agentic=self.is_agentic,
             is_autocreated=self.is_autocreated,
             is_system_task=self.is_system_task,
+            org_id=self.org_id,
             task_metadata=(
                 self.task_metadata.model_dump(exclude_none=True)
                 if self.task_metadata

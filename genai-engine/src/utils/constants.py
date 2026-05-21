@@ -1,5 +1,6 @@
 import math
 import os
+import uuid
 
 from openinference.semconv.trace import (
     OpenInferenceSpanKindValues,
@@ -418,6 +419,13 @@ UNMAPPED_TASK_ID = "539b1da6-ebf8-4fe2-91e5-db2dc8ff626d"
 
 ARTHUR_SYSTEM_TASK_ID = "fcba8383-55ce-42ec-a5c3-528f3492ea8a"
 ARTHUR_SYSTEM_TASK_NAME = "__arthur_system_task__"
+
+# Well-known organizations seeded by the create_organizations_table migration.
+# Single source of truth — application code, migrations, and tests must
+# reference these constants instead of duplicating the UUID literals.
+# Names ("default", "system") may eventually be user-editable; the UUIDs are stable.
+DEFAULT_ORG_ID: uuid.UUID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+SYSTEM_ORG_ID: uuid.UUID = uuid.UUID("00000000-0000-0000-0000-000000000002")
 
 # Chatbot system prompt name (stored as an agentic prompt on the chatbot system task)
 CHATBOT_PROMPT_NAME = "__chatbot_prompt__"

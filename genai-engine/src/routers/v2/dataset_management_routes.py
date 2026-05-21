@@ -41,7 +41,7 @@ from utils.constants import (
     SYNTHETIC_DATA_SYSTEM_PROMPT_NAME,
     SYNTHETIC_DATASET_TASK_ID,
 )
-from utils.users import permission_checker
+from utils.users import enforce_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
 dataset_management_routes = APIRouter(
@@ -63,6 +63,7 @@ datasets_router_tag = "Datasets"
     tags=[datasets_router_tag],
 )
 @permission_checker(permissions=PermissionLevelsEnum.DATASET_WRITE.value)
+@enforce_org_scope()
 def create_dataset(
     request: NewDatasetRequest,
     db_session: Session = Depends(get_db_session),
@@ -127,6 +128,7 @@ def delete_dataset(
     response_model=SearchDatasetsResponse,
 )
 @permission_checker(permissions=PermissionLevelsEnum.DATASET_READ.value)
+@enforce_org_scope()
 def get_datasets(
     pagination_parameters: Annotated[
         PaginationParameters,

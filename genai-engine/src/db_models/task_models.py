@@ -4,8 +4,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional
 
-from sqlalchemy import JSON, TIMESTAMP, Boolean, ForeignKey, String
-from sqlalchemy.dialects import postgresql
+from sqlalchemy import JSON, TIMESTAMP, Boolean, ForeignKey, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base, IsArchivable
@@ -28,7 +27,7 @@ class DatabaseTask(Base, IsArchivable):
     is_autocreated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_system_task: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     org_id: Mapped[uuid.UUID] = mapped_column(
-        postgresql.UUID(as_uuid=True),
+        Uuid(as_uuid=True),
         ForeignKey("organizations.id"),
         nullable=False,
         index=True,

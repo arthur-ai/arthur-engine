@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime, timedelta, timezone
+from utils.constants import DEFAULT_ORG_ID
 
 import pytest
 from sqlalchemy import delete, select
@@ -83,6 +84,7 @@ def _make_task(session: Session) -> str:
         updated_at=now,
         is_agentic=False,
         archived=False,
+        org_id=DEFAULT_ORG_ID,
     )
     session.add(task)
     session.commit()
@@ -330,6 +332,7 @@ def test_delete_trace_batch_removes_agentic_annotations() -> None:
             trace_id=trace_to_delete,
             created_at=now,
             updated_at=now,
+            org_id=DEFAULT_ORG_ID,
         )
     )
     db_session.add(
@@ -340,6 +343,7 @@ def test_delete_trace_batch_removes_agentic_annotations() -> None:
             trace_id=trace_survivor,
             created_at=now,
             updated_at=now,
+            org_id=DEFAULT_ORG_ID,
         )
     )
     db_session.commit()

@@ -351,10 +351,35 @@ def get_validated_task(
     task_id: UUID,
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> Task:
-    """Dependency that validates task exists"""
+    """Dependency that validates the task exists and (for tenant callers) belongs to caller's org.
+
+    Admin callers (org_scope is None) pass through and can resolve any task.
+    Tenant callers receive a 404 if the task does not exist or belongs to a
+    different org — 404 rather than 403 to prevent cross-org enumeration.
+    """
     task_repo = get_task_repository(db_session, application_config)
-    task = task_repo.get_task_by_id(str(task_id))
+    try:
+        task = task_repo.get_task_by_id(str(task_id))
+    except HTTPException as exc:
+        # For tenant callers, normalize the "task does not exist" 404 body to
+        # match the "task in another org" 404 below — otherwise the response
+        # body differs between the two cases and acts as an enumeration oracle.
+        if exc.status_code == 404 and org_scope is not None:
+            raise HTTPException(
+                status_code=404,
+                detail="Task not found",
+                headers={"full_stacktrace": "false"},
+            )
+        raise
+
+    if org_scope is not None and str(task.org_id) != str(org_scope):
+        raise HTTPException(
+            status_code=404,
+            detail="Task not found",
+            headers={"full_stacktrace": "false"},
+        )
 
     return task
 

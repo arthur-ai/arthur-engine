@@ -21,7 +21,7 @@ from schemas.agentic_notebook_schemas import (
 )
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Task, User
-from utils.users import permission_checker
+from utils.users import enforce_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
 agentic_notebook_routes = APIRouter(
@@ -40,6 +40,7 @@ agentic_notebook_routes = APIRouter(
     tags=["Agentic Notebooks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def create_agentic_notebook(
     notebook_request: CreateAgenticNotebookRequest,
     db_session: Session = Depends(get_db_session),
@@ -76,6 +77,7 @@ def create_agentic_notebook(
     tags=["Agentic Notebooks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def list_agentic_notebooks(
     pagination_parameters: Annotated[
         PaginationParameters,

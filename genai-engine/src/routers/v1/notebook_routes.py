@@ -21,7 +21,7 @@ from schemas.notebook_schemas import (
 from schemas.prompt_experiment_schemas import (
     PromptExperimentListResponse,
 )
-from utils.users import permission_checker
+from utils.users import enforce_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
 notebook_routes = APIRouter(
@@ -40,6 +40,7 @@ notebook_routes = APIRouter(
     tags=["Notebooks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def create_notebook(
     notebook_request: CreateNotebookRequest,
     db_session: Session = Depends(get_db_session),
@@ -76,6 +77,7 @@ def create_notebook(
     tags=["Notebooks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def list_notebooks(
     pagination_parameters: Annotated[
         PaginationParameters,
