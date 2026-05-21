@@ -9,7 +9,11 @@ from arthur_common.models.llm_model_providers import ModelProvider
 from fastapi import HTTPException
 from litellm import completion_cost, get_model_cost_map, model_cost_map_url
 from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
-from litellm.types.utils import ModelResponse, TextCompletionResponse
+from litellm.types.utils import (
+    ModelResponse,
+    TextCompletionResponse,
+    TokenCountResponse,
+)
 from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
@@ -180,6 +184,18 @@ class LLMClient:
             model_name = getattr(response, "model", "unknown")
             logger.warning(f"Cost calculation not available for model={model_name}")
             return "0.00"
+
+    async def acount_tokens(
+        self,
+        model: str,
+        messages: List[dict[str, Any]],
+    ) -> TokenCountResponse:
+        return await litellm.acount_tokens(
+            model=model,
+            messages=messages,
+            api_key=self.api_key,
+            api_base=self.api_base,
+        )
 
     def completion(
         self,

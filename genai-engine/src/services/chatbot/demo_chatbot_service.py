@@ -1,5 +1,5 @@
 import logging
-from typing import AsyncGenerator, List, MutableMapping, Optional, Tuple
+from typing import AsyncGenerator, List, Optional, Tuple
 
 from arthur_common.models.llm_model_providers import (
     MessageRole,
@@ -7,7 +7,6 @@ from arthur_common.models.llm_model_providers import (
     OpenAIMessage,
     ToolCall,
 )
-from cachetools import TTLCache
 from sqlalchemy.orm import Session
 
 from schemas.agentic_prompt_schemas import AgenticPrompt
@@ -20,22 +19,6 @@ from utils.sse_events import format_sse_json
 from utils.wikipedia_tools import wikipedia_fetch, wikipedia_search
 
 logger = logging.getLogger(__name__)
-
-
-DEMO_CONVERSATION_HISTORIES: MutableMapping[Tuple[str, str], List[OpenAIMessage]] = (
-    TTLCache(maxsize=1000, ttl=3600)
-)
-
-
-def get_demo_conversation_history(
-    task_id: str,
-    user_id: str,
-) -> List[OpenAIMessage]:
-    return DEMO_CONVERSATION_HISTORIES.get((task_id, user_id), [])
-
-
-def clear_demo_conversation_history(task_id: str, user_id: str) -> None:
-    DEMO_CONVERSATION_HISTORIES.pop((task_id, user_id), None)
 
 
 class DemoChatbotService(BaseChatbotService):
@@ -63,35 +46,16 @@ class DemoChatbotService(BaseChatbotService):
     def agent_name(self) -> str:
         return "arthur_demo_chatbot"
 
-    def load_history(
-        self,
-        user_id: str,
-        conversation_id: Optional[str] = None,
-    ) -> List[OpenAIMessage]:
-        return get_demo_conversation_history(self.task_id, user_id)
-
-    def save_history(
-        self,
-        user_id: str,
-        messages: List[OpenAIMessage],
-        conversation_id: Optional[str] = None,
-    ) -> None:
-        DEMO_CONVERSATION_HISTORIES[(self.task_id, user_id)] = messages
-
     def build_prompt(
         self,
         chatbot_prompt: AgenticPrompt,
         model_provider: ModelProvider,
         model_name: str,
         history: List[OpenAIMessage],
-        user_message: str,
     ) -> AgenticPrompt:
         chatbot_prompt.model_provider = model_provider
         chatbot_prompt.model_name = model_name
-
-        messages = list(history) if history else chatbot_prompt.messages
-        messages.append(OpenAIMessage(role=MessageRole.USER, content=user_message))
-        chatbot_prompt.messages = messages
+        chatbot_prompt.messages = list(chatbot_prompt.messages) + list(history)
         return chatbot_prompt
 
     async def execute_tool(
@@ -111,7 +75,12 @@ class DemoChatbotService(BaseChatbotService):
             yield (
                 format_sse_json(
                     SSEEventType.TOOL_CALL,
-                    {"name": tool_name, "query": search_args.query},
+                    {
+                        "tool_call_id": tool_call_id,
+                        "name": tool_name,
+                        "arguments": args_str,
+                        "query": search_args.query,
+                    },
                 ),
                 None,
             )
@@ -127,7 +96,14 @@ class DemoChatbotService(BaseChatbotService):
             self.tracing.end_span(tool_span)
 
             yield (
-                format_sse_json(SSEEventType.TOOL_RESULT, {"name": tool_name}),
+                format_sse_json(
+                    SSEEventType.TOOL_RESULT,
+                    {
+                        "tool_call_id": tool_call_id,
+                        "content": content,
+                        "name": tool_name,
+                    },
+                ),
                 None,
             )
             yield (
@@ -148,7 +124,12 @@ class DemoChatbotService(BaseChatbotService):
             yield (
                 format_sse_json(
                     SSEEventType.TOOL_CALL,
-                    {"name": tool_name, "title": fetch_args.title},
+                    {
+                        "tool_call_id": tool_call_id,
+                        "name": tool_name,
+                        "arguments": args_str,
+                        "title": fetch_args.title,
+                    },
                 ),
                 None,
             )
@@ -168,7 +149,14 @@ class DemoChatbotService(BaseChatbotService):
             self.tracing.end_span(tool_span)
 
             yield (
-                format_sse_json(SSEEventType.TOOL_RESULT, {"name": tool_name}),
+                format_sse_json(
+                    SSEEventType.TOOL_RESULT,
+                    {
+                        "tool_call_id": tool_call_id,
+                        "content": content,
+                        "name": tool_name,
+                    },
+                ),
                 None,
             )
             yield (

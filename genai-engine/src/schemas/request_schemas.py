@@ -1418,6 +1418,6 @@ class SyntheticDataConversationRequest(BaseModel):
 
 
 class DemoTaskChatbotRequest(BaseModel):
-    user_message: str = Field(
-        description="The user message to send to the chatbot.",
+    history: List[OpenAIMessage] = Field(
+        description="The full conversation history including the latest user message as the final entry.",
     )

@@ -4,6 +4,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import AsyncGenerator, List, Optional, Tuple
 
+import litellm
 from arthur_common.models.common_schemas import VariableTemplateValue
 from arthur_common.models.llm_model_providers import (
     MessageRole,
@@ -21,7 +22,7 @@ from schemas.response_schemas import AgenticPromptRunResponse
 from services.prompt.chat_completion_service import ChatCompletionService
 from services.trace.internal_trace_service import InternalTraceService, TraceSpanBuilder
 from utils import constants
-from utils.sse_events import format_sse, format_sse_error
+from utils.sse_events import format_sse, format_sse_error, format_sse_json
 from utils.utils import get_env_var
 
 logger = logging.getLogger(__name__)
@@ -29,9 +30,6 @@ logger = logging.getLogger(__name__)
 
 MAX_ITERATIONS = int(
     get_env_var(constants.GENAI_ENGINE_CHATBOT_MAX_ITERATIONS_ENV_VAR, True) or 30,
-)
-MAX_HISTORY_SIZE = int(
-    get_env_var(constants.GENAI_ENGINE_CHATBOT_MAX_HISTORY_SIZE_ENV_VAR, True) or 15,
 )
 
 
@@ -64,23 +62,6 @@ class BaseChatbotService(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def load_history(
-        self,
-        user_id: str,
-        conversation_id: Optional[str] = None,
-    ) -> List[OpenAIMessage]:
-        raise NotImplementedError
-
-    @abstractmethod
-    def save_history(
-        self,
-        user_id: str,
-        messages: List[OpenAIMessage],
-        conversation_id: Optional[str] = None,
-    ) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
     def execute_tool(
         self,
         tool_call: ToolCall,
@@ -93,13 +74,10 @@ class BaseChatbotService(ABC):
         messages: List[OpenAIMessage],
         llm_client: LLMClient,
     ) -> List[OpenAIMessage]:
-        if len(messages) <= MAX_HISTORY_SIZE:
-            return messages
-
         system_msg = next(m for m in messages if m.role == MessageRole.SYSTEM.value)  # type: ignore[comparison-overlap]
         non_system = [m for m in messages if m.role != MessageRole.SYSTEM.value]  # type: ignore[comparison-overlap]
 
-        keep_count = MAX_HISTORY_SIZE // 2
+        keep_count = len(non_system) // 2
         to_summarize = non_system[:-keep_count]
         to_keep = non_system[-keep_count:]
 
@@ -129,19 +107,55 @@ class BaseChatbotService(ABC):
             *to_keep,
         ]
 
+    async def summarize_and_emit_replace(
+        self,
+        messages: List[OpenAIMessage],
+        llm_client: LLMClient,
+        model_name: str,
+    ) -> AsyncGenerator[str, None]:
+        # Get the context window size for the specified model
+        max_tokens = litellm.get_max_tokens(model_name)
+
+        # Count the tokens in the messages using the provider's api
+        token_response = await llm_client.acount_tokens(
+            model=model_name,
+            messages=[m.model_dump(exclude_none=True) for m in messages],
+        )
+
+        # If the total tokens are less than the context window size, don't summarize
+        if max_tokens is None or token_response.total_tokens <= max_tokens:
+            return
+
+        # Summarize the history
+        summarized_history = await asyncio.to_thread(
+            self.summarize_history,
+            messages,
+            llm_client,
+        )
+
+        # Emit the summarized history
+        yield format_sse_json(
+            SSEEventType.HISTORY_REPLACE,
+            {
+                "history": [
+                    m.model_dump(exclude_none=True)
+                    for m in summarized_history
+                    if m.role != MessageRole.SYSTEM.value  # type: ignore[comparison-overlap]
+                ],
+            },
+        )
+
     async def stream(
         self,
         prompt: AgenticPrompt,
         llm_client: LLMClient,
         user_id: str,
-        conversation_id: Optional[str] = None,
     ) -> AsyncGenerator[str, None]:
         current_prompt = prompt
         agent_span = self.tracing.start_agent_span(
             name="chatbot",
             agent_name=self.agent_name,
             user_id=user_id,
-            session_id=conversation_id,
         )
 
         self.tracing.set_input_json(
@@ -226,12 +240,12 @@ class BaseChatbotService(ABC):
                     final_response.model_dump_json(),
                 )
 
-                summarized_history = await asyncio.to_thread(
-                    self.summarize_history,
+                async for event in self.summarize_and_emit_replace(
                     current_prompt.messages,
                     llm_client,
-                )
-                self.save_history(user_id, summarized_history, conversation_id)
+                    current_prompt.model_name,
+                ):
+                    yield event
                 return
 
             assistant_msg = OpenAIMessage(
@@ -262,10 +276,9 @@ class BaseChatbotService(ABC):
             )
 
         logger.warning(
-            "Chatbot hit MAX_ITERATIONS (%d) for user=%s conversation=%s",
+            "Chatbot hit MAX_ITERATIONS (%d) for user=%s",
             MAX_ITERATIONS,
             user_id,
-            conversation_id,
         )
         error_msg = "I'm sorry, I wasn't able to complete your request within the allowed number of steps. Please try simplifying your question."
         current_prompt.messages.append(
@@ -276,32 +289,25 @@ class BaseChatbotService(ABC):
         self.tracing.flush()
         yield format_sse_error(error_msg)
 
-        summarized_history = await asyncio.to_thread(
-            self.summarize_history,
+        async for event in self.summarize_and_emit_replace(
             current_prompt.messages,
             llm_client,
-        )
-        self.save_history(user_id, summarized_history, conversation_id)
+            current_prompt.model_name,
+        ):
+            yield event
 
     async def safe_stream(
         self,
         prompt: AgenticPrompt,
         llm_client: LLMClient,
         user_id: str,
-        conversation_id: Optional[str] = None,
     ) -> AsyncGenerator[str, None]:
         try:
-            async for event in self.stream(
-                prompt,
-                llm_client,
-                user_id,
-                conversation_id,
-            ):
+            async for event in self.stream(prompt, llm_client, user_id):
                 yield event
         except Exception as e:
             logger.exception(
-                "Chatbot stream failed for user_id=%s conversation_id=%s",
+                "Chatbot stream failed for user_id=%s",
                 user_id,
-                conversation_id,
             )
             yield format_sse_error(f"Failed to stream chatbot response: {e}")

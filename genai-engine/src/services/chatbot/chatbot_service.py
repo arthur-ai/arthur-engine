@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import AsyncGenerator, List, MutableMapping, Optional, Tuple
+from typing import AsyncGenerator, List, Optional, Tuple
 
 from arthur_common.models.llm_model_providers import (
     MessageRole,
@@ -8,7 +8,6 @@ from arthur_common.models.llm_model_providers import (
     OpenAIMessage,
     ToolCall,
 )
-from cachetools import TTLCache
 from sqlalchemy.orm import Session
 
 from schemas.agentic_prompt_schemas import AgenticPrompt
@@ -26,20 +25,6 @@ from utils.llm_tool_functions import search_api_index
 from utils.sse_events import format_sse_json
 
 logger = logging.getLogger(__name__)
-
-
-CONVERSATION_HISTORIES: MutableMapping[Tuple[str, str], List[OpenAIMessage]] = TTLCache(
-    maxsize=1000,
-    ttl=3600,
-)
-
-
-def get_conversation_history(user_id: str, conversation_id: str) -> List[OpenAIMessage]:
-    return CONVERSATION_HISTORIES.get((user_id, conversation_id), [])
-
-
-def clear_conversation_history(user_id: str, conversation_id: str) -> None:
-    CONVERSATION_HISTORIES.pop((user_id, conversation_id), None)
 
 
 class ChatbotService(BaseChatbotService):
@@ -68,27 +53,6 @@ class ChatbotService(BaseChatbotService):
     def agent_name(self) -> str:
         return "arthur_chatbot"
 
-    def load_history(
-        self,
-        user_id: str,
-        conversation_id: Optional[str] = None,
-    ) -> List[OpenAIMessage]:
-        if conversation_id is None:
-            raise ValueError("conversation_id is required for ChatbotService")
-
-        return get_conversation_history(user_id, conversation_id)
-
-    def save_history(
-        self,
-        user_id: str,
-        messages: List[OpenAIMessage],
-        conversation_id: Optional[str] = None,
-    ) -> None:
-        if conversation_id is None:
-            raise ValueError("conversation_id is required for ChatbotService")
-
-        CONVERSATION_HISTORIES[(user_id, conversation_id)] = messages
-
     def build_prompt(
         self,
         chatbot_prompt: AgenticPrompt,
@@ -96,26 +60,18 @@ class ChatbotService(BaseChatbotService):
         model_name: str,
         task_id: str,
         history: List[OpenAIMessage],
-        user_message: str,
         blacklist: Optional[List[str]] = None,
     ) -> AgenticPrompt:
         chatbot_prompt.model_provider = model_provider
         chatbot_prompt.model_name = model_name
 
-        if history:
-            # History already contains the rendered system prompt from the first turn
-            messages = list(history)
-        else:
-            # First turn: render variables into the system prompt and use it
-            blacklist_str = "\n".join(blacklist) if blacklist else "None"
-            self.chat_completion_service.replace_variables(
-                {"task_id": task_id, "endpoint_blacklist": blacklist_str},
-                chatbot_prompt.messages,
-            )
-            messages = chatbot_prompt.messages
+        blacklist_str = "\n".join(blacklist) if blacklist else "None"
+        self.chat_completion_service.replace_variables(
+            {"task_id": task_id, "endpoint_blacklist": blacklist_str},
+            chatbot_prompt.messages,
+        )
 
-        messages.append(OpenAIMessage(role=MessageRole.USER, content=user_message))
-        chatbot_prompt.messages = messages
+        chatbot_prompt.messages = list(chatbot_prompt.messages) + list(history)
         return chatbot_prompt
 
     async def execute_tool(
@@ -164,7 +120,13 @@ class ChatbotService(BaseChatbotService):
             yield (
                 format_sse_json(
                     SSEEventType.TOOL_CALL,
-                    {"method": call_args.method, "path": call_args.path},
+                    {
+                        "tool_call_id": tool_call_id,
+                        "name": tool_call.function.name,
+                        "arguments": args_str,
+                        "method": call_args.method,
+                        "path": call_args.path,
+                    },
                 ),
                 None,
             )
@@ -183,6 +145,8 @@ class ChatbotService(BaseChatbotService):
                 format_sse_json(
                     SSEEventType.TOOL_RESULT,
                     {
+                        "tool_call_id": tool_call_id,
+                        "content": result.to_tool_result_content(),
                         "method": call_args.method,
                         "path": call_args.path,
                         "status_code": result.status_code,

@@ -39,10 +39,7 @@ from schemas.request_schemas import (
 )
 from schemas.response_schemas import TraceTransformVersionResponse
 from services.chatbot.chatbot_prompts import SUMMARIZE_HISTORY_PROMPT
-from services.chatbot.demo_chatbot_service import (
-    DemoChatbotService,
-    get_demo_conversation_history,
-)
+from services.chatbot.demo_chatbot_service import DemoChatbotService
 from services.prompt.chat_completion_service import ChatCompletionService
 from services.trace.trace_ingestion_service import TraceIngestionService
 from utils import constants
@@ -378,7 +375,7 @@ class DemoTaskRepository:
     def stream_response(
         self,
         task_id: str,
-        user_message: str,
+        history: List[OpenAIMessage],
         user_id: str,
     ) -> StreamingResponse:
         chatbot_prompt = cast(
@@ -410,19 +407,14 @@ class DemoTaskRepository:
             task_id=task_id,
         )
 
-        history = get_demo_conversation_history(task_id, user_id)
-
         prompt = chatbot_service.build_prompt(
             chatbot_prompt=chatbot_prompt,
             model_provider=model_provider,
             model_name=model_name,
             history=history,
-            user_message=user_message,
         )
 
-        session_id = f"demo-session-{uuid4()}"
-
         return StreamingResponse(
-            chatbot_service.safe_stream(prompt, llm_client, user_id, session_id),
+            chatbot_service.safe_stream(prompt, llm_client, user_id),
             media_type="text/event-stream",
         )

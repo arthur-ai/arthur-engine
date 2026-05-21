@@ -557,11 +557,11 @@ class GenaiEngineTestClientBase(httpx.Client):
     def stream_demo_chatbot(
         self,
         task_id: str,
-        user_message: str,
+        history: list[dict] | None = None,
     ) -> tuple[int, str]:
         resp = self.base_client.post(
             f"/api/v1/tasks/{task_id}/demos/chatbot/stream",
-            json={"user_message": user_message},
+            json={"history": history or []},
             headers=self.authorized_user_api_key_headers,
         )
 

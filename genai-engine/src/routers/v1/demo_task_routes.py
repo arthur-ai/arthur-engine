@@ -16,7 +16,6 @@ from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import ApplicationConfiguration, Task, User
 from schemas.request_schemas import DemoTaskChatbotRequest
-from services.chatbot.demo_chatbot_service import clear_demo_conversation_history
 from utils.users import permission_checker
 
 demo_task_routes = APIRouter(
@@ -124,7 +123,7 @@ async def stream_demo_chatbot(
         demo_task_repo = DemoTaskRepository(db_session)
         return demo_task_repo.stream_response(
             task_id,
-            demo_task_chatbot_request.user_message,
+            demo_task_chatbot_request.history,
             current_user.id,
         )
     except ValueError as e:
@@ -138,49 +137,4 @@ async def stream_demo_chatbot(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to stream demo chatbot response: {e}",
-        )
-
-
-@demo_task_routes.delete(
-    "/tasks/{task_id}/demos/chatbot/history",
-    summary="Clear demo chatbot conversation history",
-    status_code=status.HTTP_204_NO_CONTENT,
-    responses={
-        status.HTTP_204_NO_CONTENT: {
-            "description": "Demo chatbot conversation history cleared.",
-        },
-    },
-    tags=["Chatbot"],
-)
-@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
-async def clear_demo_chatbot_history(
-    task_id: str,
-    db_session: Session = Depends(get_db_session),
-    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    application_config: ApplicationConfiguration = Depends(get_application_config),
-) -> None:
-    if current_user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authenticated user required",
-        )
-
-    try:
-        tasks_repo = TaskRepository(
-            db_session,
-            RuleRepository(db_session),
-            MetricRepository(db_session),
-            application_config,
-        )
-
-        # verify task exists
-        tasks_repo.get_task_by_id(task_id)
-
-        clear_demo_conversation_history(task_id, current_user.id)
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to clear demo chatbot conversation history: {e}",
         )

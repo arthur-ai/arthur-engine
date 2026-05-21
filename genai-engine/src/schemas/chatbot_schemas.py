@@ -1,7 +1,7 @@
 import json
 from typing import Any, Dict, List, Optional
 
-from arthur_common.models.llm_model_providers import ModelProvider
+from arthur_common.models.llm_model_providers import ModelProvider, OpenAIMessage
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
@@ -65,11 +65,9 @@ class ApiCallSummary(BaseModel):
 
 
 class ChatbotRequest(BaseModel):
-    message: str
-    conversation_id: str
+    history: List[OpenAIMessage]
 
 
 class ChatbotResponse(BaseModel):
     message: str
-    conversation_id: str
     api_calls_made: List[ApiCallSummary]

@@ -262,6 +262,7 @@ class SSEEventType(str, Enum):
     SEARCH_COMPLETE = "search_complete"
     TOOL_CALL = "tool_call"
     TOOL_RESULT = "tool_result"
+    HISTORY_REPLACE = "history_replace"
 
 
 class LLMMetadataSortField(str, Enum):

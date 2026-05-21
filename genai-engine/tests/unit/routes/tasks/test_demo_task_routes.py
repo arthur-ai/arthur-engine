@@ -1,14 +1,18 @@
+import json
 import os
-import uuid
 from unittest.mock import patch
 
 import pytest
-from arthur_common.models.llm_model_providers import MessageRole, OpenAIMessage
 from fastapi import HTTPException
 
-from services.chatbot.demo_chatbot_service import DEMO_CONVERSATION_HISTORIES
-from tests.clients.base_test_client import (
-    GenaiEngineTestClientBase,
+from schemas.chatbot_schemas import WikipediaSearchResult
+from schemas.response_schemas import AgenticPromptRunResponse
+from tests.clients.base_test_client import GenaiEngineTestClientBase
+from tests.unit.routes.tasks.helpers import (
+    final_response_events,
+    make_stream,
+    make_tool_call,
+    parse_sse_event,
 )
 
 
@@ -162,49 +166,6 @@ def test_create_demo_task_archives_task_when_demo_items_raise(
 
 
 @pytest.mark.unit_tests
-def test_clear_chatbot_history_success(client: GenaiEngineTestClientBase):
-    with (
-        patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "enabled"}),
-        patch(
-            "routers.v1.demo_task_routes.DemoTaskRepository.create_demo_items_for_task",
-            return_value=None,
-        ),
-    ):
-        status_code, task = client.create_demo_task()
-
-    assert status_code == 200
-    assert task is not None
-    assert task.name == "Demo Task"
-    assert task.is_agentic is True
-
-    # Clearing history when it is empty should succeed
-    status_code, _ = client.clear_demo_chatbot_history(task.id)
-    assert status_code == 204
-
-    _, keys = client.get_api_keys()
-    user_id = next(k.id for k in keys if k.description == "TestClient")
-
-    DEMO_CONVERSATION_HISTORIES[(task.id, user_id)] = [
-        OpenAIMessage(role=MessageRole.USER, content="hello"),
-    ]
-
-    # Clearing history when it is not empty should succeed
-    status_code, _ = client.clear_demo_chatbot_history(task.id)
-    assert status_code == 204
-    assert (task.id, user_id) not in DEMO_CONVERSATION_HISTORIES
-
-
-@pytest.mark.unit_tests
-def test_clear_chatbot_history_for_non_existent_task_fails(
-    client: GenaiEngineTestClientBase,
-):
-    # Clearing history when it is empty should succeed
-    status_code, response = client.clear_demo_chatbot_history(str(uuid.uuid4()))
-    assert status_code == 404
-    assert "not found" in response
-
-
-@pytest.mark.unit_tests
 def test_stream_demo_chatbot_streams_response(client: GenaiEngineTestClientBase):
     """Streaming the demo chatbot returns the SSE events yielded by stream."""
     # Set up Anthropic provider so the demo task can pick a model provider.
@@ -230,7 +191,10 @@ def test_stream_demo_chatbot_streams_response(client: GenaiEngineTestClientBase)
             status_code, task = client.create_demo_task()
             assert status_code == 200
 
-            status_code, body = client.stream_demo_chatbot(task.id, "hi")
+            status_code, body = client.stream_demo_chatbot(
+                task.id,
+                [{"role": "user", "content": "hi"}],
+            )
 
             assert status_code == 200
             assert "final_response" in body
@@ -272,12 +236,89 @@ def test_stream_demo_chatbot_yields_error_when_stream_raises(
             status_code, task = client.create_demo_task()
             assert status_code == 200
 
-            status_code, body = client.stream_demo_chatbot(task.id, "hi")
+            status_code, body = client.stream_demo_chatbot(
+                task.id,
+                [{"role": "user", "content": "hi"}],
+            )
 
             assert status_code == 200
             assert "event: error" in body
             assert "Failed to stream chatbot response" in body
             assert "stream failed" in body
+    finally:
+        response = client.base_client.delete(
+            "/api/v1/model_providers/anthropic",
+            headers=client.authorized_user_api_key_headers,
+        )
+        assert response.status_code == 204
+
+        client.delete_task(task.id)
+
+
+@pytest.mark.unit_tests
+@patch("services.chatbot.demo_chatbot_service.wikipedia_search")
+@patch(
+    "services.prompt.chat_completion_service.ChatCompletionService.stream_chat_completion",
+)
+def test_demo_chatbot_emits_enriched_tool_events(
+    mock_stream,
+    mock_wikipedia_search,
+    client: GenaiEngineTestClientBase,
+):
+    """tool_call/tool_result SSE events from the demo chatbot include the raw fields
+    needed by the FE to reconstruct OpenAI-shaped history."""
+    response = client.base_client.put(
+        "/api/v1/model_providers/anthropic",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 201
+
+    try:
+        with (
+            patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "enabled"}),
+            patch(
+                "repositories.continuous_evals_repository.ContinuousEvalsRepository.enqueue_continuous_evals_for_root_spans",
+                return_value=None,
+            ),
+        ):
+            status_code, task = client.create_demo_task()
+            assert status_code == 200
+
+            mock_wikipedia_search.return_value = WikipediaSearchResult(
+                titles=["Rosalind Franklin"],
+            )
+
+            search_args = '{"query": "Rosalind Franklin"}'
+            tool_call_chunk = make_tool_call("wc1", "wikipedia_search", search_args)
+            first = AgenticPromptRunResponse(
+                content=None,
+                tool_calls=[tool_call_chunk],
+                cost="0.0",
+            ).model_dump_json()
+            first_events = [f"event: final_response\ndata: {first}\n\n"]
+            second_events = final_response_events("She was a chemist.")
+
+            responses = [make_stream(first_events), make_stream(second_events)]
+            mock_stream.side_effect = lambda *args, **kwargs: responses.pop(0)
+
+            status_code, body = client.stream_demo_chatbot(
+                task.id,
+                [{"role": "user", "content": "who is rosalind franklin?"}],
+            )
+
+            assert status_code == 200
+
+            tool_call_event = parse_sse_event(body, "tool_call")
+            assert tool_call_event["tool_call_id"] == "wc1"
+            assert tool_call_event["name"] == "wikipedia_search"
+            assert json.loads(tool_call_event["arguments"]) == {
+                "query": "Rosalind Franklin",
+            }
+
+            tool_result_event = parse_sse_event(body, "tool_result")
+            assert tool_result_event["tool_call_id"] == "wc1"
+            assert tool_result_event["content"] == "Rosalind Franklin"
     finally:
         response = client.base_client.delete(
             "/api/v1/model_providers/anthropic",
