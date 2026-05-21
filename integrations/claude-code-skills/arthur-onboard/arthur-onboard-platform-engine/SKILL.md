@@ -170,6 +170,25 @@ If the secret was lost before saving, regenerate it: `POST /api/v1/data_planes/{
 
 ### Step 2 — Choose Deployment Method
 
+#### Step 2a — Determine Engine Version
+
+Fetch the latest release tag from GitHub:
+
+```bash
+LATEST_VERSION=$(curl -s "https://api.github.com/repos/arthur-ai/arthur-engine/releases/latest" | \
+  python3 -c "import sys,json; print(json.load(sys.stdin).get('tag_name',''))" 2>/dev/null)
+echo "LATEST_VERSION=$LATEST_VERSION"
+```
+
+Tell the user:
+> "The latest Arthur Engine version is `<LATEST_VERSION>`. Press Enter to use it, or type a specific version tag (e.g., `0.0.10-lts`)."
+
+Wait for the user's response. If they press Enter / say "latest" / provide no version, set `ENGINE_VERSION=$LATEST_VERSION`. Otherwise use what they typed as `ENGINE_VERSION`.
+
+Confirm: "Using Arthur Engine version `<ENGINE_VERSION>`."
+
+---
+
 Ask the user which deployment method they want:
 - **A) Docker Compose** — for a local setup on Mac or Windows
 - **B) AWS CloudFormation** — for AWS deployments
@@ -300,12 +319,12 @@ Stop when `ENGINE_STATUS=200` or `ENGINE_STATUS=401`. Max 60 calls (~10 min). If
 
 Show the user the quick-create URL for CPU deployment:
 ```
-https://us-east-2.console.aws.amazon.com/cloudformation/home?region=us-east-2#/stacks/quickcreate?templateURL=https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/0.0.9-lts/root-arthur-engine-cpu.yml&stackName=arthur-engine&param_MLEngineClientId=<DATA_PLANE_CLIENT_ID>
+https://us-east-2.console.aws.amazon.com/cloudformation/home?region=us-east-2#/stacks/quickcreate?templateURL=https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/<ENGINE_VERSION>/root-arthur-engine-cpu.yml&stackName=arthur-engine&param_MLEngineClientId=<DATA_PLANE_CLIENT_ID>
 ```
 
 For GPU deployment:
 ```
-https://us-east-2.console.aws.amazon.com/cloudformation/home?region=us-east-2#/stacks/quickcreate?templateURL=https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/0.0.9-lts/root-arthur-engine-gpu.yml&stackName=arthur-engine&param_MLEngineClientId=<DATA_PLANE_CLIENT_ID>
+https://us-east-2.console.aws.amazon.com/cloudformation/home?region=us-east-2#/stacks/quickcreate?templateURL=https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/<ENGINE_VERSION>/root-arthur-engine-gpu.yml&stackName=arthur-engine&param_MLEngineClientId=<DATA_PLANE_CLIENT_ID>
 ```
 
 Tell the user:
@@ -325,7 +344,7 @@ Generate the Helm deployment script with platform credentials filled in. Show th
 #!/bin/bash
 
 K8S_NAMESPACE=arthur
-ARTHUR_ENGINE_VERSION=0.0.9-lts
+ARTHUR_ENGINE_VERSION=<ENGINE_VERSION>
 POSTGRES_USER=arthur_genai_engine
 POSTGRES_PASSWORD=<changeme_pg_password>
 POSTGRES_ENDPOINT=<mydb>
