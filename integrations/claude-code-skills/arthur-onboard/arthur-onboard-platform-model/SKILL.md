@@ -27,44 +27,9 @@ echo "ARTHUR_TASK_ID=$TASK_ID" >> "$STATE_FILE"
 
 ## Ensure Token is Valid
 
-Platform tokens expire after ~5 minutes. Before making any platform API calls, verify and auto-refresh if needed (all in one Bash call):
+Invoke the `arthur-onboard-platform-token` sub-skill to get a fresh token.
 
-```bash
-ARTHUR_PLATFORM_URL=$(grep '^ARTHUR_PLATFORM_URL=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
-ARTHUR_PLATFORM_TOKEN=$(grep '^ARTHUR_PLATFORM_TOKEN=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
-
-TOKEN_CHECK=$(curl -s -o /dev/null -w "%{http_code}" \
-  -H "Authorization: Bearer $ARTHUR_PLATFORM_TOKEN" \
-  "${ARTHUR_PLATFORM_URL}/api/v1/users/me" 2>/dev/null || echo "000")
-echo "TOKEN_CHECK=$TOKEN_CHECK"
-
-if [ "$TOKEN_CHECK" != "200" ]; then
-  CLIENT_ID=$(grep '^ARTHUR_PLATFORM_CLIENT_ID=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
-  CLIENT_SECRET=$(grep '^ARTHUR_PLATFORM_CLIENT_SECRET=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
-  if [ -z "$CLIENT_SECRET" ]; then
-    echo "TOKEN_REFRESH=MISSING_CREDENTIALS"
-  else
-    TOKEN_ENDPOINT=$(curl -s "${ARTHUR_PLATFORM_URL}/api/v1/auth/oidc/.well-known/openid-configuration" | \
-      python3 -c "import sys,json; print(json.load(sys.stdin).get('token_endpoint',''))" 2>/dev/null)
-    NEW_TOKEN=$(curl -s -X POST "$TOKEN_ENDPOINT" \
-      -H "Content-Type: application/x-www-form-urlencoded" \
-      --data-urlencode "grant_type=client_credentials" \
-      --data-urlencode "client_id=$CLIENT_ID" \
-      --data-urlencode "client_secret=$CLIENT_SECRET" \
-      --data-urlencode "scope=openid email profile" | \
-      python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null)
-    if [ -n "$NEW_TOKEN" ]; then
-      grep -v '^ARTHUR_PLATFORM_TOKEN=' .arthur-engine.env > /tmp/ae_env_tmp && mv /tmp/ae_env_tmp .arthur-engine.env
-      echo "ARTHUR_PLATFORM_TOKEN=$NEW_TOKEN" >> .arthur-engine.env
-      echo "TOKEN_REFRESH=OK"
-    else
-      echo "TOKEN_REFRESH=FAILED"
-    fi
-  fi
-fi
-```
-
-If `TOKEN_REFRESH=MISSING_CREDENTIALS` or `TOKEN_REFRESH=FAILED`: re-invoke `arthur-onboard-platform-access` to re-authenticate, then resume this skill.
+If it outputs `TOKEN_REFRESH=MISSING_CREDENTIALS` or `TOKEN_REFRESH=FAILED`: re-invoke `arthur-onboard-platform-access` to re-authenticate, then resume this skill.
 
 ---
 
@@ -209,15 +174,28 @@ ARTHUR_PLATFORM_URL=$(grep '^ARTHUR_PLATFORM_URL=' .arthur-engine.env 2>/dev/nul
 ARTHUR_PLATFORM_TOKEN=$(grep '^ARTHUR_PLATFORM_TOKEN=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
 MODEL_ID=$(grep '^ARTHUR_PLATFORM_MODEL_ID=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
 
-# Auto-refresh token if expired
-TOKEN_CHECK=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $ARTHUR_PLATFORM_TOKEN" "${ARTHUR_PLATFORM_URL}/api/v1/users/me" 2>/dev/null || echo "000")
-if [ "$TOKEN_CHECK" != "200" ]; then
-  CLIENT_SECRET=$(grep '^ARTHUR_PLATFORM_CLIENT_SECRET=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
-  TOKEN_ENDPOINT=$(curl -s "${ARTHUR_PLATFORM_URL}/api/v1/auth/oidc/.well-known/openid-configuration" | python3 -c "import sys,json; print(json.load(sys.stdin).get('token_endpoint',''))" 2>/dev/null)
-  ARTHUR_PLATFORM_TOKEN=$(curl -s -X POST "$TOKEN_ENDPOINT" -H "Content-Type: application/x-www-form-urlencoded" --data-urlencode "grant_type=client_credentials" --data-urlencode "client_id=$(grep '^ARTHUR_PLATFORM_CLIENT_ID=' .arthur-engine.env | cut -d= -f2-)" --data-urlencode "client_secret=$CLIENT_SECRET" --data-urlencode "scope=openid email profile" | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null)
-  grep -v '^ARTHUR_PLATFORM_TOKEN=' .arthur-engine.env > /tmp/ae_env_tmp && mv /tmp/ae_env_tmp .arthur-engine.env
-  echo "ARTHUR_PLATFORM_TOKEN=$ARTHUR_PLATFORM_TOKEN" >> .arthur-engine.env
-fi
+# Refresh token using arthur_client (handles expiry automatically)
+CLIENT_ID=$(grep '^ARTHUR_PLATFORM_CLIENT_ID=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
+CLIENT_SECRET=$(grep '^ARTHUR_PLATFORM_CLIENT_SECRET=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
+export _AE_URL="$ARTHUR_PLATFORM_URL" _AE_CLIENT_ID="$CLIENT_ID" _AE_CLIENT_SECRET="$CLIENT_SECRET"
+ARTHUR_PLATFORM_TOKEN=$(python3 - <<'PYEOF'
+import sys, os
+try:
+    from arthur_client.auth import ArthurClientCredentialsAPISession, ArthurOIDCMetadata
+    metadata = ArthurOIDCMetadata(os.environ["_AE_URL"])
+    session = ArthurClientCredentialsAPISession(
+        client_id=os.environ["_AE_CLIENT_ID"],
+        client_secret=os.environ["_AE_CLIENT_SECRET"],
+        metadata=metadata,
+    )
+    print(session.token()["access_token"])
+except Exception as e:
+    print(f"ERROR: {e}", file=sys.stderr)
+    sys.exit(1)
+PYEOF
+)
+grep -v '^ARTHUR_PLATFORM_TOKEN=' .arthur-engine.env > /tmp/ae_env_tmp && mv /tmp/ae_env_tmp .arthur-engine.env
+echo "ARTHUR_PLATFORM_TOKEN=$ARTHUR_PLATFORM_TOKEN" >> .arthur-engine.env
 
 CONN_RESPONSE=$(curl -s \
   -H "Authorization: Bearer $ARTHUR_PLATFORM_TOKEN" \

@@ -158,6 +158,7 @@ The platform skill uses the same modular design as the OSS skill. Four new platf
 | `arthur-onboard-platform-workspace` | Step 3 | Select or create workspace |
 | `arthur-onboard-platform-engine` | Step 4 | Register or deploy Arthur Engine (data plane) |
 | `arthur-onboard-platform-model` | Steps 5–7 | Gate on type; create Agentic Model; get task connection info |
+| `arthur-onboard-platform-token` | Helper | Refresh OAuth2 token via `arthur_client` *(used by Steps 2–7)* |
 | `arthur-onboard-analyze` | Step 8 | Detect language, framework, existing instrumentation *(shared)* |
 | `arthur-onboard-instrument` | Step 9 | Instrument code *(shared)* |
 | `arthur-onboard-prompts` | Step 10 | Extract & register prompts *(shared)* |
@@ -172,7 +173,7 @@ The platform skill uses the same modular design as the OSS skill. Four new platf
 Paste this prompt directly into Claude Code — no installation needed:
 
 ```
-For each skill name in this list — arthur-onboard-platform, arthur-onboard-platform-access, arthur-onboard-platform-workspace, arthur-onboard-platform-engine, arthur-onboard-platform-model, arthur-onboard-analyze, arthur-onboard-instrument, arthur-onboard-prompts, arthur-onboard-verify, arthur-onboard-eval-provider, arthur-onboard-evals — fetch https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/integrations/claude-code-skills/arthur-onboard/<skill-name>/SKILL.md and save it to ~/.claude/skills/<skill-name>/SKILL.md (create the directory if it doesn't exist). Once all skills are saved, read ~/.claude/skills/arthur-onboard-platform/SKILL.md and follow its instructions.
+For each skill name in this list — arthur-onboard-platform, arthur-onboard-platform-access, arthur-onboard-platform-workspace, arthur-onboard-platform-engine, arthur-onboard-platform-model, arthur-onboard-platform-token, arthur-onboard-analyze, arthur-onboard-instrument, arthur-onboard-prompts, arthur-onboard-verify, arthur-onboard-eval-provider, arthur-onboard-evals — fetch https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/integrations/claude-code-skills/arthur-onboard/<skill-name>/SKILL.md and save it to ~/.claude/skills/<skill-name>/SKILL.md (create the directory if it doesn't exist). Once all skills are saved, read ~/.claude/skills/arthur-onboard-platform/SKILL.md and follow its instructions.
 ```
 
 ---
@@ -186,7 +187,7 @@ Install all platform skills (including the shared sub-skills) with one script:
 ```bash
 BASE="https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integrations/claude-code-skills/arthur-onboard"
 for skill in arthur-onboard-platform arthur-onboard-platform-access arthur-onboard-platform-workspace \
-             arthur-onboard-platform-engine arthur-onboard-platform-model \
+             arthur-onboard-platform-engine arthur-onboard-platform-model arthur-onboard-platform-token \
              arthur-onboard-analyze arthur-onboard-instrument arthur-onboard-prompts \
              arthur-onboard-verify arthur-onboard-eval-provider arthur-onboard-evals; do
   mkdir -p ~/.claude/skills/$skill
@@ -201,7 +202,7 @@ Add to a specific repository so your team gets it automatically:
 ```bash
 BASE="https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integrations/claude-code-skills/arthur-onboard"
 for skill in arthur-onboard-platform arthur-onboard-platform-access arthur-onboard-platform-workspace \
-             arthur-onboard-platform-engine arthur-onboard-platform-model \
+             arthur-onboard-platform-engine arthur-onboard-platform-model arthur-onboard-platform-token \
              arthur-onboard-analyze arthur-onboard-instrument arthur-onboard-prompts \
              arthur-onboard-verify arthur-onboard-eval-provider arthur-onboard-evals; do
   mkdir -p .claude/skills/$skill
