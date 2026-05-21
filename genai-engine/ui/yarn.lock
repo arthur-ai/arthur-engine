@@ -4211,6 +4211,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"driver.js@npm:^1.4.0":
+  version: 1.4.0
+  resolution: "driver.js@npm:1.4.0"
+  checksum: 10c0/f868e85037d4180d55a883ec5bdad7a59e3b16e84438af4285ad605cab651b21fe565839a1607992362b0c028309d4ae6d052926d1c4ab67b2c62142a579b529
+  languageName: node
+  linkType: hard
+
 "dunder-proto@npm:^1.0.0, dunder-proto@npm:^1.0.1":
   version: 1.0.1
   resolution: "dunder-proto@npm:1.0.1"
@@ -6801,6 +6808,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"mitt@npm:^3.0.1":
+  version: 3.0.1
+  resolution: "mitt@npm:3.0.1"
+  checksum: 10c0/3ab4fdecf3be8c5255536faa07064d05caa3dd332bd318ff02e04621f7b3069ca1de9106cfe8e7ced675abfc2bec2ce4c4ef321c4a1bb1fb29df8ae090741913
+  languageName: node
+  linkType: hard
+
 "monaco-editor@npm:0.55.1":
   version: 0.55.1
   resolution: "monaco-editor@npm:0.55.1"
@@ -8689,6 +8703,7 @@ __metadata:
     "@vitejs/plugin-react": "npm:5.1.4"
     axios: "npm:1.13.6"
     dayjs: "npm:1.11.19"
+    driver.js: "npm:^1.4.0"
     eslint: "npm:9.39.4"
     eslint-config-prettier: "npm:10.1.8"
     eslint-plugin-import: "npm:2.32.0"
@@ -8697,6 +8712,7 @@ __metadata:
     framer-motion: "npm:12.35.2"
     globals: "npm:16.5.0"
     material-react-table: "npm:3.2.1"
+    mitt: "npm:^3.0.1"
     monaco-editor: "npm:0.55.1"
     notistack: "npm:3.0.2"
     nuqs: "npm:2.8.9"

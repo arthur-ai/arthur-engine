@@ -1,0 +1,61 @@
+:root {
+  --tour-overlay: rgba(0, 0, 0, 0.55);
+  --tour-popover-bg: #ffffff;
+  --tour-popover-text: #171717;
+  --tour-popover-muted: rgba(0, 0, 0, 0.6);
+  --tour-popover-border: rgba(0, 0, 0, 0.12);
+  --tour-btn-primary-bg: #1976d2;
+  --tour-btn-primary-text: #ffffff;
+}
+
+.dark {
+  --tour-overlay: rgba(0, 0, 0, 0.72);
+  --tour-popover-bg: #1e1e1e;
+  --tour-popover-text: #ededed;
+  --tour-popover-muted: rgba(255, 255, 255, 0.7);
+  --tour-popover-border: rgba(255, 255, 255, 0.12);
+  --tour-btn-primary-bg: #90caf9;
+  --tour-btn-primary-text: #0a0a0a;
+}
+
+.driver-overlay {
+  background: var(--tour-overlay) !important;
+}
+
+.arthur-tour-popover.driver-popover {
+  background-color: var(--tour-popover-bg);
+  color: var(--tour-popover-text);
+  border: 1px solid var(--tour-popover-border);
+}
+
+.arthur-tour-popover .driver-popover-title {
+  color: var(--tour-popover-text);
+}
+
+.arthur-tour-popover .driver-popover-description {
+  color: var(--tour-popover-muted);
+}
+
+.arthur-tour-popover .driver-popover-progress-text {
+  color: var(--tour-popover-muted);
+}
+
+.arthur-tour-popover .driver-popover-next-btn,
+.arthur-tour-popover .driver-popover-prev-btn,
+.arthur-tour-popover .driver-popover-close-btn {
+  text-shadow: none;
+}
+
+.arthur-tour-popover .driver-popover-next-btn {
+  background-color: var(--tour-btn-primary-bg);
+  color: var(--tour-btn-primary-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .driver-overlay,
+  .driver-popover,
+  .driver-active-element {
+    transition: none !important;
+    animation: none !important;
+  }
+}

@@ -12,6 +12,8 @@
     "format:check": "prettier --check .",
     "type-check": "tsc -b --noEmit",
     "check": "yarn type-check && yarn lint && yarn format:check",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "preview": "vite preview",
     "generate-api": "yarn dlx swagger-typescript-api@13.0.16 -p ../staging.openapi.json -o src/lib/api-client --name api-client.ts --axios --clean-output --extract-request-params --extract-request-body --extract-response-body --extract-response-error --extract-enums --union-enums --add-readonly --sort-routes --sort-types",
     "generate-api:clean": "rm -rf src/lib/api-client && yarn generate-api"
@@ -39,8 +41,10 @@
     "@tanstack/react-table": "8.21.3",
     "axios": "1.13.6",
     "dayjs": "1.11.19",
+    "driver.js": "^1.4.0",
     "framer-motion": "12.35.2",
     "material-react-table": "3.2.1",
+    "mitt": "^3.0.1",
     "monaco-editor": "0.55.1",
     "notistack": "3.0.2",
     "nuqs": "2.8.9",
@@ -84,7 +88,9 @@
     "prettier": "3.7.4",
     "typescript": "5.9.3",
     "typescript-eslint": "8.56.1",
-    "vite": "7.3.1"
+    "vite": "7.3.1",
+    "vitest": "3.2.4",
+    "jsdom": "26.1.0"
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "4.54.0"

@@ -39,6 +39,7 @@ import { SettingsPage } from "./components/settings/SettingsPage";
 import { TaskLayout } from "./components/TaskLayout";
 import { TaskOverview } from "./components/TaskOverview";
 import { TestView } from "./components/test/TestView";
+import { TourProvider } from "./components/tour/provider";
 import { TracesView } from "./components/TracesView";
 import TransformsManagement from "./components/transforms/TransformsManagement";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -46,6 +47,11 @@ import { DisplaySettingsProvider } from "./contexts/DisplaySettingsContext";
 import { EngineConfigProvider, useDemoMode } from "./contexts/EngineConfigContext";
 import { queryClient } from "./lib/queryClient";
 import { AppThemeProvider } from "./theme/ThemeProvider";
+
+import type { Emitter } from "mitt";
+
+import { onboardingTourEvents } from "./tours/onboarding/events";
+import type { AnyTourEvents } from "./tours/types";
 
 function AppRoutes() {
   const { demoMode } = useDemoMode();
@@ -185,7 +191,9 @@ function App() {
                       <Router>
                         <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
                           <EngineConfigGate>
-                            <AppRoutes />
+                            <TourProvider emitter={onboardingTourEvents as unknown as Emitter<AnyTourEvents>}>
+                              <AppRoutes />
+                            </TourProvider>
                           </EngineConfigGate>
                         </div>
                       </Router>

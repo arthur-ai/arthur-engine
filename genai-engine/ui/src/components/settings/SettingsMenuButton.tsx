@@ -1,6 +1,7 @@
 import AppsOutlined from "@mui/icons-material/AppsOutlined";
 import KeyOutlined from "@mui/icons-material/KeyOutlined";
 import LogoutOutlined from "@mui/icons-material/LogoutOutlined";
+import RouteOutlined from "@mui/icons-material/RouteOutlined";
 import SettingsIcon from "@mui/icons-material/Settings";
 import { Box, Divider, IconButton, ListItemIcon, ListItemText, Menu, MenuItem } from "@mui/material";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -10,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 
 import { ThemeToggle } from "../common/ThemeToggle";
 
+import { useStartTour } from "@/components/tour/hooks/useStartTour";
 import { UserSettingsModal } from "@/components/UserSettingsModal";
 import type { UserSettings } from "@/components/UserSettingsModal/types";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,6 +36,7 @@ export const SettingsMenuButton: React.FC = () => {
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [userSettingsModalOpen, setUserSettingsModalOpen] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const { startTour, toursEnabled } = useStartTour();
 
   const isMenuOpen = Boolean(menuAnchorEl);
 
@@ -106,6 +109,7 @@ export const SettingsMenuButton: React.FC = () => {
     <>
       <IconButton
         aria-label="settings"
+        data-tour-id="onboarding-settings"
         onClick={(e) => setMenuAnchorEl(e.currentTarget)}
         sx={{
           bgcolor: "background.paper",
@@ -159,6 +163,19 @@ export const SettingsMenuButton: React.FC = () => {
           </ListItemIcon>
           <ListItemText>API Keys</ListItemText>
         </MenuItem>
+        {toursEnabled && (
+          <MenuItem
+            onClick={() => {
+              handleMenuClose();
+              startTour("onboarding", { force: true });
+            }}
+          >
+            <ListItemIcon>
+              <RouteOutlined />
+            </ListItemIcon>
+            <ListItemText>Restart product tour</ListItemText>
+          </MenuItem>
+        )}
         <Divider />
         <Box sx={{ px: 2, py: 1 }}>
           <ThemeToggle />

@@ -75,5 +75,10 @@ export default defineConfig(({ mode }) => {
     },
     // Configure for SPA routing
     base: "/",
+    test: {
+      environment: "jsdom",
+      globals: true,
+      include: ["src/**/*.test.ts"],
+    },
   };
 });

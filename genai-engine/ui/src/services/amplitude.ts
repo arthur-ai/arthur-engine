@@ -121,6 +121,14 @@ export const EVENT_NAMES = {
   ONBOARDING_WIZARD_STEP_SUBMIT_FAILED: "onboarding/wizard_step_submit_failed",
   ONBOARDING_WIZARD_STEP_BACK: "onboarding/wizard_step_back",
 
+  // Product tour events
+  TOUR_STARTED: "tour/started",
+  TOUR_STEP_VIEWED: "tour/step_viewed",
+  TOUR_STEP_COMPLETED: "tour/step_completed",
+  TOUR_SKIPPED: "tour/skipped",
+  TOUR_COMPLETED: "tour/completed",
+  TOUR_ERROR: "tour/error",
+
   // Cross-link events
   PLAYGROUND_OPEN_FROM_SPAN: "playground/open_from_span",
   CONTINUOUS_EVALS_NEW_FROM_TRACE: "continuous_evals/new_from_trace",

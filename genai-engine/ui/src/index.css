@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "driver.js/dist/driver.css";
+@import "./components/tour/tour-overrides.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
