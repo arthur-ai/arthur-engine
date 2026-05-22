@@ -94,6 +94,7 @@ export function useChatbot(taskId: string, options: UseChatbotOptions = {}): Use
 
   const messages = useChatbotStore((s) => s.conversations[variant][taskId] ?? EMPTY_MESSAGES);
   const setStoredMessages = useChatbotStore((s) => s.setMessages);
+  const getOrCreateSessionId = useChatbotStore((s) => s.getOrCreateSessionId);
   const resetStored = useChatbotStore((s) => s.reset);
 
   const [isStreaming, setIsStreaming] = useState(false);
@@ -169,6 +170,11 @@ export function useChatbot(taskId: string, options: UseChatbotOptions = {}): Use
 
       const url = isDemo ? `${API_BASE_URL}/api/v1/tasks/${taskId}/demos/chatbot/stream` : `${API_BASE_URL}/api/v1/tasks/${taskId}/chatbot/stream`;
 
+      const body: { history: OpenAIMessageInput[]; session_id?: string } = {
+        history,
+        session_id: getOrCreateSessionId(variant, taskId),
+      };
+
       (async () => {
         try {
           const response = await fetch(url, {
@@ -177,7 +183,7 @@ export function useChatbot(taskId: string, options: UseChatbotOptions = {}): Use
               "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ history }),
+            body: JSON.stringify(body),
             signal: abortController.signal,
           });
 
@@ -309,7 +315,7 @@ export function useChatbot(taskId: string, options: UseChatbotOptions = {}): Use
         }
       })();
     },
-    [messages, taskId, token, updateMessages, variant]
+    [getOrCreateSessionId, messages, taskId, token, updateMessages, variant]
   );
 
   const clearConversation = useCallback(() => {
