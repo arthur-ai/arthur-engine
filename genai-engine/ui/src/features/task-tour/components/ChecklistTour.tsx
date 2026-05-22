@@ -235,6 +235,10 @@ export function ChecklistTour({ enabled, onComplete }: ChecklistTourProps) {
         open={introOpen}
         section={currentSection ?? null}
         sectionIndex={currentSectionIndex}
+        // Honors the engine's `SectionConfig.skipable` (default true when
+        // unset). The intro only opens while a section is active, so reading
+        // through `activeStep` is safe — the fallback exists for typing.
+        skipable={activeStep?.section.skipable !== false}
         onStart={handleStart}
         onSkipSection={handleSkipSection}
         onDismiss={handleDismiss}
