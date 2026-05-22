@@ -89,9 +89,28 @@ Tell the user:
 > "We'll register a new engine with the platform and deploy it. The platform will issue
 > dedicated credentials for the engine — these are different from your service account."
 
-### Step 1 — Register the Engine with the Platform
+### Step 1 — Choose Deployment Method
 
-Ask the user for an engine name (e.g., "Production Engine", "Dev Machine").
+Ask the user which deployment method they want **before** registering, so the correct type is recorded with the platform:
+- **A) Docker Compose** — for a local setup on Mac or Windows
+- **B) AWS CloudFormation** — for AWS deployments
+- **C) Kubernetes (Helm)** — for Kubernetes clusters
+
+Map the choice to an infrastructure value (used in the registration API):
+- Option A → `INFRASTRUCTURE=Docker`
+- Option B → `INFRASTRUCTURE=AWS`
+- Option C → `INFRASTRUCTURE=Kubernetes`
+
+Also ask:
+> "What is the external URL where this engine will be reachable by your applications?
+> For a local Docker install this is `http://localhost:3030`.
+> For cloud deployments, this is your load balancer or ingress URL."
+
+Save this as the engine ingress URL.
+
+### Step 2 — Register the Engine with the Platform
+
+Ask the user for an engine name (e.g., "Production Engine", "Dev Machine") and a short description (e.g., "Local Docker install on dev machine").
 
 Execute **all of the following in one Bash call** — the `client_secret` is only returned once from the API and must be saved to disk within the same shell execution. Shell variables do not persist between Bash calls.
 
@@ -102,10 +121,11 @@ ARTHUR_PLATFORM_TOKEN=$(grep '^ARTHUR_PLATFORM_TOKEN=' .arthur-engine.env 2>/dev
 ARTHUR_PLATFORM_WORKSPACE_ID=$(grep '^ARTHUR_PLATFORM_WORKSPACE_ID=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
 
 # Create the data plane registration
+# `infrastructure` defaults to "AWS" if omitted — always set it explicitly
 DP_CREATE_RESPONSE=$(curl -s -X POST \
   -H "Authorization: Bearer $ARTHUR_PLATFORM_TOKEN" \
   -H "Content-Type: application/json" \
-  -d "{\"name\": \"$ENGINE_NAME\"}" \
+  -d "{\"name\": \"$ENGINE_NAME\", \"description\": \"$ENGINE_DESCRIPTION\", \"infrastructure\": \"$INFRASTRUCTURE\"}" \
   "${ARTHUR_PLATFORM_URL}/api/v1/workspaces/${ARTHUR_PLATFORM_WORKSPACE_ID}/data_planes")
 DATA_PLANE_ID=$(echo "$DP_CREATE_RESPONSE" | \
   python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
@@ -133,9 +153,7 @@ fi
 If `DATA_PLANE_ID` is empty or `HAS_SECRET=no`: show the raw `DP_CREATE_RESPONSE`; report the error.
 If the secret was lost before saving, regenerate it: `POST /api/v1/data_planes/{id}/credential_set`.
 
-### Step 2 — Choose Deployment Method
-
-#### Step 2a — Determine Engine Version
+### Step 3 — Determine Engine Version
 
 Fetch the latest release tag from GitHub:
 
@@ -154,17 +172,7 @@ Confirm: "Using Arthur Engine version `<ENGINE_VERSION>`."
 
 ---
 
-Ask the user which deployment method they want:
-- **A) Docker Compose** — for a local setup on Mac or Windows
-- **B) AWS CloudFormation** — for AWS deployments
-- **C) Kubernetes (Helm)** — for Kubernetes clusters
-
-Also ask:
-> "What is the external URL where this engine will be reachable by your applications?
-> For a local Docker install this is typically `http://localhost:7072` or `http://localhost:3030`.
-> For cloud deployments, this is your load balancer or ingress URL."
-
-Save this as the engine ingress URL.
+Proceed with the deployment method the user already selected in Step 1.
 
 ---
 
