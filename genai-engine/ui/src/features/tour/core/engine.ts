@@ -4,6 +4,7 @@ import { resolveTargetAsync, resolveTargetSync } from "./targets";
 import { createDefaultTriggerRegistry } from "./triggers";
 import type {
   AdvanceTrigger,
+  HighlightRenderer,
   LifecycleMiddleware,
   ResolvedRoute,
   RouteSpec,
@@ -32,6 +33,13 @@ export interface TourEngine extends TourActions {
   on: TourBus["on"];
   off: TourBus["off"];
   setNavigator: (navigator: TourNavigator | null) => void;
+  /**
+   * Look up a highlight renderer registered by a plugin via
+   * `registerHighlight(key, renderer)`. Returns `undefined` when no plugin
+   * has registered for `key`; consumers (typically the React `Spotlight`
+   * primitive) should fall back to a sensible default in that case.
+   */
+  getHighlight: (key: string) => HighlightRenderer | undefined;
   destroy: () => void;
 }
 
@@ -52,6 +60,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
   let activeTriggerCleanups: Array<() => void> = [];
   let enterAbort: AbortController | null = null;
   let navigator: TourNavigator | null = options.navigator ?? null;
+  const highlights = new Map<string, HighlightRenderer>();
 
   const totalSteps = config.sections.reduce((acc, s) => acc + s.steps.length, 0);
 
@@ -110,11 +119,13 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
       tourId: config.id,
       bus,
       registerTrigger: (key, factory) => triggers.register(key, factory),
-      registerHighlight: () => {
-        // Highlight registry is consumed by the React layer; the React Spotlight
-        // primitive picks up custom shapes via this same mechanism. v1 keeps the
-        // hook surface stable even though the default Spotlight only handles
-        // box / circle / none.
+      // Custom highlight renderers are stored on the engine and consumed by
+      // the React `Spotlight` primitive via `engine.getHighlight(key)`. A
+      // step's `highlight: { shape: "custom", key }` then dispatches to the
+      // matching renderer; if no plugin has registered for the key,
+      // `Spotlight` falls back to its default box cutout.
+      registerHighlight: (key, renderer) => {
+        highlights.set(key, renderer);
       },
       use: (mw) => middleware.push(mw),
     });
@@ -531,6 +542,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     getState,
     subscribe,
     setNavigator,
+    getHighlight: (key) => highlights.get(key),
     destroy,
     start,
     next,

@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 
 import type { HighlightSpec } from "../../core/types";
+import { useTourEngine } from "../useTour";
 
 export interface SpotlightProps {
   rect: DOMRect | null;
@@ -56,8 +57,25 @@ function normalize(spec: HighlightSpec | undefined): NormalizedHighlight {
  * or the rect is missing, renders a flat backdrop. Pointer events are disabled
  * on the SVG so clicks fall through; consumers wrap this in a clickable div if
  * they want backdrop dismissal.
+ *
+ * For `highlight.shape === "custom"`, the rendering is delegated to the
+ * plugin-registered renderer looked up via `engine.getHighlight(key)`. If no
+ * renderer is registered for the key, the spotlight falls back to its default
+ * box cutout — this primitive must therefore be mounted inside a
+ * `<TourProvider>`, which all real usages already are.
  */
 export function Spotlight({ rect, highlight, backdropColor = "rgba(0, 0, 0, 0.55)", className, style }: SpotlightProps) {
+  const engine = useTourEngine();
+
+  if (highlight?.shape === "custom") {
+    const renderer = engine.getHighlight(highlight.key);
+    if (renderer) {
+      return <>{renderer({ rect, spec: highlight, backdropColor, style })}</>;
+    }
+    // No renderer registered for `highlight.key` — fall through to the
+    // default box cutout below so the page is still dimmed for the user.
+  }
+
   const norm = normalize(highlight);
 
   const baseStyle: CSSProperties = {

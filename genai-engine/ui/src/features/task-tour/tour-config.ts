@@ -1,4 +1,5 @@
 import { TASK_TOUR_SECTIONS, type TaskTourItem } from "./data";
+import { TASK_TOUR_PULSE_HIGHLIGHT } from "./highlights";
 import { tourSelector } from "./selectors";
 
 import type { AdvanceTrigger, RouteSpec, SectionConfig, StepConfig, TourConfig } from "@/features/tour";
@@ -44,9 +45,17 @@ function buildStep(taskId: string, item: TaskTourItem): StepConfig {
     id: item.id,
     target: { kind: "selector", selector: tourSelector(item.targetId) },
     content: item.instructions,
-    // Brand-coloured pulse is painted by `PulsingRing` — keep the library
-    // spotlight non-pulsing.
-    highlight: { shape: "box", padding: 6, radius: 10, pulse: false },
+    // Brand-coloured cutout + pulse — handed off to the engine's highlight
+    // registry so the spotlight composition lives behind the same plugin
+    // contract as triggers and persistence (registered by
+    // `createTaskTourHighlightsPlugin`). `padding` is duplicated at the top
+    // level so `BackdropBlocker` can size the interactive cutout to match.
+    highlight: {
+      shape: "custom",
+      key: TASK_TOUR_PULSE_HIGHLIGHT,
+      padding: 6,
+      options: { radius: 10 },
+    },
     // Block interaction with everything outside the spotlight so the user can
     // only engage with the highlighted target (or the floating checklist
     // panel, which sits above the blocker via z-index). Backdrop clicks are

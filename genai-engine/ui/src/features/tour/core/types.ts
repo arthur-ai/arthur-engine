@@ -1,6 +1,6 @@
 import type { Placement } from "@floating-ui/react";
 import type { Emitter, EventType } from "mitt";
-import type { ReactNode, RefObject } from "react";
+import type { CSSProperties, ReactNode, RefObject } from "react";
 
 // =============================================================================
 // Target resolution
@@ -75,7 +75,22 @@ export type CircleHighlight = {
 
 export type NoHighlight = { shape: "none" };
 
-export type CustomHighlight = { shape: "custom"; key: string; options?: unknown };
+/**
+ * Custom highlight shape rendered via a plugin-registered renderer. The `key`
+ * must match a name passed to `registerHighlight(...)` in a `TourPlugin`'s
+ * install hook; if no renderer is registered, the built-in `Spotlight` falls
+ * back to a box cutout.
+ *
+ * `padding` is exposed at the top level so primitives like `BackdropBlocker`
+ * can size the interactive cutout to match the visual one without unpacking
+ * `options`. Renderer-specific config goes into `options`.
+ */
+export type CustomHighlight = {
+  shape: "custom";
+  key: string;
+  padding?: number;
+  options?: unknown;
+};
 
 export type HighlightSpec = BoxHighlight | CircleHighlight | NoHighlight | CustomHighlight;
 
@@ -329,9 +344,20 @@ export type TriggerFactory = (ctx: TriggerAttachContext) => () => void;
 // Highlight renderer contract (for plugin-supplied custom shapes)
 // =============================================================================
 
+/**
+ * Context passed to a registered highlight renderer. `rect` may be `null`
+ * when the active step's target hasn't resolved yet — renderers that depend
+ * on a rect should bail out in that case (returning `null`) rather than
+ * paint a fallback. `backdropColor` and `style` are forwarded from the
+ * `Spotlight` primitive so renderers can produce visuals consistent with the
+ * surrounding overlay configuration without the caller wiring those props
+ * twice.
+ */
 export interface HighlightRenderContext {
-  rect: DOMRect;
-  spec: HighlightSpec;
+  rect: DOMRect | null;
+  spec: CustomHighlight;
+  backdropColor?: string;
+  style?: CSSProperties;
 }
 
 export type HighlightRenderer = (ctx: HighlightRenderContext) => ReactNode;

@@ -220,11 +220,17 @@ Plugins receive `{ bus, registerTrigger, registerHighlight, use }`. They may:
 - Listen on `bus` for any tour lifecycle event (see Events above).
 - Register new advance triggers via `registerTrigger("key", factory)` and
   reference them from `step.advanceOn` as `{ type: "custom", key: "key" }`.
-- Register custom highlight shapes via `registerHighlight("shape", renderer)`
-  (rendered by the default `Spotlight` once a plugin layer consumes the
-  registry — `box`, `circle`, and `none` are built-in today).
+- Register custom highlight shapes via `registerHighlight("key", renderer)`.
+  Steps reference these as `highlight: { shape: "custom", key: "key", padding,
+  options }`. The React `Spotlight` primitive looks the renderer up via
+  `engine.getHighlight(key)` and delegates rendering to it (passing through
+  `rect`, `spec`, `backdropColor`, and `style`); when no renderer is
+  registered it falls back to a default box cutout.
 - Push lifecycle middleware via `use(mw)` to run async side effects on every
   step enter.
 
-Built-in plugins: [`createAnalyticsPlugin`](./plugins/createAnalyticsPlugin.ts).
+Built-in plugins:
+[`createAnalyticsPlugin`](./plugins/createAnalyticsPlugin.ts),
+[`createPersistencePlugin`](./plugins/createPersistencePlugin.ts),
+[`createChecklistProgressPlugin`](./plugins/createChecklistProgressPlugin.ts).
 Plugin `install` may return a cleanup; `engine.destroy()` runs it.

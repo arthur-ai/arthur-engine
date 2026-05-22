@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CertificateDialog } from "./components/CertificateDialog";
 import { ChecklistTour } from "./components/ChecklistTour";
 import { ResumeFab } from "./components/ResumeFab";
+import { createTaskTourHighlightsPlugin } from "./highlights";
 import { buildTourConfig, isStubStep } from "./tour-config";
 
 import {
@@ -80,19 +81,20 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
       }),
     []
   );
+  const highlightsPlugin = useMemo(() => createTaskTourHighlightsPlugin(), []);
 
   const [engine, setEngine] = useState<TourEngine | null>(null);
 
   useEffect(() => {
     const created = createTour({
       config: buildTourConfig(taskId),
-      plugins: [createAnalyticsPlugin({ track, prefix: "task-tour" }), persistencePlugin, progressPlugin],
+      plugins: [createAnalyticsPlugin({ track, prefix: "task-tour" }), persistencePlugin, progressPlugin, highlightsPlugin],
     });
     setEngine(created);
     return () => {
       created.destroy();
     };
-  }, [persistencePlugin, progressPlugin, taskId]);
+  }, [highlightsPlugin, persistencePlugin, progressPlugin, taskId]);
 
   const status = useTourPersistence(persistencePlugin);
 

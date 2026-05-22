@@ -5,7 +5,6 @@ import { isStubStep } from "../tour-config";
 import { dispatchTourEvent } from "../tourEvents";
 
 import { ChecklistPanel } from "./ChecklistPanel";
-import { PulsingRing } from "./PulsingRing";
 import { SectionIntroDialog } from "./SectionIntroDialog";
 
 import {
@@ -30,13 +29,16 @@ import {
 //
 // Layering rationale (low → high):
 //   spotlight  (visual dim, pointer-events: none)  → 1399
-//   blocker    (pointer trap around the cutout)     → 1401
-//   pulse ring (decorative, pointer-events: none)   → 1400
-//   panel      (interactive checklist)              → 1450 (lives in ChecklistPanel)
+//   pulse ring (decorative, pointer-events: none)  → 1400 (painted by the
+//                                                    `task-tour-pulse`
+//                                                    custom highlight, one
+//                                                    tier above the
+//                                                    spotlight base)
+//   blocker    (pointer trap around the cutout)    → 1401
+//   panel      (interactive checklist)             → 1450 (lives in ChecklistPanel)
 // The blocker sits above the visual spotlight and below the panel so the
 // panel stays clickable while the rest of the page is frozen.
 const SPOTLIGHT_Z_INDEX = 1399;
-const PULSE_RING_Z_INDEX = 1400;
 const BLOCKER_Z_INDEX = 1401;
 
 const TOTAL_ITEM_COUNT = TASK_TOUR_SECTIONS.reduce((sum, s) => sum + Math.max(1, s.items.length), 0);
@@ -239,6 +241,11 @@ export function ChecklistTour({ enabled, progressPlugin, onComplete }: Checklist
             const showBlocker = overlay?.blockInteraction === true;
             return (
               <>
+                {/* The `task-tour-pulse` custom highlight (registered by
+                    `createTaskTourHighlightsPlugin`) renders both the box
+                    cutout and the brand-coloured pulse ring. `Spotlight`
+                    delegates to it via `engine.getHighlight(key)` when the
+                    step's `highlight.shape === "custom"`. */}
                 <Spotlight
                   rect={rect}
                   highlight={activeStep?.step.highlight}
@@ -256,7 +263,6 @@ export function ChecklistTour({ enabled, progressPlugin, onComplete }: Checklist
                     style={{ zIndex: BLOCKER_Z_INDEX }}
                   />
                 ) : null}
-                <PulsingRing rect={rect} zIndex={PULSE_RING_Z_INDEX} />
               </>
             );
           }}

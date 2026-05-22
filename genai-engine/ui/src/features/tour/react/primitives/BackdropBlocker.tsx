@@ -87,6 +87,7 @@ export function getHighlightPadding(spec: HighlightSpec | undefined): number {
   switch (spec.shape) {
     case "box":
     case "circle":
+    case "custom":
       return spec.padding ?? 8;
     case "none":
       return 0;
