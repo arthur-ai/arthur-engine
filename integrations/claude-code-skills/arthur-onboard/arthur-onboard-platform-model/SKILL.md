@@ -115,7 +115,7 @@ MODELS_RESPONSE=$(curl -s \
 MODEL_LIST=$(echo "$MODELS_RESPONSE" | python3 -c "
 import sys, json
 d = json.load(sys.stdin)
-models = d.get('resources') or d.get('data') or d.get('models') or (d if isinstance(d, list) else [])
+models = d.get('records') or d.get('resources') or d.get('data') or d.get('models') or (d if isinstance(d, list) else [])
 for m in models:
     print(f'  {m[\"id\"]}: {m[\"name\"]}')
 if not models:
@@ -130,31 +130,128 @@ If the user selects an existing model, skip to "Poll for Task Connection Info" w
 
 ---
 
+## Fetch Engine Connector
+
+Before creating the Agentic Model, retrieve the `engine_internal` connector for the selected data plane. This `connector_id` is required in the creation payload.
+
+```bash
+CONNECTORS_RESPONSE=$(curl -s \
+  -H "Authorization: Bearer $ARTHUR_PLATFORM_TOKEN" \
+  "${ARTHUR_PLATFORM_URL}/api/v1/projects/${PROJECT_ID}/connectors?data_plane_id=${ARTHUR_PLATFORM_ENGINE_ID}&connector_type=engine_internal&page=1&page_size=1")
+CONNECTOR_ID=$(echo "$CONNECTORS_RESPONSE" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+records = d.get('records') or d.get('resources') or d.get('data') or []
+print(records[0]['id'] if records else '')
+" 2>/dev/null)
+echo "CONNECTOR_ID=$CONNECTOR_ID"
+```
+
+If `CONNECTOR_ID` is empty: show the raw response and stop. The engine must be registered and `ARTHUR_PLATFORM_ENGINE_ID` must be set in `.arthur-engine.env`. Re-run `arthur-onboard-platform-engine` if needed.
+
+---
+
 ## Create Agentic Model
 
 Ask the user for the model name (e.g., "Customer Support Bot", "Code Assistant").
 
-> **No connector setup needed.** When an Agentic Model is created on the platform, an implicit connector is configured automatically — do not create a connector explicitly. The "Shield connector" visible in the platform UI is for the Arthur Shield product (a separate use case) and must **not** be created here.
+Creating an Agentic Model submits an async task to the platform, which provisions the underlying GenAI Engine task. The call returns a `job_id` that must be polled to completion.
 
 ```bash
-MODEL_PAYLOAD=$(python3 -c "
+ONBOARDING_ID=$(python3 -c "import uuid; print(str(uuid.uuid4()))")
+TASK_PAYLOAD=$(python3 -c "
 import json
 print(json.dumps({
   'name': '$MODEL_NAME',
-  'data_plane_id': '$ARTHUR_PLATFORM_ENGINE_ID'
+  'onboarding_identifier': '$ONBOARDING_ID',
+  'connector_id': '$CONNECTOR_ID',
+  'is_agentic': True
 }))
 ")
-MODEL_RESPONSE=$(curl -s -X POST \
+TASK_RESPONSE=$(curl -s -X POST \
   -H "Authorization: Bearer $ARTHUR_PLATFORM_TOKEN" \
   -H "Content-Type: application/json" \
-  -d "$MODEL_PAYLOAD" \
-  "${ARTHUR_PLATFORM_URL}/api/v1/projects/${PROJECT_ID}/models")
-MODEL_ID=$(echo "$MODEL_RESPONSE" | \
-  python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
-echo "MODEL_ID=$MODEL_ID"
+  -d "$TASK_PAYLOAD" \
+  "${ARTHUR_PLATFORM_URL}/api/v1/projects/${PROJECT_ID}/tasks")
+JOB_ID=$(echo "$TASK_RESPONSE" | \
+  python3 -c "import sys,json; print(json.load(sys.stdin).get('job_id',''))" 2>/dev/null)
+echo "JOB_ID=$JOB_ID"
+echo "ONBOARDING_ID=$ONBOARDING_ID"
 ```
 
-If `MODEL_ID` is empty: show the raw response; check if the endpoint or payload schema has changed by reviewing `<ARTHUR_PLATFORM_URL>/api/docs`. Try the alternate endpoint `/api/v1/workspaces/${ARTHUR_PLATFORM_WORKSPACE_ID}/models` if `/api/v1/projects/{id}/models` returns 404.
+If `JOB_ID` is empty: show the raw response; check if the endpoint or payload schema has changed by reviewing `<ARTHUR_PLATFORM_URL>/api/docs`.
+
+Save `ONBOARDING_ID` and `JOB_ID` to state:
+```bash
+STATE_FILE=".arthur-engine.env"
+grep -v '^ARTHUR_PLATFORM_ONBOARDING_ID=\|^ARTHUR_PLATFORM_JOB_ID=' "$STATE_FILE" 2>/dev/null > /tmp/ae_env_tmp && mv /tmp/ae_env_tmp "$STATE_FILE" || true
+echo "ARTHUR_PLATFORM_ONBOARDING_ID=$ONBOARDING_ID" >> "$STATE_FILE"
+echo "ARTHUR_PLATFORM_JOB_ID=$JOB_ID" >> "$STATE_FILE"
+```
+
+---
+
+## Poll Job Until Completed
+
+The platform provisions the GenAI Engine task asynchronously. Poll the job status — make **individual Bash calls one per check cycle**. Because tokens expire in ~5 minutes, each call refreshes the token automatically:
+
+```bash
+ARTHUR_PLATFORM_URL=$(grep '^ARTHUR_PLATFORM_URL=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
+JOB_ID=$(grep '^ARTHUR_PLATFORM_JOB_ID=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
+
+# Refresh token using arthur_client (handles expiry automatically)
+CLIENT_ID=$(grep '^ARTHUR_PLATFORM_CLIENT_ID=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
+CLIENT_SECRET=$(grep '^ARTHUR_PLATFORM_CLIENT_SECRET=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
+export _AE_URL="$ARTHUR_PLATFORM_URL" _AE_CLIENT_ID="$CLIENT_ID" _AE_CLIENT_SECRET="$CLIENT_SECRET"
+ARTHUR_PLATFORM_TOKEN=$(python3 - <<'PYEOF'
+import sys, os
+try:
+    from arthur_client.auth import ArthurClientCredentialsAPISession, ArthurOIDCMetadata
+    metadata = ArthurOIDCMetadata(os.environ["_AE_URL"])
+    session = ArthurClientCredentialsAPISession(
+        client_id=os.environ["_AE_CLIENT_ID"],
+        client_secret=os.environ["_AE_CLIENT_SECRET"],
+        metadata=metadata,
+    )
+    print(session.token()["access_token"])
+except Exception as e:
+    print(f"ERROR: {e}", file=sys.stderr)
+    sys.exit(1)
+PYEOF
+)
+grep -v '^ARTHUR_PLATFORM_TOKEN=' .arthur-engine.env > /tmp/ae_env_tmp && mv /tmp/ae_env_tmp .arthur-engine.env
+echo "ARTHUR_PLATFORM_TOKEN=$ARTHUR_PLATFORM_TOKEN" >> .arthur-engine.env
+
+JOB_RESPONSE=$(curl -s \
+  -H "Authorization: Bearer $ARTHUR_PLATFORM_TOKEN" \
+  "${ARTHUR_PLATFORM_URL}/api/v1/jobs/${JOB_ID}")
+JOB_STATE=$(echo "$JOB_RESPONSE" | \
+  python3 -c "import sys,json; print(json.load(sys.stdin).get('state',''))" 2>/dev/null || echo "unknown")
+echo "JOB_STATE=$JOB_STATE"
+```
+
+Retry every 10 seconds, up to 30 times (~5 minutes). Stop when `JOB_STATE=completed`.
+
+If `JOB_STATE=failed`: show the full job response and guide the user to check the platform UI under **Applications → <model name>** for provisioning errors. Exit this skill.
+
+If still not `completed` after 30 attempts: guide the user to the platform UI to check job status.
+
+Once the job is `completed`, retrieve the model using the `onboarding_identifier`:
+
+```bash
+ONBOARDING_ID=$(grep '^ARTHUR_PLATFORM_ONBOARDING_ID=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
+PROJECT_ID=$(grep '^ARTHUR_PLATFORM_PROJECT_ID=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
+MODELS_RESPONSE=$(curl -s \
+  -H "Authorization: Bearer $ARTHUR_PLATFORM_TOKEN" \
+  "${ARTHUR_PLATFORM_URL}/api/v1/projects/${PROJECT_ID}/models?onboarding_identifier=${ONBOARDING_ID}&page=1&page_size=1")
+MODEL_ID=$(echo "$MODELS_RESPONSE" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+records = d.get('records') or d.get('resources') or d.get('data') or []
+print(records[0]['id'] if records else '')
+" 2>/dev/null)
+echo "MODEL_ID=$MODEL_ID"
+```
 
 Save `ARTHUR_PLATFORM_MODEL_ID` to state:
 ```bash
@@ -167,7 +264,7 @@ echo "ARTHUR_PLATFORM_MODEL_ID=$MODEL_ID" >> "$STATE_FILE"
 
 ## Poll for Task Connection Info
 
-The platform dispatches an async job to the registered engine to create the underlying GenAI Engine task. Poll for the task connection info — make **individual Bash calls one per check cycle**. Because tokens expire in ~5 minutes, each call reads the token fresh from the state file and refreshes it automatically if needed:
+With the job complete and `MODEL_ID` known, poll for the task connection info — it is typically available immediately after the job completes. Make **individual Bash calls one per check cycle** and refresh the token each time:
 
 ```bash
 ARTHUR_PLATFORM_URL=$(grep '^ARTHUR_PLATFORM_URL=' .arthur-engine.env 2>/dev/null | cut -d= -f2-)
@@ -209,9 +306,9 @@ print('OK' if d.get('api_host') else 'WAITING')
 echo "CONN_STATUS=$CONN_STATUS"
 ```
 
-Retry every 10 seconds, up to 30 times (~5 minutes). Stop when `CONN_STATUS=OK`.
+Retry every 10 seconds, up to 10 times (~100 seconds). Stop when `CONN_STATUS=OK`.
 
-If still `WAITING` after 30 attempts:
+If still `WAITING` after 10 attempts:
 - Guide the user to the platform UI: **Applications → <model name> → Task** tab to check for provisioning errors
 - Ask the user if they can see a task ID in the UI and enter it manually (as a fallback)
 
