@@ -12,7 +12,7 @@ const STEP_TIMEOUT_MS = 4000;
  * source of truth — `ChecklistTour` keeps an identical hardcoded fallback for
  * defensive defaulting only.
  */
-const TASK_TOUR_BACKDROP_COLOR = "rgba(15, 23, 42, 0.28)";
+const TASK_TOUR_BACKDROP_COLOR = "rgba(15, 23, 42, 0.68)";
 
 /**
  * Sentinel selector used by stub / intro-only sections. The placeholder step

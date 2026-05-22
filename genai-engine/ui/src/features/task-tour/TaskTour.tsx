@@ -14,7 +14,9 @@ import {
   TourProvider,
   useReactRouterNavigator,
   useTourPersistence,
+  type ChecklistProgress,
   type StepAdvanceEvent,
+  type TourConfig,
   type TourEngine,
 } from "@/features/tour";
 import { track } from "@/services/amplitude";
@@ -23,12 +25,34 @@ export const TASK_TOUR_STORAGE_KEY = "arthur:task-tour:status";
 const TASK_TOUR_PROGRESS_STORAGE_KEY = "arthur:task-tour:progress";
 
 /**
- * Maps a `step:advance` event to the checklist key shape the panel uses.
- * Stub-section advances key off `${sectionId}.__intro` so they collapse to a
- * single "intro complete" tick rather than an opaque placeholder step ID.
+ * Builds the progress-set key for a given (sectionId, stepId) pair. Stub
+ * sections collapse to a single `${sectionId}.__intro` marker so the
+ * placeholder step ID never leaks into the storage key.
  */
-const taskTourProgressKey = (event: StepAdvanceEvent): string =>
-  isStubStep(event.stepId) ? `${event.sectionId}.__intro` : `${event.sectionId}.${event.stepId}`;
+const taskTourStepKey = (sectionId: string, stepId: string): string => (isStubStep(stepId) ? `${sectionId}.__intro` : `${sectionId}.${stepId}`);
+
+/**
+ * Maps a `step:advance` event to the same key shape, used by the
+ * `createChecklistProgressPlugin`'s `getKey` option to record progress.
+ */
+const taskTourProgressKey = (event: StepAdvanceEvent): string => taskTourStepKey(event.sectionId, event.stepId);
+
+/**
+ * Walks the tour config and returns the first step the user has not yet
+ * completed (according to `progress`), so a resume can land on the next
+ * outstanding step rather than restart from the top. Returns `null` when
+ * every step is recorded as complete.
+ */
+function findResumePosition(config: TourConfig, progress: ChecklistProgress): { sectionId: string; stepId: string } | null {
+  for (const section of config.sections) {
+    for (const step of section.steps) {
+      if (!progress.has(taskTourStepKey(section.id, step.id))) {
+        return { sectionId: section.id, stepId: step.id };
+      }
+    }
+  }
+  return null;
+}
 
 export interface TaskTourProps {
   /** Required: the task the tour should bind its routes against. */
@@ -43,9 +67,12 @@ export interface TaskTourProps {
  * persistence-aware auto-show / resume / hide behaviour:
  *
  * - `unseen`        → auto-start once on first mount; user sees Section 1 intro
- * - `in-progress`   → render the panel + spotlight; persistence is held until
- *                     the engine terminates
- * - `dismissed`     → render only the floating `ResumeFab`
+ * - `in-progress`   → auto-resume on mount (engine starts at the first
+ *                     incomplete step from `progressPlugin`, so a reload or
+ *                     intra-app re-mount mid-tour reopens where the user
+ *                     left off rather than stranding the panel
+ * - `dismissed`     → render only the floating `ResumeFab` (which also
+ *                     resumes at the first incomplete step on click)
  * - `completed`     → render nothing (and unmount the FAB)
  *
  * Persistence is owned by the engine plugin: the plugin writes to
@@ -98,19 +125,29 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
 
   const status = useTourPersistence(persistencePlugin);
 
-  // Auto-start once per `unseen` status. We use a ref to gate so that the
-  // start side-effect doesn't re-fire if `status` flickers (e.g. the
-  // persistence plugin writes `in-progress` synchronously inside `start()`,
-  // which would re-render with a new status before this effect has settled).
+  // Auto-start once per mount when the tour is owed to the user. `unseen`
+  // means they've never seen it; `in-progress` means they started but the
+  // engine was torn down (page reload, intra-app navigation that unmounted
+  // `TaskLayout`, taskId change), and we want the panel to reappear at the
+  // next outstanding step rather than leave persistence stranded with no
+  // visible tour. We use a ref to gate so the side-effect doesn't re-fire
+  // when `status` flickers — e.g. the persistence plugin writes
+  // `in-progress` synchronously inside `start()`, which re-renders with a
+  // new status before this effect has settled.
   const autoStartedRef = useRef(false);
   useEffect(() => {
     if (autoStartedRef.current) return;
     if (!engine) return;
-    if (status !== "unseen") return;
+    if (status !== "unseen" && status !== "in-progress") return;
     if (engine.getState().status !== "idle") return;
     autoStartedRef.current = true;
-    engine.start();
-  }, [engine, status]);
+    if (status === "in-progress") {
+      const resumePosition = findResumePosition(engine.config, progressPlugin.getProgress());
+      engine.start(resumePosition ?? undefined);
+    } else {
+      engine.start();
+    }
+  }, [engine, progressPlugin, status]);
 
   const [certificateOpen, setCertificateOpen] = useState(false);
 
@@ -127,12 +164,15 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
     const engineState = engine.getState();
     if (engineState.status === "paused") {
       engine.resume();
-    } else {
-      // Idle (fresh page load after dismissal) or terminal (completed/skipped
-      // re-run) — `start()` resets the engine cleanly.
-      engine.start();
+      return;
     }
-  }, [engine]);
+    // Idle (fresh page load after dismissal) or terminal (completed/skipped
+    // re-run) — `start()` resets the engine cleanly. When resuming a
+    // dismissed tour we honour the persisted progress so the user lands on
+    // the next outstanding step, not back at section 0.
+    const resumePosition = findResumePosition(engine.config, progressPlugin.getProgress());
+    engine.start(resumePosition ?? undefined);
+  }, [engine, progressPlugin]);
 
   const handleCertificateClose = useCallback(() => {
     setCertificateOpen(false);
