@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import List, Optional, Set, Tuple
 
 from arthur_client.api_bindings import (
     Alert,
@@ -29,16 +29,41 @@ from arthur_client.api_bindings import (
     NumericPoint,
     NumericTimeSeries,
     PoliciesV1Api,
+    Policy,
     PolicyAssignment,
     PolicyAttestationRule,
     PostMetricsVersions,
+    RuleType,
     SetComplianceStatusRequest,
     SortOrder,
 )
 
+from connectors.shield_connector import ShieldBaseConnector
 from job_executors._interval_utils import alert_interval_to_timedelta
+from job_executors.task_management_job_executors import TaskManagementJobExecutor
 
 _PAGE_SIZE = 100
+GUARDRAIL_DEPENDENT_RESOURCE_TYPE = "guardrail"
+
+
+class GuardrailCheckResult:
+    """Result of a single guardrail validation check."""
+
+    def __init__(
+        self,
+        rule_type: RuleType,
+        enabled: bool,
+        is_utilized: bool,
+        reason: str,
+    ) -> None:
+        self.rule_type = rule_type
+        self.enabled = enabled
+        self.is_utilized = is_utilized
+        self.reason = reason
+
+    @property
+    def passed(self) -> bool:
+        return self.enabled and self.is_utilized
 
 
 class CompliancePolicyCheckExecutor:
@@ -48,12 +73,14 @@ class CompliancePolicyCheckExecutor:
         alert_rules_client: AlertRulesV1Api,
         alerts_client: AlertsV1Api,
         metrics_client: MetricsV1Api,
+        tasks_management_job_executor: TaskManagementJobExecutor,
         logger: logging.Logger,
     ) -> None:
         self.policies_client = policies_client
         self.alert_rules_client = alert_rules_client
         self.alerts_client = alerts_client
         self.metrics_client = metrics_client
+        self.tasks_management_job_executor = tasks_management_job_executor
         self.logger = logger
 
     def execute(self, job: Job, job_spec: CompliancePolicyCheckJobSpec) -> None:
@@ -116,9 +143,14 @@ class CompliancePolicyCheckExecutor:
             assignment, policy.attestation_rules, window_end
         )
         alert_rule_results = self._check_alert_rules(assignment, window_end)
+        guardrail_results = self._check_guardrail_rules(
+            policy, model_id, window_start, window_end
+        )
 
-        has_violations = any(not passed for _, passed, _ in attestation_results) or any(
-            not passed for _, passed, _ in alert_rule_results
+        has_violations = (
+            any(not passed for _, passed, _ in attestation_results)
+            or any(not passed for _, passed, _ in alert_rule_results)
+            or any(not r.passed for r in guardrail_results)
         )
 
         status = self._resolve_status(
@@ -127,7 +159,12 @@ class CompliancePolicyCheckExecutor:
         self.logger.info(f"Assignment {assignment.id} resolved to {status.value}")
 
         self._report_status(
-            str(assignment.id), status, alert_rule_results, attestation_results
+            str(assignment.id),
+            status,
+            alert_rule_results,
+            attestation_results,
+            guardrail_results,
+            policy,
         )
         self._write_compliance_metrics(
             model_id,
@@ -301,6 +338,147 @@ class CompliancePolicyCheckExecutor:
             )
         return alert_rules
 
+    def _check_guardrail_rules(
+        self,
+        policy: Policy,
+        model_id: str,
+        window_start: datetime,
+        window_end: datetime,
+    ) -> List[GuardrailCheckResult]:
+        """Validate that guardrail rule types on the policy are enabled on the
+        model's task and have received data within the check window."""
+        required_types: Set[RuleType] = set()
+        for alert_rule in policy.alert_rules:
+            if (
+                alert_rule.dependent_resource is not None
+                and alert_rule.dependent_resource.resource_type
+                == GUARDRAIL_DEPENDENT_RESOURCE_TYPE
+            ):
+                required_types.add(alert_rule.dependent_resource.resource_name)
+
+        if not required_types:
+            return []
+
+        self.logger.info(
+            f"Policy {policy.id} requires guardrail types: {required_types}"
+        )
+
+        try:
+            _, _, conn, task_id = (
+                self.tasks_management_job_executor.retrieve_task_management_resources_from_model_id(
+                    model_id=model_id
+                )
+            )
+        except Exception as e:
+            self.logger.warning(
+                f"Could not fetch task state cache for model {model_id}: {e}"
+            )
+            return []
+
+        enabled_guardrail_types = self._get_enabled_guardrail_types(task_id, conn)
+
+        results: List[GuardrailCheckResult] = []
+        for rule_type in sorted(required_types):
+            is_enabled = rule_type.value in enabled_guardrail_types
+            if not is_enabled:
+                self.logger.info(
+                    f"Guardrail {rule_type.value}: NOT ENABLED on model {model_id}"
+                )
+                results.append(
+                    GuardrailCheckResult(
+                        rule_type=rule_type,
+                        enabled=False,
+                        is_utilized=False,
+                        reason=f"Guardrail {rule_type.value} is not enabled on this application",
+                    )
+                )
+                continue
+
+            guardrail_utilized = self._is_guardrail_utilized(
+                task_id, rule_type, window_start, window_end, conn
+            )
+            if guardrail_utilized:
+                self.logger.info(f"Guardrail {rule_type.value}: ENABLED and utilized")
+            else:
+                self.logger.info(
+                    f"Guardrail {rule_type.value}: ENABLED but NOT UTILIZED in the "
+                    f"check window {window_start.isoformat()} to {window_end.isoformat()}"
+                )
+
+            results.append(
+                GuardrailCheckResult(
+                    rule_type=rule_type,
+                    enabled=True,
+                    is_utilized=guardrail_utilized,
+                    reason=(
+                        "ok"
+                        if guardrail_utilized
+                        else f"Guardrail {rule_type.value} has not run in the "
+                        f"check window while new traces were received"
+                    ),
+                )
+            )
+
+        return results
+
+    def _get_enabled_guardrail_types(
+        self, task_id: str, conn: ShieldBaseConnector
+    ) -> Set[str]:
+        """Get all enabled guardrail rules for the specified task"""
+        task_response = conn.read_task(task_id=task_id)
+
+        enabled: Set[str] = set()
+        for rule in task_response.rules:
+            if rule.enabled:
+                enabled.add(rule.type.value)
+        return enabled
+
+    def _is_guardrail_utilized(
+        self,
+        task_id: str,
+        rule_type: RuleType,
+        window_start: datetime,
+        window_end: datetime,
+        conn: ShieldBaseConnector,
+    ) -> bool:
+        """
+        Checks whether the guardrail has run in the specified time period
+        given that new traces were received in the same time period.
+
+        This is meant to be used as an indicator that the application is
+        being actively used, but they only have guardrails enabled to meet
+        compliance and are not actually enforcing any guardrails.
+        """
+
+        try:
+            num_traces = conn.list_trace_metadata(
+                task_ids=[task_id], start_time=window_start, end_time=window_end
+            ).count
+        except Exception:
+            self.logger.warning(
+                f"Could not query traces for guardrail {rule_type} "
+                f"on task {task_id}",
+                exc_info=True,
+            )
+            return False
+
+        try:
+            num_inferences = conn.query_inferences(
+                task_ids=[task_id],
+                start_time=window_start,
+                end_time=window_end,
+                rule_types=[rule_type],
+            ).count
+        except Exception:
+            self.logger.warning(
+                f"Could not query inferences for guardrail {rule_type} "
+                f"on task {task_id}",
+                exc_info=True,
+            )
+            return False
+
+        return not (num_traces > 0 and num_inferences == 0)
+
     @staticmethod
     def _resolve_status(
         has_violations: bool,
@@ -319,11 +497,41 @@ class CompliancePolicyCheckExecutor:
         status: ComplianceStatus,
         alert_rule_results: List[Tuple[ClientAlertRule, bool, Optional[Alert]]],
         attestation_results: List[Tuple[PolicyAttestationRule, bool, str]],
+        guardrail_results: Optional[List[GuardrailCheckResult]] = None,
+        policy: Optional[Policy] = None,
     ) -> None:
+        # Build a map of rule_type to reason for failed guardrail checks
+        guardrail_failed_rule_ids: dict[str, str] = {}
+        if guardrail_results and policy:
+            failed_by_type = {
+                gr.rule_type: gr.reason for gr in guardrail_results if not gr.passed
+            }
+            for par in policy.alert_rules:
+                if par.dependent_resource is None:
+                    continue
+
+                par_rule_type = par.dependent_resource.resource_name
+                if par_rule_type in failed_by_type:
+                    guardrail_failed_rule_ids[str(par.id)] = failed_by_type[
+                        par_rule_type
+                    ]
+
         compliant_alert_rules: List[CompliantAlertRuleStatus] = []
         non_compliant_alert_rules: List[NonCompliantAlertRuleStatus] = []
         for rule, passed, triggering_alert in alert_rule_results:
-            if passed:
+            # Check if we failed the guardrail check
+            guardrail_reason = guardrail_failed_rule_ids.get(
+                rule.policy_alert_rule_id or ""
+            )
+            if guardrail_reason:
+                non_compliant_alert_rules.append(
+                    NonCompliantAlertRuleStatus(
+                        id=rule.id,
+                        name=rule.name,
+                        error_message=guardrail_reason,
+                    )
+                )
+            elif passed:
                 compliant_alert_rules.append(
                     CompliantAlertRuleStatus(id=rule.id, name=rule.name)
                 )
@@ -339,6 +547,26 @@ class CompliancePolicyCheckExecutor:
                         ),
                     )
                 )
+
+        # Fall back to policy alert rule for any guardrail failure not covered
+        # by a materialized alert rule above.
+        covered_policy_rule_ids = {
+            rule.policy_alert_rule_id for rule, *_ in alert_rule_results
+        }
+        if guardrail_results and policy:
+            for par in policy.alert_rules:
+                rule_id = str(par.id)
+                if (
+                    rule_id in guardrail_failed_rule_ids
+                    and rule_id not in covered_policy_rule_ids
+                ):
+                    non_compliant_alert_rules.append(
+                        NonCompliantAlertRuleStatus(
+                            id=par.id,
+                            name=par.name,
+                            error_message=guardrail_failed_rule_ids[rule_id],
+                        )
+                    )
 
         compliant_attestation_rules: List[CompliantAttestationRuleStatus] = []
         non_compliant_attestation_rules: List[NonCompliantAttestationRuleStatus] = []

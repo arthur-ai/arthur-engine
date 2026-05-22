@@ -67,6 +67,7 @@ from job_executors.task_management_job_executors import (
     FetchTaskJobExecutor,
     LinkTaskJobExecutor,
     RegenerateTaskValidationKeyJobExecutor,
+    TaskManagementJobExecutor,
     UpdateTaskJobExecutor,
 )
 from job_log_exporter import ExportContextedLogger, ScopeJobLogExporter
@@ -393,11 +394,21 @@ class JobExecutor:
                             raise ValueError(
                                 f"Expected CompliancePolicyCheckJobSpec type, got {type(job.job_spec.actual_instance)}.",
                             )
+
+                        tasks_management_job_executor = TaskManagementJobExecutor(
+                            self.models_client,
+                            self.datasets_client,
+                            self.tasks_client,
+                            self.connector_constructor,
+                            self.logger,
+                        )
+
                         CompliancePolicyCheckExecutor(
                             self.policies_client,
                             self.alert_rules_client,
                             self.alerts_client,
                             self.metrics_client,
+                            tasks_management_job_executor,
                             self.logger,
                         ).execute(job, job.job_spec.actual_instance)
                     case _:

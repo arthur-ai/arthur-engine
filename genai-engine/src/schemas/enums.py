@@ -209,3 +209,10 @@ class SSEEventType(str, Enum):
     SEARCH_COMPLETE = "search_complete"
     TOOL_CALL = "tool_call"
     TOOL_RESULT = "tool_result"
+
+
+class LLMMetadataSortField(str, Enum):
+    """Sort field options for the LLM evals/prompts metadata list endpoints."""
+
+    NAME = "name"
+    LATEST_VERSION_CREATED_AT = "latest_version_created_at"

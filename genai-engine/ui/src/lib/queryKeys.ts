@@ -70,6 +70,9 @@ export const queryKeys = {
   transforms: {
     list: (taskId: string) => ["listTransformsApiV1TasksTaskIdTracesTransformsGet", { taskId }] as const,
     byId: (transformId: string) => ["getTransformApiV1TracesTransformsTransformIdGet", { transformId }] as const,
+    versions: (transformId: string) => ["listTransformVersionsApiV1TracesTransformsTransformIdVersionsGet", { transformId }] as const,
+    version: (transformId: string, versionId: string) =>
+      ["getTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdGet", { transformId, versionId }] as const,
   },
   annotations: {
     byId: (annotationId: string) => ["getAnnotationByIdApiV1AnnotationsAnnotationIdGet", { annotationId }] as const,
@@ -123,5 +126,10 @@ export const queryKeys = {
   },
   taskMetrics: {
     all: (taskId: string) => ["taskMetrics", "all", taskId] as const,
+  },
+  tasks: {
+    all: () => ["searchTasksApiV2TasksSearchPost"] as const,
+    list: () => ["searchTasksApiV2TasksSearchPost", "active"] as const,
+    archived: () => ["searchTasksApiV2TasksSearchPost", "archived"] as const,
   },
 } as const;

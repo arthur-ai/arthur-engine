@@ -20,6 +20,7 @@ import {
 import { useState, useEffect } from "react";
 
 import { useTransforms } from "./hooks/useTransforms";
+import { useTransformVersions } from "./hooks/useTransformVersions";
 import { TransformFormModalProps } from "./types";
 
 import { TransformDefinition } from "@/components/traces/components/add-to-dataset/form/shared";
@@ -52,18 +53,28 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
   // Fetch transforms for the current task (for copying)
   const { data: availableTransforms, isLoading: isLoadingTransforms } = useTransforms(taskId);
 
+  // Fetch latest version for the transform being edited
+  const { data: initialTransformVersions = [] } = useTransformVersions(initialTransform?.id);
+  const initialTransformDefinition = initialTransformVersions[0]?.definition;
+
+  // Fetch latest version for the transform being copied from
+  const { data: copyTransformVersions = [] } = useTransformVersions(selectedTransformId ?? undefined);
+  const copyTransformDefinition = copyTransformVersions[0]?.definition;
+
   useEffect(() => {
     if (initialTransform) {
       setName(initialTransform.name);
       setDescription(initialTransform.description || "");
-      setVariables(
-        initialTransform.definition.variables.map((variable) => ({
-          variable_name: variable.variable_name,
-          span_name: variable.span_name,
-          attribute_path: variable.attribute_path,
-          fallback: variable.fallback !== undefined && variable.fallback !== null ? JSON.stringify(variable.fallback) : "",
-        }))
-      );
+      if (initialTransformDefinition) {
+        setVariables(
+          initialTransformDefinition.variables.map((variable) => ({
+            variable_name: variable.variable_name,
+            span_name: variable.span_name,
+            attribute_path: variable.attribute_path,
+            fallback: variable.fallback !== undefined && variable.fallback !== null ? JSON.stringify(variable.fallback) : "",
+          }))
+        );
+      }
     } else if (initialVariableNames && initialVariableNames.length > 0) {
       setName("");
       setDescription("");
@@ -83,7 +94,7 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
       setSelectedTransformId(null);
     }
     setErrors([]);
-  }, [initialTransform, initialVariableNames, open]);
+  }, [initialTransform, initialTransformDefinition, initialVariableNames, open]);
 
   const handleAddVariable = () => {
     setVariables([...variables, { variable_name: "", span_name: "", attribute_path: "", fallback: "" }]);
@@ -177,17 +188,15 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
     }
   };
 
-  const handleTransformSelect = (transformId: string | null) => {
-    setSelectedTransformId(transformId);
-    if (!transformId || !availableTransforms) return;
-
-    const selectedTransform = availableTransforms.find((t) => t.id === transformId);
+  // Populate form when version data loads for the selected copy-from transform
+  useEffect(() => {
+    if (!selectedTransformId || !copyTransformDefinition || !availableTransforms) return;
+    const selectedTransform = availableTransforms.find((t) => t.id === selectedTransformId);
     if (selectedTransform) {
-      // Populate form fields with the selected transform's data
       setName(selectedTransform.name);
       setDescription(selectedTransform.description || "");
       setVariables(
-        selectedTransform.definition.variables.map((variable) => ({
+        copyTransformDefinition.variables.map((variable) => ({
           variable_name: variable.variable_name,
           span_name: variable.span_name,
           attribute_path: variable.attribute_path,
@@ -196,6 +205,11 @@ export const TransformFormModal: React.FC<TransformFormModalProps> = ({
       );
       setErrors([]);
     }
+  }, [selectedTransformId, copyTransformDefinition, availableTransforms]);
+
+  const handleTransformSelect = (transformId: string | null) => {
+    setSelectedTransformId(transformId);
+    // Form fields are populated reactively via useEffect above once version data loads
   };
 
   return (

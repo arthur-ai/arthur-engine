@@ -614,7 +614,7 @@ class Task(BaseModel):
                         gcp_project_id=x.agent_metadata.gcp_metadata.project_id,
                         gcp_region=x.agent_metadata.gcp_metadata.region,
                         gcp_reasoning_engine_id=x.agent_metadata.gcp_metadata.resource_id,
-                    )
+                    ),
                 )
             else:
                 creation_source = AgentCreationSource(root=ManualAgentCreationSource())
@@ -2536,17 +2536,19 @@ class TraceTransform(BaseModel):
     task_id: str
     name: str
     description: Optional[str]
-    definition: TraceTransformDefinition
     created_at: datetime
     updated_at: datetime
 
-    def to_response_model(self) -> TraceTransformResponse:
+    def to_response_model(
+        self,
+        definition: TraceTransformDefinition,
+    ) -> TraceTransformResponse:
         return TraceTransformResponse(
             id=self.id,
             task_id=self.task_id,
             name=self.name,
             description=self.description,
-            definition=self.definition,
+            definition=definition,
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
@@ -2557,7 +2559,6 @@ class TraceTransform(BaseModel):
             task_id=self.task_id,
             name=self.name,
             description=self.description,
-            definition=self.definition.model_dump(),
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
@@ -2573,23 +2574,17 @@ class TraceTransform(BaseModel):
             task_id=task_id,
             name=request.name,
             description=request.description,
-            definition=request.definition,
             created_at=curr_time,
             updated_at=curr_time,
         )
 
     @staticmethod
-    def from_db_model(
-        db_transform: DatabaseTraceTransform,
-    ) -> "TraceTransform":
+    def from_db_model(db_transform: DatabaseTraceTransform) -> "TraceTransform":
         return TraceTransform(
             id=db_transform.id,
             task_id=db_transform.task_id,
             name=db_transform.name,
             description=db_transform.description,
-            definition=TraceTransformDefinition.model_validate(
-                db_transform.definition,
-            ),
             created_at=db_transform.created_at,
             updated_at=db_transform.updated_at,
         )
@@ -3857,6 +3852,7 @@ class ContinuousEval(BaseModel):
     llm_eval_name: str
     llm_eval_version: int
     transform_id: uuid.UUID
+    transform_version_id: Optional[uuid.UUID] = None
     created_at: datetime
     updated_at: datetime
     transform_variable_mapping: List[ContinuousEvalTransformVariableMapping] = Field(
@@ -3882,6 +3878,7 @@ class ContinuousEval(BaseModel):
             llm_eval_name=self.llm_eval_name,
             llm_eval_version=self.llm_eval_version,
             transform_id=self.transform_id,
+            transform_version_id=self.transform_version_id,
             created_at=self.created_at,
             updated_at=self.updated_at,
             transform_variable_mapping=transform_variable_mapping_dicts,
@@ -3906,6 +3903,7 @@ class ContinuousEval(BaseModel):
             llm_eval_name=db_eval.llm_eval_name,
             llm_eval_version=db_eval.llm_eval_version,
             transform_id=db_eval.transform_id,
+            transform_version_id=db_eval.transform_version_id,
             created_at=db_eval.created_at,
             updated_at=db_eval.updated_at,
             transform_variable_mapping=transform_variable_mapping,
@@ -3929,6 +3927,7 @@ class ContinuousEval(BaseModel):
             llm_eval_name=self.llm_eval_name,
             llm_eval_version=self.llm_eval_version,
             transform_id=self.transform_id,
+            transform_version_id=self.transform_version_id,
             created_at=self.created_at,
             updated_at=self.updated_at,
             transform_variable_mapping=transform_variable_mapping,

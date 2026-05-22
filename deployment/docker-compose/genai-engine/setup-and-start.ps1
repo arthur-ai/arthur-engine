@@ -14,9 +14,12 @@ function Prompt-EnvVar {
         [switch]$OutputKeyPair
     )
 
-    $inputValue = Read-Host "$VarName [Default: $DefaultValue]"
-    if ([string]::IsNullOrWhiteSpace($inputValue)) {
-        $inputValue = $DefaultValue
+    if ($NonInteractive) {
+        $inputValue = [System.Environment]::GetEnvironmentVariable($VarName)
+        if ([string]::IsNullOrWhiteSpace($inputValue)) { $inputValue = $DefaultValue }
+    } else {
+        $inputValue = Read-Host "$VarName [Default: $DefaultValue]"
+        if ([string]::IsNullOrWhiteSpace($inputValue)) { $inputValue = $DefaultValue }
     }
 
     if ($OutputKeyPair) {
@@ -40,6 +43,8 @@ Write-Host "└─────────────────────�
 
 Check-DockerCompose
 
+$NonInteractive = $env:SETUP_NON_INTERACTIVE -eq "true"
+
 $userHome = [Environment]::GetFolderPath("UserProfile")
 $rootDir = Join-Path $userHome ".arthur-engine\local-stack"
 $genaiSubdir = Join-Path $rootDir "genai-engine"
@@ -50,8 +55,10 @@ Create-Directory-IfNotPresent -DirName $genaiSubdir
 
 if ((Test-Path $envPath) -and (Get-Item $envPath -ErrorAction SilentlyContinue).Length -gt 0) {
     Write-Host "The $envPath file already exists."
-    Write-Host "Please review the file and press any key to proceed to Docker Compose up..."
-    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    if (-not $NonInteractive) {
+        Write-Host "Please review the file and press any key to proceed to Docker Compose up..."
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    }
 } else {
     Write-Host ""
     Write-Host "Do you have access to OpenAI services?"
@@ -60,9 +67,15 @@ if ((Test-Path $envPath) -and (Get-Item $envPath -ErrorAction SilentlyContinue).
     Write-Host "You can use a new or existing key tied to the OpenAI project/org your LLM calls are billed to."
     Write-Host "Don't have a key? You can skip for now and add it later. Just note: hallucination & sensitive data guardrails won't run without it."
     Write-Host ""
-    $hasOpenAI = Read-Host "Do you have access to OpenAI? (y/n) [Default: y]"
-    if ([string]::IsNullOrWhiteSpace($hasOpenAI)) {
-        $hasOpenAI = "y"
+    if ($NonInteractive) {
+        if ($env:SETUP_SKIP_OPENAI -eq "true") {
+            $hasOpenAI = "n"
+        } else {
+            $hasOpenAI = "y"
+        }
+    } else {
+        $hasOpenAI = Read-Host "Do you have access to OpenAI? (y/n) [Default: y]"
+        if ([string]::IsNullOrWhiteSpace($hasOpenAI)) { $hasOpenAI = "y" }
     }
 
     if ($hasOpenAI -match "^[Yy]$") {

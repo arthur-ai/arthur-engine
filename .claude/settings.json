@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{ read -r json; f=$(echo \"$json\" | jq -r '.tool_input.file_path // .tool_response.filePath // empty'); if echo \"$f\" | grep -qE 'genai-engine/ui/src/.*\\.(ts|tsx|js|jsx)$'; then repo_root=$(git -C \"$(dirname \"$f\")\" rev-parse --show-toplevel 2>/dev/null); cd \"$repo_root/genai-engine/ui\" && node_modules/.bin/prettier --write \"$f\" 2>/dev/null || true && node_modules/.bin/eslint --fix --cache --cache-location node_modules/.cache/eslint \"$f\" 2>/dev/null || true; fi; }"
+          }
+        ]
+      }
+    ]
+  }
+}

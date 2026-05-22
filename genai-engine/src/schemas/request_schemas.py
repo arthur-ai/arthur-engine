@@ -981,6 +981,10 @@ class ContinuousEvalCreateRequest(BaseModel):
     transform_id: UUID = Field(
         description="ID of the transform to create the continuous eval for",
     )
+    transform_version_id: Optional[UUID] = Field(
+        default=None,
+        description="ID of the transform version to pin. When set, the continuous eval will always execute using this version's configuration snapshot.",
+    )
     transform_variable_mapping: List[ContinuousEvalTransformVariableMappingRequest] = (
         Field(
             description="Mapping of transform variables to eval variables.",
@@ -1011,6 +1015,10 @@ class UpdateContinuousEvalRequest(BaseModel):
     transform_id: Optional[UUID] = Field(
         default=None,
         description="ID of the transform to create the continuous eval for",
+    )
+    transform_version_id: Optional[UUID] = Field(
+        default=None,
+        description="ID of the transform version to pin. When set, the continuous eval will always execute using this version's configuration snapshot.",
     )
     transform_variable_mapping: Optional[
         List[ContinuousEvalTransformVariableMappingRequest]

@@ -9,7 +9,7 @@ from arthur_common.models.enums import (
     ContinuousEvalRunStatus,
     PaginationSortMethod,
 )
-from arthur_common.models.task_eval_schemas import LLMEval
+from arthur_common.models.task_eval_schemas import LLMEval, TraceTransformDefinition
 from fastapi import HTTPException
 from sqlalchemy import asc, case, desc, func
 from sqlalchemy.exc import IntegrityError
@@ -19,7 +19,7 @@ from db_models import DatabaseSpan
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTestRun
 from db_models.llm_eval_models import DatabaseContinuousEval
-from schemas.internal_schemas import AgenticAnnotation, ContinuousEval, TraceTransform
+from schemas.internal_schemas import AgenticAnnotation, ContinuousEval
 from schemas.request_schemas import (
     ContinuousEvalCreateRequest,
     ContinuousEvalListFilterRequest,
@@ -89,11 +89,11 @@ class ContinuousEvalsRepository:
 
     def validate_transform_variable_mapping(
         self,
-        transform: TraceTransform,
+        transform_definition: TraceTransformDefinition,
         eval: LLMEval,
         transform_variable_mapping: List[ContinuousEvalTransformVariableMappingRequest],
     ) -> None:
-        transform_vars = {v.variable_name for v in transform.definition.variables}
+        transform_vars = {v.variable_name for v in transform_definition.variables}
         eval_vars = set(eval.variables)
 
         # Extract the mapped variables from the mapping
@@ -147,6 +147,7 @@ class ContinuousEvalsRepository:
             llm_eval_name=continuous_eval_request.llm_eval_name,
             llm_eval_version=continuous_eval_request.llm_eval_version,
             transform_id=continuous_eval_request.transform_id,
+            transform_version_id=continuous_eval_request.transform_version_id,
             created_at=datetime.now(),
             updated_at=datetime.now(),
             transform_variable_mapping=transform_variable_mapping_dicts,
@@ -202,6 +203,11 @@ class ContinuousEvalsRepository:
             has_changes = True
         if update_continuous_eval.transform_id:
             db_continuous_eval.transform_id = update_continuous_eval.transform_id
+            has_changes = True
+        if "transform_version_id" in update_continuous_eval.model_fields_set:
+            db_continuous_eval.transform_version_id = (
+                update_continuous_eval.transform_version_id
+            )
             has_changes = True
         if update_continuous_eval.transform_variable_mapping:
             # Convert Pydantic models to dicts for JSON serialization

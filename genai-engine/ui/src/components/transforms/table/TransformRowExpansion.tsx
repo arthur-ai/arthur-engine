@@ -1,8 +1,12 @@
 import { Box, Typography } from "@mui/material";
 
+import { useTransformVersions } from "../hooks/useTransformVersions";
 import { TransformRowExpansionProps } from "../types";
 
 export const TransformRowExpansion: React.FC<TransformRowExpansionProps> = ({ transform }) => {
+  const { data: versions = [] } = useTransformVersions(transform.id);
+  const definition = versions[0]?.definition;
+
   return (
     <Box sx={{ p: 3, backgroundColor: "background.default" }}>
       <Typography variant="subtitle2" fontWeight="medium" gutterBottom>
@@ -11,10 +15,10 @@ export const TransformRowExpansion: React.FC<TransformRowExpansionProps> = ({ tr
 
       <Box sx={{ mb: 3 }}>
         <Typography variant="body2" fontWeight="medium" gutterBottom>
-          Variable Mappings ({transform.definition.variables.length})
+          Variable Mappings ({definition?.variables.length ?? 0})
         </Typography>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-          {transform.definition.variables.map((variable, idx) => (
+          {(definition?.variables ?? []).map((variable, idx) => (
             <Box
               key={idx}
               sx={{
@@ -59,7 +63,7 @@ export const TransformRowExpansion: React.FC<TransformRowExpansionProps> = ({ tr
             m: 0,
           }}
         >
-          {JSON.stringify(transform.definition, null, 2)}
+          {JSON.stringify(definition, null, 2)}
         </Box>
       </Box>
     </Box>

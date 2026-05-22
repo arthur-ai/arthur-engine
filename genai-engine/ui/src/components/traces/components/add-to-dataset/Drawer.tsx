@@ -32,6 +32,7 @@ import { addToDatasetFormOptions, TransformDefinition } from "./form/shared";
 import { PreviewTable } from "./PreviewTable";
 import { SaveTransformDialog } from "./SaveTransformDialog";
 
+import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
 import { useCreateDatasetMutation } from "@/hooks/datasets/useCreateDatasetMutation";
 import { useTransforms } from "@/hooks/transforms/useTransforms";
 import { useApi } from "@/hooks/useApi";
@@ -150,9 +151,11 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
   // Get the selected transform ID from form state
   const selectedTransformId = useStore(form.store, (state) => state.values.transform);
 
-  // Get columns from the selected transform
+  // Get columns from the selected transform's latest version
   const selectedTransform = transformsQuery.data?.transforms?.find((t) => t.id === selectedTransformId);
-  const transformColumns = selectedTransform?.definition.variables.map((varDef) => varDef.variable_name) || [];
+  const { data: selectedTransformVersions = [] } = useTransformVersions(selectedTransform?.id);
+  const selectedTransformDefinition = selectedTransformVersions[0]?.definition;
+  const transformColumns = selectedTransformDefinition?.variables.map((varDef) => varDef.variable_name) || [];
 
   // Merge dataset columns with transform columns to get union of all columns
   const datasetOnlyColumns = selectedDataset?.id ? pendingColumns[selectedDataset.id] || latestVersion?.column_names || [] : [];

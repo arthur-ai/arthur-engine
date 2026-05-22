@@ -131,6 +131,12 @@ class DatabaseContinuousEval(Base):
         nullable=False,
     )
 
+    transform_version_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID,
+        ForeignKey("transform_versions.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
     transform_variable_mapping: Mapped[List[dict[str, str]]] = mapped_column(
         JSON,
         nullable=False,

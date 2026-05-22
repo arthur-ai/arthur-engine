@@ -43,6 +43,16 @@ class Config:
         return True
 
     @classmethod
+    def demo_mode(cls) -> bool:
+        demo_mode: str | None = get_env_var(
+            constants.GENAI_ENGINE_DEMO_MODE_ENV_VAR,
+            none_on_missing=True,
+        )
+        if not demo_mode or demo_mode.upper() != "ENABLED":
+            return False
+        return True
+
+    @classmethod
     def get_log_level(cls) -> str:
         log_level: str | None = get_env_var(
             constants.GENAI_ENGINE_LOG_LEVEL_ENV_VAR,

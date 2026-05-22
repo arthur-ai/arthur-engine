@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { NewAgentExperimentFormData } from "../form";
 
+import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
 import { useTransform } from "@/hooks/transforms/useTransform";
 import { useTransforms } from "@/hooks/transforms/useTransforms";
 import { useDatasetVersionData } from "@/hooks/useDatasetVersionData";
@@ -242,7 +243,8 @@ const EvaluatorExperimentOutputSelector = withFieldGroup({
   render: function Render({ group, evalIndex, mappingIndex, transform }) {
     const key = `evals[${evalIndex}].variable_mapping[${mappingIndex}]` as const;
 
-    const variables = transform.definition.variables;
+    const { data: versions = [] } = useTransformVersions(transform.id);
+    const variables = versions[0]?.definition?.variables ?? [];
 
     return (
       <group.AppField

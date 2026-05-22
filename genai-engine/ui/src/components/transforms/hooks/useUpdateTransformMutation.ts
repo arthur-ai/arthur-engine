@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { TransformDefinition } from "@/components/traces/components/add-to-dataset/form/shared";
 import { useApi } from "@/hooks/useApi";
+import { queryKeys } from "@/lib/queryKeys";
 
 interface UpdateTransformParams {
   transformId: string;
@@ -28,10 +29,12 @@ export function useUpdateTransformMutation(taskId: string | undefined, onSuccess
 
       return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       if (taskId) {
         queryClient.invalidateQueries({ queryKey: ["transforms", taskId] });
       }
+      queryClient.invalidateQueries({ queryKey: queryKeys.transforms.byId(variables.transformId) });
+      queryClient.invalidateQueries({ queryKey: ["transformVersions", variables.transformId] });
       onSuccess?.();
     },
   });

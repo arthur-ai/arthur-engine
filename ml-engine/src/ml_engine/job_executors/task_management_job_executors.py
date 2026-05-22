@@ -51,7 +51,7 @@ class InvalidConnectorException(Exception):
     pass
 
 
-class _TaskManagementJobExecutor:
+class TaskManagementJobExecutor:
     def __init__(
         self,
         models_client: ModelsV1Api,
@@ -729,7 +729,7 @@ class _TaskAndModelDeleter(_ValidationKeyManager):
         self.logger.info(f"Dataset {dataset.id} deleted")
 
 
-class CreateTaskJobExecutor(_TaskManagementJobExecutor):
+class CreateTaskJobExecutor(TaskManagementJobExecutor):
     def execute(self, job_spec: CreateModelTaskJobSpec) -> None:
         conn: ShieldBaseConnector = self.get_shield_connector_from_connector_id(
             str(job_spec.connector_id),
@@ -750,7 +750,7 @@ class CreateTaskJobExecutor(_TaskManagementJobExecutor):
         )
 
 
-class LinkTaskJobExecutor(_TaskManagementJobExecutor):
+class LinkTaskJobExecutor(TaskManagementJobExecutor):
     def execute(self, job_spec: CreateModelLinkTaskJobSpec) -> None:
         conn: ShieldBaseConnector = self.get_shield_connector_from_connector_id(
             str(job_spec.connector_id),
@@ -771,7 +771,7 @@ class LinkTaskJobExecutor(_TaskManagementJobExecutor):
         )
 
 
-class UpdateTaskJobExecutor(_TaskManagementJobExecutor):
+class UpdateTaskJobExecutor(TaskManagementJobExecutor):
     def execute(self, job_spec: UpdateModelTaskRulesJobSpec) -> None:
         (
             model,
@@ -844,7 +844,7 @@ class UpdateTaskJobExecutor(_TaskManagementJobExecutor):
             pass
 
 
-class DeleteTaskJobExecutor(_TaskManagementJobExecutor):
+class DeleteTaskJobExecutor(TaskManagementJobExecutor):
     def execute(self, job_spec: DeleteModelTaskJobSpec) -> None:
         (
             model,
@@ -865,7 +865,7 @@ class DeleteTaskJobExecutor(_TaskManagementJobExecutor):
         deleter.delete_task_and_related_resources(task_id, model, dataset)
 
 
-class FetchTaskJobExecutor(_TaskManagementJobExecutor):
+class FetchTaskJobExecutor(TaskManagementJobExecutor):
     def execute(self, job_spec: FetchModelTaskJobSpec) -> None:
         (
             model,
@@ -884,7 +884,7 @@ class FetchTaskJobExecutor(_TaskManagementJobExecutor):
         )
 
 
-class RegenerateTaskValidationKeyJobExecutor(_TaskManagementJobExecutor):
+class RegenerateTaskValidationKeyJobExecutor(TaskManagementJobExecutor):
     def execute(self, job_spec: RegenerateTaskValidationKeyJobSpec) -> None:
         (
             model,

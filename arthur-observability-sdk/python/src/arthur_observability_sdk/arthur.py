@@ -415,6 +415,14 @@ class Arthur:
             "AgentFrameworkInstrumentor",
         )
 
+    def instrument_agentminds(self) -> Any:
+        return self._instrument(
+            "openinference-instrumentation-agentminds",
+            "agentminds",
+            "openinference_instrumentation_agentminds",
+            "AgentMindsInstrumentor",
+        )
+
     def instrument_agentspec(self) -> Any:
         return self._instrument(
             "openinference-instrumentation-agentspec",
@@ -455,6 +463,14 @@ class Arthur:
             "AutogenAgentChatInstrumentor",
         )
 
+    def instrument_baml(self) -> Any:
+        return self._instrument(
+            "openinference-instrumentation-baml",
+            "baml",
+            "openinference.instrumentation.baml",
+            "BamlInstrumentor",
+        )
+
     def instrument_bedrock(self) -> Any:
         return self._instrument(
             "openinference-instrumentation-bedrock",
@@ -469,6 +485,14 @@ class Arthur:
             "beeai",
             "openinference.instrumentation.beeai",
             "BeeAIInstrumentor",
+        )
+
+    def instrument_codex(self) -> Any:
+        return self._instrument(
+            "openinference-instrumentation-codex",
+            "codex",
+            "openinference.instrumentation.codex",
+            "CodexInstrumentor",
         )
 
     def instrument_crewai(self) -> Any:

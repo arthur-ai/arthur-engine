@@ -17,7 +17,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import z from "zod";
 
@@ -31,18 +31,20 @@ import { ContinuousEvalWithTracePage } from "./ContinuousEvalWithTracePage";
 import { useEval } from "@/components/evaluators/hooks/useEval";
 import { useCreateTransformMutation } from "@/components/transforms/hooks/useCreateTransformMutation";
 import { useTransforms } from "@/components/transforms/hooks/useTransforms";
+import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
 import TransformFormModal from "@/components/transforms/TransformFormModal";
 import { getContentHeight } from "@/constants/layout";
 import { useTask } from "@/hooks/useTask";
-import type { ContinuousEvalResponse, ContinuousEvalTransformVariableMappingRequest } from "@/lib/api-client/api-client";
+import type { ContinuousEvalTransformVariableMappingRequest } from "@/lib/api-client/api-client";
 
 type EvaluatorFormState = {
-  name: ContinuousEvalResponse["llm_eval_name"] | null;
+  name: string | null;
   version: string | null;
 };
 
 type TransformFormState = {
-  transformId: ContinuousEvalResponse["transform_id"] | null;
+  transformId: string | null;
+  transformVersionId: string | null;
 };
 
 export const LiveEvalsNew = () => {
@@ -87,6 +89,7 @@ const LiveEvalsNewForm = () => {
       } as EvaluatorFormState,
       transform: {
         transformId: null,
+        transformVersionId: null,
       } as TransformFormState,
       variableMappings: [] as ContinuousEvalTransformVariableMappingRequest[],
     },
@@ -101,6 +104,7 @@ const LiveEvalsNewForm = () => {
         }),
         transform: z.object({
           transformId: z.string().min(1, "Transform ID is required"),
+          transformVersionId: z.string().nullable(),
         }),
         variableMappings: z.array(
           z.object({
@@ -119,6 +123,7 @@ const LiveEvalsNewForm = () => {
         }),
         transform: z.object({
           transformId: z.string().min(1, "Transform ID is required"),
+          transformVersionId: z.string().nullable(),
         }),
         variableMappings: z.array(
           z.object({
@@ -136,6 +141,7 @@ const LiveEvalsNewForm = () => {
         llm_eval_name: value.evaluator.name!,
         llm_eval_version: value.evaluator.version!,
         transform_id: value.transform.transformId!,
+        transform_version_id: value.transform.transformVersionId ?? undefined,
         transform_variable_mapping: value.variableMappings,
       });
 
@@ -148,12 +154,26 @@ const LiveEvalsNewForm = () => {
 
   const { eval: evaluatorData } = useEval(task?.id, evaluator.name ?? undefined, evaluator.version ?? undefined);
 
-  const { data: variableMappingData, isLoading: isLoadingVariableMapping } = useContinuousEvalVariableMapping(
+  const { data: versions = [] } = useTransformVersions(transform.transformId);
+  const selectedVersion = transform.transformVersionId ? versions.find((v) => v.id === transform.transformVersionId) : null;
+
+  const { data: apiVariableMappingData, isLoading: isLoadingVariableMapping } = useContinuousEvalVariableMapping(
     task?.id,
     transform.transformId ?? undefined,
     evaluator.name ?? undefined,
     evaluator.version ?? undefined
   );
+
+  const variableMappingData = useMemo(() => {
+    if (!selectedVersion || !apiVariableMappingData) return apiVariableMappingData;
+    const snapshot = selectedVersion.definition as { variables?: { variable_name: string }[] };
+    const transformVars = snapshot?.variables?.map((v) => v.variable_name) ?? [];
+    return {
+      ...apiVariableMappingData,
+      transform_variables: transformVars,
+      matching_variables: apiVariableMappingData.eval_variables.filter((v) => transformVars.includes(v)),
+    };
+  }, [selectedVersion, apiVariableMappingData]);
 
   const variableMappings = useStore(form.store, (state) => state.values.variableMappings);
 
@@ -335,6 +355,7 @@ export { EvaluatorSelector } from "./components/EvaluatorSelector";
 export const TransformSelector = withFieldGroup({
   defaultValues: {
     transformId: null,
+    transformVersionId: null,
   } as TransformFormState,
   props: {} as {
     taskId: string;
@@ -344,12 +365,16 @@ export const TransformSelector = withFieldGroup({
     const [openCreateTransformModal, setOpenCreateTransformModal] = useState(false);
     const transforms = useTransforms(taskId ?? undefined);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const transformId = useStore(group.store, (state: any) => state.values.transformId as string | null);
+    const { data: versions = [], isLoading: versionsLoading } = useTransformVersions(transformId);
+    const latestVersion = versions.length > 0 ? versions.reduce((a, b) => (a.version_number > b.version_number ? a : b)) : null;
+
     const createTransform = useCreateTransformMutation(taskId, async (data) => {
       await transforms.refetch();
-
       setOpenCreateTransformModal(false);
-
       group.setFieldValue("transformId", data.id);
+      group.setFieldValue("transformVersionId", null);
       onSelectionChange?.();
     });
 
@@ -376,11 +401,12 @@ export const TransformSelector = withFieldGroup({
               Create New
             </Button>
           </Stack>
-          <Stack direction="row" gap={2} width="100%">
+          <Stack direction="row" gap={2} alignItems="flex-start">
             <group.AppField
               name="transformId"
               listeners={{
                 onChange: () => {
+                  group.setFieldValue("transformVersionId", null);
                   onSelectionChange?.();
                 },
               }}
@@ -406,6 +432,24 @@ export const TransformSelector = withFieldGroup({
                 );
               }}
             </group.AppField>
+            {transformId && (
+              <group.AppField name="transformVersionId">
+                {(field) => (
+                  <Autocomplete
+                    sx={{ width: 200 }}
+                    loading={versionsLoading}
+                    options={versions}
+                    value={versions.find((v) => v.id === field.state.value) ?? latestVersion ?? null}
+                    onChange={(_, value) => {
+                      field.handleChange(value?.id ?? null);
+                    }}
+                    getOptionLabel={(option) => `Version ${option.version_number}${option.id === latestVersion?.id ? " (Latest)" : ""}`}
+                    isOptionEqualToValue={(option, value) => option.id === value.id}
+                    renderInput={(params) => <TextField {...params} label="Version" />}
+                  />
+                )}
+              </group.AppField>
+            )}
           </Stack>
         </Stack>
         <TransformFormModal

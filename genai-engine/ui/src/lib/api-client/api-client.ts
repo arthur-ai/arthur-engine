@@ -1479,6 +1479,11 @@ export interface ContinuousEvalCreateRequest {
    * Mapping of transform variables to eval variables.
    */
   transform_variable_mapping: ContinuousEvalTransformVariableMappingRequest[];
+  /**
+   * Transform Version Id
+   * ID of the transform version to pin. When set, the continuous eval will always execute using this version's configuration snapshot.
+   */
+  transform_version_id?: string | null;
 }
 
 /** ContinuousEvalRerunResponse */
@@ -1552,6 +1557,11 @@ export interface ContinuousEvalResponse {
    * Mapping of transform variables to eval variables.
    */
   transform_variable_mapping?: ContinuousEvalTransformVariableMappingResponse[];
+  /**
+   * Transform Version Id
+   * ID of the pinned transform version. When set, the continuous eval will always execute using this version's configuration snapshot.
+   */
+  transform_version_id?: string | null;
   /**
    * Updated At
    * Timestamp representing the time the continuous eval was last updated.
@@ -2415,6 +2425,10 @@ export type DeleteTransformApiV1TracesTransformsTransformIdDeleteData = any;
 
 export type DeleteTransformApiV1TracesTransformsTransformIdDeleteError = HTTPValidationError;
 
+export type DeleteTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdDeleteData = any;
+
+export type DeleteTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdDeleteError = HTTPValidationError;
+
 export type DeleteUserUsersUserIdDeleteData = any;
 
 export type DeleteUserUsersUserIdDeleteError = HTTPValidationError;
@@ -2485,6 +2499,15 @@ export interface DocumentStorageConfigurationUpdateRequest {
 
 /** DocumentStorageEnvironment */
 export type DocumentStorageEnvironment = "aws" | "azure";
+
+/** EngineConfigResponse */
+export interface EngineConfigResponse {
+  /**
+   * Demo Mode
+   * Whether the engine is running in demo mode.
+   */
+  demo_mode: boolean;
+}
 
 /**
  * EnrichedTaskResponse
@@ -3337,6 +3360,11 @@ export interface GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams {
    */
   sort?: PaginationSortMethod;
   /**
+   * Field to sort the metadata list by. 'name' (default) preserves the historical alphabetical ordering. 'latest_version_created_at' orders by the most recent version's creation timestamp so that pagination matches the 'last updated' display.
+   * @default "name"
+   */
+  sort_by?: LLMMetadataSortField;
+  /**
    * Tags
    * List of tags to filter for items that have any matching tag across any version.
    */
@@ -3462,6 +3490,11 @@ export interface GetAllLlmEvalsApiV1TasksTaskIdLlmEvalsGetParams {
    * @default "desc"
    */
   sort?: PaginationSortMethod;
+  /**
+   * Field to sort the metadata list by. 'name' (default) preserves the historical alphabetical ordering. 'latest_version_created_at' orders by the most recent version's creation timestamp so that pagination matches the 'last updated' display.
+   * @default "name"
+   */
+  sort_by?: LLMMetadataSortField;
   /**
    * Tags
    * List of tags to filter for items that have any matching tag across any version.
@@ -3670,6 +3703,8 @@ export type GetDefaultRulesApiV2DefaultRulesGetData = RuleResponse[];
 export type GetDefaultTaskApiChatDefaultTaskGetData = ChatDefaultTaskResponse;
 
 export type GetDisplaySettingsApiV2DisplaySettingsGetData = DisplaySettingsResponse;
+
+export type GetEngineConfigApiV2EngineConfigGetData = EngineConfigResponse;
 
 export type GetExperimentTestCasesApiV1PromptExperimentsExperimentIdTestCasesGetData = TestCaseListResponse;
 
@@ -4150,6 +4185,10 @@ export type GetTransformApiV1TracesTransformsTransformIdGetError = HTTPValidatio
 export type GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGetData = TransformDependents;
 
 export type GetTransformDependentsApiV1TracesTransformsTransformIdDependentsGetError = HTTPValidationError;
+
+export type GetTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdGetData = TraceTransformVersionResponse;
+
+export type GetTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdGetError = HTTPValidationError;
 
 export type GetUnregisteredRootSpansApiV1TracesSpansUnregisteredGetData = UnregisteredRootSpansResponse;
 
@@ -4729,6 +4768,12 @@ export interface LLMGetAllMetadataResponse {
    */
   versions: number;
 }
+
+/**
+ * LLMMetadataSortField
+ * Sort field options for the LLM evals/prompts metadata list endpoints.
+ */
+export type LLMMetadataSortField = "name" | "latest_version_created_at";
 
 /**
  * LLMModel
@@ -5944,6 +5989,20 @@ export interface ListTestRunsApiV1ContinuousEvalsEvalIdTestRunsGetParams {
   sort?: PaginationSortMethod;
 }
 
+/** ListTraceTransformVersionsResponse */
+export interface ListTraceTransformVersionsResponse {
+  /**
+   * Count
+   * Total number of versions.
+   */
+  count: number;
+  /**
+   * Versions
+   * List of versions for the transform, ordered by version_number descending.
+   */
+  versions: TraceTransformVersionResponse[];
+}
+
 /** ListTraceTransformsResponse */
 export interface ListTraceTransformsResponse {
   /**
@@ -6301,6 +6360,10 @@ export interface ListTracesMetadataApiV1TracesGetParams {
    */
   user_ids?: string[];
 }
+
+export type ListTransformVersionsApiV1TracesTransformsTransformIdVersionsGetData = ListTraceTransformVersionsResponse;
+
+export type ListTransformVersionsApiV1TracesTransformsTransformIdVersionsGetError = HTTPValidationError;
 
 export type ListTransformsForTaskApiV1TasksTaskIdTracesTransformsGetData = ListTraceTransformsResponse;
 
@@ -11442,8 +11505,6 @@ export interface TraceTransformResponse {
    * @format date-time
    */
   created_at: string;
-  /** Transform definition specifying extraction rules. */
-  definition: TraceTransformDefinition;
   /**
    * Description
    * Description of the transform.
@@ -11511,6 +11572,35 @@ export interface TraceTransformVariableDefinition {
    * Name of the variable to extract.
    */
   variable_name: string;
+}
+
+/** TraceTransformVersionResponse */
+export interface TraceTransformVersionResponse {
+  /**
+   * Created At
+   * Timestamp when this version was created.
+   * @format date-time
+   */
+  created_at: string;
+  /** Snapshot of the transform definition at the time of this version. */
+  definition: TraceTransformDefinition;
+  /**
+   * Id
+   * ID of the version.
+   * @format uuid
+   */
+  id: string;
+  /**
+   * Transform Id
+   * ID of the parent transform.
+   * @format uuid
+   */
+  transform_id: string;
+  /**
+   * Version Number
+   * Monotonically increasing version number.
+   */
+  version_number: number;
 }
 
 /**
@@ -11945,6 +12035,11 @@ export interface UpdateContinuousEvalRequest {
    * Mapping of transform variables to eval variables.
    */
   transform_variable_mapping?: ContinuousEvalTransformVariableMappingRequest[] | null;
+  /**
+   * Transform Version Id
+   * ID of the transform version to pin. When set, the continuous eval will always execute using this version's configuration snapshot.
+   */
+  transform_version_id?: string | null;
 }
 
 export type UpdateDatasetApiV2DatasetsDatasetIdPatchData = DatasetResponse;
@@ -13077,7 +13172,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.549
+ * @version 2.1.556
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -14211,6 +14306,30 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Delete a specific version of a transform. Returns 409 if it is the only version or is pinned by a continuous eval.
+     *
+     * @tags Transforms
+     * @name DeleteTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdDelete
+     * @summary Delete Transform Version
+     * @request DELETE:/api/v1/traces/transforms/{transform_id}/versions/{version_id}
+     * @secure
+     */
+    deleteTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdDelete: (
+      transformId: string,
+      versionId: string,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        DeleteTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdDeleteData,
+        DeleteTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdDeleteError
+      >({
+        path: `/api/v1/traces/transforms/${transformId}/versions/${versionId}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
      * @description Manually trigger a polling job for a task. Does not require any particular state — admins can use this to force an immediate poll outside the normal loop cadence.
      *
      * @tags Agent Discovery
@@ -14975,6 +15094,22 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Returns engine-level configuration for the frontend. Public endpoint — no authentication required.
+     *
+     * @tags Engine Config
+     * @name GetEngineConfigApiV2EngineConfigGet
+     * @summary Get Engine Config
+     * @request GET:/api/v2/engine-config
+     */
+    getEngineConfigApiV2EngineConfigGet: (params: RequestParams = {}) =>
+      this.request<GetEngineConfigApiV2EngineConfigGetData, any>({
+        path: `/api/v2/engine-config`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get paginated list of test case results for a prompt experiment
      *
      * @tags Prompt Experiments
@@ -15684,6 +15819,27 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Get a specific version snapshot of a transform.
+     *
+     * @tags Transforms
+     * @name GetTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdGet
+     * @summary Get Transform Version
+     * @request GET:/api/v1/traces/transforms/{transform_id}/versions/{version_id}
+     * @secure
+     */
+    getTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdGet: (transformId: string, versionId: string, params: RequestParams = {}) =>
+      this.request<
+        GetTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdGetData,
+        GetTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdGetError
+      >({
+        path: `/api/v1/traces/transforms/${transformId}/versions/${versionId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get grouped root spans for traces without task_id. Groups are ordered by count descending. Supports pagination. Time bounds (start_time/end_time) are recommended for performance on large datasets.
      *
      * @tags Spans
@@ -16061,6 +16217,27 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v1/tasks/${taskId}/traces/transforms`,
         method: "GET",
         query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description List all version snapshots for a transform, ordered by version number descending.
+     *
+     * @tags Transforms
+     * @name ListTransformVersionsApiV1TracesTransformsTransformIdVersionsGet
+     * @summary List Transform Versions
+     * @request GET:/api/v1/traces/transforms/{transform_id}/versions
+     * @secure
+     */
+    listTransformVersionsApiV1TracesTransformsTransformIdVersionsGet: (transformId: string, params: RequestParams = {}) =>
+      this.request<
+        ListTransformVersionsApiV1TracesTransformsTransformIdVersionsGetData,
+        ListTransformVersionsApiV1TracesTransformsTransformIdVersionsGetError
+      >({
+        path: `/api/v1/traces/transforms/${transformId}/versions`,
+        method: "GET",
         secure: true,
         format: "json",
         ...params,
