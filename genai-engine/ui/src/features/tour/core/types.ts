@@ -80,6 +80,45 @@ export type CustomHighlight = { shape: "custom"; key: string; options?: unknown 
 export type HighlightSpec = BoxHighlight | CircleHighlight | NoHighlight | CustomHighlight;
 
 // =============================================================================
+// Overlay (focus mode)
+// =============================================================================
+
+/**
+ * Optional configuration for the tour overlay/backdrop. By default the spotlight
+ * is purely visual and pointer events fall through, so the user can still
+ * interact with anything on the page. When `blockInteraction` is enabled, an
+ * interactive backdrop is rendered around the spotlight cutout so the user can
+ * only interact with the highlighted target (or the tour popover) — useful for
+ * "really focus on one part of the app" walkthroughs.
+ */
+export interface OverlayConfig {
+  /**
+   * When true, an interactive backdrop blocks pointer events on the page
+   * outside the spotlight cutout. The cutout itself stays clickable so the
+   * user can still interact with the highlighted target. When false (the
+   * default), the overlay is purely visual.
+   */
+  blockInteraction?: boolean;
+  /**
+   * Action to perform when the user clicks the backdrop (the area outside the
+   * spotlight cutout and the popover). Only honored when `blockInteraction` is
+   * true. Default: `"none"`.
+   *
+   * - `"none"`: absorb the click and do nothing (user stays on the step).
+   * - `"next"`: advance to the next step.
+   * - `"skip"`: skip the entire tour.
+   * - `"dismiss"`: pause the tour and emit `tour:dismiss`.
+   */
+  onBackdropClick?: "none" | "next" | "skip" | "dismiss";
+  /**
+   * Override the backdrop color (CSS color string, typically rgba). Forwarded
+   * to the visual `Spotlight` so the visual and interactive layers stay
+   * consistent.
+   */
+  color?: string;
+}
+
+// =============================================================================
 // Section / step / tour configuration
 // =============================================================================
 
@@ -114,6 +153,13 @@ export interface StepConfig {
   content: ReactNode | ((ctx: StepRenderContext) => ReactNode);
   placement?: Placement;
   highlight?: HighlightSpec;
+  /**
+   * Per-step overlay/backdrop configuration. When omitted, the overlay is
+   * purely visual (the spotlight dims the page but pointer events fall
+   * through). Set `blockInteraction: true` to focus the user on the
+   * highlighted target.
+   */
+  overlay?: OverlayConfig;
   advanceOn?: AdvanceTrigger | AdvanceTrigger[];
   awaitTarget?: { timeoutMs?: number };
   route?: string | RouteSpec;

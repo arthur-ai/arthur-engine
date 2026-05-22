@@ -104,6 +104,63 @@ The components under `ui/` are exported individually so you can mix-and-match:
 
 All three components use MUI theme tokens and the `sx` prop; no raw colors.
 
+## Overlay / focus mode
+
+By default the spotlight is purely visual — it dims the page with a cutout, but
+pointer events fall through and the user can still interact with anything else.
+Set `step.overlay.blockInteraction` to actually focus the user on the
+highlighted target:
+
+```tsx
+{
+  id: "filters",
+  target: { kind: "selector", selector: '[data-tour-id="filters"]' },
+  content: "Pick a date range here.",
+  highlight: { shape: "box", padding: 12, pulse: true },
+  overlay: {
+    blockInteraction: true,        // block clicks outside the cutout
+    onBackdropClick: "dismiss",    // dim-area click closes the tour
+    color: "rgba(0, 0, 0, 0.65)",  // optional darker backdrop
+  },
+}
+```
+
+`OverlayConfig`:
+
+| Field              | Type                                      | Default   | Description                                                                                                                |
+| ------------------ | ----------------------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `blockInteraction` | `boolean`                                 | `false`   | When `true`, an interactive backdrop layer absorbs clicks outside the spotlight cutout. The cutout itself stays clickable. |
+| `onBackdropClick`  | `"none" \| "next" \| "skip" \| "dismiss"` | `"none"`  | What happens when the user clicks the backdrop. Only honored while `blockInteraction` is `true`.                           |
+| `color`            | `string`                                  | theme dim | Forwarded to the visual `Spotlight` so the visible dim and the interactive layer stay consistent.                          |
+
+The interactive layer is exposed as the `BackdropBlocker` primitive so custom
+scenes can compose the same focus behavior:
+
+```tsx
+import { BackdropBlocker, getHighlightPadding, Spotlight, TargetTracker, TourPortal } from "@/features/tour";
+
+<TourPortal>
+  <TargetTracker>
+    {({ rect }) => (
+      <>
+        <Spotlight rect={rect} highlight={step.highlight} style={{ zIndex: 1499 }} />
+        <BackdropBlocker
+          cutoutRect={rect}
+          padding={getHighlightPadding(step.highlight)}
+          onBackdropClick={() => actions.dismiss()}
+          style={{ zIndex: 1499 }}
+        />
+        {/* …popover at zIndex 1500… */}
+      </>
+    )}
+  </TargetTracker>
+</TourPortal>;
+```
+
+Pair it with `highlight: { shape: "none" }` to render a fully blocking backdrop
+(no cutout) — useful for transitional steps that should freeze the rest of the
+UI while the popover is acknowledged.
+
 ## Analytics
 
 `createAnalyticsPlugin` forwards every event on the bus to a caller-supplied

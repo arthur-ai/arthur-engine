@@ -8,13 +8,33 @@ import { ChecklistPanel } from "./ChecklistPanel";
 import { PulsingRing } from "./PulsingRing";
 import { SectionIntroDialog } from "./SectionIntroDialog";
 
-import { Spotlight, TargetTracker, TourPortal, useTour, useTourEngine, useTourEvent, type StepEnterEvent } from "@/features/tour";
+import {
+  applyBackdropAction,
+  BackdropBlocker,
+  getHighlightPadding,
+  Spotlight,
+  TargetTracker,
+  TourPortal,
+  useTour,
+  useTourEngine,
+  useTourEvent,
+  type StepEnterEvent,
+} from "@/features/tour";
 
 // MUI's default modal z-index is 1300 — keep the spotlight + ring above it so
 // while a dialog is closed the highlight still appears on top of any non-modal
 // MUI surface (tooltips at 1500 are the highest we expect).
+//
+// Layering rationale (low → high):
+//   spotlight  (visual dim, pointer-events: none)  → 1399
+//   blocker    (pointer trap around the cutout)     → 1401
+//   pulse ring (decorative, pointer-events: none)   → 1400
+//   panel      (interactive checklist)              → 1450 (lives in ChecklistPanel)
+// The blocker sits above the visual spotlight and below the panel so the
+// panel stays clickable while the rest of the page is frozen.
 const SPOTLIGHT_Z_INDEX = 1399;
 const PULSE_RING_Z_INDEX = 1400;
+const BLOCKER_Z_INDEX = 1401;
 
 const TOTAL_ITEM_COUNT = TASK_TOUR_SECTIONS.reduce((sum, s) => sum + Math.max(1, s.items.length), 0);
 
@@ -202,23 +222,36 @@ export function ChecklistTour({ enabled, onComplete }: ChecklistTourProps) {
 
       {showSpotlight ? (
         <TargetTracker>
-          {({ rect }) =>
+          {({ rect }) => {
             // When the target hasn't resolved (e.g. event-only placeholder
             // steps targeting elements that don't exist yet), suppress the
-            // entire spotlight rather than dropping a flat backdrop over the
-            // page — the panel still surfaces the instruction.
-            rect ? (
+            // entire spotlight (and matching pointer-blocker) rather than
+            // dropping a flat backdrop over the page — the panel still
+            // surfaces the instruction and the page stays usable until the
+            // target appears.
+            if (!rect) return null;
+            const overlay = activeStep?.step.overlay;
+            const showBlocker = overlay?.blockInteraction === true;
+            return (
               <>
                 <Spotlight
                   rect={rect}
                   highlight={activeStep?.step.highlight}
-                  backdropColor="rgba(15, 23, 42, 0.28)"
+                  backdropColor={overlay?.color ?? "rgba(15, 23, 42, 0.28)"}
                   style={{ zIndex: SPOTLIGHT_Z_INDEX }}
                 />
+                {showBlocker ? (
+                  <BackdropBlocker
+                    cutoutRect={rect}
+                    padding={getHighlightPadding(activeStep?.step.highlight)}
+                    onBackdropClick={() => applyBackdropAction(overlay?.onBackdropClick, actions)}
+                    style={{ zIndex: BLOCKER_Z_INDEX }}
+                  />
+                ) : null}
                 <PulsingRing rect={rect} zIndex={PULSE_RING_Z_INDEX} />
               </>
-            ) : null
-          }
+            );
+          }}
         </TargetTracker>
       ) : null}
 

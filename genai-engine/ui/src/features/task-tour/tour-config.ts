@@ -40,6 +40,12 @@ function buildStep(taskId: string, item: TaskTourItem): StepConfig {
     // Brand-coloured pulse is painted by `PulsingRing` — keep the library
     // spotlight non-pulsing.
     highlight: { shape: "box", padding: 6, radius: 10, pulse: false },
+    // Block interaction with everything outside the spotlight so the user can
+    // only engage with the highlighted target (or the floating checklist
+    // panel, which sits above the blocker via z-index). Backdrop clicks are
+    // intentionally a no-op — the panel exposes explicit Skip / Close /
+    // Dismiss controls so a stray click on the dim can't end the tour.
+    overlay: { blockInteraction: true, onBackdropClick: "none" },
     ...(route ? { route } : {}),
     awaitTarget: { timeoutMs: STEP_TIMEOUT_MS },
     advanceOn: advanceFor(item),

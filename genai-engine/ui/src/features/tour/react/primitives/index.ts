@@ -1,3 +1,4 @@
+export { applyBackdropAction, BackdropBlocker, getHighlightPadding, type BackdropBlockerProps } from "./BackdropBlocker";
 export { PopoverAnchor, type PopoverAnchorProps } from "./PopoverAnchor";
 export { Spotlight, type SpotlightProps } from "./Spotlight";
 export { TargetTracker, type TargetTrackerProps, type TargetTrackerRenderArgs } from "./TargetTracker";
