@@ -479,79 +479,88 @@ const TextInput = withForm({
 
     const multiple = operator === Operators.IN;
 
-    const fieldValidators = {
-      onMount: multiple ? validators.valueArray : validators.value,
-      onChange: multiple ? validators.valueArray : validators.value,
-    };
-
-    return (
-      <form.AppField name={`config[${index}].value` as const} validators={fieldValidators}>
-        {(field) => {
-          if (multiple) {
-            return (
-              <field.MaterialAutocompleteField
-                freeSolo
-                multiple
-                onClose={onClose}
-                onBlur={() => {
-                  field.handleBlur();
-                  onClose();
-                }}
-                onChange={(_, value) => {
-                  field.handleChange(value);
-                }}
-                value={field.state.value as string[]}
-                options={[]}
-                size="small"
-                limitTags={1}
-                renderValue={(value: readonly string[], getItemProps) =>
-                  value.map((option: string, index: number) => {
-                    const { key, ...itemProps } = getItemProps({ index });
-                    return <Chip variant="outlined" size="small" label={option} key={key} sx={{ fontSize: 12 }} {...itemProps} />;
-                  })
-                }
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    variant="filled"
-                    label="Value"
-                    sx={{
-                      minWidth: 200,
-                      "& .MuiAutocomplete-inputRoot": {
-                        borderRadius: 0,
-                        "& fieldset": {
-                          borderInlineWidth: 0,
-                        },
-                      },
-                    }}
-                  />
-                )}
-              />
-            );
-          }
-
-          return (
-            <TextField
-              value={field.state.value as string}
-              onChange={(e) => field.handleChange(e.target.value)}
+    if (multiple) {
+      return (
+        <form.AppField
+          name={`config[${index}].value` as const}
+          validators={{
+            onMount: validators.valueArray,
+            onChange: validators.valueArray,
+          }}
+        >
+          {(field) => (
+            <field.MaterialAutocompleteField
+              freeSolo
+              multiple
+              onClose={onClose}
               onBlur={() => {
                 field.handleBlur();
+                onClose();
               }}
-              sx={{
-                width: 200,
-                "& .MuiAutocomplete-inputRoot": {
-                  borderRadius: 0,
-                  "& fieldset": {
-                    borderInlineWidth: 0,
-                  },
-                },
+              onChange={(_, value) => {
+                field.handleChange(value);
               }}
-              variant="filled"
-              label="Value"
+              value={field.state.value as string[]}
+              options={[]}
               size="small"
+              limitTags={1}
+              renderValue={(value: readonly string[], getItemProps) =>
+                value.map((option: string, index: number) => {
+                  const { key, ...itemProps } = getItemProps({ index });
+                  return <Chip variant="outlined" size="small" label={option} key={key} sx={{ fontSize: 12 }} {...itemProps} />;
+                })
+              }
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  variant="filled"
+                  label="Value"
+                  sx={{
+                    minWidth: 200,
+                    "& .MuiAutocomplete-inputRoot": {
+                      borderRadius: 0,
+                      "& fieldset": {
+                        borderInlineWidth: 0,
+                      },
+                    },
+                  }}
+                />
+              )}
             />
-          );
+          )}
+        </form.AppField>
+      );
+    }
+
+    return (
+      <form.AppField
+        name={`config[${index}].value` as const}
+        validators={{
+          onMount: validators.value,
+          onChange: validators.value,
         }}
+      >
+        {(field) => (
+          <TextField
+            value={field.state.value as string}
+            onChange={(e) => field.handleChange(e.target.value)}
+            onBlur={() => {
+              field.handleBlur();
+            }}
+            sx={{
+              width: 200,
+              "& .MuiAutocomplete-inputRoot": {
+                borderRadius: 0,
+                "& fieldset": {
+                  borderInlineWidth: 0,
+                },
+              },
+            }}
+            variant="filled"
+            label="Value"
+            size="small"
+          />
+        )}
       </form.AppField>
     );
   },

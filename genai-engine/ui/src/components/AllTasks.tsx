@@ -207,7 +207,7 @@ export const AllTasks: React.FC = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center py-3">
               <div className="flex flex-col items-start">
-                <ArthurLogo className="h-20 -ml-5 text-black dark:text-white" />
+                <ArthurLogo className="size-6 text-black dark:text-white" />
               </div>
               <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                 <SettingsMenuButton />
