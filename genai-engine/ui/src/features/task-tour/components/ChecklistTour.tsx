@@ -62,6 +62,8 @@ export interface ChecklistTourProps {
   progressPlugin: ChecklistProgressPlugin;
   /** Called when the tour reaches its end (last section completed). */
   onComplete: () => void;
+  /** When set, positions the checklist panel next to this anchor rect. */
+  panelAnchorRect?: DOMRect | null;
 }
 
 /**
@@ -78,7 +80,7 @@ export interface ChecklistTourProps {
  * `actions.next()` so the engine advances to the next section's intro
  * handshake.
  */
-export function ChecklistTour({ enabled, progressPlugin, onComplete }: ChecklistTourProps) {
+export function ChecklistTour({ enabled, progressPlugin, onComplete, panelAnchorRect }: ChecklistTourProps) {
   const engine = useTourEngine();
   const { state, activeStep, actions } = useTour();
   const completedItemKeys = useChecklistProgress(progressPlugin);
@@ -283,6 +285,7 @@ export function ChecklistTour({ enabled, progressPlugin, onComplete }: Checklist
           onPrevSection={handlePrevSection}
           onNextSection={handleNextSection}
           onClose={handleDismiss}
+          anchorRect={panelAnchorRect}
         />
       ) : null}
     </TourPortal>

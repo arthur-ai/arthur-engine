@@ -1,3 +1,4 @@
+import type { Placement } from "@floating-ui/react";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import EastIcon from "@mui/icons-material/East";
@@ -6,6 +7,8 @@ import { Box, Button, IconButton, LinearProgress, Paper, Stack, Tooltip, Typogra
 import type { ReactNode } from "react";
 
 import { TASK_TOUR_SECTIONS, TASK_TOUR_TITLE, type TaskTourItem, type TaskTourSection } from "../data";
+
+import { PopoverAnchor } from "@/features/tour";
 
 export interface ChecklistPanelProps {
   currentSectionIndex: number;
@@ -27,6 +30,10 @@ export interface ChecklistPanelProps {
   onPrevSection: () => void;
   onNextSection: () => void;
   onClose: () => void;
+  /** When set, the panel is positioned next to this rect via floating-ui. */
+  anchorRect?: DOMRect | null;
+  /** Placement relative to `anchorRect`. Defaults to `top-start`. */
+  anchorPlacement?: Placement;
 }
 
 const PANEL_WIDTH = 320;
@@ -42,9 +49,9 @@ function isSectionDone(section: TaskTourSection, completed: ReadonlySet<string>)
 }
 
 /**
- * Floating bottom-right panel with section pips, the current section's title,
- * an interactive checklist of items, and progress controls. This is the
- * design's "checklist + section nav" widget, rebuilt on MUI tokens.
+ * Floating checklist panel with section pips, the current section's title,
+ * an interactive checklist of items, and progress controls. Anchored to a
+ * reference rect when provided; otherwise fixed to the bottom-right corner.
  */
 export function ChecklistPanel({
   currentSectionIndex,
@@ -59,21 +66,20 @@ export function ChecklistPanel({
   onPrevSection,
   onNextSection,
   onClose,
+  anchorRect,
+  anchorPlacement = "top-start",
 }: ChecklistPanelProps) {
   const theme = useTheme();
   const section = TASK_TOUR_SECTIONS[currentSectionIndex];
   if (!section) return null;
   const items = section.items;
 
-  return (
+  const panel = (
     <Paper
       elevation={8}
       sx={{
-        position: "fixed",
-        bottom: 20,
-        right: 20,
         width: PANEL_WIDTH,
-        maxHeight: "calc(100vh - 40px)",
+        maxHeight: anchorRect ? "min(480px, calc(100vh - 40px))" : "calc(100vh - 40px)",
         display: "flex",
         flexDirection: "column",
         borderRadius: 2.5,
@@ -81,6 +87,13 @@ export function ChecklistPanel({
         zIndex: PANEL_Z_INDEX,
         border: 1,
         borderColor: "divider",
+        ...(anchorRect
+          ? {}
+          : {
+              position: "fixed",
+              bottom: 20,
+              right: 20,
+            }),
       }}
     >
       <Stack direction="row" alignItems="center" spacing={1.25} sx={{ p: 1.75, borderBottom: 1, borderColor: "divider" }}>
@@ -282,4 +295,14 @@ export function ChecklistPanel({
       </Stack>
     </Paper>
   );
+
+  if (anchorRect) {
+    return (
+      <PopoverAnchor rect={anchorRect} placement={anchorPlacement} offset={12} style={{ zIndex: PANEL_Z_INDEX }}>
+        {panel}
+      </PopoverAnchor>
+    );
+  }
+
+  return panel;
 }

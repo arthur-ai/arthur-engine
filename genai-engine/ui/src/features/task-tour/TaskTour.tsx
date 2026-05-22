@@ -150,6 +150,18 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
   }, [engine, progressPlugin, status]);
 
   const [certificateOpen, setCertificateOpen] = useState(false);
+  const [fabAnchorRect, setFabAnchorRect] = useState<DOMRect | null>(null);
+  const [panelAnchoredToFab, setPanelAnchoredToFab] = useState(false);
+
+  useEffect(() => {
+    if (status === "dismissed") {
+      setPanelAnchoredToFab(false);
+    }
+  }, [status]);
+
+  const handleFabAnchorRectChange = useCallback((rect: DOMRect | null) => {
+    setFabAnchorRect(rect);
+  }, []);
 
   // The plugin already writes `"completed"` on `tour:end{completed}`; this
   // handler only owns the certificate-dialog UI side-effect.
@@ -159,9 +171,13 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
 
   const handleResume = useCallback(() => {
     if (!engine) return;
+    const engineState = engine.getState();
+    if (panelAnchoredToFab && engineState.status === "running") {
+      return;
+    }
+    setPanelAnchoredToFab(true);
     // The plugin writes `"in-progress"` on both `tour:start` and `tour:resume`,
     // so we just dispatch the right engine action for the current state.
-    const engineState = engine.getState();
     if (engineState.status === "paused") {
       engine.resume();
       return;
@@ -172,7 +188,7 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
     // the next outstanding step, not back at section 0.
     const resumePosition = findResumePosition(engine.config, progressPlugin.getProgress());
     engine.start(resumePosition ?? undefined);
-  }, [engine, progressPlugin]);
+  }, [engine, panelAnchoredToFab, progressPlugin]);
 
   const handleCertificateClose = useCallback(() => {
     setCertificateOpen(false);
@@ -184,20 +200,23 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
   }
 
   const checklistEnabled = status === "unseen" || status === "in-progress";
+  const showResumeFab = Boolean(engine && !certificateOpen && (status === "dismissed" || panelAnchoredToFab));
 
   return (
     <>
       {engine ? (
         <TourProvider tour={engine} navigator={navigator}>
-          <ChecklistTour enabled={checklistEnabled} progressPlugin={progressPlugin} onComplete={handleComplete} />
+          <ChecklistTour
+            enabled={checklistEnabled}
+            progressPlugin={progressPlugin}
+            onComplete={handleComplete}
+            panelAnchorRect={panelAnchoredToFab ? fabAnchorRect : null}
+          />
         </TourProvider>
       ) : null}
-      {/* Dismissed state: render the resume FAB independently of the engine's
-          internal status, because the dismissed status may persist across page
-          reloads when the engine is freshly created in the `idle` state. Gated
-          on `engine` so the first paint before the creation `useEffect` commits
-          doesn't expose a button whose click would no-op. */}
-      {engine && !checklistEnabled && !certificateOpen ? <ResumeFab onClick={handleResume} /> : null}
+      {showResumeFab ? (
+        <ResumeFab onClick={handleResume} onAnchorRectChange={handleFabAnchorRectChange} />
+      ) : null}
 
       <CertificateDialog open={certificateOpen} workspaceLabel={workspaceLabel} onClose={handleCertificateClose} />
     </>
