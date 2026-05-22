@@ -74,6 +74,7 @@ from routers.v2.routers import (
     task_management_routes,
     validate_routes,
 )
+from routers.v2.tenant_signup_routes import tenant_signup_routes
 from services.continuous_eval import (
     initialize_continuous_eval_queue_service,
     shutdown_continuous_eval_queue_service,
@@ -503,6 +504,8 @@ def get_app_with_routes() -> FastAPI:
     )
     if extra_feature_config.CHATBOT_ENABLED:
         add_routers(app, [chatbot_routes])
+    if extra_feature_config.DEMO_MODE:
+        add_routers(app, [tenant_signup_routes])
     add_routers(app, [auth_routes, user_management_routes])
     add_routers(app, [app_chat_routes])
     return app
@@ -551,6 +554,7 @@ def get_test_app() -> FastAPI:
             continuous_eval_routes,
             agent_polling_routes,
             chatbot_routes,
+            tenant_signup_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -616,6 +620,8 @@ def get_app() -> FastAPI:
         add_routers(app, [chatbot_routes])
     if extra_feature_config.CHAT_ENABLED:
         add_routers(app, [app_chat_routes])
+    if extra_feature_config.DEMO_MODE:
+        add_routers(app, [tenant_signup_routes])
     if not is_api_only_mode_enabled():
         add_routers(app, [auth_routes, user_management_routes])
 

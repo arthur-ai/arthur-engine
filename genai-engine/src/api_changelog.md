@@ -7,6 +7,7 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the required property 'definition' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the required property 'definition' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the required property 'definition' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tenant/signup  endpoint added
 - **CHANGE** for **URL**: /auth/api_keys/  added the new 'TENANT-USER' enum value to the request property 'roles/anyOf[subschema #1]/items/'
 
 # 05/20/2026

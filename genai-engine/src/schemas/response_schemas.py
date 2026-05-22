@@ -45,6 +45,13 @@ class MeResponse(BaseModel):
     org: Optional[OrganizationResponse] = None
 
 
+class DemoTaskSignupResponse(BaseModel):
+    org_id: UUID
+    task_id: str
+    task_name: str
+    api_key: str
+
+
 class DocumentStorageConfigurationResponse(BaseModel):
     storage_environment: Optional[str] = None
     bucket_name: Optional[str] = None

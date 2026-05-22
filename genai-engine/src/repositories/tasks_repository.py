@@ -339,7 +339,12 @@ class TaskRepository:
         db_task.archived = False
         self.db_session.commit()
 
-    def create_task(self, task: Task, with_default_rules: bool = True) -> Task:
+    def create_task(
+        self,
+        task: Task,
+        with_default_rules: bool = True,
+        commit: bool = True,
+    ) -> Task:
         db_task = task._to_database_model()
 
         if with_default_rules:
@@ -351,7 +356,10 @@ class TaskRepository:
                 for r in db_default_rules
             ]
         self.db_session.add(db_task)
-        self.db_session.commit()
+        if commit:
+            self.db_session.commit()
+        else:
+            self.db_session.flush()
 
         result = Task._from_database_model(db_task)
         return result

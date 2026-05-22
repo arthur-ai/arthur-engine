@@ -16413,6 +16413,28 @@
                 }
             }
         },
+        "/api/v2/tenant/signup": {
+            "post": {
+                "tags": [
+                    "Tenant Signup"
+                ],
+                "summary": "Create Tenant Signup",
+                "description": "Public tenant signup. Creates a new organization, a default demo task scoped to that org, and a TENANT-USER API key with `org_scope` set to the new org. Returns the four identifiers; the raw `api_key` value appears only in this response (the DB stores only its hash). Gated by GENAI_ENGINE_DEMO_MODE \u2014 returns 404 when disabled.",
+                "operationId": "create_tenant_signup_api_v2_tenant_signup_post",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DemoTaskSignupResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tasks/{task_id}/chatbot/stream": {
             "post": {
                 "tags": [
@@ -21160,6 +21182,35 @@
                     "created_at"
                 ],
                 "title": "DatasetVersionRowResponse"
+            },
+            "DemoTaskSignupResponse": {
+                "properties": {
+                    "org_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Org Id"
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id"
+                    },
+                    "task_name": {
+                        "type": "string",
+                        "title": "Task Name"
+                    },
+                    "api_key": {
+                        "type": "string",
+                        "title": "Api Key"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "org_id",
+                    "task_id",
+                    "task_name",
+                    "api_key"
+                ],
+                "title": "DemoTaskSignupResponse"
             },
             "DiscoverAndPollResponse": {
                 "properties": {
