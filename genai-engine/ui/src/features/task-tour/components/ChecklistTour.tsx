@@ -28,8 +28,6 @@ function introKey(sectionId: string) {
 export interface ChecklistTourProps {
   /** When false, the entire walkthrough overlay (modal, panel, spotlight) is hidden. */
   enabled: boolean;
-  /** Called when the user dismisses the tour via the modal × or panel × button. */
-  onDismiss: () => void;
   /** Called when the tour reaches its end (last section completed). */
   onComplete: () => void;
 }
@@ -45,7 +43,7 @@ export interface ChecklistTourProps {
  * `engine.next()` so the engine advances to the next section's intro
  * handshake.
  */
-export function ChecklistTour({ enabled, onDismiss, onComplete }: ChecklistTourProps) {
+export function ChecklistTour({ enabled, onComplete }: ChecklistTourProps) {
   const engine = useTourEngine();
   const { state, activeStep, actions } = useTour();
 
@@ -116,11 +114,12 @@ export function ChecklistTour({ enabled, onDismiss, onComplete }: ChecklistTourP
   }, [actions]);
 
   const handleDismiss = useCallback(() => {
-    // Pause instead of skip so the engine remembers where the user was; the
-    // FAB-driven resume can pick up at the same position.
-    actions.pause();
-    onDismiss();
-  }, [actions, onDismiss]);
+    // `dismiss()` pauses the engine (preserving step position for the
+    // FAB-driven resume) and emits `tour:dismiss` so the persistence plugin
+    // marks the tour as `"dismissed"`. The parent then re-renders into the
+    // resume-FAB branch via the persistence subscription.
+    actions.dismiss();
+  }, [actions]);
 
   const handleSelectItem = useCallback(
     (item: TaskTourItem, itemIndex: number) => {

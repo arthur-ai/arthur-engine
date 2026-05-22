@@ -173,6 +173,13 @@ export interface TourActions {
   skip: (reason?: SkipReason) => void;
   pause: () => void;
   resume: () => void;
+  /**
+   * Pause the tour and emit `tour:dismiss`. Use this for "user closed the
+   * panel" — the engine retains its position so a subsequent `resume()` (or
+   * `start()` from a fresh session) picks up where the user left off, and
+   * persistence-aware plugins can mark the tour as dismissed.
+   */
+  dismiss: () => void;
   acknowledgeIntroduction: () => void;
 }
 
@@ -214,6 +221,9 @@ export interface NavigationAfterEvent {
 export interface TourEvents extends Record<EventType, unknown> {
   "tour:start": { tourId: string };
   "tour:end": { tourId: string; reason: "completed" | "skipped" };
+  "tour:pause": { tourId: string };
+  "tour:resume": { tourId: string };
+  "tour:dismiss": { tourId: string };
   "section:enter": SectionEnterEvent;
   "section:exit": SectionExitEvent;
   "section:skip": SectionSkipEvent;

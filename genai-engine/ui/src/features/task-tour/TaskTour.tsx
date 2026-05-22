@@ -4,10 +4,19 @@ import { CertificateDialog } from "./components/CertificateDialog";
 import { ChecklistTour } from "./components/ChecklistTour";
 import { ResumeFab } from "./components/ResumeFab";
 import { buildTourConfig } from "./tour-config";
-import { TASK_TOUR_STORAGE_KEY, useTaskTourPersistence } from "./useTaskTourPersistence";
 
-import { createAnalyticsPlugin, createPersistencePlugin, createTour, TourProvider, useReactRouterNavigator, type TourEngine } from "@/features/tour";
+import {
+  createAnalyticsPlugin,
+  createPersistencePlugin,
+  createTour,
+  TourProvider,
+  useReactRouterNavigator,
+  useTourPersistence,
+  type TourEngine,
+} from "@/features/tour";
 import { track } from "@/services/amplitude";
+
+export const TASK_TOUR_STORAGE_KEY = "arthur:task-tour:status";
 
 export interface TaskTourProps {
   /** Required: the task the tour should bind its routes against. */
@@ -27,24 +36,46 @@ export interface TaskTourProps {
  * - `dismissed`     → render only the floating `ResumeFab`
  * - `completed`     → render nothing (and unmount the FAB)
  *
- * Engine is memoized on `taskId` because section/step routes embed it. When
- * the user moves to a different task we destroy the previous engine and
- * create a fresh one (see Phase 2 handoff §7.2).
+ * Persistence is owned by the engine plugin: the plugin writes to
+ * localStorage on every relevant bus event (`tour:start`, `tour:resume`,
+ * `tour:dismiss`, `tour:end`) and exposes a reactive `subscribe()` API that
+ * `useTourPersistence(plugin)` plugs into. This component never writes
+ * persistence directly — every status change flows through the engine's
+ * actions.
+ *
+ * Engine creation lives in `useEffect`, NOT `useMemo`. This is deliberate: in
+ * React StrictMode dev the `useMemo + useEffect-cleanup` pattern leaves the
+ * cached engine destroyed but still referenced — the cleanup uninstalls the
+ * persistence plugin (clears bus handlers) while the same engine instance is
+ * reused on the re-mount. Subsequent `actions.dismiss()` calls would then
+ * mutate engine state but `bus.emit("tour:dismiss")` would hit an empty bus,
+ * so the persistence status would never flip to `"dismissed"` and the resume
+ * FAB would never appear. Tying creation+destruction to a single `useEffect`
+ * pair guarantees each cleanup is followed by a fresh `createTour`, so the
+ * engine the React tree holds is always fully wired.
+ *
+ * The persistence plugin is still memoized once (no taskId dependency) so its
+ * subscriber list and in-memory `current` survive engine recreation.
  */
 export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
   const navigator = useReactRouterNavigator();
 
-  // Build (and tear down) the engine per task.
-  const engine = useMemo<TourEngine>(() => {
-    return createTour({
+  const persistencePlugin = useMemo(() => createPersistencePlugin({ storageKey: TASK_TOUR_STORAGE_KEY }), []);
+
+  const [engine, setEngine] = useState<TourEngine | null>(null);
+
+  useEffect(() => {
+    const created = createTour({
       config: buildTourConfig(taskId),
-      plugins: [createAnalyticsPlugin({ track, prefix: "task-tour" }), createPersistencePlugin({ storageKey: TASK_TOUR_STORAGE_KEY })],
+      plugins: [createAnalyticsPlugin({ track, prefix: "task-tour" }), persistencePlugin],
     });
-  }, [taskId]);
+    setEngine(created);
+    return () => {
+      created.destroy();
+    };
+  }, [persistencePlugin, taskId]);
 
-  useEffect(() => () => engine.destroy(), [engine]);
-
-  const { status, setStatus } = useTaskTourPersistence();
+  const status = useTourPersistence(persistencePlugin);
 
   // Auto-start once per `unseen` status. We use a ref to gate so that the
   // start side-effect doesn't re-fire if `status` flickers (e.g. the
@@ -53,6 +84,7 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
   const autoStartedRef = useRef(false);
   useEffect(() => {
     if (autoStartedRef.current) return;
+    if (!engine) return;
     if (status !== "unseen") return;
     if (engine.getState().status !== "idle") return;
     autoStartedRef.current = true;
@@ -61,30 +93,25 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
 
   const [certificateOpen, setCertificateOpen] = useState(false);
 
+  // The plugin already writes `"completed"` on `tour:end{completed}`; this
+  // handler only owns the certificate-dialog UI side-effect.
   const handleComplete = useCallback(() => {
     setCertificateOpen(true);
-    setStatus("completed");
-  }, [setStatus]);
-
-  const handleDismiss = useCallback(() => {
-    setStatus("dismissed");
-  }, [setStatus]);
+  }, []);
 
   const handleResume = useCallback(() => {
-    setStatus("in-progress");
-    // If the engine is paused, resume picks up at the same step; otherwise
-    // (e.g. status was "dismissed" coming from a previous browser session and
-    // the engine is freshly idle) start from the beginning.
+    if (!engine) return;
+    // The plugin writes `"in-progress"` on both `tour:start` and `tour:resume`,
+    // so we just dispatch the right engine action for the current state.
     const engineState = engine.getState();
     if (engineState.status === "paused") {
       engine.resume();
-    } else if (engineState.status === "idle") {
-      engine.start();
-    } else if (engineState.status === "completed" || engineState.status === "skipped") {
-      // The engine is terminal — `start()` will re-initialise it cleanly.
+    } else {
+      // Idle (fresh page load after dismissal) or terminal (completed/skipped
+      // re-run) — `start()` resets the engine cleanly.
       engine.start();
     }
-  }, [engine, setStatus]);
+  }, [engine]);
 
   const handleCertificateClose = useCallback(() => {
     setCertificateOpen(false);
@@ -98,14 +125,20 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
   const checklistEnabled = status === "unseen" || status === "in-progress";
 
   return (
-    <TourProvider tour={engine} navigator={navigator}>
-      <ChecklistTour enabled={checklistEnabled} onDismiss={handleDismiss} onComplete={handleComplete} />
+    <>
+      {engine ? (
+        <TourProvider tour={engine} navigator={navigator}>
+          <ChecklistTour enabled={checklistEnabled} onComplete={handleComplete} />
+        </TourProvider>
+      ) : null}
       {/* Dismissed state: render the resume FAB independently of the engine's
           internal status, because the dismissed status may persist across page
-          reloads when the engine is freshly created in the `idle` state. */}
-      {!checklistEnabled && !certificateOpen ? <ResumeFab onClick={handleResume} /> : null}
+          reloads when the engine is freshly created in the `idle` state. Gated
+          on `engine` so the first paint before the creation `useEffect` commits
+          doesn't expose a button whose click would no-op. */}
+      {engine && !checklistEnabled && !certificateOpen ? <ResumeFab onClick={handleResume} /> : null}
 
       <CertificateDialog open={certificateOpen} workspaceLabel={workspaceLabel} onClose={handleCertificateClose} />
-    </TourProvider>
+    </>
   );
 }

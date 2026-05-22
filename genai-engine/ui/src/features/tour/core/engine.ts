@@ -460,13 +460,30 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     if (state.status !== "running") return;
     detachTriggers();
     setState({ status: "paused", sectionId: state.sectionId, stepId: state.stepId });
+    bus.emit("tour:pause", { tourId: config.id });
   };
 
   const resume: TourActions["resume"] = () => {
     if (state.status !== "paused") return;
     const pos = findPosition(state.sectionId, state.stepId);
     if (!pos) return;
+    bus.emit("tour:resume", { tourId: config.id });
     void enterStep(pos, { runSectionEnter: false });
+  };
+
+  /**
+   * Dismiss is a "soft close" — the user is closing the panel but we want to
+   * be able to bring it back. We pause first (preserving the position) and
+   * then emit `tour:dismiss` so persistence plugins can record the intent.
+   * No-ops outside running/paused.
+   */
+  const dismiss: TourActions["dismiss"] = () => {
+    if (state.status !== "running" && state.status !== "paused") return;
+    if (state.status === "running") {
+      detachTriggers();
+      setState({ status: "paused", sectionId: state.sectionId, stepId: state.stepId });
+    }
+    bus.emit("tour:dismiss", { tourId: config.id });
   };
 
   const acknowledgeIntroduction: TourActions["acknowledgeIntroduction"] = () => {
@@ -523,6 +540,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     skip,
     pause,
     resume,
+    dismiss,
     acknowledgeIntroduction,
   };
 }

@@ -5,6 +5,9 @@ import type { TourBus, TourEvents } from "./types";
 export const TOUR_EVENT_NAMES = [
   "tour:start",
   "tour:end",
+  "tour:pause",
+  "tour:resume",
+  "tour:dismiss",
   "section:enter",
   "section:exit",
   "section:skip",

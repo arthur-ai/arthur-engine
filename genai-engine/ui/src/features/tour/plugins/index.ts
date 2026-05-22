@@ -5,5 +5,6 @@ export {
   writeTourPersistence,
   type CreatePersistencePluginOptions,
   type PersistenceStorage,
+  type TourPersistencePlugin,
   type TourPersistenceStatus,
 } from "./createPersistencePlugin";

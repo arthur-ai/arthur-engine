@@ -53,6 +53,7 @@ export function useTour(): UseTourReturn {
       skip: engine.skip,
       pause: engine.pause,
       resume: engine.resume,
+      dismiss: engine.dismiss,
       acknowledgeIntroduction: engine.acknowledgeIntroduction,
     }),
     [engine]
