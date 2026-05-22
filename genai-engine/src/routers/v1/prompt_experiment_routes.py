@@ -5,7 +5,7 @@ from arthur_common.models.common_schemas import PaginationParameters
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 from sqlalchemy.orm import Session
 
-from dependencies import get_db_session, get_validated_task
+from dependencies import get_db_session, get_org_scope, get_validated_task
 from repositories.prompt_experiment_repository import PromptExperimentRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
@@ -182,6 +182,7 @@ def get_prompt_experiment(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> PromptExperimentDetail:
     """
     Get detailed information about a prompt experiment.
@@ -190,7 +191,7 @@ def get_prompt_experiment(
     """
     try:
         repo = PromptExperimentRepository(db_session)
-        return repo.get_experiment(experiment_id)
+        return repo.get_experiment(experiment_id, org_scope=org_scope)
     except HTTPException:
         raise
     except ValueError as e:
@@ -225,6 +226,7 @@ def get_experiment_test_cases(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> TestCaseListResponse:
     """
     Get detailed test case results for an experiment.
@@ -237,6 +239,7 @@ def get_experiment_test_cases(
         test_cases, total_count = repo.get_test_cases(
             experiment_id=experiment_id,
             pagination_params=pagination_parameters,
+            org_scope=org_scope,
         )
 
         page = pagination_parameters.page
@@ -286,6 +289,7 @@ def get_prompt_version_results(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> PromptVersionResultListResponse:
     """
     Get detailed results for a specific prompt within an experiment.
@@ -305,6 +309,7 @@ def get_prompt_version_results(
             experiment_id=experiment_id,
             prompt_key=prompt_key,
             pagination_params=pagination_parameters,
+            org_scope=org_scope,
         )
 
         page = pagination_parameters.page
@@ -347,6 +352,7 @@ def delete_prompt_experiment(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> Response:
     """
     Delete a prompt experiment.
@@ -356,7 +362,7 @@ def delete_prompt_experiment(
     """
     try:
         repo = PromptExperimentRepository(db_session)
-        repo.delete_experiment(experiment_id)
+        repo.delete_experiment(experiment_id, org_scope=org_scope)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except HTTPException:
         raise
@@ -385,11 +391,14 @@ def attach_notebook_to_experiment(
     notebook_id: str = Query(..., description="ID of the notebook to attach"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> PromptExperimentSummary:
     """Attach a notebook to an existing experiment."""
     try:
         repo = PromptExperimentRepository(db_session)
-        return repo.attach_notebook_to_experiment(experiment_id, notebook_id)
+        return repo.attach_notebook_to_experiment(
+            experiment_id, notebook_id, org_scope=org_scope
+        )
     except HTTPException:
         raise
     except ValueError as e:

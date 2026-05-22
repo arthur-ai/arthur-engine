@@ -1,10 +1,11 @@
 from typing import Annotated
+from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
 from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
 from sqlalchemy.orm import Session
 
-from dependencies import get_db_session, get_validated_task
+from dependencies import get_db_session, get_org_scope, get_validated_task
 from repositories.rag_notebook_repository import RagNotebookRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
@@ -122,6 +123,7 @@ def get_rag_notebook(
     notebook_id: str = Path(..., description="RAG Notebook ID"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> RagNotebookDetail:
     """
     Get detailed information about a RAG notebook.
@@ -131,7 +133,7 @@ def get_rag_notebook(
     """
     try:
         repo = RagNotebookRepository(db_session)
-        notebook = repo.get_notebook(notebook_id)
+        notebook = repo.get_notebook(notebook_id, org_scope=org_scope)
         return notebook
     except HTTPException:
         raise
@@ -155,6 +157,7 @@ def update_rag_notebook(
     notebook_id: str = Path(..., description="RAG Notebook ID"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> RagNotebookDetail:
     """
     Update RAG notebook metadata (name and/or description).
@@ -164,7 +167,9 @@ def update_rag_notebook(
     """
     try:
         repo = RagNotebookRepository(db_session)
-        notebook = repo.update_notebook(notebook_id, update_request)
+        notebook = repo.update_notebook(
+            notebook_id, update_request, org_scope=org_scope
+        )
         return notebook
     except HTTPException:
         raise
@@ -187,6 +192,7 @@ def get_rag_notebook_state(
     notebook_id: str = Path(..., description="RAG Notebook ID"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> RagNotebookStateResponse:
     """
     Get the current state of a RAG notebook.
@@ -196,7 +202,7 @@ def get_rag_notebook_state(
     """
     try:
         repo = RagNotebookRepository(db_session)
-        state = repo.get_notebook_state(notebook_id)
+        state = repo.get_notebook_state(notebook_id, org_scope=org_scope)
         return state
     except HTTPException:
         raise
@@ -220,6 +226,7 @@ def set_rag_notebook_state(
     notebook_id: str = Path(..., description="RAG Notebook ID"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> RagNotebookDetail:
     """
     Set the state of a RAG notebook.
@@ -230,7 +237,9 @@ def set_rag_notebook_state(
     """
     try:
         repo = RagNotebookRepository(db_session)
-        notebook = repo.set_notebook_state(notebook_id, state_request)
+        notebook = repo.set_notebook_state(
+            notebook_id, state_request, org_scope=org_scope
+        )
         return notebook
     except HTTPException:
         raise
@@ -252,6 +261,7 @@ def delete_rag_notebook(
     notebook_id: str = Path(..., description="RAG Notebook ID"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> Response:
     """
     Delete a RAG notebook.
@@ -261,7 +271,7 @@ def delete_rag_notebook(
     """
     try:
         repo = RagNotebookRepository(db_session)
-        repo.delete_notebook(notebook_id)
+        repo.delete_notebook(notebook_id, org_scope=org_scope)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except HTTPException:
         raise
@@ -288,6 +298,7 @@ def get_rag_notebook_history(
     notebook_id: str = Path(..., description="RAG Notebook ID"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> RagExperimentListResponse:
     """
     Get the history of experiments run from this RAG notebook.
@@ -300,6 +311,7 @@ def get_rag_notebook_history(
         response = repo.get_notebook_history(
             notebook_id=notebook_id,
             pagination_params=pagination_parameters,
+            org_scope=org_scope,
         )
         return response
     except HTTPException:

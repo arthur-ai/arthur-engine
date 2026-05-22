@@ -61,7 +61,7 @@ def execute_agent_polling(
     tags=["Agent Discovery"],
     status_code=status.HTTP_200_OK,
 )
-@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@permission_checker(permissions=PermissionLevelsEnum.AGENT_POLLING_ADMIN.value)
 def execute_all_agent_polling(
     wait_for_completion: bool = False,
     timeout: Annotated[int | None, Query(ge=1)] = None,

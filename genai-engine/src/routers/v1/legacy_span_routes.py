@@ -3,6 +3,7 @@ import logging
 from datetime import datetime
 from enum import Enum
 from typing import Annotated, Optional
+from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import (
@@ -24,7 +25,7 @@ from openinference.semconv.trace import OpenInferenceSpanKindValues
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
-from dependencies import get_db_session
+from dependencies import get_db_session, get_org_scope
 from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
@@ -714,11 +715,14 @@ def compute_span_metrics(
     span_id: str,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> SpanWithMetricsResponse:
     """Compute metrics for a single span. Validates that the span is an LLM span."""
     try:
         span_repo = _get_span_repository(db_session)
-        span = span_repo.query_span_by_span_id_with_metrics(span_id)
+        span = span_repo.query_span_by_span_id_with_metrics(
+            span_id, org_scope=org_scope
+        )
 
         # Return the single span with metrics
         return span._to_response_model()

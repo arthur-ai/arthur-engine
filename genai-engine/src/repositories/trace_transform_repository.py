@@ -14,6 +14,7 @@ from custom_types import QueryT
 from db_models.agentic_experiment_models import DatabaseAgenticExperiment
 from db_models.agentic_notebook_models import DatabaseAgenticNotebook
 from db_models.llm_eval_models import DatabaseContinuousEval
+from db_models.task_models import DatabaseTask
 from db_models.transform_models import (
     DatabaseTraceTransform,
     DatabaseTraceTransformVersion,
@@ -70,14 +71,16 @@ class TraceTransformRepository:
     def _get_db_transform_by_id(
         self,
         transform_id: UUID,
+        org_scope: UUID | None = None,
     ) -> DatabaseTraceTransform | None:
-        db_transform = (
-            self.db_session.query(DatabaseTraceTransform)
-            .filter(DatabaseTraceTransform.id == transform_id)
-            .one_or_none()
+        q = self.db_session.query(DatabaseTraceTransform).filter(
+            DatabaseTraceTransform.id == transform_id,
         )
-
-        return db_transform
+        if org_scope is not None:
+            q = q.join(
+                DatabaseTask, DatabaseTask.id == DatabaseTraceTransform.task_id
+            ).filter(DatabaseTask.org_id == str(org_scope))
+        return q.one_or_none()
 
     def _get_latest_definition(self, transform_id: UUID) -> TraceTransformDefinition:
         """Return the definition from the highest-numbered version of a transform."""
@@ -124,8 +127,10 @@ class TraceTransformRepository:
                 )
         return result
 
-    def get_transform_by_id(self, transform_id: UUID) -> TraceTransform | None:
-        db_transform = self._get_db_transform_by_id(transform_id)
+    def get_transform_by_id(
+        self, transform_id: UUID, org_scope: UUID | None = None
+    ) -> TraceTransform | None:
+        db_transform = self._get_db_transform_by_id(transform_id, org_scope=org_scope)
 
         if not db_transform:
             return None
@@ -227,8 +232,9 @@ class TraceTransformRepository:
         self,
         transform_id: UUID,
         transform: TraceTransformUpdateRequest,
+        org_scope: UUID | None = None,
     ) -> TraceTransform:
-        db_transform = self._get_db_transform_by_id(transform_id)
+        db_transform = self._get_db_transform_by_id(transform_id, org_scope=org_scope)
 
         if not db_transform:
             raise HTTPException(
@@ -417,8 +423,10 @@ class TraceTransformRepository:
         self.db_session.delete(db_version)
         self.db_session.commit()
 
-    def delete_transform(self, transform_id: UUID) -> None:
-        db_transform = self._get_db_transform_by_id(transform_id)
+    def delete_transform(
+        self, transform_id: UUID, org_scope: UUID | None = None
+    ) -> None:
+        db_transform = self._get_db_transform_by_id(transform_id, org_scope=org_scope)
 
         if not db_transform:
             raise HTTPException(

@@ -80,14 +80,16 @@ class ContinuousEvalsRepository:
     def _get_db_continuous_eval_by_id(
         self,
         eval_id: uuid.UUID,
+        org_scope: uuid.UUID | None = None,
     ) -> DatabaseContinuousEval | None:
-        db_eval_transform = (
-            self.db_session.query(DatabaseContinuousEval)
-            .filter(DatabaseContinuousEval.id == eval_id)
-            .first()
+        q = self.db_session.query(DatabaseContinuousEval).filter(
+            DatabaseContinuousEval.id == eval_id,
         )
-
-        return db_eval_transform
+        if org_scope is not None:
+            q = q.join(
+                DatabaseTask, DatabaseTask.id == DatabaseContinuousEval.task_id
+            ).filter(DatabaseTask.org_id == str(org_scope))
+        return q.first()
 
     def validate_transform_variable_mapping(
         self,
@@ -233,8 +235,11 @@ class ContinuousEvalsRepository:
     def get_continuous_eval_by_id(
         self,
         eval_id: uuid.UUID,
+        org_scope: uuid.UUID | None = None,
     ) -> ContinuousEval:
-        db_continuous_eval = self._get_db_continuous_eval_by_id(eval_id)
+        db_continuous_eval = self._get_db_continuous_eval_by_id(
+            eval_id, org_scope=org_scope
+        )
 
         if not db_continuous_eval:
             raise HTTPException(
@@ -523,14 +528,18 @@ class ContinuousEvalsRepository:
         self,
         run_id: uuid.UUID,
         delay_seconds: int = 10,
+        org_scope: uuid.UUID | None = None,
     ) -> ContinuousEvalRerunResponse:
         """Rerun a failed continuous eval by annotation id."""
-        annotation = (
+        q = (
             self.db_session.query(DatabaseAgenticAnnotation)
             .filter(DatabaseAgenticAnnotation.id == run_id)
             .with_for_update()
-            .first()
         )
+        # agentic_annotations carries a denormalized org_id (UP-4424) — filter directly.
+        if org_scope is not None:
+            q = q.filter(DatabaseAgenticAnnotation.org_id == str(org_scope))
+        annotation = q.first()
 
         if not annotation:
             raise HTTPException(status_code=404, detail=f"Run {run_id} not found.")

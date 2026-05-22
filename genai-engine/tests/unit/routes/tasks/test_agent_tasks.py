@@ -158,6 +158,7 @@ def test_get_agent_tasks_with_spans(client: GenaiEngineTestClientBase):
             start_time=datetime.now() - timedelta(minutes=5),
             end_time=datetime.now(),
             task_id=task.id,
+            org_id=DEFAULT_ORG_ID,
             raw_data={"attributes": {}},
             created_at=datetime.now(),
         )
@@ -173,6 +174,7 @@ def test_get_agent_tasks_with_spans(client: GenaiEngineTestClientBase):
             start_time=datetime.now() - timedelta(minutes=4),
             end_time=datetime.now(),
             task_id=task.id,
+            org_id=DEFAULT_ORG_ID,
             raw_data={"attributes": {}},
             created_at=datetime.now(),
         )
@@ -188,6 +190,7 @@ def test_get_agent_tasks_with_spans(client: GenaiEngineTestClientBase):
             start_time=datetime.now() - timedelta(minutes=3),
             end_time=datetime.now(),
             task_id=task.id,
+            org_id=DEFAULT_ORG_ID,
             raw_data={"attributes": {"llm": {"model_name": "gpt-4"}}},
             created_at=datetime.now(),
         )
@@ -242,6 +245,7 @@ def test_get_agent_tasks_30_day_lookback(client: GenaiEngineTestClientBase):
             start_time=datetime.now() - timedelta(days=10),
             end_time=datetime.now() - timedelta(days=10),
             task_id=task.id,
+            org_id=DEFAULT_ORG_ID,
             raw_data={"attributes": {}},
             created_at=datetime.now() - timedelta(days=10),
         )
@@ -257,6 +261,7 @@ def test_get_agent_tasks_30_day_lookback(client: GenaiEngineTestClientBase):
             start_time=datetime.now() - timedelta(days=35),
             end_time=datetime.now() - timedelta(days=35),
             task_id=task.id,
+            org_id=DEFAULT_ORG_ID,
             raw_data={"attributes": {}},
             created_at=datetime.now() - timedelta(days=35),
         )

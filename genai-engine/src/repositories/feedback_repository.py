@@ -2,6 +2,7 @@ import logging
 import uuid
 from datetime import datetime
 from typing import Optional
+from uuid import UUID
 
 from arthur_common.models.enums import InferenceFeedbackTarget, PaginationSortMethod
 from arthur_common.models.response_schemas import InferenceFeedbackResponse
@@ -70,9 +71,15 @@ class FeedbackRepository:
         conversation_id: str | list[str] | None = None,
         task_id: str | list[str] | None = None,
         inference_user_id: str | None = None,
+        org_scope: UUID | None = None,
     ) -> tuple[list[DatabaseInferenceFeedback], int]:
         # query for all columns of the feedback table
         stmt = self.db_session.query(DatabaseInferenceFeedback)
+
+        # apply org-scope filter — inference_feedback has a denormalized org_id
+        # so this is a single-column filter, no join required.
+        if org_scope is not None:
+            stmt = stmt.where(DatabaseInferenceFeedback.org_id == str(org_scope))
 
         # apply sorting
         if sort == PaginationSortMethod.DESCENDING or sort is None:

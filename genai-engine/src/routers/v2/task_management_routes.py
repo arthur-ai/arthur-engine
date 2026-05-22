@@ -29,7 +29,7 @@ from clients.telemetry.telemetry_client import (
     send_telemetry_event_for_task_rule_create_completed,
 )
 from config.cache_config import cache_config
-from dependencies import get_application_config, get_db_session
+from dependencies import get_application_config, get_db_session, get_org_scope
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.task_polling_state_repository import TaskPollingStateRepository
@@ -118,6 +118,7 @@ def get_all_tasks(
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> list[TaskResponse]:
     rules_repo = RuleRepository(db_session)
     tasks_repo = TaskRepository(
@@ -126,7 +127,8 @@ def get_all_tasks(
         MetricRepository(db_session),
         application_config,
     )
-    tasks = tasks_repo.get_all_tasks()
+    # Tenant callers see only tasks in their org; admin sees everything.
+    tasks = tasks_repo.get_all_tasks(org_scope=org_scope)
     return [task._to_response_model() for task in tasks]
 
 
@@ -214,6 +216,7 @@ def get_agent_tasks(
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> list[EnrichedTaskResponse]:
     """Get agentic tasks with enriched agent metadata.
 
@@ -242,12 +245,13 @@ def get_agent_tasks(
         application_config,
     )
 
-    # Query only agentic tasks
+    # Query only agentic tasks — tenant callers see only their own org's.
     db_tasks, _ = tasks_repo.query_tasks(
         is_agentic=True,
         include_archived=False,
         page_size=1000,  # Large page size for now, add pagination later if needed
         page=0,
+        org_scope=org_scope,
     )
 
     # Convert to Task objects and enrich with service names

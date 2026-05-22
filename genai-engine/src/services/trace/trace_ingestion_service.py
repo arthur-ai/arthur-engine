@@ -9,7 +9,7 @@ from openinference.semconv.trace import SpanAttributes
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest,
 )
-from sqlalchemy import ColumnElement, func
+from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.dialects.postgresql import Insert as PGInsertType
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import Insert as SQLiteInsertType
@@ -18,9 +18,10 @@ from sqlalchemy.dialects.sqlite import (
 )
 from sqlalchemy.orm import InstrumentedAttribute, Session
 
-from db_models import DatabaseSpan, DatabaseTraceMetadata
+from db_models import DatabaseSpan, DatabaseTask, DatabaseTraceMetadata
 from dependencies import get_task_repository
 from repositories.configuration_repository import ConfigurationRepository
+from repositories.organizations_repository import lookup_org_id
 from repositories.resource_metadata_repository import ResourceMetadataRepository
 from repositories.service_name_mapping_repository import (
     ServiceNameMappingRepository,
@@ -28,6 +29,7 @@ from repositories.service_name_mapping_repository import (
 from services.trace.span_normalization_service import SpanNormalizationService
 from utils import trace as trace_utils
 from utils.constants import (
+    DEFAULT_ORG_ID,
     EXPECTED_SPAN_VERSION,
     SERVICE_NAME_KEY,
     SPAN_KIND_KEY,
@@ -47,6 +49,7 @@ class TraceUpdateDBBase(TypedDict):
 
     trace_id: str
     task_id: str
+    org_id: uuid.UUID
     root_span_resource_id: str | None
     session_id: str | None
     user_id: str | None
@@ -149,6 +152,18 @@ class TraceIngestionService:
 
             logger.debug(f"Resolved task_id: {resolved_task_id}")
 
+            # Resolve the org_id for this batch from the owning task. Cheaper
+            # than threading the task-org join through every read, but the
+            # task→org binding can't change without a re-ingest so caching
+            # per resource_span is safe. Fall back to DEFAULT_ORG_ID if the
+            # task disappeared between resolve and lookup (shouldn't happen
+            # since `_resolve_task_id` guarantees the row exists or auto-creates).
+            resolved_org_id = lookup_org_id(
+                self.db_session,
+                select(DatabaseTask.org_id).where(DatabaseTask.id == resolved_task_id),
+                default=DEFAULT_ORG_ID,
+            )
+
             for scope_span in resource_span.get("scopeSpans", []):
                 for span_data in scope_span.get("spans", []):
                     total_spans += 1
@@ -159,6 +174,7 @@ class TraceIngestionService:
                             span_data,
                             resolved_task_id,
                             resource_id,
+                            resolved_org_id,
                         )
                         spans_data.append(processed_span)
                         accepted_spans += 1
@@ -358,6 +374,7 @@ class TraceIngestionService:
         span_data: dict[str, Any],
         resource_task_id: str,
         resource_id: str | None = None,
+        resource_org_id: uuid.UUID = DEFAULT_ORG_ID,
     ) -> DatabaseSpan:
         """Process and clean span data, returning None if the span data is invalid."""
         span_data = self._normalize_span_attributes(span_data)
@@ -401,6 +418,7 @@ class TraceIngestionService:
             start_time=start_time,
             end_time=end_time,
             task_id=resource_task_id,
+            org_id=resource_org_id,
             resource_id=resource_id,
             session_id=self._get_attribute_value(span_data, SpanAttributes.SESSION_ID),
             user_id=self._get_attribute_value(span_data, USER_ID_KEY),
@@ -551,6 +569,7 @@ class TraceIngestionService:
                 trace_updates[trace_id] = TraceUpdateDict(
                     trace_id=trace_id,
                     task_id=span.task_id,
+                    org_id=span.org_id,
                     root_span_resource_id=None,  # Will be populated from earliest root span
                     session_id=span.session_id,
                     user_id=span.user_id,

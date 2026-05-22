@@ -7,14 +7,12 @@ from arthur_common.models.enums import AgenticAnnotationType, PaginationSortMeth
 from arthur_common.models.response_schemas import (
     TraceResponse,
 )
-from sqlalchemy import asc, desc, select
+from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
 from custom_types import QueryT
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
-from db_models.task_models import DatabaseTask
 from db_models.telemetry_models import DatabaseTraceMetadata
-from repositories.organizations_repository import lookup_org_id
 from schemas.internal_schemas import AgenticAnnotation
 from schemas.request_schemas import (
     AgenticAnnotationListFilterRequest,
@@ -65,24 +63,29 @@ class TraceAnnotationService:
         self,
         trace_id: str,
         annotation_request: AgenticAnnotationRequest,
+        org_scope: uuid.UUID | None = None,
     ) -> AgenticAnnotation:
-        trace = (
-            self.db_session.query(DatabaseTraceMetadata)
-            .filter(DatabaseTraceMetadata.trace_id == trace_id)
-            .one_or_none()
+        # Filter against trace_metadata.org_id directly (Migration 4) instead
+        # of joining through tasks.
+        trace_q = self.db_session.query(DatabaseTraceMetadata).filter(
+            DatabaseTraceMetadata.trace_id == trace_id,
         )
+        if org_scope is not None:
+            trace_q = trace_q.filter(DatabaseTraceMetadata.org_id == org_scope)
+        trace = trace_q.one_or_none()
         if trace is None:
             raise ValueError(f"Trace {trace_id} not found")
 
-        existing_annotation = (
-            self.db_session.query(DatabaseAgenticAnnotation)
-            .filter(DatabaseAgenticAnnotation.trace_id == trace_id)
-            .filter(
-                DatabaseAgenticAnnotation.annotation_type
-                == AgenticAnnotationType.HUMAN.value,
-            )
-            .one_or_none()
+        existing_annotation_q = self.db_session.query(DatabaseAgenticAnnotation).filter(
+            DatabaseAgenticAnnotation.trace_id == trace_id,
+            DatabaseAgenticAnnotation.annotation_type
+            == AgenticAnnotationType.HUMAN.value,
         )
+        if org_scope is not None:
+            existing_annotation_q = existing_annotation_q.filter(
+                DatabaseAgenticAnnotation.org_id == str(org_scope),
+            )
+        existing_annotation = existing_annotation_q.one_or_none()
 
         if existing_annotation:
             existing_annotation.annotation_score = annotation_request.annotation_score
@@ -92,10 +95,6 @@ class TraceAnnotationService:
             existing_annotation.updated_at = datetime.now()
             db_annotation = existing_annotation
         else:
-            task_org_id = lookup_org_id(
-                self.db_session,
-                select(DatabaseTask.org_id).where(DatabaseTask.id == trace.task_id),
-            )
             db_annotation = DatabaseAgenticAnnotation(
                 id=uuid.uuid4(),
                 annotation_type=AgenticAnnotationType.HUMAN,
@@ -104,7 +103,7 @@ class TraceAnnotationService:
                 annotation_description=annotation_request.annotation_description,
                 created_at=datetime.now(),
                 updated_at=datetime.now(),
-                org_id=task_org_id,
+                org_id=trace.org_id,
             )
             self.db_session.add(db_annotation)
 
@@ -116,12 +115,14 @@ class TraceAnnotationService:
     def get_annotation_by_id(
         self,
         annotation_id: uuid.UUID,
+        org_scope: uuid.UUID | None = None,
     ) -> AgenticAnnotation | None:
-        db_annotation = (
-            self.db_session.query(DatabaseAgenticAnnotation)
-            .filter(DatabaseAgenticAnnotation.id == annotation_id)
-            .one_or_none()
+        q = self.db_session.query(DatabaseAgenticAnnotation).filter(
+            DatabaseAgenticAnnotation.id == annotation_id,
         )
+        if org_scope is not None:
+            q = q.filter(DatabaseAgenticAnnotation.org_id == str(org_scope))
+        db_annotation = q.one_or_none()
 
         if not db_annotation:
             return None
@@ -148,11 +149,16 @@ class TraceAnnotationService:
         trace_id: str,
         pagination_parameters: PaginationParameters,
         filter_request: Optional[AgenticAnnotationListFilterRequest] = None,
+        org_scope: uuid.UUID | None = None,
     ) -> List[AgenticAnnotation]:
         base_query = self.db_session.query(DatabaseAgenticAnnotation).filter(
             DatabaseAgenticAnnotation.trace_id == trace_id,
             DatabaseAgenticAnnotation.test_run_id.is_(None),
         )
+        if org_scope is not None:
+            base_query = base_query.filter(
+                DatabaseAgenticAnnotation.org_id == str(org_scope),
+            )
 
         if filter_request:
             if filter_request.continuous_eval_id:
@@ -204,16 +210,17 @@ class TraceAnnotationService:
             for db_annotation in db_annotations
         ]
 
-    def delete_annotation_by_trace_id(self, trace_id: str) -> None:
-        db_annotation = (
-            self.db_session.query(DatabaseAgenticAnnotation)
-            .filter(DatabaseAgenticAnnotation.trace_id == trace_id)
-            .filter(
-                DatabaseAgenticAnnotation.annotation_type
-                == AgenticAnnotationType.HUMAN.value,
-            )
-            .one_or_none()
+    def delete_annotation_by_trace_id(
+        self, trace_id: str, org_scope: uuid.UUID | None = None
+    ) -> None:
+        q = self.db_session.query(DatabaseAgenticAnnotation).filter(
+            DatabaseAgenticAnnotation.trace_id == trace_id,
+            DatabaseAgenticAnnotation.annotation_type
+            == AgenticAnnotationType.HUMAN.value,
         )
+        if org_scope is not None:
+            q = q.filter(DatabaseAgenticAnnotation.org_id == str(org_scope))
+        db_annotation = q.one_or_none()
 
         if db_annotation is None:
             raise ValueError(f"Annotation for trace {trace_id} not found")
