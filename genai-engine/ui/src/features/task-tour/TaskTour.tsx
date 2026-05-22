@@ -3,20 +3,31 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CertificateDialog } from "./components/CertificateDialog";
 import { ChecklistTour } from "./components/ChecklistTour";
 import { ResumeFab } from "./components/ResumeFab";
-import { buildTourConfig } from "./tour-config";
+import { buildTourConfig, isStubStep } from "./tour-config";
 
 import {
   createAnalyticsPlugin,
+  createChecklistProgressPlugin,
   createPersistencePlugin,
   createTour,
   TourProvider,
   useReactRouterNavigator,
   useTourPersistence,
+  type StepAdvanceEvent,
   type TourEngine,
 } from "@/features/tour";
 import { track } from "@/services/amplitude";
 
 export const TASK_TOUR_STORAGE_KEY = "arthur:task-tour:status";
+const TASK_TOUR_PROGRESS_STORAGE_KEY = "arthur:task-tour:progress";
+
+/**
+ * Maps a `step:advance` event to the checklist key shape the panel uses.
+ * Stub-section advances key off `${sectionId}.__intro` so they collapse to a
+ * single "intro complete" tick rather than an opaque placeholder step ID.
+ */
+const taskTourProgressKey = (event: StepAdvanceEvent): string =>
+  isStubStep(event.stepId) ? `${event.sectionId}.__intro` : `${event.sectionId}.${event.stepId}`;
 
 export interface TaskTourProps {
   /** Required: the task the tour should bind its routes against. */
@@ -61,19 +72,27 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
   const navigator = useReactRouterNavigator();
 
   const persistencePlugin = useMemo(() => createPersistencePlugin({ storageKey: TASK_TOUR_STORAGE_KEY }), []);
+  const progressPlugin = useMemo(
+    () =>
+      createChecklistProgressPlugin({
+        storageKey: TASK_TOUR_PROGRESS_STORAGE_KEY,
+        getKey: taskTourProgressKey,
+      }),
+    []
+  );
 
   const [engine, setEngine] = useState<TourEngine | null>(null);
 
   useEffect(() => {
     const created = createTour({
       config: buildTourConfig(taskId),
-      plugins: [createAnalyticsPlugin({ track, prefix: "task-tour" }), persistencePlugin],
+      plugins: [createAnalyticsPlugin({ track, prefix: "task-tour" }), persistencePlugin, progressPlugin],
     });
     setEngine(created);
     return () => {
       created.destroy();
     };
-  }, [persistencePlugin, taskId]);
+  }, [persistencePlugin, progressPlugin, taskId]);
 
   const status = useTourPersistence(persistencePlugin);
 
@@ -128,7 +147,7 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
     <>
       {engine ? (
         <TourProvider tour={engine} navigator={navigator}>
-          <ChecklistTour enabled={checklistEnabled} onComplete={handleComplete} />
+          <ChecklistTour enabled={checklistEnabled} progressPlugin={progressPlugin} onComplete={handleComplete} />
         </TourProvider>
       ) : null}
       {/* Dismissed state: render the resume FAB independently of the engine's

@@ -1,6 +1,6 @@
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useMemo, type ReactNode } from "react";
 
-import { TASK_TOUR_SECTIONS, findSection, type TaskTourItem } from "../data";
+import { TASK_TOUR_SECTIONS, type TaskTourItem } from "../data";
 import { isStubStep } from "../tour-config";
 import { dispatchTourEvent } from "../tourEvents";
 
@@ -15,9 +15,11 @@ import {
   Spotlight,
   TargetTracker,
   TourPortal,
+  useChecklistProgress,
   useTour,
   useTourEngine,
   useTourEvent,
+  type ChecklistProgressPlugin,
   type StepEnterEvent,
   type StepRenderContext,
 } from "@/features/tour";
@@ -49,6 +51,13 @@ function introKey(sectionId: string) {
 export interface ChecklistTourProps {
   /** When false, the entire walkthrough overlay (modal, panel, spotlight) is hidden. */
   enabled: boolean;
+  /**
+   * Persistence-backed item-progress plugin. Owned by the parent so progress
+   * survives engine recreation (StrictMode dev re-mount, taskId changes) and
+   * page reloads. Reads happen via {@link useChecklistProgress}; writes go
+   * through `progressPlugin.add` / `toggle`.
+   */
+  progressPlugin: ChecklistProgressPlugin;
   /** Called when the tour reaches its end (last section completed). */
   onComplete: () => void;
 }
@@ -56,19 +65,21 @@ export interface ChecklistTourProps {
 /**
  * The orchestrating layer: subscribes to engine state, drives the section
  * intro modal, paints the spotlight + pulsing ring on the current target, and
- * keeps a parallel `completedItemKeys` set up to date so the floating
- * checklist can tick items off as the user works through the tour.
+ * mirrors per-step progress into the `progressPlugin` so the floating
+ * checklist can tick items off as the user works through the tour. Real-step
+ * advances are recorded by the plugin automatically via `step:advance`; stub
+ * sections are recorded manually because `actions.next()` skips that bus
+ * event by design.
  *
  * Stub sections (intro-only) are handled by `acknowledgeIntroduction()` →
  * engine enters a placeholder step → we wait for `step:enter` and then call
  * `actions.next()` so the engine advances to the next section's intro
  * handshake.
  */
-export function ChecklistTour({ enabled, onComplete }: ChecklistTourProps) {
+export function ChecklistTour({ enabled, progressPlugin, onComplete }: ChecklistTourProps) {
   const engine = useTourEngine();
   const { state, activeStep, actions } = useTour();
-
-  const [completedItemKeys, setCompletedItemKeys] = useState<Set<string>>(() => new Set());
+  const completedItemKeys = useChecklistProgress(progressPlugin);
 
   const currentSectionIndex = state.status === "running" ? state.sectionIndex : 0;
   const currentStepIndex = state.status === "running" && !state.introductionPending ? state.stepIndex : -1;
@@ -80,39 +91,20 @@ export function ChecklistTour({ enabled, onComplete }: ChecklistTourProps) {
 
   const introOpen = state.status === "running" && state.introductionPending;
 
-  useTourEvent(
-    "step:advance",
-    useCallback((event) => {
-      const section = findSection(event.sectionId);
-      if (!section) return;
-      setCompletedItemKeys((prev) => {
-        const next = new Set(prev);
-        if (section.items.length === 0) {
-          next.add(introKey(section.id));
-        } else {
-          next.add(itemKey(section.id, event.stepId));
-        }
-        return next;
-      });
-    }, [])
-  );
-
   // Stubs have no UI of their own — once the engine enters one (after the
   // intro modal is acknowledged or on resume) we synthesise an immediate
-  // advance so the user is never stranded on a placeholder.
+  // advance so the user is never stranded on a placeholder. We mark the
+  // intro key here because `actions.next()` doesn't emit `step:advance`, so
+  // the progress plugin's auto-recording never fires for stubs.
   useTourEvent(
     "step:enter",
     useCallback(
       (event: StepEnterEvent) => {
         if (!isStubStep(event.stepId)) return;
-        setCompletedItemKeys((prev) => {
-          const next = new Set(prev);
-          next.add(introKey(event.sectionId));
-          return next;
-        });
+        progressPlugin.add(introKey(event.sectionId));
         actions.next();
       },
-      [actions]
+      [actions, progressPlugin]
     )
   );
 
@@ -153,31 +145,20 @@ export function ChecklistTour({ enabled, onComplete }: ChecklistTourProps) {
 
   const handleToggleItem = useCallback(
     (item: TaskTourItem) => {
-      const key = itemKey(currentSection!.id, item.id);
-      setCompletedItemKeys((prev) => {
-        if (prev.has(key)) {
-          const next = new Set(prev);
-          next.delete(key);
-          return next;
-        }
-        const next = new Set(prev);
-        next.add(key);
-        return next;
-      });
-      // When the user manually checks the engine's current step, advance the
-      // engine so the spotlight + completion flow stays consistent.
-      if (
-        state.status === "running" &&
-        state.sectionId === currentSection?.id &&
-        state.stepId === item.id &&
-        !completedItemKeys.has(itemKey(currentSection.id, item.id))
-      ) {
-        // Fire the advance event so the engine's trigger handles cleanup +
-        // section transition properly (rather than calling .next() raw).
+      if (!currentSection) return;
+      const key = itemKey(currentSection.id, item.id);
+      // `toggle` returns the new state; if the user just *checked* the
+      // engine's current step, also dispatch the configured advance event so
+      // the engine's trigger pipeline handles cleanup + section transition
+      // (rather than calling `actions.next()` raw, which skips
+      // `step:advance` and starves analytics). Idempotent re-records are
+      // safe — the plugin's `add` short-circuits on existing keys.
+      const nowComplete = progressPlugin.toggle(key);
+      if (nowComplete && state.status === "running" && state.sectionId === currentSection.id && state.stepId === item.id) {
         dispatchTourEvent(item.eventName);
       }
     },
-    [completedItemKeys, currentSection, state]
+    [currentSection, progressPlugin, state]
   );
 
   const handleSelectSection = useCallback(

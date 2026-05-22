@@ -18,7 +18,7 @@ export interface ChecklistPanelProps {
    * the parent. `null` when the tour isn't on a real step.
    */
   activeStepContent: ReactNode | null;
-  completedItemKeys: Set<string>;
+  completedItemKeys: ReadonlySet<string>;
   totalItemCount: number;
   totalProgress: number;
   onSelectItem: (item: TaskTourItem, itemIndex: number) => void;
@@ -36,7 +36,7 @@ function itemKey(section: TaskTourSection, item: TaskTourItem) {
   return `${section.id}.${item.id}`;
 }
 
-function isSectionDone(section: TaskTourSection, completed: Set<string>): boolean {
+function isSectionDone(section: TaskTourSection, completed: ReadonlySet<string>): boolean {
   if (section.items.length === 0) return completed.has(`${section.id}.__intro`);
   return section.items.every((it) => completed.has(itemKey(section, it)));
 }
