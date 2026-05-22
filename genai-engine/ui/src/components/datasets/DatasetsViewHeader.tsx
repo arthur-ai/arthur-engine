@@ -2,6 +2,8 @@ import AddIcon from "@mui/icons-material/Add";
 import { Box, Button, Typography } from "@mui/material";
 import React from "react";
 
+import { TOUR_IDS } from "@/features/task-tour";
+
 interface DatasetsViewHeaderProps {
   onCreateDataset: () => void;
 }
@@ -9,6 +11,7 @@ interface DatasetsViewHeaderProps {
 export const DatasetsViewHeader: React.FC<DatasetsViewHeaderProps> = ({ onCreateDataset }) => {
   return (
     <Box
+      data-tour-id={TOUR_IDS.datasetsEntry}
       sx={{
         display: "flex",
         justifyContent: "space-between",

@@ -30,6 +30,7 @@ import { EvaluatorPipelinesPanel } from "./EvaluatorPipelinesPanel";
 
 import { continuousEvalsQueryOptions } from "@/components/live-evals/hooks/useContinuousEvals";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { TOUR_IDS } from "@/features/task-tour";
 import { useApi } from "@/hooks/useApi";
 import type { ContinuousEvalResponse, LLMGetAllMetadataResponse } from "@/lib/api-client/api-client";
 import { formatDateInTimezone } from "@/utils/formatters";
@@ -123,7 +124,7 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
         </TableHead>
       </Table>
 
-      {evals.map((evalMeta) => {
+      {evals.map((evalMeta, evalIndex) => {
         const pipelines = cesByEval.get(evalMeta.name) ?? [];
         const activePipelines = pipelines.filter((ce) => ce.enabled).length;
         const stalePipelines = pipelines.filter((ce) => ce.llm_eval_version < evalMeta.versions).length;
@@ -133,6 +134,7 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
             key={evalMeta.name}
             expanded={expanded === evalMeta.name}
             onChange={handleAccordionChange(evalMeta.name)}
+            data-tour-id={evalIndex === 0 ? TOUR_IDS.evaluatorsFirstCard : undefined}
             disableGutters
             elevation={0}
             sx={{

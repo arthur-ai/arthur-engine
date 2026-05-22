@@ -1,0 +1,243 @@
+import { useCallback, useMemo, useState } from "react";
+
+import { TASK_TOUR_SECTIONS, findSection, type TaskTourItem } from "../data";
+import { isStubStep } from "../tour-config";
+import { dispatchTourEvent } from "../tourEvents";
+
+import { ChecklistPanel } from "./ChecklistPanel";
+import { PulsingRing } from "./PulsingRing";
+import { SectionIntroDialog } from "./SectionIntroDialog";
+
+import { Spotlight, TargetTracker, TourPortal, useTour, useTourEngine, useTourEvent, type StepEnterEvent } from "@/features/tour";
+
+// MUI's default modal z-index is 1300 — keep the spotlight + ring above it so
+// while a dialog is closed the highlight still appears on top of any non-modal
+// MUI surface (tooltips at 1500 are the highest we expect).
+const SPOTLIGHT_Z_INDEX = 1399;
+const PULSE_RING_Z_INDEX = 1400;
+
+const TOTAL_ITEM_COUNT = TASK_TOUR_SECTIONS.reduce((sum, s) => sum + Math.max(1, s.items.length), 0);
+
+function itemKey(sectionId: string, itemId: string) {
+  return `${sectionId}.${itemId}`;
+}
+function introKey(sectionId: string) {
+  return `${sectionId}.__intro`;
+}
+
+export interface ChecklistTourProps {
+  /** When false, the entire walkthrough overlay (modal, panel, spotlight) is hidden. */
+  enabled: boolean;
+  /** Called when the user dismisses the tour via the modal × or panel × button. */
+  onDismiss: () => void;
+  /** Called when the tour reaches its end (last section completed). */
+  onComplete: () => void;
+}
+
+/**
+ * The orchestrating layer: subscribes to engine state, drives the section
+ * intro modal, paints the spotlight + pulsing ring on the current target, and
+ * keeps a parallel `completedItemKeys` set up to date so the floating
+ * checklist can tick items off as the user works through the tour.
+ *
+ * Stub sections (intro-only) are handled by `acknowledgeIntroduction()` →
+ * engine enters a placeholder step → we wait for `step:enter` and then call
+ * `engine.next()` so the engine advances to the next section's intro
+ * handshake.
+ */
+export function ChecklistTour({ enabled, onDismiss, onComplete }: ChecklistTourProps) {
+  const engine = useTourEngine();
+  const { state, activeStep, actions } = useTour();
+
+  const [completedItemKeys, setCompletedItemKeys] = useState<Set<string>>(() => new Set());
+
+  const currentSectionIndex = state.status === "running" ? state.sectionIndex : 0;
+  const currentStepIndex = state.status === "running" && !state.introductionPending ? state.stepIndex : -1;
+  const currentSection = TASK_TOUR_SECTIONS[currentSectionIndex];
+
+  // Stash an active target rect, ignored for stub steps so the body element
+  // doesn't get spotlighted.
+  const isOnStub = activeStep ? isStubStep(activeStep.step.id) : false;
+
+  const introOpen = state.status === "running" && state.introductionPending;
+
+  useTourEvent(
+    "step:advance",
+    useCallback((event) => {
+      const section = findSection(event.sectionId);
+      if (!section) return;
+      setCompletedItemKeys((prev) => {
+        const next = new Set(prev);
+        if (section.items.length === 0) {
+          next.add(introKey(section.id));
+        } else {
+          next.add(itemKey(section.id, event.stepId));
+        }
+        return next;
+      });
+    }, [])
+  );
+
+  // Stubs have no UI of their own — once the engine enters one (after the
+  // intro modal is acknowledged or on resume) we synthesise an immediate
+  // advance so the user is never stranded on a placeholder.
+  useTourEvent(
+    "step:enter",
+    useCallback(
+      (event: StepEnterEvent) => {
+        if (!isStubStep(event.stepId)) return;
+        setCompletedItemKeys((prev) => {
+          const next = new Set(prev);
+          next.add(introKey(event.sectionId));
+          return next;
+        });
+        engine.next();
+      },
+      [engine]
+    )
+  );
+
+  useTourEvent(
+    "tour:end",
+    useCallback(
+      (event) => {
+        if (event.reason === "completed") onComplete();
+      },
+      [onComplete]
+    )
+  );
+
+  const handleStart = useCallback(() => {
+    actions.acknowledgeIntroduction();
+  }, [actions]);
+
+  const handleSkipSection = useCallback(() => {
+    actions.skipSection();
+  }, [actions]);
+
+  const handleDismiss = useCallback(() => {
+    // Pause instead of skip so the engine remembers where the user was; the
+    // FAB-driven resume can pick up at the same position.
+    actions.pause();
+    onDismiss();
+  }, [actions, onDismiss]);
+
+  const handleSelectItem = useCallback(
+    (item: TaskTourItem, itemIndex: number) => {
+      if (state.status !== "running") return;
+      if (state.sectionId === currentSection?.id && itemIndex === currentStepIndex) return;
+      actions.goTo({ sectionId: currentSection!.id, stepId: item.id });
+    },
+    [actions, currentSection, currentStepIndex, state]
+  );
+
+  const handleToggleItem = useCallback(
+    (item: TaskTourItem) => {
+      const key = itemKey(currentSection!.id, item.id);
+      setCompletedItemKeys((prev) => {
+        if (prev.has(key)) {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        }
+        const next = new Set(prev);
+        next.add(key);
+        return next;
+      });
+      // When the user manually checks the engine's current step, advance the
+      // engine so the spotlight + completion flow stays consistent.
+      if (
+        state.status === "running" &&
+        state.sectionId === currentSection?.id &&
+        state.stepId === item.id &&
+        !completedItemKeys.has(itemKey(currentSection.id, item.id))
+      ) {
+        // Fire the advance event so the engine's trigger handles cleanup +
+        // section transition properly (rather than calling .next() raw).
+        dispatchTourEvent(item.eventName);
+      }
+    },
+    [completedItemKeys, currentSection, state]
+  );
+
+  const handleSelectSection = useCallback(
+    (sectionIndex: number) => {
+      const target = TASK_TOUR_SECTIONS[sectionIndex];
+      if (!target) return;
+      actions.goTo({ sectionId: target.id });
+    },
+    [actions]
+  );
+
+  const handlePrevSection = useCallback(() => {
+    const prev = TASK_TOUR_SECTIONS[currentSectionIndex - 1];
+    if (prev) actions.goTo({ sectionId: prev.id });
+  }, [actions, currentSectionIndex]);
+
+  const handleNextSection = useCallback(() => {
+    const next = TASK_TOUR_SECTIONS[currentSectionIndex + 1];
+    if (next) actions.goTo({ sectionId: next.id });
+  }, [actions, currentSectionIndex]);
+
+  const totalProgress = useMemo(() => {
+    if (TOTAL_ITEM_COUNT === 0) return 0;
+    return completedItemKeys.size / TOTAL_ITEM_COUNT;
+  }, [completedItemKeys]);
+
+  if (!enabled) return null;
+  if (state.status === "idle") return null;
+
+  const showPanel = state.status === "running" && !state.introductionPending;
+  const showSpotlight = state.status === "running" && !state.introductionPending && !isOnStub;
+
+  return (
+    <TourPortal>
+      <SectionIntroDialog
+        open={introOpen}
+        section={currentSection ?? null}
+        sectionIndex={currentSectionIndex}
+        onStart={handleStart}
+        onSkipSection={handleSkipSection}
+        onDismiss={handleDismiss}
+      />
+
+      {showSpotlight ? (
+        <TargetTracker>
+          {({ rect }) =>
+            // When the target hasn't resolved (e.g. event-only placeholder
+            // steps targeting elements that don't exist yet), suppress the
+            // entire spotlight rather than dropping a flat backdrop over the
+            // page — the panel still surfaces the instruction.
+            rect ? (
+              <>
+                <Spotlight
+                  rect={rect}
+                  highlight={activeStep?.step.highlight}
+                  backdropColor="rgba(15, 23, 42, 0.28)"
+                  style={{ zIndex: SPOTLIGHT_Z_INDEX }}
+                />
+                <PulsingRing rect={rect} zIndex={PULSE_RING_Z_INDEX} />
+              </>
+            ) : null
+          }
+        </TargetTracker>
+      ) : null}
+
+      {showPanel && currentSection ? (
+        <ChecklistPanel
+          currentSectionIndex={currentSectionIndex}
+          currentItemIndex={currentStepIndex}
+          completedItemKeys={completedItemKeys}
+          totalItemCount={TOTAL_ITEM_COUNT}
+          totalProgress={totalProgress}
+          onSelectItem={handleSelectItem}
+          onToggleItem={handleToggleItem}
+          onSelectSection={handleSelectSection}
+          onPrevSection={handlePrevSection}
+          onNextSection={handleNextSection}
+          onClose={handleDismiss}
+        />
+      ) : null}
+    </TourPortal>
+  );
+}

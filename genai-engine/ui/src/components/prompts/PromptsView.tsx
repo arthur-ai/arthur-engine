@@ -9,6 +9,7 @@ import { PromptExperimentsView } from "../prompt-experiments/PromptExperimentsVi
 import PromptsManagement from "../prompts-management/PromptsManagement";
 
 import { getContentHeight } from "@/constants/layout";
+import { TOUR_IDS } from "@/features/task-tour";
 
 const TAB_TITLES: Record<string, string> = {
   notebooks: "Prompt Notebooks",
@@ -56,6 +57,7 @@ export const PromptsView = () => {
         direction="row"
         alignItems="center"
         justifyContent="space-between"
+        data-tour-id={TOUR_IDS.promptsEntry}
         sx={{
           px: 3,
           pt: 3,

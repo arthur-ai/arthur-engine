@@ -7,6 +7,7 @@ import { TaskErrorState } from "@/components/TaskErrorState";
 import { TaskLoadingState } from "@/components/TaskLoadingState";
 import { TaskNotFoundState } from "@/components/TaskNotFoundState";
 import { TaskProvider } from "@/contexts/TaskContext";
+import { TaskTour } from "@/features/task-tour";
 import { useApi } from "@/hooks/useApi";
 import { TaskResponse } from "@/lib/api";
 
@@ -104,6 +105,7 @@ export const TaskLayout: React.FC = () => {
           {task && (
             <TaskProvider task={task}>
               <Outlet />
+              <TaskTour taskId={task.id} workspaceLabel={task.name} />
             </TaskProvider>
           )}
         </main>

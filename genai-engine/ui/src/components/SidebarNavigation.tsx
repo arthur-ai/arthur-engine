@@ -15,6 +15,7 @@ import React from "react";
 import { useParams } from "react-router-dom";
 
 import { useDemoMode } from "@/contexts/EngineConfigContext";
+import { TOUR_IDS } from "@/features/task-tour";
 
 interface SidebarNavigationProps {
   onBackToDashboard: () => void;
@@ -34,10 +35,12 @@ interface NavigationItem {
   label: string;
   icon: React.ReactNode;
   onClick?: () => void;
+  /** Optional `data-tour-id` attribute used by the in-task guided tour. */
+  tourId?: string;
 }
 
 function buildNavigationSections(demoMode: boolean): NavigationSection[] {
-  const agentItems: NavigationItem[] = [{ id: "test", label: "Test", icon: <ScienceOutlined /> }];
+  const agentItems: NavigationItem[] = [{ id: "test", label: "Test", icon: <ScienceOutlined />, tourId: TOUR_IDS.navTest }];
   if (demoMode) {
     agentItems.push({ id: "chatbot", label: "Chatbot", icon: <ChatOutlined /> });
   }
@@ -45,12 +48,12 @@ function buildNavigationSections(demoMode: boolean): NavigationSection[] {
     {
       id: "observability",
       label: "Observability",
-      items: [{ id: "traces", label: "Observe", icon: <TrendingUpOutlined /> }],
+      items: [{ id: "traces", label: "Observe", icon: <TrendingUpOutlined />, tourId: TOUR_IDS.navObserve }],
     },
     {
       id: "prompts",
       label: "Prompts",
-      items: [{ id: "prompts", label: "Prompt", icon: <DescriptionOutlined /> }],
+      items: [{ id: "prompts", label: "Prompt", icon: <DescriptionOutlined />, tourId: TOUR_IDS.navPrompts }],
     },
     {
       id: "rag",
@@ -61,8 +64,8 @@ function buildNavigationSections(demoMode: boolean): NavigationSection[] {
       id: "evals",
       label: "Evals",
       items: [
-        { id: "evaluate", label: "Evaluate", icon: <BalanceOutlined /> },
-        { id: "datasets", label: "Dataset", icon: <TableChartOutlined /> },
+        { id: "evaluate", label: "Evaluate", icon: <BalanceOutlined />, tourId: TOUR_IDS.navEvaluate },
+        { id: "datasets", label: "Dataset", icon: <TableChartOutlined />, tourId: TOUR_IDS.navDatasets },
         { id: "transforms", label: "Transform", icon: <StorageOutlined /> },
       ],
     },
@@ -129,6 +132,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
                   <Link
                     href={`/tasks/${id}/${item.id}`}
                     underline="none"
+                    data-tour-id={item.tourId}
                     onClick={(e) => {
                       e.preventDefault();
                       onNavigate(item.id);

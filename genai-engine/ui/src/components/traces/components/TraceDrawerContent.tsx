@@ -17,6 +17,7 @@ import { AnnotationCell } from "./AnnotationCell";
 import { ContinuousEvalDrawer } from "./continuous-eval/ContinuousEvalDrawer";
 import { FeedbackPanel } from "./feedback/FeedbackPanel";
 
+import { TOUR_IDS } from "@/features/task-tour";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import type { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
@@ -145,10 +146,19 @@ export const TraceDrawerContent = ({ id }: Props) => {
       paginationContext={paginationContext}
       onNavigate={(target, navId) => setDrawerTarget({ target, id: navId })}
       renderAnnotationBar={({ annotations, traceId: tid, containerRef }) => (
-        <>
-          <AnnotationCell annotations={(annotations ?? []) as AgenticAnnotationResponse[]} traceId={tid} />
-          <FeedbackPanel containerRef={containerRef} annotations={(annotations ?? []) as AgenticAnnotationResponse[]} traceId={tid} />
-        </>
+        // The `task-tour` highlights `traceDrawerSpans` against this wrapper as
+        // a coarse anchor because the actual spans timeline lives inside
+        // `@arthur/shared-components`. The step is `event-only`, so this just
+        // gives the spotlight a parent to live on while the user reads the
+        // surrounding context.
+        <Box data-tour-id={TOUR_IDS.traceDrawerSpans}>
+          <Box data-tour-id={TOUR_IDS.traceDrawerEvals}>
+            <AnnotationCell annotations={(annotations ?? []) as AgenticAnnotationResponse[]} traceId={tid} />
+          </Box>
+          <Box data-tour-id={TOUR_IDS.traceDrawerFeedback}>
+            <FeedbackPanel containerRef={containerRef} annotations={(annotations ?? []) as AgenticAnnotationResponse[]} traceId={tid} />
+          </Box>
+        </Box>
       )}
       renderAfterDrawer={() => (
         <>
