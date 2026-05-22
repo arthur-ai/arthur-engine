@@ -112,6 +112,7 @@ def test_get_expired_trace_ids_returns_only_expired_and_respects_batch_size() ->
             DatabaseTraceMetadata(
                 trace_id=trace_id,
                 task_id=task_id,
+                org_id=DEFAULT_ORG_ID,
                 start_time=end_time - timedelta(seconds=10),
                 end_time=end_time,
                 span_count=0,
@@ -147,6 +148,7 @@ def test_get_expired_trace_ids_returns_nothing_when_no_traces_expired() -> None:
         DatabaseTraceMetadata(
             trace_id=trace_id,
             task_id=task_id,
+            org_id=DEFAULT_ORG_ID,
             start_time=now,
             end_time=now,
             span_count=0,
@@ -191,6 +193,7 @@ def test_delete_trace_batch_removes_metric_results_for_deleted_spans() -> None:
         DatabaseTraceMetadata(
             trace_id=trace_id,
             task_id=task_id,
+            org_id=DEFAULT_ORG_ID,
             start_time=now - timedelta(days=2),
             end_time=now - timedelta(days=2),
             span_count=1,
@@ -205,6 +208,7 @@ def test_delete_trace_batch_removes_metric_results_for_deleted_spans() -> None:
             start_time=now - timedelta(days=2),
             end_time=now - timedelta(days=2),
             task_id=task_id,
+            org_id=DEFAULT_ORG_ID,
             raw_data={},
             status_code="Unset",
         )
@@ -274,6 +278,7 @@ def test_delete_trace_batch_noop_on_empty_list() -> None:
         DatabaseTraceMetadata(
             trace_id=trace_id,
             task_id=task_id,
+            org_id=DEFAULT_ORG_ID,
             start_time=now,
             end_time=now,
             span_count=0,
@@ -315,6 +320,7 @@ def test_delete_trace_batch_removes_agentic_annotations() -> None:
             DatabaseTraceMetadata(
                 trace_id=tid,
                 task_id=task_id,
+                org_id=DEFAULT_ORG_ID,
                 start_time=now - timedelta(days=2),
                 end_time=now - timedelta(days=2),
                 span_count=0,
@@ -399,6 +405,7 @@ def test_delete_trace_batch_preserves_resource_metadata() -> None:
         DatabaseTraceMetadata(
             trace_id=trace_id,
             task_id=task_id,
+            org_id=DEFAULT_ORG_ID,
             root_span_resource_id=resource_id,
             start_time=now - timedelta(days=2),
             end_time=now - timedelta(days=2),
@@ -414,6 +421,7 @@ def test_delete_trace_batch_preserves_resource_metadata() -> None:
             start_time=now - timedelta(days=2),
             end_time=now - timedelta(days=2),
             task_id=task_id,
+            org_id=DEFAULT_ORG_ID,
             resource_id=resource_id,
             raw_data={},
             status_code="Unset",

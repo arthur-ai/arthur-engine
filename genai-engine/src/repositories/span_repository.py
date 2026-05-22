@@ -18,6 +18,7 @@ from db_models import DatabaseSpan
 from db_models.task_models import DatabaseTask
 from db_models.telemetry_models import DatabaseTraceMetadata
 from repositories.metrics_repository import MetricRepository
+from repositories.organizations_repository import lookup_org_id
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from schemas.internal_schemas import (
     AgenticAnnotation,
@@ -40,6 +41,7 @@ from services.trace.trace_ingestion_service import TraceIngestionService
 from services.trace.tree_building_service import TreeBuildingService
 from utils import trace as trace_utils
 from utils.constants import (
+    DEFAULT_ORG_ID,
     EXPECTED_SPAN_VERSION,
     SPAN_VERSION_KEY,
 )
@@ -243,25 +245,28 @@ class SpanRepository:
         )
 
     def _trace_belongs_to_org(self, trace_id: str, org_scope: UUID) -> bool:
-        """Return True if the trace's task belongs to org_scope."""
+        """Return True if the trace belongs to org_scope.
+
+        Uses the denormalized `trace_metadata.org_id` column (Migration 4) so
+        this is a single-column lookup rather than a join through `tasks`.
+        """
         row = self.db_session.execute(
-            select(DatabaseTraceMetadata.trace_id)
-            .join(DatabaseTask, DatabaseTask.id == DatabaseTraceMetadata.task_id)
-            .where(
+            select(DatabaseTraceMetadata.trace_id).where(
                 DatabaseTraceMetadata.trace_id == trace_id,
-                DatabaseTask.org_id == str(org_scope),
+                DatabaseTraceMetadata.org_id == org_scope,
             )
         ).first()
         return row is not None
 
     def _span_belongs_to_org(self, span_id: str, org_scope: UUID) -> bool:
-        """Return True if the span's task belongs to org_scope."""
+        """Return True if the span belongs to org_scope.
+
+        Uses the denormalized `spans.org_id` column (Migration 4).
+        """
         row = self.db_session.execute(
-            select(DatabaseSpan.span_id)
-            .join(DatabaseTask, DatabaseTask.id == DatabaseSpan.task_id)
-            .where(
+            select(DatabaseSpan.span_id).where(
                 DatabaseSpan.span_id == span_id,
-                DatabaseTask.org_id == str(org_scope),
+                DatabaseSpan.org_id == org_scope,
             )
         ).first()
         return row is not None
@@ -383,17 +388,14 @@ class SpanRepository:
         # Tenant callers: filter the trace_ids down to only those whose owning
         # task lives in the caller's org. Sessions can span multiple tasks, so
         # we filter per-trace rather than checking the session wholesale.
+        # Uses the denormalized trace_metadata.org_id column (Migration 4).
         if org_scope is not None:
             owned = {
                 row[0]
                 for row in self.db_session.execute(
-                    select(DatabaseTraceMetadata.trace_id)
-                    .join(
-                        DatabaseTask, DatabaseTask.id == DatabaseTraceMetadata.task_id
-                    )
-                    .where(
+                    select(DatabaseTraceMetadata.trace_id).where(
                         DatabaseTraceMetadata.trace_id.in_(trace_ids),
-                        DatabaseTask.org_id == str(org_scope),
+                        DatabaseTraceMetadata.org_id == org_scope,
                     )
                 ).all()
             }
@@ -450,18 +452,15 @@ class SpanRepository:
         if not trace_ids:
             return 0, []
 
-        # Tenant callers: filter to only traces in the caller's org.
+        # Tenant callers: filter to only traces in the caller's org. Uses the
+        # denormalized trace_metadata.org_id column (Migration 4).
         if org_scope is not None:
             owned = {
                 row[0]
                 for row in self.db_session.execute(
-                    select(DatabaseTraceMetadata.trace_id)
-                    .join(
-                        DatabaseTask, DatabaseTask.id == DatabaseTraceMetadata.task_id
-                    )
-                    .where(
+                    select(DatabaseTraceMetadata.trace_id).where(
                         DatabaseTraceMetadata.trace_id.in_(trace_ids),
-                        DatabaseTask.org_id == str(org_scope),
+                        DatabaseTraceMetadata.org_id == org_scope,
                     )
                 ).all()
             }
@@ -579,6 +578,18 @@ class SpanRepository:
         trace_id = gcp_trace_data.get("traceId", "")
         gcp_spans = gcp_trace_data.get("spans", [])
 
+        # Resolve org_id once per GCP batch from the owning task. Mirrors the
+        # OTLP ingestion path — task→org binding is fixed, so per-batch is safe.
+        resolved_org_id = (
+            lookup_org_id(
+                self.db_session,
+                select(DatabaseTask.org_id).where(DatabaseTask.id == task_id),
+                default=DEFAULT_ORG_ID,
+            )
+            if task_id is not None
+            else DEFAULT_ORG_ID
+        )
+
         total_spans = len(gcp_spans)
         accepted_spans = 0
         rejected_spans = 0
@@ -664,6 +675,7 @@ class SpanRepository:
                     start_time=start_time,
                     end_time=end_time,
                     task_id=task_id,  # Use provided task_id
+                    org_id=resolved_org_id,
                     session_id=session_id,
                     user_id=user_id,
                     status_code="Unset",  # GCP doesn't provide status

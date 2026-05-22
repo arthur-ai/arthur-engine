@@ -266,6 +266,7 @@ def _create_database_span(
         start_time=start_time,
         end_time=end_time,
         task_id=task_id,
+        org_id=DEFAULT_ORG_ID,
         session_id=session_id,
         user_id=user_id,
         status_code="Ok",
@@ -609,6 +610,7 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
             start_time=span.start_time,
             end_time=span.end_time,
             task_id=span.task_id,
+            org_id=DEFAULT_ORG_ID,
             session_id=span.session_id,
             user_id=span.user_id,
             status_code="Ok",
@@ -682,6 +684,7 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
 
         trace_metadata = DatabaseTraceMetadata(
             task_id=trace_spans[0].task_id,
+            org_id=DEFAULT_ORG_ID,
             trace_id=trace_id,
             session_id=trace_spans[0].session_id,
             user_id=trace_spans[0].user_id,

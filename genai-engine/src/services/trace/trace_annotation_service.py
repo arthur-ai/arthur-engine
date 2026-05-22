@@ -7,14 +7,12 @@ from arthur_common.models.enums import AgenticAnnotationType, PaginationSortMeth
 from arthur_common.models.response_schemas import (
     TraceResponse,
 )
-from sqlalchemy import asc, desc, select
+from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
 from custom_types import QueryT
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
-from db_models.task_models import DatabaseTask
 from db_models.telemetry_models import DatabaseTraceMetadata
-from repositories.organizations_repository import lookup_org_id
 from schemas.internal_schemas import AgenticAnnotation
 from schemas.request_schemas import (
     AgenticAnnotationListFilterRequest,
@@ -67,13 +65,13 @@ class TraceAnnotationService:
         annotation_request: AgenticAnnotationRequest,
         org_scope: uuid.UUID | None = None,
     ) -> AgenticAnnotation:
+        # Filter against trace_metadata.org_id directly (Migration 4) instead
+        # of joining through tasks.
         trace_q = self.db_session.query(DatabaseTraceMetadata).filter(
             DatabaseTraceMetadata.trace_id == trace_id,
         )
         if org_scope is not None:
-            trace_q = trace_q.join(
-                DatabaseTask, DatabaseTask.id == DatabaseTraceMetadata.task_id
-            ).filter(DatabaseTask.org_id == str(org_scope))
+            trace_q = trace_q.filter(DatabaseTraceMetadata.org_id == org_scope)
         trace = trace_q.one_or_none()
         if trace is None:
             raise ValueError(f"Trace {trace_id} not found")
@@ -97,10 +95,6 @@ class TraceAnnotationService:
             existing_annotation.updated_at = datetime.now()
             db_annotation = existing_annotation
         else:
-            task_org_id = lookup_org_id(
-                self.db_session,
-                select(DatabaseTask.org_id).where(DatabaseTask.id == trace.task_id),
-            )
             db_annotation = DatabaseAgenticAnnotation(
                 id=uuid.uuid4(),
                 annotation_type=AgenticAnnotationType.HUMAN,
@@ -109,7 +103,7 @@ class TraceAnnotationService:
                 annotation_description=annotation_request.annotation_description,
                 created_at=datetime.now(),
                 updated_at=datetime.now(),
-                org_id=task_org_id,
+                org_id=trace.org_id,
             )
             self.db_session.add(db_annotation)
 
