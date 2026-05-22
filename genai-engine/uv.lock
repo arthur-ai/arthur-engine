@@ -12,6 +12,7 @@ exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for 
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
+arthur-client = false
 arthur-common = false
 torch = false
 
@@ -135,6 +136,25 @@ wheels = [
 ]
 
 [[package]]
+name = "arthur-client"
+version = "1.4.2158"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "authlib" },
+    { name = "click" },
+    { name = "pydantic" },
+    { name = "python-dateutil" },
+    { name = "requests" },
+    { name = "simple-settings" },
+    { name = "typing-extensions" },
+    { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/70/b9/c9d0a15bfded73cc420d7000bb926864db8a2a67088a150bf4c6a762cf9d/arthur_client-1.4.2158.tar.gz", hash = "sha256:e5eec89d6070f3c8aee2a03ff65add01461476ad327e59f0847914b26427d936", size = 395091, upload-time = "2026-05-21T23:17:26.434Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/19/5c/9a8f2eafa32af58f7ceb438110fbbe25d09499186f80faa011079355dafc/arthur_client-1.4.2158-py3-none-any.whl", hash = "sha256:e25f598272c129efc095a94942ac7d212a2e6350707306274b8b396a808f68fd", size = 1457288, upload-time = "2026-05-21T23:17:27.942Z" },
+]
+
+[[package]]
 name = "arthur-common"
 version = "2.4.62"
 source = { registry = "https://pypi.org/simple" }
@@ -164,6 +184,7 @@ source = { editable = "." }
 dependencies = [
     { name = "alembic" },
     { name = "amplitude-analytics" },
+    { name = "arthur-client" },
     { name = "arthur-common" },
     { name = "authlib" },
     { name = "azure-storage-blob" },
@@ -251,6 +272,7 @@ performance = [
 requires-dist = [
     { name = "alembic", specifier = "==1.17.2" },
     { name = "amplitude-analytics", specifier = ">=1.1.5,<2" },
+    { name = "arthur-client", specifier = "==1.4.2158" },
     { name = "arthur-common", specifier = "==2.4.62" },
     { name = "authlib", specifier = "==1.6.9" },
     { name = "azure-storage-blob", specifier = "==12.27.1" },
