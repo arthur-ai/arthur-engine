@@ -1,6 +1,6 @@
 [project]
 name = "ml-engine"
-version = "2.1.568"
+version = "2.1.572"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 license = "MIT"
@@ -21,6 +21,7 @@ dependencies = [
   "pyodbc==5.2.0",
   "pyyaml==6.0.3",
   "requests==2.32.5",
+  "adlfs==2025.8.0",
   "s3fs==2025.9.0",
   "simple-settings==1.2.0",
   "httpx==0.28.1",
@@ -33,13 +34,13 @@ dependencies = [
   "types-requests==2.32.4.20260324",
   "psutil==7.0.0",
   "pyarrow==21.0.0",
-  "arthur-common==2.4.59",
+  "arthur-common==2.4.62",
   "gunicorn>=23.0.0,<24",
   "sqlalchemy==2.0.48",
   "snowflake-sqlalchemy==1.7.7",
   "databricks-sqlalchemy>=2.0,<3",
   "databricks-sdk>=0.84.0,<1",
-  "arthur-client==1.4.2139",
+  "arthur-client==1.4.2158",
 ]
 
 [dependency-groups]

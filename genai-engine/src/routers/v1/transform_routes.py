@@ -72,8 +72,14 @@ def list_transforms_for_task(
             pagination_parameters,
             filter_request,
         )
+        definitions = trace_transform_repo.get_latest_definitions_for_transforms(
+            [t.id for t in transforms],
+        )
         return ListTraceTransformsResponse(
-            transforms=[transform.to_response_model() for transform in transforms],
+            transforms=[
+                transform.to_response_model(definition=definitions[transform.id])
+                for transform in transforms
+            ],
             count=len(transforms),
         )
     except Exception as e:
@@ -102,7 +108,8 @@ def get_transform(
                 detail=f"Transform {transform_id} not found",
             )
 
-        return trace_transform.to_response_model()
+        definition = trace_transform_repo.get_latest_definition(transform_id)
+        return trace_transform.to_response_model(definition=definition)
     except HTTPException:
         raise
     except Exception as e:
@@ -151,7 +158,7 @@ def create_transform_for_task(
     try:
         trace_transform_repo = TraceTransformRepository(db_session)
         trace_transform = trace_transform_repo.create_transform(task.id, request)
-        return trace_transform.to_response_model()
+        return trace_transform.to_response_model(definition=request.definition)
     except HTTPException:
         raise
     except Exception as e:
@@ -174,7 +181,8 @@ def update_transform(
     try:
         trace_transform_repo = TraceTransformRepository(db_session)
         trace_transform = trace_transform_repo.update_transform(transform_id, request)
-        return trace_transform.to_response_model()
+        definition = trace_transform_repo.get_latest_definition(transform_id)
+        return trace_transform.to_response_model(definition=definition)
     except HTTPException:
         raise
     except Exception as e:
