@@ -3,6 +3,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import EastIcon from "@mui/icons-material/East";
 import WestIcon from "@mui/icons-material/West";
 import { Box, Button, IconButton, LinearProgress, Paper, Stack, Tooltip, Typography, useTheme } from "@mui/material";
+import type { ReactNode } from "react";
 
 import { TASK_TOUR_SECTIONS, TASK_TOUR_TITLE, type TaskTourItem, type TaskTourSection } from "../data";
 
@@ -10,6 +11,13 @@ export interface ChecklistPanelProps {
   currentSectionIndex: number;
   /** -1 = no active item (stub section). */
   currentItemIndex: number;
+  /**
+   * Resolved content for the currently active step (i.e. the one rendered
+   * under the highlighted row). Comes from the engine's `StepConfig.content`
+   * — a `ReactNode` or the result of the function form already evaluated by
+   * the parent. `null` when the tour isn't on a real step.
+   */
+  activeStepContent: ReactNode | null;
   completedItemKeys: Set<string>;
   totalItemCount: number;
   totalProgress: number;
@@ -41,6 +49,7 @@ function isSectionDone(section: TaskTourSection, completed: Set<string>): boolea
 export function ChecklistPanel({
   currentSectionIndex,
   currentItemIndex,
+  activeStepContent,
   completedItemKeys,
   totalItemCount,
   totalProgress,
@@ -227,10 +236,14 @@ export function ChecklistPanel({
                   >
                     {item.title}
                   </Typography>
-                  {active ? (
-                    <Typography variant="caption" sx={{ color: "black", display: "block", mt: 0.5, lineHeight: 1.45 }}>
-                      {item.instructions}
-                    </Typography>
+                  {active && activeStepContent != null ? (
+                    typeof activeStepContent === "string" ? (
+                      <Typography variant="caption" sx={{ color: "black", display: "block", mt: 0.5, lineHeight: 1.45 }}>
+                        {activeStepContent}
+                      </Typography>
+                    ) : (
+                      <Box sx={{ color: "black", display: "block", mt: 0.5, fontSize: 12, lineHeight: 1.45 }}>{activeStepContent}</Box>
+                    )
                   ) : null}
                 </Box>
               </Stack>

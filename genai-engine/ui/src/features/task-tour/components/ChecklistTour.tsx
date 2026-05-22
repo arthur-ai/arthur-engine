@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 
 import { TASK_TOUR_SECTIONS, findSection, type TaskTourItem } from "../data";
 import { isStubStep } from "../tour-config";
@@ -19,6 +19,7 @@ import {
   useTourEngine,
   useTourEvent,
   type StepEnterEvent,
+  type StepRenderContext,
 } from "@/features/tour";
 
 // MUI's default modal z-index is 1300 — keep the spotlight + ring above it so
@@ -203,6 +204,25 @@ export function ChecklistTour({ enabled, onComplete }: ChecklistTourProps) {
     return completedItemKeys.size / TOTAL_ITEM_COUNT;
   }, [completedItemKeys]);
 
+  // Resolve `step.content` into a `ReactNode` so the checklist row reads from
+  // the engine's `StepConfig` rather than `TaskTourItem.instructions`. Mirrors
+  // `DefaultStepPopover`'s pattern so author-supplied function content is
+  // supported alongside plain strings / nodes.
+  const activeStepContent = useMemo<ReactNode | null>(() => {
+    if (!activeStep) return null;
+    if (isStubStep(activeStep.step.id)) return null;
+    const { step, section, sectionIndex, stepIndex, globalStepIndex, totalSteps } = activeStep;
+    if (typeof step.content !== "function") return step.content;
+    const ctx: StepRenderContext = {
+      tourId: engine.config.id,
+      sectionId: section.id,
+      stepId: step.id,
+      index: { sectionIndex, stepIndex, globalStepIndex, totalSteps },
+      actions,
+    };
+    return step.content(ctx);
+  }, [activeStep, actions, engine.config.id]);
+
   if (!enabled) return null;
   if (state.status === "idle") return null;
 
@@ -259,6 +279,7 @@ export function ChecklistTour({ enabled, onComplete }: ChecklistTourProps) {
         <ChecklistPanel
           currentSectionIndex={currentSectionIndex}
           currentItemIndex={currentStepIndex}
+          activeStepContent={activeStepContent}
           completedItemKeys={completedItemKeys}
           totalItemCount={TOTAL_ITEM_COUNT}
           totalProgress={totalProgress}
