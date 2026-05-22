@@ -261,6 +261,9 @@ export function ChecklistTour({ enabled, onComplete }: ChecklistTourProps) {
                 <Spotlight
                   rect={rect}
                   highlight={activeStep?.step.highlight}
+                  // Source of truth is `step.overlay.color` from the engine
+                  // config (set by `buildStep`); the literal here is a
+                  // defensive default for any step that omits the field.
                   backdropColor={overlay?.color ?? "rgba(15, 23, 42, 0.28)"}
                   style={{ zIndex: SPOTLIGHT_Z_INDEX }}
                 />

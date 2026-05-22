@@ -5,6 +5,13 @@ import type { AdvanceTrigger, RouteSpec, SectionConfig, StepConfig, TourConfig }
 
 const STUB_STEP_ID = "__placeholder";
 const STEP_TIMEOUT_MS = 4000;
+/**
+ * Backdrop tint used by the focus-mode overlay around every spotlighted step.
+ * Declared on each `StepConfig.overlay.color` so the engine config is the
+ * source of truth — `ChecklistTour` keeps an identical hardcoded fallback for
+ * defensive defaulting only.
+ */
+const TASK_TOUR_BACKDROP_COLOR = "rgba(15, 23, 42, 0.28)";
 
 /**
  * Sentinel selector used by stub / intro-only sections. The placeholder step
@@ -45,7 +52,7 @@ function buildStep(taskId: string, item: TaskTourItem): StepConfig {
     // panel, which sits above the blocker via z-index). Backdrop clicks are
     // intentionally a no-op — the panel exposes explicit Skip / Close /
     // Dismiss controls so a stray click on the dim can't end the tour.
-    overlay: { blockInteraction: true, onBackdropClick: "none" },
+    overlay: { blockInteraction: true, onBackdropClick: "none", color: TASK_TOUR_BACKDROP_COLOR },
     ...(route ? { route } : {}),
     awaitTarget: { timeoutMs: STEP_TIMEOUT_MS },
     advanceOn: advanceFor(item),
