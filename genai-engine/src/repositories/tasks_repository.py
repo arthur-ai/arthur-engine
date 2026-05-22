@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timedelta
 from typing import Optional
+from uuid import UUID
 
 from arthur_common.models.agent_governance_schemas import (
     AgentCreationSource,
@@ -79,8 +80,13 @@ class TaskRepository:
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
         page_size: int = 10,
         page: int = 0,
+        org_scope: Optional[UUID] = None,
     ) -> tuple[list[DatabaseTask], int]:
         stmt = self.db_session.query(DatabaseTask)
+        # Tenant callers see only their own org's tasks. Admin (org_scope=None)
+        # passes through and sees everything.
+        if org_scope is not None:
+            stmt = stmt.where(DatabaseTask.org_id == str(org_scope))
         if ids:
             stmt = stmt.where(DatabaseTask.id.in_(ids))
         if task_name:
@@ -272,7 +278,7 @@ class TaskRepository:
 
         return tasks
 
-    def get_all_tasks(self) -> list[Task]:
+    def get_all_tasks(self, org_scope: Optional[UUID] = None) -> list[Task]:
         # Continuously grab tasks until there are no more, DEFAULT_PAGE_SIZE at a time
         all_tasks: list[DatabaseTask] = []
         page = 0
@@ -280,6 +286,7 @@ class TaskRepository:
             db_tasks, _ = self.query_tasks(
                 page=page,
                 page_size=constants.DEFAULT_PAGE_SIZE,
+                org_scope=org_scope,
             )
             if not db_tasks:
                 break

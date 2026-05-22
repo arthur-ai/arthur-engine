@@ -152,13 +152,18 @@ class ContinuousEvalTestRunRepository:
     def get_test_run(
         self,
         test_run_id: uuid.UUID,
+        org_scope: uuid.UUID | None = None,
     ) -> ContinuousEvalTestRun:
         """Get a test run by ID."""
-        db_test_run = (
-            self.db_session.query(DatabaseContinuousEvalTestRun)
-            .filter(DatabaseContinuousEvalTestRun.id == test_run_id)
-            .first()
+        q = self.db_session.query(DatabaseContinuousEvalTestRun).filter(
+            DatabaseContinuousEvalTestRun.id == test_run_id,
         )
+        # test_runs carry only task_id — join through tasks for the org filter.
+        if org_scope is not None:
+            q = q.join(
+                DatabaseTask, DatabaseTask.id == DatabaseContinuousEvalTestRun.task_id
+            ).filter(DatabaseTask.org_id == str(org_scope))
+        db_test_run = q.first()
         if not db_test_run:
             raise HTTPException(
                 status_code=404,
@@ -170,11 +175,16 @@ class ContinuousEvalTestRunRepository:
         self,
         continuous_eval_id: uuid.UUID,
         pagination_parameters: Optional[PaginationParameters] = None,
+        org_scope: uuid.UUID | None = None,
     ) -> List[ContinuousEvalTestRun]:
         """List test runs for a continuous eval."""
         base_query = self.db_session.query(DatabaseContinuousEvalTestRun).filter(
             DatabaseContinuousEvalTestRun.continuous_eval_id == continuous_eval_id,
         )
+        if org_scope is not None:
+            base_query = base_query.join(
+                DatabaseTask, DatabaseTask.id == DatabaseContinuousEvalTestRun.task_id
+            ).filter(DatabaseTask.org_id == str(org_scope))
 
         if pagination_parameters:
             sort_fn = (
@@ -205,11 +215,17 @@ class ContinuousEvalTestRunRepository:
         self,
         test_run_id: uuid.UUID,
         pagination_parameters: Optional[PaginationParameters] = None,
+        org_scope: uuid.UUID | None = None,
     ) -> List[AgenticAnnotation]:
         """Get individual test case results for a test run."""
         base_query = self.db_session.query(DatabaseAgenticAnnotation).filter(
             DatabaseAgenticAnnotation.test_run_id == test_run_id,
         )
+        # agentic_annotations carries denormalized org_id — direct filter.
+        if org_scope is not None:
+            base_query = base_query.filter(
+                DatabaseAgenticAnnotation.org_id == str(org_scope),
+            )
 
         if pagination_parameters:
             sort_fn = (
@@ -242,13 +258,18 @@ class ContinuousEvalTestRunRepository:
             .count()
         )
 
-    def delete_test_run(self, test_run_id: uuid.UUID) -> None:
+    def delete_test_run(
+        self, test_run_id: uuid.UUID, org_scope: uuid.UUID | None = None
+    ) -> None:
         """Delete a test run and its associated annotations."""
-        db_test_run = (
-            self.db_session.query(DatabaseContinuousEvalTestRun)
-            .filter(DatabaseContinuousEvalTestRun.id == test_run_id)
-            .first()
+        q = self.db_session.query(DatabaseContinuousEvalTestRun).filter(
+            DatabaseContinuousEvalTestRun.id == test_run_id,
         )
+        if org_scope is not None:
+            q = q.join(
+                DatabaseTask, DatabaseTask.id == DatabaseContinuousEvalTestRun.task_id
+            ).filter(DatabaseTask.org_id == str(org_scope))
+        db_test_run = q.first()
         if not db_test_run:
             raise HTTPException(
                 status_code=404,

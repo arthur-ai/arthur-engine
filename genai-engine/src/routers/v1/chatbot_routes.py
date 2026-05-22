@@ -77,7 +77,7 @@ async def stream_chatbot(
     response_model=ChatbotConfigResponse,
     tags=["Chatbot"],
 )
-@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@permission_checker(permissions=PermissionLevelsEnum.CHATBOT_CONFIG_READ.value)
 def get_chatbot_config(
     request: Request,
     db_session: Session = Depends(get_db_session),
@@ -97,7 +97,7 @@ def get_chatbot_config(
     response_model=ChatbotConfigResponse,
     tags=["Chatbot"],
 )
-@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@permission_checker(permissions=PermissionLevelsEnum.CHATBOT_CONFIG_WRITE.value)
 def update_chatbot_config(
     request: Request,
     body: ChatbotConfigUpdateRequest,
@@ -116,7 +116,7 @@ def update_chatbot_config(
     summary="Clear chatbot conversation history",
     tags=["Chatbot"],
 )
-@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@permission_checker(permissions=PermissionLevelsEnum.CHATBOT_CONFIG_WRITE.value)
 async def clear_chatbot_history(
     conversation_id: str,
     db_session: Session = Depends(get_db_session),

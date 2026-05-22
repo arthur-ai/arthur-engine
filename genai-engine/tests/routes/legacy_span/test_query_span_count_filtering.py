@@ -94,6 +94,7 @@ def spans_with_varied_counts() -> Generator:
             start_time=s.start_time,
             end_time=s.end_time,
             task_id=s.task_id,
+            org_id=DEFAULT_ORG_ID,
             raw_data=s.raw_data,
             created_at=s.created_at,
             updated_at=s.updated_at,
@@ -113,6 +114,7 @@ def spans_with_varied_counts() -> Generator:
         db_session.add(
             DatabaseTraceMetadata(
                 task_id="task_x",
+                org_id=DEFAULT_ORG_ID,
                 trace_id=trace_id,
                 span_count=cfg["span_count"],
                 total_token_count=cfg["total_token_count"],

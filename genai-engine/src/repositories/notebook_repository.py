@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from db_models.notebook_models import DatabaseNotebook
 from db_models.prompt_experiment_models import DatabasePromptExperiment
+from db_models.task_models import DatabaseTask
 from repositories.prompt_experiment_repository import PromptExperimentRepository
 from schemas.notebook_schemas import (
     CreateNotebookRequest,
@@ -32,13 +33,18 @@ class NotebookRepository:
         self.db_session = db_session
         self.experiment_repo = PromptExperimentRepository(db_session)
 
-    def _get_db_notebook(self, notebook_id: str) -> DatabaseNotebook:
+    def _get_db_notebook(
+        self, notebook_id: str, org_scope: UUID | None = None
+    ) -> DatabaseNotebook:
         """Get database notebook by ID or raise 404"""
-        db_notebook = (
-            self.db_session.query(DatabaseNotebook)
-            .filter(DatabaseNotebook.id == notebook_id)
-            .first()
+        q = self.db_session.query(DatabaseNotebook).filter(
+            DatabaseNotebook.id == notebook_id,
         )
+        if org_scope is not None:
+            q = q.join(
+                DatabaseTask, DatabaseTask.id == DatabaseNotebook.task_id
+            ).filter(DatabaseTask.org_id == str(org_scope))
+        db_notebook = q.first()
         if not db_notebook:
             raise HTTPException(
                 status_code=404,
@@ -70,9 +76,11 @@ class NotebookRepository:
         notebook_with_experiments = Notebook._from_database_model(db_notebook, [])
         return notebook_with_experiments._to_detail_response()
 
-    def get_notebook(self, notebook_id: str) -> NotebookDetail:
+    def get_notebook(
+        self, notebook_id: str, org_scope: UUID | None = None
+    ) -> NotebookDetail:
         """Get notebook by ID"""
-        db_notebook = self._get_db_notebook(notebook_id)
+        db_notebook = self._get_db_notebook(notebook_id, org_scope=org_scope)
 
         # Get experiments and convert to summaries
         experiments = [
@@ -159,9 +167,10 @@ class NotebookRepository:
         self,
         notebook_id: str,
         request: UpdateNotebookRequest,
+        org_scope: UUID | None = None,
     ) -> NotebookDetail:
         """Update notebook name or description"""
-        db_notebook = self._get_db_notebook(notebook_id)
+        db_notebook = self._get_db_notebook(notebook_id, org_scope=org_scope)
 
         if request.name is not None:
             db_notebook.name = request.name
@@ -188,9 +197,10 @@ class NotebookRepository:
         self,
         notebook_id: str,
         request: SetNotebookStateRequest,
+        org_scope: UUID | None = None,
     ) -> NotebookDetail:
         """Set the notebook state"""
-        db_notebook = self._get_db_notebook(notebook_id)
+        db_notebook = self._get_db_notebook(notebook_id, org_scope=org_scope)
 
         # Update state fields
         if request.state.prompt_configs is not None:
@@ -246,17 +256,19 @@ class NotebookRepository:
         notebook = Notebook._from_database_model(db_notebook, experiments)
         return notebook._to_detail_response()
 
-    def get_notebook_state(self, notebook_id: str) -> NotebookState:
+    def get_notebook_state(
+        self, notebook_id: str, org_scope: UUID | None = None
+    ) -> NotebookState:
         """Get the current state of a notebook"""
-        db_notebook = self._get_db_notebook(notebook_id)
+        db_notebook = self._get_db_notebook(notebook_id, org_scope=org_scope)
 
         # Convert to internal model and return state response
         notebook = Notebook._from_database_model(db_notebook, [])
         return notebook._to_state_response()
 
-    def delete_notebook(self, notebook_id: str) -> None:
+    def delete_notebook(self, notebook_id: str, org_scope: UUID | None = None) -> None:
         """Delete a notebook (experiments are kept with notebook_id=NULL)"""
-        db_notebook = self._get_db_notebook(notebook_id)
+        db_notebook = self._get_db_notebook(notebook_id, org_scope=org_scope)
 
         self.db_session.delete(db_notebook)
         self.db_session.commit()
@@ -267,9 +279,10 @@ class NotebookRepository:
         self,
         notebook_id: str,
         pagination_params: PaginationParameters,
+        org_scope: UUID | None = None,
     ) -> PromptExperimentListResponse:
         """Get paginated history of experiments run from this notebook"""
-        db_notebook = self._get_db_notebook(notebook_id)
+        db_notebook = self._get_db_notebook(notebook_id, org_scope=org_scope)
 
         # Base query for experiments linked to this notebook
         query = self.db_session.query(DatabasePromptExperiment).filter(

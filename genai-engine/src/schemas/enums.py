@@ -190,6 +190,35 @@ class PermissionLevelsEnum(Enum):
             constants.TENANT_USER,
         ],
     )
+    # Read of the chatbot system task's model + prompt config. Admin-only:
+    # this is system-wide config, not tenant data.
+    CHATBOT_CONFIG_READ = frozenset(
+        [constants.ORG_ADMIN, constants.ORG_AUDITOR],
+    )
+    # Write of the chatbot system task's config + clearing chatbot history.
+    # Admin-only: chatbot is a system task; tenants have no business writing
+    # its config or clearing its history.
+    CHATBOT_CONFIG_WRITE = frozenset(
+        [constants.ORG_ADMIN],
+    )
+    # Trigger a global agent discovery + polling cycle. Admin-only: this
+    # discovers and polls every eligible task in the engine.
+    AGENT_POLLING_ADMIN = frozenset(
+        [constants.ORG_ADMIN, constants.TASK_ADMIN],
+    )
+    # Read of telemetry that isn't tied to any task (orphaned root spans,
+    # cross-task debug views). Admin-only — tenants have no use for this
+    # data and seeing it could expose other tenants' span names.
+    TELEMETRY_ADMIN_READ = frozenset(
+        [constants.ORG_ADMIN, constants.ORG_AUDITOR, constants.TASK_ADMIN],
+    )
+    # Run validation using only default (non-task-scoped) rules. Covers the
+    # deprecated `/api/v2/validate_prompt` endpoint. Admin-only because there
+    # is no task to enforce org scope against — tenants use the task-scoped
+    # `/api/v2/tasks/{task_id}/validate_*` endpoints instead.
+    DEFAULT_VALIDATION_RUN = frozenset(
+        [constants.ORG_ADMIN, constants.TASK_ADMIN],
+    )
 
 
 class SecretType(str, Enum):

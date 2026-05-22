@@ -5,7 +5,7 @@ from arthur_common.models.common_schemas import PaginationParameters
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 from sqlalchemy.orm import Session
 
-from dependencies import get_db_session, get_validated_task
+from dependencies import get_db_session, get_org_scope, get_validated_task
 from repositories.rag_experiment_repository import RagExperimentRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
@@ -182,6 +182,7 @@ def get_rag_experiment(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> RagExperimentDetail:
     """
     Get detailed information about a RAG experiment.
@@ -190,7 +191,7 @@ def get_rag_experiment(
     """
     try:
         repo = RagExperimentRepository(db_session)
-        return repo.get_experiment(experiment_id)
+        return repo.get_experiment(experiment_id, org_scope=org_scope)
     except HTTPException:
         raise
     except ValueError as e:
@@ -225,6 +226,7 @@ def get_rag_experiment_test_cases(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> RagTestCaseListResponse:
     """
     Get detailed test case results for a RAG experiment.
@@ -237,6 +239,7 @@ def get_rag_experiment_test_cases(
         test_cases, total_count = repo.get_test_cases(
             experiment_id=experiment_id,
             pagination_parameters=pagination_parameters,
+            org_scope=org_scope,
         )
 
         page = pagination_parameters.page
@@ -286,6 +289,7 @@ def get_rag_config_results(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> RagConfigResultListResponse:
     """
     Get detailed results for a specific RAG configuration within an experiment.
@@ -305,6 +309,7 @@ def get_rag_config_results(
             experiment_id=experiment_id,
             rag_config_key=rag_config_key,
             pagination_parameters=pagination_parameters,
+            org_scope=org_scope,
         )
 
         page = pagination_parameters.page
@@ -347,6 +352,7 @@ def delete_rag_experiment(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> Response:
     """
     Delete a RAG experiment.
@@ -356,7 +362,7 @@ def delete_rag_experiment(
     """
     try:
         repo = RagExperimentRepository(db_session)
-        repo.delete_experiment(experiment_id)
+        repo.delete_experiment(experiment_id, org_scope=org_scope)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except HTTPException:
         raise
@@ -380,11 +386,14 @@ def attach_notebook_to_rag_experiment(
     notebook_id: str = Query(..., description="ID of the notebook to attach"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> RagExperimentSummary:
     """Attach a RAG notebook to an existing experiment."""
     try:
         repo = RagExperimentRepository(db_session)
-        return repo.attach_notebook_to_experiment(experiment_id, notebook_id)
+        return repo.attach_notebook_to_experiment(
+            experiment_id, notebook_id, org_scope=org_scope
+        )
     except HTTPException:
         raise
     except Exception as e:

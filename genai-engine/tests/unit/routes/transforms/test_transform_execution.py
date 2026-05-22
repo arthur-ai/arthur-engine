@@ -155,6 +155,7 @@ def setup_test_data():
             start_time=span.start_time,
             end_time=span.end_time,
             task_id=span.task_id,
+            org_id=DEFAULT_ORG_ID,
             session_id=span.session_id,
             user_id=span.user_id,
             status_code="Ok",
@@ -170,6 +171,7 @@ def setup_test_data():
     # Create trace metadata
     trace_metadata = DatabaseTraceMetadata(
         task_id=task_id,
+        org_id=DEFAULT_ORG_ID,
         trace_id=trace_id,
         session_id=None,
         user_id=None,
@@ -559,6 +561,7 @@ def test_execute_transform_with_multiple_matching_spans(
             start_time=span.start_time,
             end_time=span.end_time,
             task_id=span.task_id,
+            org_id=DEFAULT_ORG_ID,
             session_id=span.session_id,
             user_id=span.user_id,
             status_code="Ok",
@@ -573,6 +576,7 @@ def test_execute_transform_with_multiple_matching_spans(
     # Create trace metadata
     trace_metadata = DatabaseTraceMetadata(
         task_id=task_id,
+        org_id=DEFAULT_ORG_ID,
         trace_id=trace_id,
         session_id=None,
         user_id=None,

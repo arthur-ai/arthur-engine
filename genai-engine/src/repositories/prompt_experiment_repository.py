@@ -60,14 +60,20 @@ class PromptExperimentRepository:
         self.db_session = db_session
         self.chat_completion_service = ChatCompletionService()
 
-    def _get_db_experiment(self, experiment_id: str) -> DatabasePromptExperiment:
+    def _get_db_experiment(
+        self, experiment_id: str, org_scope: UUID | None = None
+    ) -> DatabasePromptExperiment:
         """Get database experiment by ID or raise 404"""
-        db_experiment = (
+        q = (
             self.db_session.query(DatabasePromptExperiment)
             .options(joinedload(DatabasePromptExperiment.dataset))
             .filter(DatabasePromptExperiment.id == experiment_id)
-            .first()
         )
+        if org_scope is not None:
+            q = q.join(
+                DatabaseTask, DatabaseTask.id == DatabasePromptExperiment.task_id
+            ).filter(DatabaseTask.org_id == str(org_scope))
+        db_experiment = q.first()
         if not db_experiment:
             raise HTTPException(
                 status_code=404,
@@ -718,9 +724,11 @@ class PromptExperimentRepository:
 
         return self._db_experiment_to_summary(db_experiment)
 
-    def get_experiment(self, experiment_id: str) -> PromptExperimentDetail:
+    def get_experiment(
+        self, experiment_id: str, org_scope: UUID | None = None
+    ) -> PromptExperimentDetail:
         """Get experiment by ID"""
-        db_experiment = self._get_db_experiment(experiment_id)
+        db_experiment = self._get_db_experiment(experiment_id, org_scope=org_scope)
         return self._db_experiment_to_detail(db_experiment)
 
     def list_experiments(
@@ -814,9 +822,11 @@ class PromptExperimentRepository:
             self._db_experiment_to_summary(db_exp) for db_exp in db_experiments
         ], count
 
-    def delete_experiment(self, experiment_id: str) -> None:
+    def delete_experiment(
+        self, experiment_id: str, org_scope: UUID | None = None
+    ) -> None:
         """Delete an experiment and its test cases (cascaded)"""
-        db_experiment = self._get_db_experiment(experiment_id)
+        db_experiment = self._get_db_experiment(experiment_id, org_scope=org_scope)
         self.db_session.delete(db_experiment)
         self.db_session.commit()
 
@@ -824,10 +834,11 @@ class PromptExperimentRepository:
         self,
         experiment_id: str,
         pagination_params: PaginationParameters,
+        org_scope: UUID | None = None,
     ) -> Tuple[List[TestCase], int]:
         """Get paginated test cases for an experiment"""
-        # Verify experiment exists first
-        self._get_db_experiment(experiment_id)
+        # Verify experiment exists first (and lives in caller's org for tenants)
+        self._get_db_experiment(experiment_id, org_scope=org_scope)
 
         base_query = self.db_session.query(DatabasePromptExperimentTestCase).filter(
             DatabasePromptExperimentTestCase.experiment_id == experiment_id,
@@ -859,10 +870,11 @@ class PromptExperimentRepository:
         experiment_id: str,
         prompt_key: str,
         pagination_params: PaginationParameters,
+        org_scope: UUID | None = None,
     ) -> Tuple[List[PromptVersionResult], int]:
         """Get paginated results for a specific prompt key within an experiment"""
-        # Verify experiment exists first
-        db_experiment = self._get_db_experiment(experiment_id)
+        # Verify experiment exists first (and lives in caller's org for tenants)
+        db_experiment = self._get_db_experiment(experiment_id, org_scope=org_scope)
 
         # Verify the prompt_key exists in this experiment's prompt_configs
         prompt_keys_in_experiment = []
@@ -997,9 +1009,10 @@ class PromptExperimentRepository:
         self,
         experiment_id: str,
         notebook_id: str,
+        org_scope: UUID | None = None,
     ) -> PromptExperimentSummary:
         """Attach a notebook to an experiment."""
-        db_experiment = self._get_db_experiment(experiment_id)
+        db_experiment = self._get_db_experiment(experiment_id, org_scope=org_scope)
 
         # Update notebook_id
         db_experiment.notebook_id = notebook_id

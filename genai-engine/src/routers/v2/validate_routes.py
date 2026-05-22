@@ -10,7 +10,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from config.cache_config import cache_config
-from dependencies import get_db_session, get_scorer_client
+from dependencies import get_db_session, get_org_scope, get_scorer_client
+from repositories.inference_repository import InferenceRepository
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_rules_repository import TasksRulesRepository
 from routers.route_handler import GenaiEngineRoute
@@ -46,7 +47,7 @@ validate_routes = APIRouter(
     tags=["Default Validation"],
     deprecated=True,
 )
-@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_WRITE.value)
+@permission_checker(permissions=PermissionLevelsEnum.DEFAULT_VALIDATION_RUN.value)
 def default_validate_prompt(
     body: PromptValidationRequest,
     db_session: Session = Depends(get_db_session),
@@ -88,8 +89,15 @@ def default_validate_response(
     db_session: Session = Depends(get_db_session),
     scorer_client: ScorerClient = Depends(get_scorer_client),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> ValidationResult:
     try:
+        # Validate inference ownership for tenants before running rules / writes.
+        if org_scope is not None:
+            InferenceRepository(db_session).get_inference(
+                str(inference_id), org_scope=org_scope
+            )
+
         rules_repo = RuleRepository(db_session)
 
         default_rules, _ = rules_repo.query_rules(
@@ -167,8 +175,16 @@ def validate_response_endpoint(
     db_session: Session = Depends(get_db_session),
     scorer_client: ScorerClient = Depends(get_scorer_client),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> ValidationResult:
     try:
+        # @enforce_org_scope above validated the task_id; also validate the
+        # inference belongs to a task in the caller's org so a tenant can't
+        # bind a foreign inference to their own task.
+        if org_scope is not None:
+            InferenceRepository(db_session).get_inference(
+                str(inference_id), org_scope=org_scope
+            )
         tasks_rules_repo = TasksRulesRepository(db_session)
         task_rules = tasks_rules_repo.get_task_rules_ids_cached(str(task_id))
         rules_repo = RuleRepository(db_session)

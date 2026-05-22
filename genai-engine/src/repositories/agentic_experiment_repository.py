@@ -20,6 +20,7 @@ from db_models.dataset_models import (
     DatabaseDatasetVersionRow,
 )
 from db_models.llm_eval_models import DatabaseLLMEval
+from db_models.task_models import DatabaseTask
 from db_models.transform_models import DatabaseTraceTransform
 from schemas.agentic_experiment_schemas import (
     AgenticEvalRef,
@@ -54,14 +55,22 @@ class AgenticExperimentRepository:
     def __init__(self, db_session: Session):
         self.db_session = db_session
 
-    def _get_db_experiment(self, experiment_id: str) -> DatabaseAgenticExperiment:
+    def _get_db_experiment(
+        self,
+        experiment_id: str,
+        org_scope: UUID | None = None,
+    ) -> DatabaseAgenticExperiment:
         """Get database experiment by ID or raise 404"""
-        db_experiment = (
+        q = (
             self.db_session.query(DatabaseAgenticExperiment)
             .options(joinedload(DatabaseAgenticExperiment.dataset))
             .filter(DatabaseAgenticExperiment.id == experiment_id)
-            .first()
         )
+        if org_scope is not None:
+            q = q.join(
+                DatabaseTask, DatabaseTask.id == DatabaseAgenticExperiment.task_id
+            ).filter(DatabaseTask.org_id == str(org_scope))
+        db_experiment = q.first()
         if not db_experiment:
             raise HTTPException(
                 status_code=404,
@@ -594,9 +603,11 @@ class AgenticExperimentRepository:
 
         return self._db_experiment_to_summary(db_experiment)
 
-    def get_experiment(self, experiment_id: str) -> AgenticExperimentDetail:
+    def get_experiment(
+        self, experiment_id: str, org_scope: UUID | None = None
+    ) -> AgenticExperimentDetail:
         """Get an agentic experiment by ID"""
-        db_experiment = self._get_db_experiment(experiment_id)
+        db_experiment = self._get_db_experiment(experiment_id, org_scope=org_scope)
         return self._db_experiment_to_detail(db_experiment)
 
     def list_experiments(
@@ -677,10 +688,11 @@ class AgenticExperimentRepository:
         self,
         experiment_id: str,
         pagination_parameters: PaginationParameters,
+        org_scope: UUID | None = None,
     ) -> Tuple[List[AgenticTestCase], int]:
         """Get test cases for an agentic experiment with pagination"""
-        # Verify experiment exists
-        self._get_db_experiment(experiment_id)
+        # Verify experiment exists (and lives in caller's org for tenants)
+        self._get_db_experiment(experiment_id, org_scope=org_scope)
 
         # Query test cases
         query = self.db_session.query(DatabaseAgenticExperimentTestCase).filter(
@@ -714,9 +726,10 @@ class AgenticExperimentRepository:
         self,
         experiment_id: str,
         notebook_id: str,
+        org_scope: UUID | None = None,
     ) -> AgenticExperimentSummary:
         """Attach an agentic notebook to an experiment."""
-        db_experiment = self._get_db_experiment(experiment_id)
+        db_experiment = self._get_db_experiment(experiment_id, org_scope=org_scope)
 
         # Update notebook_id
         db_experiment.notebook_id = notebook_id
@@ -725,8 +738,10 @@ class AgenticExperimentRepository:
         # Return updated summary
         return self._db_experiment_to_summary(db_experiment)
 
-    def delete_experiment(self, experiment_id: str) -> None:
+    def delete_experiment(
+        self, experiment_id: str, org_scope: UUID | None = None
+    ) -> None:
         """Delete an experiment and its test cases (cascaded)"""
-        db_experiment = self._get_db_experiment(experiment_id)
+        db_experiment = self._get_db_experiment(experiment_id, org_scope=org_scope)
         self.db_session.delete(db_experiment)
         self.db_session.commit()

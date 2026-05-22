@@ -837,21 +837,6 @@ class AgenticAnnotation(BaseModel):
             updated_at=db_annotation.updated_at,
         )
 
-    def to_db_model(self) -> DatabaseAgenticAnnotation:
-        return DatabaseAgenticAnnotation(
-            id=self.id,
-            annotation_type=self.annotation_type,
-            trace_id=self.trace_id,
-            continuous_eval_id=self.continuous_eval_id,
-            annotation_score=self.annotation_score,
-            annotation_description=self.annotation_description,
-            input_variables=self.input_variables,
-            cost=self.cost,
-            run_status=self.run_status,
-            created_at=self.created_at,
-            updated_at=self.updated_at,
-        )
-
     def to_response_model(self) -> AgenticAnnotationResponse:
         return AgenticAnnotationResponse(
             id=str(self.id),
@@ -876,6 +861,7 @@ class AgenticAnnotation(BaseModel):
 class TraceMetadata(TokenCountCostSchema):
     trace_id: str
     task_id: str
+    org_id: uuid.UUID
     user_id: Optional[str] = None
     session_id: Optional[str] = None
     start_time: datetime
@@ -902,6 +888,7 @@ class TraceMetadata(TokenCountCostSchema):
         return TraceMetadata(
             trace_id=x.trace_id,
             task_id=x.task_id or "",
+            org_id=x.org_id,
             user_id=x.user_id,
             session_id=x.session_id,
             start_time=x.start_time,
@@ -924,6 +911,7 @@ class TraceMetadata(TokenCountCostSchema):
         return DatabaseTraceMetadata(
             trace_id=self.trace_id,
             task_id=self.task_id,
+            org_id=self.org_id,
             user_id=self.user_id,
             session_id=self.session_id,
             start_time=self.start_time,
@@ -2034,6 +2022,7 @@ class Span(TokenCountCostSchema):
     start_time: datetime
     end_time: datetime
     task_id: Optional[str] = None
+    org_id: Optional[uuid.UUID] = None
     session_id: Optional[str] = None
     user_id: Optional[str] = None
     status_code: str = "Unset"
@@ -2096,6 +2085,7 @@ class Span(TokenCountCostSchema):
             start_time=db_span.start_time,
             end_time=db_span.end_time,
             task_id=db_span.task_id,
+            org_id=db_span.org_id,
             session_id=db_span.session_id,
             user_id=db_span.user_id,
             status_code=db_span.status_code,
@@ -2125,6 +2115,7 @@ class Span(TokenCountCostSchema):
             start_time=self.start_time,
             end_time=self.end_time,
             task_id=self.task_id,
+            org_id=self.org_id,
             session_id=self.session_id,
             user_id=self.user_id,
             status_code=self.status_code,

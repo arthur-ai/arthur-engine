@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from starlette.responses import Response
 from starlette.status import HTTP_204_NO_CONTENT
 
-from dependencies import get_db_session, get_validated_task
+from dependencies import get_db_session, get_org_scope, get_validated_task
 from repositories.agentic_prompts_repository import AgenticPromptRepository
 from repositories.datasets_repository import DatasetRepository
 from repositories.model_provider_repository import ModelProviderRepository
@@ -91,11 +91,12 @@ def update_dataset(
     dataset_id: UUID = Path(description="ID of the dataset to update."),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> DatasetResponse:
     try:
         dataset_repo = DatasetRepository(db_session)
-        dataset_repo.update_dataset(dataset_id, request)
-        dataset = dataset_repo.get_dataset(dataset_id)
+        dataset_repo.update_dataset(dataset_id, request, org_scope=org_scope)
+        dataset = dataset_repo.get_dataset(dataset_id, org_scope=org_scope)
         return dataset.to_response_model()
     finally:
         db_session.close()
@@ -112,10 +113,11 @@ def delete_dataset(
     dataset_id: UUID = Path(description="ID of the dataset to delete."),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> Response:
     try:
         dataset_repo = DatasetRepository(db_session)
-        dataset_repo.delete_dataset(dataset_id)
+        dataset_repo.delete_dataset(dataset_id, org_scope=org_scope)
         return Response(status_code=HTTP_204_NO_CONTENT)
     finally:
         db_session.close()
@@ -173,10 +175,13 @@ def get_dataset(
     dataset_id: UUID = Path(description="ID of the dataset to fetch."),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> DatasetResponse:
     try:
         dataset_repo = DatasetRepository(db_session)
-        return dataset_repo.get_dataset(dataset_id).to_response_model()
+        return dataset_repo.get_dataset(
+            dataset_id, org_scope=org_scope
+        ).to_response_model()
     finally:
         db_session.close()
 
@@ -195,11 +200,16 @@ def create_dataset_version(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> DatasetVersionResponse:
     try:
         dataset_repo = DatasetRepository(db_session)
-        dataset_repo.create_dataset_version(dataset_id, new_version_request)
-        return dataset_repo.get_latest_dataset_version(dataset_id).to_response_model()
+        dataset_repo.create_dataset_version(
+            dataset_id, new_version_request, org_scope=org_scope
+        )
+        return dataset_repo.get_latest_dataset_version(
+            dataset_id, org_scope=org_scope
+        ).to_response_model()
     finally:
         db_session.close()
 
@@ -225,6 +235,7 @@ def get_dataset_versions(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> ListDatasetVersionsResponse:
     try:
         dataset_repo = DatasetRepository(db_session)
@@ -232,6 +243,7 @@ def get_dataset_versions(
             dataset_id,
             latest_version_only,
             pagination_parameters,
+            org_scope=org_scope,
         ).to_response_model()
     finally:
         db_session.close()
@@ -259,6 +271,7 @@ def get_dataset_version(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> DatasetVersionResponse:
     try:
         dataset_repo = DatasetRepository(db_session)
@@ -267,6 +280,7 @@ def get_dataset_version(
             version_number,
             pagination_parameters,
             search_query=search,
+            org_scope=org_scope,
         ).to_response_model()
     finally:
         db_session.close()
@@ -287,6 +301,7 @@ def get_dataset_version_row(
     row_id: UUID = Path(description="ID of the row to fetch."),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> DatasetVersionRowResponse:
     try:
         dataset_repo = DatasetRepository(db_session)
@@ -294,6 +309,7 @@ def get_dataset_version_row(
             dataset_id,
             version_number,
             row_id,
+            org_scope=org_scope,
         )
 
         # Convert database row to response format
@@ -375,6 +391,7 @@ def generate_synthetic_data(
     version_number: int = Path(description="Version number of the dataset."),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> SyntheticDataGenerationResponse:
     """
     Generate initial synthetic data rows based on the dataset configuration.
@@ -391,6 +408,7 @@ def generate_synthetic_data(
         dataset_id,
         version_number,
         pagination,
+        org_scope=org_scope,
     )
 
     # Check that dataset has at least 1 row
@@ -438,6 +456,7 @@ def send_synthetic_data_message(
     version_number: int = Path(description="Version number of the dataset."),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> SyntheticDataGenerationResponse:
     """
     Send a message to refine the synthetic data generation.
@@ -456,6 +475,7 @@ def send_synthetic_data_message(
         dataset_id,
         version_number,
         pagination,
+        org_scope=org_scope,
     )
 
     # Get column names from the dataset version
