@@ -150,12 +150,14 @@ class BaseChatbotService(ABC):
         prompt: AgenticPrompt,
         llm_client: LLMClient,
         user_id: str,
+        session_id: Optional[str] = None,
     ) -> AsyncGenerator[str, None]:
         current_prompt = prompt
         agent_span = self.tracing.start_agent_span(
             name="chatbot",
             agent_name=self.agent_name,
             user_id=user_id,
+            session_id=session_id,
         )
 
         self.tracing.set_input_json(
@@ -301,9 +303,10 @@ class BaseChatbotService(ABC):
         prompt: AgenticPrompt,
         llm_client: LLMClient,
         user_id: str,
+        session_id: Optional[str] = None,
     ) -> AsyncGenerator[str, None]:
         try:
-            async for event in self.stream(prompt, llm_client, user_id):
+            async for event in self.stream(prompt, llm_client, user_id, session_id):
                 yield event
         except Exception as e:
             logger.exception(

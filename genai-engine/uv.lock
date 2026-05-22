@@ -9,7 +9,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-05-17T18:18:06.812805Z"
+exclude-newer = "2026-05-19T15:57:45.68969Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -186,14 +186,14 @@ dependencies = [
     { name = "types-requests" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/37/7f/87ee6fd469ad519c74a0a0f8f5c8c78709fe215baa3e2817184b58e5bc36/arthur_common-2.4.59.tar.gz", hash = "sha256:e32a44411486a5b40e94ecf07c2b0cb435920e44795d14e3e783005a5cef1039", size = 14636316, upload-time = "2026-05-11T19:04:01.622Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3d/e7/5038ac5cf43579f350bc94504d570ffaf319a92e95a7dc38d88516c05bd6/arthur_common-2.4.61.tar.gz", hash = "sha256:2367908780b410d6f76390da22eb42476a28827822adffd1e73cbcf571244b81", size = 14636322, upload-time = "2026-05-21T16:04:07.25Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/09/3c/2a8f929163edc32f410f17eb29748eac1b05dbd658770029e00c5d575c0e/arthur_common-2.4.59-py3-none-any.whl", hash = "sha256:2cbae01652a339a8d60e33070be6a19d77471f04c3156ecb9c56374b5a1e6224", size = 85954, upload-time = "2026-05-11T19:03:59.964Z" },
+    { url = "https://files.pythonhosted.org/packages/f4/8d/4352791d8cd77c2d54a23587a81228b52b0b611b1104f944bcf6db3f4c90/arthur_common-2.4.61-py3-none-any.whl", hash = "sha256:2634c8a2a43ecd1a14e4ed04d0fa4b74e5c5820a30b551e15fba16804882bcef", size = 86000, upload-time = "2026-05-21T16:04:05.12Z" },
 ]
 
 [[package]]
 name = "arthur-genai-engine"
-version = "2.1.570"
+version = "2.1.571"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },

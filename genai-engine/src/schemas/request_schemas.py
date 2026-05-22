@@ -1415,9 +1415,3 @@ class SyntheticDataConversationRequest(BaseModel):
         default=None,
         description="Optional LLM configuration settings (temperature, max_tokens, etc.).",
     )
-
-
-class DemoTaskChatbotRequest(BaseModel):
-    history: List[OpenAIMessage] = Field(
-        description="The full conversation history including the latest user message as the final entry.",
-    )

@@ -2325,7 +2325,7 @@
                     "API Keys"
                 ],
                 "summary": "Create Api Key",
-                "description": "Generates a new API key. Up to 1000 active keys can exist at the same time by default. Contact your system administrator if you need more. Allowed roles are: DEFAULT-RULE-ADMIN, TASK-ADMIN, VALIDATION-USER, ORG-AUDITOR, ORG-ADMIN, TENANT-USER.",
+                "description": "Generates a new API key. Up to 1000 active keys can exist at the same time by default. Contact your system administrator if you need more. Allowed roles are: DEFAULT-RULE-ADMIN, TASK-ADMIN, VALIDATION-USER, ORG-AUDITOR, ORG-ADMIN.",
                 "operationId": "create_api_key_auth_api_keys__post",
                 "requestBody": {
                     "content": {
@@ -16413,55 +16413,6 @@
                 }
             }
         },
-        "/api/v2/tenant/signup": {
-            "post": {
-                "tags": [
-                    "Tenant Signup"
-                ],
-                "summary": "Create Tenant Signup",
-                "description": "Public tenant signup. Creates a new organization, a default demo task scoped to that org, and a TENANT-USER API key with `org_scope` set to the new org. Returns the four identifiers; the raw `api_key` value appears only in this response (the DB stores only its hash). Gated by GENAI_ENGINE_DEMO_MODE \u2014 returns 404 when disabled.",
-                "operationId": "create_tenant_signup_api_v2_tenant_signup_post",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/DemoTaskSignupResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/tasks/demos": {
-            "post": {
-                "tags": [
-                    "Tasks"
-                ],
-                "summary": "Create Demo Task",
-                "description": "Create a new demo task.",
-                "operationId": "create_demo_task_api_v1_tasks_demos_post",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/TaskResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ]
-            }
-        },
         "/api/v1/tasks/{task_id}/demos/chatbot/stream": {
             "post": {
                 "tags": [
@@ -16491,7 +16442,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/DemoTaskChatbotRequest"
+                                "$ref": "#/components/schemas/ChatbotRequest"
                             }
                         }
                     }
@@ -16645,6 +16596,28 @@
                         "API Key": []
                     }
                 ]
+            }
+        },
+        "/api/v2/tenant/signup": {
+            "post": {
+                "tags": [
+                    "Tenant Signup"
+                ],
+                "summary": "Create Tenant Signup",
+                "description": "Public tenant signup. Creates a new organization, a default demo task scoped to that org, and a TENANT-USER API key with `org_scope` set to the new org. Returns the four identifiers; the raw `api_key` value appears only in this response (the DB stores only its hash). Gated by GENAI_ENGINE_DEMO_MODE \u2014 returns 404 when disabled.",
+                "operationId": "create_tenant_signup_api_v2_tenant_signup_post",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DemoTaskSignupResponse"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/users": {
@@ -19778,6 +19751,17 @@
                         },
                         "type": "array",
                         "title": "History"
+                    },
+                    "session_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Session Id"
                     }
                 },
                 "type": "object",
@@ -21218,23 +21202,6 @@
                     "created_at"
                 ],
                 "title": "DatasetVersionRowResponse"
-            },
-            "DemoTaskChatbotRequest": {
-                "properties": {
-                    "history": {
-                        "items": {
-                            "$ref": "#/components/schemas/OpenAIMessage-Input"
-                        },
-                        "type": "array",
-                        "title": "History",
-                        "description": "The full conversation history including the latest user message as the final entry."
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "history"
-                ],
-                "title": "DemoTaskChatbotRequest"
             },
             "DemoTaskSignupResponse": {
                 "properties": {

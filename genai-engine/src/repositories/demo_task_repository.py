@@ -377,6 +377,7 @@ class DemoTaskRepository:
         task_id: str,
         history: List[OpenAIMessage],
         user_id: str,
+        session_id: Optional[str] = None,
     ) -> StreamingResponse:
         chatbot_prompt = cast(
             AgenticPrompt,
@@ -415,6 +416,6 @@ class DemoTaskRepository:
         )
 
         return StreamingResponse(
-            chatbot_service.safe_stream(prompt, llm_client, user_id),
+            chatbot_service.safe_stream(prompt, llm_client, user_id, session_id),
             media_type="text/event-stream",
         )

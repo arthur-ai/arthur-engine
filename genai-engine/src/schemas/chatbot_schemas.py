@@ -66,6 +66,7 @@ class ApiCallSummary(BaseModel):
 
 class ChatbotRequest(BaseModel):
     history: List[OpenAIMessage]
+    session_id: Optional[str] = None
 
 
 class ChatbotResponse(BaseModel):

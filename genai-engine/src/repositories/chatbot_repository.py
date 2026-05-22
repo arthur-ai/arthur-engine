@@ -127,7 +127,7 @@ class ChatbotRepository:
         )
 
         return StreamingResponse(
-            chatbot_service.stream(prompt, llm_client, user_id),
+            chatbot_service.stream(prompt, llm_client, user_id, request.session_id),
             media_type="text/event-stream",
         )
 
