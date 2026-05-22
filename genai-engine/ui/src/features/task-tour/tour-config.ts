@@ -10,7 +10,7 @@ const STEP_TIMEOUT_MS = 4000;
  * Sentinel selector used by stub / intro-only sections. The placeholder step
  * exists only to satisfy the engine's "every section must have at least one
  * step" contract; `ChecklistTour.tsx` watches for the placeholder and calls
- * `engine.next()` immediately so the user never sees it.
+ * `actions.next()` immediately so the user never sees it.
  */
 const STUB_TARGET = "body";
 

@@ -61,7 +61,7 @@ export interface ChecklistTourProps {
  *
  * Stub sections (intro-only) are handled by `acknowledgeIntroduction()` →
  * engine enters a placeholder step → we wait for `step:enter` and then call
- * `engine.next()` so the engine advances to the next section's intro
+ * `actions.next()` so the engine advances to the next section's intro
  * handshake.
  */
 export function ChecklistTour({ enabled, onComplete }: ChecklistTourProps) {
@@ -110,9 +110,9 @@ export function ChecklistTour({ enabled, onComplete }: ChecklistTourProps) {
           next.add(introKey(event.sectionId));
           return next;
         });
-        engine.next();
+        actions.next();
       },
-      [engine]
+      [actions]
     )
   );
 
