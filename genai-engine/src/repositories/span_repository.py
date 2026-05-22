@@ -365,6 +365,7 @@ class SpanRepository:
         self,
         session_id: str,
         pagination_parameters: PaginationParameters,
+        org_scope: UUID | None = None,
     ) -> tuple[int, list[TraceResponse]]:
         """Get all trace trees in a session.
 
@@ -378,6 +379,28 @@ class SpanRepository:
 
         if not trace_ids:
             return 0, []
+
+        # Tenant callers: filter the trace_ids down to only those whose owning
+        # task lives in the caller's org. Sessions can span multiple tasks, so
+        # we filter per-trace rather than checking the session wholesale.
+        if org_scope is not None:
+            owned = {
+                row[0]
+                for row in self.db_session.execute(
+                    select(DatabaseTraceMetadata.trace_id)
+                    .join(
+                        DatabaseTask, DatabaseTask.id == DatabaseTraceMetadata.task_id
+                    )
+                    .where(
+                        DatabaseTraceMetadata.trace_id.in_(trace_ids),
+                        DatabaseTask.org_id == str(org_scope),
+                    )
+                ).all()
+            }
+            trace_ids = [tid for tid in trace_ids if tid in owned]
+            count = len(trace_ids)
+            if not trace_ids:
+                return 0, []
 
         # Query all spans for these traces
         spans, _ = self.span_query_service.query_spans_from_db(
@@ -412,6 +435,7 @@ class SpanRepository:
         self,
         session_id: str,
         pagination_parameters: PaginationParameters,
+        org_scope: UUID | None = None,
     ) -> tuple[int, list[TraceResponse]]:
         """Get all traces in a session and compute missing metrics.
 
@@ -425,6 +449,26 @@ class SpanRepository:
 
         if not trace_ids:
             return 0, []
+
+        # Tenant callers: filter to only traces in the caller's org.
+        if org_scope is not None:
+            owned = {
+                row[0]
+                for row in self.db_session.execute(
+                    select(DatabaseTraceMetadata.trace_id)
+                    .join(
+                        DatabaseTask, DatabaseTask.id == DatabaseTraceMetadata.task_id
+                    )
+                    .where(
+                        DatabaseTraceMetadata.trace_id.in_(trace_ids),
+                        DatabaseTask.org_id == str(org_scope),
+                    )
+                ).all()
+            }
+            trace_ids = [tid for tid in trace_ids if tid in owned]
+            count = len(trace_ids)
+            if not trace_ids:
+                return 0, []
 
         # Query all spans for these traces
         spans, _ = self.span_query_service.query_spans_from_db(

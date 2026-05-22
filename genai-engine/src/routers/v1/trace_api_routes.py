@@ -260,7 +260,7 @@ def list_spans_metadata(
     response_model_exclude_none=True,
     tags=["Spans"],
 )
-@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+@permission_checker(permissions=PermissionLevelsEnum.TELEMETRY_ADMIN_READ.value)
 def get_unregistered_root_spans(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -480,6 +480,7 @@ def get_session_traces(
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> SessionTracesResponse:
     """Get all traces in a session with existing metrics (no computation)."""
     try:
@@ -487,6 +488,7 @@ def get_session_traces(
         count, traces = span_repo.get_session_traces(
             session_id=session_id,
             pagination_parameters=pagination_parameters,
+            org_scope=org_scope,
         )
 
         if count == 0:
@@ -536,6 +538,7 @@ def compute_session_metrics(
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> SessionTracesResponse:
     """Get all traces in a session and compute missing metrics."""
     try:
@@ -543,6 +546,7 @@ def compute_session_metrics(
         count, traces = span_repo.compute_session_metrics(
             session_id=session_id,
             pagination_parameters=pagination_parameters,
+            org_scope=org_scope,
         )
 
         if count == 0:

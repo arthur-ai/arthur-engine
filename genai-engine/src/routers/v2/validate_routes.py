@@ -47,7 +47,7 @@ validate_routes = APIRouter(
     tags=["Default Validation"],
     deprecated=True,
 )
-@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_WRITE.value)
+@permission_checker(permissions=PermissionLevelsEnum.DEFAULT_VALIDATION_RUN.value)
 def default_validate_prompt(
     body: PromptValidationRequest,
     db_session: Session = Depends(get_db_session),
