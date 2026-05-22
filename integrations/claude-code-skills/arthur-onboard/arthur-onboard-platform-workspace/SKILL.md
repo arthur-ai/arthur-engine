@@ -61,7 +61,7 @@ WS_RESPONSE=$(curl -s \
 WS_LIST=$(echo "$WS_RESPONSE" | python3 -c "
 import sys, json
 d = json.load(sys.stdin)
-workspaces = d.get('resources') or d.get('data') or d.get('workspaces') or (d if isinstance(d, list) else [])
+workspaces = d.get('records') or d.get('resources') or d.get('data') or d.get('workspaces') or (d if isinstance(d, list) else [])
 for ws in workspaces:
     print(f'  {ws[\"id\"]}: {ws[\"name\"]}')
 if not workspaces:
@@ -89,7 +89,7 @@ Find the matching workspace from the response and extract its ID and name:
 WS_ID=$(echo "$WS_RESPONSE" | python3 -c "
 import sys, json
 d = json.load(sys.stdin)
-workspaces = d.get('resources') or d.get('data') or d.get('workspaces') or (d if isinstance(d, list) else [])
+workspaces = d.get('records') or d.get('resources') or d.get('data') or d.get('workspaces') or (d if isinstance(d, list) else [])
 for ws in workspaces:
     if ws.get('name') == '$USER_SELECTION' or ws.get('id') == '$USER_SELECTION':
         print(ws['id'])
@@ -98,7 +98,7 @@ for ws in workspaces:
 WS_NAME=$(echo "$WS_RESPONSE" | python3 -c "
 import sys, json
 d = json.load(sys.stdin)
-workspaces = d.get('resources') or d.get('data') or d.get('workspaces') or (d if isinstance(d, list) else [])
+workspaces = d.get('records') or d.get('resources') or d.get('data') or d.get('workspaces') or (d if isinstance(d, list) else [])
 for ws in workspaces:
     if ws.get('name') == '$USER_SELECTION' or ws.get('id') == '$USER_SELECTION':
         print(ws['name'])
