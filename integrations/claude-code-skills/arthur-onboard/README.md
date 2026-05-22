@@ -1,3 +1,14 @@
+# Arthur Onboarding Skills for Claude Code
+
+Two Claude Code skills for onboarding agentic applications to Arthur — one for the open-source engine, one for the Arthur SaaS Platform.
+
+| Skill | Target | Jump to |
+|---|---|---|
+| `/arthur-onboard-oss` | Self-hosted Arthur GenAI Engine (local Docker or remote) | [OSS skill →](#arthur-onboard-oss--arthur-oss-genai-engine-onboarding-skill-for-claude-code) |
+| `/arthur-onboard-platform` | Arthur SaaS Platform (platform.arthur.ai) | [Platform skill →](#arthur-onboard-platform--arthur-platform-saas-onboarding-skill) |
+
+---
+
 # `/arthur-onboard-oss` — Arthur OSS GenAI Engine Onboarding Skill for Claude Code
 
 A Claude Code skill that onboards any agentic application to [Arthur GenAI Engine](https://github.com/arthur-ai/arthur-engine) — connecting it to observability, evaluation, and governance tooling.
