@@ -54,8 +54,8 @@ If `ARTHUR_PLATFORM_CLIENT_ID` or `ARTHUR_PLATFORM_CLIENT_SECRET` is missing fro
 Tell the user:
 > "To connect to Arthur Platform programmatically, we need a service account. Here is how to create one:
 >
-> 1. Log in to **<ARTHUR_PLATFORM_URL>** in your browser
-> 2. Click the **grid icon** at the top-right of the UI (next to your profile icon with user name initials)
+> 1. Log in to **<ARTHUR_PLATFORM_URL>** in your browser (If you need to create a new SaaS account, go to https://platform.arthur.ai/signup)
+> 2. Click the **grid icon** at the top-right of the UI next to your profile icon with user name initials
 > 3. Select **Identity & Access** from the menu
 > 4. On the Identity & Access page, click the **Users** tab
 > 5. Click **+ USER** and choose **Service Account**
