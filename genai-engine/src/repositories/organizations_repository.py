@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from typing import Optional, overload
 
 from sqlalchemy import Select
@@ -46,3 +47,25 @@ class OrganizationsRepository:
             .filter(DatabaseOrganization.id == organization_id)
             .one_or_none()
         )
+
+    def create_organization(
+        self,
+        name: str,
+        is_system: bool = False,
+        commit: bool = True,
+    ) -> DatabaseOrganization:
+        db_org = DatabaseOrganization(
+            id=uuid.uuid4(),
+            name=name,
+            is_system=is_system,
+            created_at=datetime.now(),
+        )
+        self.db_session.add(db_org)
+        # With commit=False the caller controls the transaction; the flush
+        # still surfaces the unique(name) IntegrityError so the caller can
+        # retry without leaving a poisoned session.
+        if commit:
+            self.db_session.commit()
+        else:
+            self.db_session.flush()
+        return db_org

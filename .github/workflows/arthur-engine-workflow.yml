@@ -149,6 +149,9 @@ jobs:
       - name: Generate changelog
         env:
           GENAI_ENGINE_SECRET_STORE_KEY: changeme_secret_store_key
+          # Generate the spec with all feature-flagged routes registered so
+          # the documented API surface matches what demo deployments expose.
+          GENAI_ENGINE_DEMO_MODE: ENABLED
           PYTHONPATH: src
         run: |
           uv run --directory genai-engine generate_changelog

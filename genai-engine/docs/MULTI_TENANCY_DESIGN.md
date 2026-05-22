@@ -231,7 +231,7 @@ POST /api/v2/tenant/signup       (no auth required)
 
 ### Feature flag
 
-The endpoint exists in every deployment but only responds when `ENABLE_PUBLIC_TENANT_SIGNUP` is `true` in `src/utils/config.py`. Default: `false`. With the flag off, the endpoint returns 404 — clients cannot distinguish "feature unavailable" from "endpoint doesn't exist," which is the desired behavior on production customer deployments.
+The endpoint exists in every deployment but only responds when `GENAI_ENGINE_DEMO_MODE` is `true` in `src/utils/config.py`. Default: `false`. With the flag off, the endpoint returns 404 — clients cannot distinguish "feature unavailable" from "endpoint doesn't exist," which is the desired behavior on production customer deployments.
 
 ### Request and response
 
@@ -674,7 +674,7 @@ The intent is that single-tenant customer deployments operate exactly as today a
 3. **No existing endpoint changes shape.** No new required request fields, no new required response fields, no renamed properties.
 4. **No existing client SDK breaks.** Aggregate endpoints (`GET /api/v2/tasks`, search endpoints, query endpoints) stay shape-compatible. Tenant clients see a scoped subset; admin clients see everything.
 5. **Existing role frozensets are not narrowed.** `TENANT-USER` is added to relevant frozensets; existing roles are not removed from any frozenset. Existing operator and admin users keep all their permissions.
-6. **Feature flag off by default.** `ENABLE_PUBLIC_TENANT_SIGNUP=false` means customer deployments never expose the signup endpoint unless explicitly enabled. Multi-tenant behavior on a customer deployment is opt-in.
+6. **Feature flag off by default.** `GENAI_ENGINE_DEMO_MODE=false` means customer deployments never expose the signup endpoint unless explicitly enabled. Multi-tenant behavior on a customer deployment is opt-in.
 7. **`POST /api/v1/traces` remains accessible to every admin client.** The endpoint narrows `TRACES_WRITE` to exclude `TENANT-USER`. Admin clients (the only callers that exist today, given no tenant keys have been issued yet) are unaffected.
 
 ### Risk areas
@@ -752,7 +752,7 @@ Wires the four patterns into the endpoint surface. Still no user-visible behavio
 Adds the public signup endpoint and the feature flag.
 
 1. New `POST /api/v2/tenant/signup` endpoint at `src/routers/v2/task_management_routes.py` (or a new `tenant_routes.py` for clarity).
-2. Add `ENABLE_PUBLIC_TENANT_SIGNUP` boolean to `src/utils/config.py`, default `False`.
+2. Add `GENAI_ENGINE_DEMO_MODE` boolean to `src/utils/config.py`, default `False`.
 3. Handler runs the four-step transaction (create org, create task, apply default rules, create API key) inside a single `db_session` transaction. Reuses the existing `tasks_repository.create_task()` and `api_key_repository.create_api_key()` plus the new `organizations_repository.create_organization()`.
 
 **Estimated effort:** ~1-2 days human / ~30 min CC.
@@ -844,7 +844,7 @@ Pattern C is harder to assert generically. A complementary repository coverage t
 ### Manual smoke test
 
 1. Run engine in single-tenant mode (default config). Existing admin key sees all tasks in default + system orgs.
-2. Set `ENABLE_PUBLIC_TENANT_SIGNUP=true`. `curl POST /api/v2/tenant/signup` returns a fresh `(org, task, api_key)`.
+2. Set `GENAI_ENGINE_DEMO_MODE=true`. `curl POST /api/v2/tenant/signup` returns a fresh `(org, task, api_key)`.
 3. Paste the tenant key into the UI's login form. Confirm the UI loads with admin nav hidden and the task switcher showing only the new task.
 4. Hit an admin endpoint with the tenant key. Confirm 403.
 5. Send an inference via the tenant key. Confirm it lands in the tenant's task.
