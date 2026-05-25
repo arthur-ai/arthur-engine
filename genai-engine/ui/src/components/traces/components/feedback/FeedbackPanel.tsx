@@ -12,6 +12,7 @@ import z from "zod";
 
 import { useApi } from "@/hooks/useApi";
 import { AgenticAnnotationResponse, TraceResponse } from "@/lib/api-client/api-client";
+import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { queryKeys } from "@/lib/queryKeys";
 import { EVENT_NAMES, track } from "@/services/amplitude";
 
@@ -64,6 +65,7 @@ export const FeedbackPanel = ({ containerRef, annotations, traceId }: Props) => 
     },
     onSuccess: () => {
       enqueueSnackbar("Feedback submitted", { variant: "success" });
+      dispatchTourEvent(TASK_TOUR_EVENTS.feedbackAdded);
       track(EVENT_NAMES.FEEDBACK_SUBMITTED, {
         trace_id: traceId,
         feedback_type: form.state.values.feedback,

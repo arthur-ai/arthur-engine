@@ -29,6 +29,7 @@ import type { PromptDetailViewProps } from "../types";
 
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { TOUR_IDS } from "@/features/task-tour";
+import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { useApi } from "@/hooks/useApi";
 import { useCreateNotebookMutation, useSetNotebookStateMutation } from "@/hooks/useNotebooks";
 import { formatDateInTimezone } from "@/utils/formatters";
@@ -121,6 +122,10 @@ const PromptDetailView = ({
       setTagError("");
       setPromoteToProduction(false);
       onRefetch?.();
+
+      if (promoteToProduction || newTag.trim().toLowerCase() === "production") {
+        dispatchTourEvent(TASK_TOUR_EVENTS.promptPromoted);
+      }
     } catch (err) {
       setTagError(err instanceof Error ? err.message : "Failed to add tag");
     }

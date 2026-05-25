@@ -41,6 +41,7 @@
     "axios": "1.13.6",
     "dayjs": "1.11.19",
     "framer-motion": "12.35.2",
+    "gray-matter": "^4.0.3",
     "material-react-table": "3.2.1",
     "mitt": "^3.0.1",
     "monaco-editor": "0.55.1",
@@ -56,6 +57,7 @@
     "react-router-dom": "7.13.1",
     "react-syntax-highlighter": "15.6.6",
     "react-use-measure": "2.1.7",
+    "rehype-sanitize": "^6.0.0",
     "remark-gfm": "4.0.1",
     "swagger-typescript-api": "13.3.1",
     "tailwind-merge": "3.5.0",
@@ -86,7 +88,8 @@
     "prettier": "3.7.4",
     "typescript": "5.9.3",
     "typescript-eslint": "8.56.1",
-    "vite": "7.3.1"
+    "vite": "7.3.1",
+    "vite-plugin-node-polyfills": "^0.28.0"
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "4.54.0"

@@ -10,6 +10,7 @@ import PromptsManagement from "../prompts-management/PromptsManagement";
 
 import { getContentHeight } from "@/constants/layout";
 import { TOUR_IDS } from "@/features/task-tour";
+import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 
 const TAB_TITLES: Record<string, string> = {
   notebooks: "Prompt Notebooks",
@@ -111,6 +112,7 @@ export const PromptsView = () => {
               <MenuItem
                 onClick={() => {
                   setExperimentsMenuAnchor(null);
+                  dispatchTourEvent(TASK_TOUR_EVENTS.experimentRun);
                   experimentsCreateFn.current();
                 }}
               >

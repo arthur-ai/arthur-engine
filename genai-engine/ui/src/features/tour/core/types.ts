@@ -215,7 +215,13 @@ export type TourState =
       totalSteps: number;
       introductionPending: boolean;
     }
-  | { status: "paused"; sectionId: string; stepId: string }
+  /**
+   * `introductionPending` is preserved on pause so that resuming a tour that
+   * was dismissed while a section intro was open re-shows the intro instead
+   * of silently jumping past it (the intro carries scenario/marketing copy
+   * that's part of the tour contract).
+   */
+  | { status: "paused"; sectionId: string; stepId: string; introductionPending: boolean }
   | { status: "completed" }
   | { status: "skipped"; reason: SkipReason };
 
@@ -264,8 +270,19 @@ export interface StepEnterEvent extends StepContext {
   rect: DOMRect | null;
 }
 
+/**
+ * Cause of a step exit. Either one of the `advanceOn` trigger types fired
+ * (`click`, `event`, `visible`, `custom`, `manual`) or the engine left the
+ * step programmatically via one of the public actions (`next`, `prev`,
+ * `goTo`, `skipSection`, `complete`, `skip`). Consumers — analytics,
+ * progress plugins — should treat all of these as "the user moved on from
+ * this step" so they don't need to bolt on parallel buses to capture
+ * manual navigation.
+ */
+export type StepAdvanceCause = AdvanceTrigger["type"] | "next" | "prev" | "goTo" | "skipSection" | "complete" | "skip";
+
 export interface StepAdvanceEvent extends StepContext {
-  triggerType: AdvanceTrigger["type"];
+  triggerType: StepAdvanceCause;
 }
 
 export interface NavigationBeforeEvent {
@@ -334,7 +351,7 @@ export interface TriggerAttachContext {
   stepContext: StepContext;
   targetElement: Element | null;
   bus: TourBus;
-  advance: (triggerType: AdvanceTrigger["type"]) => void;
+  advance: (triggerType: StepAdvanceCause) => void;
   trigger: AdvanceTrigger;
 }
 

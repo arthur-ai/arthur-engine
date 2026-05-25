@@ -24,6 +24,7 @@ import type { PromptsTableProps } from "../types";
 
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { TOUR_IDS } from "@/features/task-tour";
+import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { formatDateInTimezone } from "@/utils/formatters";
 
 type SortableColumn = "name" | "created_at" | "latest_version_created_at";
@@ -43,6 +44,7 @@ const PromptsTable = ({ prompts, sortColumn, sortDirection, onSort, onExpandToFu
 
   const handleRowClick = useCallback(
     (promptName: string) => {
+      dispatchTourEvent(TASK_TOUR_EVENTS.promptInspected);
       onExpandToFullScreen(promptName);
     },
     [onExpandToFullScreen]

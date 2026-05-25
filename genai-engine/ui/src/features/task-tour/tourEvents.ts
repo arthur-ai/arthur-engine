@@ -10,3 +10,5 @@
 export function dispatchTourEvent(name: string): void {
   document.dispatchEvent(new CustomEvent(name));
 }
+
+export { TASK_TOUR_EVENTS, TASK_TOUR_TARGET_LOST_HINTS, type TaskTourEventName } from "./tourEventNames";

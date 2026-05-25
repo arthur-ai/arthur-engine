@@ -30,6 +30,7 @@ import { TracingFilterModal } from "./components/TracingFilterModal";
 
 import { TestRunDialog } from "@/components/live-evals/components/TestRunDialog";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { dispatchTourEvent, TASK_TOUR_EVENTS, useTraceTableTourRow } from "@/features/task-tour";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";
@@ -170,6 +171,8 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
       });
 
       setDrawerTarget({ target: "trace", id: row.trace_id });
+      dispatchTourEvent(TASK_TOUR_EVENTS.traceOpened);
+      dispatchTourEvent(TASK_TOUR_EVENTS.deployVerified);
     },
     [data?.traces, setContext, setDrawerTarget, task?.id]
   );
@@ -222,6 +225,7 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
   const hasActiveFilters = useMemo(() => filters.length > 0, [filters]);
 
   const hasData = Boolean(data?.traces?.length);
+  const traceTableTourRef = useTraceTableTourRow(hasData, pagination.pageIndex);
 
   return (
     <Stack gap={1} height="100%" overflow="hidden">
@@ -266,7 +270,8 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
 
         {hasData && (
           <BucketProvider thresholds={thresholds}>
-            <TracesTable
+            <Box ref={traceTableTourRef} sx={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column" }}>
+              <TracesTable
               data={data?.traces ?? DEFAULT_DATA}
               columns={columns as MRT_ColumnDef<TraceMetadataResponse, unknown>[]}
               rowCount={data?.count ?? 0}
@@ -281,6 +286,7 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
               onRowSelectionChange={setRowSelection}
               getRowId={(row) => row.trace_id}
             />
+            </Box>
           </BucketProvider>
         )}
       </DataContentGate>

@@ -33,6 +33,7 @@ import { PreviewTable } from "./PreviewTable";
 import { SaveTransformDialog } from "./SaveTransformDialog";
 
 import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
+import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { useCreateDatasetMutation } from "@/hooks/datasets/useCreateDatasetMutation";
 import { useTransforms } from "@/hooks/transforms/useTransforms";
 import { useApi } from "@/hooks/useApi";
@@ -108,6 +109,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
     },
     onSuccess: (_data, variables) => {
       enqueueSnackbar("Row added", { variant: "success" });
+      dispatchTourEvent(TASK_TOUR_EVENTS.traceAddedToDataset);
       // Clear pending columns for this dataset
       setPendingColumns((prev) => {
         const updated = { ...prev };

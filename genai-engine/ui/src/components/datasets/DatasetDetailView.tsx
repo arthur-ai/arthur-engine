@@ -15,6 +15,7 @@ import { SyntheticDataModal } from "./synthetic";
 import { VersionDrawer } from "./VersionDrawer";
 
 import { getContentHeight } from "@/constants/layout";
+import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import {
   DatasetContextProvider,
   selectAddRowData,
@@ -248,6 +249,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
       });
       dispatch({ type: "UI/TOGGLE_SYNTHETIC_MODAL", payload: false });
       showSnackbar(`Added ${rows.length} synthetic row${rows.length !== 1 ? "s" : ""}`, "success");
+      dispatchTourEvent(TASK_TOUR_EVENTS.syntheticDataGenerated);
     },
     [dispatch, showSnackbar]
   );

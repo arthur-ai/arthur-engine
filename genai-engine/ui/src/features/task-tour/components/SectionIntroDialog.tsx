@@ -2,7 +2,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import EastIcon from "@mui/icons-material/East";
 import { Box, Button, Dialog, IconButton, Paper, Stack, Typography, useTheme } from "@mui/material";
 
-import type { TaskTourSection } from "../data";
+import type { TaskTourHero, TaskTourSection } from "../data";
 
 import { ADLCFlywheel } from "./ADLCFlywheel";
 
@@ -82,12 +82,13 @@ export function SectionIntroDialog({ open, section, sectionIndex, onStart, onDis
           <Typography id="task-tour-section-intro-title" variant="h5" sx={{ fontWeight: 700, letterSpacing: -0.5, mb: 1.5, color: "text.primary" }}>
             {intro.heading}
           </Typography>
-          <Typography variant="body2" sx={{ color: "text.secondary", lineHeight: 1.55, mb: 1.5 }}>
-            {intro.body}
-          </Typography>
-          <Box sx={{ display: "flex", justifyContent: "center", pb: 1.5 }}>
-            <ADLCFlywheel />
-          </Box>
+          {intro.hero ? <HeroImage hero={intro.hero} /> : null}
+          <Box sx={{ color: "text.secondary", lineHeight: 1.55, mb: 1.5 }}>{intro.body}</Box>
+          {intro.showFlywheel ? (
+            <Box sx={{ display: "flex", justifyContent: "center", pb: 1.5 }}>
+              <ADLCFlywheel />
+            </Box>
+          ) : null}
         </Box>
       ) : (
         <Box sx={{ px: 4, pt: 3.5, pb: 0.5 }}>
@@ -97,9 +98,8 @@ export function SectionIntroDialog({ open, section, sectionIndex, onStart, onDis
           <Typography id="task-tour-section-intro-title" variant="h5" sx={{ fontWeight: 700, letterSpacing: -0.5, mb: 1.5, color: "text.primary" }}>
             {intro.heading}
           </Typography>
-          <Typography variant="body2" sx={{ color: "text.secondary", lineHeight: 1.55, mb: 1.5 }}>
-            {intro.body}
-          </Typography>
+          {intro.hero ? <HeroImage hero={intro.hero} /> : null}
+          <Box sx={{ color: "text.secondary", lineHeight: 1.55, mb: 1.5 }}>{intro.body}</Box>
         </Box>
       )}
 
@@ -130,9 +130,7 @@ export function SectionIntroDialog({ open, section, sectionIndex, onStart, onDis
           >
             {intro.scenario.label}
           </Typography>
-          <Typography variant="body2" sx={{ color: "text.secondary", lineHeight: 1.55 }}>
-            {intro.scenario.text}
-          </Typography>
+          <Box sx={{ color: "text.secondary", lineHeight: 1.55 }}>{intro.scenario.text}</Box>
         </Paper>
       ) : null}
 
@@ -145,5 +143,32 @@ export function SectionIntroDialog({ open, section, sectionIndex, onStart, onDis
         </Button>
       </Stack>
     </Dialog>
+  );
+}
+
+/**
+ * Marketing-supplied hero illustration. Rendered above the intro body in
+ * both the gradient hero layout and the compact layout. `src` is already a
+ * Vite-resolved URL — the loader resolves the marketing-supplied
+ * `./assets/<file>` path against the build-time asset map and throws if it
+ * doesn't exist, so by the time we reach this component the src is safe.
+ */
+function HeroImage({ hero }: { hero: TaskTourHero }) {
+  return (
+    <Box sx={{ display: "flex", justifyContent: "center", mb: 1.5 }}>
+      <Box
+        component="img"
+        src={hero.src}
+        alt={hero.alt}
+        loading="lazy"
+        sx={{
+          display: "block",
+          width: hero.width,
+          maxWidth: "100%",
+          height: "auto",
+          borderRadius: 2,
+        }}
+      />
+    </Box>
   );
 }

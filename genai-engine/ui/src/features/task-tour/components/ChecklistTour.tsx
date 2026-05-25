@@ -2,7 +2,7 @@ import { useCallback, useMemo, type ReactNode } from "react";
 
 import { TASK_TOUR_SECTIONS, type TaskTourItem } from "../data";
 import { isStubStep } from "../tour-config";
-import { dispatchTourEvent } from "../tourEvents";
+import { TASK_TOUR_TARGET_LOST_HINTS } from "../tourEventNames";
 
 import { ChecklistPanel } from "./ChecklistPanel";
 import { SectionIntroDialog } from "./SectionIntroDialog";
@@ -14,6 +14,7 @@ import {
   Spotlight,
   TargetTracker,
   TourPortal,
+  useActiveTarget,
   useChecklistProgress,
   useTour,
   useTourEngine,
@@ -46,9 +47,6 @@ const TOTAL_ITEM_COUNT = TASK_TOUR_SECTIONS.reduce((sum, s) => sum + Math.max(1,
 function itemKey(sectionId: string, itemId: string) {
   return `${sectionId}.${itemId}`;
 }
-function introKey(sectionId: string) {
-  return `${sectionId}.__intro`;
-}
 
 export interface ChecklistTourProps {
   /** When false, the entire walkthrough overlay (modal, panel, spotlight) is hidden. */
@@ -70,20 +68,22 @@ export interface ChecklistTourProps {
  * The orchestrating layer: subscribes to engine state, drives the section
  * intro modal, paints the spotlight + pulsing ring on the current target, and
  * mirrors per-step progress into the `progressPlugin` so the floating
- * checklist can tick items off as the user works through the tour. Real-step
- * advances are recorded by the plugin automatically via `step:advance`; stub
- * sections are recorded manually because `actions.next()` skips that bus
- * event by design.
+ * checklist can tick items off as the user works through the tour. Per-step
+ * progress is recorded by the plugin automatically via `step:advance` for
+ * both real and stub steps — `actions.next()` now emits `step:advance` for
+ * the step it's leaving, so stubs no longer need a manual `progressPlugin.add`.
  *
  * Stub sections (intro-only) are handled by `acknowledgeIntroduction()` →
  * engine enters a placeholder step → we wait for `step:enter` and then call
  * `actions.next()` so the engine advances to the next section's intro
- * handshake.
+ * handshake. The intro progress key is then recorded by the plugin from the
+ * resulting `step:advance` emission.
  */
 export function ChecklistTour({ enabled, progressPlugin, onComplete, panelAnchorRect }: ChecklistTourProps) {
   const engine = useTourEngine();
   const { state, activeStep, actions } = useTour();
   const completedItemKeys = useChecklistProgress(progressPlugin);
+  const activeTarget = useActiveTarget();
 
   const currentSectionIndex = state.status === "running" ? state.sectionIndex : 0;
   const currentStepIndex = state.status === "running" && !state.introductionPending ? state.stepIndex : -1;
@@ -97,18 +97,15 @@ export function ChecklistTour({ enabled, progressPlugin, onComplete, panelAnchor
 
   // Stubs have no UI of their own — once the engine enters one (after the
   // intro modal is acknowledged or on resume) we synthesise an immediate
-  // advance so the user is never stranded on a placeholder. We mark the
-  // intro key here because `actions.next()` doesn't emit `step:advance`, so
-  // the progress plugin's auto-recording never fires for stubs.
+  // advance so the user is never stranded on a placeholder.
   useTourEvent(
     "step:enter",
     useCallback(
       (event: StepEnterEvent) => {
         if (!isStubStep(event.stepId)) return;
-        progressPlugin.add(introKey(event.sectionId));
         actions.next();
       },
-      [actions, progressPlugin]
+      [actions]
     )
   );
 
@@ -148,17 +145,16 @@ export function ChecklistTour({ enabled, progressPlugin, onComplete, panelAnchor
       if (!currentSection) return;
       const key = itemKey(currentSection.id, item.id);
       // `toggle` returns the new state; if the user just *checked* the
-      // engine's current step, also dispatch the configured advance event so
-      // the engine's trigger pipeline handles cleanup + section transition
-      // (rather than calling `actions.next()` raw, which skips
-      // `step:advance` and starves analytics). Idempotent re-records are
-      // safe — the plugin's `add` short-circuits on existing keys.
+      // engine's current step, advance via `actions.next()` so the engine
+      // exits the step, emits `step:advance` (which the progress plugin
+      // records — idempotent against the manual `toggle` above), and
+      // handles section transitions cleanly.
       const nowComplete = progressPlugin.toggle(key);
       if (nowComplete && state.status === "running" && state.sectionId === currentSection.id && state.stepId === item.id) {
-        dispatchTourEvent(item.eventName);
+        actions.next();
       }
     },
-    [currentSection, progressPlugin, state]
+    [actions, currentSection, progressPlugin, state]
   );
 
   const handleSelectSection = useCallback(
@@ -203,6 +199,13 @@ export function ChecklistTour({ enabled, progressPlugin, onComplete, panelAnchor
     };
     return step.content(ctx);
   }, [activeStep, actions, engine.config.id]);
+
+  const activeStepKey =
+    state.status === "running" && !state.introductionPending && currentSection && state.stepId && !isStubStep(state.stepId)
+      ? `${state.sectionId}.${state.stepId}`
+      : null;
+  const targetLostHint =
+    activeStepKey && !activeTarget && !isOnStub ? (TASK_TOUR_TARGET_LOST_HINTS[activeStepKey] ?? null) : null;
 
   if (!enabled) return null;
   if (state.status === "idle") return null;
@@ -267,6 +270,7 @@ export function ChecklistTour({ enabled, progressPlugin, onComplete, panelAnchor
           currentSectionIndex={currentSectionIndex}
           currentItemIndex={currentStepIndex}
           activeStepContent={activeStepContent}
+          targetLostHint={targetLostHint}
           completedItemKeys={completedItemKeys}
           totalItemCount={TOTAL_ITEM_COUNT}
           totalProgress={totalProgress}

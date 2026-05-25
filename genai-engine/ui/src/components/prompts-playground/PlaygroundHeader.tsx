@@ -20,6 +20,7 @@ import VariableInputs from "./VariableInputs";
 
 import { EditableTitle } from "@/components/common";
 import { TOUR_IDS } from "@/features/task-tour";
+import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { useTask } from "@/hooks/useTask";
 import type { PromptExperimentDetail } from "@/lib/api-client/api-client";
 
@@ -174,7 +175,16 @@ export default function PlaygroundHeader({
               </Popover>
             </Badge>
           </Box>
-          <Button variant="contained" size="small" onClick={onAddPrompt} startIcon={<AddIcon />} data-tour-id={TOUR_IDS.playgroundAddPrompt}>
+          <Button
+            variant="contained"
+            size="small"
+            onClick={() => {
+              dispatchTourEvent(TASK_TOUR_EVENTS.playgroundPromptsCreated);
+              onAddPrompt();
+            }}
+            startIcon={<AddIcon />}
+            data-tour-id={TOUR_IDS.playgroundAddPrompt}
+          >
             Add Prompt
           </Button>
           <Tooltip title={runAllDisabledReason || "Run All Prompts"} arrow>

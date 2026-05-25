@@ -22,11 +22,17 @@ const TASK_TOUR_BACKDROP_COLOR = "rgba(15, 23, 42, 0.68)";
  */
 const STUB_TARGET = "body";
 
+/**
+ * Build a `RouteSpec` for `/tasks/:taskId/<sub-route>` from a tour item.
+ * The sub-route is interpolated into the path string directly (not as a
+ * `:param`) so multi-segment routes like `playgrounds/prompts` keep their
+ * `/` separators — encoding via `params` would percent-encode the slash.
+ */
 function routeFor(taskId: string, item: TaskTourItem): RouteSpec | undefined {
   if (!item.route) return undefined;
   return {
-    path: "/tasks/:taskId/:page",
-    params: { taskId, page: item.route },
+    path: `/tasks/:taskId/${item.route}`,
+    params: { taskId },
     search: item.search,
   };
 }

@@ -9,6 +9,7 @@ import type {
   ResolvedRoute,
   RouteSpec,
   SkipReason,
+  StepAdvanceCause,
   StepConfig,
   StepContext,
   TourActions,
@@ -154,11 +155,16 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
         targetElement,
         bus,
         trigger,
+        // Triggers report their own cause; `exitCurrentStep` emits the
+        // matching `step:advance` event so the source of the exit (`click`,
+        // `event`, `visible`, etc.) propagates to plugins/analytics. We
+        // pass the trigger's cause through `next()` rather than emitting
+        // here to keep every step exit on the same `exitCurrentStep` code
+        // path (manual `next/prev/goTo/...` calls also need to emit).
         advance: (triggerType) => {
           if (state.status !== "running") return;
           if (state.sectionId !== ctx.sectionId || state.stepId !== ctx.stepId) return;
-          bus.emit("step:advance", { ...ctx, triggerType });
-          next();
+          next(triggerType);
         },
       });
       activeTriggerCleanups.push(cleanup);
@@ -189,12 +195,26 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
   // Step lifecycle
   // ---------------------------------------------------------------------------
 
-  const exitCurrentStep = async () => {
+  /**
+   * Leave the active step. When `triggerType` is provided we emit
+   * `step:advance` so consumers (analytics, the checklist progress plugin,
+   * tests) can treat every exit — whether prompted by an `advanceOn` trigger
+   * firing or a programmatic `next/prev/goTo/skipSection/complete/skip`
+   * call — as the same "user moved on from this step" signal.
+   *
+   * Omitting `triggerType` (the default) skips the `step:advance` emission;
+   * `start()` uses this when leaving a stale paused step on a fresh start
+   * so it does not look like the user just advanced past that step.
+   */
+  const exitCurrentStep = async (triggerType?: StepAdvanceCause) => {
     const pos = getActivePosition();
     if (!pos) return;
     const ctx = stepContextAt(pos);
     const step = config.sections[pos.sectionIndex].steps[pos.stepIndex];
     detachTriggers();
+    if (triggerType) {
+      bus.emit("step:advance", { ...ctx, triggerType });
+    }
     bus.emit("step:exit", ctx);
     if (step.onExit) {
       try {
@@ -290,13 +310,18 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
 
   /**
    * Move to (sectionIndex, stepIndex). Handles section transitions including
-   * the section introduction handshake.
+   * the section introduction handshake. `opts.triggerType` propagates the
+   * exit cause to `exitCurrentStep` so `step:advance` carries the right
+   * signal (`next`, `prev`, `goTo`, `skipSection`, `complete`, `skip`, or
+   * one of the `advanceOn` trigger types). Omit it when the move isn't
+   * "advancing past the current step" — e.g. the initial `start()` jump
+   * from `idle`.
    */
-  const goToPosition = async (target: Position, opts: { force?: boolean } = {}): Promise<void> => {
+  const goToPosition = async (target: Position, opts: { force?: boolean; triggerType?: StepAdvanceCause } = {}): Promise<void> => {
     const current = getActivePosition();
     const sectionChanging = !current || current.sectionIndex !== target.sectionIndex;
 
-    await exitCurrentStep();
+    await exitCurrentStep(opts.triggerType);
 
     if (sectionChanging && current) {
       const fromSection = config.sections[current.sectionIndex];
@@ -371,8 +396,8 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     return null;
   };
 
-  const completeTour = async () => {
-    await exitCurrentStep();
+  const completeTour = async (triggerType: StepAdvanceCause = "complete") => {
+    await exitCurrentStep(triggerType);
     const pos = getActivePosition();
     if (pos) {
       const section = config.sections[pos.sectionIndex];
@@ -394,7 +419,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
   };
 
   const skipTour = async (reason: SkipReason) => {
-    await exitCurrentStep();
+    await exitCurrentStep("skip");
     setState({ status: "skipped", reason });
     bus.emit("tour:end", { tourId: config.id, reason: "skipped" });
   };
@@ -416,15 +441,22 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     void goToPosition(target);
   };
 
-  const next: TourActions["next"] = () => {
+  /**
+   * Advance to the next step. The internal overload accepts a `triggerType`
+   * so `attachTriggers`'s `advance(triggerType)` callback can forward the
+   * trigger's cause (`click`, `event`, `visible`, `custom`, `manual`)
+   * verbatim. Public callers pass nothing and inherit the default `"next"`
+   * cause used for analytics / progress tracking.
+   */
+  const next = (triggerType: StepAdvanceCause = "next"): void => {
     if (state.status !== "running" || state.introductionPending) return;
     const pos = getActivePosition();
     if (!pos) return;
     const result = advanceFromPosition(pos);
     if (result === "complete") {
-      void completeTour();
+      void completeTour(triggerType);
     } else {
-      void goToPosition(result);
+      void goToPosition(result, { triggerType });
     }
   };
 
@@ -434,14 +466,14 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     if (!pos) return;
     const target = retreatFromPosition(pos);
     if (!target) return;
-    void goToPosition(target);
+    void goToPosition(target, { triggerType: "prev" });
   };
 
   const goTo: TourActions["goTo"] = (target) => {
     if (state.status === "idle" || state.status === "completed" || state.status === "skipped") return;
     const pos = findPosition(target.sectionId, target.stepId);
     if (!pos) return;
-    void goToPosition(pos);
+    void goToPosition(pos, { triggerType: "goTo" });
   };
 
   const skipSection: TourActions["skipSection"] = () => {
@@ -456,9 +488,9 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
       sectionIndex: pos.sectionIndex,
     });
     if (pos.sectionIndex + 1 < config.sections.length) {
-      void goToPosition({ sectionIndex: pos.sectionIndex + 1, stepIndex: 0 });
+      void goToPosition({ sectionIndex: pos.sectionIndex + 1, stepIndex: 0 }, { triggerType: "skipSection" });
     } else {
-      void completeTour();
+      void completeTour("skipSection");
     }
   };
 
@@ -470,7 +502,12 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
   const pause: TourActions["pause"] = () => {
     if (state.status !== "running") return;
     detachTriggers();
-    setState({ status: "paused", sectionId: state.sectionId, stepId: state.stepId });
+    setState({
+      status: "paused",
+      sectionId: state.sectionId,
+      stepId: state.stepId,
+      introductionPending: state.introductionPending,
+    });
     bus.emit("tour:pause", { tourId: config.id });
   };
 
@@ -479,20 +516,53 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     const pos = findPosition(state.sectionId, state.stepId);
     if (!pos) return;
     bus.emit("tour:resume", { tourId: config.id });
+    // If the user paused or dismissed while a section intro was open, we
+    // need to re-open that intro on resume — `enterStep` would set
+    // `introductionPending: false` and silently skip past it. Mirror the
+    // intro-handshake branch of `goToPosition` so the intro modal comes
+    // back instead of dropping straight onto the first spotlight.
+    if (pos.stepIndex === 0 && state.introductionPending) {
+      const section = config.sections[pos.sectionIndex];
+      if (section.introduction) {
+        const step = section.steps[pos.stepIndex];
+        const ctx = stepContextAt(pos);
+        setState({
+          status: "running",
+          sectionId: section.id,
+          stepId: step.id,
+          sectionIndex: pos.sectionIndex,
+          stepIndex: pos.stepIndex,
+          globalStepIndex: ctx.index.globalStepIndex,
+          totalSteps,
+          introductionPending: true,
+        });
+        bus.emit("section:introduction:show", { tourId: config.id, sectionId: section.id });
+        return;
+      }
+    }
     void enterStep(pos, { runSectionEnter: false });
   };
 
   /**
    * Dismiss is a "soft close" — the user is closing the panel but we want to
-   * be able to bring it back. We pause first (preserving the position) and
-   * then emit `tour:dismiss` so persistence plugins can record the intent.
-   * No-ops outside running/paused.
+   * be able to bring it back. We pause first (preserving the position and
+   * the `introductionPending` flag) and then emit `tour:dismiss` so
+   * persistence plugins can record the intent. Preserving
+   * `introductionPending` matters because section intros carry
+   * scenario/marketing copy — if the user dismisses while the intro modal
+   * is open, resume should re-show it rather than jump straight to the
+   * first spotlight. No-ops outside running/paused.
    */
   const dismiss: TourActions["dismiss"] = () => {
     if (state.status !== "running" && state.status !== "paused") return;
     if (state.status === "running") {
       detachTriggers();
-      setState({ status: "paused", sectionId: state.sectionId, stepId: state.stepId });
+      setState({
+        status: "paused",
+        sectionId: state.sectionId,
+        stepId: state.stepId,
+        introductionPending: state.introductionPending,
+      });
     }
     bus.emit("tour:dismiss", { tourId: config.id });
   };

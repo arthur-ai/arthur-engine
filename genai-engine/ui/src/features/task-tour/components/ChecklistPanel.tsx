@@ -21,6 +21,8 @@ export interface ChecklistPanelProps {
    * the parent. `null` when the tour isn't on a real step.
    */
   activeStepContent: ReactNode | null;
+  /** Shown under the active step when the spotlight target is not in the DOM yet. */
+  targetLostHint?: string | null;
   completedItemKeys: ReadonlySet<string>;
   totalItemCount: number;
   totalProgress: number;
@@ -57,6 +59,7 @@ export function ChecklistPanel({
   currentSectionIndex,
   currentItemIndex,
   activeStepContent,
+  targetLostHint,
   completedItemKeys,
   totalItemCount,
   totalProgress,
@@ -73,6 +76,14 @@ export function ChecklistPanel({
   const section = TASK_TOUR_SECTIONS[currentSectionIndex];
   if (!section) return null;
   const items = section.items;
+  const stepsInSection = Math.max(1, items.length);
+  const sectionStepLabel =
+    items.length === 0
+      ? "Intro"
+      : currentItemIndex >= 0
+        ? `Step ${currentItemIndex + 1} of ${stepsInSection}`
+        : `Step 1 of ${stepsInSection}`;
+  const progressCaption = `Section ${currentSectionIndex + 1} of ${TASK_TOUR_SECTIONS.length} · ${sectionStepLabel}`;
 
   const panel = (
     <Paper
@@ -251,12 +262,17 @@ export function ChecklistPanel({
                   </Typography>
                   {active && activeStepContent != null ? (
                     typeof activeStepContent === "string" ? (
-                      <Typography variant="caption" sx={{ color: "black", display: "block", mt: 0.5, lineHeight: 1.45 }}>
+                      <Typography variant="caption" sx={{ color: "common.black", display: "block", mt: 0.5, lineHeight: 1.45 }}>
                         {activeStepContent}
                       </Typography>
                     ) : (
-                      <Box sx={{ color: "black", display: "block", mt: 0.5, fontSize: 12, lineHeight: 1.45 }}>{activeStepContent}</Box>
+                      <Box sx={{ color: "common.black", display: "block", mt: 0.5, fontSize: 12, lineHeight: 1.45 }}>{activeStepContent}</Box>
                     )
+                  ) : null}
+                  {active && targetLostHint ? (
+                    <Typography variant="caption" sx={{ color: "warning.dark", display: "block", mt: 0.5, lineHeight: 1.45 }}>
+                      {targetLostHint}
+                    </Typography>
                   ) : null}
                 </Box>
               </Stack>
@@ -267,7 +283,7 @@ export function ChecklistPanel({
 
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ p: 1.5, borderTop: 1, borderColor: "divider" }}>
         <Typography variant="caption" sx={{ color: "text.secondary" }}>
-          {completedItemKeys.size} of {totalItemCount} steps
+          {progressCaption}
         </Typography>
         <Stack direction="row" spacing={0.75}>
           <Button

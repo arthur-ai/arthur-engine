@@ -31,6 +31,7 @@ import { EvaluatorPipelinesPanel } from "./EvaluatorPipelinesPanel";
 import { continuousEvalsQueryOptions } from "@/components/live-evals/hooks/useContinuousEvals";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { TOUR_IDS } from "@/features/task-tour";
+import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { useApi } from "@/hooks/useApi";
 import type { ContinuousEvalResponse, LLMGetAllMetadataResponse } from "@/lib/api-client/api-client";
 import { formatDateInTimezone } from "@/utils/formatters";
@@ -70,8 +71,11 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
     return map;
   }, [allCEsData]);
 
-  const handleAccordionChange = (evalName: string) => (_: React.SyntheticEvent, isExpanded: boolean) => {
+  const handleAccordionChange = (evalName: string, evalIndex: number) => (_: React.SyntheticEvent, isExpanded: boolean) => {
     setExpanded(isExpanded ? evalName : false);
+    if (isExpanded && evalIndex === 0) {
+      dispatchTourEvent(TASK_TOUR_EVENTS.evaluatorReviewed);
+    }
   };
 
   const handleDeleteClick = (e: React.MouseEvent, evalName: string) => {
@@ -130,22 +134,21 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
         const stalePipelines = pipelines.filter((ce) => ce.llm_eval_version < evalMeta.versions).length;
 
         return (
-          <Accordion
-            key={evalMeta.name}
-            expanded={expanded === evalMeta.name}
-            onChange={handleAccordionChange(evalMeta.name)}
-            data-tour-id={evalIndex === 0 ? TOUR_IDS.evaluatorsFirstCard : undefined}
-            disableGutters
-            elevation={0}
-            sx={{
-              border: "1px solid",
-              borderColor: "divider",
-              borderRadius: "8px !important",
-              mb: 1,
-              "&:before": { display: "none" },
-              overflow: "hidden",
-            }}
-          >
+          <Box key={evalMeta.name} data-tour-id={evalIndex === 0 ? TOUR_IDS.evaluatorsFirstCard : undefined}>
+            <Accordion
+              expanded={expanded === evalMeta.name}
+              onChange={handleAccordionChange(evalMeta.name, evalIndex)}
+              disableGutters
+              elevation={0}
+              sx={{
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: "8px !important",
+                mb: 1,
+                "&:before": { display: "none" },
+                overflow: "hidden",
+              }}
+            >
             <AccordionSummary
               expandIcon={<ExpandMoreIcon />}
               sx={{
@@ -205,6 +208,7 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
               <EvaluatorPipelinesPanel taskId={taskId} evalName={evalMeta.name} latestVersion={evalMeta.versions} pipelines={pipelines} />
             </AccordionDetails>
           </Accordion>
+          </Box>
         );
       })}
 

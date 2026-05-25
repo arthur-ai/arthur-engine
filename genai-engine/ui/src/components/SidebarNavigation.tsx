@@ -15,7 +15,7 @@ import React from "react";
 import { useParams } from "react-router-dom";
 
 import { useDemoMode } from "@/contexts/EngineConfigContext";
-import { TOUR_IDS } from "@/features/task-tour";
+import { TOUR_IDS, dispatchTourEvent, TASK_TOUR_EVENTS, type TaskTourEventName } from "@/features/task-tour";
 
 interface SidebarNavigationProps {
   onBackToDashboard: () => void;
@@ -37,6 +37,8 @@ interface NavigationItem {
   onClick?: () => void;
   /** Optional `data-tour-id` attribute used by the in-task guided tour. */
   tourId?: string;
+  /** Tour events dispatched when this nav item is activated. */
+  tourEvents?: TaskTourEventName[];
 }
 
 function buildNavigationSections(demoMode: boolean): NavigationSection[] {
@@ -48,12 +50,28 @@ function buildNavigationSections(demoMode: boolean): NavigationSection[] {
     {
       id: "observability",
       label: "Observability",
-      items: [{ id: "traces", label: "Observe", icon: <TrendingUpOutlined />, tourId: TOUR_IDS.navObserve }],
+      items: [
+        {
+          id: "traces",
+          label: "Observe",
+          icon: <TrendingUpOutlined />,
+          tourId: TOUR_IDS.navObserve,
+          tourEvents: [TASK_TOUR_EVENTS.observeOpened, TASK_TOUR_EVENTS.deployVerified],
+        },
+      ],
     },
     {
       id: "prompts",
       label: "Prompts",
-      items: [{ id: "prompts", label: "Prompt", icon: <DescriptionOutlined />, tourId: TOUR_IDS.navPrompts }],
+      items: [
+        {
+          id: "prompts",
+          label: "Prompt",
+          icon: <DescriptionOutlined />,
+          tourId: TOUR_IDS.navPrompts,
+          tourEvents: [TASK_TOUR_EVENTS.promptsOpened],
+        },
+      ],
     },
     {
       id: "rag",
@@ -64,8 +82,20 @@ function buildNavigationSections(demoMode: boolean): NavigationSection[] {
       id: "evals",
       label: "Evals",
       items: [
-        { id: "evaluate", label: "Evaluate", icon: <BalanceOutlined />, tourId: TOUR_IDS.navEvaluate },
-        { id: "datasets", label: "Dataset", icon: <TableChartOutlined />, tourId: TOUR_IDS.navDatasets },
+        {
+          id: "evaluate",
+          label: "Evaluate",
+          icon: <BalanceOutlined />,
+          tourId: TOUR_IDS.navEvaluate,
+          tourEvents: [TASK_TOUR_EVENTS.evaluateOpened],
+        },
+        {
+          id: "datasets",
+          label: "Dataset",
+          icon: <TableChartOutlined />,
+          tourId: TOUR_IDS.navDatasets,
+          tourEvents: [TASK_TOUR_EVENTS.datasetsOpened, TASK_TOUR_EVENTS.datasetRowVerified],
+        },
         { id: "transforms", label: "Transform", icon: <StorageOutlined /> },
       ],
     },
@@ -135,6 +165,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
                     data-tour-id={item.tourId}
                     onClick={(e) => {
                       e.preventDefault();
+                      item.tourEvents?.forEach((eventName) => dispatchTourEvent(eventName));
                       onNavigate(item.id);
                     }}
                     className={`w-full text-left px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 flex items-center gap-3 ${

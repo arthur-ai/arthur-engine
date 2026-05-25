@@ -3,7 +3,7 @@ import { Skeleton } from "@mui/material";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { useEffect, useEffectEvent, useMemo, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { getSpanDetailsStrategy } from "../data/details-strategy";
@@ -18,6 +18,7 @@ import { ContinuousEvalDrawer } from "./continuous-eval/ContinuousEvalDrawer";
 import { FeedbackPanel } from "./feedback/FeedbackPanel";
 
 import { TOUR_IDS } from "@/features/task-tour";
+import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import type { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
@@ -123,6 +124,14 @@ export const TraceDrawerContent = ({ id }: Props) => {
   const [addToDatasetOpen, setAddToDatasetOpen] = useState(false);
   const [continuousEvalOpen, setContinuousEvalOpen] = useState(false);
 
+  const handleSelectSpan = useCallback(
+    (spanId: string) => {
+      select(spanId);
+      dispatchTourEvent(TASK_TOUR_EVENTS.spansReviewed);
+    },
+    [select]
+  );
+
   if (!trace) return null;
 
   return (
@@ -138,7 +147,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
         trace={trace}
         traceId={id}
         selectedSpanId={selectedSpanId}
-        onSelectSpan={select}
+        onSelectSpan={handleSelectSpan}
         onRefreshMetrics={handleRefreshMetrics}
         isRefreshingMetrics={refreshMetrics.isPending}
         onAddToDataset={() => {
@@ -159,8 +168,19 @@ export const TraceDrawerContent = ({ id }: Props) => {
           // `@arthur/shared-components`. The step is `event-only`, so this just
           // gives the spotlight a parent to live on while the user reads the
           // surrounding context.
-          <Box data-tour-id={TOUR_IDS.traceDrawerSpans}>
-            <Box data-tour-id={TOUR_IDS.traceDrawerEvals}>
+          <Box
+            data-tour-id={TOUR_IDS.traceDrawerSpans}
+            onClick={() => dispatchTourEvent(TASK_TOUR_EVENTS.spansReviewed)}
+            sx={{ cursor: "default" }}
+          >
+            <Box
+              data-tour-id={TOUR_IDS.traceDrawerEvals}
+              onClick={(event) => {
+                event.stopPropagation();
+                dispatchTourEvent(TASK_TOUR_EVENTS.annotationsReviewed);
+              }}
+              sx={{ cursor: "default" }}
+            >
               <AnnotationCell annotations={(annotations ?? []) as AgenticAnnotationResponse[]} traceId={tid} />
             </Box>
             <Box data-tour-id={TOUR_IDS.traceDrawerFeedback}>
