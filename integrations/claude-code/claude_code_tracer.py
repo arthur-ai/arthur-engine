@@ -1251,7 +1251,18 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
     # Use the cached transcript path from state so that any mid-session
     # project-dir changes (e.g. gh pr create writing to a worktree dir) do
     # not silently redirect us to a shadow transcript file.
+    _carry_trace_id = None
+    _carry_parent_span = None
     if state.get("current_trace"):
+        # When handle_pre_tool fires first for a new subagent session it claims
+        # the pending parent context and stores it inside current_trace.  Save
+        # those values before completing the old trace so the real first turn
+        # (created below) inherits the same trace ID and parent span — otherwise
+        # UPS would generate a fresh trace ID and sever the subagent connection.
+        _old_ct = state["current_trace"]
+        if _old_ct.get("_pretool_created") and _old_ct.get("parent_agent_span_id"):
+            _carry_trace_id = _old_ct["trace_id"]
+            _carry_parent_span = _old_ct["parent_agent_span_id"]
         transcript_path = _get_cached_transcript_path(data, state, session_id)
         _emit_pending_llm_spans(state, transcript_path, config)
         _complete_turn(state, config, transcript_path, now_ns)
@@ -1276,8 +1287,13 @@ def handle_user_prompt_submit(data: dict, config: dict) -> None:
     # all spans land in the parent's trace.  Also consume the parent agent span
     # ID (used only for the first CHAIN span so it becomes a child of the Agent
     # tool span in the parent trace).
-    trace_id = state.pop("inherited_trace_id", None) or _new_trace_id()
-    parent_agent_span_id = state.pop("parent_agent_span_id", None)
+    # _carry_* values are non-None only when handle_pre_tool fired before UPS
+    # and already placed the inherited context inside current_trace; in that
+    # case state-level keys were already consumed by the pre_tool fallback.
+    trace_id = (
+        state.pop("inherited_trace_id", None) or _carry_trace_id or _new_trace_id()
+    )
+    parent_agent_span_id = state.pop("parent_agent_span_id", None) or _carry_parent_span
 
     state["current_trace"] = {
         "trace_id": trace_id,
@@ -1372,6 +1388,10 @@ def handle_pre_tool(data: dict, config: dict) -> None:
             "human_count_at_start": max(0, current_human_count - 1),
             "prompt_preview": _truncate(prompt_preview) if prompt_preview else "",
             "parent_agent_span_id": parent_agent_span_id,
+            # Sentinel so handle_user_prompt_submit can detect that this trace
+            # was created by the pre_tool fallback path (before UPS fired) and
+            # carry the inherited context forward to the real first turn.
+            "_pretool_created": True,
         }
 
     pending_entry: dict[str, Any] = {

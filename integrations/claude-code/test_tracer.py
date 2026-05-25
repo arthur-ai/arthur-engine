@@ -2273,6 +2273,107 @@ class TestSubagentContextPropagation:
         # Trace ID must be unchanged (no second claim / override)
         assert state_after_pt["current_trace"]["trace_id"] == parent_trace_id
 
+    def test_ups_carries_forward_pretool_context(self, tmp_path, monkeypatch):
+        """When handle_pre_tool fires first (before UPS) and claims the parent
+        context, the subsequent UserPromptSubmit must carry that inherited
+        trace_id and parent_agent_span_id into the new trace — not generate a
+        fresh random trace ID that would sever the subagent connection."""
+        monkeypatch.setattr(tracer, "STATE_DIR", tmp_path / "tracer")
+        monkeypatch.setattr(
+            tracer,
+            "_PENDING_AGENT_DIR",
+            tmp_path / "tracer" / "pending_agent",
+        )
+        monkeypatch.setattr(tracer, "_build_and_export_spans", MagicMock())
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
+
+        parent_trace_id = "ccddeeff00112233445566778899aabb"
+        parent_span_id = "2233445566778899"
+        tracer._write_pending_agent_context(
+            "parent-sess-race",
+            parent_trace_id,
+            parent_span_id,
+            agent_prompt="run some analysis",
+        )
+
+        config = {"api_key": "k", "task_id": "t", "endpoint": "https://x"}
+
+        # pre_tool fires first (session init claims the context)
+        tracer.handle_pre_tool(
+            {
+                "session_id": "child-sess-race",
+                "tool_name": "Bash",
+                "tool_input": {"command": "ls"},
+            },
+            config,
+        )
+        state_mid = tracer._load_state("child-sess-race")
+        assert state_mid["current_trace"]["_pretool_created"] is True
+        assert state_mid["current_trace"]["trace_id"] == parent_trace_id
+
+        # UPS fires after pre_tool; the real first turn must inherit the same context
+        tracer.handle_user_prompt_submit(
+            {"session_id": "child-sess-race", "prompt": "run some analysis"},
+            config,
+        )
+        state_final = tracer._load_state("child-sess-race")
+        ct = state_final["current_trace"]
+
+        # The new trace must reuse the parent's trace ID and connect to AGENT span
+        assert ct["trace_id"] == parent_trace_id
+        assert ct["parent_agent_span_id"] == parent_span_id
+        # The sentinel must NOT be on the new (UPS-created) trace
+        assert "_pretool_created" not in ct
+
+    def test_pretool_context_not_carried_to_turn_2(self, tmp_path, monkeypatch):
+        """parent_agent_span_id must only apply to the first CHAIN span;
+        turn 2 of a subagent must have a fresh trace with no parent link."""
+        monkeypatch.setattr(tracer, "STATE_DIR", tmp_path / "tracer")
+        monkeypatch.setattr(
+            tracer,
+            "_PENDING_AGENT_DIR",
+            tmp_path / "tracer" / "pending_agent",
+        )
+        monkeypatch.setattr(tracer, "_build_and_export_spans", MagicMock())
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
+
+        parent_trace_id = "ddeeff00112233445566778899aabbcc"
+        parent_span_id = "3344556677889900"
+        tracer._write_pending_agent_context(
+            "parent-sess-t2",
+            parent_trace_id,
+            parent_span_id,
+            agent_prompt="task prompt",
+        )
+
+        config = {"api_key": "k", "task_id": "t", "endpoint": "https://x"}
+
+        # Turn 1: pre_tool then UPS
+        tracer.handle_pre_tool(
+            {"session_id": "child-t2", "tool_name": "Bash", "tool_input": {}},
+            config,
+        )
+        tracer.handle_user_prompt_submit(
+            {"session_id": "child-t2", "prompt": "task prompt"},
+            config,
+        )
+        state_t1 = tracer._load_state("child-t2")
+        assert state_t1["current_trace"]["trace_id"] == parent_trace_id
+
+        # Turn 2: another UPS (user sends follow-up)
+        tracer.handle_user_prompt_submit(
+            {"session_id": "child-t2", "prompt": "follow up"},
+            config,
+        )
+        state_t2 = tracer._load_state("child-t2")
+        ct2 = state_t2["current_trace"]
+        # Turn 2 must NOT carry parent context
+        assert ct2.get("parent_agent_span_id") is None
+        # Turn 2 gets its own fresh trace
+        assert ct2["trace_id"] != parent_trace_id
+
 
 # ---------------------------------------------------------------------------
 # discover_config — global config fallback
