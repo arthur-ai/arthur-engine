@@ -184,8 +184,8 @@ def _write_pending_agent_context(
                 "parent_span_id": parent_span_id,
                 "created_ns": time.time_ns(),
                 "agent_prompt": agent_prompt,
-            }
-        )
+            },
+        ),
     )
 
 
@@ -1033,7 +1033,8 @@ def _emit_pending_llm_spans(
     # and the final text response was already the last one processed).
     if all_llm_spans:
         current_trace["last_llm_output"] = all_llm_spans[-1]["attributes"].get(
-            "output.value", ""
+            "output.value",
+            "",
         )
 
     if not new_spans:
@@ -1311,6 +1312,15 @@ def handle_pre_tool(data: dict, config: dict) -> None:
         state["human_msg_count"] = 0
         state["turn_number"] = 0
 
+        # Claim any pending parent context in case UserPromptSubmit didn't fire
+        # for this subagent (e.g. Explore-type agents that are spawned
+        # programmatically bypass the UserPromptSubmit hook).  prompt="" triggers
+        # the newest-first fallback since the prompt text is not available here.
+        parent_ctx = _claim_pending_agent_context(prompt="")
+        if parent_ctx:
+            state["inherited_trace_id"] = parent_ctx["parent_trace_id"]
+            state["parent_agent_span_id"] = parent_ctx["parent_span_id"]
+
     # Detect context continuation: Claude Code compresses context and continues
     # without firing UserPromptSubmit for the resumption message. The symptom is
     # current_trace still set from the previous turn, but the transcript has grown
@@ -1344,8 +1354,14 @@ def handle_pre_tool(data: dict, config: dict) -> None:
         turn_number = state.get("turn_number", 0) + 1
         state["turn_number"] = turn_number
         state["human_msg_count"] = current_human_count
+
+        # Consume any inherited parent context stored by the session init block
+        # (or by a UserPromptSubmit that ran in a prior hook invocation).
+        trace_id = state.pop("inherited_trace_id", None) or _new_trace_id()
+        parent_agent_span_id = state.pop("parent_agent_span_id", None)
+
         state["current_trace"] = {
-            "trace_id": _new_trace_id(),
+            "trace_id": trace_id,
             "root_span_id": _new_span_id(),
             "turn_start_ns": now_ns,
             "turn_number": turn_number,
@@ -1355,6 +1371,7 @@ def handle_pre_tool(data: dict, config: dict) -> None:
             # current_human_count-th human message.
             "human_count_at_start": max(0, current_human_count - 1),
             "prompt_preview": _truncate(prompt_preview) if prompt_preview else "",
+            "parent_agent_span_id": parent_agent_span_id,
         }
 
     pending_entry: dict[str, Any] = {
@@ -1556,7 +1573,9 @@ def handle_stop(data: dict, config: dict) -> None:
                     "turn_start_ns": end_ns,
                     "turn_number": turn_number,
                     "human_count_at_start": max(0, current_human_count - 1),
-                    "prompt_preview": _truncate(prompt_preview) if prompt_preview else "",
+                    "prompt_preview": (
+                        _truncate(prompt_preview) if prompt_preview else ""
+                    ),
                 }
 
         # Emit the final LLM span(s) — the last response has no tool call after it,

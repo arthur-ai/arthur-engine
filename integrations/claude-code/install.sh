@@ -128,7 +128,10 @@ for line in env_file.read_text().splitlines():
     if not line or line.startswith("#") or "=" not in line:
         continue
     key, _, val = line.partition("=")
-    env_vars[key.strip()] = val.strip()
+    val = val.strip()
+    if len(val) >= 2 and val[0] == val[-1] and val[0] in ('"', "'"):
+        val = val[1:-1]
+    env_vars[key.strip()] = val
 
 config = {
     "api_key": env_vars.get("GENAI_ENGINE_API_KEY", ""),
