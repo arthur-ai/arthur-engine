@@ -146,10 +146,7 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
   const subscribeEngine = useCallback((onStoreChange: () => void) => (engine ? engine.subscribe(onStoreChange) : () => {}), [engine]);
   const getEngineState = useCallback(() => (engine ? engine.getState() : idleTourState), [engine, idleTourState]);
   const tourState = useSyncExternalStore(subscribeEngine, getEngineState, getEngineState);
-  const resumeFabLabel = useMemo(
-    () => resolveResumeFabLabel(engine?.config, tourState, progress),
-    [engine?.config, progress, tourState],
-  );
+  const resumeFabLabel = useMemo(() => resolveResumeFabLabel(engine?.config, tourState, progress), [engine?.config, progress, tourState]);
 
   // Auto-start once per mount when the tour is owed to the user. `unseen`
   // means they've never seen it; `in-progress` means they started but the

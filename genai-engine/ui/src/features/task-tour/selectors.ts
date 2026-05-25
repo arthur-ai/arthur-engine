@@ -16,11 +16,30 @@ export const TOUR_IDS = {
   traceDrawerSpans: "task-tour-trace-spans",
   traceDrawerEvals: "task-tour-trace-evals",
   traceDrawerFeedback: "task-tour-trace-feedback",
+  /**
+   * Coarse wrapper around the trace drawer body for the "Add trace to dataset"
+   * step. The Add-to-Dataset button itself lives inside
+   * `@arthur/shared-components` so we can't add a `data-tour-id` directly on
+   * it; the step is `event-only` and uses this wrapper as the visual anchor.
+   */
+  traceDrawerAddToDataset: "task-tour-trace-add-to-dataset",
   evaluatorsFirstCard: "task-tour-evaluator-first",
   testNotebookCreate: "task-tour-test-notebook-create",
   chatSendPlaceholder: "task-tour-chat-send",
   datasetsEntry: "task-tour-datasets-entry",
+  /** First row in the datasets list — used for "open the pre-loaded dataset". */
+  datasetsFirstRow: "task-tour-datasets-first-row",
+  /** Generate-synthetic-data button on the dataset detail header. */
+  datasetGenerateSynthetic: "task-tour-dataset-generate-synthetic",
   promptsEntry: "task-tour-prompts-entry",
+  /** First row in the prompts management table — used for "inspect a prompt". */
+  promptsFirstRow: "task-tour-prompts-first-row",
+  /** Add-tag icon-button on the prompt detail view — used for "tag as production". */
+  promptAddTag: "task-tour-prompt-add-tag",
+  /** "Add Prompt" button in the playground header — used for the prompt-tuning step. */
+  playgroundAddPrompt: "task-tour-playground-add-prompt",
+  /** "Experiment" button in the prompts view (visible on the Runs tab). */
+  promptsExperimentButton: "task-tour-prompts-experiment",
 } as const;
 
 export type TourId = (typeof TOUR_IDS)[keyof typeof TOUR_IDS];

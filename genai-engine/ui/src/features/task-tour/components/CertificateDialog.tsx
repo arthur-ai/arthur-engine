@@ -1,6 +1,15 @@
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import { Box, Button, Dialog, IconButton, Paper, Stack, Typography, useTheme } from "@mui/material";
+
+/**
+ * Placeholder mailto target for the "Schedule a chat with our CTO" CTA on the
+ * completion certificate. Swap the address (and/or subject) when the real
+ * scheduling link is available.
+ */
+const CTO_SCHEDULE_MAILTO =
+  "mailto:cto@arthur.ai?subject=Bringing%20evals%20into%20our%20organization&body=Hi%20%E2%80%94%20I%20just%20completed%20Arthur%27s%20Evals%20101%20walkthrough%20and%20would%20love%20to%20chat%20about%20bringing%20evals%20into%20our%20organization.";
 
 export interface CertificateDialogProps {
   open: boolean;
@@ -105,9 +114,9 @@ export function CertificateDialog({
           {recipientName}
         </Typography>
         <Box sx={{ width: 360, height: "1px", bgcolor: "divider", mx: "auto", mb: 3.5 }} />
-        <Typography variant="body1" sx={{ color: "text.secondary", lineHeight: 1.65, maxWidth: 480, mx: "auto" }}>
-          For successfully completing the Arthur Development Lifecycle walkthrough — measuring agent quality with continuous evals, debugging failures
-          with traces, and shipping tested updates with confidence.
+        <Typography variant="body1" sx={{ color: "text.secondary", lineHeight: 1.65, maxWidth: 520, mx: "auto" }}>
+          For passing the <strong>Evals 101</strong> course — measuring agent quality with continuous evals, debugging failures with traces, refining
+          with datasets and prompts, and shipping tested updates with confidence. You're now an <strong>Arthur-certified agent developer</strong>.
         </Typography>
 
         <Stack direction="row" spacing={3} justifyContent="center" sx={{ mt: 3.5, flexWrap: "wrap" }}>
@@ -127,9 +136,19 @@ export function CertificateDialog({
           ))}
         </Stack>
 
-        <Stack direction="row" spacing={1.5} justifyContent="center" sx={{ mt: 4 }}>
-          <Button variant="contained" onClick={onClose}>
+        <Stack direction="row" spacing={1.5} justifyContent="center" sx={{ mt: 4, flexWrap: "wrap", rowGap: 1.5 }}>
+          <Button variant="outlined" color="inherit" onClick={onClose}>
             Back to task
+          </Button>
+          <Button
+            variant="contained"
+            color="secondary"
+            startIcon={<CalendarMonthIcon sx={{ fontSize: 18 }} />}
+            href={CTO_SCHEDULE_MAILTO}
+            target="_blank"
+            rel="noopener"
+          >
+            Chat with our CTO about evals
           </Button>
         </Stack>
 

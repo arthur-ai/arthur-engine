@@ -19,6 +19,7 @@ import { useNavigate } from "react-router-dom";
 import VariableInputs from "./VariableInputs";
 
 import { EditableTitle } from "@/components/common";
+import { TOUR_IDS } from "@/features/task-tour";
 import { useTask } from "@/hooks/useTask";
 import type { PromptExperimentDetail } from "@/lib/api-client/api-client";
 
@@ -173,7 +174,7 @@ export default function PlaygroundHeader({
               </Popover>
             </Badge>
           </Box>
-          <Button variant="contained" size="small" onClick={onAddPrompt} startIcon={<AddIcon />}>
+          <Button variant="contained" size="small" onClick={onAddPrompt} startIcon={<AddIcon />} data-tour-id={TOUR_IDS.playgroundAddPrompt}>
             Add Prompt
           </Button>
           <Tooltip title={runAllDisabledReason || "Run All Prompts"} arrow>

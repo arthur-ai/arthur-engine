@@ -126,48 +126,57 @@ export const TraceDrawerContent = ({ id }: Props) => {
   if (!trace) return null;
 
   return (
-    <TraceDrawerBody
-      trace={trace}
-      traceId={id}
-      selectedSpanId={selectedSpanId}
-      onSelectSpan={select}
-      onRefreshMetrics={handleRefreshMetrics}
-      isRefreshingMetrics={refreshMetrics.isPending}
-      onAddToDataset={() => {
-        handleAddToDataset();
-        setAddToDatasetOpen(true);
-      }}
-      onOpenSpanDrawer={(spanId) => setDrawerTarget({ target: "span", id: spanId })}
-      onOpenPlayground={(spanId, taskId) => navigate(`/tasks/${taskId}/playgrounds/prompts?spanId=${spanId}`)}
-      taskId={task?.id}
-      onOpenContinuousEvals={handleOpenContinuousEvals}
-      currentTarget={current?.target ?? null}
-      currentId={current?.id ?? null}
-      paginationContext={paginationContext}
-      onNavigate={(target, navId) => setDrawerTarget({ target, id: navId })}
-      renderAnnotationBar={({ annotations, traceId: tid, containerRef }) => (
-        // The `task-tour` highlights `traceDrawerSpans` against this wrapper as
-        // a coarse anchor because the actual spans timeline lives inside
-        // `@arthur/shared-components`. The step is `event-only`, so this just
-        // gives the spotlight a parent to live on while the user reads the
-        // surrounding context.
-        <Box data-tour-id={TOUR_IDS.traceDrawerSpans}>
-          <Box data-tour-id={TOUR_IDS.traceDrawerEvals}>
-            <AnnotationCell annotations={(annotations ?? []) as AgenticAnnotationResponse[]} traceId={tid} />
+    // The "Add to Dataset" CTA inside the trace drawer is rendered by
+    // `@arthur/shared-components` so we can't attach a `data-tour-id`
+    // directly to that button. The task tour's "Add a trace to the dataset"
+    // step is `event-only` and uses this wrapper as a coarse spotlight
+    // anchor — the user advances by actually clicking the button (which
+    // dispatches the tour event from outside) or via the panel's "Mark
+    // step complete" control.
+    <Box data-tour-id={TOUR_IDS.traceDrawerAddToDataset} sx={{ height: "100%", width: "100%" }}>
+      <TraceDrawerBody
+        trace={trace}
+        traceId={id}
+        selectedSpanId={selectedSpanId}
+        onSelectSpan={select}
+        onRefreshMetrics={handleRefreshMetrics}
+        isRefreshingMetrics={refreshMetrics.isPending}
+        onAddToDataset={() => {
+          handleAddToDataset();
+          setAddToDatasetOpen(true);
+        }}
+        onOpenSpanDrawer={(spanId) => setDrawerTarget({ target: "span", id: spanId })}
+        onOpenPlayground={(spanId, taskId) => navigate(`/tasks/${taskId}/playgrounds/prompts?spanId=${spanId}`)}
+        taskId={task?.id}
+        onOpenContinuousEvals={handleOpenContinuousEvals}
+        currentTarget={current?.target ?? null}
+        currentId={current?.id ?? null}
+        paginationContext={paginationContext}
+        onNavigate={(target, navId) => setDrawerTarget({ target, id: navId })}
+        renderAnnotationBar={({ annotations, traceId: tid, containerRef }) => (
+          // The `task-tour` highlights `traceDrawerSpans` against this wrapper as
+          // a coarse anchor because the actual spans timeline lives inside
+          // `@arthur/shared-components`. The step is `event-only`, so this just
+          // gives the spotlight a parent to live on while the user reads the
+          // surrounding context.
+          <Box data-tour-id={TOUR_IDS.traceDrawerSpans}>
+            <Box data-tour-id={TOUR_IDS.traceDrawerEvals}>
+              <AnnotationCell annotations={(annotations ?? []) as AgenticAnnotationResponse[]} traceId={tid} />
+            </Box>
+            <Box data-tour-id={TOUR_IDS.traceDrawerFeedback}>
+              <FeedbackPanel containerRef={containerRef} annotations={(annotations ?? []) as AgenticAnnotationResponse[]} traceId={tid} />
+            </Box>
           </Box>
-          <Box data-tour-id={TOUR_IDS.traceDrawerFeedback}>
-            <FeedbackPanel containerRef={containerRef} annotations={(annotations ?? []) as AgenticAnnotationResponse[]} traceId={tid} />
-          </Box>
-        </Box>
-      )}
-      renderAfterDrawer={() => (
-        <>
-          <AddToDatasetDrawer traceId={id} open={addToDatasetOpen} onClose={() => setAddToDatasetOpen(false)} />
-          <ContinuousEvalDrawer traceId={id} open={continuousEvalOpen} onClose={() => setContinuousEvalOpen(false)} />
-        </>
-      )}
-      getSpanDetailsStrategy={getSpanDetailsStrategy as GetSpanDetailsStrategy}
-    />
+        )}
+        renderAfterDrawer={() => (
+          <>
+            <AddToDatasetDrawer traceId={id} open={addToDatasetOpen} onClose={() => setAddToDatasetOpen(false)} />
+            <ContinuousEvalDrawer traceId={id} open={continuousEvalOpen} onClose={() => setContinuousEvalOpen(false)} />
+          </>
+        )}
+        getSpanDetailsStrategy={getSpanDetailsStrategy as GetSpanDetailsStrategy}
+      />
+    </Box>
   );
 };
 

@@ -222,7 +222,7 @@ Plugins receive `{ bus, registerTrigger, registerHighlight, use }`. They may:
   reference them from `step.advanceOn` as `{ type: "custom", key: "key" }`.
 - Register custom highlight shapes via `registerHighlight("key", renderer)`.
   Steps reference these as `highlight: { shape: "custom", key: "key", padding,
-  options }`. The React `Spotlight` primitive looks the renderer up via
+options }`. The React `Spotlight` primitive looks the renderer up via
   `engine.getHighlight(key)` and delegates rendering to it (passing through
   `rect`, `spec`, `backdropColor`, and `style`); when no renderer is
   registered it falls back to a default box cutout.

@@ -28,6 +28,7 @@ import { useDeleteTagFromPromptVersionMutation } from "../hooks/useDeleteTagFrom
 import type { PromptDetailViewProps } from "../types";
 
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { TOUR_IDS } from "@/features/task-tour";
 import { useApi } from "@/hooks/useApi";
 import { useCreateNotebookMutation, useSetNotebookStateMutation } from "@/hooks/useNotebooks";
 import { formatDateInTimezone } from "@/utils/formatters";
@@ -273,7 +274,7 @@ const PromptDetailView = ({
             </Box>
           )}
           {version !== null && (
-            <IconButton size="small" onClick={handleAddTagClick} aria-label="Add tag">
+            <IconButton size="small" onClick={handleAddTagClick} aria-label="Add tag" data-tour-id={TOUR_IDS.promptAddTag}>
               <LocalOfferIcon fontSize="small" />
             </IconButton>
           )}

@@ -23,6 +23,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import type { PromptsTableProps } from "../types";
 
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { TOUR_IDS } from "@/features/task-tour";
 import { formatDateInTimezone } from "@/utils/formatters";
 
 type SortableColumn = "name" | "created_at" | "latest_version_created_at";
@@ -161,7 +162,7 @@ const PromptsTable = ({ prompts, sortColumn, sortDirection, onSort, onExpandToFu
             </TableRow>
           </TableHead>
           <TableBody>
-            {sortedPrompts.map((promptMetadata) => {
+            {sortedPrompts.map((promptMetadata, rowIndex) => {
               const tags = promptMetadata.tags ?? [];
               const productionTag = tags.find((tag) => tag.toLowerCase() === "production");
               const otherTags = tags.filter((tag) => tag.toLowerCase() !== "production");
@@ -179,6 +180,7 @@ const PromptsTable = ({ prompts, sortColumn, sortDirection, onSort, onExpandToFu
                   key={promptMetadata.name}
                   hover
                   onClick={() => handleRowClick(promptMetadata.name)}
+                  data-tour-id={rowIndex === 0 ? TOUR_IDS.promptsFirstRow : undefined}
                   sx={{
                     cursor: "pointer",
                     "&:hover": {

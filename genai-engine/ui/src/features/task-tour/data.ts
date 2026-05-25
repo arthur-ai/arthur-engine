@@ -66,6 +66,13 @@ export const TASK_TOUR_SUBTITLE = "A guided tour of the Arthur Development Lifec
 /**
  * Author-friendly representation of the tour. Each item maps 1:1 to an engine
  * `StepConfig`; sections with `items.length === 0` collapse to a stub step.
+ *
+ * The tour is anchored on a single worked example: an agent that is
+ * consistently producing answers outside the readability bar this team set.
+ * Every section's copy, scenario, and step instructions reinforce that
+ * scenario — the user diagnoses the readability failures with traces +
+ * continuous evals, captures them in a dataset, fixes them in the prompt
+ * playground, and ships the winning version.
  */
 export const TASK_TOUR_SECTIONS: TaskTourSection[] = [
   {
@@ -74,11 +81,11 @@ export const TASK_TOUR_SECTIONS: TaskTourSection[] = [
     kicker: "Section 1 of 7",
     intro: {
       heading: "Welcome to the ADLC",
-      body: "The Arthur Development Lifecycle is how teams ship agents they can trust. You'll iterate through five stages: build, evaluate, trace, refine, and deploy.",
+      body: "The Arthur Development Lifecycle is how teams ship agents they can trust. Over the next few minutes you'll iterate through every stage — interact, measure, observe, refine, and deploy — using one real failure mode as your worked example.",
       showFlywheel: true,
       scenario: {
         label: "Your scenario",
-        text: "You've just opened a task in Arthur. We'll walk through the lifecycle here — interact, evaluate, trace, then iterate — using the surfaces this task already exposes.",
+        text: "The agent on this task is consistently responding outside its readability parameters — answers that should be plain-language are coming back too dense for the audience. We'll use the ADLC to find the failure, fix the prompt, and prove the fix held.",
       },
       cta: "Start tour",
     },
@@ -87,46 +94,23 @@ export const TASK_TOUR_SECTIONS: TaskTourSection[] = [
   },
   {
     id: "agent",
-    title: "Interact with the agent",
+    title: "Interact with the Demo Agent",
     kicker: "Section 2 of 7",
+    // Disabled / stubbed until the bundled Demo Agent ships. The current
+    // Test → Notebook flow is a placeholder, not a real agent we can wire
+    // tour spotlights against, so this section renders as an intro-only
+    // primer that previews the interaction.
+    stub: true,
     intro: {
-      heading: "Meet your agent",
-      body: "Before you can fix an agent, you have to use it. Arthur's Test surface lets you run notebooks and experiments against the agent so every interaction lands as a trace.",
+      heading: "Meet your Demo Agent",
+      body: "Once the bundled Demo Agent ships, you'll open it from the task sidebar, send it a question, and Arthur will record the run as a trace we'll inspect together. For now this section is a preview — keep going to see how Arthur handles the readability failures the agent has already produced.",
       scenario: {
-        label: "What you'll do",
-        text: "Open the Test view from the sidebar, then start a notebook. Each notebook run produces a trace we'll dig into later.",
+        label: "Coming up",
+        text: "Two-step flow when the Demo Agent lands: (1) Open the Demo Agent from the sidebar — we'll describe what it does. (2) Send it any general-knowledge question and watch the trace land in Observe.",
       },
-      cta: "Open Test",
+      cta: "Continue",
     },
-    items: [
-      {
-        id: "open-test",
-        title: "Open the Test view",
-        instructions: "Click Test in the left sidebar to open the agent testing surface.",
-        targetId: TOUR_IDS.navTest,
-        eventName: "task-tour:test-opened",
-      },
-      {
-        id: "start-notebook",
-        title: "Start a notebook",
-        instructions: "Click + Notebook to create a new agent notebook, or open an existing one from the list.",
-        targetId: TOUR_IDS.testNotebookCreate,
-        route: "test",
-        search: { section: "agentic-notebooks" },
-        eventName: "task-tour:notebook-started",
-      },
-      {
-        id: "send-message",
-        title: "Send a message to the agent",
-        instructions:
-          "Inside the notebook, send any general-knowledge question. Arthur will record the run as a trace we can inspect from Observe. (Mark complete when you've sent one.)",
-        targetId: TOUR_IDS.chatSendPlaceholder,
-        route: "test",
-        search: { section: "agentic-notebooks" },
-        eventName: "task-tour:message-sent",
-        advance: "event-only",
-      },
-    ],
+    items: [],
   },
   {
     id: "evals",
@@ -134,10 +118,10 @@ export const TASK_TOUR_SECTIONS: TaskTourSection[] = [
     kicker: "Section 3 of 7",
     intro: {
       heading: "Measure before you change",
-      body: "Evals are the contract you set with your agent. Before tuning prompts or swapping models, you need to know how the agent is being measured — and against what bar.",
+      body: "Evals are the contract you set with your agent. Before tuning prompts or swapping models you need to know how the agent is being measured — and against what bar — so any change can be judged objectively.",
       scenario: {
         label: "What you'll do",
-        text: "Open the Evaluate view and look at the first evaluator. The threshold and run cadence are what determine whether traces pass.",
+        text: "Open Evaluate and inspect the first evaluator. Pay attention to the model that judges each trace and the variables that get fed into the eval — together with the threshold, they decide whether a trace passes or fails.",
       },
       cta: "Open Evaluate",
     },
@@ -152,7 +136,8 @@ export const TASK_TOUR_SECTIONS: TaskTourSection[] = [
       {
         id: "review-evaluator",
         title: "Review an evaluator",
-        instructions: "Open the first evaluator card. The threshold, model, and run cadence tell you when a trace will pass or fail.",
+        instructions:
+          "Open the first evaluator card. Each evaluator runs a model against a set of variables pulled from every trace, then scores the result against a threshold — that's how Arthur decides whether the agent is meeting the bar.",
         targetId: TOUR_IDS.evaluatorsFirstCard,
         route: "evaluate",
         eventName: "task-tour:evaluator-reviewed",
@@ -165,10 +150,10 @@ export const TASK_TOUR_SECTIONS: TaskTourSection[] = [
     kicker: "Section 4 of 7",
     intro: {
       heading: "Follow the request, span by span",
-      body: "A trace is the timeline of everything the agent did to produce one answer — retrieval calls, model invocations, post-processing, evals. Continuous Evals run on every trace automatically.",
+      body: "A trace is the timeline of everything the agent did to produce one answer — retrieval calls, model invocations, post-processing, evals. Continuous Evals run on every trace automatically, so you can spot failure patterns the moment they happen.",
       scenario: {
         label: "What you'll do",
-        text: "Open Observe, drill into your latest trace, read the spans + eval annotations, and leave manual feedback so the agent can be improved.",
+        text: "Open Observe, drill into a trace, walk through the spans, read the eval annotations, and leave manual feedback. We'll specifically call out where the readability eval is failing — that's the signal you'll fix later in this tour.",
       },
       cta: "Open Observe",
     },
@@ -182,8 +167,9 @@ export const TASK_TOUR_SECTIONS: TaskTourSection[] = [
       },
       {
         id: "open-trace",
-        title: "Open the latest trace",
-        instructions: "Click the top row to open the trace drawer for the most recent run.",
+        title: "Open a trace",
+        instructions:
+          "Click the top row to open the most recent trace. Any trace works for this exercise — we'll use whichever you pick to walk through what's inside.",
         targetId: TOUR_IDS.tracesFirstRow,
         route: "traces",
         eventName: "task-tour:trace-opened",
@@ -191,7 +177,8 @@ export const TASK_TOUR_SECTIONS: TaskTourSection[] = [
       {
         id: "review-spans",
         title: "Review the trace and spans",
-        instructions: "Each span shows a step the agent took. Look at latency, cost, tokens — and how time is distributed across spans.",
+        instructions:
+          "A trace is the full request; each span is one step the agent took (retrieval, model call, post-processing). Look at latency, cost, and tokens to see where time and money are going.",
         targetId: TOUR_IDS.traceDrawerSpans,
         route: "traces",
         eventName: "task-tour:spans-reviewed",
@@ -200,7 +187,8 @@ export const TASK_TOUR_SECTIONS: TaskTourSection[] = [
       {
         id: "review-annotations",
         title: "Review the eval annotations",
-        instructions: "Continuous Evals run automatically on every trace. The annotations on this trace are the signals we'd chase to improve it.",
+        instructions:
+          "Continuous Evals attach automatically to every trace. Notice the Readability Eval is failing here — that's the live signal pointing at the failure mode we're going to fix in the prompt playground.",
         targetId: TOUR_IDS.traceDrawerEvals,
         route: "traces",
         eventName: "task-tour:annotations-reviewed",
@@ -210,7 +198,7 @@ export const TASK_TOUR_SECTIONS: TaskTourSection[] = [
         id: "add-feedback",
         title: "Add manual feedback",
         instructions:
-          "Manual feedback is how humans (or your own app) tell Arthur something an eval can't. Leave a quick note about this answer. (Mark complete when you've added one.)",
+          "Manual feedback is how humans (or your own app, via the API) tell Arthur something an eval can't. Leave a quick note about this answer — devs use it to triage and apps can post it programmatically. (Mark complete when you've added one.)",
         targetId: TOUR_IDS.traceDrawerFeedback,
         route: "traces",
         eventName: "task-tour:feedback-added",
@@ -222,43 +210,149 @@ export const TASK_TOUR_SECTIONS: TaskTourSection[] = [
     id: "datasets",
     title: "Work with datasets",
     kicker: "Section 5 of 7",
-    stub: true,
     intro: {
       heading: "Build a test suite",
-      body: "Datasets are the test cases your agent has to pass before every release. Promote real traces (including the ones you just annotated) into a dataset, then enrich it with synthetic examples.",
+      body: "Datasets are the test cases your agent has to pass before every release. Promote real traces — including the readability failure you just annotated — into a dataset, then enrich it with synthetic examples so future regressions get caught automatically.",
       scenario: {
-        label: "Coming up",
-        text: "Datasets-driven evaluation isn't fully wired into the tour yet — for now this is a placeholder section so you can see the full ADLC flow.",
+        label: "What you'll do",
+        text: "Open the pre-loaded dataset, then add the failing trace from Observe into it, return to the dataset to see the new row land, and (optional) generate a few synthetic rows to broaden coverage.",
       },
-      cta: "Continue",
+      cta: "Open Datasets",
     },
-    items: [],
+    items: [
+      {
+        id: "open-datasets",
+        title: "Open Datasets",
+        instructions: "Click Dataset in the sidebar to see the test sets available on this task.",
+        targetId: TOUR_IDS.navDatasets,
+        eventName: "task-tour:datasets-opened",
+      },
+      {
+        id: "open-preloaded-dataset",
+        title: "Open the pre-loaded dataset",
+        instructions:
+          "Click the top dataset row. This is the test suite developers use to make sure the agent doesn't regress on cases we already know matter.",
+        targetId: TOUR_IDS.datasetsFirstRow,
+        route: "datasets",
+        eventName: "task-tour:dataset-opened",
+      },
+      {
+        id: "add-trace-to-dataset",
+        title: "Add a trace to the dataset",
+        instructions:
+          "Head back to Observe, open the trace with the failing readability eval, and use 'Add to Dataset' to capture it as a test case. This is how you turn a real-world failure into a permanent regression check. (Mark complete when you've added one.)",
+        targetId: TOUR_IDS.traceDrawerAddToDataset,
+        route: "traces",
+        eventName: "task-tour:trace-added-to-dataset",
+        advance: "event-only",
+      },
+      {
+        id: "verify-new-row",
+        title: "Confirm the new row landed",
+        instructions:
+          "Reopen Datasets and click the same dataset — the trace you just added should be a new row, ready to be replayed against future prompt versions.",
+        targetId: TOUR_IDS.datasetsFirstRow,
+        route: "datasets",
+        eventName: "task-tour:dataset-row-verified",
+        advance: "event-only",
+      },
+      {
+        id: "generate-synthetic",
+        title: "Generate synthetic data (optional)",
+        instructions:
+          "Click Generate to enrich the dataset with 5–10 synthetic rows based on the examples already captured. Synthetic data broadens test coverage without waiting for real users to hit edge cases. (Mark complete when you've generated some — or skip if you'd rather move on.)",
+        targetId: TOUR_IDS.datasetGenerateSynthetic,
+        eventName: "task-tour:synthetic-data-generated",
+        advance: "event-only",
+      },
+    ],
   },
   {
     id: "prompts",
     title: "Experiment with prompts",
     kicker: "Section 6 of 7",
-    stub: true,
     intro: {
       heading: "Tune, then prove it",
-      body: "The Prompt surface lets you try variations side by side. Experiments run those prompts against your dataset and evals so you can ship with confidence.",
-      scenario: { label: "Coming up", text: "Placeholder for now — this will become a guided prompt-tuning flow." },
-      cta: "Continue",
+      body: "A prompt is a collection of messages, variables, and a model — change any of them and you've got a candidate fix. The playground lets you try variations side-by-side, and Experiments run those candidates against your dataset and evals so you can ship with confidence.",
+      scenario: {
+        label: "What you'll do",
+        text: "Inspect the existing prompt, open the playground and draft 2–3 variants that fix the readability failure, then run an experiment against the dataset and evals to see which variant wins.",
+      },
+      cta: "Open Prompts",
     },
-    items: [],
+    items: [
+      {
+        id: "open-prompts",
+        title: "Open Prompts",
+        instructions: "Click Prompt in the sidebar to see the prompts powering this agent.",
+        targetId: TOUR_IDS.navPrompts,
+        eventName: "task-tour:prompts-opened",
+      },
+      {
+        id: "inspect-prompt",
+        title: "Inspect a prompt",
+        instructions:
+          "Open the Prompts tab and click the top prompt. Each prompt is a bundle of messages, variables, and a model — change any of those and you've got a new version worth comparing.",
+        targetId: TOUR_IDS.promptsFirstRow,
+        route: "prompts",
+        search: { tab: "prompts-management" },
+        eventName: "task-tour:prompt-inspected",
+      },
+      {
+        id: "create-prompts-in-playground",
+        title: "Draft variants in the playground",
+        instructions:
+          "Switch to the Notebooks tab, open a notebook, and use Add Prompt to draft 2–3 variants that tighten the system prompt for readability. You can also try a different model or tweak variables — anything that might fix the failure. (Mark complete when you've drafted some.)",
+        targetId: TOUR_IDS.playgroundAddPrompt,
+        eventName: "task-tour:playground-prompts-created",
+        advance: "event-only",
+      },
+      {
+        id: "run-experiment",
+        title: "Run an experiment",
+        instructions:
+          "Switch to the Runs tab and click Experiment. Configure it with your dataset (the one with the captured failure), your candidate prompts, and the evals — then run it. This is the final ADLC checkpoint before you ship.",
+        targetId: TOUR_IDS.promptsExperimentButton,
+        route: "prompts",
+        search: { tab: "prompt-experiments" },
+        eventName: "task-tour:experiment-run",
+        advance: "event-only",
+      },
+    ],
   },
   {
     id: "deploy",
     title: "Deploy and verify",
     kicker: "Section 7 of 7",
-    stub: true,
     intro: {
       heading: "Ship and watch",
-      body: "Tag the winning prompt as production, then re-run the agent and confirm your evals are passing on fresh traces.",
-      scenario: { label: "Coming up", text: "Placeholder for now — deployment tooling is the next iteration." },
-      cta: "Finish the tour",
+      body: "Tag the winning prompt as production, then re-run the agent and confirm the readability eval is green on fresh traces. That's the loop closing — the failure you found in Observe is the failure you just shipped a fix for.",
+      scenario: {
+        label: "What you'll do",
+        text: "On the prompt detail view, promote the best experiment candidate to production. Then return to Observe and verify a new trace clears the readability eval.",
+      },
+      cta: "Open Prompts",
     },
-    items: [],
+    items: [
+      {
+        id: "tag-production",
+        title: "Tag the winning prompt as production",
+        instructions:
+          "Open the prompt detail view, click the tag icon next to the version chips, and check 'Promote to Production'. Whichever version you tag becomes the one production traffic uses. (Mark complete when you've tagged it.)",
+        targetId: TOUR_IDS.promptAddTag,
+        eventName: "task-tour:prompt-promoted",
+        advance: "event-only",
+      },
+      {
+        id: "verify-eval-passes",
+        title: "Verify the eval passes",
+        instructions:
+          "Head to Observe and look at the most recent trace produced by the agent. With the new production prompt in place, the Readability Eval should now be passing — that's your proof the fix held. (Mark complete when you've checked.)",
+        targetId: TOUR_IDS.navObserve,
+        eventName: "task-tour:deploy-verified",
+        advance: "event-only",
+      },
+    ],
   },
 ];
 

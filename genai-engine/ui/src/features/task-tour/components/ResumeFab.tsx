@@ -70,13 +70,7 @@ function clampPosition(position: FabPosition, width: number, height: number): Fa
  * so users can move it out of the way; position is persisted across sessions.
  * Styled with the same brand-purple accent as the spotlight ring.
  */
-export function ResumeFab({
-  label,
-  tourName = TASK_TOUR_SHORT_NAME,
-  attractAttention = false,
-  onClick,
-  onAnchorRectChange,
-}: ResumeFabProps) {
+export function ResumeFab({ label, tourName = TASK_TOUR_SHORT_NAME, attractAttention = false, onClick, onAnchorRectChange }: ResumeFabProps) {
   const theme = useTheme();
   const fabRef = useRef<HTMLButtonElement>(null);
   const dragStateRef = useRef<{
@@ -113,7 +107,7 @@ export function ResumeFab({
         persistPosition(clamped);
       }
     },
-    [persistPosition],
+    [persistPosition]
   );
 
   useLayoutEffect(() => {

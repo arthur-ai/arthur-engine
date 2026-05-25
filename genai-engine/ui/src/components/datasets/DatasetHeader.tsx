@@ -13,6 +13,7 @@ import React from "react";
 import { DatasetSearchBar } from "./DatasetSearchBar";
 
 import { MAX_DATASET_ROWS } from "@/constants/datasetConstants";
+import { TOUR_IDS } from "@/features/task-tour";
 
 interface DatasetHeaderProps {
   datasetName: string;
@@ -145,6 +146,7 @@ export const DatasetHeader: React.FC<DatasetHeaderProps> = ({
           startIcon={<AutoAwesomeIcon />}
           onClick={onGenerateSynthetic}
           disabled={rowCount === 0}
+          data-tour-id={TOUR_IDS.datasetGenerateSynthetic}
           title={rowCount === 0 ? "Add at least one row first to generate synthetic data" : "Generate synthetic data using AI"}
         >
           Generate

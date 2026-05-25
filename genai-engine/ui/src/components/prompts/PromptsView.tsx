@@ -96,6 +96,7 @@ export const PromptsView = () => {
               startIcon={<AddIcon />}
               endIcon={<ArrowDropDownIcon />}
               onClick={(e) => setExperimentsMenuAnchor(e.currentTarget)}
+              data-tour-id={TOUR_IDS.promptsExperimentButton}
             >
               Experiment
             </Button>
