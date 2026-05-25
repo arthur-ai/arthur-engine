@@ -2887,3 +2887,457 @@ class TestExtractLlmSpansMessageIdGrouping:
         assert attrs["output.mime_type"] == "text/plain"
         assert attrs["output.value"] == "Here is the file"
         assert attrs["llm.token_count.completion"] == 18
+
+
+# ---------------------------------------------------------------------------
+# OpenInference attribute completeness — LLM spans
+# ---------------------------------------------------------------------------
+
+
+class TestLlmSpanOpenInferenceAttributes:
+    """Verify every OpenInference-required attribute is present and correct on LLM spans."""
+
+    TRACE_ID = "1" * 32
+    ROOT_ID = "2" * 16
+
+    def _extract(self, p, human_count_at_start=0):
+        return tracer._extract_llm_spans_for_turn(
+            str(p),
+            human_count_at_start,
+            self.TRACE_ID,
+            self.ROOT_ID,
+        )
+
+    def test_llm_system_is_anthropic(self, tmp_transcript):
+        p = tmp_transcript([human_entry("Hi"), llm_entry("Hello")])
+        attrs = self._extract(p)[0]["attributes"]
+        assert attrs["llm.system"] == "anthropic"
+
+    def test_llm_model_name_reflects_transcript_model(self, tmp_transcript):
+        p = tmp_transcript(
+            [human_entry("Hi"), llm_entry("Hello", model="claude-opus-4-7")],
+        )
+        attrs = self._extract(p)[0]["attributes"]
+        assert attrs["llm.model_name"] == "claude-opus-4-7"
+
+    def test_llm_output_message_role_is_assistant(self, tmp_transcript):
+        p = tmp_transcript([human_entry("Hi"), llm_entry("Hello")])
+        attrs = self._extract(p)[0]["attributes"]
+        assert attrs["llm.output_messages.0.message.role"] == "assistant"
+
+    def test_llm_input_mime_type_for_human_prompt(self, tmp_transcript):
+        # First LLM call in a turn receives a JSON-wrapped human message.
+        p = tmp_transcript([human_entry("Hello there"), llm_entry("Hi")])
+        attrs = self._extract(p)[0]["attributes"]
+        assert attrs["input.mime_type"] == "application/json"
+
+    def test_llm_input_mime_type_for_tool_result(self, tmp_transcript):
+        # Second LLM call (after a tool result) also uses application/json.
+        p = tmp_transcript(
+            [
+                human_entry("Run a command"),
+                llm_entry(
+                    "",
+                    tool_use_blocks=[tool_use_block()],
+                    ts="2026-01-01T00:00:01.000000+00:00",
+                ),
+                tool_result_entry("toolu_x", "output of command"),
+                llm_entry("Done", ts="2026-01-01T00:00:05.000000+00:00"),
+            ],
+        )
+        spans = self._extract(p)
+        assert len(spans) == 2
+        assert spans[1]["attributes"]["input.mime_type"] == "application/json"
+
+    def test_tool_use_output_encoded_as_json_string(self, tmp_transcript):
+        # When LLM emits tool_use blocks (no text), the output message content
+        # is a JSON-serialised list — not structured tool_call attributes.
+        # This documents the intentional spec simplification.
+        tb = tool_use_block("Bash", "echo hello")
+        p = tmp_transcript([human_entry("Go"), llm_entry("", tool_use_blocks=[tb])])
+        attrs = self._extract(p)[0]["attributes"]
+        content = attrs["llm.output_messages.0.message.content"]
+        parsed = json.loads(content)
+        assert isinstance(parsed, list)
+        assert parsed[0]["name"] == "Bash"
+        assert "echo hello" in json.dumps(parsed[0]["input"])
+
+    def test_llm_token_counts_include_cache_tokens(self, tmp_transcript):
+        p = tmp_transcript(
+            [
+                human_entry("Hi"),
+                llm_entry(
+                    "Hello",
+                    input_tokens=5,
+                    output_tokens=3,
+                ),
+            ],
+        )
+        attrs = self._extract(p)[0]["attributes"]
+        # cache_read=100, cache_create=5 come from llm_entry defaults
+        assert attrs["llm.token_count.prompt"] == 5 + 100 + 5
+        assert attrs["llm.token_count.completion"] == 3
+        assert attrs["llm.token_count.total"] == 5 + 100 + 5 + 3
+        assert attrs["llm.token_count.prompt_details.cache_read"] == 100
+        assert attrs["llm.token_count.prompt_details.cache_write"] == 5
+
+
+# ---------------------------------------------------------------------------
+# OpenInference attribute completeness — CHAIN spans
+# ---------------------------------------------------------------------------
+
+
+class TestChainSpanAttributes:
+    """Verify CHAIN root span carries the correct OpenInference attributes."""
+
+    CONFIG = {
+        "api_key": "k",
+        "task_id": "task-123",
+        "endpoint": "https://x.example.com",
+    }
+
+    def _run_complete_turn(self, monkeypatch, state, end_ns=2_000_000_000):
+        exported = []
+        monkeypatch.setattr(
+            tracer,
+            "_build_and_export_spans",
+            lambda **kw: exported.extend(kw["span_records"]),
+        )
+        tracer._complete_turn(state, self.CONFIG, None, end_ns)
+        return exported
+
+    def _make_state(
+        self,
+        prompt_preview="Hello",
+        last_llm_output="World",
+        turn=1,
+        parent_agent_span_id=None,
+    ):
+        current_trace = {
+            "trace_id": "a" * 32,
+            "root_span_id": "b" * 16,
+            "turn_start_ns": 1_000_000_000,
+            "turn_number": turn,
+            "prompt_preview": prompt_preview,
+            "last_llm_output": last_llm_output,
+        }
+        if parent_agent_span_id is not None:
+            current_trace["parent_agent_span_id"] = parent_agent_span_id
+        return {
+            "session_id": "sess-chain",
+            "username": "chain-user",
+            "current_trace": current_trace,
+        }
+
+    def test_chain_span_input_value_is_prompt_preview(self, monkeypatch):
+        state = self._make_state(prompt_preview="Tell me a joke")
+        exported = self._run_complete_turn(monkeypatch, state)
+        chain = next(
+            r
+            for r in exported
+            if r["attributes"].get("openinference.span.kind") == "CHAIN"
+        )
+        assert chain["attributes"]["input.value"] == "Tell me a joke"
+
+    def test_chain_span_output_value_is_last_llm_output(self, monkeypatch):
+        state = self._make_state(last_llm_output="Why did the chicken cross the road?")
+        exported = self._run_complete_turn(monkeypatch, state)
+        chain = next(
+            r
+            for r in exported
+            if r["attributes"].get("openinference.span.kind") == "CHAIN"
+        )
+        assert (
+            chain["attributes"]["output.value"] == "Why did the chicken cross the road?"
+        )
+
+    def test_chain_span_mime_types_are_text_plain(self, monkeypatch):
+        state = self._make_state()
+        exported = self._run_complete_turn(monkeypatch, state)
+        chain = next(
+            r
+            for r in exported
+            if r["attributes"].get("openinference.span.kind") == "CHAIN"
+        )
+        assert chain["attributes"]["input.mime_type"] == "text/plain"
+        assert chain["attributes"]["output.mime_type"] == "text/plain"
+
+    def test_chain_span_turn_number_is_set(self, monkeypatch):
+        state = self._make_state(turn=3)
+        exported = self._run_complete_turn(monkeypatch, state)
+        chain = next(
+            r
+            for r in exported
+            if r["attributes"].get("openinference.span.kind") == "CHAIN"
+        )
+        assert chain["attributes"]["arthur.turn_number"] == 3
+
+    def test_chain_span_has_no_parent_when_top_level(self, monkeypatch):
+        state = self._make_state()
+        exported = self._run_complete_turn(monkeypatch, state)
+        chain = next(
+            r
+            for r in exported
+            if r["attributes"].get("openinference.span.kind") == "CHAIN"
+        )
+        assert chain["parent_span_id_hex"] is None
+
+    def test_chain_span_has_parent_agent_span_id_for_subagent(self, monkeypatch):
+        parent_id = "deadbeef01234567"
+        state = self._make_state(parent_agent_span_id=parent_id)
+        exported = self._run_complete_turn(monkeypatch, state)
+        chain = next(
+            r
+            for r in exported
+            if r["attributes"].get("openinference.span.kind") == "CHAIN"
+        )
+        assert chain["parent_span_id_hex"] == parent_id
+
+    def test_chain_span_omits_io_when_no_preview_or_output(self, monkeypatch):
+        # If prompt_preview and last_llm_output are both empty, input/output
+        # attributes must be absent (not set to empty string).
+        state = self._make_state(prompt_preview="", last_llm_output="")
+        exported = self._run_complete_turn(monkeypatch, state)
+        chain = next(
+            r
+            for r in exported
+            if r["attributes"].get("openinference.span.kind") == "CHAIN"
+        )
+        assert "input.value" not in chain["attributes"]
+        assert "output.value" not in chain["attributes"]
+
+
+# ---------------------------------------------------------------------------
+# OpenInference attribute completeness — TOOL / AGENT spans
+# ---------------------------------------------------------------------------
+
+
+class TestToolSpanAttributes:
+    """Verify _build_tool_span_record emits correct OpenInference attributes."""
+
+    def _build(self, tool_name="Bash", tool_input=None, tool_response="ok"):
+        return tracer._build_tool_span_record(
+            tool_name=tool_name,
+            tool_input=tool_input or {"command": "ls"},
+            tool_response=tool_response,
+            start_ns=1_000_000_000,
+            end_ns=2_000_000_000,
+            trace_id="c" * 32,
+            root_span_id="d" * 16,
+        )
+
+    def test_tool_name_attribute_matches_tool_name(self):
+        for name in ("Bash", "Read", "Edit", "Write"):
+            rec = self._build(tool_name=name)
+            assert rec["attributes"]["tool.name"] == name
+
+    def test_tool_span_name_field_matches_tool_name(self):
+        rec = self._build(tool_name="Grep")
+        assert rec["name"] == "Grep"
+
+    def test_tool_input_mime_type_is_application_json(self):
+        rec = self._build(tool_name="Bash")
+        assert rec["attributes"]["input.mime_type"] == "application/json"
+
+    def test_tool_output_mime_type_is_application_json(self):
+        rec = self._build(tool_name="Bash")
+        assert rec["attributes"]["output.mime_type"] == "application/json"
+
+    def test_tool_json_schema_content_for_bash(self):
+        rec = self._build(tool_name="Bash")
+        schema = json.loads(rec["attributes"]["tool.json_schema"])
+        assert "command" in schema["properties"]
+        assert "command" in schema["required"]
+
+    def test_tool_span_kind_is_tool(self):
+        rec = self._build(tool_name="Bash")
+        assert rec["attributes"]["openinference.span.kind"] == "TOOL"
+
+    def test_agent_tool_span_kind_is_agent(self):
+        rec = self._build(
+            tool_name="Agent",
+            tool_input={"description": "x", "prompt": "do something"},
+        )
+        assert rec["attributes"]["openinference.span.kind"] == "AGENT"
+
+    def test_task_tool_span_kind_is_agent(self):
+        rec = self._build(
+            tool_name="Task",
+            tool_input={
+                "description": "x",
+                "prompt": "do something",
+                "subagent_type": "general-purpose",
+            },
+        )
+        assert rec["attributes"]["openinference.span.kind"] == "AGENT"
+
+    def test_tool_input_value_is_json_of_input(self):
+        rec = self._build(tool_name="Bash", tool_input={"command": "pwd"})
+        parsed = json.loads(rec["attributes"]["input.value"])
+        assert parsed["command"] == "pwd"
+
+    def test_tool_error_flag_set_on_failure(self):
+        rec = tracer._build_tool_span_record(
+            tool_name="Bash",
+            tool_input={"command": "bad"},
+            tool_response="",
+            start_ns=1_000_000_000,
+            end_ns=2_000_000_000,
+            trace_id="e" * 32,
+            root_span_id="f" * 16,
+            is_failure=True,
+            error_msg="command not found",
+        )
+        assert rec["error"] is True
+        assert "command not found" in rec["attributes"]["output.value"]
+
+
+# ---------------------------------------------------------------------------
+# OpenInference attribute completeness — RETRIEVER spans (additional)
+# ---------------------------------------------------------------------------
+
+
+class TestRetrieverSpanAttributesExtra:
+    """Additional RETRIEVER attribute assertions not covered by TestRetrieverSpanKind."""
+
+    def _build_retriever(
+        self,
+        tool_name="WebSearch",
+        tool_input=None,
+        tool_response="results",
+    ):
+        return tracer._build_tool_span_record(
+            tool_name=tool_name,
+            tool_input=tool_input if tool_input is not None else {"query": "test"},
+            tool_response=tool_response,
+            start_ns=1_000_000_000,
+            end_ns=2_000_000_000,
+            trace_id="1" * 32,
+            root_span_id="2" * 16,
+        )
+
+    def test_retriever_span_kind_is_retriever(self):
+        rec = self._build_retriever("WebSearch")
+        assert rec["attributes"]["openinference.span.kind"] == "RETRIEVER"
+
+    def test_retriever_output_mime_type_is_application_json(self):
+        rec = self._build_retriever("WebSearch")
+        assert rec["attributes"]["output.mime_type"] == "application/json"
+
+    def test_retriever_document_id_intentionally_absent(self):
+        # The tracer does not set document.id (no stable ID available for web results).
+        rec = self._build_retriever("WebSearch")
+        assert "retrieval.documents.0.document.id" not in rec["attributes"]
+
+    def test_retriever_document_score_intentionally_absent(self):
+        # Relevance scores are not returned by the WebSearch/WebFetch tools.
+        rec = self._build_retriever(
+            "WebFetch",
+            tool_input={"url": "https://example.com", "prompt": "x"},
+        )
+        assert "retrieval.documents.0.document.score" not in rec["attributes"]
+
+    def test_websearch_missing_query_key_uses_empty_string(self):
+        rec = self._build_retriever("WebSearch", tool_input={})
+        assert rec["attributes"]["input.value"] == ""
+        assert rec["attributes"]["input.mime_type"] == "text/plain"
+
+    def test_webfetch_missing_url_key_uses_empty_string(self):
+        rec = self._build_retriever("WebFetch", tool_input={})
+        assert rec["attributes"]["input.value"] == ""
+        assert rec["attributes"]["input.mime_type"] == "text/plain"
+
+    def test_retriever_non_string_response_json_encoded_in_document(self):
+        response = {"results": [{"title": "OpenInference", "url": "https://oi.dev"}]}
+        rec = self._build_retriever("WebSearch", tool_response=response)
+        content = rec["attributes"]["retrieval.documents.0.document.content"]
+        parsed = json.loads(content)
+        assert parsed["results"][0]["title"] == "OpenInference"
+
+
+# ---------------------------------------------------------------------------
+# _build_and_export_spans — resource and version attributes
+# ---------------------------------------------------------------------------
+
+
+class TestBuildAndExportSpansAttributes:
+    """Verify resource attributes and arthur_span_version reach the exported span.
+
+    Uses InMemorySpanExporter in place of OTLPSpanExporter so no HTTP call is made.
+    """
+
+    CONFIG = {
+        "api_key": "k",
+        "task_id": "task-xyz",
+        "endpoint": "https://x.example.com",
+    }
+
+    def _exported_spans(self, monkeypatch, span_record):
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+            InMemorySpanExporter,
+        )
+
+        mem = InMemorySpanExporter()
+        monkeypatch.setattr(
+            "opentelemetry.exporter.otlp.proto.http.trace_exporter.OTLPSpanExporter",
+            lambda **_kw: mem,
+        )
+        tracer._build_and_export_spans(
+            config=self.CONFIG,
+            session_id="sess-export",
+            username="export-user",
+            span_records=[span_record],
+        )
+        return mem.get_finished_spans()
+
+    def _simple_record(self):
+        return {
+            "trace_id_hex": "a" * 32,
+            "span_id_hex": "b" * 16,
+            "parent_span_id_hex": None,
+            "name": "test-span",
+            "kind": None,
+            "start_ns": 1_000_000_000,
+            "end_ns": 2_000_000_000,
+            "attributes": {"openinference.span.kind": "TOOL", "tool.name": "Bash"},
+            "force_span_id": False,
+        }
+
+    def test_arthur_span_version_is_set(self, monkeypatch):
+        spans = self._exported_spans(monkeypatch, self._simple_record())
+        assert len(spans) == 1
+        attrs = dict(spans[0].attributes)
+        assert attrs.get("arthur_span_version") == "arthur_span_v1"
+
+    def test_resource_service_name_is_claude_code(self, monkeypatch):
+        spans = self._exported_spans(monkeypatch, self._simple_record())
+        resource_attrs = dict(spans[0].resource.attributes)
+        assert resource_attrs.get("service.name") == "claude-code"
+
+    def test_resource_arthur_task_is_task_id(self, monkeypatch):
+        spans = self._exported_spans(monkeypatch, self._simple_record())
+        resource_attrs = dict(spans[0].resource.attributes)
+        assert resource_attrs.get("arthur.task") == self.CONFIG["task_id"]
+
+    def test_resource_arthur_session_and_user(self, monkeypatch):
+        spans = self._exported_spans(monkeypatch, self._simple_record())
+        resource_attrs = dict(spans[0].resource.attributes)
+        assert resource_attrs.get("arthur.session") == "sess-export"
+        assert resource_attrs.get("arthur.user") == "export-user"
+
+    def test_span_attributes_propagated(self, monkeypatch):
+        rec = self._simple_record()
+        rec["attributes"]["tool.name"] = "MyTool"
+        spans = self._exported_spans(monkeypatch, rec)
+        attrs = dict(spans[0].attributes)
+        assert attrs.get("tool.name") == "MyTool"
+        assert attrs.get("openinference.span.kind") == "TOOL"
+
+    def test_error_span_sets_error_status(self, monkeypatch):
+        rec = self._simple_record()
+        rec["error"] = True
+        rec["error_msg"] = "something went wrong"
+        spans = self._exported_spans(monkeypatch, rec)
+        from opentelemetry.trace import StatusCode
+
+        assert spans[0].status.status_code == StatusCode.ERROR
