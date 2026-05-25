@@ -1400,23 +1400,30 @@ def handle_pre_tool(data: dict, config: dict) -> None:
         "start_ns": now_ns,
     }
 
-    # For Agent tool calls, pre-allocate the span ID and write a side-channel
+    # For Agent/Task tool calls, pre-allocate the span ID and write a side-channel
     # file so the spawned subagent can inherit this trace.
     current_trace = state.get("current_trace")
-    if tool_name == "Agent" and current_trace:
+    if tool_name in ("Agent", "Task") and current_trace:
         agent_span_id = _new_span_id()
         pending_entry["pre_allocated_span_id"] = agent_span_id
-        agent_prompt = (
-            tool_input.get("prompt", "") if isinstance(tool_input, dict) else ""
-        )
+        if isinstance(tool_input, dict):
+            # "Agent" uses "prompt"; "Task" may use "description"
+            agent_prompt = tool_input.get("prompt", tool_input.get("description", ""))
+        else:
+            agent_prompt = ""
         _write_pending_agent_context(
             parent_session_id=session_id,
             parent_trace_id=current_trace["trace_id"],
             parent_span_id=agent_span_id,
             agent_prompt=agent_prompt,
         )
+        # Key by span_id so parallel Agent/Task calls in the same session don't
+        # overwrite each other — post_tool finds the right entry by tool_input match.
+        pending_key = f"{tool_name}#{agent_span_id}"
+    else:
+        pending_key = tool_name
 
-    state.setdefault("pending_tools", {})[tool_name] = pending_entry
+    state.setdefault("pending_tools", {})[pending_key] = pending_entry
     _save_state(session_id, state)
 
 
@@ -1440,6 +1447,39 @@ def _get_latest_human_message(transcript_path: str) -> str:
         return ""
 
 
+def _find_pending_tool_entry(
+    state: dict,
+    tool_name: str,
+    data_tool_input: Any,
+) -> tuple[dict, str]:
+    """Return (pending_entry, pending_key) for the given tool.
+
+    For Agent/Task tools, parallel calls each get a compound key
+    ``"{tool_name}#{span_id}"``.  We find the right entry by matching
+    ``tool_input``; if no match, fall back to the first entry with the right
+    prefix so single-agent sessions and legacy state files still work.
+
+    For all other tools the key is just ``tool_name``.
+    """
+    pending = state.get("pending_tools", {})
+    prefix = f"{tool_name}#"
+
+    if tool_name in ("Agent", "Task"):
+        # Pass 1: exact tool_input match
+        if data_tool_input is not None:
+            for k, v in pending.items():
+                if k.startswith(prefix) and v.get("tool_input") == data_tool_input:
+                    return v, k
+        # Pass 2: any entry with this tool's prefix (single-agent / legacy key)
+        for k, v in pending.items():
+            if k.startswith(prefix) or k == tool_name:
+                return v, k
+        return {}, tool_name
+
+    entry = pending.get(tool_name, {})
+    return entry, tool_name
+
+
 def handle_post_tool(data: dict, config: dict) -> None:
     session_id = data.get("session_id", "unknown")
     end_ns = time.time_ns()
@@ -1456,8 +1496,13 @@ def handle_post_tool(data: dict, config: dict) -> None:
         return
 
     tool_name = data.get("tool_name", "unknown")
-    current_tool = state.get("pending_tools", {}).get(tool_name, {})
-    tool_input = data.get("tool_input") or current_tool.get("tool_input", {})
+    data_tool_input = data.get("tool_input")
+    current_tool, pending_key = _find_pending_tool_entry(
+        state,
+        tool_name,
+        data_tool_input,
+    )
+    tool_input = data_tool_input or current_tool.get("tool_input", {})
     tool_response = data.get("tool_response", {})
     start_ns = current_tool.get("start_ns", end_ns - 1_000_000)
     # For Agent tool calls the span ID was pre-allocated at PreToolUse time so
@@ -1492,7 +1537,11 @@ def handle_post_tool(data: dict, config: dict) -> None:
     # stale or redirected) path carried in the current hook payload.
     with _session_lock(session_id):
         state = _load_state(session_id)
-        state.get("pending_tools", {}).pop(tool_name, None)
+        # Use the compound key resolved above; fall back to tool_name for
+        # any other entry that might have been written with the old plain key.
+        pt = state.get("pending_tools", {})
+        pt.pop(pending_key, None)
+        pt.pop(tool_name, None)
         transcript_path = _get_cached_transcript_path(data, state, session_id)
         _emit_pending_llm_spans(state, transcript_path, config)
         _save_state(session_id, state)
@@ -1514,8 +1563,13 @@ def handle_post_tool_failure(data: dict, config: dict) -> None:
         return
 
     tool_name = data.get("tool_name", "unknown")
-    current_tool = state.get("pending_tools", {}).get(tool_name, {})
-    tool_input = data.get("tool_input") or current_tool.get("tool_input", {})
+    data_tool_input = data.get("tool_input")
+    current_tool, pending_key = _find_pending_tool_entry(
+        state,
+        tool_name,
+        data_tool_input,
+    )
+    tool_input = data_tool_input or current_tool.get("tool_input", {})
     tool_response = data.get("tool_response", {})
     start_ns = current_tool.get("start_ns", end_ns - 1_000_000)
 
@@ -1549,7 +1603,9 @@ def handle_post_tool_failure(data: dict, config: dict) -> None:
 
     with _session_lock(session_id):
         state = _load_state(session_id)
-        state.get("pending_tools", {}).pop(tool_name, None)
+        pt = state.get("pending_tools", {})
+        pt.pop(pending_key, None)
+        pt.pop(tool_name, None)
         transcript_path = _get_cached_transcript_path(data, state, session_id)
         _emit_pending_llm_spans(state, transcript_path, config)
         _save_state(session_id, state)

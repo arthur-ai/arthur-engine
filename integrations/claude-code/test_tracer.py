@@ -2165,8 +2165,10 @@ class TestSubagentContextPropagation:
         assert ctx is not None
         assert ctx["parent_trace_id"] == trace_id
         assert ctx["agent_prompt"] == "go do stuff"
-        # The pre-allocated span ID should be stored in pending_tools
-        assert "pre_allocated_span_id" in state["pending_tools"]["Agent"]
+        # The pre-allocated span ID should be stored in pending_tools under a compound key
+        agent_keys = [k for k in state["pending_tools"] if k.startswith("Agent#")]
+        assert len(agent_keys) == 1
+        assert "pre_allocated_span_id" in state["pending_tools"][agent_keys[0]]
 
     def test_agent_span_kind_is_agent(self, tmp_path, monkeypatch):
         """Tool spans for the Agent tool should have AGENT span kind."""
@@ -3442,3 +3444,260 @@ class TestBuildAndExportSpansAttributes:
         from opentelemetry.trace import StatusCode
 
         assert spans[0].status.status_code == StatusCode.ERROR
+
+
+# ---------------------------------------------------------------------------
+# End-to-end: AGENT span ↔ subagent CHAIN span parent-child relationship
+# ---------------------------------------------------------------------------
+
+
+class TestAgentSpanEndToEnd:
+    """Verify the full parent→subagent span hierarchy using real span export.
+
+    These tests do NOT mock _build_and_export_spans.  They substitute
+    InMemorySpanExporter for OTLPSpanExporter — one fresh instance per span
+    (mirroring the production code which also creates one exporter per span to
+    avoid provider.shutdown() closing a shared exporter).
+    """
+
+    CONFIG = {"api_key": "k", "task_id": "t", "endpoint": "https://x.example.com"}
+
+    def _patch_exporters(self, monkeypatch):
+        """Return a collector function; each _build_and_export_spans call gets
+        its own InMemorySpanExporter so shutdown() on one doesn't affect others."""
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+            InMemorySpanExporter,
+        )
+
+        exporter_list = []
+
+        def make_exporter(**_kw):
+            mem = InMemorySpanExporter()
+            exporter_list.append(mem)
+            return mem
+
+        monkeypatch.setattr(
+            "opentelemetry.exporter.otlp.proto.http.trace_exporter.OTLPSpanExporter",
+            make_exporter,
+        )
+
+        def all_spans():
+            return [s for mem in exporter_list for s in mem.get_finished_spans()]
+
+        return all_spans
+
+    def _setup_dirs(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(tracer, "STATE_DIR", tmp_path / "tracer")
+        monkeypatch.setattr(
+            tracer,
+            "_PENDING_AGENT_DIR",
+            tmp_path / "tracer" / "pending_agent",
+        )
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
+
+    def test_force_span_id_honoured_in_export(self, monkeypatch, tmp_path):
+        """_build_and_export_spans must export the span with the forced span_id
+        when force_span_id=True.  This is the prerequisite for AGENT→CHAIN linking."""
+        self._setup_dirs(monkeypatch, tmp_path)
+        all_spans = self._patch_exporters(monkeypatch)
+
+        forced_hex = "deadbeef01234567"
+        trace_hex = "a" * 32
+        tracer._build_and_export_spans(
+            config=self.CONFIG,
+            session_id="sess-force",
+            username="u",
+            span_records=[
+                {
+                    "trace_id_hex": trace_hex,
+                    "span_id_hex": forced_hex,
+                    "parent_span_id_hex": None,
+                    "name": "forced-span",
+                    "kind": None,
+                    "start_ns": 1_000_000_000,
+                    "end_ns": 2_000_000_000,
+                    "attributes": {"openinference.span.kind": "AGENT"},
+                    "force_span_id": True,
+                },
+            ],
+        )
+
+        spans = all_spans()
+        assert len(spans) == 1
+        assert spans[0].context.span_id == int(forced_hex, 16), (
+            f"Expected span_id {forced_hex!r} but got "
+            f"{hex(spans[0].context.span_id)!r} — force_span_id not honoured"
+        )
+
+    def test_agent_chain_parent_child_relationship(self, monkeypatch, tmp_path):
+        """Full hook sequence: parent pre_tool(Agent) + subagent UPS/stop +
+        parent post_tool(Agent).  The subagent CHAIN span must be a child of
+        the AGENT span and share its trace_id."""
+        self._setup_dirs(monkeypatch, tmp_path)
+        all_spans = self._patch_exporters(monkeypatch)
+
+        config = self.CONFIG
+
+        # 1. Parent session starts
+        tracer.handle_user_prompt_submit(
+            {"session_id": "par-e2e", "prompt": "user task"},
+            config,
+        )
+
+        # 2. Parent fires pre_tool(Agent)
+        tracer.handle_pre_tool(
+            {
+                "session_id": "par-e2e",
+                "tool_name": "Agent",
+                "tool_input": {"prompt": "sub-task"},
+            },
+            config,
+        )
+
+        # 3. Read the pending context file before the subagent claims it
+        pending_files = list(tracer._PENDING_AGENT_DIR.glob("*.json"))
+        assert len(pending_files) == 1, "Expected exactly one pending context file"
+        pending_ctx = json.loads(pending_files[0].read_text())
+        pre_alloc_hex = pending_ctx["parent_span_id"]
+        parent_trace_hex = pending_ctx["parent_trace_id"]
+
+        # 4. Subagent session: UPS fires first (normal hook ordering)
+        tracer.handle_user_prompt_submit(
+            {"session_id": "child-e2e", "prompt": "sub-task"},
+            config,
+        )
+
+        # 5. Subagent completes — stop fires, CHAIN span exported
+        tracer.handle_stop({"session_id": "child-e2e"}, config)
+
+        # 6. Parent post_tool fires AFTER subagent stop (Agent tool is blocking)
+        tracer.handle_post_tool(
+            {
+                "session_id": "par-e2e",
+                "tool_name": "Agent",
+                "tool_input": {"prompt": "sub-task"},
+                "tool_response": "done",
+            },
+            config,
+        )
+
+        # 7. Verify the hierarchy
+        spans = all_spans()
+        agent_spans = [
+            s
+            for s in spans
+            if dict(s.attributes).get("openinference.span.kind") == "AGENT"
+        ]
+        chain_spans = [s for s in spans if s.name == "claude-code-turn"]
+
+        assert agent_spans, "No AGENT span exported"
+        assert chain_spans, "No CHAIN span (claude-code-turn) exported"
+
+        agent = agent_spans[0]
+        chain = chain_spans[0]
+
+        assert agent.context.span_id == int(
+            pre_alloc_hex,
+            16,
+        ), f"AGENT span_id {hex(agent.context.span_id)} != pre-allocated {pre_alloc_hex}"
+        assert chain.context.trace_id == int(
+            parent_trace_hex,
+            16,
+        ), "CHAIN span is in a different trace than the parent"
+        assert chain.parent is not None, "CHAIN span has no parent"
+        assert chain.parent.span_id == agent.context.span_id, (
+            f"CHAIN.parent.span_id {hex(chain.parent.span_id)} != "
+            f"AGENT.span_id {hex(agent.context.span_id)}"
+        )
+        assert (
+            chain.context.trace_id == agent.context.trace_id
+        ), "CHAIN and AGENT are in different traces"
+
+    def test_parallel_agent_spans_dont_collide(self, monkeypatch, tmp_path):
+        """Two parallel Agent calls must each export their own correct forced
+        span_id without overwriting each other in pending_tools."""
+        self._setup_dirs(monkeypatch, tmp_path)
+        all_spans = self._patch_exporters(monkeypatch)
+
+        config = self.CONFIG
+
+        # Parent starts
+        tracer.handle_user_prompt_submit(
+            {"session_id": "par-par", "prompt": "do both"},
+            config,
+        )
+
+        # Two parallel Agent pre_tools
+        tracer.handle_pre_tool(
+            {
+                "session_id": "par-par",
+                "tool_name": "Agent",
+                "tool_input": {"prompt": "task-alpha"},
+            },
+            config,
+        )
+        tracer.handle_pre_tool(
+            {
+                "session_id": "par-par",
+                "tool_name": "Agent",
+                "tool_input": {"prompt": "task-beta"},
+            },
+            config,
+        )
+
+        # Read context files to capture pre-allocated span IDs
+        pending_files = sorted(tracer._PENDING_AGENT_DIR.glob("*.json"))
+        assert len(pending_files) == 2
+        ctxs = [json.loads(f.read_text()) for f in pending_files]
+        # Match by agent_prompt
+        alpha_ctx = next(c for c in ctxs if c["agent_prompt"] == "task-alpha")
+        beta_ctx = next(c for c in ctxs if c["agent_prompt"] == "task-beta")
+        alpha_span_id = int(alpha_ctx["parent_span_id"], 16)
+        beta_span_id = int(beta_ctx["parent_span_id"], 16)
+        assert alpha_span_id != beta_span_id
+
+        # Both subagents run and complete
+        for sess, prompt in [
+            ("child-alpha", "task-alpha"),
+            ("child-beta", "task-beta"),
+        ]:
+            tracer.handle_user_prompt_submit(
+                {"session_id": sess, "prompt": prompt},
+                config,
+            )
+            tracer.handle_stop({"session_id": sess}, config)
+
+        # Parent post_tools
+        tracer.handle_post_tool(
+            {
+                "session_id": "par-par",
+                "tool_name": "Agent",
+                "tool_input": {"prompt": "task-alpha"},
+                "tool_response": "alpha done",
+            },
+            config,
+        )
+        tracer.handle_post_tool(
+            {
+                "session_id": "par-par",
+                "tool_name": "Agent",
+                "tool_input": {"prompt": "task-beta"},
+                "tool_response": "beta done",
+            },
+            config,
+        )
+
+        # Collect AGENT spans
+        agent_spans = [
+            s
+            for s in all_spans()
+            if dict(s.attributes).get("openinference.span.kind") == "AGENT"
+        ]
+        assert len(agent_spans) == 2, f"Expected 2 AGENT spans, got {len(agent_spans)}"
+
+        exported_ids = {s.context.span_id for s in agent_spans}
+        assert (
+            alpha_span_id in exported_ids
+        ), "alpha span_id not in exported AGENT spans"
+        assert beta_span_id in exported_ids, "beta span_id not in exported AGENT spans"
