@@ -91,7 +91,6 @@ export function buildTourConfig(taskId: string): TourConfig {
       title: section.intro.heading,
       description: section.intro.body,
       primaryActionLabel: section.intro.cta,
-      secondaryActionLabel: "Skip this section",
     },
     skipable: true,
     steps: section.items.length === 0 ? [buildStubStep(section.id)] : section.items.map((item) => buildStep(taskId, item)),
@@ -105,6 +104,25 @@ export function buildTourConfig(taskId: string): TourConfig {
 
 export function isStubStep(stepId: string): boolean {
   return stepId === STUB_STEP_ID;
+}
+
+/**
+ * Human-readable label for a task-tour step, keyed by engine section/step IDs.
+ * Stub steps fall back to the section intro heading; real steps use the item
+ * title from the author-friendly section list.
+ */
+export function getTaskTourStepLabel(sectionId: string, stepId: string): string {
+  const section = TASK_TOUR_SECTIONS.find((candidate) => candidate.id === sectionId);
+  if (!section) {
+    return "Resume tour";
+  }
+
+  if (isStubStep(stepId) || section.items.length === 0) {
+    return section.intro.heading;
+  }
+
+  const item = section.items.find((candidate) => candidate.id === stepId);
+  return item?.title ?? section.title;
 }
 
 export function getStubAdvanceEventName(sectionId: string): string {

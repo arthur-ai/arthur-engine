@@ -126,10 +126,6 @@ export function ChecklistTour({ enabled, progressPlugin, onComplete, panelAnchor
     actions.acknowledgeIntroduction();
   }, [actions]);
 
-  const handleSkipSection = useCallback(() => {
-    actions.skipSection();
-  }, [actions]);
-
   const handleDismiss = useCallback(() => {
     // `dismiss()` pauses the engine (preserving step position for the
     // FAB-driven resume) and emits `tour:dismiss` so the persistence plugin
@@ -220,12 +216,7 @@ export function ChecklistTour({ enabled, progressPlugin, onComplete, panelAnchor
         open={introOpen}
         section={currentSection ?? null}
         sectionIndex={currentSectionIndex}
-        // Honors the engine's `SectionConfig.skipable` (default true when
-        // unset). The intro only opens while a section is active, so reading
-        // through `activeStep` is safe — the fallback exists for typing.
-        skipable={activeStep?.section.skipable !== false}
         onStart={handleStart}
-        onSkipSection={handleSkipSection}
         onDismiss={handleDismiss}
       />
 

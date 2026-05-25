@@ -60,6 +60,7 @@ export interface TaskTourSection {
 }
 
 export const TASK_TOUR_TITLE = "Evals 101: Build a Production-Grade Agent";
+export const TASK_TOUR_SHORT_NAME = "Evals 101";
 export const TASK_TOUR_SUBTITLE = "A guided tour of the Arthur Development Lifecycle (ADLC)";
 
 /**

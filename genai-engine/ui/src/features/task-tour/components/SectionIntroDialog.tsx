@@ -11,14 +11,7 @@ export interface SectionIntroDialogProps {
   section: TaskTourSection | null;
   /** Index of this section among all sections (0-based). Determines whether we show the hero flywheel. */
   sectionIndex: number;
-  /**
-   * Mirrors the engine's `SectionConfig.skipable`. Hides the "Skip this
-   * section" link when `false`. Default `true` keeps existing behavior for
-   * any caller that doesn't thread the field through.
-   */
-  skipable?: boolean;
   onStart: () => void;
-  onSkipSection: () => void;
   onDismiss: () => void;
 }
 
@@ -27,7 +20,7 @@ export interface SectionIntroDialogProps {
  * block for section 0 (with the ADLC flywheel diagram), and a compact
  * heading-only block for subsequent sections.
  */
-export function SectionIntroDialog({ open, section, sectionIndex, skipable = true, onStart, onSkipSection, onDismiss }: SectionIntroDialogProps) {
+export function SectionIntroDialog({ open, section, sectionIndex, onStart, onDismiss }: SectionIntroDialogProps) {
   const theme = useTheme();
   if (!section) return null;
 
@@ -143,31 +136,13 @@ export function SectionIntroDialog({ open, section, sectionIndex, skipable = tru
         </Paper>
       ) : null}
 
-      <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1.5} sx={{ px: 4, pb: 2.75, pt: 0.5, flexWrap: "nowrap" }}>
-        {skipable ? (
-          <Typography
-            variant="body2"
-            onClick={onSkipSection}
-            sx={{
-              color: "text.secondary",
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-              "&:hover": { color: "text.primary" },
-            }}
-          >
-            Skip this section
-          </Typography>
-        ) : (
-          <Box />
-        )}
-        <Stack direction="row" spacing={1}>
-          <Button variant="outlined" color="inherit" onClick={onDismiss} sx={{ whiteSpace: "nowrap" }}>
-            Dismiss tour
-          </Button>
-          <Button variant="contained" color="primary" onClick={onStart} endIcon={<EastIcon sx={{ fontSize: 16 }} />} sx={{ whiteSpace: "nowrap" }}>
-            {intro.cta}
-          </Button>
-        </Stack>
+      <Stack direction="row" alignItems="center" justifyContent="flex-end" spacing={1.5} sx={{ px: 4, pb: 2.75, pt: 0.5 }}>
+        <Button variant="outlined" color="inherit" onClick={onDismiss} sx={{ whiteSpace: "nowrap" }}>
+          Dismiss tour
+        </Button>
+        <Button variant="contained" color="primary" onClick={onStart} endIcon={<EastIcon sx={{ fontSize: 16 }} />} sx={{ whiteSpace: "nowrap" }}>
+          {intro.cta}
+        </Button>
       </Stack>
     </Dialog>
   );

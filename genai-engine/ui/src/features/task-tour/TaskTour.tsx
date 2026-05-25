@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { CertificateDialog } from "./components/CertificateDialog";
 import { ChecklistTour } from "./components/ChecklistTour";
 import { ResumeFab } from "./components/ResumeFab";
 import { createTaskTourHighlightsPlugin } from "./highlights";
-import { buildTourConfig, isStubStep } from "./tour-config";
+import { buildTourConfig, getTaskTourStepLabel, isStubStep } from "./tour-config";
 
 import {
   createAnalyticsPlugin,
@@ -12,12 +12,14 @@ import {
   createPersistencePlugin,
   createTour,
   TourProvider,
+  useChecklistProgress,
   useReactRouterNavigator,
   useTourPersistence,
   type ChecklistProgress,
   type StepAdvanceEvent,
   type TourConfig,
   type TourEngine,
+  type TourState,
 } from "@/features/tour";
 import { track } from "@/services/amplitude";
 
@@ -52,6 +54,21 @@ function findResumePosition(config: TourConfig, progress: ChecklistProgress): { 
     }
   }
   return null;
+}
+
+function resolveResumeFabLabel(config: TourConfig | undefined, state: TourState, progress: ChecklistProgress): string {
+  if (state.status === "running" || state.status === "paused") {
+    return getTaskTourStepLabel(state.sectionId, state.stepId);
+  }
+
+  if (config) {
+    const resumePosition = findResumePosition(config, progress);
+    if (resumePosition) {
+      return getTaskTourStepLabel(resumePosition.sectionId, resumePosition.stepId);
+    }
+  }
+
+  return "Resume tour";
 }
 
 export interface TaskTourProps {
@@ -124,6 +141,15 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
   }, [highlightsPlugin, persistencePlugin, progressPlugin, taskId]);
 
   const status = useTourPersistence(persistencePlugin);
+  const progress = useChecklistProgress(progressPlugin);
+  const idleTourState = useMemo<TourState>(() => ({ status: "idle" }), []);
+  const subscribeEngine = useCallback((onStoreChange: () => void) => (engine ? engine.subscribe(onStoreChange) : () => {}), [engine]);
+  const getEngineState = useCallback(() => (engine ? engine.getState() : idleTourState), [engine, idleTourState]);
+  const tourState = useSyncExternalStore(subscribeEngine, getEngineState, getEngineState);
+  const resumeFabLabel = useMemo(
+    () => resolveResumeFabLabel(engine?.config, tourState, progress),
+    [engine?.config, progress, tourState],
+  );
 
   // Auto-start once per mount when the tour is owed to the user. `unseen`
   // means they've never seen it; `in-progress` means they started but the
@@ -215,7 +241,12 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
         </TourProvider>
       ) : null}
       {showResumeFab ? (
-        <ResumeFab onClick={handleResume} onAnchorRectChange={handleFabAnchorRectChange} />
+        <ResumeFab
+          label={resumeFabLabel}
+          attractAttention={status === "dismissed"}
+          onClick={handleResume}
+          onAnchorRectChange={handleFabAnchorRectChange}
+        />
       ) : null}
 
       <CertificateDialog open={certificateOpen} workspaceLabel={workspaceLabel} onClose={handleCertificateClose} />
