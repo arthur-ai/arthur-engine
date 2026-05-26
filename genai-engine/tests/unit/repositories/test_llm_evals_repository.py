@@ -125,26 +125,26 @@ def test_save_llm_eval_with_llm_eval_object(
 ):
     """Test saving an LLMEval object to database"""
     task_id = "test_task_id"
-    result = llm_evals_repo.save_llm_item(
-        task_id,
-        sample_llm_eval.name,
-        sample_create_eval_request,
-    )
+    try:
+        result = llm_evals_repo.save_llm_item(
+            task_id,
+            sample_llm_eval.name,
+            sample_create_eval_request,
+        )
 
-    # Compare was inserted to the database correctly
-    assert isinstance(result, LLMEval)
-    assert result.name == sample_llm_eval.name
-    assert result.model_name == sample_llm_eval.model_name
-    assert result.model_provider == sample_llm_eval.model_provider
-    assert result.instructions == sample_llm_eval.instructions
-    assert result.config == sample_create_eval_request.config.model_dump(
-        exclude_none=True,
-    )
-    assert result.version == sample_llm_eval.version
-    assert result.deleted_at is None
-
-    # clean up database
-    llm_evals_repo.delete_llm_item(task_id, sample_llm_eval.name)
+        # Compare was inserted to the database correctly
+        assert isinstance(result, LLMEval)
+        assert result.name == sample_llm_eval.name
+        assert result.model_name == sample_llm_eval.model_name
+        assert result.model_provider == sample_llm_eval.model_provider
+        assert result.instructions == sample_llm_eval.instructions
+        assert result.config == sample_create_eval_request.config.model_dump(
+            exclude_none=True,
+        )
+        assert result.version == sample_llm_eval.version
+        assert result.deleted_at is None
+    finally:
+        llm_evals_repo.delete_llm_item(task_id, sample_llm_eval.name)
 
 
 @pytest.mark.unit_tests
@@ -322,22 +322,22 @@ def test_get_eval_success(
     task_id = "test_task_id"
     eval_name = "test_llm_eval"
 
-    llm_evals_repo.save_llm_item(task_id, eval_name, sample_create_eval_request)
-    result = llm_evals_repo.get_llm_item(task_id, eval_name, "latest")
+    try:
+        llm_evals_repo.save_llm_item(task_id, eval_name, sample_create_eval_request)
+        result = llm_evals_repo.get_llm_item(task_id, eval_name, "latest")
 
-    assert isinstance(result, LLMEval)
-    assert result.name == sample_db_llm_eval.name
-    assert result.model_name == sample_db_llm_eval.model_name
-    assert result.model_provider == sample_db_llm_eval.model_provider
-    assert result.instructions == sample_db_llm_eval.instructions
-    assert result.config == sample_create_eval_request.config.model_dump(
-        exclude_none=True,
-    )
-    assert result.version == sample_db_llm_eval.version
-    assert result.deleted_at is None
-
-    # clean up database
-    llm_evals_repo.delete_llm_item(task_id, eval_name)
+        assert isinstance(result, LLMEval)
+        assert result.name == sample_db_llm_eval.name
+        assert result.model_name == sample_db_llm_eval.model_name
+        assert result.model_provider == sample_db_llm_eval.model_provider
+        assert result.instructions == sample_db_llm_eval.instructions
+        assert result.config == sample_create_eval_request.config.model_dump(
+            exclude_none=True,
+        )
+        assert result.version == sample_db_llm_eval.version
+        assert result.deleted_at is None
+    finally:
+        llm_evals_repo.delete_llm_item(task_id, eval_name)
 
 
 @pytest.mark.unit_tests

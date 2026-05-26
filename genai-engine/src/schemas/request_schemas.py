@@ -869,13 +869,6 @@ class PromptInjectionEvalConfig(BaseModel):
 
 MLEvalConfig = Union[PIIEvalConfig, ToxicityEvalConfig, PromptInjectionEvalConfig]
 
-_ML_EVAL_TYPES = {
-    EvalType.PII,
-    EvalType.PII_V1,
-    EvalType.TOXICITY,
-    EvalType.PROMPT_INJECTION,
-}
-
 
 def _coerce_ml_config(eval_type_val: str, raw: Any) -> MLEvalConfig:
     if not isinstance(raw, dict):
@@ -905,9 +898,10 @@ class CreateMLEvalRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_ml_eval_type(self) -> "CreateMLEvalRequest":
-        if self.eval_type not in _ML_EVAL_TYPES:
+        if self.eval_type == EvalType.LLM_AS_A_JUDGE:
             raise ValueError(
-                f"eval_type must be one of {[e.value for e in _ML_EVAL_TYPES]}, got '{self.eval_type}'",
+                f"eval_type '{EvalType.LLM_AS_A_JUDGE.value}' is not valid here. "
+                "Use 'pii', 'pii_v1', 'toxicity', or 'prompt_injection'.",
             )
         return self
 
@@ -953,7 +947,7 @@ class CreateAnyEvalRequest(BaseModel):
             return values
         if eval_type_val == EvalType.LLM_AS_A_JUDGE.value:
             values["config"] = LLMRequestConfigSettings(**raw)
-        elif eval_type_val in (e.value for e in _ML_EVAL_TYPES):
+        elif eval_type_val != EvalType.LLM_AS_A_JUDGE.value:
             values["config"] = _coerce_ml_config(eval_type_val, raw)
         return values
 

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
 from repositories.base_evaluator import BaseEvaluator
 from repositories.base_llm_repository import BaseLLMRepository
+from schemas.enums import EvalType
 from schemas.internal_schemas import ContinuousEvalTransformVariableMapping
 from schemas.llm_eval_schemas import MLEval
 from schemas.request_schemas import CreateMLEvalRequest
@@ -14,7 +15,7 @@ from schemas.response_schemas import (
     MLEvalsVersionListResponse,
     MLVersionResponse,
 )
-from scorer.ml_scorers import ML_EVAL_INPUT_VARIABLE, ML_EVAL_TYPES, run_ml_scorer
+from scorer.ml_scorers import ML_EVAL_INPUT_VARIABLE, run_ml_scorer
 
 
 class MLEvalsRepository(
@@ -23,7 +24,12 @@ class MLEvalsRepository(
     db_model: Type[DatabaseLLMEval] = DatabaseLLMEval
     tag_db_model: Type[DatabaseLLMEvalVersionTag] = DatabaseLLMEvalVersionTag
     version_list_response_model: Type[BaseModel] = MLEvalsVersionListResponse
-    eval_types = ML_EVAL_TYPES
+    eval_types = [
+        EvalType.PII,
+        EvalType.PII_V1,
+        EvalType.TOXICITY,
+        EvalType.PROMPT_INJECTION,
+    ]
 
     def __init__(self, db_session: Session):
         super().__init__(db_session)
@@ -68,11 +74,6 @@ class MLEvalsRepository(
         eval_name: str,
         item: CreateMLEvalRequest,
     ) -> MLEval:
-        if item.eval_type not in ML_EVAL_TYPES:
-            raise ValueError(
-                f"Unknown ML eval type '{item.eval_type}'. "
-                f"Supported types: {ML_EVAL_TYPES}",
-            )
         return cast(MLEval, super().save_llm_item(task_id, eval_name, item))
 
     def get_llm_item(

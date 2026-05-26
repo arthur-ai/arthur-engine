@@ -1,4 +1,4 @@
-"""Concrete ML scorer implementations and registry."""
+"""Concrete ML scorer implementations."""
 
 from typing import Any, Dict, Optional
 
@@ -8,17 +8,18 @@ from schemas.enums import EvalType
 from schemas.response_schemas import EvalRunResponse
 from schemas.scorer_schemas import ScoreRequest
 from scorer.base_ml_scorer import BaseMLScorer
-
-ML_EVAL_TYPES = [
-    EvalType.PII,
-    EvalType.PII_V1,
-    EvalType.TOXICITY,
-    EvalType.PROMPT_INJECTION,
-]
+from scorer.checks.pii.classifier import BinaryPIIDataClassifier
+from scorer.checks.pii.classifier_v1 import BinaryPIIDataClassifierV1
+from scorer.checks.prompt_injection.classifier import BinaryPromptInjectionClassifier
+from scorer.checks.toxicity.toxicity import ToxicityScorer
+from utils.model_load import (
+    PROMPT_INJECTION_MODEL,
+    PROMPT_INJECTION_TOKENIZER,
+    TOXICITY_MODEL,
+    TOXICITY_TOKENIZER,
+)
 
 ML_EVAL_INPUT_VARIABLE = "input"
-
-_SCORER_REGISTRY: Dict[str, BaseMLScorer] = {}
 
 
 def _score_to_response(rule_score: Any) -> EvalRunResponse:
@@ -86,54 +87,36 @@ class PromptInjectionMLScorer(BaseMLScorer):
 
 
 def get_ml_scorer(eval_type: str) -> Optional[BaseMLScorer]:
-    """Return a cached BaseMLScorer for the given eval_type, or None if unknown."""
-    if eval_type not in [e.value for e in ML_EVAL_TYPES]:
-        return None
-    if eval_type not in _SCORER_REGISTRY:
-        if eval_type == EvalType.PII.value:
-            from scorer.checks.pii.classifier import BinaryPIIDataClassifier
+    """Return a BaseMLScorer for the given eval_type, or None if unknown.
 
-            _SCORER_REGISTRY[eval_type] = PIIScorerV2(BinaryPIIDataClassifier())
-        elif eval_type == EvalType.PII_V1.value:
-            from scorer.checks.pii.classifier_v1 import BinaryPIIDataClassifierV1
-
-            _SCORER_REGISTRY[eval_type] = PIIScorerV1(BinaryPIIDataClassifierV1())
-        elif eval_type == EvalType.TOXICITY.value:
-            from scorer.checks.toxicity.toxicity import ToxicityScorer
-            from utils.model_load import TOXICITY_MODEL, TOXICITY_TOKENIZER
-
-            _SCORER_REGISTRY[eval_type] = ToxicityMLScorer(
-                ToxicityScorer(
-                    toxicity_model=TOXICITY_MODEL,
-                    toxicity_tokenizer=TOXICITY_TOKENIZER,
-                    harmful_request_model=None,
-                    harmful_request_tokenizer=None,
-                ),
-            )
-        elif eval_type == EvalType.PROMPT_INJECTION.value:
-            from scorer.checks.prompt_injection.classifier import (
-                BinaryPromptInjectionClassifier,
-            )
-            from utils.model_load import (
-                PROMPT_INJECTION_MODEL,
-                PROMPT_INJECTION_TOKENIZER,
-            )
-
-            _SCORER_REGISTRY[eval_type] = PromptInjectionMLScorer(
-                BinaryPromptInjectionClassifier(
-                    model=PROMPT_INJECTION_MODEL,
-                    tokenizer=PROMPT_INJECTION_TOKENIZER,
-                ),
-            )
-    return _SCORER_REGISTRY.get(eval_type)
+    Underlying models are cached by model_load.py; scorer wrappers are lightweight.
+    """
+    if eval_type == EvalType.PII.value:
+        return PIIScorerV2(BinaryPIIDataClassifier())
+    elif eval_type == EvalType.PII_V1.value:
+        return PIIScorerV1(BinaryPIIDataClassifierV1())
+    elif eval_type == EvalType.TOXICITY.value:
+        return ToxicityMLScorer(
+            ToxicityScorer(
+                toxicity_model=TOXICITY_MODEL,
+                toxicity_tokenizer=TOXICITY_TOKENIZER,
+                harmful_request_model=None,
+                harmful_request_tokenizer=None,
+            ),
+        )
+    elif eval_type == EvalType.PROMPT_INJECTION.value:
+        return PromptInjectionMLScorer(
+            BinaryPromptInjectionClassifier(
+                model=PROMPT_INJECTION_MODEL,
+                tokenizer=PROMPT_INJECTION_TOKENIZER,
+            ),
+        )
+    return None
 
 
 def run_ml_scorer(eval_type: str, text: str, config: Dict[str, Any]) -> EvalRunResponse:
-    """Run a cached ML scorer and return a unified EvalRunResponse."""
+    """Run an ML scorer and return a unified EvalRunResponse."""
     scorer = get_ml_scorer(eval_type)
     if scorer is None:
-        raise ValueError(
-            f"No scorer registered for eval type '{eval_type}'. "
-            f"Supported types: {[e.value for e in ML_EVAL_TYPES]}",
-        )
+        raise ValueError(f"No ML scorer registered for eval type '{eval_type}'.")
     return scorer.run(text, config)
