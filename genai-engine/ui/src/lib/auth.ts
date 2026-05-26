@@ -1,23 +1,44 @@
-import { createAuthenticatedApiClient, Api, SearchTasksRequest } from "./api";
+import { createAuthenticatedApiClient, Api } from "./api";
+import type { MeResponse } from "./api-client/api-client";
 
 const TOKEN_STORAGE_KEY = "arthur_auth_token";
+const ME_STORAGE_KEY = "arthur_auth_me";
+
+export type { MeResponse };
 
 export interface AuthState {
   isAuthenticated: boolean;
   token: string | null;
+  me: MeResponse | null;
+  isTenant: boolean;
   isLoading: boolean;
   error: string | null;
+}
+
+export const TENANT_USER_ROLE = "TENANT-USER";
+
+export function deriveIsTenant(me: MeResponse | null): boolean {
+  if (!me) return false;
+  return me.roles.includes(TENANT_USER_ROLE) && me.org_scope != null;
 }
 
 export class AuthService {
   private static instance: AuthService;
   private token: string | null = null;
+  private me: MeResponse | null = null;
   private apiClient: Api<unknown> | null = null;
 
   private constructor() {
-    // Initialize token from localStorage if available
     if (typeof window !== "undefined") {
       this.token = localStorage.getItem(TOKEN_STORAGE_KEY);
+      const cachedMe = localStorage.getItem(ME_STORAGE_KEY);
+      if (cachedMe) {
+        try {
+          this.me = JSON.parse(cachedMe) as MeResponse;
+        } catch {
+          localStorage.removeItem(ME_STORAGE_KEY);
+        }
+      }
       if (this.token) {
         this.initializeApiClient();
       }
@@ -37,27 +58,24 @@ export class AuthService {
     }
   }
 
+  private persistMe(me: MeResponse): void {
+    this.me = me;
+    if (typeof window !== "undefined") {
+      localStorage.setItem(ME_STORAGE_KEY, JSON.stringify(me));
+    }
+  }
+
   public async login(token: string): Promise<boolean> {
     try {
-      // Test the token by making a simple API call
       const testClient = createAuthenticatedApiClient(token);
+      const response = await testClient.users.getMeUsersMeGet();
 
-      // Try to search for tasks with an empty request to test authentication
-      const searchRequest: SearchTasksRequest = {};
-      await testClient.api.searchTasksApiV2TasksSearchPost(
-        {
-          page_size: 1,
-          page: 0,
-        },
-        searchRequest
-      );
-
-      // If successful, save the token and initialize the client
       this.token = token;
       if (typeof window !== "undefined") {
         localStorage.setItem(TOKEN_STORAGE_KEY, token);
       }
       this.initializeApiClient();
+      this.persistMe(response.data);
       return true;
     } catch (error) {
       console.error("Authentication failed:", error);
@@ -67,14 +85,20 @@ export class AuthService {
 
   public logout(): void {
     this.token = null;
+    this.me = null;
     this.apiClient = null;
     if (typeof window !== "undefined") {
       localStorage.removeItem(TOKEN_STORAGE_KEY);
+      localStorage.removeItem(ME_STORAGE_KEY);
     }
   }
 
   public getToken(): string | null {
     return this.token;
+  }
+
+  public getMe(): MeResponse | null {
+    return this.me;
   }
 
   public isAuthenticated(): boolean {
@@ -91,19 +115,11 @@ export class AuthService {
     }
 
     try {
-      // Test the token by making a simple API call
-      const searchRequest: SearchTasksRequest = {};
-      await this.apiClient.api.searchTasksApiV2TasksSearchPost(
-        {
-          page_size: 1,
-          page: 0,
-        },
-        searchRequest
-      );
+      const response = await this.apiClient.users.getMeUsersMeGet();
+      this.persistMe(response.data);
       return true;
     } catch (error) {
       console.error("Token validation failed:", error);
-      // If validation fails, clear the token
       this.logout();
       return false;
     }

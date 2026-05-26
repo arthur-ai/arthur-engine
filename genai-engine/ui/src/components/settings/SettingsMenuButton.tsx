@@ -25,7 +25,7 @@ export const SettingsMenuButton: React.FC = () => {
   const navigate = useNavigate();
   const api = useApi();
   const queryClient = useQueryClient();
-  const { logout } = useAuth();
+  const { logout, isTenant } = useAuth();
   const { timezone, use24Hour, setTimezone, setUse24Hour, serverChatbotEnabled, enableChatbot, setEnableChatbot } = useDisplaySettings();
   const { providers: enabledProviders } = useModelProviders();
   const { availableModels: availableModelsMap } = useAvailableModels(enabledProviders);
@@ -137,28 +137,32 @@ export const SettingsMenuButton: React.FC = () => {
           </ListItemIcon>
           <ListItemText>Settings</ListItemText>
         </MenuItem>
-        <MenuItem
-          onClick={() => {
-            handleMenuClose();
-            navigate("/settings/model-providers");
-          }}
-        >
-          <ListItemIcon>
-            <AppsOutlined />
-          </ListItemIcon>
-          <ListItemText>Model Providers</ListItemText>
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            handleMenuClose();
-            navigate("/settings/api-keys");
-          }}
-        >
-          <ListItemIcon>
-            <KeyOutlined />
-          </ListItemIcon>
-          <ListItemText>API Keys</ListItemText>
-        </MenuItem>
+        {!isTenant && (
+          <MenuItem
+            onClick={() => {
+              handleMenuClose();
+              navigate("/settings/model-providers");
+            }}
+          >
+            <ListItemIcon>
+              <AppsOutlined />
+            </ListItemIcon>
+            <ListItemText>Model Providers</ListItemText>
+          </MenuItem>
+        )}
+        {!isTenant && (
+          <MenuItem
+            onClick={() => {
+              handleMenuClose();
+              navigate("/settings/api-keys");
+            }}
+          >
+            <ListItemIcon>
+              <KeyOutlined />
+            </ListItemIcon>
+            <ListItemText>API Keys</ListItemText>
+          </MenuItem>
+        )}
         <Divider />
         <Box sx={{ px: 2, py: 1 }}>
           <ThemeToggle />
@@ -174,6 +178,7 @@ export const SettingsMenuButton: React.FC = () => {
       <UserSettingsModal
         open={userSettingsModalOpen}
         onClose={() => setUserSettingsModalOpen(false)}
+        isTenant={isTenant}
         initialSettings={{
           timezone,
           use24Hour,

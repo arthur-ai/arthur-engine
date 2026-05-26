@@ -2584,7 +2584,7 @@ __metadata:
   peerDependenciesMeta:
     "@tanstack/react-start":
       optional: true
-  checksum: 10c0/ffef16d02511f7f7ff1fb9a7586d256b4b6043b1c3a8ad86e282d97c82c6e758f388c0cf180a757c58cc71595752251b7c05434085a3799022c651bae02a3e4c
+  checksum: 10c0/6ea3504b6e3be2d7fac2ea13d82bb7ff967fcdfc99997d87c94a601ac8f65a3ed7578337ab87ccf951beba2c763ccdcb5a85e15015b3a2a4daead4421f41d5a4
   languageName: node
   linkType: hard
 
