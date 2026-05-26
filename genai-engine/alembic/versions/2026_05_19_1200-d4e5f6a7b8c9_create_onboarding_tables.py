@@ -1,7 +1,7 @@
 """create_onboarding_tables
 
 Revision ID: d4e5f6a7b8c9
-Revises: b3f7a2c1d9e0
+Revises: 7e1c3a4b5d2f
 Create Date: 2026-05-19 12:00:00.000000
 
 """
@@ -12,7 +12,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "d4e5f6a7b8c9"
-down_revision = "b3f7a2c1d9e0"
+down_revision = "7e1c3a4b5d2f"
 branch_labels = None
 depends_on = None
 
