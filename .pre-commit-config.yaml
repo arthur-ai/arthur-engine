@@ -16,6 +16,7 @@ repos:
             genai-engine/tests/mocks|
             genai-engine/tests/constants.py|
             genai-engine/tests/clients|
+            genai-engine/tests/unit/routes/tasks/helpers.py|
             ml-engine/tests/unit/connectors/helpers.py|
             ml-engine/tests/unit/mock_data/mock_data_generator.py|
             ml-engine/tests/unit/mock_data/api_mock_helpers.py|

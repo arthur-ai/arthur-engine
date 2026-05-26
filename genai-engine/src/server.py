@@ -52,6 +52,7 @@ from routers.v1.agentic_notebook_routes import agentic_notebook_routes
 from routers.v1.agentic_prompt_routes import agentic_prompt_routes
 from routers.v1.chatbot_routes import chatbot_routes
 from routers.v1.continuous_eval_routes import continuous_eval_routes
+from routers.v1.demo_task_routes import demo_task_routes
 from routers.v1.legacy_span_routes import span_routes
 from routers.v1.llm_eval_routes import llm_eval_routes
 from routers.v1.model_provider_routes import model_provider_routes
@@ -500,12 +501,12 @@ def get_app_with_routes() -> FastAPI:
             transform_routes,
             continuous_eval_routes,
             agent_polling_routes,
+            demo_task_routes,
+            tenant_signup_routes,
         ],
     )
     if extra_feature_config.CHATBOT_ENABLED:
         add_routers(app, [chatbot_routes])
-    if extra_feature_config.DEMO_MODE:
-        add_routers(app, [tenant_signup_routes])
     add_routers(app, [auth_routes, user_management_routes])
     add_routers(app, [app_chat_routes])
     return app
@@ -554,6 +555,7 @@ def get_test_app() -> FastAPI:
             continuous_eval_routes,
             agent_polling_routes,
             chatbot_routes,
+            demo_task_routes,
             tenant_signup_routes,
         ],
     )
@@ -618,6 +620,8 @@ def get_app() -> FastAPI:
     )
     if extra_feature_config.CHATBOT_ENABLED:
         add_routers(app, [chatbot_routes])
+    if Config.demo_mode():
+        add_routers(app, [demo_task_routes])
     if extra_feature_config.CHAT_ENABLED:
         add_routers(app, [app_chat_routes])
     if extra_feature_config.DEMO_MODE:

@@ -35,6 +35,7 @@ from opentelemetry.proto.trace.v1.trace_pb2 import (
 )
 from sqlalchemy.orm import Session
 
+from repositories.continuous_evals_repository import ContinuousEvalsRepository
 from services.trace.trace_ingestion_service import TraceIngestionService
 from utils import constants
 
@@ -102,6 +103,10 @@ class InternalTraceService:
             trace shows up under the right task in the trace UI.
         service_name: Logical name of the calling service, used in log
             messages on flush. Not written to span attributes.
+        enqueue_continuous_evals: If True, enqueue continuous-eval jobs for
+            root spans after flush. Mirrors the behavior of the public
+            ``/api/v1/traces`` route. Defaults to False so internal-only
+            traces (chatbot, synthetic data generation) don't trigger evals.
     """
 
     def __init__(
@@ -110,10 +115,12 @@ class InternalTraceService:
         *,
         task_id: str,
         service_name: str,
+        enqueue_continuous_evals: bool = False,
     ) -> None:
         self.db_session = db_session
         self.task_id = task_id
         self.service_name = service_name
+        self.enqueue_continuous_evals = enqueue_continuous_evals
         self.spans: List[TraceSpanBuilder] = []
         self.trace_id = uuid.uuid4().bytes
 
@@ -295,12 +302,16 @@ class InternalTraceService:
 
         try:
             service = TraceIngestionService(self.db_session)
-            service.process_trace_data(request.SerializeToString())
+            db_spans, _ = service.process_trace_data(request.SerializeToString())
             logger.info(
                 "Flushed %d %s spans",
                 len(self.spans),
                 self.service_name,
             )
+            if self.enqueue_continuous_evals and db_spans:
+                ContinuousEvalsRepository(
+                    self.db_session,
+                ).enqueue_continuous_evals_for_root_spans(db_spans)
         except Exception:
             logger.exception("Failed to flush %s spans", self.service_name)
 

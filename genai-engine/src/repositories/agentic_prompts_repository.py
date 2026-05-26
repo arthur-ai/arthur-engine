@@ -102,10 +102,11 @@ class AgenticPromptRepository(
         task_id: str,
         item_name: str,
         item: CreateAgenticPromptRequest,
+        commit: bool = True,
     ) -> AgenticPrompt:
         return cast(
             AgenticPrompt,
-            super().save_llm_item(task_id, item_name, item),
+            super().save_llm_item(task_id, item_name, item, commit=commit),
         )
 
     async def run_unsaved_prompt(

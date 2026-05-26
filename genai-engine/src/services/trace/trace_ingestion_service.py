@@ -88,6 +88,7 @@ class TraceIngestionService:
     def process_trace_data(
         self,
         trace_data: bytes,
+        commit: bool = True,
     ) -> tuple[list[DatabaseSpan], tuple[int, int, int, list[str]]]:
         """Process trace data from protobuf format and return statistics."""
         json_traces = self._grpc_trace_to_dict(trace_data)
@@ -95,7 +96,7 @@ class TraceIngestionService:
         spans_data, stats = self._extract_and_process_spans(json_traces)
 
         if spans_data:
-            self._store_spans(spans_data, commit=True)
+            self._store_spans(spans_data, commit=commit)
             logger.debug(f"Stored {len(spans_data)} spans successfully")
 
         return spans_data, stats
@@ -135,11 +136,13 @@ class TraceIngestionService:
             if resource_attributes:
                 try:
                     resource_id = self._create_or_get_resource_metadata(
-                        resource_attributes, service_name
+                        resource_attributes,
+                        service_name,
                     )
                 except Exception as e:
                     logger.error(
-                        f"Failed to create resource metadata: {e}", exc_info=True
+                        f"Failed to create resource metadata: {e}",
+                        exc_info=True,
                     )
 
             # Resolve task_id using priority hierarchy
@@ -271,17 +274,18 @@ class TraceIngestionService:
             logger.debug(f"Using explicit task_id: {explicit_task_id}")
             try:
                 task = self.task_repo.get_db_task_by_id(
-                    explicit_task_id, include_archived=True
+                    explicit_task_id,
+                    include_archived=True,
                 )
                 if task.archived:
                     logger.warning(
                         f"Trace received with explicit task ID '{explicit_task_id}' which is archived. "
                         "Traces are still being written to this task. "
-                        "Unarchive the task to resume normal operation."
+                        "Unarchive the task to resume normal operation.",
                     )
             except Exception as e:
                 logger.debug(
-                    f"Could not check archived status for task '{explicit_task_id}': {e}"
+                    f"Could not check archived status for task '{explicit_task_id}': {e}",
                 )
             return explicit_task_id
 
@@ -293,22 +297,23 @@ class TraceIngestionService:
             # Step 3: If lookup finds mapping → return mapped task_id
             if existing_task_id:
                 logger.debug(
-                    f"Found existing mapping: {service_name} → {existing_task_id}"
+                    f"Found existing mapping: {service_name} → {existing_task_id}",
                 )
                 # Check if the mapped task is archived — warn but still route to it
                 try:
                     mapped_task = self.task_repo.get_db_task_by_id(
-                        existing_task_id, include_archived=True
+                        existing_task_id,
+                        include_archived=True,
                     )
                     if mapped_task.archived:
                         logger.warning(
                             f"Service name '{service_name}' is mapped to archived task "
                             f"{existing_task_id}. Traces are still being written to this task. "
-                            "Unarchive the task to resume normal operation."
+                            "Unarchive the task to resume normal operation.",
                         )
                 except Exception as e:
                     logger.debug(
-                        f"Could not check archived status for task '{existing_task_id}': {e}"
+                        f"Could not check archived status for task '{existing_task_id}': {e}",
                     )
                 return existing_task_id
 
@@ -320,7 +325,7 @@ class TraceIngestionService:
                         _, _, engine_id = parse_gcp_resource_path(cloud_resource_id)
                         if engine_id:
                             existing_task = self.task_repo.find_by_gcp_engine_id(
-                                engine_id
+                                engine_id,
                             )
                             if existing_task:
                                 if existing_task.archived:
@@ -328,20 +333,21 @@ class TraceIngestionService:
                                         f"Service name '{service_name}' matched GCP task "
                                         f"'{existing_task.name}' ({existing_task.id}) which is archived. "
                                         "Traces are still being written to this task. "
-                                        "Unarchive the task to resume normal operation."
+                                        "Unarchive the task to resume normal operation.",
                                     )
                                 # Step 5: Create service_name mapping for future speed
                                 mapping_repo.create_mapping(
-                                    service_name, existing_task.id
+                                    service_name,
+                                    existing_task.id,
                                 )
                                 logger.info(
                                     f"Matched service.name='{service_name}' to existing GCP task "
-                                    f"'{existing_task.name}' (id={existing_task.id}) via cloud.resource_id"
+                                    f"'{existing_task.name}' (id={existing_task.id}) via cloud.resource_id",
                                 )
                                 return existing_task.id
                     except Exception as e:
                         logger.warning(
-                            f"Failed to match cloud.resource_id '{cloud_resource_id}': {e}"
+                            f"Failed to match cloud.resource_id '{cloud_resource_id}': {e}",
                         )
 
             # Step 6: If no mapping and no GCP match → auto-create task and mapping

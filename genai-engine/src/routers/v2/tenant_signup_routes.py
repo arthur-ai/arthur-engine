@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 from config.config import Config
 from dependencies import get_application_config, get_db_session
 from repositories.api_key_repository import ApiKeyRepository
+from repositories.demo_task_repository import DemoTaskRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.organizations_repository import OrganizationsRepository
 from repositories.rules_repository import RuleRepository
@@ -104,15 +105,34 @@ def create_tenant_signup(
 
         api_key = ApiKeyRepository(db_session).create_api_key(
             description=f"demo signup for org {db_org.name}",
-            roles=[APIKeysRolesEnum.TENANT_USER],  # type: ignore[attr-defined]
+            roles=[APIKeysRolesEnum.TENANT_USER],
             org_id=db_org.id,
             commit=False,
         )
 
+        demo_task_repo = DemoTaskRepository(db_session)
+        demo_task_repo.create_demo_items_for_task(
+            task_id=task.id,
+            user_id=api_key.id,
+            commit=False,
+        )
+
         db_session.commit()
-    except Exception:
+    except ValueError as e:
         db_session.rollback()
-        raise
+        raise HTTPException(
+            status_code=400,
+            detail=f"Failed to signup tenant: {e}",
+        )
+    except HTTPException as e:
+        db_session.rollback()
+        raise e
+    except Exception as e:
+        db_session.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to signup tenant: {e}",
+        )
 
     # create_api_key always populates .key via set_key() before returning;
     # narrow the Optional[str] for the response model.

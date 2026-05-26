@@ -2325,7 +2325,7 @@
                     "API Keys"
                 ],
                 "summary": "Create Api Key",
-                "description": "Generates a new API key. Up to 1000 active keys can exist at the same time by default. Contact your system administrator if you need more. Allowed roles are: DEFAULT-RULE-ADMIN, TASK-ADMIN, VALIDATION-USER, ORG-AUDITOR, ORG-ADMIN, TENANT-USER.",
+                "description": "Generates a new API key. Up to 1000 active keys can exist at the same time by default. Contact your system administrator if you need more. Allowed roles are: DEFAULT-RULE-ADMIN, TASK-ADMIN, VALIDATION-USER, ORG-AUDITOR, ORG-ADMIN.",
                 "operationId": "create_api_key_auth_api_keys__post",
                 "requestBody": {
                     "content": {
@@ -16413,21 +16413,55 @@
                 }
             }
         },
-        "/api/v2/tenant/signup": {
+        "/api/v1/tasks/{task_id}/demos/chatbot/stream": {
             "post": {
                 "tags": [
-                    "Tenant Signup"
+                    "Tasks"
                 ],
-                "summary": "Create Tenant Signup",
-                "description": "Public tenant signup. Creates a new organization, a default demo task scoped to that org, and a TENANT-USER API key with `org_scope` set to the new org. Returns the four identifiers; the raw `api_key` value appears only in this response (the DB stores only its hash). Gated by GENAI_ENGINE_DEMO_MODE \u2014 returns 404 when disabled.",
-                "operationId": "create_tenant_signup_api_v2_tenant_signup_post",
+                "summary": "Stream Demo Chatbot",
+                "description": "Stream a demo chatbot response.",
+                "operationId": "stream_demo_chatbot_api_v1_tasks__task_id__demos_chatbot_stream_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChatbotRequest"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Successful Response",
                         "content": {
                             "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/DemoTaskSignupResponse"
+                                    "$ref": "#/components/schemas/HTTPValidationError"
                                 }
                             }
                         }
@@ -16564,44 +16598,21 @@
                 ]
             }
         },
-        "/api/v1/chatbot/history/{conversation_id}": {
-            "delete": {
+        "/api/v2/tenant/signup": {
+            "post": {
                 "tags": [
-                    "Chatbot"
+                    "Tenant Signup"
                 ],
-                "summary": "Clear chatbot conversation history",
-                "operationId": "clear_chatbot_history_api_v1_chatbot_history__conversation_id__delete",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "conversation_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "Conversation Id"
-                        }
-                    }
-                ],
+                "summary": "Create Tenant Signup",
+                "description": "Public tenant signup. Creates a new organization, a default demo task scoped to that org, and a TENANT-USER API key with `org_scope` set to the new org. Returns the four identifiers; the raw `api_key` value appears only in this response (the DB stores only its hash). Gated by GENAI_ENGINE_DEMO_MODE \u2014 returns 404 when disabled.",
+                "operationId": "create_tenant_signup_api_v2_tenant_signup_post",
                 "responses": {
                     "200": {
                         "description": "Successful Response",
                         "content": {
                             "application/json": {
-                                "schema": {}
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                    "$ref": "#/components/schemas/DemoTaskSignupResponse"
                                 }
                             }
                         }
@@ -19734,19 +19745,28 @@
             },
             "ChatbotRequest": {
                 "properties": {
-                    "message": {
-                        "type": "string",
-                        "title": "Message"
+                    "history": {
+                        "items": {
+                            "$ref": "#/components/schemas/OpenAIMessage-Input"
+                        },
+                        "type": "array",
+                        "title": "History"
                     },
-                    "conversation_id": {
-                        "type": "string",
-                        "title": "Conversation Id"
+                    "session_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Session Id"
                     }
                 },
                 "type": "object",
                 "required": [
-                    "message",
-                    "conversation_id"
+                    "history"
                 ],
                 "title": "ChatbotRequest"
             },

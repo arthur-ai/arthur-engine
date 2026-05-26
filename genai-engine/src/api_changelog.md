@@ -13,6 +13,14 @@ The intention of this changelog is to document API changes as they happen to eff
 # 05/20/2026
 - **CHANGE** for **URL**: /users/me  endpoint added
 
+# 05/18/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/chatbot/stream  added the new optional request property 'session_id'
+- **BREAKING CHANGE** for **URL**: /api/v1/chatbot/history/{conversation_id}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/chatbot/stream  added the new required request property 'history'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/chatbot/stream  removed the request property 'conversation_id'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/chatbot/stream  removed the request property 'message'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/demos/chatbot/stream  endpoint added
+
 # 05/15/2026
 - **CHANGE** for **URL**: /api/v2/validate endpoint added
 

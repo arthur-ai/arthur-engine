@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from custom_types.custom_types import FunctionT
 from db_models.task_models import DatabaseTask
-from schemas.internal_schemas import User
+from schemas.internal_schemas import Task, User
 
 
 def get_user_info_from_payload(payload: dict[str, Any]) -> User:
@@ -122,6 +122,13 @@ def enforce_org_scope(
             assert user is not None  # _is_admin guarantees non-None below
             path_task_id = kwargs.get(path_param)
             if path_task_id is None:
+                # Routes that consume the path's task_id via
+                # `Depends(get_validated_task)` won't have it in kwargs as a
+                # standalone param — fall back to the resolved Task object.
+                task_obj = kwargs.get("task")
+                if isinstance(task_obj, Task):
+                    path_task_id = task_obj.id
+            if path_task_id is None:
                 raise HTTPException(
                     status_code=500,
                     detail=f"path param {path_param!r} not in handler kwargs",
@@ -212,7 +219,7 @@ def enforce_query_org_scope(
                 str(tid)
                 for tid in db_session.execute(
                     select(DatabaseTask.id).where(
-                        DatabaseTask.org_id == str(user.org_scope),
+                        DatabaseTask.org_id == user.org_scope,
                     ),
                 ).scalars()
             }
