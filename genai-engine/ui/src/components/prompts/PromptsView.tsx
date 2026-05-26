@@ -2,7 +2,7 @@ import AddIcon from "@mui/icons-material/Add";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import { Box, Button, Menu, MenuItem, Stack, Tab, Tabs, Typography } from "@mui/material";
 import { parseAsStringEnum, useQueryState } from "nuqs";
-import { useRef, useState } from "react";
+import { useRef, useState, type SyntheticEvent } from "react";
 
 import Notebooks from "../notebooks/Notebooks";
 import { PromptExperimentsView } from "../prompt-experiments/PromptExperimentsView";
@@ -51,6 +51,13 @@ export const PromptsView = () => {
   const registerExperimentsCreateFromExisting = useRef((fn: () => void) => {
     experimentsCreateFromExistingFn.current = fn;
   }).current;
+
+  const handleTabChange = (_: SyntheticEvent, value: string) => {
+    void setActiveTab(value);
+    if (value === "prompts-management") {
+      dispatchTourEvent(TASK_TOUR_EVENTS.promptsManagementTabOpened);
+    }
+  };
 
   return (
     <Stack sx={{ height: getContentHeight() }}>
@@ -134,11 +141,11 @@ export const PromptsView = () => {
       <Tabs
         variant="fullWidth"
         value={activeTab}
-        onChange={(_, value) => setActiveTab(value)}
+        onChange={handleTabChange}
         sx={{ backgroundColor: "background.paper", borderBottom: 1, borderColor: "divider" }}
       >
         <Tab label="Notebooks" value="notebooks" />
-        <Tab label="Prompts" value="prompts-management" />
+        <Tab label="Prompts" value="prompts-management" data-tour-id={TOUR_IDS.promptsManagementTab} />
         <Tab label="Runs" value="prompt-experiments" />
       </Tabs>
 

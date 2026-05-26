@@ -10,6 +10,8 @@ intro:
 steps:
   - id: open-prompts
     title: Open Prompts
+  - id: open-prompts-tab
+    title: Open the Prompts tab
   - id: inspect-prompt
     title: Inspect a prompt
   - id: create-prompts-in-playground
@@ -30,9 +32,13 @@ Inspect the existing prompt, open the playground and draft 2–3 variants that f
 
 Click Prompt in the sidebar to see the prompts powering this agent.
 
+## step: open-prompts-tab
+
+Click the **Prompts** tab to see the prompt library for this task.
+
 ## step: inspect-prompt
 
-Open the Prompts tab and click the top prompt. Each prompt is a bundle of messages, variables, and a model — change any of those and you've got a new version worth comparing.
+Click the top prompt in the list. Each prompt is a bundle of messages, variables, and a model — change any of those and you've got a new version worth comparing.
 
 ## step: create-prompts-in-playground
 

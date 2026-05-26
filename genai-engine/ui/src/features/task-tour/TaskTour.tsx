@@ -128,6 +128,18 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
   const highlightsPlugin = useMemo(() => createTaskTourHighlightsPlugin(), []);
 
   const [engine, setEngine] = useState<TourEngine | null>(null);
+  // Auto-start once per engine instance when the tour is owed to the user.
+  // `unseen` means they've never seen it; `in-progress` means they started
+  // but the engine was torn down (page reload, HMR, taskId change), and we
+  // want the panel to reappear at the next outstanding step rather than leave
+  // persistence stranded with no visible tour. We use a ref to gate so the
+  // side-effect doesn't re-fire when `status` flickers — e.g. the persistence
+  // plugin writes `in-progress` synchronously inside `start()`, which
+  // re-renders with a new status before `goToPosition` has flipped the engine
+  // out of `idle`. The ref is reset in the engine effect cleanup so Vite HMR
+  // recreates can auto-resume instead of stranding the UI with no panel and
+  // no resume FAB.
+  const autoStartedRef = useRef(false);
 
   useEffect(() => {
     const created = createTour({
@@ -136,7 +148,9 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
     });
     setEngine(created);
     return () => {
+      autoStartedRef.current = false;
       created.destroy();
+      setEngine(null);
     };
   }, [highlightsPlugin, persistencePlugin, progressPlugin, taskId]);
 
@@ -148,16 +162,6 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
   const tourState = useSyncExternalStore(subscribeEngine, getEngineState, getEngineState);
   const resumeFabLabel = useMemo(() => resolveResumeFabLabel(engine?.config, tourState, progress), [engine?.config, progress, tourState]);
 
-  // Auto-start once per mount when the tour is owed to the user. `unseen`
-  // means they've never seen it; `in-progress` means they started but the
-  // engine was torn down (page reload, intra-app navigation that unmounted
-  // `TaskLayout`, taskId change), and we want the panel to reappear at the
-  // next outstanding step rather than leave persistence stranded with no
-  // visible tour. We use a ref to gate so the side-effect doesn't re-fire
-  // when `status` flickers — e.g. the persistence plugin writes
-  // `in-progress` synchronously inside `start()`, which re-renders with a
-  // new status before this effect has settled.
-  const autoStartedRef = useRef(false);
   useEffect(() => {
     if (autoStartedRef.current) return;
     if (!engine) return;

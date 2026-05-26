@@ -225,7 +225,7 @@ export const TraceLevel = memo(({ welcomeDismissed }: TraceLevelProps) => {
   const hasActiveFilters = useMemo(() => filters.length > 0, [filters]);
 
   const hasData = Boolean(data?.traces?.length);
-  const traceTableTourRef = useTraceTableTourRow(hasData, pagination.pageIndex);
+  const traceTableTourRef = useTraceTableTourRow(hasData, pagination.pageIndex, isLoading);
 
   return (
     <Stack gap={1} height="100%" overflow="hidden">

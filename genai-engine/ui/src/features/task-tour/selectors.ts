@@ -32,6 +32,8 @@ export const TOUR_IDS = {
   /** Generate-synthetic-data button on the dataset detail header. */
   datasetGenerateSynthetic: "task-tour-dataset-generate-synthetic",
   promptsEntry: "task-tour-prompts-entry",
+  /** Prompts management tab in PromptsView — used for "open the Prompts tab". */
+  promptsManagementTab: "task-tour-prompts-management-tab",
   /** First row in the prompts management table — used for "inspect a prompt". */
   promptsFirstRow: "task-tour-prompts-first-row",
   /** Add-tag icon-button on the prompt detail view — used for "tag as production". */

@@ -16,7 +16,7 @@ steps:
 
 ## intro
 
-Evals are the contract you set with your agent. Before tuning prompts or swapping models you need to know how the agent is being measured — and against what bar — so any change can be judged objectively.
+Evals are the **contract** you set with your agent. Before tuning prompts or swapping models you need to know how the agent is being measured — and against what bar — so any change can be judged objectively.
 
 ## scenario
 

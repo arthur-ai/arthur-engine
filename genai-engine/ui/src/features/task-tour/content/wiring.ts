@@ -141,10 +141,14 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
         targetId: TOUR_IDS.navPrompts,
         eventName: TASK_TOUR_EVENTS.promptsOpened,
       },
+      "open-prompts-tab": {
+        targetId: TOUR_IDS.promptsManagementTab,
+        route: "prompts",
+        eventName: TASK_TOUR_EVENTS.promptsManagementTabOpened,
+      },
       "inspect-prompt": {
         targetId: TOUR_IDS.promptsFirstRow,
         route: "prompts",
-        search: { tab: "prompts-management" },
         eventName: TASK_TOUR_EVENTS.promptInspected,
       },
       // Routes to the Notebooks tab — the entry point for the playground
