@@ -108,6 +108,18 @@ export const EVENT_NAMES = {
   ONBOARDING_TASK_ID_COPIED: "onboarding/task_id_copied",
   ONBOARDING_VIEW_TRACES_CLICKED: "onboarding/view_traces_clicked",
   ONBOARDING_SKIP_SETUP_CLICKED: "onboarding/skip_setup_clicked",
+  ONBOARDING_LANDING_VIEWED: "onboarding/landing_viewed",
+  ONBOARDING_PATH_SELECTED: "onboarding/path_selected",
+  ONBOARDING_FORM_VIEWED: "onboarding/form_viewed",
+  ONBOARDING_FORM_STARTED: "onboarding/form_started",
+  ONBOARDING_FORM_BACK_CLICKED: "onboarding/form_back_clicked",
+  ONBOARDING_FORM_SUBMIT_FAILED: "onboarding/form_submit_failed",
+  ONBOARDING_FORM_SUBMITTED: "onboarding/form_submitted",
+  ONBOARDING_LOGIN_VIEWED: "onboarding/login_viewed",
+  ONBOARDING_WIZARD_STEP_VIEWED: "onboarding/wizard_step_viewed",
+  ONBOARDING_WIZARD_STEP_COMPLETED: "onboarding/wizard_step_completed",
+  ONBOARDING_WIZARD_STEP_SUBMIT_FAILED: "onboarding/wizard_step_submit_failed",
+  ONBOARDING_WIZARD_STEP_BACK: "onboarding/wizard_step_back",
 
   // Cross-link events
   PLAYGROUND_OPEN_FROM_SPAN: "playground/open_from_span",
@@ -151,6 +163,7 @@ export function initAmplitude(): void {
     // True value tracks Page Views, Sessions, File Downloads, and Form Interactions
     amplitude.init(apiKey, {
       defaultTracking: false,
+      serverZone: "US",
     });
     isInitialized = true;
   } catch (error) {
