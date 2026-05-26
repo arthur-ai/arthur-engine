@@ -1404,7 +1404,9 @@ class OnboardingTryItOutFormData(BaseModel):
     attribution_other: str = ""
 
 
-class OnboardingSubmissionRequest(BaseModel):
+class TenantSignupRequest(BaseModel):
+    """Public tenant signup payload; includes try-it-out onboarding form data."""
+
     form_variant: Literal["linear", "wizard"] | None = Field(
         default=None,
         description="Which onboarding form variant was submitted.",

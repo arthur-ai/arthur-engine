@@ -6,8 +6,9 @@ import { useApi } from "@/hooks/useApi";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { createApiClient } from "@/lib/api";
 import type {
-  OnboardingSubmissionResponse,
+  DemoTaskSignupResponse,
   OnboardingTryItOutFormData,
+  TenantSignupRequest,
 } from "@/lib/api-client/api-client";
 
 export function toOnboardingFormData(data: TryItOutSubmission): OnboardingTryItOutFormData {
@@ -34,23 +35,24 @@ export interface CreateOnboardingSubmissionVariables {
 
 interface UseCreateOnboardingSubmissionMutationOptions {
   onSuccess?: (
-    data: OnboardingSubmissionResponse,
+    data: DemoTaskSignupResponse,
     variables: CreateOnboardingSubmissionVariables
   ) => void | Promise<void>;
   onError?: (error: Error, variables: CreateOnboardingSubmissionVariables) => void;
 }
 
-/** Public endpoint; falls back to unauthenticated client when user is not signed in. */
+/** Public tenant signup; persists onboarding form data and provisions org/task/api key. */
 export function useCreateOnboardingSubmissionMutation(options?: UseCreateOnboardingSubmissionMutationOptions) {
   const authApi = useApi();
   const api = useMemo(() => authApi ?? createApiClient(), [authApi]);
 
-  return useApiMutation<OnboardingSubmissionResponse, CreateOnboardingSubmissionVariables>({
+  return useApiMutation<DemoTaskSignupResponse, CreateOnboardingSubmissionVariables>({
     mutationFn: async ({ data, meta }) => {
-      const response = await api.api.createOnboardingSubmissionApiV2OnboardingSubmissionsPost({
+      const payload: TenantSignupRequest = {
         form_variant: meta.formVariant,
         form_data: toOnboardingFormData(data),
-      });
+      };
+      const response = await api.api.createTenantSignupApiV2TenantSignupPost(payload);
       return response.data;
     },
     onSuccess: options?.onSuccess,

@@ -2,6 +2,13 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 05/26/2026
+- **BREAKING CHANGE** for **URL**: /api/v2/onboarding/submissions  api path removed without deprecation
+- **CHANGE** for Component/Schema:  removed the schema `OnboardingSubmissionRequest`
+- **CHANGE** for Component/Schema:  removed the schema `OnboardingSubmissionResponse`
+- **BREAKING CHANGE** for **URL**: /api/v2/tenant/signup  added required request body
+- **CHANGE** for **URL**: /api/v2/tenant/signup  added the non-success response with the status `422`
+
 # 05/21/2026
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the required property 'transforms/items/definition' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the required property 'definition' to the response with the '200' status

@@ -1918,10 +1918,6 @@ export interface CreateNotebookRequest {
   state?: NotebookStateInput | null;
 }
 
-export type CreateOnboardingSubmissionApiV2OnboardingSubmissionsPostData = OnboardingSubmissionResponse;
-
-export type CreateOnboardingSubmissionApiV2OnboardingSubmissionsPostError = HTTPValidationError;
-
 export type CreatePromptExperimentApiV1TasksTaskIdPromptExperimentsPostData = PromptExperimentSummary;
 
 export type CreatePromptExperimentApiV1TasksTaskIdPromptExperimentsPostError = HTTPValidationError;
@@ -2065,6 +2061,8 @@ export type CreateTaskRuleApiV2TasksTaskIdRulesPostData = RuleResponse;
 export type CreateTaskRuleApiV2TasksTaskIdRulesPostError = HTTPValidationError;
 
 export type CreateTenantSignupApiV2TenantSignupPostData = DemoTaskSignupResponse;
+
+export type CreateTenantSignupApiV2TenantSignupPostError = HTTPValidationError;
 
 export type CreateTestRunApiV1ContinuousEvalsEvalIdTestRunsPostData = ContinuousEvalTestRunResponse;
 
@@ -7295,35 +7293,6 @@ export interface OTELAgentCreationSource {
   type?: "OTEL";
 }
 
-/** OnboardingSubmissionRequest */
-export interface OnboardingSubmissionRequest {
-  /** Try-it-out onboarding form fields (matches UI TryItOutSubmission). */
-  form_data: OnboardingTryItOutFormData;
-  /**
-   * Form Variant
-   * Which onboarding form variant was submitted.
-   */
-  form_variant?: OnboardingSubmissionRequestFormVariantEnum | null;
-}
-
-export type OnboardingSubmissionRequestFormVariantEnum = "linear" | "wizard";
-
-/** OnboardingSubmissionResponse */
-export interface OnboardingSubmissionResponse {
-  /**
-   * Created At
-   * When the submission was created.
-   * @format date-time
-   */
-  created_at: string;
-  /**
-   * Id
-   * Created onboarding submission id.
-   * @format uuid
-   */
-  id: string;
-}
-
 /**
  * OnboardingTryItOutFormData
  * Try-it-out onboarding form fields (matches UI TryItOutSubmission).
@@ -11223,6 +11192,22 @@ export interface TemplateVariableMappingOutput {
 }
 
 /**
+ * TenantSignupRequest
+ * Public tenant signup payload; includes try-it-out onboarding form data.
+ */
+export interface TenantSignupRequest {
+  /** Try-it-out onboarding form fields (matches UI TryItOutSubmission). */
+  form_data: OnboardingTryItOutFormData;
+  /**
+   * Form Variant
+   * Which onboarding form variant was submitted.
+   */
+  form_variant?: TenantSignupRequestFormVariantEnum | null;
+}
+
+export type TenantSignupRequestFormVariantEnum = "linear" | "wizard";
+
+/**
  * TestCase
  * Individual test case result
  */
@@ -13848,24 +13833,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Submit try-it-out onboarding form data.
-     *
-     * @tags Onboarding
-     * @name CreateOnboardingSubmissionApiV2OnboardingSubmissionsPost
-     * @summary Create Onboarding Submission
-     * @request POST:/api/v2/onboarding/submissions
-     */
-    createOnboardingSubmissionApiV2OnboardingSubmissionsPost: (data: OnboardingSubmissionRequest, params: RequestParams = {}) =>
-      this.request<CreateOnboardingSubmissionApiV2OnboardingSubmissionsPostData, CreateOnboardingSubmissionApiV2OnboardingSubmissionsPostError>({
-        path: `/api/v2/onboarding/submissions`,
-        method: "POST",
-        body: data,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
      * @description Create a new prompt experiment and initiate execution
      *
      * @tags Prompt Experiments
@@ -14052,17 +14019,19 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Public tenant signup. Creates a new organization, a default demo task scoped to that org, and a TENANT-USER API key with `org_scope` set to the new org. Returns the four identifiers; the raw `api_key` value appears only in this response (the DB stores only its hash). Gated by GENAI_ENGINE_DEMO_MODE — returns 404 when disabled.
+     * @description Public tenant signup. Accepts try-it-out onboarding form data, persists an onboarding submission, and creates a new organization, a default demo task scoped to that org, and a TENANT-USER API key with `org_scope` set to the new org. Returns the four identifiers; the raw `api_key` value appears only in this response (the DB stores only its hash). Gated by GENAI_ENGINE_DEMO_MODE — returns 404 when disabled.
      *
      * @tags Tenant Signup
      * @name CreateTenantSignupApiV2TenantSignupPost
      * @summary Create Tenant Signup
      * @request POST:/api/v2/tenant/signup
      */
-    createTenantSignupApiV2TenantSignupPost: (params: RequestParams = {}) =>
-      this.request<CreateTenantSignupApiV2TenantSignupPostData, any>({
+    createTenantSignupApiV2TenantSignupPost: (data: TenantSignupRequest, params: RequestParams = {}) =>
+      this.request<CreateTenantSignupApiV2TenantSignupPostData, CreateTenantSignupApiV2TenantSignupPostError>({
         path: `/api/v2/tenant/signup`,
         method: "POST",
+        body: data,
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),

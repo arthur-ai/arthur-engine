@@ -1,6 +1,5 @@
 from .dataset_management_routes import dataset_management_routes
 from .engine_config_routes import engine_config_routes
-from .onboarding_routes import onboarding_routes
 from .feedback_routes import feedback_routes
 from .query_routes import query_routes
 from .rule_management_routes import rule_management_routes
@@ -17,5 +16,4 @@ all = [
     validate_routes,
     dataset_management_routes,
     engine_config_routes,
-    onboarding_routes,
 ]

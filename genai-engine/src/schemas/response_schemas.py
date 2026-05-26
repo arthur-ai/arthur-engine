@@ -969,8 +969,3 @@ class TransformDependents(BaseModel):
 
 class EngineConfigResponse(BaseModel):
     demo_mode: bool = Field(description="Whether the engine is running in demo mode.")
-
-
-class OnboardingSubmissionResponse(BaseModel):
-    id: UUID = Field(description="Created onboarding submission id.")
-    created_at: datetime = Field(description="When the submission was created.")

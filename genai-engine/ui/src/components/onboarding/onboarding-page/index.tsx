@@ -1,7 +1,6 @@
-import { Box, Button, Typography } from "@mui/material";
 import { useSnackbar } from "notistack";
 import { parseAsStringEnum, useQueryState } from "nuqs";
-import { Suspense, useState } from "react";
+import { Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useCreateOnboardingSubmissionMutation } from "../hooks/useCreateOnboardingSubmissionMutation";
@@ -10,16 +9,17 @@ import { OnboardingContentFallback, OnboardingLayout } from "../onboarding-layou
 import { TryItOutForm, type TryItOutSubmission } from "../try-it-out-form";
 import type { TryItOutSubmitMeta } from "../try-it-out-form/types";
 
+import { useAuth } from "@/contexts/AuthContext";
 import { EVENT_NAMES, identify, track } from "@/services/amplitude";
 
 export const OnboardingPage: React.FC = () => {
   const [screen, setScreen] = useQueryState("screen", parseAsStringEnum(["landing", "form"]).withDefault("landing").withOptions({ history: "push" }));
-  const [submitSucceeded, setSubmitSucceeded] = useState(false);
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
+  const { login } = useAuth();
 
   const submitMutation = useCreateOnboardingSubmissionMutation({
-    onSuccess: (_response, { data, meta }) => {
+    onSuccess: async (signup, { data, meta }) => {
       track(EVENT_NAMES.ONBOARDING_FORM_SUBMITTED, {
         variant: meta.formVariant,
         maturity: data.maturity,
@@ -38,7 +38,17 @@ export const OnboardingPage: React.FC = () => {
         jobTitle: data.jobTitle,
         company: data.company,
       });
-      setSubmitSucceeded(true);
+
+      const authenticated = await login(signup.api_key);
+      if (authenticated) {
+        navigate(`/${signup.task_id}/traces`, { replace: true });
+        return;
+      }
+
+      enqueueSnackbar("Your workspace was created, but sign-in failed. Use your API key on the login page.", {
+        variant: "warning",
+      });
+      navigate("/login", { replace: true });
     },
     onError: (error, { meta }) => {
       track(EVENT_NAMES.ONBOARDING_FORM_SUBMIT_FAILED, {
@@ -69,18 +79,6 @@ export const OnboardingPage: React.FC = () => {
     <OnboardingLayout variant={isLanding ? "landing" : "default"} contentMaxWidth={isLanding ? 880 : 520}>
       {isLanding ? (
         <LandingHero onTry={handleTry} onLogin={handleLogin} />
-      ) : submitSucceeded ? (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <Typography variant="h5" component="h1">
-            Thanks — we&apos;ve got your details
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            We&apos;ll use this to tailor your Arthur demo experience.
-          </Typography>
-          <Button variant="contained" onClick={() => navigate("/login")} sx={{ alignSelf: "flex-start", textTransform: "none" }}>
-            Continue to sign in
-          </Button>
-        </Box>
       ) : (
         <Suspense fallback={<OnboardingContentFallback />}>
           <TryItOutForm onBack={() => void setScreen("landing")} onSubmit={handleSubmit} />

@@ -19,6 +19,8 @@ class OnboardingRepository:
         self,
         form_variant: Literal["linear", "wizard"] | None,
         form_data: OnboardingTryItOutFormData,
+        *,
+        commit: bool = True,
     ) -> DatabaseOnboardingSubmission:
         now = datetime.now()
         submission = DatabaseOnboardingSubmission(
@@ -28,6 +30,9 @@ class OnboardingRepository:
             updated_at=now,
         )
         self.db_session.add(submission)
-        self.db_session.commit()
-        self.db_session.refresh(submission)
+        if commit:
+            self.db_session.commit()
+            self.db_session.refresh(submission)
+        else:
+            self.db_session.flush()
         return submission
