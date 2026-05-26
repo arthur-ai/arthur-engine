@@ -18,7 +18,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
 
-from tests.clients.base_test_client import app
+from tests.clients.base_test_client import GenaiEngineTestClientBase, app
 
 SIGNUP_URL = "/api/v2/tenant/signup"
 ME_URL = "/users/me"
@@ -48,64 +48,214 @@ def test_signup_demo_mode_off_returns_404():
 
 
 @pytest.mark.unit_tests
-def test_signup_demo_mode_on_returns_four_field_response():
+def test_signup_demo_mode_on_returns_four_field_response(
+    client: GenaiEngineTestClientBase,
+):
     """Anonymous POST with the flag on returns the documented shape."""
-    with patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "ENABLED"}):
-        client = TestClient(app)
-        response = client.post(SIGNUP_URL)
+    client.base_client.put(
+        "/api/v1/model_providers/anthropic",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
 
-    assert response.status_code == 200
-    body = response.json()
-    assert set(body.keys()) == {"org_id", "task_id", "task_name", "api_key"}
-    # org + task share the same `demo-<8 hex chars>` name
-    assert body["task_name"].startswith("demo-")
-    assert len(body["task_name"]) == len("demo-") + 8
-    uuid.UUID(body["org_id"])  # parseable UUID
-    assert body["api_key"]
+    try:
+        with patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "ENABLED"}):
+            test_client = TestClient(app)
+            response = test_client.post(SIGNUP_URL)
+
+        assert response.status_code == 200
+        body = response.json()
+        assert set(body.keys()) == {"org_id", "task_id", "task_name", "api_key"}
+        # org + task share the same `demo-<8 hex chars>` name
+        assert body["task_name"].startswith("demo-")
+        assert len(body["task_name"]) == len("demo-") + 8
+        uuid.UUID(body["org_id"])  # parseable UUID
+        assert body["api_key"]
+    finally:
+        client.base_client.delete(
+            "/api/v1/model_providers/anthropic",
+            headers=client.authorized_user_api_key_headers,
+        )
 
 
 @pytest.mark.unit_tests
-def test_signup_no_auth_required():
+def test_signup_no_auth_required(client: GenaiEngineTestClientBase):
     """Endpoint accepts calls with no Authorization header."""
-    with patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "ENABLED"}):
-        client = TestClient(app)
-        response = client.post(SIGNUP_URL, headers={})
-    assert response.status_code == 200
+    client.base_client.put(
+        "/api/v1/model_providers/anthropic",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+
+    try:
+        with patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "ENABLED"}):
+            test_client = TestClient(app)
+            response = test_client.post(SIGNUP_URL, headers={})
+        assert response.status_code == 200
+    finally:
+        client.base_client.delete(
+            "/api/v1/model_providers/anthropic",
+            headers=client.authorized_user_api_key_headers,
+        )
 
 
 @pytest.mark.unit_tests
-def test_signup_returned_key_authenticates_as_tenant():
+def test_signup_returned_key_authenticates_as_tenant(
+    client: GenaiEngineTestClientBase,
+):
     """The bearer token from signup, used against /users/me, returns
     org_scope and TENANT-USER — proving the key is fully wired to the
     new org."""
-    with patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "ENABLED"}):
-        client = TestClient(app)
-        sig = client.post(SIGNUP_URL).json()
-        me_resp = client.get(
-            ME_URL,
-            headers={"Authorization": f"Bearer {sig['api_key']}"},
-        )
+    client.base_client.put(
+        "/api/v1/model_providers/anthropic",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
 
-    assert me_resp.status_code == 200
-    me = me_resp.json()
-    assert "TENANT-USER" in me["roles"]
-    assert me["org_scope"] == sig["org_id"]
-    assert me["org"]["id"] == sig["org_id"]
-    # org + task name match — same demo-<hex>
-    assert me["org"]["name"] == sig["task_name"]
+    try:
+        with patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "ENABLED"}):
+            test_client = TestClient(app)
+            sig = test_client.post(SIGNUP_URL).json()
+            me_resp = test_client.get(
+                ME_URL,
+                headers={"Authorization": f"Bearer {sig['api_key']}"},
+            )
+
+        assert me_resp.status_code == 200
+        me = me_resp.json()
+        assert "TENANT-USER" in me["roles"]
+        assert me["org_scope"] == sig["org_id"]
+        assert me["org"]["id"] == sig["org_id"]
+        # org + task name match — same demo-<hex>
+        assert me["org"]["name"] == sig["task_name"]
+    finally:
+        client.base_client.delete(
+            "/api/v1/model_providers/anthropic",
+            headers=client.authorized_user_api_key_headers,
+        )
 
 
 @pytest.mark.unit_tests
-def test_signup_each_call_mints_distinct_org():
+def test_signup_each_call_mints_distinct_org(client: GenaiEngineTestClientBase):
     """Two consecutive signups produce independent (org, task, key) triples."""
-    with patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "ENABLED"}):
-        client = TestClient(app)
-        a = client.post(SIGNUP_URL).json()
-        b = client.post(SIGNUP_URL).json()
+    client.base_client.put(
+        "/api/v1/model_providers/anthropic",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
 
-    assert a["org_id"] != b["org_id"]
-    assert a["task_id"] != b["task_id"]
-    assert a["api_key"] != b["api_key"]
+    try:
+        with patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "ENABLED"}):
+            test_client = TestClient(app)
+            a = test_client.post(SIGNUP_URL).json()
+            b = test_client.post(SIGNUP_URL).json()
+
+        assert a["org_id"] != b["org_id"]
+        assert a["task_id"] != b["task_id"]
+        assert a["api_key"] != b["api_key"]
+    finally:
+        client.base_client.delete(
+            "/api/v1/model_providers/anthropic",
+            headers=client.authorized_user_api_key_headers,
+        )
+
+
+@pytest.mark.unit_tests
+def test_signup_creates_demo_items_on_task(client: GenaiEngineTestClientBase):
+    """Signup creates the full demo bundle on the new task: 2 agentic prompts,
+    2 trace transforms, 3 continuous evals, 1 dataset, and 3 replayed traces.
+    The continuous-eval enqueue step receives the replayed spans but is
+    patched out so no background jobs are actually scheduled.
+    """
+    test_client = TestClient(app)
+
+    # Demo orchestrator needs a configured model provider to resolve a
+    # provider/model; register Anthropic with admin headers before signup.
+    response = client.base_client.put(
+        "/api/v1/model_providers/anthropic",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 201
+
+    try:
+        with (
+            patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "ENABLED"}),
+            patch(
+                "repositories.continuous_evals_repository.ContinuousEvalsRepository.enqueue_continuous_evals_for_root_spans",
+                return_value=None,
+            ) as mock_enqueue,
+        ):
+            sig = client.base_client.post(SIGNUP_URL).json()
+            task_id = sig["task_id"]
+            tenant_headers = {"Authorization": f"Bearer {sig['api_key']}"}
+
+        # Replayed traces are handed to the enqueue method, but no jobs are
+        # actually enqueued (the real implementation is patched out).
+        mock_enqueue.assert_called_once()
+        enqueued_spans = mock_enqueue.call_args.args[0]
+        assert len(enqueued_spans) > 0
+
+        # 2 agentic prompts
+        resp = client.base_client.get(
+            f"/api/v1/tasks/{task_id}/prompts/demo_task_prompt/versions/1",
+            headers=tenant_headers,
+        )
+        assert resp.status_code == 200
+        resp = client.base_client.get(
+            f"/api/v1/tasks/{task_id}/prompts/demo_chatbot_summarizer_prompt/versions/1",
+            headers=tenant_headers,
+        )
+        assert resp.status_code == 200
+
+        # 2 trace transforms
+        resp = client.base_client.get(
+            f"/api/v1/tasks/{task_id}/traces/transforms",
+            headers=tenant_headers,
+        )
+        assert resp.status_code == 200
+        transform_names = {t["name"] for t in resp.json()["transforms"]}
+        assert transform_names == {
+            "Answer Relevance Eval",
+            "Response Extraction Transform",
+        }
+
+        # 3 continuous evals
+        resp = client.base_client.get(
+            f"/api/v1/tasks/{task_id}/continuous_evals",
+            headers=tenant_headers,
+        )
+        assert resp.status_code == 200
+        eval_names = {e["name"] for e in resp.json()["evals"]}
+        assert eval_names == {
+            "Answer Relevance Continuous Eval",
+            "Conciseness Continuous Eval",
+            "Readability Continuous Eval",
+        }
+
+        # 1 dataset
+        resp = client.base_client.get(
+            f"/api/v2/tasks/{task_id}/datasets/search",
+            headers=tenant_headers,
+        )
+        assert resp.status_code == 200
+        datasets = resp.json()["datasets"]
+        assert len(datasets) == 1
+        assert datasets[0]["name"] == "Demo Dataset"
+
+        # 3 replayed traces
+        resp = client.base_client.get(
+            f"/api/v1/traces?task_ids={task_id}",
+            headers=tenant_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["count"] == 3
+    finally:
+        response = client.base_client.delete(
+            "/api/v1/model_providers/anthropic",
+            headers=client.authorized_user_api_key_headers,
+        )
+        assert response.status_code == 204
 
 
 # --- Error-path tests ----------------------------------------------------
@@ -115,7 +265,10 @@ def test_signup_each_call_mints_distinct_org():
 
 
 @pytest.mark.unit_tests
-def test_signup_retries_once_on_org_name_collision(monkeypatch):
+def test_signup_retries_once_on_org_name_collision(
+    client: GenaiEngineTestClientBase,
+    monkeypatch,
+):
     """First create_organization raises IntegrityError; the retry succeeds."""
     from routers.v2 import tenant_signup_routes as mod
 
@@ -130,17 +283,31 @@ def test_signup_retries_once_on_org_name_collision(monkeypatch):
             calls["n"] += 1
             if calls["n"] == 1:
                 raise IntegrityError(
-                    "INSERT", {}, Exception("simulated unique violation")
+                    "INSERT",
+                    {},
+                    Exception("simulated unique violation"),
                 )
             return self._inner.create_organization(**kwargs)
 
-    with patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "ENABLED"}):
-        monkeypatch.setattr(mod, "OrganizationsRepository", FlakyOrgRepo)
-        client = TestClient(app)
-        response = client.post(SIGNUP_URL)
+    client.base_client.put(
+        "/api/v1/model_providers/anthropic",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
 
-    assert response.status_code == 200
-    assert calls["n"] == 2
+    try:
+        with patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "ENABLED"}):
+            monkeypatch.setattr(mod, "OrganizationsRepository", FlakyOrgRepo)
+            test_client = TestClient(app)
+            response = test_client.post(SIGNUP_URL)
+
+        assert response.status_code == 200
+        assert calls["n"] == 2
+    finally:
+        client.base_client.delete(
+            "/api/v1/model_providers/anthropic",
+            headers=client.authorized_user_api_key_headers,
+        )
 
 
 @pytest.mark.unit_tests

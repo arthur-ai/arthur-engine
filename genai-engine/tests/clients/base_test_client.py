@@ -113,6 +113,7 @@ from schemas.response_schemas import (
     DatasetResponse,
     DatasetVersionResponse,
     DatasetVersionRowResponse,
+    DemoTaskSignupResponse,
     ListContinuousEvalTestRunsResponse,
     ListDatasetVersionsResponse,
     ListRagSearchSettingConfigurationsResponse,
@@ -523,6 +524,41 @@ class GenaiEngineTestClientBase(httpx.Client):
                 else None
             ),
         )
+
+    def signup_tenant(self) -> tuple[int, DemoTaskSignupResponse | None]:
+        resp = self.base_client.post("/api/v2/tenant/signup")
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                DemoTaskSignupResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def stream_demo_chatbot(
+        self,
+        task_id: str,
+        history: list[dict] | None = None,
+        api_key: str | None = None,
+    ) -> tuple[int, str]:
+        headers = (
+            {"Authorization": f"Bearer {api_key}"}
+            if api_key is not None
+            else self.authorized_user_api_key_headers
+        )
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/demos/chatbot/stream",
+            json={"history": history or []},
+            headers=headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code, resp.text
 
     def create_task_metric(
         self,

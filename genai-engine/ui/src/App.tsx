@@ -13,6 +13,7 @@ import { AgentNotebookDetail } from "./components/agent-notebook/[notebookId]";
 import { AllTasks } from "./components/AllTasks";
 import { ApiKeysManagement } from "./components/ApiKeysManagement";
 import { EngineConfigGate } from "./components/common/engine-config-gate";
+import { ChatbotPage } from "./components/chatbot/ChatbotPage";
 import { DatasetDetailView } from "./components/datasets/DatasetDetailView";
 import { DatasetExperimentsView } from "./components/datasets/DatasetExperimentsView";
 import { DatasetsView } from "./components/datasets/DatasetsView";
@@ -106,6 +107,7 @@ function AppRoutes() {
         <Route path="rag-configurations/:configId/versions/:version" element={<RagConfigurationsPage />} />
 
         <Route path="test" element={<TestView />} />
+        <Route path="chatbot" element={<ChatbotPage />} />
 
         {/* Legacy redirects: old agent routes → /test */}
         <Route path="agent-experiments" element={<Navigate to="../test?section=agent-experiments" replace />} />

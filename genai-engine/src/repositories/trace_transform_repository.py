@@ -78,7 +78,8 @@ class TraceTransformRepository:
         )
         if org_scope is not None:
             q = q.join(
-                DatabaseTask, DatabaseTask.id == DatabaseTraceTransform.task_id
+                DatabaseTask,
+                DatabaseTask.id == DatabaseTraceTransform.task_id,
             ).filter(DatabaseTask.org_id == str(org_scope))
         return q.one_or_none()
 
@@ -128,7 +129,9 @@ class TraceTransformRepository:
         return result
 
     def get_transform_by_id(
-        self, transform_id: UUID, org_scope: UUID | None = None
+        self,
+        transform_id: UUID,
+        org_scope: UUID | None = None,
     ) -> TraceTransform | None:
         db_transform = self._get_db_transform_by_id(transform_id, org_scope=org_scope)
 
@@ -208,6 +211,7 @@ class TraceTransformRepository:
         self,
         task_id: str,
         transform: NewTraceTransformRequest,
+        commit: bool = True,
     ) -> TraceTransform:
         trace_transform = TraceTransform.from_request_model(task_id, transform)
         db_transform = trace_transform.to_db_model()
@@ -216,8 +220,9 @@ class TraceTransformRepository:
             self.db_session.add(db_transform)
             self.db_session.flush()
             self._create_version(db_transform, transform.definition)
-            self.db_session.commit()
-            self.db_session.refresh(db_transform)
+            if commit:
+                self.db_session.commit()
+                self.db_session.refresh(db_transform)
         except IntegrityError:
             self.db_session.rollback()
             raise HTTPException(
@@ -424,7 +429,9 @@ class TraceTransformRepository:
         self.db_session.commit()
 
     def delete_transform(
-        self, transform_id: UUID, org_scope: UUID | None = None
+        self,
+        transform_id: UUID,
+        org_scope: UUID | None = None,
     ) -> None:
         db_transform = self._get_db_transform_by_id(transform_id, org_scope=org_scope)
 
