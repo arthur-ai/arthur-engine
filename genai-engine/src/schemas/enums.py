@@ -174,7 +174,12 @@ class PermissionLevelsEnum(Enum):
         [constants.ORG_ADMIN, constants.TASK_ADMIN],
     )
     DATASET_READ = frozenset(
-        [constants.ORG_ADMIN, constants.ORG_AUDITOR, constants.TASK_ADMIN],
+        [
+            constants.ORG_ADMIN,
+            constants.ORG_AUDITOR,
+            constants.TASK_ADMIN,
+            constants.TENANT_USER,
+        ],
     )
     ROTATE_SECRETS = frozenset(
         [constants.ORG_ADMIN],
