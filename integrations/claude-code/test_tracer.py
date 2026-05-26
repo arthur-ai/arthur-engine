@@ -58,6 +58,7 @@ def llm_entry(
     input_tokens: int = 10,
     output_tokens: int = 20,
     ts: str = "2026-01-01T00:00:02.000000+00:00",
+    stop_reason: str = "",
 ) -> dict:
     content = []
     if text:
@@ -70,6 +71,7 @@ def llm_entry(
             "role": "assistant",
             "model": model,
             "content": content,
+            "stop_reason": stop_reason,
             "usage": {
                 "input_tokens": input_tokens,
                 "cache_read_input_tokens": 100,
@@ -511,14 +513,19 @@ class TestExtractLlmSpansForTurn:
         spans = self._extract(p)
         assert len(spans) == 1
         attrs = spans[0]["attributes"]
-        # output.value should be JSON-serialised tool_use, not empty
+        # output.value carries JSON-serialised tool_use for display/debugging
         assert attrs["output.value"] != ""
         assert attrs["output.mime_type"] == "application/json"
         parsed = json.loads(attrs["output.value"])
         assert parsed[0]["name"] == "Bash"
         assert parsed[0]["input"]["command"] == "ls /tmp"
-        # llm.output_messages must match
-        assert attrs["llm.output_messages.0.message.content"] == attrs["output.value"]
+        # Per spec, message.content is empty when only tool_use blocks are present;
+        # the structured tool_calls attributes carry the tool call information.
+        assert attrs["llm.output_messages.0.message.content"] == ""
+        assert (
+            attrs["llm.output_messages.0.message.tool_calls.0.tool_call.function.name"]
+            == "Bash"
+        )
 
     def test_text_takes_priority_over_tool_use(self, tmp_transcript):
         p = tmp_transcript(
@@ -2848,6 +2855,7 @@ def llm_entry_with_id(
     cache_read: int = 0,
     cache_create: int = 0,
     ts: str = "2026-01-01T00:00:02.000000+00:00",
+    stop_reason: str = "",
 ) -> dict:
     """LLM transcript entry with an explicit message.id (for grouping tests)."""
     content = []
@@ -2862,6 +2870,7 @@ def llm_entry_with_id(
             "role": "assistant",
             "model": model,
             "content": content,
+            "stop_reason": stop_reason,
             "usage": {
                 "input_tokens": input_tokens,
                 "cache_read_input_tokens": cache_read,
@@ -3052,18 +3061,25 @@ class TestLlmSpanOpenInferenceAttributes:
         assert len(spans) == 2
         assert spans[1]["attributes"]["input.mime_type"] == "application/json"
 
-    def test_tool_use_output_encoded_as_json_string(self, tmp_transcript):
-        # When LLM emits tool_use blocks (no text), the output message content
-        # is a JSON-serialised list — not structured tool_call attributes.
-        # This documents the intentional spec simplification.
+    def test_tool_use_output_uses_structured_tool_calls(self, tmp_transcript):
+        # Per OpenInference spec, tool calls appear as structured tool_calls attributes;
+        # message.content is empty when there are only tool_use blocks.
         tb = tool_use_block("Bash", "echo hello")
         p = tmp_transcript([human_entry("Go"), llm_entry("", tool_use_blocks=[tb])])
         attrs = self._extract(p)[0]["attributes"]
-        content = attrs["llm.output_messages.0.message.content"]
-        parsed = json.loads(content)
-        assert isinstance(parsed, list)
-        assert parsed[0]["name"] == "Bash"
-        assert "echo hello" in json.dumps(parsed[0]["input"])
+        assert attrs["llm.output_messages.0.message.content"] == ""
+        assert (
+            attrs["llm.output_messages.0.message.tool_calls.0.tool_call.function.name"]
+            == "Bash"
+        )
+        assert (
+            "echo hello"
+            in attrs[
+                "llm.output_messages.0.message.tool_calls.0.tool_call.function.arguments"
+            ]
+        )
+        # output.value still holds JSON for display/debugging
+        assert attrs["output.mime_type"] == "application/json"
 
     def test_llm_token_counts_include_cache_tokens(self, tmp_transcript):
         p = tmp_transcript(
@@ -3445,6 +3461,351 @@ class TestBuildAndExportSpansAttributes:
 
         assert spans[0].status.status_code == StatusCode.ERROR
 
+    def test_error_span_status_description_contains_error_msg(self, monkeypatch):
+        rec = self._simple_record()
+        rec["error"] = True
+        rec["error_msg"] = "file not found"
+        spans = self._exported_spans(monkeypatch, rec)
+        assert "file not found" in spans[0].status.description
+
+    def test_session_id_on_llm_span(self, monkeypatch):
+        rec = self._simple_record()
+        rec["attributes"]["openinference.span.kind"] = "LLM"
+        spans = self._exported_spans(monkeypatch, rec)
+        attrs = dict(spans[0].attributes)
+        assert attrs.get("session.id") == "sess-export"
+
+    def test_user_id_on_llm_span(self, monkeypatch):
+        rec = self._simple_record()
+        rec["attributes"]["openinference.span.kind"] = "LLM"
+        spans = self._exported_spans(monkeypatch, rec)
+        attrs = dict(spans[0].attributes)
+        assert attrs.get("user.id") == "export-user"
+
+    def test_session_id_on_tool_span(self, monkeypatch):
+        rec = self._simple_record()
+        spans = self._exported_spans(monkeypatch, rec)
+        attrs = dict(spans[0].attributes)
+        assert attrs.get("session.id") == "sess-export"
+
+
+# ---------------------------------------------------------------------------
+# OpenInference spec compliance — gaps documented and tested
+# ---------------------------------------------------------------------------
+
+
+class TestOpenInferenceSpecCompliance:
+    """Tests for all OpenInference spec attributes added in the gap-filling pass."""
+
+    TRACE_ID = "f" * 32
+    ROOT_ID = "e" * 16
+
+    def _extract(self, p, human_count_at_start=0):
+        return tracer._extract_llm_spans_for_turn(
+            str(p),
+            human_count_at_start,
+            self.TRACE_ID,
+            self.ROOT_ID,
+        )
+
+    # ── Structured tool_calls attributes ──────────────────────────────────────
+
+    def test_tool_calls_function_name(self, tmp_transcript):
+        tb = tool_use_block("Read", "/etc/hosts")
+        p = tmp_transcript(
+            [human_entry("Read it"), llm_entry("", tool_use_blocks=[tb])],
+        )
+        attrs = self._extract(p)[0]["attributes"]
+        assert (
+            attrs["llm.output_messages.0.message.tool_calls.0.tool_call.function.name"]
+            == "Read"
+        )
+
+    def test_tool_calls_function_arguments(self, tmp_transcript):
+        tb = tool_use_block("Bash", "echo hi")
+        p = tmp_transcript([human_entry("Run"), llm_entry("", tool_use_blocks=[tb])])
+        attrs = self._extract(p)[0]["attributes"]
+        args = json.loads(
+            attrs[
+                "llm.output_messages.0.message.tool_calls.0.tool_call.function.arguments"
+            ],
+        )
+        assert args["command"] == "echo hi"
+
+    def test_tool_call_id_preserved_from_transcript(self, tmp_transcript):
+        # tool_use_block hardcodes id="toolu_x" — verify it flows through
+        tb = tool_use_block("Bash", "ls")
+        p = tmp_transcript([human_entry("Go"), llm_entry("", tool_use_blocks=[tb])])
+        attrs = self._extract(p)[0]["attributes"]
+        assert (
+            attrs["llm.output_messages.0.message.tool_calls.0.tool_call.id"]
+            == "toolu_x"
+        )
+
+    def test_multiple_tool_calls_indexed(self, tmp_transcript):
+        tb0 = {
+            "type": "tool_use",
+            "id": "toolu_001",
+            "name": "Read",
+            "input": {"file_path": "/a"},
+        }
+        tb1 = {
+            "type": "tool_use",
+            "id": "toolu_002",
+            "name": "Bash",
+            "input": {"command": "ls"},
+        }
+        p = tmp_transcript(
+            [human_entry("Do both"), llm_entry("", tool_use_blocks=[tb0, tb1])],
+        )
+        attrs = self._extract(p)[0]["attributes"]
+        assert (
+            attrs["llm.output_messages.0.message.tool_calls.0.tool_call.id"]
+            == "toolu_001"
+        )
+        assert (
+            attrs["llm.output_messages.0.message.tool_calls.1.tool_call.id"]
+            == "toolu_002"
+        )
+        assert (
+            attrs["llm.output_messages.0.message.tool_calls.1.tool_call.function.name"]
+            == "Bash"
+        )
+
+    def test_no_tool_calls_attrs_when_text_only(self, tmp_transcript):
+        p = tmp_transcript([human_entry("Hi"), llm_entry("Hello")])
+        attrs = self._extract(p)[0]["attributes"]
+        assert "llm.output_messages.0.message.tool_calls.0.tool_call.id" not in attrs
+
+    # ── llm.finish_reason ─────────────────────────────────────────────────────
+
+    def test_finish_reason_end_turn_maps_to_stop(self, tmp_transcript):
+        p = tmp_transcript(
+            [human_entry("Hi"), llm_entry("Hello", stop_reason="end_turn")],
+        )
+        assert self._extract(p)[0]["attributes"]["llm.finish_reason"] == "stop"
+
+    def test_finish_reason_max_tokens_maps_to_length(self, tmp_transcript):
+        p = tmp_transcript(
+            [human_entry("Hi"), llm_entry("...", stop_reason="max_tokens")],
+        )
+        assert self._extract(p)[0]["attributes"]["llm.finish_reason"] == "length"
+
+    def test_finish_reason_tool_use_passes_through(self, tmp_transcript):
+        tb = tool_use_block()
+        p = tmp_transcript(
+            [
+                human_entry("Go"),
+                llm_entry("", tool_use_blocks=[tb], stop_reason="tool_use"),
+            ],
+        )
+        assert self._extract(p)[0]["attributes"]["llm.finish_reason"] == "tool_use"
+
+    def test_finish_reason_absent_when_no_stop_reason(self, tmp_transcript):
+        # stop_reason="" → llm.finish_reason must not be set
+        p = tmp_transcript([human_entry("Hi"), llm_entry("Hello")])
+        assert "llm.finish_reason" not in self._extract(p)[0]["attributes"]
+
+    def test_finish_reason_last_group_entry_wins(self, tmp_transcript):
+        # Extended-thinking: first entry has no stop_reason, last has "end_turn"
+        p = tmp_transcript(
+            [
+                human_entry("Think"),
+                llm_entry_with_id("msg_et", text="", output_tokens=5),
+                llm_entry_with_id(
+                    "msg_et",
+                    text="Answer",
+                    output_tokens=10,
+                    stop_reason="end_turn",
+                ),
+            ],
+        )
+        attrs = self._extract(p)[0]["attributes"]
+        assert attrs["llm.finish_reason"] == "stop"
+
+    # ── agent.name on AGENT spans ─────────────────────────────────────────────
+
+    def test_agent_name_from_subagent_type(self):
+        rec = tracer._build_tool_span_record(
+            tool_name="Agent",
+            tool_input={"prompt": "do x", "subagent_type": "general-purpose"},
+            tool_response="done",
+            start_ns=1000,
+            end_ns=2000,
+            trace_id="a" * 32,
+            root_span_id="b" * 16,
+        )
+        assert rec["attributes"]["agent.name"] == "general-purpose"
+
+    def test_agent_name_fallback_to_tool_name(self):
+        # No subagent_type → falls back to "Agent"
+        rec = tracer._build_tool_span_record(
+            tool_name="Agent",
+            tool_input={"prompt": "do x"},
+            tool_response="done",
+            start_ns=1000,
+            end_ns=2000,
+            trace_id="a" * 32,
+            root_span_id="b" * 16,
+        )
+        assert rec["attributes"]["agent.name"] == "Agent"
+
+    def test_agent_name_for_task_tool(self):
+        rec = tracer._build_tool_span_record(
+            tool_name="Task",
+            tool_input={
+                "prompt": "do x",
+                "subagent_type": "claude-code-guide",
+                "description": "help",
+            },
+            tool_response="done",
+            start_ns=1000,
+            end_ns=2000,
+            trace_id="a" * 32,
+            root_span_id="b" * 16,
+        )
+        assert rec["attributes"]["agent.name"] == "claude-code-guide"
+
+    def test_agent_name_absent_on_tool_spans(self):
+        rec = tracer._build_tool_span_record(
+            tool_name="Bash",
+            tool_input={"command": "ls"},
+            tool_response="file.txt",
+            start_ns=1000,
+            end_ns=2000,
+            trace_id="a" * 32,
+            root_span_id="b" * 16,
+        )
+        assert "agent.name" not in rec["attributes"]
+
+    # ── tool result input: role="tool" and message.tool_call_id ──────────────
+
+    def test_tool_result_input_role_is_tool(self, tmp_transcript):
+        p = tmp_transcript(
+            [
+                human_entry("What files?"),
+                llm_entry("", tool_use_blocks=[tool_use_block()]),
+                tool_result_entry("toolu_x", "file.txt"),
+                llm_entry("Here: file.txt"),
+            ],
+        )
+        spans = self._extract(p)
+        # Second LLM call receives a tool result as input
+        assert spans[1]["attributes"]["llm.input_messages.0.message.role"] == "tool"
+
+    def test_tool_result_input_has_tool_call_id(self, tmp_transcript):
+        p = tmp_transcript(
+            [
+                human_entry("What files?"),
+                llm_entry("", tool_use_blocks=[tool_use_block()]),
+                tool_result_entry("toolu_x", "file.txt"),
+                llm_entry("Here: file.txt"),
+            ],
+        )
+        spans = self._extract(p)
+        assert (
+            spans[1]["attributes"]["llm.input_messages.0.message.tool_call_id"]
+            == "toolu_x"
+        )
+
+    def test_human_input_has_no_tool_call_id(self, tmp_transcript):
+        p = tmp_transcript([human_entry("Hello"), llm_entry("Hi")])
+        attrs = self._extract(p)[0]["attributes"]
+        assert "llm.input_messages.0.message.tool_call_id" not in attrs
+
+    def test_human_input_role_is_still_user(self, tmp_transcript):
+        p = tmp_transcript([human_entry("Hello"), llm_entry("Hi")])
+        attrs = self._extract(p)[0]["attributes"]
+        assert attrs["llm.input_messages.0.message.role"] == "user"
+
+    # ── CHAIN span name ───────────────────────────────────────────────────────
+
+    def test_chain_span_name_is_claude_code_turn(self, monkeypatch):
+        exported = []
+        monkeypatch.setattr(
+            tracer,
+            "_build_and_export_spans",
+            lambda **kw: exported.extend(kw["span_records"]),
+        )
+        state = {
+            "session_id": "s",
+            "username": "u",
+            "current_trace": {
+                "trace_id": "a" * 32,
+                "root_span_id": "b" * 16,
+                "turn_start_ns": 1_000_000_000,
+                "turn_number": 1,
+                "prompt_preview": "hi",
+                "last_llm_output": "hello",
+            },
+        }
+        tracer._complete_turn(
+            state,
+            {"api_key": "k", "task_id": "t", "endpoint": "https://x"},
+            None,
+            2_000_000_000,
+        )
+        chain = next(
+            r
+            for r in exported
+            if r["attributes"].get("openinference.span.kind") == "CHAIN"
+        )
+        assert chain["name"] == "claude-code-turn"
+
+    # ── RETRIEVER tool.json_schema ────────────────────────────────────────────
+
+    def test_retriever_websearch_has_tool_json_schema(self):
+        rec = tracer._build_tool_span_record(
+            tool_name="WebSearch",
+            tool_input={"query": "openinference spec"},
+            tool_response="results",
+            start_ns=1000,
+            end_ns=2000,
+            trace_id="1" * 32,
+            root_span_id="2" * 16,
+        )
+        schema = json.loads(rec["attributes"]["tool.json_schema"])
+        assert "query" in schema["properties"]
+        assert "query" in schema["required"]
+
+    def test_retriever_webfetch_has_tool_json_schema(self):
+        rec = tracer._build_tool_span_record(
+            tool_name="WebFetch",
+            tool_input={"url": "https://example.com", "prompt": "x"},
+            tool_response="content",
+            start_ns=1000,
+            end_ns=2000,
+            trace_id="1" * 32,
+            root_span_id="2" * 16,
+        )
+        schema = json.loads(rec["attributes"]["tool.json_schema"])
+        assert "url" in schema["properties"]
+
+    # ── Known gaps: intentionally absent attributes ───────────────────────────
+
+    def test_llm_invocation_parameters_intentionally_absent(self, tmp_transcript):
+        # Claude Code hooks do not expose API call parameters (temperature, max_tokens,
+        # etc.), so llm.invocation_parameters cannot be set.
+        p = tmp_transcript([human_entry("Hi"), llm_entry("Hello")])
+        attrs = self._extract(p)[0]["attributes"]
+        assert "llm.invocation_parameters" not in attrs
+
+    def test_completion_details_reasoning_intentionally_absent(self, tmp_transcript):
+        # The Claude Code transcript provides per-entry output_tokens but does not
+        # separate thinking-block tokens from text tokens, so
+        # llm.token_count.completion_details.reasoning cannot be populated.
+        p = tmp_transcript(
+            [
+                human_entry("Think hard"),
+                llm_entry_with_id("msg_et", text="", output_tokens=50),
+                llm_entry_with_id("msg_et", text="Answer", output_tokens=20),
+            ],
+        )
+        attrs = self._extract(p)[0]["attributes"]
+        assert "llm.token_count.completion_details.reasoning" not in attrs
+        # All tokens are rolled up into the combined completion count
+        assert attrs["llm.token_count.completion"] == 70
+
 
 # ---------------------------------------------------------------------------
 # End-to-end: AGENT span ↔ subagent CHAIN span parent-child relationship
@@ -3701,3 +4062,608 @@ class TestAgentSpanEndToEnd:
             alpha_span_id in exported_ids
         ), "alpha span_id not in exported AGENT spans"
         assert beta_span_id in exported_ids, "beta span_id not in exported AGENT spans"
+
+
+# ---------------------------------------------------------------------------
+# OpenInference spec gap analysis — documented intentional absences and
+# correctness assertions not covered elsewhere
+# ---------------------------------------------------------------------------
+
+
+class TestOpenInferenceSpecGaps:
+    """
+    Gap analysis against the OpenInference semantic-conventions spec.
+
+    Each test either:
+      (a) documents an attribute that is intentionally absent and explains why, or
+      (b) asserts a correctness property that wasn't verified by earlier suites.
+
+    Spec reference:
+      https://github.com/Arize-ai/openinference/blob/main/spec/semantic_conventions.md
+    """
+
+    TRACE_ID = "abcd" * 8
+    ROOT_ID = "ef01" * 4
+
+    def _extract(self, p, human_count_at_start=0):
+        return tracer._extract_llm_spans_for_turn(
+            str(p),
+            human_count_at_start,
+            self.TRACE_ID,
+            self.ROOT_ID,
+        )
+
+    def _build_tool(self, tool_name="Bash", tool_input=None, tool_response="ok"):
+        return tracer._build_tool_span_record(
+            tool_name=tool_name,
+            tool_input=tool_input or {"command": "ls"},
+            tool_response=tool_response,
+            start_ns=1_000_000_000,
+            end_ns=2_000_000_000,
+            trace_id=self.TRACE_ID,
+            root_span_id=self.ROOT_ID,
+        )
+
+    # ── llm.provider ──────────────────────────────────────────────────────────
+
+    def test_llm_provider_intentionally_absent(self, tmp_transcript):
+        """llm.provider is distinct from llm.system in the spec (API gateway vs
+        underlying model system).  The Claude Code transcript does not expose
+        which API provider is being used, so this attribute cannot be set
+        reliably.  llm.system='anthropic' is set instead."""
+        p = tmp_transcript([human_entry("Hi"), llm_entry("Hello")])
+        attrs = self._extract(p)[0]["attributes"]
+        assert "llm.provider" not in attrs
+        # llm.system is present as the documented substitute
+        assert attrs["llm.system"] == "anthropic"
+
+    # ── llm.tools (tools available to the LLM) ───────────────────────────────
+
+    def test_llm_tools_intentionally_absent(self, tmp_transcript):
+        """llm.tools.N.tool.json_schema lists what tools were offered to the LLM
+        during the API call.  The Claude Code transcript does not include the
+        system prompt or tools list sent to Anthropic, so this cannot be
+        populated."""
+        p = tmp_transcript([human_entry("Hi"), llm_entry("Hello")])
+        attrs = self._extract(p)[0]["attributes"]
+        assert "llm.tools.0.tool.json_schema" not in attrs
+
+    # ── tool.description on TOOL spans ───────────────────────────────────────
+
+    def test_tool_description_intentionally_absent(self):
+        """tool.description is a spec attribute for TOOL spans.  TOOL_SCHEMAS
+        does not include human-readable descriptions for Claude Code built-ins,
+        so this attribute is not set.  tool.json_schema is set instead."""
+        rec = self._build_tool("Bash")
+        assert "tool.description" not in rec["attributes"]
+        # tool.json_schema IS set as documented substitue
+        assert "tool.json_schema" in rec["attributes"]
+
+    # ── tool.id on TOOL spans ─────────────────────────────────────────────────
+
+    def test_tool_id_intentionally_absent(self):
+        """tool.id is a spec attribute for tool-definition identifiers.
+        Claude Code built-in tools do not have stable definition IDs, so
+        this attribute is not set."""
+        rec = self._build_tool("Read")
+        assert "tool.id" not in rec["attributes"]
+
+    # ── exception.* on error spans ───────────────────────────────────────────
+
+    def test_exception_type_intentionally_absent_on_error_tool_span(self):
+        """The spec defines exception.type / exception.message / exception.stacktrace
+        for error spans.  The Claude Code hooks only deliver an error string, not a
+        structured exception, so these attributes cannot be populated.  The OTel
+        status is set to ERROR with the error string as description instead."""
+        rec = tracer._build_tool_span_record(
+            tool_name="Bash",
+            tool_input={"command": "bad"},
+            tool_response={"error": "command not found"},
+            start_ns=1_000_000_000,
+            end_ns=2_000_000_000,
+            trace_id=self.TRACE_ID,
+            root_span_id=self.ROOT_ID,
+            is_failure=True,
+            error_msg="command not found",
+        )
+        assert "exception.type" not in rec["attributes"]
+        assert "exception.message" not in rec["attributes"]
+        assert "exception.stacktrace" not in rec["attributes"]
+        # Error is signalled via the record-level error flag, not span attributes
+        assert rec["error"] is True
+        assert rec["error_msg"] == "command not found"
+
+    # ── retrieval.documents — only index 0 ───────────────────────────────────
+
+    def test_only_first_retrieval_document_set(self):
+        """The spec allows retrieval.documents.N for N >= 0.  The tracer maps the
+        entire tool response to a single document at index 0.  Structured
+        multi-document parsing is not implemented because WebSearch/WebFetch
+        responses are free-form text, not typed document lists."""
+        rec = self._build_tool(
+            "WebSearch",
+            tool_input={"query": "openinference docs"},
+            tool_response="Result 1: ...\nResult 2: ...",
+        )
+        assert "retrieval.documents.0.document.content" in rec["attributes"]
+        assert "retrieval.documents.1.document.content" not in rec["attributes"]
+
+    # ── retrieval.documents.0.document.metadata ───────────────────────────────
+
+    def test_retrieval_document_metadata_intentionally_absent(self):
+        """document.metadata is a spec attribute for retrieval results.  Web
+        search/fetch responses do not include structured metadata (title, URL, etc.)
+        in the hook payload, so this attribute is not set."""
+        rec = self._build_tool(
+            "WebFetch",
+            tool_input={"url": "https://example.com", "prompt": "x"},
+            tool_response="page content",
+        )
+        assert "retrieval.documents.0.document.metadata" not in rec["attributes"]
+
+    # ── llm.input_messages: only the immediately preceding message ────────────
+
+    def test_only_preceding_message_captured_as_llm_input(self, tmp_transcript):
+        """The spec allows multiple input messages to reflect the full conversation
+        context sent to the LLM.  The tracer captures only the immediately preceding
+        message (the human prompt or most recent tool result).  The full conversation
+        history is not included because the transcript does not expose the full
+        messages array sent to Anthropic on each API call."""
+        p = tmp_transcript(
+            [
+                human_entry("Turn 1 context"),
+                llm_entry("First reply", ts="2026-01-01T00:00:01.000000+00:00"),
+                tool_result_entry("toolu_x", "tool output"),
+                llm_entry("Second reply", ts="2026-01-01T00:00:05.000000+00:00"),
+            ],
+        )
+        spans = self._extract(p)
+        assert len(spans) == 2
+        # Only one input message index (0) is set per LLM span
+        attrs0 = spans[0]["attributes"]
+        attrs1 = spans[1]["attributes"]
+        assert "llm.input_messages.1.message.role" not in attrs0
+        assert "llm.input_messages.1.message.role" not in attrs1
+
+    # ── parallel tool results: only first tool_call_id captured ──────────────
+
+    def test_parallel_tool_results_only_first_tool_call_id_captured(
+        self,
+        tmp_transcript,
+    ):
+        """When multiple tools run in parallel, their results arrive in a single
+        user message with multiple tool_result items.  The tracer extracts only the
+        first tool_use_id as llm.input_messages.0.message.tool_call_id.  Subsequent
+        tool_call_ids are not captured because the spec flattening for input messages
+        only models one message per index, and we don't know the correct pairing
+        without the full messages array."""
+        parallel_result_entry = {
+            "type": "user",
+            "message": {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": "toolu_first",
+                        "content": [{"type": "text", "text": "result A"}],
+                    },
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": "toolu_second",
+                        "content": [{"type": "text", "text": "result B"}],
+                    },
+                ],
+            },
+            "timestamp": "2026-01-01T00:00:03.000000+00:00",
+        }
+        p = tmp_transcript(
+            [
+                human_entry("Do two things"),
+                llm_entry(
+                    "",
+                    tool_use_blocks=[
+                        {
+                            "type": "tool_use",
+                            "id": "toolu_first",
+                            "name": "Read",
+                            "input": {"file_path": "/a"},
+                        },
+                        {
+                            "type": "tool_use",
+                            "id": "toolu_second",
+                            "name": "Bash",
+                            "input": {"command": "ls"},
+                        },
+                    ],
+                ),
+                parallel_result_entry,
+                llm_entry("Both done", ts="2026-01-01T00:00:05.000000+00:00"),
+            ],
+        )
+        spans = self._extract(p)
+        assert len(spans) == 2
+        # The second LLM span captures the parallel result message
+        second_attrs = spans[1]["attributes"]
+        # Only the first tool_call_id is captured
+        assert (
+            second_attrs["llm.input_messages.0.message.tool_call_id"] == "toolu_first"
+        )
+        # The second tool_call_id is absent (known gap)
+        assert "llm.input_messages.1.message.tool_call_id" not in second_attrs
+
+    # ── LLM span timestamp sanity ─────────────────────────────────────────────
+
+    def test_llm_span_end_ns_always_greater_than_start_ns(self, tmp_transcript):
+        """Derived end time must always be strictly after start time, even for
+        responses with 0 output tokens (floor of 1 ms is applied)."""
+        zero_token_entry = {
+            "type": "assistant",
+            "message": {
+                "role": "assistant",
+                "model": "claude-sonnet-4-6",
+                "content": [],
+                "stop_reason": "end_turn",
+                "usage": {
+                    "input_tokens": 10,
+                    "output_tokens": 0,
+                    "cache_read_input_tokens": 0,
+                    "cache_creation_input_tokens": 0,
+                },
+            },
+            "timestamp": "2026-01-01T00:00:02.000000+00:00",
+        }
+        p = tmp_transcript([human_entry("Hi"), zero_token_entry])
+        spans = self._extract(p)
+        assert len(spans) == 1
+        assert spans[0]["end_ns"] > spans[0]["start_ns"]
+
+    # ── Unknown tool: no tool.json_schema ────────────────────────────────────
+
+    def test_unknown_tool_has_no_json_schema(self):
+        """A tool not in TOOL_SCHEMAS must not set tool.json_schema.  The tracer
+        only attaches schemas for known built-in tools."""
+        rec = self._build_tool("CustomInternalTool", tool_input={"param": "value"})
+        assert "tool.json_schema" not in rec["attributes"]
+        # tool.name is still set
+        assert rec["attributes"]["tool.name"] == "CustomInternalTool"
+
+    # ── tool.json_schema is always valid JSON ─────────────────────────────────
+
+    def test_tool_json_schema_is_valid_json_for_all_known_tools(self):
+        """Every tool in TOOL_SCHEMAS must produce parseable JSON in tool.json_schema."""
+        for tool_name in tracer.TOOL_SCHEMAS:
+            rec = tracer._build_tool_span_record(
+                tool_name=tool_name,
+                tool_input={},
+                tool_response="ok",
+                start_ns=1_000_000_000,
+                end_ns=2_000_000_000,
+                trace_id=self.TRACE_ID,
+                root_span_id=self.ROOT_ID,
+            )
+            schema_str = rec["attributes"].get("tool.json_schema", "")
+            assert schema_str, f"{tool_name}: tool.json_schema is absent or empty"
+            parsed = json.loads(schema_str)
+            assert (
+                "type" in parsed or "properties" in parsed
+            ), f"{tool_name}: tool.json_schema missing 'type' or 'properties'"
+
+    # ── AGENT span: no tool.json_schema for unknown subagent_type ────────────
+
+    def test_agent_span_still_has_json_schema_from_tool_schemas(self):
+        """The Agent and Task tool schemas are in TOOL_SCHEMAS, so AGENT spans
+        always have tool.json_schema even though they map to AGENT span kind."""
+        for agent_tool in ("Agent", "Task"):
+            rec = self._build_tool(
+                agent_tool,
+                tool_input={"prompt": "do something", "description": "helper"},
+            )
+            assert (
+                "tool.json_schema" in rec["attributes"]
+            ), f"{agent_tool} AGENT span missing tool.json_schema"
+
+    # ── LLM span: llm.output_messages.0.message.role is always "assistant" ───
+
+    def test_llm_output_message_role_is_assistant_for_tool_only_response(
+        self,
+        tmp_transcript,
+    ):
+        """Even when the LLM only produces tool_use blocks (no text), the output
+        message role must be 'assistant' per the OpenInference spec."""
+        tb = tool_use_block("Bash", "ls")
+        p = tmp_transcript([human_entry("Go"), llm_entry("", tool_use_blocks=[tb])])
+        attrs = self._extract(p)[0]["attributes"]
+        assert attrs["llm.output_messages.0.message.role"] == "assistant"
+
+    # ── CHAIN span: session.id and user.id in attributes (not just resource) ──
+
+    def test_chain_span_has_session_id_and_user_id_in_attributes(self, monkeypatch):
+        """session.id and user.id must appear as span attributes on the CHAIN span,
+        not only in OTel resource fields."""
+        exported = []
+        monkeypatch.setattr(
+            tracer,
+            "_build_and_export_spans",
+            lambda **kw: exported.extend(kw["span_records"]),
+        )
+        state = {
+            "session_id": "sess-gap-check",
+            "username": "gap-user",
+            "current_trace": {
+                "trace_id": "a" * 32,
+                "root_span_id": "b" * 16,
+                "turn_start_ns": 1_000_000_000,
+                "turn_number": 1,
+                "prompt_preview": "hello",
+                "last_llm_output": "world",
+            },
+        }
+        tracer._complete_turn(
+            state,
+            {"api_key": "k", "task_id": "t", "endpoint": "https://x"},
+            None,
+            2_000_000_000,
+        )
+        chain = next(
+            r
+            for r in exported
+            if r["attributes"].get("openinference.span.kind") == "CHAIN"
+        )
+        assert chain["attributes"]["session.id"] == "sess-gap-check"
+        assert chain["attributes"]["user.id"] == "gap-user"
+
+    # ── llm.input_messages.0.message.content format when tool result ──────────
+
+    def test_llm_input_message_content_is_string_not_list(self, tmp_transcript):
+        """The spec uses flattened scalar attributes; message.content must be a
+        string, not a list, even when the input comes from a tool result."""
+        p = tmp_transcript(
+            [
+                human_entry("What files?"),
+                llm_entry("", tool_use_blocks=[tool_use_block()]),
+                tool_result_entry("toolu_x", "file.txt\nother.py"),
+                llm_entry("Found them", ts="2026-01-01T00:00:05.000000+00:00"),
+            ],
+        )
+        spans = self._extract(p)
+        second_attrs = spans[1]["attributes"]
+        content = second_attrs["llm.input_messages.0.message.content"]
+        assert isinstance(
+            content,
+            str,
+        ), f"message.content must be a string, got {type(content)}"
+        assert "file.txt" in content
+
+    # ── RETRIEVER: output.mime_type is "application/json" even for text ───────
+
+    def test_retriever_output_mime_type_is_application_json_for_text_response(self):
+        """For RETRIEVER spans the raw web response is stored as a JSON-serialised
+        string in output.value (not the raw bytes), so output.mime_type is
+        application/json.  The actual document text is at
+        retrieval.documents.0.document.content as a plain string."""
+        rec = self._build_tool(
+            "WebFetch",
+            tool_input={"url": "https://example.com", "prompt": "x"},
+            tool_response="raw page text",
+        )
+        assert rec["attributes"]["output.mime_type"] == "application/json"
+        # Document content is the raw text, not JSON-wrapped
+        doc_content = rec["attributes"]["retrieval.documents.0.document.content"]
+        assert doc_content == "raw page text"
+
+    # ── metadata attribute ─────────────────────────────────────────────────────
+
+    def test_metadata_attribute_intentionally_absent(self, tmp_transcript):
+        """The spec supports a free-form JSON metadata attribute on any span.
+        The tracer does not set this — session and task context is conveyed via
+        resource attributes (arthur.task, arthur.session) instead."""
+        p = tmp_transcript([human_entry("Hi"), llm_entry("Hello")])
+        attrs = self._extract(p)[0]["attributes"]
+        assert "metadata" not in attrs
+
+    # ── tag.tags attribute ─────────────────────────────────────────────────────
+
+    def test_tag_tags_attribute_intentionally_absent(self, tmp_transcript):
+        """tag.tags is not set — Claude Code sessions have no user-defined tags."""
+        p = tmp_transcript([human_entry("Hi"), llm_entry("Hello")])
+        attrs = self._extract(p)[0]["attributes"]
+        assert "tag.tags" not in attrs
+
+
+# ---------------------------------------------------------------------------
+# Inline-agent tool nesting
+# ---------------------------------------------------------------------------
+
+
+class TestInlineAgentToolNesting:
+    """Verify that tool spans emitted while an Agent/Task tool is pending are
+    parented to the Agent span, not the CHAIN root.
+
+    When Claude Code uses an Explore-type subagent, the subagent's tools (WebFetch,
+    Read, etc.) fire hooks in the *parent* session because the subagent runs inline
+    rather than in a separate process.  The fix detects any pending Agent entry in
+    state["pending_tools"] and uses its pre_allocated_span_id as the parent for
+    tools that fire during that window.
+    """
+
+    CONFIG = {"api_key": "k", "task_id": "t", "endpoint": "https://x.example.com"}
+    ROOT_ID = "aaaa" * 4
+    TRACE_ID = "bbbb" * 8
+    AGENT_SPAN_ID = "cccc" * 2
+
+    def _make_state(self, monkeypatch, tmp_path, session_id, pending_tools=None):
+        monkeypatch.setattr(tracer, "STATE_DIR", tmp_path / "tracer")
+        (tmp_path / "tracer").mkdir(parents=True, exist_ok=True)
+        state = {
+            "session_id": session_id,
+            "username": "u",
+            "human_msg_count": 1,
+            "turn_number": 1,
+            "current_trace": {
+                "trace_id": self.TRACE_ID,
+                "root_span_id": self.ROOT_ID,
+                "turn_start_ns": 1_000_000_000,
+                "turn_number": 1,
+                "human_count_at_start": 1,
+                "prompt_preview": "test",
+                "emitted_llm_span_count": 0,
+            },
+            "pending_tools": pending_tools or {},
+        }
+        tracer._save_state(session_id, state)
+        return state
+
+    def _run_post_tool(
+        self,
+        monkeypatch,
+        tmp_path,
+        session_id,
+        tool_name,
+        pending_tools,
+    ):
+        exported = []
+        monkeypatch.setattr(
+            tracer,
+            "_build_and_export_spans",
+            lambda **kw: exported.extend(kw["span_records"]),
+        )
+        monkeypatch.setattr(tracer, "_emit_pending_llm_spans", lambda *a, **kw: None)
+        monkeypatch.setattr(
+            tracer,
+            "_get_cached_transcript_path",
+            lambda *a, **kw: None,
+        )
+        self._make_state(monkeypatch, tmp_path, session_id, pending_tools)
+        tracer.handle_post_tool(
+            {
+                "session_id": session_id,
+                "tool_name": tool_name,
+                "tool_input": {"url": "https://example.com", "prompt": "fetch"},
+                "tool_response": "content",
+            },
+            self.CONFIG,
+        )
+        return exported
+
+    def test_subagent_webfetch_parented_to_agent(self, monkeypatch, tmp_path):
+        """WebFetch fired while Agent is pending → parent_span_id_hex = Agent span."""
+        pending = {
+            f"Agent#{self.AGENT_SPAN_ID}": {
+                "tool_name": "Agent",
+                "tool_input": {"prompt": "explore"},
+                "start_ns": 500_000_000,
+                "pre_allocated_span_id": self.AGENT_SPAN_ID,
+            },
+            "WebFetch": {
+                "tool_name": "WebFetch",
+                "tool_input": {"url": "https://example.com", "prompt": "fetch"},
+                "start_ns": 600_000_000,
+            },
+        }
+        exported = self._run_post_tool(
+            monkeypatch,
+            tmp_path,
+            "nest1",
+            "WebFetch",
+            pending,
+        )
+        assert len(exported) == 1
+        assert (
+            exported[0]["parent_span_id_hex"] == self.AGENT_SPAN_ID
+        ), f"Expected parent={self.AGENT_SPAN_ID}, got {exported[0]['parent_span_id_hex']}"
+
+    def test_agent_span_still_parented_to_chain_root(self, monkeypatch, tmp_path):
+        """The Agent span itself must be parented to the CHAIN root, not to itself."""
+        agent_key = f"Agent#{self.AGENT_SPAN_ID}"
+        pending = {
+            agent_key: {
+                "tool_name": "Agent",
+                "tool_input": {"prompt": "explore"},
+                "start_ns": 500_000_000,
+                "pre_allocated_span_id": self.AGENT_SPAN_ID,
+            },
+        }
+        exported = []
+        monkeypatch.setattr(tracer, "STATE_DIR", tmp_path / "tracer")
+        (tmp_path / "tracer").mkdir(parents=True, exist_ok=True)
+        monkeypatch.setattr(
+            tracer,
+            "_build_and_export_spans",
+            lambda **kw: exported.extend(kw["span_records"]),
+        )
+        monkeypatch.setattr(tracer, "_emit_pending_llm_spans", lambda *a, **kw: None)
+        monkeypatch.setattr(
+            tracer,
+            "_get_cached_transcript_path",
+            lambda *a, **kw: None,
+        )
+        self._make_state(monkeypatch, tmp_path, "nest2", pending)
+        tracer.handle_post_tool(
+            {
+                "session_id": "nest2",
+                "tool_name": "Agent",
+                "tool_input": {"prompt": "explore"},
+                "tool_response": "done",
+            },
+            self.CONFIG,
+        )
+        assert len(exported) == 1
+        assert exported[0]["parent_span_id_hex"] == self.ROOT_ID, (
+            f"Agent span should parent to CHAIN root {self.ROOT_ID}, "
+            f"got {exported[0]['parent_span_id_hex']}"
+        )
+
+    def test_tool_after_agent_completes_parented_to_root(self, monkeypatch, tmp_path):
+        """WebFetch with no pending Agent → parent_span_id_hex = CHAIN root."""
+        pending = {
+            "WebFetch": {
+                "tool_name": "WebFetch",
+                "tool_input": {"url": "https://example.com", "prompt": "fetch"},
+                "start_ns": 700_000_000,
+            },
+        }
+        exported = self._run_post_tool(
+            monkeypatch,
+            tmp_path,
+            "nest3",
+            "WebFetch",
+            pending,
+        )
+        assert len(exported) == 1
+        assert exported[0]["parent_span_id_hex"] == self.ROOT_ID
+
+    def test_nested_agents_webfetch_parented_to_innermost(self, monkeypatch, tmp_path):
+        """With two pending Agents (outer started first), WebFetch parents to the
+        more-recently-started one (inner), not the outer."""
+        outer_id = "1111" * 2
+        inner_id = "2222" * 2
+        pending = {
+            f"Agent#{outer_id}": {
+                "tool_name": "Agent",
+                "tool_input": {"prompt": "outer"},
+                "start_ns": 100_000_000,
+                "pre_allocated_span_id": outer_id,
+            },
+            f"Agent#{inner_id}": {
+                "tool_name": "Agent",
+                "tool_input": {"prompt": "inner"},
+                "start_ns": 200_000_000,
+                "pre_allocated_span_id": inner_id,
+            },
+            "WebFetch": {
+                "tool_name": "WebFetch",
+                "tool_input": {"url": "https://example.com", "prompt": "fetch"},
+                "start_ns": 300_000_000,
+            },
+        }
+        exported = self._run_post_tool(
+            monkeypatch,
+            tmp_path,
+            "nest4",
+            "WebFetch",
+            pending,
+        )
+        assert len(exported) == 1
+        assert (
+            exported[0]["parent_span_id_hex"] == inner_id
+        ), f"Expected innermost agent {inner_id}, got {exported[0]['parent_span_id_hex']}"

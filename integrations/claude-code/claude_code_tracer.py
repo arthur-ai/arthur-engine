@@ -474,6 +474,7 @@ def _extract_llm_spans_for_turn(
         last_input_mime = "text/plain"
         last_input_role = "user"
         last_input_content = ""
+        last_input_tool_call_id = ""
 
         # Accumulator for the current message.id group
         current_group_id: Optional[str] = None
@@ -483,13 +484,14 @@ def _extract_llm_spans_for_turn(
         group_tool_use_parts: list = []
         group_model: str = "claude"
         group_ts: str = ""
+        group_stop_reason: str = ""
         group_input_snapshot: dict = {}  # last_input* captured at group start
 
         def _flush_group() -> None:
             """Emit one LLM span for the accumulated group, if non-empty."""
             nonlocal current_group_id, group_first_usage, group_total_output_tokens
             nonlocal group_text_parts, group_tool_use_parts, group_model, group_ts
-            nonlocal group_input_snapshot
+            nonlocal group_input_snapshot, group_stop_reason
 
             if not current_group_id:
                 return
@@ -509,6 +511,12 @@ def _extract_llm_spans_for_turn(
             else:
                 output_value = ""
                 output_mime = "text/plain"
+
+            # Per OpenInference spec, message.content carries text only; tool calls
+            # go in structured tool_calls attributes (not serialised into content).
+            output_message_content = (
+                _truncate("".join(group_text_parts)) if group_text_parts else ""
+            )
 
             start_ns = _iso_to_ns(group_ts)
             end_ns = start_ns + max(output_tokens * 10_000_000, 1_000_000)
@@ -531,10 +539,34 @@ def _extract_llm_spans_for_turn(
                 "input.value": snap.get("value", ""),
                 "input.mime_type": snap.get("mime", "text/plain"),
                 "llm.output_messages.0.message.role": "assistant",
-                "llm.output_messages.0.message.content": output_value,
+                "llm.output_messages.0.message.content": output_message_content,
                 "output.value": output_value,
                 "output.mime_type": output_mime,
             }
+
+            # Structured tool_calls attributes (OpenInference spec)
+            for i, tc in enumerate(group_tool_use_parts):
+                attrs[f"llm.output_messages.0.message.tool_calls.{i}.tool_call.id"] = (
+                    tc.get("id", "")
+                )
+                attrs[
+                    f"llm.output_messages.0.message.tool_calls.{i}.tool_call.function.name"
+                ] = tc.get("name", "")
+                attrs[
+                    f"llm.output_messages.0.message.tool_calls.{i}.tool_call.function.arguments"
+                ] = _truncate(json.dumps(tc.get("input", {})))
+
+            # tool_call_id on input message when input is a tool result
+            if snap.get("tool_call_id"):
+                attrs["llm.input_messages.0.message.tool_call_id"] = snap[
+                    "tool_call_id"
+                ]
+
+            # Map stop_reason to OpenInference llm.finish_reason
+            _FINISH_REASON_MAP = {"end_turn": "stop", "max_tokens": "length"}
+            finish_reason = _FINISH_REASON_MAP.get(group_stop_reason, group_stop_reason)
+            if finish_reason:
+                attrs["llm.finish_reason"] = finish_reason
 
             spans.append(
                 {
@@ -558,6 +590,7 @@ def _extract_llm_spans_for_turn(
             group_tool_use_parts = []
             group_model = "claude"
             group_ts = ""
+            group_stop_reason = ""
             group_input_snapshot = {}
 
         for line in lines:
@@ -587,6 +620,7 @@ def _extract_llm_spans_for_turn(
                     last_input_mime = "application/json"
                     last_input_role = "user"
                     last_input_content = _truncate(human_text)
+                    last_input_tool_call_id = ""
                 continue
 
             if not in_turn:
@@ -599,12 +633,19 @@ def _extract_llm_spans_for_turn(
                 if isinstance(content, list):
                     text = _tool_result_text(content)
                     payload = text if text else json.dumps(content)
+                    # Extract tool_use_id from first tool_result for message.tool_call_id
+                    tool_use_id = ""
+                    for item in content:
+                        if isinstance(item, dict) and item.get("type") == "tool_result":
+                            tool_use_id = item.get("tool_use_id", "")
+                            break
                     last_input_value = json.dumps(
-                        {"role": "user", "content": payload[:500]},
+                        {"role": "tool", "content": payload[:500]},
                     )
                     last_input_mime = "application/json"
-                    last_input_role = "user"
+                    last_input_role = "tool"
                     last_input_content = _truncate(payload)
+                    last_input_tool_call_id = tool_use_id
                 continue
 
             # ── Non-assistant entries (progress, system, …) ───────────────────
@@ -620,6 +661,7 @@ def _extract_llm_spans_for_turn(
             model = msg.get("model", "claude")
             content_blocks = msg.get("content", [])
             ts = entry.get("timestamp", "")
+            stop_reason = msg.get("stop_reason", "")
 
             # ── Start a new group or extend the current one ───────────────────
             if msg_id != current_group_id:
@@ -631,13 +673,19 @@ def _extract_llm_spans_for_turn(
                 group_tool_use_parts = []
                 group_model = model
                 group_ts = ts
+                group_stop_reason = stop_reason
                 # Snapshot the input context at the start of this API call
                 group_input_snapshot = {
                     "role": last_input_role,
                     "content": last_input_content,
                     "value": last_input_value,
                     "mime": last_input_mime,
+                    "tool_call_id": last_input_tool_call_id,
                 }
+            else:
+                # Extending the group: last non-empty stop_reason wins
+                if stop_reason:
+                    group_stop_reason = stop_reason
 
             # Accumulate output tokens and content blocks for this group
             group_total_output_tokens += usage.get("output_tokens", 0)
@@ -649,6 +697,7 @@ def _extract_llm_spans_for_turn(
                 elif block.get("type") == "tool_use":
                     group_tool_use_parts.append(
                         {
+                            "id": block.get("id", ""),
                             "name": block.get("name", ""),
                             "input": block.get("input", {}),
                         },
@@ -986,6 +1035,8 @@ def _build_and_export_spans(
             pass
 
         span.set_attribute("arthur_span_version", "arthur_span_v1")
+        span.set_attribute("session.id", session_id)
+        span.set_attribute("user.id", username)
         for k, v in rec.get("attributes", {}).items():
             span.set_attribute(k, v)
 
@@ -1169,6 +1220,13 @@ def _build_tool_span_record(
         "output.value": output_value,
         "output.mime_type": "application/json",
     }
+
+    # agent.name for AGENT spans: prefer subagent_type from input, fall back to tool_name
+    if span_kind_str == "AGENT":
+        agent_name = ""
+        if isinstance(tool_input, dict):
+            agent_name = tool_input.get("subagent_type", "")
+        attrs["agent.name"] = agent_name or tool_name
 
     schema = TOOL_SCHEMAS.get(tool_name)
     if schema:
@@ -1480,6 +1538,32 @@ def _find_pending_tool_entry(
     return entry, tool_name
 
 
+def _find_active_agent_span_id(
+    state: dict,
+    current_pending_key: str,
+) -> Optional[str]:
+    """Return the pre_allocated_span_id of the innermost pending Agent/Task call.
+
+    When an inline subagent (e.g. Explore) makes tool calls within the parent
+    session, those calls appear in pending_tools alongside the Agent entry.
+    This detects that situation and returns the Agent's span_id so the sub-tool
+    is correctly parented under the Agent span rather than the CHAIN root.
+    For nested agents, the most-recently-started one wins (innermost parent).
+    """
+    pending = state.get("pending_tools", {})
+    best_start_ns = -1
+    best_span_id: Optional[str] = None
+    for k, v in pending.items():
+        if k == current_pending_key:
+            continue  # don't self-reference
+        base_tool = k.split("#")[0] if "#" in k else k
+        if base_tool in ("Agent", "Task") and v.get("pre_allocated_span_id"):
+            if v.get("start_ns", 0) > best_start_ns:
+                best_start_ns = v["start_ns"]
+                best_span_id = v["pre_allocated_span_id"]
+    return best_span_id
+
+
 def handle_post_tool(data: dict, config: dict) -> None:
     session_id = data.get("session_id", "unknown")
     end_ns = time.time_ns()
@@ -1509,6 +1593,9 @@ def handle_post_tool(data: dict, config: dict) -> None:
     # the subagent could reference it as its parent span.
     pre_allocated_span_id = current_tool.get("pre_allocated_span_id")
 
+    # If an Agent/Task tool is still pending, this tool ran inside that agent
+    # (inline subagent pattern). Parent it to the agent span, not the CHAIN root.
+    active_agent_span_id = _find_active_agent_span_id(state, pending_key)
     span_record = _build_tool_span_record(
         tool_name=tool_name,
         tool_input=tool_input,
@@ -1516,7 +1603,7 @@ def handle_post_tool(data: dict, config: dict) -> None:
         start_ns=start_ns,
         end_ns=end_ns,
         trace_id=current_trace["trace_id"],
-        root_span_id=current_trace["root_span_id"],
+        root_span_id=active_agent_span_id or current_trace["root_span_id"],
         span_id=pre_allocated_span_id,
     )
 
@@ -1582,6 +1669,7 @@ def handle_post_tool_failure(data: dict, config: dict) -> None:
     if not error_msg:
         error_msg = data.get("error", data.get("error_message", "Tool call failed"))
 
+    active_agent_span_id = _find_active_agent_span_id(state, pending_key)
     span_record = _build_tool_span_record(
         tool_name=tool_name,
         tool_input=tool_input,
@@ -1589,7 +1677,7 @@ def handle_post_tool_failure(data: dict, config: dict) -> None:
         start_ns=start_ns,
         end_ns=end_ns,
         trace_id=current_trace["trace_id"],
-        root_span_id=current_trace["root_span_id"],
+        root_span_id=active_agent_span_id or current_trace["root_span_id"],
         is_failure=True,
         error_msg=error_msg,
     )
