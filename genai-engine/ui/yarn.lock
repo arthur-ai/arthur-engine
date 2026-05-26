@@ -65,6 +65,28 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@amplitude/experiment-core@npm:^0.13.1":
+  version: 0.13.1
+  resolution: "@amplitude/experiment-core@npm:0.13.1"
+  dependencies:
+    js-base64: "npm:^3.7.5"
+  checksum: 10c0/c80354c7f8ddfd463e43300302b0d4d2a44f773b256d9cc62d8af4c55e054d677d25996c3a95299fd1a731072ace923b36a7d1ca5c01e1315ee5b1cbdc0e0e4c
+  languageName: node
+  linkType: hard
+
+"@amplitude/experiment-js-client@npm:^1.21.1":
+  version: 1.21.1
+  resolution: "@amplitude/experiment-js-client@npm:1.21.1"
+  dependencies:
+    "@amplitude/analytics-connector": "npm:^1.6.4"
+    "@amplitude/experiment-core": "npm:^0.13.1"
+    "@amplitude/ua-parser-js": "npm:^0.7.31"
+    base64-js: "npm:1.5.1"
+    unfetch: "npm:4.1.0"
+  checksum: 10c0/f9b784a2a869ec9daacf66ab13128486c559dec0225a1f35964784f428095627631cc74f2030cdf45f0bf0ab3481fc44450e06b7f9045986408ffbb346714f3b
+  languageName: node
+  linkType: hard
+
 "@amplitude/plugin-autocapture-browser@npm:1.18.5":
   version: 1.18.5
   resolution: "@amplitude/plugin-autocapture-browser@npm:1.18.5"
@@ -164,6 +186,13 @@ __metadata:
     tslib: "npm:^2.4.1"
     web-vitals: "npm:5.1.0"
   checksum: 10c0/6535e3117b1bd54006d3c1fc6a52d0ccc0a50cc77edbd1609f4b827ebb20b1b98d2694c0160390e29402baf0c65863780dd52646c1d007ba88f07de977243221
+  languageName: node
+  linkType: hard
+
+"@amplitude/ua-parser-js@npm:^0.7.31":
+  version: 0.7.33
+  resolution: "@amplitude/ua-parser-js@npm:0.7.33"
+  checksum: 10c0/9f44b78701655a3b1da9f0721324355ae5d1548c08c46a74b90cfa55de4fca40f97a3c90cb7ae46d405706f1383f7f8dda4b34aee5f9eb3f738c86a934ec1f8b
   languageName: node
   linkType: hard
 
@@ -2444,6 +2473,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@tanstack/devtools-event-client@npm:^0.4.1":
+  version: 0.4.3
+  resolution: "@tanstack/devtools-event-client@npm:0.4.3"
+  bin:
+    intent: bin/intent.js
+  checksum: 10c0/e49eb4b884e20de655a7cf463898bf6eba7e7470ed65b32f4079c886d700500078a9d6deac47dbf799f83500c7e14ae140e304eb840fe11ae7f255932c4f600b
+  languageName: node
+  linkType: hard
+
 "@tanstack/eslint-plugin-query@npm:5.91.4":
   version: 5.91.4
   resolution: "@tanstack/eslint-plugin-query@npm:5.91.4"
@@ -2459,6 +2497,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@tanstack/form-core@https://pkg.pr.new/TanStack/form/@tanstack/form-core@a030e78":
+  version: 1.32.0
+  resolution: "@tanstack/form-core@https://pkg.pr.new/TanStack/form/@tanstack/form-core@a030e78"
+  dependencies:
+    "@tanstack/devtools-event-client": "npm:^0.4.1"
+    "@tanstack/pacer-lite": "npm:^0.1.1"
+    "@tanstack/store": "npm:^0.11.0"
+  checksum: 10c0/087a458d78171a5dd2e62d46884e890733216c7197f5fc0ea311968e11771afc33bd3f74542e44085f5ef1f525abe16a45c9c681ab688158825b5d4a7f26acb5
+  languageName: node
+  linkType: hard
+
 "@tanstack/form-core@npm:1.27.7":
   version: 1.27.7
   resolution: "@tanstack/form-core@npm:1.27.7"
@@ -2467,17 +2516,6 @@ __metadata:
     "@tanstack/pacer-lite": "npm:^0.1.1"
     "@tanstack/store": "npm:^0.7.7"
   checksum: 10c0/dc5057a6cb3cb2aa759b91cc7af913f80bf2967d0cc946f886a47ac9195a773ecaa8eb27604dd052f7182aab45a561da086bc9045fc35bbfbdb8a475f110958a
-  languageName: node
-  linkType: hard
-
-"@tanstack/form-core@npm:1.28.4":
-  version: 1.28.4
-  resolution: "@tanstack/form-core@npm:1.28.4"
-  dependencies:
-    "@tanstack/devtools-event-client": "npm:^0.4.0"
-    "@tanstack/pacer-lite": "npm:^0.1.1"
-    "@tanstack/store": "npm:^0.9.1"
-  checksum: 10c0/2b155f6c1af8e68fbacf72413f84e7fdbafedad988c5ada006012a900646a14340ac21ea3f30179f56d5b3e31d5474d5ff21fc9d8053ac4813f49da39ece4142
   languageName: node
   linkType: hard
 
@@ -2535,6 +2573,21 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@tanstack/react-form@https://pkg.pr.new/@tanstack/react-form@2128":
+  version: 1.32.0
+  resolution: "@tanstack/react-form@https://pkg.pr.new/@tanstack/react-form@2128"
+  dependencies:
+    "@tanstack/form-core": "https://pkg.pr.new/TanStack/form/@tanstack/form-core@a030e78"
+    "@tanstack/react-store": "npm:^0.11.0"
+  peerDependencies:
+    react: ^17.0.0 || ^18.0.0 || ^19.0.0
+  peerDependenciesMeta:
+    "@tanstack/react-start":
+      optional: true
+  checksum: 10c0/ffef16d02511f7f7ff1fb9a7586d256b4b6043b1c3a8ad86e282d97c82c6e758f388c0cf180a757c58cc71595752251b7c05434085a3799022c651bae02a3e4c
+  languageName: node
+  linkType: hard
+
 "@tanstack/react-form@npm:1.27.7":
   version: 1.27.7
   resolution: "@tanstack/react-form@npm:1.27.7"
@@ -2547,21 +2600,6 @@ __metadata:
     "@tanstack/react-start":
       optional: true
   checksum: 10c0/6944f77a87108620017093fcf72b5bfe9d60b7cf22c170fed4569c0d261aeea9c42419943663a468cbf851dd1ea21f908523080aa93e8ef93ad08a2fd70a58f3
-  languageName: node
-  linkType: hard
-
-"@tanstack/react-form@npm:1.28.4":
-  version: 1.28.4
-  resolution: "@tanstack/react-form@npm:1.28.4"
-  dependencies:
-    "@tanstack/form-core": "npm:1.28.4"
-    "@tanstack/react-store": "npm:^0.9.1"
-  peerDependencies:
-    react: ^17.0.0 || ^18.0.0 || ^19.0.0
-  peerDependenciesMeta:
-    "@tanstack/react-start":
-      optional: true
-  checksum: 10c0/ee37858c7f3f0d36e19f97789722172289fd7c9e58b3b9e7bc809abc84ddaddfaafce7f554d993bbd42e3cc531bc0bfde1d121d40182d9632df205fff4501a32
   languageName: node
   linkType: hard
 
@@ -2624,6 +2662,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@tanstack/react-store@npm:^0.11.0":
+  version: 0.11.0
+  resolution: "@tanstack/react-store@npm:0.11.0"
+  dependencies:
+    "@tanstack/store": "npm:0.11.0"
+    use-sync-external-store: "npm:^1.6.0"
+  peerDependencies:
+    react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+    react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+  checksum: 10c0/8b6bf5f2f572239ce3c55490dcd3595f266d517e3eb15b783fb5c38dc1e9b021a52acd0345b001b45707820322d4b87dbc7936bd1d4c5de1131baa6c80a847d0
+  languageName: node
+  linkType: hard
+
 "@tanstack/react-store@npm:^0.8.0":
   version: 0.8.1
   resolution: "@tanstack/react-store@npm:0.8.1"
@@ -2634,19 +2685,6 @@ __metadata:
     react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
     react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
   checksum: 10c0/83037681674e34361f5a6141af81a19788e7243892f5fcca45c9e70c73eb9da9693574a46ea80114589060969470a9b9657a3bd74a44f98e80de481c65204778
-  languageName: node
-  linkType: hard
-
-"@tanstack/react-store@npm:^0.9.1":
-  version: 0.9.2
-  resolution: "@tanstack/react-store@npm:0.9.2"
-  dependencies:
-    "@tanstack/store": "npm:0.9.2"
-    use-sync-external-store: "npm:^1.6.0"
-  peerDependencies:
-    react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-    react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-  checksum: 10c0/54c00bcfe7563ea7d8ed1c7cd7290172b6381952b8756faeac8e4f22c31c431e5c38b5c105053be629672e371b1dde17e7b9b81d4f2ab274e601507e1cc3c018
   languageName: node
   linkType: hard
 
@@ -2686,17 +2724,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@tanstack/store@npm:0.11.0, @tanstack/store@npm:^0.11.0":
+  version: 0.11.0
+  resolution: "@tanstack/store@npm:0.11.0"
+  checksum: 10c0/6fef9e81d30c3097709cfdd113407578849a7b8a6ce7a674467950620a67047c365552a01747a0f448d16ea4f607e58e97021583523ba5cdabcb1b98d0e2a632
+  languageName: node
+  linkType: hard
+
 "@tanstack/store@npm:0.8.1, @tanstack/store@npm:^0.8.0":
   version: 0.8.1
   resolution: "@tanstack/store@npm:0.8.1"
   checksum: 10c0/344180b689f87c3afa6ac3ea1c7d9b14257a1b961afea916f3ac666b2752972caba33c12105d588d297a932767fe0d8d25567e220777ec99d4ca6b61b5b652af
-  languageName: node
-  linkType: hard
-
-"@tanstack/store@npm:0.9.2, @tanstack/store@npm:^0.9.1":
-  version: 0.9.2
-  resolution: "@tanstack/store@npm:0.9.2"
-  checksum: 10c0/62e0c6ed2d437d7e2f54a2c9793c7f0c469779d48bc1e502af3e6151c30fdfdc1ec222ed2c42472edce56cfab5ee99db496ced59ba1ec760b814375a1db0a60f
   languageName: node
   linkType: hard
 
@@ -3477,6 +3515,13 @@ __metadata:
   version: 4.0.4
   resolution: "balanced-match@npm:4.0.4"
   checksum: 10c0/07e86102a3eb2ee2a6a1a89164f29d0dbaebd28f2ca3f5ca786f36b8b23d9e417eb3be45a4acf754f837be5ac0a2317de90d3fcb7f4f4dc95720a1f36b26a17b
+  languageName: node
+  linkType: hard
+
+"base64-js@npm:1.5.1":
+  version: 1.5.1
+  resolution: "base64-js@npm:1.5.1"
+  checksum: 10c0/f23823513b63173a001030fae4f2dabe283b99a9d324ade3ad3d148e218134676f1ee8568c877cd79ec1c53158dcf2d2ba527a97c606618928ba99dd930102bf
   languageName: node
   linkType: hard
 
@@ -5710,6 +5755,13 @@ __metadata:
   bin:
     jiti: lib/jiti-cli.mjs
   checksum: 10c0/79b2e96a8e623f66c1b703b98ec1b8be4500e1d217e09b09e343471bbb9c105381b83edbb979d01cef18318cc45ce6e153571b6c83122170eefa531c64b6789b
+  languageName: node
+  linkType: hard
+
+"js-base64@npm:^3.7.5":
+  version: 3.7.8
+  resolution: "js-base64@npm:3.7.8"
+  checksum: 10c0/a4452a7e7f32b0ef568a344157efec00c14593bbb1cf0c113f008dddff7ec515b35147af0cd70a7735adb69a2a2bdee921adffea2ea465e2c856ba50d649b11e
   languageName: node
   linkType: hard
 
@@ -8605,6 +8657,7 @@ __metadata:
   resolution: "ui@workspace:."
   dependencies:
     "@amplitude/analytics-browser": "npm:2.36.2"
+    "@amplitude/experiment-js-client": "npm:^1.21.1"
     "@arizeai/openinference-semantic-conventions": "npm:2.1.7"
     "@arthur/shared-components": "npm:3.15.2"
     "@base-ui/react": "npm:1.2.0"
@@ -8622,7 +8675,7 @@ __metadata:
     "@rollup/rollup-linux-x64-gnu": "npm:4.54.0"
     "@tailwindcss/vite": "npm:4.2.1"
     "@tanstack/eslint-plugin-query": "npm:5.91.4"
-    "@tanstack/react-form": "npm:1.28.4"
+    "@tanstack/react-form": "https://pkg.pr.new/@tanstack/react-form@2128"
     "@tanstack/react-pacer": "npm:0.19.4"
     "@tanstack/react-query": "npm:5.90.21"
     "@tanstack/react-query-devtools": "npm:5.91.3"
@@ -8699,6 +8752,13 @@ __metadata:
   version: 7.18.2
   resolution: "undici-types@npm:7.18.2"
   checksum: 10c0/85a79189113a238959d7a647368e4f7c5559c3a404ebdb8fc4488145ce9426fcd82252a844a302798dfc0e37e6fb178ff481ed03bc4caf634c5757d9ef43521d
+  languageName: node
+  linkType: hard
+
+"unfetch@npm:4.1.0":
+  version: 4.1.0
+  resolution: "unfetch@npm:4.1.0"
+  checksum: 10c0/36ac46e654648acb227a739b30afd303121985613ae043b794d9daf39fb2888b5d013927e5803e6ea28d154ae1dabfa0dfd8cbcb91d839f765ec03979848e06c
   languageName: node
   linkType: hard
 
