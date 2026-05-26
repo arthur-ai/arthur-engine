@@ -120,6 +120,7 @@ class DemoTaskRepository:
         model_name: str,
         transform_request: Optional[NewTraceTransformRequest] = None,
         existing_transform_id: Optional[UUID] = None,
+        commit: bool = True,
     ) -> Tuple[ContinuousEval, LLMEval, TraceTransform, TraceTransformVersionResponse]:
         if transform_request is None and existing_transform_id is None:
             raise ValueError(
@@ -134,6 +135,7 @@ class DemoTaskRepository:
                 model_provider=model_provider,
                 instructions=eval_instructions,
             ),
+            commit=commit,
         )
 
         transform: Optional[TraceTransform] = None
@@ -147,11 +149,13 @@ class DemoTaskRepository:
                 transform = self.trace_transform_repo.create_transform(
                     task_id=task_id,
                     transform=transform_request,
+                    commit=commit,
                 )
         elif transform_request is not None:
             transform = self.trace_transform_repo.create_transform(
                 task_id=task_id,
                 transform=transform_request,
+                commit=commit,
             )
 
         if transform is None:
@@ -179,6 +183,7 @@ class DemoTaskRepository:
                     transform_version,
                 ),
             ),
+            commit=commit,
         )
 
         return continuous_eval, llm_eval, transform, transform_version
@@ -188,6 +193,7 @@ class DemoTaskRepository:
         task_id: str,
         model_provider: ModelProvider,
         model_name: str,
+        commit: bool = True,
     ) -> None:
         """
         Create the demo prompt
@@ -207,12 +213,14 @@ class DemoTaskRepository:
                 tools=DEMO_TASK_TOOLS,
                 config=None,
             ),
+            commit=commit,
         )
         self.agentic_prompt_repo.add_tag_to_llm_item_version(
             task_id=task_id,
             item_name=self.demo_prompt_name,
             item_version=str(prompt.version),
             tag="production",
+            commit=commit,
         )
 
     def _create_demo_summarizer_prompt(
@@ -220,6 +228,7 @@ class DemoTaskRepository:
         task_id: str,
         model_provider: ModelProvider,
         model_name: str,
+        commit: bool = True,
     ) -> None:
         prompt = self.agentic_prompt_repo.save_llm_item(
             task_id=task_id,
@@ -240,24 +249,32 @@ class DemoTaskRepository:
                 tools=None,
                 config=None,
             ),
+            commit=commit,
         )
         self.agentic_prompt_repo.add_tag_to_llm_item_version(
             task_id=task_id,
             item_name=self.demo_summarizer_prompt_name,
             item_version=str(prompt.version),
             tag="production",
+            commit=commit,
         )
 
-    def _create_demo_dataset(self, task_id: str) -> Dataset:
+    def _create_demo_dataset(self, task_id: str, commit: bool = True) -> Dataset:
         dataset = Dataset._from_request_model(task_id, DEMO_TASK_DATASET_REQUEST)
-        self.dataset_repo.create_dataset(dataset)
+        self.dataset_repo.create_dataset(dataset, commit=commit)
         self.dataset_repo.create_dataset_version(
             dataset_id=dataset.id,
             dataset_version=DEMO_TASK_DATASET_VERSION_REQUEST,
+            commit=commit,
         )
         return dataset
 
-    def _replay_demo_traces(self, task_id: str, user_id: str) -> None:
+    def _replay_demo_traces(
+        self,
+        task_id: str,
+        user_id: str,
+        commit: bool = True,
+    ) -> None:
         fixtures_dir = (
             Path(__file__).resolve().parent.parent / "utils" / "demo_task_fixtures"
         )
@@ -307,15 +324,22 @@ class DemoTaskRepository:
 
             db_spans, _ = self.trace_ingestion_service.process_trace_data(
                 request.SerializeToString(),
+                commit=commit,
             )
             all_spans.extend(db_spans)
 
         if all_spans:
             self.continuous_evals_repo.enqueue_continuous_evals_for_root_spans(
                 all_spans,
+                commit=commit,
             )
 
-    def create_demo_items_for_task(self, task_id: str, user_id: str) -> None:
+    def create_demo_items_for_task(
+        self,
+        task_id: str,
+        user_id: str,
+        commit: bool = True,
+    ) -> None:
         model_provider, model_name = self._get_model_provider_and_name()
 
         # Create demo prompt
@@ -323,6 +347,7 @@ class DemoTaskRepository:
             task_id=task_id,
             model_provider=model_provider,
             model_name=model_name,
+            commit=commit,
         )
 
         # Create demo summarizer prompt
@@ -330,6 +355,7 @@ class DemoTaskRepository:
             task_id=task_id,
             model_provider=model_provider,
             model_name=model_name,
+            commit=commit,
         )
 
         # Create demo continuous evals
@@ -342,6 +368,7 @@ class DemoTaskRepository:
             model_provider=model_provider,
             model_name=model_name,
             transform_request=DEMO_TASK_ANSWER_RELEVANCE_EVAL_TRANSFORM,
+            commit=commit,
         )
 
         _, _, response_extraction_transform, _ = self._create_continuous_eval(
@@ -353,6 +380,7 @@ class DemoTaskRepository:
             model_provider=model_provider,
             model_name=model_name,
             transform_request=DEMO_TASK_RESPONSE_EXTRACTION_TRANSFORM,
+            commit=commit,
         )
 
         self._create_continuous_eval(
@@ -364,13 +392,14 @@ class DemoTaskRepository:
             model_provider=model_provider,
             model_name=model_name,
             existing_transform_id=response_extraction_transform.id,
+            commit=commit,
         )
 
         # Create demo dataset
-        self._create_demo_dataset(task_id=task_id)
+        self._create_demo_dataset(task_id=task_id, commit=commit)
 
         # Replay demo traces
-        self._replay_demo_traces(task_id=task_id, user_id=user_id)
+        self._replay_demo_traces(task_id=task_id, user_id=user_id, commit=commit)
 
     def stream_response(
         self,

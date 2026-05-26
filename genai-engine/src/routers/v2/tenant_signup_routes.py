@@ -111,7 +111,13 @@ def create_tenant_signup(
         )
 
         demo_task_repo = DemoTaskRepository(db_session)
-        demo_task_repo.create_demo_items_for_task(task_id=task.id, user_id=api_key.id)
+        demo_task_repo.create_demo_items_for_task(
+            task_id=task.id,
+            user_id=api_key.id,
+            commit=False,
+        )
+
+        db_session.commit()
     except ValueError as e:
         db_session.rollback()
         raise HTTPException(

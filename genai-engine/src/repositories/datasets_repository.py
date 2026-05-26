@@ -33,10 +33,13 @@ class DatasetRepository:
     def __init__(self, db_session: Session):
         self.db_session = db_session
 
-    def create_dataset(self, dataset: Dataset) -> None:
+    def create_dataset(self, dataset: Dataset, commit: bool = True) -> None:
         db_dataset = dataset._to_database_model()
         self.db_session.add(db_dataset)
-        self.db_session.commit()
+        if commit:
+            self.db_session.commit()
+        else:
+            self.db_session.flush()
 
     def _get_db_dataset(
         self,
@@ -147,10 +150,13 @@ class DatasetRepository:
         return db_dataset_version
 
     def get_latest_dataset_version(
-        self, dataset_id: UUID, org_scope: UUID | None = None
+        self,
+        dataset_id: UUID,
+        org_scope: UUID | None = None,
     ) -> DatasetVersion:
         db_dataset_version = self._get_latest_db_dataset_version(
-            dataset_id, org_scope=org_scope
+            dataset_id,
+            org_scope=org_scope,
         )
         # return page params representing that all rows have been fetched
         return DatasetVersion._from_database_model(
@@ -289,11 +295,13 @@ class DatasetRepository:
         dataset_id: UUID,
         dataset_version: NewDatasetVersionRequest,
         org_scope: UUID | None = None,
+        commit: bool = True,
     ) -> None:
         db_dataset = self._get_db_dataset(dataset_id, org_scope=org_scope)
         try:
             latest_version = self._get_latest_db_dataset_version(
-                dataset_id, org_scope=org_scope
+                dataset_id,
+                org_scope=org_scope,
             )
         except HTTPException:
             # no version exists for this dataset yet
@@ -307,7 +315,10 @@ class DatasetRepository:
         self.db_session.add(internal_dataset_version._to_database_model())
         db_dataset.updated_at = datetime.now()
         db_dataset.latest_version_number = internal_dataset_version.version_number
-        self.db_session.commit()
+        if commit:
+            self.db_session.commit()
+        else:
+            self.db_session.flush()
 
     def get_dataset_versions(
         self,
