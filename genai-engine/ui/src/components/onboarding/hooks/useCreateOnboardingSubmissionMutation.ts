@@ -5,11 +5,7 @@ import type { TryItOutSubmitMeta } from "@/components/onboarding/try-it-out-form
 import { useApi } from "@/hooks/useApi";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { createApiClient } from "@/lib/api";
-import type {
-  DemoTaskSignupResponse,
-  OnboardingTryItOutFormData,
-  TenantSignupRequest,
-} from "@/lib/api-client/api-client";
+import type { DemoTaskSignupResponse, OnboardingTryItOutFormData, TenantSignupRequest } from "@/lib/api-client/api-client";
 
 export function toOnboardingFormData(data: TryItOutSubmission): OnboardingTryItOutFormData {
   return {
@@ -34,10 +30,7 @@ export interface CreateOnboardingSubmissionVariables {
 }
 
 interface UseCreateOnboardingSubmissionMutationOptions {
-  onSuccess?: (
-    data: DemoTaskSignupResponse,
-    variables: CreateOnboardingSubmissionVariables
-  ) => void | Promise<void>;
+  onSuccess?: (data: DemoTaskSignupResponse, variables: CreateOnboardingSubmissionVariables) => void | Promise<void>;
   onError?: (error: Error, variables: CreateOnboardingSubmissionVariables) => void;
 }
 
