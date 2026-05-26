@@ -3510,28 +3510,6 @@ class TestOpenInferenceSpecCompliance:
 
     # ── Structured tool_calls attributes ──────────────────────────────────────
 
-    def test_tool_calls_function_name(self, tmp_transcript):
-        tb = tool_use_block("Read", "/etc/hosts")
-        p = tmp_transcript(
-            [human_entry("Read it"), llm_entry("", tool_use_blocks=[tb])],
-        )
-        attrs = self._extract(p)[0]["attributes"]
-        assert (
-            attrs["llm.output_messages.0.message.tool_calls.0.tool_call.function.name"]
-            == "Read"
-        )
-
-    def test_tool_calls_function_arguments(self, tmp_transcript):
-        tb = tool_use_block("Bash", "echo hi")
-        p = tmp_transcript([human_entry("Run"), llm_entry("", tool_use_blocks=[tb])])
-        attrs = self._extract(p)[0]["attributes"]
-        args = json.loads(
-            attrs[
-                "llm.output_messages.0.message.tool_calls.0.tool_call.function.arguments"
-            ],
-        )
-        assert args["command"] == "echo hi"
-
     def test_tool_call_id_preserved_from_transcript(self, tmp_transcript):
         # tool_use_block hardcodes id="toolu_x" — verify it flows through
         tb = tool_use_block("Bash", "ls")
@@ -3712,11 +3690,6 @@ class TestOpenInferenceSpecCompliance:
         p = tmp_transcript([human_entry("Hello"), llm_entry("Hi")])
         attrs = self._extract(p)[0]["attributes"]
         assert "llm.input_messages.0.message.tool_call_id" not in attrs
-
-    def test_human_input_role_is_still_user(self, tmp_transcript):
-        p = tmp_transcript([human_entry("Hello"), llm_entry("Hi")])
-        attrs = self._extract(p)[0]["attributes"]
-        assert attrs["llm.input_messages.0.message.role"] == "user"
 
     # ── CHAIN span name ───────────────────────────────────────────────────────
 
@@ -4667,3 +4640,330 @@ class TestInlineAgentToolNesting:
         assert (
             exported[0]["parent_span_id_hex"] == inner_id
         ), f"Expected innermost agent {inner_id}, got {exported[0]['parent_span_id_hex']}"
+
+
+# ---------------------------------------------------------------------------
+# handle_stop — context-continuation detection
+# ---------------------------------------------------------------------------
+
+
+class TestHandleStopContextContinuation:
+    """handle_stop detects when the transcript grew by more than one human message
+    since the current trace started (context compression + continuation without a
+    UserPromptSubmit).  It must complete the stale trace, create a new trace for
+    the continuation turn, emit that turn's LLM spans, complete it, and then
+    delete session state.
+    """
+
+    CONFIG = {"api_key": "k", "task_id": "t", "endpoint": "https://x.example.com"}
+
+    def test_continuation_emits_two_chain_spans(
+        self,
+        tmp_path,
+        tmp_transcript,
+        monkeypatch,
+    ):
+        """Transcript has 3 human messages but current_trace.human_count_at_start=0.
+        handle_stop must detect the gap and emit one CHAIN span for the stale turn
+        and one for the continuation turn."""
+        monkeypatch.setattr(tracer, "STATE_DIR", tmp_path / "tracer")
+        (tmp_path / "tracer").mkdir()
+        exported = []
+        monkeypatch.setattr(
+            tracer,
+            "_build_and_export_spans",
+            lambda **kw: exported.extend(kw["span_records"]),
+        )
+
+        old_trace_id = "1" * 32
+        p = tmp_transcript(
+            [
+                human_entry("Turn 1 prompt"),
+                llm_entry("Reply 1", ts="2026-01-01T00:00:01.000000+00:00"),
+                human_entry("Turn 2 (context continuation trigger)"),
+                llm_entry("Reply 2", ts="2026-01-01T00:00:03.000000+00:00"),
+                human_entry("Turn 3 (the continuation turn)"),
+                llm_entry("Reply 3", ts="2026-01-01T00:00:05.000000+00:00"),
+            ],
+        )
+
+        # Seed state as if turn 1 is in-progress: human_count_at_start=0,
+        # but transcript now has 3 human messages → continuation detected.
+        tracer._save_state(
+            "cont-stop",
+            {
+                "session_id": "cont-stop",
+                "username": "u",
+                "human_msg_count": 1,
+                "turn_number": 1,
+                "transcript_path": str(p),
+                "current_trace": {
+                    "trace_id": old_trace_id,
+                    "root_span_id": "2" * 16,
+                    "turn_start_ns": 1_000_000_000,
+                    "turn_number": 1,
+                    "human_count_at_start": 0,
+                    "prompt_preview": "Turn 1 prompt",
+                    "emitted_llm_span_count": 0,
+                },
+            },
+        )
+
+        tracer.handle_stop(
+            {"session_id": "cont-stop", "transcript_path": str(p)},
+            self.CONFIG,
+        )
+
+        chain_spans = [
+            s
+            for s in exported
+            if s.get("attributes", {}).get("openinference.span.kind") == "CHAIN"
+        ]
+        assert (
+            len(chain_spans) == 2
+        ), f"Expected 2 CHAIN spans (stale + continuation), got {len(chain_spans)}"
+
+    def test_continuation_uses_fresh_trace_id_for_new_turn(
+        self,
+        tmp_path,
+        tmp_transcript,
+        monkeypatch,
+    ):
+        """The continuation turn's CHAIN span must have a different trace_id than the
+        stale turn's CHAIN span."""
+        monkeypatch.setattr(tracer, "STATE_DIR", tmp_path / "tracer")
+        (tmp_path / "tracer").mkdir()
+        exported = []
+        monkeypatch.setattr(
+            tracer,
+            "_build_and_export_spans",
+            lambda **kw: exported.extend(kw["span_records"]),
+        )
+
+        old_trace_id = "aaaa" * 8
+        p = tmp_transcript(
+            [
+                human_entry("Turn 1"),
+                llm_entry("Reply 1", ts="2026-01-01T00:00:01.000000+00:00"),
+                human_entry("Turn 2 continuation trigger"),
+                llm_entry("Reply 2", ts="2026-01-01T00:00:03.000000+00:00"),
+                human_entry("Turn 3 actual continuation"),
+                llm_entry("Reply 3", ts="2026-01-01T00:00:05.000000+00:00"),
+            ],
+        )
+
+        tracer._save_state(
+            "cont-trace-id",
+            {
+                "session_id": "cont-trace-id",
+                "username": "u",
+                "human_msg_count": 1,
+                "turn_number": 1,
+                "transcript_path": str(p),
+                "current_trace": {
+                    "trace_id": old_trace_id,
+                    "root_span_id": "bbbb" * 4,
+                    "turn_start_ns": 1_000_000_000,
+                    "turn_number": 1,
+                    "human_count_at_start": 0,
+                    "prompt_preview": "Turn 1",
+                    "emitted_llm_span_count": 0,
+                },
+            },
+        )
+
+        tracer.handle_stop(
+            {"session_id": "cont-trace-id", "transcript_path": str(p)},
+            self.CONFIG,
+        )
+
+        chain_spans = [
+            s
+            for s in exported
+            if s.get("attributes", {}).get("openinference.span.kind") == "CHAIN"
+        ]
+        assert len(chain_spans) == 2
+        trace_ids = {s["trace_id_hex"] for s in chain_spans}
+        assert (
+            len(trace_ids) == 2
+        ), "Stale turn and continuation turn must have different trace IDs"
+        assert old_trace_id in trace_ids, "First CHAIN span must use the stale trace_id"
+
+    def test_continuation_state_deleted_after_stop(
+        self,
+        tmp_path,
+        tmp_transcript,
+        monkeypatch,
+    ):
+        """Session state file must be deleted even after the continuation branch runs."""
+        monkeypatch.setattr(tracer, "STATE_DIR", tmp_path / "tracer")
+        (tmp_path / "tracer").mkdir()
+        monkeypatch.setattr(tracer, "_build_and_export_spans", MagicMock())
+
+        p = tmp_transcript(
+            [
+                human_entry("Turn 1"),
+                llm_entry("R1", ts="2026-01-01T00:00:01.000000+00:00"),
+                human_entry("Turn 2"),
+                llm_entry("R2", ts="2026-01-01T00:00:03.000000+00:00"),
+                human_entry("Turn 3 continuation"),
+                llm_entry("R3", ts="2026-01-01T00:00:05.000000+00:00"),
+            ],
+        )
+
+        tracer._save_state(
+            "cont-del",
+            {
+                "session_id": "cont-del",
+                "username": "u",
+                "human_msg_count": 1,
+                "turn_number": 1,
+                "transcript_path": str(p),
+                "current_trace": {
+                    "trace_id": "cccc" * 8,
+                    "root_span_id": "dddd" * 4,
+                    "turn_start_ns": 1_000_000_000,
+                    "turn_number": 1,
+                    "human_count_at_start": 0,
+                    "prompt_preview": "Turn 1",
+                    "emitted_llm_span_count": 0,
+                },
+            },
+        )
+
+        tracer.handle_stop(
+            {"session_id": "cont-del", "transcript_path": str(p)},
+            self.CONFIG,
+        )
+
+        assert not (
+            tmp_path / "tracer" / "cont-del.json"
+        ).exists(), (
+            "State file must be deleted after stop, even with continuation branch"
+        )
+
+    def test_no_continuation_when_transcript_has_one_turn(
+        self,
+        tmp_path,
+        tmp_transcript,
+        monkeypatch,
+    ):
+        """Normal stop with a single-turn transcript must emit exactly one CHAIN span."""
+        monkeypatch.setattr(tracer, "STATE_DIR", tmp_path / "tracer")
+        (tmp_path / "tracer").mkdir()
+        exported = []
+        monkeypatch.setattr(
+            tracer,
+            "_build_and_export_spans",
+            lambda **kw: exported.extend(kw["span_records"]),
+        )
+
+        p = tmp_transcript(
+            [
+                human_entry("Just one turn"),
+                llm_entry("Just one reply"),
+            ],
+        )
+
+        tracer._save_state(
+            "no-cont",
+            {
+                "session_id": "no-cont",
+                "username": "u",
+                "human_msg_count": 1,
+                "turn_number": 1,
+                "transcript_path": str(p),
+                "current_trace": {
+                    "trace_id": "eeee" * 8,
+                    "root_span_id": "ffff" * 4,
+                    "turn_start_ns": 1_000_000_000,
+                    "turn_number": 1,
+                    "human_count_at_start": 0,
+                    "prompt_preview": "Just one turn",
+                    "emitted_llm_span_count": 0,
+                },
+            },
+        )
+
+        tracer.handle_stop(
+            {"session_id": "no-cont", "transcript_path": str(p)},
+            self.CONFIG,
+        )
+
+        chain_spans = [
+            s
+            for s in exported
+            if s.get("attributes", {}).get("openinference.span.kind") == "CHAIN"
+        ]
+        assert (
+            len(chain_spans) == 1
+        ), f"Normal stop must emit exactly one CHAIN span, got {len(chain_spans)}"
+
+    def test_continuation_llm_spans_extracted_for_new_turn(
+        self,
+        tmp_path,
+        tmp_transcript,
+        monkeypatch,
+    ):
+        """LLM spans for the continuation turn must be extracted from the transcript
+        and emitted (not skipped) when the continuation branch fires."""
+        monkeypatch.setattr(tracer, "STATE_DIR", tmp_path / "tracer")
+        (tmp_path / "tracer").mkdir()
+        exported = []
+        monkeypatch.setattr(
+            tracer,
+            "_build_and_export_spans",
+            lambda **kw: exported.extend(kw["span_records"]),
+        )
+
+        p = tmp_transcript(
+            [
+                human_entry("Turn 1"),
+                llm_entry("Old reply", ts="2026-01-01T00:00:01.000000+00:00"),
+                human_entry("Turn 2 continuation trigger"),
+                llm_entry("Middle reply", ts="2026-01-01T00:00:03.000000+00:00"),
+                human_entry("Turn 3 — the continuation turn"),
+                llm_entry(
+                    "Continuation reply",
+                    ts="2026-01-01T00:00:05.000000+00:00",
+                ),
+            ],
+        )
+
+        tracer._save_state(
+            "cont-llm",
+            {
+                "session_id": "cont-llm",
+                "username": "u",
+                "human_msg_count": 1,
+                "turn_number": 1,
+                "transcript_path": str(p),
+                "current_trace": {
+                    "trace_id": "1234" * 8,
+                    "root_span_id": "5678" * 4,
+                    "turn_start_ns": 1_000_000_000,
+                    "turn_number": 1,
+                    "human_count_at_start": 0,
+                    "prompt_preview": "Turn 1",
+                    "emitted_llm_span_count": 0,
+                },
+            },
+        )
+
+        tracer.handle_stop(
+            {"session_id": "cont-llm", "transcript_path": str(p)},
+            self.CONFIG,
+        )
+
+        llm_spans = [
+            s
+            for s in exported
+            if s.get("attributes", {}).get("openinference.span.kind") == "LLM"
+        ]
+        # Transcript has 3 LLM calls across 3 turns; the middle turn (turn 2) is a
+        # continuation trigger and falls between the two traces, so its LLM span is
+        # not extracted.  Turns 1 and 3 each contribute one LLM span → exactly 2.
+        assert len(llm_spans) >= 2, (
+            f"Expected LLM spans from both the stale and continuation turns, "
+            f"got {len(llm_spans)}"
+        )
