@@ -1,12 +1,4 @@
-import {
-  applyBackdropAction,
-  BackdropBlocker,
-  getHighlightPadding,
-  Spotlight,
-  TargetTracker,
-  useTour,
-  useTourLayer,
-} from "@/features/tour";
+import { applyBackdropAction, BackdropBlocker, getHighlightPadding, Spotlight, TargetTracker, useTour, useTourLayer } from "@/features/tour";
 
 /**
  * Renders the task tour's brand spotlight + interaction blocker around the

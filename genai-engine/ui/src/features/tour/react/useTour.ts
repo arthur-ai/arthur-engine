@@ -2,14 +2,7 @@ import { useContext, useMemo } from "react";
 import { useStore } from "zustand";
 
 import type { TourEngine } from "../core/createTour";
-import type {
-  SectionConfig,
-  StepConfig,
-  TourActions,
-  TourConfig,
-  TourEngineStore,
-  TourState,
-} from "../core/types";
+import type { SectionConfig, StepConfig, TourActions, TourConfig, TourEngineStore, TourState } from "../core/types";
 
 import { TourEngineContext } from "./context";
 

@@ -3,11 +3,7 @@ import { useCallback } from "react";
 import { ResumeFab } from "../components/ResumeFab";
 import { getTaskTourStepLabel } from "../tour-config";
 
-import {
-  useTour,
-  useTourPluginStore,
-  type TourStatePlugin,
-} from "@/features/tour";
+import { useTour, useTourPluginStore, type TourStatePlugin } from "@/features/tour";
 
 export interface ResumeFabWidgetProps {
   /** State plugin used to read the persisted status + completed keys. */
@@ -61,12 +57,5 @@ export function ResumeFabWidget({ statePlugin, onAnchorRectChange, panelAnchored
   const visible = persistedStatus === "dismissed" || panelAnchoredToFab;
   if (!visible) return null;
 
-  return (
-    <ResumeFab
-      label={label}
-      attractAttention={persistedStatus === "dismissed"}
-      onClick={handleClick}
-      onAnchorRectChange={onAnchorRectChange}
-    />
-  );
+  return <ResumeFab label={label} attractAttention={persistedStatus === "dismissed"} onClick={handleClick} onAnchorRectChange={onAnchorRectChange} />;
 }

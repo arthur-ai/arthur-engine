@@ -15,7 +15,7 @@ import React from "react";
 import { useParams } from "react-router-dom";
 
 import { useDemoMode } from "@/contexts/EngineConfigContext";
-import { TOUR_IDS, dispatchTourEvent, TASK_TOUR_EVENTS, type TaskTourEventName } from "@/features/task-tour";
+import { TOUR_IDS, dispatchTourEvent, TASK_TOUR_ACTIONS, type TaskTourEventName } from "@/features/task-tour";
 
 interface SidebarNavigationProps {
   onBackToDashboard: () => void;
@@ -56,7 +56,7 @@ function buildNavigationSections(demoMode: boolean): NavigationSection[] {
           label: "Observe",
           icon: <TrendingUpOutlined />,
           tourId: TOUR_IDS.navObserve,
-          tourEvents: [TASK_TOUR_EVENTS.observeOpened, TASK_TOUR_EVENTS.deployVerified],
+          tourEvents: [TASK_TOUR_ACTIONS.observeOpened, TASK_TOUR_ACTIONS.deployVerified],
         },
       ],
     },
@@ -69,7 +69,7 @@ function buildNavigationSections(demoMode: boolean): NavigationSection[] {
           label: "Prompt",
           icon: <DescriptionOutlined />,
           tourId: TOUR_IDS.navPrompts,
-          tourEvents: [TASK_TOUR_EVENTS.promptsOpened],
+          tourEvents: [TASK_TOUR_ACTIONS.promptsOpened],
         },
       ],
     },
@@ -87,14 +87,14 @@ function buildNavigationSections(demoMode: boolean): NavigationSection[] {
           label: "Evaluate",
           icon: <BalanceOutlined />,
           tourId: TOUR_IDS.navEvaluate,
-          tourEvents: [TASK_TOUR_EVENTS.evaluateOpened],
+          tourEvents: [TASK_TOUR_ACTIONS.evaluateOpened],
         },
         {
           id: "datasets",
           label: "Dataset",
           icon: <TableChartOutlined />,
           tourId: TOUR_IDS.navDatasets,
-          tourEvents: [TASK_TOUR_EVENTS.datasetsOpened, TASK_TOUR_EVENTS.datasetRowVerified],
+          tourEvents: [TASK_TOUR_ACTIONS.datasetsOpened, TASK_TOUR_ACTIONS.datasetRowVerified],
         },
         { id: "transforms", label: "Transform", icon: <StorageOutlined /> },
       ],

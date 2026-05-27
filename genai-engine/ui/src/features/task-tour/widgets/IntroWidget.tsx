@@ -21,13 +21,5 @@ export function IntroWidget() {
   const section = TASK_TOUR_SECTIONS[state.sectionIndex];
   if (!section) return null;
 
-  return (
-    <SectionIntroDialog
-      open
-      section={section}
-      sectionIndex={state.sectionIndex}
-      onStart={onStart}
-      onDismiss={onDismiss}
-    />
-  );
+  return <SectionIntroDialog open section={section} sectionIndex={state.sectionIndex} onStart={onStart} onDismiss={onDismiss} />;
 }

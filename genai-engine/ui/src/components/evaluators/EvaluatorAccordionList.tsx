@@ -149,65 +149,65 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
                 overflow: "hidden",
               }}
             >
-            <AccordionSummary
-              expandIcon={<ExpandMoreIcon />}
-              sx={{
-                px: 2,
-                py: 0,
-                minHeight: 56,
-                "& .MuiAccordionSummary-content": { my: 1.5, mr: 1 },
-              }}
-            >
-              <Stack direction="row" alignItems="center" justifyContent="space-between" width="100%">
-                {/* Left: name, version chip, continuous eval count */}
-                <Stack direction="row" alignItems="center" gap={1.5} flexShrink={0} flexWrap="wrap">
-                  <Typography variant="body1" fontWeight={500}>
-                    {evalMeta.name}
-                  </Typography>
-                  <Chip label={`v${evalMeta.versions}`} size="small" variant="outlined" sx={{ height: 20, fontSize: "0.7rem", fontWeight: 600 }} />
-                  {pipelines.length > 0 && (
-                    <Chip
-                      label={`${activePipelines}/${pipelines.length} evals active`}
-                      size="small"
-                      color={activePipelines > 0 ? "success" : "default"}
-                      sx={{ height: 20, fontSize: "0.7rem" }}
-                    />
-                  )}
-                  {stalePipelines > 0 && (
-                    <Tooltip title={`${stalePipelines} continuous eval${stalePipelines > 1 ? "s" : ""} using an older evaluator version`}>
-                      <Chip label="Update available" size="small" color="warning" sx={{ height: 20, fontSize: "0.7rem", cursor: "help" }} />
+              <AccordionSummary
+                expandIcon={<ExpandMoreIcon />}
+                sx={{
+                  px: 2,
+                  py: 0,
+                  minHeight: 56,
+                  "& .MuiAccordionSummary-content": { my: 1.5, mr: 1 },
+                }}
+              >
+                <Stack direction="row" alignItems="center" justifyContent="space-between" width="100%">
+                  {/* Left: name, version chip, continuous eval count */}
+                  <Stack direction="row" alignItems="center" gap={1.5} flexShrink={0} flexWrap="wrap">
+                    <Typography variant="body1" fontWeight={500}>
+                      {evalMeta.name}
+                    </Typography>
+                    <Chip label={`v${evalMeta.versions}`} size="small" variant="outlined" sx={{ height: 20, fontSize: "0.7rem", fontWeight: 600 }} />
+                    {pipelines.length > 0 && (
+                      <Chip
+                        label={`${activePipelines}/${pipelines.length} evals active`}
+                        size="small"
+                        color={activePipelines > 0 ? "success" : "default"}
+                        sx={{ height: 20, fontSize: "0.7rem" }}
+                      />
+                    )}
+                    {stalePipelines > 0 && (
+                      <Tooltip title={`${stalePipelines} continuous eval${stalePipelines > 1 ? "s" : ""} using an older evaluator version`}>
+                        <Chip label="Update available" size="small" color="warning" sx={{ height: 20, fontSize: "0.7rem", cursor: "help" }} />
+                      </Tooltip>
+                    )}
+                  </Stack>
+
+                  {/* Right: updated date + actions (stop accordion toggle from firing on button clicks) */}
+                  <Stack direction="row" alignItems="center" gap={0.5} onClick={(e) => e.stopPropagation()}>
+                    <Typography variant="caption" color="text.secondary" sx={{ mr: 1, whiteSpace: "nowrap" }}>
+                      Updated {formatDateInTimezone(evalMeta.latest_version_created_at, timezone, { hour12: !use24Hour })}
+                    </Typography>
+                    <Tooltip title="View full details">
+                      <IconButton size="small" onClick={() => onExpandToFullScreen(evalMeta.name)} aria-label="View full details">
+                        <OpenInFullIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
                     </Tooltip>
-                  )}
+                    <Tooltip title="Delete evaluator">
+                      <IconButton
+                        size="small"
+                        onClick={(e) => handleDeleteClick(e, evalMeta.name)}
+                        sx={{ color: "error.main" }}
+                        aria-label="Delete evaluator"
+                      >
+                        <DeleteIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
                 </Stack>
+              </AccordionSummary>
 
-                {/* Right: updated date + actions (stop accordion toggle from firing on button clicks) */}
-                <Stack direction="row" alignItems="center" gap={0.5} onClick={(e) => e.stopPropagation()}>
-                  <Typography variant="caption" color="text.secondary" sx={{ mr: 1, whiteSpace: "nowrap" }}>
-                    Updated {formatDateInTimezone(evalMeta.latest_version_created_at, timezone, { hour12: !use24Hour })}
-                  </Typography>
-                  <Tooltip title="View full details">
-                    <IconButton size="small" onClick={() => onExpandToFullScreen(evalMeta.name)} aria-label="View full details">
-                      <OpenInFullIcon sx={{ fontSize: 16 }} />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Delete evaluator">
-                    <IconButton
-                      size="small"
-                      onClick={(e) => handleDeleteClick(e, evalMeta.name)}
-                      sx={{ color: "error.main" }}
-                      aria-label="Delete evaluator"
-                    >
-                      <DeleteIcon sx={{ fontSize: 16 }} />
-                    </IconButton>
-                  </Tooltip>
-                </Stack>
-              </Stack>
-            </AccordionSummary>
-
-            <AccordionDetails sx={{ p: 0, borderTop: "1px solid", borderColor: "divider" }}>
-              <EvaluatorPipelinesPanel taskId={taskId} evalName={evalMeta.name} latestVersion={evalMeta.versions} pipelines={pipelines} />
-            </AccordionDetails>
-          </Accordion>
+              <AccordionDetails sx={{ p: 0, borderTop: "1px solid", borderColor: "divider" }}>
+                <EvaluatorPipelinesPanel taskId={taskId} evalName={evalMeta.name} latestVersion={evalMeta.versions} pipelines={pipelines} />
+              </AccordionDetails>
+            </Accordion>
           </Box>
         );
       })}

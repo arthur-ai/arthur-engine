@@ -1,13 +1,6 @@
 import { createStore, type StoreApi } from "zustand/vanilla";
 
-import type {
-  HighlightRenderer,
-  PreparationHook,
-  QueryHookResolver,
-  TourEngineStore,
-  TourState,
-  TriggerFactory,
-} from "./types";
+import type { HighlightRenderer, PreparationHook, QueryHookResolver, TourEngineStore, TourState, TriggerFactory } from "./types";
 
 /**
  * Default layer ladder — overridable per `createTour({ layers: {...} })`. The

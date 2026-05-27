@@ -2,15 +2,7 @@ import { TASK_TOUR_SECTIONS, type TaskTourItem } from "./data";
 import { TASK_TOUR_PULSE_HIGHLIGHT } from "./highlights";
 import { tourSelector } from "./selectors";
 
-import type {
-  AdvanceTrigger,
-  RouteSpec,
-  SectionConfig,
-  StepConfig,
-  StepContext,
-  TargetSpec,
-  TourConfig,
-} from "@/features/tour";
+import type { AdvanceTrigger, RouteSpec, SectionConfig, StepConfig, StepContext, TargetSpec, TourConfig } from "@/features/tour";
 
 const STEP_TIMEOUT_MS = 4000;
 /**
@@ -53,9 +45,7 @@ export interface BuildTourConfigOptions {
 function buildStep(taskId: string, item: TaskTourItem, opts: BuildTourConfigOptions): StepConfig {
   const route = routeFor(taskId, item);
   const isTracesRouteStep = item.route === "traces";
-  const skipWhen = item.skipWhenEmptyKey
-    ? (ctx: StepContext) => Promise.resolve(opts.isEmpty?.(item.skipWhenEmptyKey!, ctx) ?? false)
-    : undefined;
+  const skipWhen = item.skipWhenEmptyKey ? (ctx: StepContext) => Promise.resolve(opts.isEmpty?.(item.skipWhenEmptyKey!, ctx) ?? false) : undefined;
   return {
     id: item.id,
     target: targetFor(item),

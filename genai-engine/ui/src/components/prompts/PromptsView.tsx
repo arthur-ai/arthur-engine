@@ -52,7 +52,7 @@ export const PromptsView = () => {
     experimentsCreateFromExistingFn.current = fn;
   }).current;
 
-  const handleTabChange = (_: SyntheticEvent, value: string) => {
+  const handleTabChange = (_: SyntheticEvent, value: typeof activeTab) => {
     void setActiveTab(value);
     if (value === "prompts-management") {
       dispatchTourEvent(TASK_TOUR_EVENTS.promptsManagementTabOpened);

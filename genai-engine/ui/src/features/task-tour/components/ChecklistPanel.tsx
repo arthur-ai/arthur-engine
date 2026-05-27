@@ -76,11 +76,7 @@ export function ChecklistPanel({
   const items = section.items;
   const stepsInSection = Math.max(1, items.length);
   const sectionStepLabel =
-    items.length === 0
-      ? "Intro"
-      : currentItemIndex >= 0
-        ? `Step ${currentItemIndex + 1} of ${stepsInSection}`
-        : `Step 1 of ${stepsInSection}`;
+    items.length === 0 ? "Intro" : currentItemIndex >= 0 ? `Step ${currentItemIndex + 1} of ${stepsInSection}` : `Step 1 of ${stepsInSection}`;
   const progressCaption = `Section ${currentSectionIndex + 1} of ${TASK_TOUR_SECTIONS.length} · ${sectionStepLabel}`;
 
   const panel = (

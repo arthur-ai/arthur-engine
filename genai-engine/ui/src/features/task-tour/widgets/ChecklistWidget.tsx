@@ -4,13 +4,7 @@ import { ChecklistPanel } from "../components/ChecklistPanel";
 import { TASK_TOUR_SECTIONS, type TaskTourItem } from "../data";
 import { TASK_TOUR_TARGET_LOST_HINTS } from "../tourActions";
 
-import {
-  useActiveTarget,
-  useTour,
-  useTourEngine,
-  useTourPluginStore,
-  type StepRenderContext,
-} from "@/features/tour";
+import { useActiveTarget, useTour, useTourEngine, useTourPluginStore, type StepRenderContext } from "@/features/tour";
 import type { TourStatePlugin } from "@/features/tour";
 
 const TOTAL_ITEM_COUNT = TASK_TOUR_SECTIONS.reduce((sum, s) => sum + Math.max(1, s.items.length), 0);

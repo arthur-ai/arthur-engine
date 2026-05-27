@@ -26,10 +26,7 @@ export function TraceDrawerAnnotationBar({ annotations, traceId, containerRef }:
 
   return (
     <Stack direction="row" alignItems="center" spacing={2} sx={{ minHeight: 32 }}>
-      <Box
-        data-tour-id={TOUR_IDS.traceDrawerEvals}
-        sx={{ display: "inline-flex", alignItems: "center", cursor: "default" }}
-      >
+      <Box data-tour-id={TOUR_IDS.traceDrawerEvals} sx={{ display: "inline-flex", alignItems: "center", cursor: "default" }}>
         {hasAnnotations ? (
           <AnnotationCell annotations={annotations} traceId={traceId} />
         ) : (
@@ -43,10 +40,7 @@ export function TraceDrawerAnnotationBar({ annotations, traceId, containerRef }:
           </Typography>
         )}
       </Box>
-      <Box
-        data-tour-id={TOUR_IDS.traceDrawerFeedback}
-        sx={{ display: "inline-flex", alignItems: "center", ml: "auto" }}
-      >
+      <Box data-tour-id={TOUR_IDS.traceDrawerFeedback} sx={{ display: "inline-flex", alignItems: "center", ml: "auto" }}>
         <FeedbackPanel containerRef={containerRef} annotations={annotations} traceId={traceId} />
       </Box>
     </Stack>

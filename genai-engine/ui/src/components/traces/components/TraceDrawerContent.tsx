@@ -171,11 +171,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
       onNavigate={(target, navId) => setDrawerTarget({ target, id: navId })}
       slotProps={tourSlotProps}
       renderAnnotationBar={({ annotations, traceId: tid, containerRef }) => (
-        <TraceDrawerAnnotationBar
-          annotations={(annotations ?? []) as AgenticAnnotationResponse[]}
-          traceId={tid}
-          containerRef={containerRef}
-        />
+        <TraceDrawerAnnotationBar annotations={(annotations ?? []) as AgenticAnnotationResponse[]} traceId={tid} containerRef={containerRef} />
       )}
       renderAfterDrawer={() => (
         <>

@@ -134,10 +134,7 @@ export function useTracesTourPrep({ taskId }: UseTracesTourPrepOptions): void {
       // worst case here is we wait the full timeout when the anchor is
       // missing — which already matches v0's behaviour.
       if (fallbackTarget) {
-        await resolveTargetAsync(
-          { kind: "selector", selector: tourSelector(fallbackTarget) },
-          { timeoutMs: TARGET_WAIT_MS }
-        );
+        await resolveTargetAsync({ kind: "selector", selector: tourSelector(fallbackTarget) }, { timeoutMs: TARGET_WAIT_MS });
       }
 
       return { ready: true };
