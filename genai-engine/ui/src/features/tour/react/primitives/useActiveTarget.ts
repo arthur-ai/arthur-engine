@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { useTour } from "../useTour";
+import { useTour, useTourEngine } from "../useTour";
 import { useTourEvent } from "../useTourEvent";
 
 /**
@@ -9,13 +9,34 @@ import { useTourEvent } from "../useTourEvent";
  * with async target resolution and clears between steps.
  */
 export function useActiveTarget(): Element | null {
+  const engine = useTourEngine();
   const { state } = useTour();
   const [element, setElement] = useState<Element | null>(null);
 
-  const onFound = useCallback((event: { stepId: string; element: Element }) => {
-    setElement(event.element);
-  }, []);
-  const onLost = useCallback(() => setElement(null), []);
+  const isActiveTargetEvent = useCallback(
+    (event: { tourId: string; sectionId: string; stepId: string }) => {
+      const current = engine.getState();
+      return (
+        current.status === "step" && event.tourId === engine.config.id && event.sectionId === current.sectionId && event.stepId === current.stepId
+      );
+    },
+    [engine]
+  );
+
+  const onFound = useCallback(
+    (event: { tourId: string; sectionId: string; stepId: string; element: Element }) => {
+      if (!isActiveTargetEvent(event)) return;
+      setElement(event.element);
+    },
+    [isActiveTargetEvent]
+  );
+  const onLost = useCallback(
+    (event: { tourId: string; sectionId: string; stepId: string }) => {
+      if (!isActiveTargetEvent(event)) return;
+      setElement(null);
+    },
+    [isActiveTargetEvent]
+  );
   const onStepLeft = useCallback(() => setElement(null), []);
 
   useTourEvent("target:found", onFound);

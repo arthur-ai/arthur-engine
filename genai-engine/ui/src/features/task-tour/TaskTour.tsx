@@ -1,23 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { createTaskTourEmptyStatePredicate } from "./emptyState";
 import { useTracesTourPrep } from "./prep/useTracesTourPrep";
 import { registerTaskTourActionBridge } from "./tourActions";
 import { useTaskTourEngine } from "./useTaskTourEngine";
-import {
-  CertificateWidget,
-  ChecklistWidget,
-  IntroWidget,
-  ResumeFabWidget,
-  SpotlightWidget,
-  TracesTargetWidget,
-} from "./widgets";
+import { CertificateWidget, ChecklistWidget, IntroWidget, ResumeFabWidget, SpotlightWidget, TracesTargetWidget } from "./widgets";
 
-import {
-  TourHost,
-  TourProvider,
-  useReactRouterNavigator,
-  useTourEngine,
-} from "@/features/tour";
+import { TourHost, TourProvider, useReactRouterNavigator, useTourEngine } from "@/features/tour";
+import { useApi } from "@/hooks/useApi";
 
 export interface TaskTourProps {
   /** Required: the task the tour should bind its routes against. */
@@ -38,7 +28,9 @@ export interface TaskTourProps {
  */
 export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
   const navigator = useReactRouterNavigator();
-  const { engine, statePlugin } = useTaskTourEngine({ taskId });
+  const api = useApi();
+  const isEmpty = useMemo(() => createTaskTourEmptyStatePredicate(api, taskId), [api, taskId]);
+  const { engine, statePlugin } = useTaskTourEngine({ taskId, isEmpty });
 
   const [fabAnchorRect, setFabAnchorRect] = useState<DOMRect | null>(null);
   const [panelAnchoredToFab, setPanelAnchoredToFab] = useState(false);
@@ -158,11 +150,5 @@ function ResumeFabWrapper({ statePlugin, onAnchorRectChange, panelAnchoredToFab,
     };
   }, [engine, onResume]);
 
-  return (
-    <ResumeFabWidget
-      statePlugin={statePlugin}
-      onAnchorRectChange={onAnchorRectChange}
-      panelAnchoredToFab={panelAnchoredToFab}
-    />
-  );
+  return <ResumeFabWidget statePlugin={statePlugin} onAnchorRectChange={onAnchorRectChange} panelAnchoredToFab={panelAnchoredToFab} />;
 }

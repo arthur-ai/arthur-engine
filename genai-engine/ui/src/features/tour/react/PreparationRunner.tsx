@@ -16,10 +16,9 @@ interface MountedPrepProps {
 }
 
 /**
- * Mounts a single preparation hook for the duration of a step's prep phase.
- * Calling the hook here (not in `PreparationRunner` directly) keeps each
- * hook's React state local — re-entering a step remounts the component and
- * gives the hook a fresh closure.
+ * Runs a single preparation callback for the duration of a step's prep phase.
+ * The callback is registered from React, but it is an ordinary async callback:
+ * read app state into refs outside it rather than calling hooks inside it.
  */
 function MountedPrep({ request, hook }: MountedPrepProps) {
   const { actions } = useTour();

@@ -140,16 +140,11 @@ export interface IntroductionConfig {
 }
 
 /**
- * v1 narrows missing-target behavior to two first-class shapes:
- *  - `show-hint`: surface a static string under the active checklist row
- *    (the v0 dogfood report flagged that this used to be a scattered map of
- *    strings consulted by ChecklistTour).
- *  - `auto-complete`: emit `step:completed` after `afterMs` so empty-state
- *    steps don't strand the user.
+ * Missing-target behavior owned by the headless engine. Static hints are a
+ * widget concern; consumers can render them from their product UI when
+ * `target:lost` fires.
  */
-export type StepFallback =
-  | { kind: "show-hint"; hint: string }
-  | { kind: "auto-complete"; afterMs: number };
+export type StepFallback = { kind: "auto-complete"; afterMs: number };
 
 export interface StepConfig {
   id: string;
@@ -204,6 +199,22 @@ export interface TourConfig {
   sections: SectionConfig[];
 }
 
+export function defineTourConfig<const T extends TourConfig>(config: T): T {
+  return config;
+}
+
+type ConfigSection<TConfig extends TourConfig> = TConfig["sections"][number];
+type ConfigStep<TConfig extends TourConfig> = ConfigSection<TConfig>["steps"][number];
+type ConfigAdvanceTrigger<TConfig extends TourConfig> =
+  NonNullable<ConfigStep<TConfig>["advanceOn"]> extends infer TTrigger ? (TTrigger extends readonly (infer TItem)[] ? TItem : TTrigger) : never;
+
+export type TourSectionId<TConfig extends TourConfig> = ConfigSection<TConfig>["id"];
+export type TourStepId<TConfig extends TourConfig> = ConfigStep<TConfig>["id"];
+export type TourActionName<TConfig extends TourConfig> =
+  Extract<ConfigAdvanceTrigger<TConfig>, { type: "action" }> extends infer TAction ? (TAction extends { name: infer TName } ? TName : never) : never;
+export type TourPreparationKey<TConfig extends TourConfig> = NonNullable<ConfigStep<TConfig>["prepare"]>["key"];
+export type TourQueryHookId<TConfig extends TourConfig> = Extract<ConfigStep<TConfig>["target"], { kind: "queryHook" }>["hookId"];
+
 // =============================================================================
 // State machine
 // =============================================================================
@@ -244,26 +255,26 @@ export type TourState =
 
 export interface TourActions {
   /**
-   * Begin the tour. `resume: true` walks the state plugin's snapshot for the
-   * first incomplete position. `position` is an explicit jump-to.
+   * Begin the tour. `position` is an explicit jump-to. `resume: true` uses
+   * the engine's configured `resumePosition` callback when one exists.
    */
-  start: (options?: { position?: { sectionId: string; stepId?: string }; resume?: boolean }) => void;
-  next: () => void;
-  prev: () => void;
-  goTo: (target: { sectionId: string; stepId?: string }) => void;
-  skipSection: () => void;
-  skip: (reason?: SkipReason) => void;
+  start: (options?: { position?: { sectionId: string; stepId?: string }; resume?: boolean }) => Promise<void>;
+  next: () => Promise<void>;
+  prev: () => Promise<void>;
+  goTo: (target: { sectionId: string; stepId?: string }) => Promise<void>;
+  skipSection: () => Promise<void>;
+  skip: (reason?: SkipReason) => Promise<void>;
   /**
    * Pause the tour and emit `tour:dismiss`. Engine retains its position so a
-   * later `start({ resume: true })` returns the user to where they left off.
+   * later `resume()` returns the user to where they left off.
    */
-  dismiss: () => void;
+  dismiss: () => Promise<void>;
   /**
    * Resume from `dismissed`. The engine derives the resume target from the
    * dismissed position (intro → re-show intro, step → re-enter step).
    */
-  resume: () => void;
-  acknowledgeIntroduction: () => void;
+  resume: () => Promise<void>;
+  acknowledgeIntroduction: () => Promise<void>;
   /**
    * Emit a typed action onto the engine bus. The `action` trigger listens for
    * matching names and advances the active step. Replaces v0's
@@ -295,13 +306,22 @@ export interface StepEnterEvent extends StepContext {
  * v0 progress plugin's misuse of `step:advance` for `prev`/`goTo` exits is
  * impossible in v1.
  */
-export type StepCompletedCause = "next" | "click" | "action" | "visible" | "custom" | "complete";
+export type StepCompletedCause = "next" | "click" | "action" | "visible" | "custom" | "complete" | "goTo-forward";
 
 /**
  * Step exit causes. `step:left` fires on every exit (including the forward
  * ones — `step:completed` is a strict subset).
  */
-export type StepLeftCause = StepCompletedCause | "prev" | "goTo-backward" | "goTo-forward" | "skip" | "skipSection" | "dismiss" | "auto-skip" | "manual";
+export type StepLeftCause =
+  | StepCompletedCause
+  | "prev"
+  | "goTo-backward"
+  | "goTo-forward"
+  | "skip"
+  | "skipSection"
+  | "dismiss"
+  | "auto-skip"
+  | "manual";
 
 export interface StepCompletedEvent extends StepContext {
   cause: StepCompletedCause;
@@ -351,8 +371,8 @@ export interface TourEvents extends Record<EventType, unknown> {
    * active spotlight) regardless of direction.
    */
   "step:left": StepLeftEvent;
-  "target:found": { stepId: string; element: Element };
-  "target:lost": { stepId: string };
+  "target:found": { tourId: string; sectionId: string; stepId: string; element: Element };
+  "target:lost": { tourId: string; sectionId: string; stepId: string };
   "navigation:before": NavigationBeforeEvent;
   "navigation:after": NavigationAfterEvent;
   "action:emit": ActionEmitEvent;
@@ -383,19 +403,14 @@ export interface PreparationResult {
 }
 
 /**
- * Preparation hooks are React hooks, not pure functions — they need access to
- * React Query caches, Zustand stores, refs, etc. The runner mounts a small
- * component that calls the hook and reports the result back to the engine via
- * a shared promise.
+ * Preparation callbacks are registered from React components, but the callback
+ * itself must not call React hooks. Read React Query caches, Zustand stores,
+ * refs, etc. in the outer hook/component and close over stable refs here.
  *
- * Hooks may return `void` (synchronous prep, ready as soon as the React tree
- * re-renders) or a promise resolving with the ready signal. They MAY also
- * call `actions.emitAction(...)` to signal completion through the action bus.
+ * Callbacks return a ready signal and may also call `actions.emitAction(...)`
+ * to signal completion through the action bus.
  */
-export type PreparationHook = (ctx: {
-  stepContext: StepContext;
-  actions: TourActions;
-}) => PreparationResult | Promise<PreparationResult>;
+export type PreparationHook = (ctx: { stepContext: StepContext; actions: TourActions }) => PreparationResult | Promise<PreparationResult>;
 
 // =============================================================================
 // Query-hook target resolvers

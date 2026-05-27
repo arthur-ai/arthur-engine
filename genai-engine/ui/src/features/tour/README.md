@@ -1,156 +1,409 @@
-# Tour engine (v1)
+# Tour Engine Library
 
-A small, opinionated tour framework for the GenAI Engine UI. v1 is a
-ground-up rewrite of v0 — see `~/.cursor/plans/tour_engine_v1_*.plan.md` for
-the design rationale and the dogfood issues that motivated the rebuild.
+`@/features/tour` is the reusable guided-tour core for the GenAI Engine UI.
+It owns the deterministic state machine, target resolution, route-aware step
+entry, typed events, persistence hooks, and small React primitives. Product
+tours own their copy, widgets, analytics labels, and any app-specific data
+fetching.
 
-## Concepts
+Use `features/task-tour` as the complete product example. It keeps product
+content and widgets outside the reusable core while validating the library
+contracts in a real flow.
 
-A **tour** is built from `createTour({ config, plugins })`:
+## Build A Tour In 10 Minutes
 
-- The **config** is a list of sections; each section has an optional
-  introduction and a list of steps. Steps point at a **target** (selector,
-  React ref, callback, or hook-resolved element), declare one or more
-  **advance triggers** (manual / click / visible / action), and may declare
-  a **prepare** hook, a **skipWhen** predicate, and route metadata.
-- The **engine** owns a deterministic state machine
-  (`idle → intro → step* → completed | skipped | dismissed`) and a typed
-  mitt event bus. Most consumer code never reaches into the engine — it
-  consumes state through React hooks.
-- **Plugins** install side-effects on the engine (persistence, analytics,
-  preparation registries, custom highlight renderers). Each plugin gets a
-  `TourPluginContext` with the engine store, the bus, and registration
-  helpers.
-- **Widgets** are ordinary consumer-authored React components mounted
-  inside `<TourHost>`. The library ships no “DefaultTour”; consumers
-  compose the UI by combining the primitives (`Spotlight`,
-  `BackdropBlocker`, `PopoverAnchor`, `TargetTracker`, `TourPortal`) with
-  their own panels and modals.
-
-## Public surface
-
-```ts
-import {
-  createTour,
-  TourProvider,
-  TourHost,
-  useTour, // { state, config, actions, activeStep, activeSection }
-  useTourState, // current TourState
-  useTourStore, // raw Zustand slice selector
-  useTourEvent, // bus subscription
-  useTourAction, // (name) => engine.emitAction(name)
-  useTourLayer, // z-index slice
-  useRegisterQueryHook,
-  useRegisterPreparation,
-  Spotlight,
-  BackdropBlocker,
-  PopoverAnchor,
-  TargetTracker,
-  TourPortal,
-  withTourActive,
-  withTourStep,
-  createTourStatePlugin,
-  createAnalyticsPlugin,
-  createPreparationPlugin,
-  createHighlightsPlugin,
-} from "@/features/tour";
-```
-
-## Composing a tour
+Create a typed config, create an engine, then render product-owned widgets
+inside `TourHost`.
 
 ```tsx
+import { useMemo } from "react";
+
+import {
+  BackdropBlocker,
+  PopoverAnchor,
+  Spotlight,
+  TargetTracker,
+  TourHost,
+  TourProvider,
+  applyBackdropAction,
+  createTour,
+  createTourStatePlugin,
+  defineTourConfig,
+  getHighlightPadding,
+  useReactRouterNavigator,
+  useTour,
+} from "@/features/tour";
+
+const config = defineTourConfig({
+  id: "example-tour",
+  sections: [
+    {
+      id: "welcome",
+      introduction: {
+        title: "Welcome",
+        description: "Learn the workflow in a few steps.",
+        primaryActionLabel: "Start",
+      },
+      steps: [],
+    },
+    {
+      id: "workspace",
+      title: "Workspace",
+      steps: [
+        {
+          id: "open-panel",
+          target: { kind: "selector", selector: '[data-tour-id="panel"]' },
+          content: "Open the panel to continue.",
+          placement: "right",
+          advanceOn: [{ type: "click" }, { type: "action", name: "panel-opened" }],
+          awaitTarget: { timeoutMs: 4000 },
+        },
+      ],
+    },
+  ],
+});
+
+function ExampleTour() {
+  const navigator = useReactRouterNavigator();
+  const statePlugin = useMemo(() => createTourStatePlugin({ storageKey: "example-tour" }), []);
+  const engine = useMemo(() => createTour({ config, plugins: [statePlugin] }), [statePlugin]);
+
+  return (
+    <TourProvider tour={engine} navigator={navigator}>
+      <TourHost>
+        <ExampleIntro />
+        <ExampleStep />
+      </TourHost>
+    </TourProvider>
+  );
+}
+
+function ExampleIntro() {
+  const { state, activeSection, actions } = useTour();
+  if (state.status !== "intro" || !activeSection?.introduction) return null;
+
+  return (
+    <button type="button" onClick={() => void actions.acknowledgeIntroduction()}>
+      {activeSection.introduction.primaryActionLabel ?? "Continue"}
+    </button>
+  );
+}
+
+function ExampleStep() {
+  const { state, config, activeStep, actions } = useTour();
+  if (state.status !== "step" || !activeStep) return null;
+
+  const content =
+    typeof activeStep.step.content === "function"
+      ? activeStep.step.content({
+          tourId: config.id,
+          sectionId: state.sectionId,
+          stepId: state.stepId,
+          index: {
+            sectionIndex: state.sectionIndex,
+            stepIndex: state.stepIndex,
+            globalStepIndex: state.globalStepIndex,
+            totalSteps: state.totalSteps,
+          },
+          actions,
+        })
+      : activeStep.step.content;
+
+  return (
+    <TargetTracker>
+      {({ rect }) => (
+        <>
+          <Spotlight rect={rect} highlight={activeStep.step.highlight} />
+          {activeStep.step.overlay?.blockInteraction ? (
+            <BackdropBlocker
+              cutoutRect={rect}
+              padding={getHighlightPadding(activeStep.step.highlight)}
+              onBackdropClick={() => applyBackdropAction(activeStep.step.overlay?.onBackdropClick, actions)}
+            />
+          ) : null}
+          <PopoverAnchor rect={rect} placement={activeStep.step.placement}>
+            <div>
+              {content}
+              <button type="button" onClick={() => void actions.next()}>
+                Next
+              </button>
+            </div>
+          </PopoverAnchor>
+        </>
+      )}
+    </TargetTracker>
+  );
+}
+```
+
+The library does not ship a default popover, intro dialog, or checklist.
+Consumers compose those from `useTour`, `useTourEvent`, `useTourAction`,
+`useTourPluginStore`, and the primitive rendering pieces.
+
+## State Machine
+
+```mermaid
+stateDiagram-v2
+  [*] --> idle
+  idle --> intro: start()
+  idle --> step: start()
+  intro --> step: acknowledgeIntroduction()
+  intro --> intro: next section intro
+  step --> step: next() / trigger / goTo()
+  step --> intro: next section intro
+  step --> dismissed: dismiss()
+  dismissed --> intro: resume()
+  dismissed --> step: resume()
+  intro --> skipped: skip()
+  step --> skipped: skip() / skipSection()
+  intro --> completed: last intro acknowledged
+  step --> completed: last step completed
+  completed --> [*]
+  skipped --> [*]
+```
+
+Public transition actions return `Promise<void>`. Await them in tests and in
+code that immediately depends on the next state.
+
+## Config Reference
+
+`TourConfig` contains stable `sections`. Section and step IDs should be unique
+within a tour. Duplicate step IDs across sections can work because events carry
+`tourId`, `sectionId`, and `stepId`, but unique IDs keep analytics and progress
+keys easy to read.
+
+```ts
+const config = defineTourConfig({
+  id: "my-tour",
+  sections: [
+    {
+      id: "section-id",
+      title: "Section title",
+      introduction: { title: "Intro", description: "Optional copy" },
+      skipable: true,
+      route: "/tasks/:taskId/overview",
+      steps: [
+        {
+          id: "step-id",
+          target: { kind: "selector", selector: '[data-tour-id="target"]' },
+          content: "Step content",
+          placement: "bottom",
+          highlight: { shape: "box", padding: 8, radius: 8 },
+          overlay: { blockInteraction: true, onBackdropClick: "none" },
+          route: { path: "/tasks/:taskId/traces", params: { taskId: "abc" } },
+          prepare: { key: "traces.open-drawer" },
+          skipWhen: async (ctx) => ctx.stepId === "optional-step",
+          awaitTarget: { timeoutMs: 5000 },
+          advanceOn: { type: "action", name: "target-opened" },
+          fallback: { kind: "auto-complete", afterMs: 3000 },
+        },
+      ],
+    },
+  ],
+});
+```
+
+Important invariants:
+
+- `sections` may be empty. Starting an empty tour completes safely.
+- `steps` may be empty. Intro-only sections use `steps: []` and advance with
+  `acknowledgeIntroduction()`.
+- `skipWhen` runs before target resolution. A true result emits `step:left`
+  with cause `auto-skip` and does not emit `step:enter`.
+- `fallback` is engine-owned behavior and currently supports only
+  `{ kind: "auto-complete" }`. Static missing-target hints belong in widgets
+  that listen to `target:lost`.
+- `start({ resume: true })` only uses the engine `resumePosition` option when
+  no explicit `position` is supplied. Persistence plugins expose
+  `resumePosition(config)` so consumers can pass a concrete position.
+
+## Targeting Guide
+
+Choose the most stable target source available:
+
+- `selector` uses `document.querySelector`. Prefer `data-tour-id` attributes
+  for product-owned DOM.
+- `ref` reads a React ref at step-enter time. Use this when the target is owned
+  by the same component tree as the tour widget.
+- `element` calls a plain resolver. Use for custom lookup logic that is not
+  React-dependent.
+- `queryHook` defers to a resolver registered with
+  `useRegisterQueryHook(hookId, resolver)`. Use it for virtualized rows,
+  portals, drawers, and third-party components where a `data-tour-id` may not
+  reach the final DOM node.
+
+The engine checks targets synchronously first. If the target is missing and
+`awaitTarget.timeoutMs` is set, it waits with a `MutationObserver` until the
+target appears or the timeout expires. Target events include `tourId`,
+`sectionId`, and `stepId`; `useActiveTarget()` ignores events for inactive
+steps.
+
+## Preparation Callbacks
+
+Preparation callbacks are plain async callbacks registered from React. They are
+not React hooks and must not call hooks inside the callback body.
+
+Safe pattern:
+
+```tsx
+function TracePrep({ taskId }: { taskId: string }) {
+  const queryClient = useQueryClient();
+  const drawerRef = useRef<HTMLElement | null>(null);
+  const queryClientRef = useRef(queryClient);
+  queryClientRef.current = queryClient;
+
+  const prepareTrace = useCallback(async () => {
+    await queryClientRef.current.ensureQueryData(["trace", taskId]);
+    drawerRef.current?.scrollIntoView();
+    return { ready: true };
+  }, [taskId]);
+  const resolveDrawer = useCallback(() => drawerRef.current, []);
+
+  useRegisterPreparation("trace.open", prepareTrace);
+  useRegisterQueryHook("trace.drawer", resolveDrawer);
+
+  return <div ref={drawerRef} />;
+}
+```
+
+The engine sequence is route navigation, preparation request, preparation
+`{ ready: true }`, then target resolution. Keep app state in refs or stores
+outside the callback and close over stable references with `useCallback`.
+
+## Trigger Guide
+
+Built-in `advanceOn` trigger types:
+
+- `manual`: no automatic listener. The widget calls `actions.next()`.
+- `click`: advances when the target, or an optional selector, is clicked.
+- `visible`: advances when an `IntersectionObserver` threshold is met.
+- `action`: advances when `useTourAction()(name)` or `engine.emitAction(name)`
+  emits the matching name.
+- `custom`: uses a trigger factory registered by a plugin.
+
+Custom trigger plugin:
+
+```ts
+const hoverTriggerPlugin = {
+  name: "hover-trigger",
+  install: ({ registerTrigger }) => {
+    registerTrigger("hover", ({ targetElement, advance }) => {
+      if (!targetElement) return () => {};
+      const onMouseEnter = () => advance("custom");
+      targetElement.addEventListener("mouseenter", onMouseEnter);
+      return () => targetElement.removeEventListener("mouseenter", onMouseEnter);
+    });
+  },
+};
+```
+
+In development, a custom trigger without a registered factory warns instead of
+silently doing nothing.
+
+## Persistence And Resume
+
+Use `createTourStatePlugin` for single-record persistence and progress:
+
+```ts
+const statePlugin = createTourStatePlugin({
+  storageKey: "my-tour",
+  getKey: (event) => `${event.sectionId}.${event.stepId}`,
+  isStepComplete: (section, step, completed) => completed.has(`${section.id}.${step.id}`),
+});
+
 const engine = createTour({
-  config: buildMyConfig(),
-  plugins: [createTourStatePlugin({ storageKey: "my-tour" })],
-});
-
-<TourProvider tour={engine} navigator={navigator}>
-  <TourHost>
-    <MyIntroWidget />
-    <MySpotlightWidget />
-    <MyChecklistWidget />
-    <MyResumeFabWidget />
-  </TourHost>
-</TourProvider>;
-```
-
-Each widget is a small React component that reads engine state through
-`useTour*` hooks and dispatches actions back to the engine. No widget is
-provided by the library; the `features/task-tour` package contains the
-canonical example.
-
-## Targeting
-
-Steps declare a `TargetSpec`:
-
-- `{ kind: "selector", selector: string }` — `document.querySelector(...)`.
-- `{ kind: "element", resolve }` — bring-your-own resolver.
-- `{ kind: "ref", ref }` — React ref read at step-enter time.
-- `{ kind: "queryHook", hookId }` — defers to a resolver registered via
-  `useRegisterQueryHook(hookId, resolver)`. Use this when a `data-tour-id`
-  can't reliably propagate through a third-party component (the
-  `traces.open-trace` / `traces.review-spans` flow in `task-tour` is the
-  canonical example).
-
-The engine resolves the target synchronously first; if missing and the
-step declares `awaitTarget: { timeoutMs }`, it falls back to a
-`MutationObserver`-driven async resolution.
-
-## Actions
-
-v0 emitted advance events through `document.dispatchEvent`. v1 replaces
-that with a typed action channel:
-
-```ts
-const emit = useTourAction();
-emit("trace-opened");
-```
-
-A step's `advanceOn: { type: "action", name: "trace-opened" }` listens on
-the engine bus for matching actions. `engine.emitAction(name)` does the
-same from outside React.
-
-## Preparation hooks
-
-For steps where the target depends on app state that needs to be primed
-first (e.g. open a drawer, set pagination, fetch a record), declare
-`prepare: { key }` on the step and register a matching hook:
-
-```ts
-useRegisterPreparation("traces.open-drawer", async ({ stepContext }) => {
-  await openFirstTraceDrawer();
-  return { ready: true };
+  config,
+  plugins: [statePlugin],
+  resumePosition: statePlugin.resumePosition,
 });
 ```
 
-The engine mounts the hook (via `<PreparationRunner />` inside `TourHost`)
-right after navigation, waits for `{ ready: true }`, and only then
-resolves the target.
+The plugin stores:
 
-## Plugins
+- `status`: `unseen`, `in-progress`, `dismissed`, `completed`, or `skipped`.
+- `position`: the last intro or step position.
+- `completed`: a set of completed progress keys.
 
-- `createTourStatePlugin({ storageKey })` — single-record persistence +
-  completed-set progress, with `localStorage` mirror and cross-tab
-  `storage`-event sync. Exposes a Zustand store consumed via
-  `useTourPluginStore(plugin, selector)`.
-- `createPreparationPlugin()` — Zustand-backed registry of preparation
-  hooks (when you want plugin-driven prep instead of inline
-  `useRegisterPreparation`).
-- `createHighlightsPlugin({ renderers })` — registers custom highlight
-  renderers.
-- `createAnalyticsPlugin({ track, prefix, include })` — forwards bus
-  events to the supplied tracker.
+Use `statePlugin.resumePosition(config)` to find the first incomplete section
+or step. It returns `null` when all steps are complete. Intro-only sections are
+recorded with the `${sectionId}.__intro` convention.
 
-## Migrating from v0
+For resume UI, prefer:
 
-- `tourEvents.ts` / `tourEventNames.ts` → typed action channel
-  (`useTourAction`, `engine.emitAction`).
-- `createPersistencePlugin` + `createChecklistProgressPlugin` →
-  `createTourStatePlugin` (one store, one storage record).
-- `DefaultTour` / `DefaultIntroDialog` / `DefaultStepPopover` removed.
-  Consumers author their own widget set inside `<TourHost>`.
-- `introductionPending` flag removed. The engine state machine has a
-  first-class `intro` status (`status: "intro" | "step" | ...`).
-- Stub-step placeholder removed. Intro-only sections have
-  `steps: []` and advance through `acknowledgeIntroduction()`.
-- `event` trigger removed. Use `{ type: "action", name }` instead.
+```ts
+const position = statePlugin.resumePosition(config);
+if (position) {
+  await actions.start({ position, resume: true });
+}
+```
+
+Use `actions.resume()` only when the engine state is currently `dismissed`.
+
+## Plugin Authoring
+
+A plugin installs side effects through `TourPluginContext`:
+
+```ts
+import type { TourPlugin } from "@/features/tour";
+
+export function createLoggingPlugin(): TourPlugin {
+  return {
+    name: "logging",
+    install: ({ bus, registerLayer }) => {
+      registerLayer("popover", 1300);
+      const onStart = (event: { tourId: string }) => console.info("tour started", event.tourId);
+      bus.on("tour:start", onStart);
+      return () => bus.off("tour:start", onStart);
+    },
+  };
+}
+```
+
+Use plugins for persistence, analytics, custom triggers, custom highlights,
+layers, and shared query/preparation registries. Return a cleanup function for
+subscriptions or DOM listeners.
+
+Built-in plugins:
+
+- `createTourStatePlugin` for persistence, progress, resume, reset, and
+  cross-tab storage sync.
+- `createAnalyticsPlugin` for forwarding selected engine events to a tracker.
+- `createHighlightsPlugin` for registering custom highlight renderers.
+- `createPreparationPlugin` for a plugin-owned preparation registry.
+
+## Testing New Tours
+
+Prefer focused Vitest coverage for authoring and engine contracts:
+
+- Config builders should verify required sections, step IDs, action names,
+  preparation keys, query-hook IDs, skip predicates, and route params.
+- Widgets should render against a real `TourProvider` when possible and await
+  async actions.
+- Product bridges, such as legacy action dispatchers, should be tested as
+  plain functions.
+- Core changes require tests under `src/features/tour/**/__tests__`.
+
+Useful commands:
+
+```sh
+GITLAB_UNIFY_FRONTEND_TOKEN=placeholder yarn test:run src/features/tour
+GITLAB_UNIFY_FRONTEND_TOKEN=placeholder yarn test:run src/features/task-tour
+GITLAB_UNIFY_FRONTEND_TOKEN=placeholder yarn type-check
+GITLAB_UNIFY_FRONTEND_TOKEN=placeholder yarn lint
+GITLAB_UNIFY_FRONTEND_TOKEN=placeholder yarn format:check
+```
+
+## Migration Notes From v0
+
+- `tourEvents.ts` / `tourEventNames.ts` moved to the typed action channel:
+  `useTourAction`, `engine.emitAction`, and optional product bridges such as
+  `dispatchTourEvent`.
+- `createPersistencePlugin` plus `createChecklistProgressPlugin` became
+  `createTourStatePlugin`.
+- Default UI components were removed. Consumers render widgets inside
+  `<TourHost>`.
+- `introductionPending` was replaced by the first-class `intro` state.
+- Stub steps were removed. Use intro-only sections with `steps: []`.
+- The old `event` trigger became `{ type: "action", name }`.
+- Missing-target `show-hint` fallback moved out of the engine. Render hints in
+  product widgets from `target:lost` instead.

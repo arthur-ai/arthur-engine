@@ -1,10 +1,6 @@
 import { createStore, type StoreApi } from "zustand/vanilla";
 
-import type {
-  StepCompletedEvent,
-  TourConfig,
-  TourPlugin,
-} from "../core/types";
+import type { SectionConfig, StepCompletedEvent, StepConfig, TourConfig, TourPlugin } from "../core/types";
 
 /**
  * Persistence-aware status. Renamed from v0's "in-progress"/"unseen" four-state
@@ -12,7 +8,7 @@ import type {
  * *user's relationship to the tour* (have they seen it? finished it?), not
  * the engine's runtime status.
  */
-export type TourStateStatus = "unseen" | "in-progress" | "dismissed" | "completed";
+export type TourStateStatus = "unseen" | "in-progress" | "dismissed" | "completed" | "skipped";
 
 export interface TourStateSnapshot {
   status: TourStateStatus;
@@ -65,7 +61,7 @@ function parseSnapshot(raw: string | null): TourStateSnapshot {
     }
     const obj = parsed as Partial<SerializedSnapshot>;
     const status: TourStateStatus =
-      obj.status === "unseen" || obj.status === "in-progress" || obj.status === "dismissed" || obj.status === "completed"
+      obj.status === "unseen" || obj.status === "in-progress" || obj.status === "dismissed" || obj.status === "completed" || obj.status === "skipped"
         ? obj.status
         : "unseen";
     const completed = new Set<string>((obj.completed ?? []).filter((v): v is string => typeof v === "string"));
@@ -111,6 +107,11 @@ export interface CreateTourStatePluginOptions {
    * shape (e.g. for cross-section step IDs).
    */
   getKey?: (event: StepCompletedEvent) => string;
+  /**
+   * Optional override for custom resume semantics. When omitted,
+   * `resumePosition()` derives each stored step key with `getKey`.
+   */
+  isStepComplete?: (section: SectionConfig, step: StepConfig, completed: ReadonlySet<string>) => boolean;
 }
 
 export interface TourStatePlugin extends TourPlugin {
@@ -146,6 +147,7 @@ const defaultGetKey = (event: StepCompletedEvent): string => `${event.sectionId}
 export function createTourStatePlugin(opts: CreateTourStatePluginOptions): TourStatePlugin {
   const storage = resolveStorage(opts.storage);
   const getKey = opts.getKey ?? defaultGetKey;
+  const isStepComplete = opts.isStepComplete;
 
   const initial = parseSnapshot(storage.getItem(opts.storageKey));
 
@@ -205,7 +207,10 @@ export function createTourStatePlugin(opts: CreateTourStatePluginOptions): TourS
 
   const resumePosition: TourStatePlugin["resumePosition"] = (config) => {
     const completed = store.getState().snapshot.completed;
-    for (const section of config.sections) {
+    const totalSteps = config.sections.reduce((acc, section) => acc + section.steps.length, 0);
+    let globalStepIndex = 0;
+    for (let sectionIndex = 0; sectionIndex < config.sections.length; sectionIndex++) {
+      const section = config.sections[sectionIndex];
       if (section.steps.length === 0) {
         // Intro-only — count it complete only if its synthetic intro key was
         // recorded. The convention is "${sectionId}.__intro" but consumers
@@ -215,10 +220,23 @@ export function createTourStatePlugin(opts: CreateTourStatePluginOptions): TourS
         if (!sectionTouched) return { sectionId: section.id };
         continue;
       }
-      for (const step of section.steps) {
-        if (!completed.has(`${section.id}.${step.id}`)) {
+      for (let stepIndex = 0; stepIndex < section.steps.length; stepIndex++) {
+        const step = section.steps[stepIndex];
+        const stepComplete =
+          isStepComplete?.(section, step, completed) ??
+          completed.has(
+            getKey({
+              tourId: config.id,
+              sectionId: section.id,
+              stepId: step.id,
+              index: { sectionIndex, stepIndex, globalStepIndex, totalSteps },
+              cause: "next",
+            })
+          );
+        if (!stepComplete) {
           return { sectionId: section.id, stepId: step.id };
         }
+        globalStepIndex++;
       }
     }
     return null;
@@ -238,7 +256,7 @@ export function createTourStatePlugin(opts: CreateTourStatePluginOptions): TourS
       const onResume = () => setStatus("in-progress");
       const onDismiss = () => setStatus("dismissed");
       const onEnd = (event: { reason: "completed" | "skipped" }) => {
-        setStatus(event.reason === "completed" ? "completed" : "dismissed");
+        setStatus(event.reason === "completed" ? "completed" : "skipped");
       };
       const onStepEnter = (event: { sectionId: string; stepId: string }) => {
         setPosition({ sectionId: event.sectionId, stepId: event.stepId });

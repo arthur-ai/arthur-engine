@@ -34,6 +34,7 @@ export interface TourEngineOptions {
   config: TourConfig;
   plugins?: TourPlugin[];
   navigator?: TourNavigator | null;
+  resumePosition?: (config: TourConfig) => { sectionId: string; stepId?: string } | null;
   /**
    * Optional layer-token overrides applied at store construction. Useful when
    * a consumer wants to push specific shapes (e.g. lower the spotlight below
@@ -111,6 +112,8 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
   let activeTriggerCleanups: Array<() => void> = [];
   let enterAbort: AbortController | null = null;
   let navigator: TourNavigator | null = options.navigator ?? null;
+  let destroyed = false;
+  let exitedStepKey: string | null = null;
 
   const totalSteps = config.sections.reduce((acc, s) => acc + s.steps.length, 0);
 
@@ -119,7 +122,12 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
   // ---------------------------------------------------------------------------
 
   const getState = (): TourState => store.getState().state;
-  const setState = (next: TourState) => store.getState().setState(next);
+  const activeStepKey = (state: Extract<TourState, { status: "step" }>) =>
+    `${state.sectionIndex}:${state.stepIndex}:${state.sectionId}:${state.stepId}`;
+  const setState = (next: TourState) => {
+    exitedStepKey = null;
+    store.getState().setState(next);
+  };
 
   const stepContextAt = (pos: Position): StepContext => {
     let globalStepIndex = 0;
@@ -162,6 +170,12 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     return s.status === "step" ? { sectionIndex: s.sectionIndex, stepIndex: s.stepIndex } : null;
   };
 
+  const isActiveStep = (state: TourState, pos: Position) =>
+    state.status === "step" && state.sectionIndex === pos.sectionIndex && state.stepIndex === pos.stepIndex;
+
+  const isActiveSection = (state: TourState, sectionPos: SectionPosition) =>
+    (state.status === "step" || state.status === "intro") && state.sectionIndex === sectionPos.sectionIndex;
+
   // ---------------------------------------------------------------------------
   // Plugins
   // ---------------------------------------------------------------------------
@@ -197,7 +211,17 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     for (const trigger of list) {
       const key = trigger.type === "custom" ? trigger.key : trigger.type;
       const factory = triggers.get(key);
-      if (!factory) continue;
+      if (!factory) {
+        if (trigger.type === "custom") {
+          console.warn("[tour] missing custom trigger factory", {
+            tourId: config.id,
+            sectionId: ctx.sectionId,
+            stepId: ctx.stepId,
+            key,
+          });
+        }
+        continue;
+      }
       const cleanup = factory({
         step,
         stepContext: ctx,
@@ -208,7 +232,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
           const s = getState();
           if (s.status !== "step") return;
           if (s.sectionId !== ctx.sectionId || s.stepId !== ctx.stepId) return;
-          next(cause);
+          void next(cause);
         },
       });
       activeTriggerCleanups.push(cleanup);
@@ -219,15 +243,17 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
   // Navigation
   // ---------------------------------------------------------------------------
 
-  const navigateIfNeeded = async (route: string | RouteSpec | undefined, signal: AbortSignal): Promise<void> => {
-    if (!route || !navigator) return;
+  const navigateIfNeeded = async (route: string | RouteSpec | undefined, signal: AbortSignal): Promise<boolean> => {
+    if (!route || !navigator) return true;
     const spec = toRouteSpec(route);
     const resolved: ResolvedRoute = resolveRouteWith(navigator, spec);
-    if (matchesRouteWith(navigator, spec, resolved)) return;
+    if (matchesRouteWith(navigator, spec, resolved)) return true;
     bus.emit("navigation:before", { tourId: config.id, from: navigator.getLocation(), to: resolved });
     await navigator.navigate(resolved.full);
-    if (signal.aborted) return;
+    if (signal.aborted) return false;
+    if (!matchesRouteWith(navigator, spec, resolved)) return false;
     bus.emit("navigation:after", { tourId: config.id, to: resolved });
+    return true;
   };
 
   // ---------------------------------------------------------------------------
@@ -236,16 +262,41 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
 
   const runPreparation = (key: string, ctx: StepContext, signal: AbortSignal): Promise<PreparationResult> => {
     return new Promise<PreparationResult>((resolve, reject) => {
+      let settled = false;
+      const cleanup = () => {
+        signal.removeEventListener("abort", onAbort);
+      };
+      const finish = (result: PreparationResult) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve(result);
+      };
+      const fail = (reason: unknown) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(reason);
+      };
+      const onAbort = () => finish({ ready: false });
+
+      if (signal.aborted) {
+        finish({ ready: false });
+        return;
+      }
+
+      signal.addEventListener("abort", onAbort, { once: true });
+
       const handlers = Array.from(prepareHandlers);
       if (handlers.length === 0) {
         // No `<PreparationRunner />` mounted — preparation is best-effort, so
         // resolve as "ready" and continue. The step will fall back to the
         // ordinary target resolution path.
-        resolve({ ready: true });
+        finish({ ready: true });
         return;
       }
       for (const handler of handlers) {
-        handler({ key, stepContext: ctx, resolve, reject, signal });
+        handler({ key, stepContext: ctx, resolve: finish, reject: fail, signal });
       }
     });
   };
@@ -254,16 +305,20 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
   // Step lifecycle
   // ---------------------------------------------------------------------------
 
-  const completedCausesSet = new Set<StepLeftCause>(["next", "click", "action", "visible", "custom", "complete"]);
+  const completedCausesSet = new Set<StepLeftCause>(["next", "click", "action", "visible", "custom", "complete", "goTo-forward"]);
   const causeForCompleted = (cause: StepLeftCause | undefined): StepCompletedCause | null => {
     if (!cause) return null;
     if (completedCausesSet.has(cause)) return cause as StepCompletedCause;
     return null;
   };
 
-  const exitCurrentStep = async (cause: StepLeftCause | undefined) => {
-    const pos = getActiveStepPosition();
-    if (!pos) return;
+  const exitCurrentStep = async (cause: StepLeftCause | undefined): Promise<boolean> => {
+    const current = getState();
+    if (current.status !== "step") return true;
+    const key = activeStepKey(current);
+    if (exitedStepKey === key) return false;
+    exitedStepKey = key;
+    const pos = { sectionIndex: current.sectionIndex, stepIndex: current.stepIndex };
     const ctx = stepContextAt(pos);
     const step = config.sections[pos.sectionIndex].steps[pos.stepIndex];
     detachTriggers();
@@ -279,6 +334,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
         console.error("[tour] step.onExit threw", err);
       }
     }
+    return true;
   };
 
   const enterStep = async (pos: Position, opts: { runSectionEnter: boolean } = { runSectionEnter: false }): Promise<void> => {
@@ -324,7 +380,13 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
 
     const route = step.route ?? (pos.stepIndex === 0 ? section.route : undefined);
     try {
-      await navigateIfNeeded(route, signal);
+      const routeMatched = await navigateIfNeeded(route, signal);
+      if (!routeMatched) {
+        if (!signal.aborted) {
+          bus.emit("target:lost", { tourId: config.id, sectionId: section.id, stepId: step.id });
+        }
+        return;
+      }
     } catch (err) {
       console.error("[tour] navigation failed", err);
     }
@@ -337,7 +399,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
         if (!result.ready) {
           // Prep hook reported "not ready" — surface as target-lost so the
           // checklist hint takes over.
-          bus.emit("target:lost", { stepId: step.id });
+          bus.emit("target:lost", { tourId: config.id, sectionId: section.id, stepId: step.id });
         }
       } catch (err) {
         console.error("[tour] preparation threw", err);
@@ -362,7 +424,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
           // saw the step) so progress trackers don't double-record it.
           bus.emit("step:left", { ...ctx, cause: "auto-skip" });
           detachTriggers();
-          await advanceFromCurrentStep("auto-skip");
+          await advanceFromCurrentStep();
           return;
         }
       } catch (err) {
@@ -382,9 +444,9 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     if (signal.aborted) return;
 
     if (element) {
-      bus.emit("target:found", { stepId: step.id, element });
+      bus.emit("target:found", { tourId: config.id, sectionId: section.id, stepId: step.id, element });
     } else {
-      bus.emit("target:lost", { stepId: step.id });
+      bus.emit("target:lost", { tourId: config.id, sectionId: section.id, stepId: step.id });
     }
 
     bus.emit("step:enter", { ...ctx, rect: element?.getBoundingClientRect() ?? null });
@@ -413,17 +475,15 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
    * once acknowledged we advance to the next section, eliminating the v0
    * stub-step hack.
    */
-  const goToSection = async (
-    sectionPos: SectionPosition,
-    opts: { skipIntro?: boolean; cause?: StepLeftCause } = {}
-  ): Promise<void> => {
+  const goToSection = async (sectionPos: SectionPosition, opts: { skipIntro?: boolean; cause?: StepLeftCause } = {}): Promise<void> => {
     const section = config.sections[sectionPos.sectionIndex];
-
-    await exitCurrentStep(opts.cause);
-
     const current = getState();
-    const currentSectionIndex =
-      current.status === "step" || current.status === "intro" ? current.sectionIndex : null;
+    if (isActiveSection(current, sectionPos)) return;
+
+    if (!(await exitCurrentStep(opts.cause))) return;
+
+    const stateAfterExit = getState();
+    const currentSectionIndex = stateAfterExit.status === "step" || stateAfterExit.status === "intro" ? stateAfterExit.sectionIndex : null;
     if (currentSectionIndex !== null && currentSectionIndex !== sectionPos.sectionIndex) {
       const fromSection = config.sections[currentSectionIndex];
       bus.emit("section:exit", {
@@ -473,14 +533,12 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
 
   const goToStep = async (pos: Position, opts: { cause?: StepLeftCause } = {}): Promise<void> => {
     const current = getState();
-    const sectionChanging =
-      (current.status !== "step" && current.status !== "intro") ||
-      current.sectionIndex !== pos.sectionIndex;
-    await exitCurrentStep(opts.cause);
+    if (isActiveStep(current, pos)) return;
+    const sectionChanging = (current.status !== "step" && current.status !== "intro") || current.sectionIndex !== pos.sectionIndex;
+    if (!(await exitCurrentStep(opts.cause))) return;
 
     if (sectionChanging) {
-      const fromIndex =
-        current.status === "step" || current.status === "intro" ? current.sectionIndex : null;
+      const fromIndex = current.status === "step" || current.status === "intro" ? current.sectionIndex : null;
       if (fromIndex !== null) {
         const fromSection = config.sections[fromIndex];
         bus.emit("section:exit", { tourId: config.id, sectionId: fromSection.id, sectionIndex: fromIndex });
@@ -496,7 +554,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     await enterStep(pos, { runSectionEnter: sectionChanging });
   };
 
-  const advanceFromCurrentStep = async (cause: StepLeftCause): Promise<void> => {
+  const advanceFromCurrentStep = async (cause?: StepLeftCause): Promise<void> => {
     const pos = getActiveStepPosition();
     if (!pos) return;
     const section = config.sections[pos.sectionIndex];
@@ -512,7 +570,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
       await goToSection({ sectionIndex: sectionIndex + 1 }, { cause });
       return;
     }
-    await completeTour(cause ?? "complete");
+    await completeTour(cause);
   };
 
   const retreatFromPosition = (pos: Position): Position | null => {
@@ -529,8 +587,8 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     return null;
   };
 
-  const completeTour = async (cause: StepLeftCause = "complete"): Promise<void> => {
-    await exitCurrentStep(cause);
+  const completeTour = async (cause?: StepLeftCause): Promise<void> => {
+    if (!(await exitCurrentStep(cause))) return;
     const current = getState();
     if (current.status === "step" || current.status === "intro") {
       const section = config.sections[current.sectionIndex];
@@ -552,7 +610,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
   };
 
   const skipTour = async (reason: SkipReason): Promise<void> => {
-    await exitCurrentStep("skip");
+    if (!(await exitCurrentStep("skip"))) return;
     setState({ status: "skipped", reason });
     bus.emit("tour:end", { tourId: config.id, reason: "skipped" });
   };
@@ -561,7 +619,8 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
   // Public actions
   // ---------------------------------------------------------------------------
 
-  const start: TourActions["start"] = (opts) => {
+  const start: TourActions["start"] = async (opts) => {
+    if (destroyed) return;
     enterAbort?.abort();
     detachTriggers();
     if (!config.sections.length) {
@@ -574,17 +633,33 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     if (opts?.position) {
       const stepPos = opts.position.stepId ? findStepPosition(opts.position.sectionId, opts.position.stepId) : null;
       if (stepPos) {
-        void goToStep(stepPos);
+        await goToStep(stepPos);
         return;
       }
       const sectionPos = findSectionPosition(opts.position.sectionId);
       if (sectionPos) {
-        void goToSection(sectionPos);
+        await goToSection(sectionPos);
         return;
       }
     }
 
-    void goToSection({ sectionIndex: 0 });
+    if (opts?.resume) {
+      const resumeTarget = options.resumePosition?.(config);
+      if (resumeTarget) {
+        const stepPos = resumeTarget.stepId ? findStepPosition(resumeTarget.sectionId, resumeTarget.stepId) : null;
+        if (stepPos) {
+          await goToStep(stepPos);
+          return;
+        }
+        const sectionPos = findSectionPosition(resumeTarget.sectionId);
+        if (sectionPos) {
+          await goToSection(sectionPos);
+          return;
+        }
+      }
+    }
+
+    await goToSection({ sectionIndex: 0 });
   };
 
   /**
@@ -592,39 +667,44 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
    * `attachTriggers`'s callback can forward the trigger's cause verbatim;
    * public callers pass nothing and inherit the default `"next"`.
    */
-  const next = (cause: StepCompletedCause = "next"): void => {
+  const next = async (cause: StepCompletedCause = "next"): Promise<void> => {
+    if (destroyed) return;
     const s = getState();
     if (s.status !== "step") return;
-    void advanceFromCurrentStep(cause);
+    await advanceFromCurrentStep(cause);
   };
 
-  const prev: TourActions["prev"] = () => {
+  const prev: TourActions["prev"] = async () => {
+    if (destroyed) return;
     const s = getState();
     if (s.status !== "step") return;
     const target = retreatFromPosition({ sectionIndex: s.sectionIndex, stepIndex: s.stepIndex });
     if (!target) return;
-    void goToStep(target, { cause: "prev" });
+    await goToStep(target, { cause: "prev" });
   };
 
-  const goTo: TourActions["goTo"] = (target) => {
+  const goTo: TourActions["goTo"] = async (target) => {
+    if (destroyed) return;
     const s = getState();
     if (s.status === "idle" || s.status === "completed" || s.status === "skipped") return;
 
     if (target.stepId) {
       const pos = findStepPosition(target.sectionId, target.stepId);
       if (!pos) return;
-      const cause: StepLeftCause = s.status === "step" && pos.sectionIndex * 10000 + pos.stepIndex >= s.sectionIndex * 10000 + s.stepIndex ? "goTo-forward" : "goTo-backward";
-      void goToStep(pos, { cause });
+      const cause: StepLeftCause =
+        s.status === "step" && pos.sectionIndex * 10000 + pos.stepIndex >= s.sectionIndex * 10000 + s.stepIndex ? "goTo-forward" : "goTo-backward";
+      await goToStep(pos, { cause });
       return;
     }
     const sectionPos = findSectionPosition(target.sectionId);
     if (!sectionPos) return;
     const currentSectionIndex = s.status === "step" || s.status === "intro" ? s.sectionIndex : -1;
     const cause: StepLeftCause = sectionPos.sectionIndex >= currentSectionIndex ? "goTo-forward" : "goTo-backward";
-    void goToSection(sectionPos, { cause });
+    await goToSection(sectionPos, { cause });
   };
 
-  const skipSection: TourActions["skipSection"] = () => {
+  const skipSection: TourActions["skipSection"] = async () => {
+    if (destroyed) return;
     const s = getState();
     if (s.status !== "step" && s.status !== "intro") return;
     const section = config.sections[s.sectionIndex];
@@ -634,13 +714,14 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
       sectionId: section.id,
       sectionIndex: s.sectionIndex,
     });
-    void advanceFromSection(s.sectionIndex, "skipSection");
+    await advanceFromSection(s.sectionIndex, "skipSection");
   };
 
-  const skip: TourActions["skip"] = (reason = "user") => {
+  const skip: TourActions["skip"] = async (reason = "user") => {
+    if (destroyed) return;
     const s = getState();
     if (s.status === "idle" || s.status === "completed" || s.status === "skipped") return;
-    void skipTour(reason);
+    await skipTour(reason);
   };
 
   /**
@@ -649,7 +730,8 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
    * `dismissed` on the `tour:dismiss` event so the parent component can flip
    * to the FAB branch.
    */
-  const dismiss: TourActions["dismiss"] = () => {
+  const dismiss: TourActions["dismiss"] = async () => {
+    if (destroyed) return;
     const s = getState();
     if (s.status === "step") {
       detachTriggers();
@@ -676,27 +758,29 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     bus.emit("tour:dismiss", { tourId: config.id });
   };
 
-  const resume: TourActions["resume"] = () => {
+  const resume: TourActions["resume"] = async () => {
+    if (destroyed) return;
     const s = getState();
     if (s.status !== "dismissed") return;
     bus.emit("tour:resume", { tourId: config.id });
     if (s.position.stepId && s.position.stepIndex !== undefined) {
-      void goToStep({ sectionIndex: s.position.sectionIndex, stepIndex: s.position.stepIndex });
+      await goToStep({ sectionIndex: s.position.sectionIndex, stepIndex: s.position.stepIndex });
       return;
     }
-    void goToSection({ sectionIndex: s.position.sectionIndex });
+    await goToSection({ sectionIndex: s.position.sectionIndex });
   };
 
-  const acknowledgeIntroduction: TourActions["acknowledgeIntroduction"] = () => {
+  const acknowledgeIntroduction: TourActions["acknowledgeIntroduction"] = async () => {
+    if (destroyed) return;
     const s = getState();
     if (s.status !== "intro") return;
     const section = config.sections[s.sectionIndex];
     bus.emit("section:intro:acknowledge", { tourId: config.id, sectionId: s.sectionId });
     if (!section.steps.length) {
-      void advanceFromSection(s.sectionIndex);
+      await advanceFromSection(s.sectionIndex);
       return;
     }
-    void enterStep({ sectionIndex: s.sectionIndex, stepIndex: 0 }, { runSectionEnter: false });
+    await enterStep({ sectionIndex: s.sectionIndex, stepIndex: 0 }, { runSectionEnter: false });
   };
 
   const emitAction: TourActions["emitAction"] = (name) => {
@@ -723,6 +807,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
   };
 
   const destroy = () => {
+    destroyed = true;
     enterAbort?.abort();
     detachTriggers();
     for (const u of pluginUninstalls) u?.();

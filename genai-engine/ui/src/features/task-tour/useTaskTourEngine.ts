@@ -3,13 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createTaskTourHighlightsPlugin } from "./highlights";
 import { buildTourConfig } from "./tour-config";
 
-import {
-  createAnalyticsPlugin,
-  createTour,
-  createTourStatePlugin,
-  type TourEngine,
-  type TourStatePlugin,
-} from "@/features/tour";
+import { createAnalyticsPlugin, createTour, createTourStatePlugin, type StepContext, type TourEngine, type TourStatePlugin } from "@/features/tour";
 import { track } from "@/services/amplitude";
 
 export const TASK_TOUR_STORAGE_KEY = "arthur:task-tour:status";
@@ -17,7 +11,7 @@ export const TASK_TOUR_STORAGE_KEY = "arthur:task-tour:status";
 export interface UseTaskTourEngineOptions {
   taskId: string;
   /** Used by `tour-config`'s `skipWhen` predicate to auto-skip empty-state steps. */
-  isEmpty?: (skipWhenEmptyKey: string) => boolean;
+  isEmpty?: (skipWhenEmptyKey: string, ctx: StepContext) => boolean | Promise<boolean>;
 }
 
 export interface UseTaskTourEngineResult {
@@ -51,7 +45,7 @@ export function useTaskTourEngine({ taskId, isEmpty }: UseTaskTourEngineOptions)
 
   useEffect(() => {
     const config = buildTourConfig(taskId, {
-      isEmpty: (key) => isEmptyRef.current?.(key) ?? false,
+      isEmpty: (key, ctx) => isEmptyRef.current?.(key, ctx) ?? false,
     });
     const created = createTour({
       config,
