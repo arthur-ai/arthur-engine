@@ -1,5 +1,5 @@
 import { TOUR_IDS, type TourId } from "../selectors";
-import { TASK_TOUR_EVENTS } from "../tourEventNames";
+import { TASK_TOUR_ACTIONS } from "../tourActions";
 
 /**
  * Real-app sub-route under `/tasks/:taskId/`. Mirrors the keys in `App.tsx`
@@ -19,30 +19,43 @@ export type TaskSubRoute = "overview" | "traces" | "test" | "evaluate" | "datase
  * and this map). Every field except `targetId` and `eventName` is optional.
  *
  * - `targetId` — `data-tour-id` value the spotlight points at, declared in
- *   [selectors.ts](../selectors.ts).
- * - `eventName` — globally-unique custom-event name the panel dispatches and
- *   the engine listens for to advance.
+ *   [selectors.ts](../selectors.ts). When `targetHookId` is set the engine
+ *   uses a registered queryHook resolver instead of the static
+ *   `[data-tour-id="..."]` selector — see the dogfood report on
+ *   `tracesFirstRow` / `traceDrawerSpans`.
+ * - `targetHookId` — optional queryHook ID the engine consults to resolve the
+ *   target via a live React ref/hook (replaces flaky data-tour-id propagation
+ *   through third-party component wrappers).
+ * - `actionName` — typed action name emitted via `useTourAction()` /
+ *   `engine.emitAction(...)`. v1's action trigger listens on the engine bus,
+ *   not `document.dispatchEvent`.
  * - `route` — optional route the engine navigates to before resolving the
  *   target. Omit when the target lives in the persistent task shell.
  * - `search` — optional search params appended to the route.
- * - `advance` — `"click+event"` (default) attaches both triggers; use
- *   `"event-only"` for coarse / page-level placeholder targets where a click
+ * - `advance` — `"click+action"` (default) attaches both triggers; use
+ *   `"action-only"` for coarse / page-level placeholder targets where a click
  *   shouldn't auto-advance.
+ * - `prepareKey` — optional preparation hook key the engine fires before
+ *   resolving the target (e.g. open the trace drawer for trace-row steps).
+ * - `skipWhenEmptyKey` — opaque key the consumer-side `skipWhen` predicate
+ *   reads to auto-skip empty-state steps (e.g. no evaluators).
  */
 export interface StepWiring {
   targetId: TourId;
-  eventName: string;
+  targetHookId?: string;
+  actionName: string;
   route?: TaskSubRoute;
   search?: Record<string, string>;
-  advance?: "click+event" | "event-only";
+  advance?: "click+action" | "action-only";
+  prepareKey?: string;
+  skipWhenEmptyKey?: string;
 }
 
 /**
- * Per-section wiring. `stub: true` collapses the section to a single
- * auto-advancing placeholder step driven by the section intro modal.
+ * Per-section wiring. v1 supports intro-only sections natively — sections
+ * with `steps: {}` collapse to a single intro acknowledgement and advance.
  */
 export interface SectionWiring {
-  stub?: boolean;
   steps: Record<string, StepWiring>;
 }
 
@@ -52,25 +65,42 @@ export interface SectionWiring {
  * step keys must match the `## step: <id>` headings in the body. The loader
  * enforces both invariants at module load.
  */
+/** Stable keys used by widgets to register query-hook resolvers. */
+export const TASK_TOUR_QUERY_HOOKS = {
+  tracesFirstRow: "task-tour.tracesFirstRow",
+  traceDrawerSpans: "task-tour.traceDrawerSpans",
+  traceDrawerEvals: "task-tour.traceDrawerEvals",
+  traceDrawerFeedback: "task-tour.traceDrawerFeedback",
+  traceDrawerAddToDataset: "task-tour.traceDrawerAddToDataset",
+} as const;
+
+/** Stable keys used by widgets to register preparation hooks. */
+export const TASK_TOUR_PREPARATIONS = {
+  traceOpened: "task-tour.prep.traceOpened",
+} as const;
+
+/**
+ * Stable opaque keys consulted by the consumer's `skipWhen` predicate for
+ * empty-state auto-skipping. See dogfood report (P1: empty evaluators page).
+ */
+export const TASK_TOUR_SKIP_WHEN = {
+  noEvaluators: "task-tour.skip.noEvaluators",
+} as const;
+
 export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
-  intro: {
-    stub: true,
-    steps: {},
-  },
-  agent: {
-    stub: true,
-    steps: {},
-  },
+  intro: { steps: {} },
+  agent: { steps: {} },
   evals: {
     steps: {
       "open-evaluate": {
         targetId: TOUR_IDS.navEvaluate,
-        eventName: TASK_TOUR_EVENTS.evaluateOpened,
+        actionName: TASK_TOUR_ACTIONS.evaluateOpened,
       },
       "review-evaluator": {
         targetId: TOUR_IDS.evaluatorsFirstCard,
         route: "evaluate",
-        eventName: TASK_TOUR_EVENTS.evaluatorReviewed,
+        actionName: TASK_TOUR_ACTIONS.evaluatorReviewed,
+        skipWhenEmptyKey: TASK_TOUR_SKIP_WHEN.noEvaluators,
       },
     },
   },
@@ -78,30 +108,37 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
     steps: {
       "open-observe": {
         targetId: TOUR_IDS.navObserve,
-        eventName: TASK_TOUR_EVENTS.observeOpened,
+        actionName: TASK_TOUR_ACTIONS.observeOpened,
       },
       "open-trace": {
         targetId: TOUR_IDS.tracesFirstRow,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.tracesFirstRow,
         route: "traces",
-        eventName: TASK_TOUR_EVENTS.traceOpened,
+        actionName: TASK_TOUR_ACTIONS.traceOpened,
       },
       "review-spans": {
         targetId: TOUR_IDS.traceDrawerSpans,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.traceDrawerSpans,
         route: "traces",
-        eventName: TASK_TOUR_EVENTS.spansReviewed,
-        advance: "event-only",
+        actionName: TASK_TOUR_ACTIONS.spansReviewed,
+        advance: "action-only",
+        prepareKey: TASK_TOUR_PREPARATIONS.traceOpened,
       },
       "review-annotations": {
         targetId: TOUR_IDS.traceDrawerEvals,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.traceDrawerEvals,
         route: "traces",
-        eventName: TASK_TOUR_EVENTS.annotationsReviewed,
-        advance: "event-only",
+        actionName: TASK_TOUR_ACTIONS.annotationsReviewed,
+        advance: "action-only",
+        prepareKey: TASK_TOUR_PREPARATIONS.traceOpened,
       },
       "add-feedback": {
         targetId: TOUR_IDS.traceDrawerFeedback,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.traceDrawerFeedback,
         route: "traces",
-        eventName: TASK_TOUR_EVENTS.feedbackAdded,
-        advance: "event-only",
+        actionName: TASK_TOUR_ACTIONS.feedbackAdded,
+        advance: "action-only",
+        prepareKey: TASK_TOUR_PREPARATIONS.traceOpened,
       },
     },
   },
@@ -109,29 +146,31 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
     steps: {
       "open-datasets": {
         targetId: TOUR_IDS.navDatasets,
-        eventName: TASK_TOUR_EVENTS.datasetsOpened,
+        actionName: TASK_TOUR_ACTIONS.datasetsOpened,
       },
       "open-preloaded-dataset": {
         targetId: TOUR_IDS.datasetsFirstRow,
         route: "datasets",
-        eventName: TASK_TOUR_EVENTS.datasetOpened,
+        actionName: TASK_TOUR_ACTIONS.datasetOpened,
       },
       "add-trace-to-dataset": {
         targetId: TOUR_IDS.traceDrawerAddToDataset,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.traceDrawerAddToDataset,
         route: "traces",
-        eventName: TASK_TOUR_EVENTS.traceAddedToDataset,
-        advance: "event-only",
+        actionName: TASK_TOUR_ACTIONS.traceAddedToDataset,
+        advance: "action-only",
+        prepareKey: TASK_TOUR_PREPARATIONS.traceOpened,
       },
       "verify-new-row": {
         targetId: TOUR_IDS.datasetsFirstRow,
         route: "datasets",
-        eventName: TASK_TOUR_EVENTS.datasetRowVerified,
-        advance: "event-only",
+        actionName: TASK_TOUR_ACTIONS.datasetRowVerified,
+        advance: "action-only",
       },
       "generate-synthetic": {
         targetId: TOUR_IDS.datasetGenerateSynthetic,
-        eventName: TASK_TOUR_EVENTS.syntheticDataGenerated,
-        advance: "event-only",
+        actionName: TASK_TOUR_ACTIONS.syntheticDataGenerated,
+        advance: "action-only",
       },
     },
   },
@@ -139,60 +178,51 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
     steps: {
       "open-prompts": {
         targetId: TOUR_IDS.navPrompts,
-        eventName: TASK_TOUR_EVENTS.promptsOpened,
+        actionName: TASK_TOUR_ACTIONS.promptsOpened,
       },
       "open-prompts-tab": {
         targetId: TOUR_IDS.promptsManagementTab,
         route: "prompts",
-        eventName: TASK_TOUR_EVENTS.promptsManagementTabOpened,
+        actionName: TASK_TOUR_ACTIONS.promptsManagementTabOpened,
       },
       "inspect-prompt": {
         targetId: TOUR_IDS.promptsFirstRow,
         route: "prompts",
-        eventName: TASK_TOUR_EVENTS.promptInspected,
+        actionName: TASK_TOUR_ACTIONS.promptInspected,
       },
       // Routes to the Notebooks tab — the entry point for the playground
       // workflow described in the markdown copy. The actual target
       // (`playgroundAddPrompt`) lives inside the playground, reached by
-      // opening a notebook from the listing; the step stays `event-only`
+      // opening a notebook from the listing; the step stays `action-only`
       // because we can't statically deep-link to a notebook's playground
       // URL (it requires a `notebookId` we don't know at config time).
       "create-prompts-in-playground": {
         targetId: TOUR_IDS.playgroundAddPrompt,
         route: "prompts",
         search: { tab: "notebooks" },
-        eventName: TASK_TOUR_EVENTS.playgroundPromptsCreated,
-        advance: "event-only",
+        actionName: TASK_TOUR_ACTIONS.playgroundPromptsCreated,
+        advance: "action-only",
       },
-      // Target IS clickable (the Experiment button) and the route lands us
-      // directly on the page that owns it — converting to default
-      // `click+event` so the user can advance by clicking the button OR
-      // ticking the panel checkbox.
       "run-experiment": {
         targetId: TOUR_IDS.promptsExperimentButton,
         route: "prompts",
         search: { tab: "prompt-experiments" },
-        eventName: TASK_TOUR_EVENTS.experimentRun,
+        actionName: TASK_TOUR_ACTIONS.experimentRun,
       },
     },
   },
   deploy: {
     steps: {
-      // `tag-production` and `verify-eval-passes` stay `event-only`: the
-      // first needs a `prompts/:promptName` deep-link we can't resolve
-      // statically (depends on which prompt the user picked earlier);
-      // the second is a verification step the user performs by reading
-      // a fresh trace, not by clicking the highlighted nav.
       "tag-production": {
         targetId: TOUR_IDS.promptAddTag,
-        eventName: TASK_TOUR_EVENTS.promptPromoted,
-        advance: "event-only",
+        actionName: TASK_TOUR_ACTIONS.promptPromoted,
+        advance: "action-only",
       },
       "verify-eval-passes": {
         targetId: TOUR_IDS.navObserve,
         route: "traces",
-        eventName: TASK_TOUR_EVENTS.deployVerified,
-        advance: "event-only",
+        actionName: TASK_TOUR_ACTIONS.deployVerified,
+        advance: "action-only",
       },
     },
   },

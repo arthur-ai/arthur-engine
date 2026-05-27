@@ -5,22 +5,21 @@ import type { TourBus, TourEvents } from "./types";
 export const TOUR_EVENT_NAMES = [
   "tour:start",
   "tour:end",
-  "tour:pause",
-  "tour:resume",
   "tour:dismiss",
+  "tour:resume",
   "section:enter",
   "section:exit",
   "section:skip",
-  "section:introduction:show",
-  "section:introduction:acknowledge",
-  "step:before-enter",
+  "section:intro:show",
+  "section:intro:acknowledge",
   "step:enter",
-  "step:exit",
-  "step:advance",
+  "step:completed",
+  "step:left",
   "target:found",
   "target:lost",
   "navigation:before",
   "navigation:after",
+  "action:emit",
 ] as const satisfies ReadonlyArray<keyof TourEvents>;
 
 export type TourEventName = (typeof TOUR_EVENT_NAMES)[number];

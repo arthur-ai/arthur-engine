@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 
 /**
- * Tracks an element's bounding client rect across resizes, scrolls, and window
- * size changes. Returns `null` when the element is detached or unset.
+ * Tracks an element's bounding client rect across resizes, scrolls, and
+ * window size changes. Returns `null` when the element is detached or unset.
  */
 export function useElementRect(element: Element | null): DOMRect | null {
   const [rect, setRect] = useState<DOMRect | null>(null);

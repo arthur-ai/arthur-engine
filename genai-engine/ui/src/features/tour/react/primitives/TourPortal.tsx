@@ -2,7 +2,6 @@ import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 export interface TourPortalProps {
-  /** Override the host element. Defaults to a singleton div appended to body. */
   container?: HTMLElement | null;
   children: ReactNode;
 }
@@ -20,9 +19,9 @@ function ensureHost(): HTMLElement {
 }
 
 /**
- * Lightweight portal that mounts tour overlays at body. Stable host id so all
- * primitives share the same z-index/stacking context and avoid clipping by
- * `overflow: hidden` ancestors.
+ * Lightweight portal mounting tour overlays at `document.body`. Shares a
+ * singleton host element so every overlay sits in the same stacking
+ * context, avoiding clipping by ancestor `overflow: hidden`.
  */
 export function TourPortal({ container, children }: TourPortalProps) {
   const [host, setHost] = useState<HTMLElement | null>(container ?? null);

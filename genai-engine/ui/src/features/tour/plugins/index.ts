@@ -1,17 +1,20 @@
 export { createAnalyticsPlugin, type CreateAnalyticsPluginOptions } from "./createAnalyticsPlugin";
 export {
-  createChecklistProgressPlugin,
-  type ChecklistProgress,
-  type ChecklistProgressKey,
-  type ChecklistProgressPlugin,
-  type CreateChecklistProgressPluginOptions,
-} from "./createChecklistProgressPlugin";
+  createHighlightsPlugin,
+  type CreateHighlightsPluginOptions,
+  type HighlightsPluginEntry,
+} from "./createHighlightsPlugin";
 export {
-  createPersistencePlugin,
-  readTourPersistence,
-  writeTourPersistence,
-  type CreatePersistencePluginOptions,
+  createPreparationPlugin,
+  type PreparationRegistryStore,
+  type TourPreparationPlugin,
+} from "./createPreparationPlugin";
+export {
+  createTourStatePlugin,
+  type CreateTourStatePluginOptions,
   type PersistenceStorage,
-  type TourPersistencePlugin,
-  type TourPersistenceStatus,
-} from "./createPersistencePlugin";
+  type TourStatePlugin,
+  type TourStateSnapshot,
+  type TourStateStatus,
+  type TourStateStore,
+} from "./createTourStatePlugin";

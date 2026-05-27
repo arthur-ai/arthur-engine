@@ -1,7 +1,7 @@
 import type { TriggerFactory } from "../types";
 
+import { actionTrigger } from "./action";
 import { clickTrigger } from "./click";
-import { eventTrigger } from "./event";
 import { manualTrigger } from "./manual";
 import { createTriggerRegistry } from "./registry";
 import { visibleTrigger } from "./visible";
@@ -14,7 +14,7 @@ export function createDefaultTriggerRegistry() {
     manual: manualTrigger,
     click: clickTrigger,
     visible: visibleTrigger,
-    event: eventTrigger,
+    action: actionTrigger,
   };
   return createTriggerRegistry(builtIns);
 }

@@ -13,8 +13,8 @@ import { usePaginationContext } from "../stores/pagination-context";
 import { flattenSpans } from "../utils/spans";
 
 import { AddToDatasetDrawer } from "./add-to-dataset/Drawer";
-import { TraceDrawerAnnotationBar } from "./TraceDrawerAnnotationBar";
 import { ContinuousEvalDrawer } from "./continuous-eval/ContinuousEvalDrawer";
+import { TraceDrawerAnnotationBar } from "./TraceDrawerAnnotationBar";
 
 import { TOUR_IDS } from "@/features/task-tour";
 import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";

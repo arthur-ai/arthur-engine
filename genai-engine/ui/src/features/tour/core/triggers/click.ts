@@ -1,10 +1,5 @@
 import type { TriggerFactory } from "../types";
 
-/**
- * Advance when the target (or a custom selector) is clicked. If the trigger
- * declares a `selector`, that selector is observed; otherwise we listen on the
- * step's resolved target element.
- */
 export const clickTrigger: TriggerFactory = ({ trigger, targetElement, advance }) => {
   if (trigger.type !== "click") return () => {};
 

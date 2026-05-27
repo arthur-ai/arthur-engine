@@ -15,7 +15,6 @@ import { SyntheticDataModal } from "./synthetic";
 import { VersionDrawer } from "./VersionDrawer";
 
 import { getContentHeight } from "@/constants/layout";
-import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import {
   DatasetContextProvider,
   selectAddRowData,
@@ -24,6 +23,7 @@ import {
   selectHasUnsavedChanges,
   useDatasetContext,
 } from "@/contexts/dataset";
+import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { EVENT_NAMES, track } from "@/services/amplitude";

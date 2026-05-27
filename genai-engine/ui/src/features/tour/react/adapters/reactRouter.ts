@@ -5,13 +5,9 @@ import { defaultResolveRoute } from "../../core/routes";
 import type { ResolvedRoute, RouteSpec, TourLocation, TourNavigator } from "../../core/types";
 
 /**
- * React Router 7 adapter for the tour engine. Uses `useNavigate` and
- * `useLocation`; `navigate(to)` resolves only after `location.pathname` (or
- * search/hash) has actually changed, so the engine's enter-step pipeline
- * doesn't proceed before the new page mounts.
- *
- * The adapter also delegates path-template resolution to React Router's
- * `generatePath`, so splats and optional segments work out of the box.
+ * React Router 7 adapter. `navigate(to)` resolves only after
+ * `location.pathname` (or search/hash) has actually changed, so the engine's
+ * step-enter pipeline doesn't proceed before the new page mounts.
  */
 export function useReactRouterNavigator(): TourNavigator {
   const navigate = useNavigate();
@@ -48,7 +44,6 @@ export function useReactRouterNavigator(): TourNavigator {
           navigate(to);
         }),
       resolveRoute: (spec: RouteSpec): ResolvedRoute => {
-        // Delegate to React Router's generatePath when params are provided.
         if (spec.params) {
           try {
             const pathname = generatePath(spec.path, spec.params as Record<string, string | null>);

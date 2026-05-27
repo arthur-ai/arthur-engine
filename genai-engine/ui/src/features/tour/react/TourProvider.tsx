@@ -12,10 +12,12 @@ export interface TourProviderProps {
 }
 
 /**
- * Wires a tour engine into React and (optionally) keeps its navigator in sync.
- * The provider does not own engine creation — pass an instance from
- * `createTour({...})`. This makes the engine controllable from anywhere
- * (a Zustand store, a singleton, a per-route hook).
+ * Wires a tour engine into React. The engine itself is the source of truth
+ * (engine state, layer tokens, registries) — this provider only exposes it
+ * via context and keeps the navigator in sync.
+ *
+ * Unlike v0, the provider does NOT inject any plugins or widgets — widgets
+ * are ad-hoc consumer components composed inside `<TourHost>`.
  */
 export function TourProvider({ tour, navigator, children }: TourProviderProps) {
   useEffect(() => {

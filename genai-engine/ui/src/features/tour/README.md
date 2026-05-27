@@ -1,236 +1,156 @@
-# Tour
+# Tour engine (v1)
 
-A driver.js-like guided tour library. Ships a headless engine, React bindings,
-a React Router 7 navigator adapter, a default MUI UI, and a vendor-agnostic
-analytics plugin.
+A small, opinionated tour framework for the GenAI Engine UI. v1 is a
+ground-up rewrite of v0 — see `~/.cursor/plans/tour_engine_v1_*.plan.md` for
+the design rationale and the dogfood issues that motivated the rebuild.
 
-## Layers
+## Concepts
 
-```
-features/tour/
-├── core/                       # Pure, no React
-│   ├── types.ts                # All public types
-│   ├── events.ts               # mitt-based event bus (typed)
-│   ├── targets.ts              # sync / async target resolution
-│   ├── routes.ts               # default resolveRoute + matches
-│   ├── triggers/               # registry + manual / click / visible / event
-│   ├── engine.ts               # state machine + lifecycle pipeline
-│   └── createTour.ts           # public factory
-├── react/
-│   ├── TourProvider.tsx
-│   ├── useTour.ts              # state + actions (useSyncExternalStore)
-│   ├── useTourEvent.ts         # subscribe to a single bus event
-│   ├── adapters/reactRouter.ts # useReactRouterNavigator()
-│   └── primitives/             # TourPortal, Spotlight, PopoverAnchor, TargetTracker
-├── ui/                         # Default MUI UI
-│   ├── DefaultTour.tsx         # drop-in composition (portal + tracker + spotlight + popover)
-│   ├── DefaultIntroDialog.tsx  # section introduction modal
-│   └── DefaultStepPopover.tsx  # step popover body (Skip / Back / Next-Done)
-├── plugins/
-│   └── createAnalyticsPlugin.ts # forward all bus events to a caller-supplied tracker
-└── index.ts                    # barrel
-```
+A **tour** is built from `createTour({ config, plugins })`:
 
-## Usage
+- The **config** is a list of sections; each section has an optional
+  introduction and a list of steps. Steps point at a **target** (selector,
+  React ref, callback, or hook-resolved element), declare one or more
+  **advance triggers** (manual / click / visible / action), and may declare
+  a **prepare** hook, a **skipWhen** predicate, and route metadata.
+- The **engine** owns a deterministic state machine
+  (`idle → intro → step* → completed | skipped | dismissed`) and a typed
+  mitt event bus. Most consumer code never reaches into the engine — it
+  consumes state through React hooks.
+- **Plugins** install side-effects on the engine (persistence, analytics,
+  preparation registries, custom highlight renderers). Each plugin gets a
+  `TourPluginContext` with the engine store, the bus, and registration
+  helpers.
+- **Widgets** are ordinary consumer-authored React components mounted
+  inside `<TourHost>`. The library ships no “DefaultTour”; consumers
+  compose the UI by combining the primitives (`Spotlight`,
+  `BackdropBlocker`, `PopoverAnchor`, `TargetTracker`, `TourPortal`) with
+  their own panels and modals.
 
-```tsx
-import { createTour, DefaultTour, TourProvider, useReactRouterNavigator } from "@/features/tour";
-
-const tour = createTour({
-  config: {
-    id: "main-onboarding",
-    sections: [
-      {
-        id: "analyze",
-        title: "Analyze",
-        route: "/analyze",
-        steps: [
-          {
-            id: "filters",
-            target: { kind: "selector", selector: '[data-tour-id="filters"]' },
-            content: "Pick a date range here.",
-            advanceOn: { type: "click" },
-          },
-        ],
-      },
-      {
-        id: "observe",
-        title: "Observe",
-        introduction: { title: "Now let's look at observability" },
-        route: { path: "/observe", search: { range: "24h" } },
-        steps: [
-          {
-            id: "chart",
-            target: { kind: "selector", selector: '[data-tour-id="observe-chart"]' },
-            awaitTarget: { timeoutMs: 3000 },
-            content: "This is your live throughput.",
-          },
-          {
-            id: "task-detail",
-            route: { path: "/tasks/:taskId", params: { taskId: "abc-123" } },
-            target: { kind: "selector", selector: '[data-tour-id="task-header"]' },
-            content: "Drill into a task to see its rules.",
-          },
-        ],
-      },
-    ],
-  },
-});
-
-function TourBridge({ children }: { children: React.ReactNode }) {
-  const navigator = useReactRouterNavigator();
-  return (
-    <TourProvider tour={tour} navigator={navigator}>
-      {children}
-      <DefaultTour />
-    </TourProvider>
-  );
-}
-```
-
-`<DefaultTour />` is a drop-in that composes `TourPortal`, `TargetTracker`,
-`Spotlight`, `PopoverAnchor`, `DefaultIntroDialog`, and `DefaultStepPopover`. It
-returns `null` when the tour isn't running, so mount it once at the app root.
-
-If you need a custom scene, compose the headless primitives yourself — see the
-`ui/DefaultTour.tsx` source for the canonical pattern.
-
-## Default UI building blocks
-
-The components under `ui/` are exported individually so you can mix-and-match:
-
-- `<DefaultIntroDialog open section actions />` — the section introduction modal.
-- `<DefaultStepPopover activeStep actions />` — the popover body. Drop this inside your own `PopoverAnchor` if you want a custom backdrop or z-index.
-
-All three components use MUI theme tokens and the `sx` prop; no raw colors.
-
-## Overlay / focus mode
-
-By default the spotlight is purely visual — it dims the page with a cutout, but
-pointer events fall through and the user can still interact with anything else.
-Set `step.overlay.blockInteraction` to actually focus the user on the
-highlighted target:
-
-```tsx
-{
-  id: "filters",
-  target: { kind: "selector", selector: '[data-tour-id="filters"]' },
-  content: "Pick a date range here.",
-  highlight: { shape: "box", padding: 12, pulse: true },
-  overlay: {
-    blockInteraction: true,        // block clicks outside the cutout
-    onBackdropClick: "dismiss",    // dim-area click closes the tour
-    color: "rgba(0, 0, 0, 0.65)",  // optional darker backdrop
-  },
-}
-```
-
-`OverlayConfig`:
-
-| Field              | Type                                      | Default   | Description                                                                                                                |
-| ------------------ | ----------------------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `blockInteraction` | `boolean`                                 | `false`   | When `true`, an interactive backdrop layer absorbs clicks outside the spotlight cutout. The cutout itself stays clickable. |
-| `onBackdropClick`  | `"none" \| "next" \| "skip" \| "dismiss"` | `"none"`  | What happens when the user clicks the backdrop. Only honored while `blockInteraction` is `true`.                           |
-| `color`            | `string`                                  | theme dim | Forwarded to the visual `Spotlight` so the visible dim and the interactive layer stay consistent.                          |
-
-The interactive layer is exposed as the `BackdropBlocker` primitive so custom
-scenes can compose the same focus behavior:
-
-```tsx
-import { BackdropBlocker, getHighlightPadding, Spotlight, TargetTracker, TourPortal } from "@/features/tour";
-
-<TourPortal>
-  <TargetTracker>
-    {({ rect }) => (
-      <>
-        <Spotlight rect={rect} highlight={step.highlight} style={{ zIndex: 1499 }} />
-        <BackdropBlocker
-          cutoutRect={rect}
-          padding={getHighlightPadding(step.highlight)}
-          onBackdropClick={() => actions.dismiss()}
-          style={{ zIndex: 1499 }}
-        />
-        {/* …popover at zIndex 1500… */}
-      </>
-    )}
-  </TargetTracker>
-</TourPortal>;
-```
-
-Pair it with `highlight: { shape: "none" }` to render a fully blocking backdrop
-(no cutout) — useful for transitional steps that should freeze the rest of the
-UI while the popover is acknowledged.
-
-## Analytics
-
-`createAnalyticsPlugin` forwards every event on the bus to a caller-supplied
-`track` function. It stays decoupled from any specific vendor — wire it up at
-the call site with whatever tracker the app uses:
-
-```tsx
-import { createAnalyticsPlugin, createTour } from "@/features/tour";
-import { track } from "@/services/amplitude";
-
-const tour = createTour({
-  config: {
-    /* ... */
-  },
-  plugins: [createAnalyticsPlugin({ track, prefix: "tour" })],
-});
-```
-
-Every bus event becomes a tracked event named `${prefix}.${eventName}` (e.g.
-`tour.step:enter`, `tour.section:skip`). The full payload is forwarded as the
-properties object.
-
-## Routing
-
-The engine is router-agnostic. A `TourNavigator` adapter is plugged in via
-`<TourProvider navigator={...}>`. The bundled adapter is
-`useReactRouterNavigator()`; other routers only need to implement:
+## Public surface
 
 ```ts
-type TourNavigator = {
-  getLocation: () => { pathname: string; search: string; hash: string };
-  navigate: (to: string) => Promise<void>; // resolves AFTER URL change
-  resolveRoute?: (spec: RouteSpec) => ResolvedRoute; // override for params
-  matches?: (resolved: ResolvedRoute, current: TourLocation) => boolean;
-};
+import {
+  createTour,
+  TourProvider,
+  TourHost,
+  useTour, // { state, config, actions, activeStep, activeSection }
+  useTourState, // current TourState
+  useTourStore, // raw Zustand slice selector
+  useTourEvent, // bus subscription
+  useTourAction, // (name) => engine.emitAction(name)
+  useTourLayer, // z-index slice
+  useRegisterQueryHook,
+  useRegisterPreparation,
+  Spotlight,
+  BackdropBlocker,
+  PopoverAnchor,
+  TargetTracker,
+  TourPortal,
+  withTourActive,
+  withTourStep,
+  createTourStatePlugin,
+  createAnalyticsPlugin,
+  createPreparationPlugin,
+  createHighlightsPlugin,
+} from "@/features/tour";
 ```
 
-Step / section `route` accepts a string (`"/observe?range=24h"`) or a
-`RouteSpec` (`{ path, params, search, hash, match }`).
+## Composing a tour
 
-## Events
+```tsx
+const engine = createTour({
+  config: buildMyConfig(),
+  plugins: [createTourStatePlugin({ storageKey: "my-tour" })],
+});
 
-The engine exposes a typed mitt bus. Use `tour.on(name, handler)` from the
-engine, or `useTourEvent(name, handler)` from React. Names:
+<TourProvider tour={engine} navigator={navigator}>
+  <TourHost>
+    <MyIntroWidget />
+    <MySpotlightWidget />
+    <MyChecklistWidget />
+    <MyResumeFabWidget />
+  </TourHost>
+</TourProvider>;
+```
 
-- `tour:start | tour:end`
-- `section:enter | section:exit | section:skip`
-- `section:introduction:show | section:introduction:acknowledge`
-- `step:before-enter | step:enter | step:exit | step:advance`
-- `target:found | target:lost`
-- `navigation:before | navigation:after`
+Each widget is a small React component that reads engine state through
+`useTour*` hooks and dispatches actions back to the engine. No widget is
+provided by the library; the `features/task-tour` package contains the
+canonical example.
+
+## Targeting
+
+Steps declare a `TargetSpec`:
+
+- `{ kind: "selector", selector: string }` — `document.querySelector(...)`.
+- `{ kind: "element", resolve }` — bring-your-own resolver.
+- `{ kind: "ref", ref }` — React ref read at step-enter time.
+- `{ kind: "queryHook", hookId }` — defers to a resolver registered via
+  `useRegisterQueryHook(hookId, resolver)`. Use this when a `data-tour-id`
+  can't reliably propagate through a third-party component (the
+  `traces.open-trace` / `traces.review-spans` flow in `task-tour` is the
+  canonical example).
+
+The engine resolves the target synchronously first; if missing and the
+step declares `awaitTarget: { timeoutMs }`, it falls back to a
+`MutationObserver`-driven async resolution.
+
+## Actions
+
+v0 emitted advance events through `document.dispatchEvent`. v1 replaces
+that with a typed action channel:
+
+```ts
+const emit = useTourAction();
+emit("trace-opened");
+```
+
+A step's `advanceOn: { type: "action", name: "trace-opened" }` listens on
+the engine bus for matching actions. `engine.emitAction(name)` does the
+same from outside React.
+
+## Preparation hooks
+
+For steps where the target depends on app state that needs to be primed
+first (e.g. open a drawer, set pagination, fetch a record), declare
+`prepare: { key }` on the step and register a matching hook:
+
+```ts
+useRegisterPreparation("traces.open-drawer", async ({ stepContext }) => {
+  await openFirstTraceDrawer();
+  return { ready: true };
+});
+```
+
+The engine mounts the hook (via `<PreparationRunner />` inside `TourHost`)
+right after navigation, waits for `{ ready: true }`, and only then
+resolves the target.
 
 ## Plugins
 
-Plugins receive `{ bus, registerTrigger, registerHighlight, use }`. They may:
+- `createTourStatePlugin({ storageKey })` — single-record persistence +
+  completed-set progress, with `localStorage` mirror and cross-tab
+  `storage`-event sync. Exposes a Zustand store consumed via
+  `useTourPluginStore(plugin, selector)`.
+- `createPreparationPlugin()` — Zustand-backed registry of preparation
+  hooks (when you want plugin-driven prep instead of inline
+  `useRegisterPreparation`).
+- `createHighlightsPlugin({ renderers })` — registers custom highlight
+  renderers.
+- `createAnalyticsPlugin({ track, prefix, include })` — forwards bus
+  events to the supplied tracker.
 
-- Listen on `bus` for any tour lifecycle event (see Events above).
-- Register new advance triggers via `registerTrigger("key", factory)` and
-  reference them from `step.advanceOn` as `{ type: "custom", key: "key" }`.
-- Register custom highlight shapes via `registerHighlight("key", renderer)`.
-  Steps reference these as `highlight: { shape: "custom", key: "key", padding,
-options }`. The React `Spotlight` primitive looks the renderer up via
-  `engine.getHighlight(key)` and delegates rendering to it (passing through
-  `rect`, `spec`, `backdropColor`, and `style`); when no renderer is
-  registered it falls back to a default box cutout.
-- Push lifecycle middleware via `use(mw)` to run async side effects on every
-  step enter.
+## Migrating from v0
 
-Built-in plugins:
-[`createAnalyticsPlugin`](./plugins/createAnalyticsPlugin.ts),
-[`createPersistencePlugin`](./plugins/createPersistencePlugin.ts),
-[`createChecklistProgressPlugin`](./plugins/createChecklistProgressPlugin.ts).
-Plugin `install` may return a cleanup; `engine.destroy()` runs it.
+- `tourEvents.ts` / `tourEventNames.ts` → typed action channel
+  (`useTourAction`, `engine.emitAction`).
+- `createPersistencePlugin` + `createChecklistProgressPlugin` →
+  `createTourStatePlugin` (one store, one storage record).
+- `DefaultTour` / `DefaultIntroDialog` / `DefaultStepPopover` removed.
+  Consumers author their own widget set inside `<TourHost>`.
+- `introductionPending` flag removed. The engine state machine has a
+  first-class `intro` status (`status: "intro" | "step" | ...`).
+- Stub-step placeholder removed. Intro-only sections have
+  `steps: []` and advance through `acknowledgeIntroduction()`.
+- `event` trigger removed. Use `{ type: "action", name }` instead.

@@ -128,10 +128,13 @@ function buildItems(sectionId: string, frontmatter: SectionFrontmatter, bodyStep
       title: step.title,
       instructions: <Markdown variant="caption">{bodyStepText[step.id] ?? ""}</Markdown>,
       targetId: wired.targetId,
-      eventName: wired.eventName,
+      targetHookId: wired.targetHookId,
+      actionName: wired.actionName,
       route: wired.route,
       search: wired.search,
       advance: wired.advance,
+      prepareKey: wired.prepareKey,
+      skipWhenEmptyKey: wired.skipWhenEmptyKey,
     };
   });
 }
@@ -168,10 +171,10 @@ function parseSection(file: string, raw: string): TaskTourSection {
   if (!wiring) {
     fail(file, `section id "${frontmatter.id}" has no entry in content/wiring.ts`);
   }
-  const isStub = wiring.stub === true;
+  const isIntroOnly = Object.keys(wiring.steps).length === 0;
 
-  if (!isStub && body.intro.length === 0) {
-    fail(file, `non-stub section must contain a "## intro" block`);
+  if (!isIntroOnly && body.intro.length === 0) {
+    fail(file, `section with steps must contain a "## intro" block`);
   }
   if (frontmatter.intro.scenario && !body.scenario) {
     fail(file, `intro.scenario.label is set but body has no "## scenario" block`);
@@ -214,8 +217,7 @@ function parseSection(file: string, raw: string): TaskTourSection {
             }
           : undefined,
     },
-    items: isStub ? [] : buildItems(frontmatter.id, frontmatter, body.steps),
-    stub: isStub || undefined,
+    items: isIntroOnly ? [] : buildItems(frontmatter.id, frontmatter, body.steps),
   };
 }
 

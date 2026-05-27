@@ -9,8 +9,8 @@ import { Annotation, isContinuousEvalAnnotation } from "./schema";
 import { AnnotationsTable } from "./table";
 
 import { CopyableChip } from "@/components/common";
-import type { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
 import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
+import type { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
 
 type Props = {
   annotations: AgenticAnnotationResponse[];

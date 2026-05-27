@@ -24,7 +24,6 @@ export interface ChecklistPanelProps {
   /** Shown under the active step when the spotlight target is not in the DOM yet. */
   targetLostHint?: string | null;
   completedItemKeys: ReadonlySet<string>;
-  totalItemCount: number;
   totalProgress: number;
   onSelectItem: (item: TaskTourItem, itemIndex: number) => void;
   onToggleItem: (item: TaskTourItem) => void;
@@ -61,7 +60,6 @@ export function ChecklistPanel({
   activeStepContent,
   targetLostHint,
   completedItemKeys,
-  totalItemCount,
   totalProgress,
   onSelectItem,
   onToggleItem,
@@ -200,7 +198,7 @@ export function ChecklistPanel({
               }}
             />
             <Typography variant="body2" sx={{ color: "text.secondary" }}>
-              {section.stub ? "Coming soon — section placeholder." : "Read the intro and continue."}
+              Read the intro and continue.
             </Typography>
           </Stack>
         ) : (

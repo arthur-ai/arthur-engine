@@ -3,33 +3,30 @@ import type { WildcardHandler } from "mitt";
 import type { TourEvents, TourPlugin } from "../core/types";
 
 export interface CreateAnalyticsPluginOptions {
-  /** Caller-provided tracker. Decouples the plugin from any specific analytics vendor. */
   track: (name: string, props?: Record<string, unknown>) => void;
-  /** Event-name prefix. Defaults to `"tour"`, producing names like `tour.step:enter`. */
   prefix?: string;
+  /**
+   * Optional event-name filter. Defaults to forwarding every bus event. Pass
+   * a list to keep analytics noise down (`step:left` is high-volume since it
+   * fires on prev/dismiss too).
+   */
+  include?: ReadonlyArray<keyof TourEvents>;
 }
 
 /**
- * Forwards every tour bus event to the provided `track` function. The plugin
- * is intentionally decoupled from the app's analytics implementation — wire it
- * up at the call site (e.g. with `track` from `@/services/amplitude`).
- *
- * @example
- * ```ts
- * import { track } from "@/services/amplitude";
- * const tour = createTour({
- *   config: {...},
- *   plugins: [createAnalyticsPlugin({ track })],
- * });
- * ```
+ * Forwards engine bus events to a caller-supplied tracker. v1 surface
+ * upgrade: `step:completed` (forward-progress only) replaces v0's
+ * `step:advance` (which also fired on `prev`/`goTo`).
  */
 export function createAnalyticsPlugin(opts: CreateAnalyticsPluginOptions): TourPlugin {
   const prefix = opts.prefix ?? "tour";
+  const include = opts.include ? new Set<keyof TourEvents>(opts.include) : null;
 
   return {
     name: "analytics",
     install: ({ bus }) => {
       const handler: WildcardHandler<TourEvents> = (type, event) => {
+        if (include && !include.has(type as keyof TourEvents)) return;
         opts.track(`${prefix}.${String(type)}`, event as Record<string, unknown>);
       };
       bus.on("*", handler);

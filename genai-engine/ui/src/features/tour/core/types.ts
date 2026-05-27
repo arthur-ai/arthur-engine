@@ -1,15 +1,25 @@
 import type { Placement } from "@floating-ui/react";
 import type { Emitter, EventType } from "mitt";
 import type { CSSProperties, ReactNode, RefObject } from "react";
+import type { StoreApi } from "zustand/vanilla";
 
 // =============================================================================
 // Target resolution
 // =============================================================================
 
+/**
+ * `queryHook` defers element resolution to a React hook the consumer registers
+ * via {@link TourPluginContext.registerQueryHook} (typically driven by the
+ * Preparation plugin or product code). This lets a step bind to a live React
+ * ref (e.g. the first row of a virtualized table) without relying on a
+ * `data-tour-id` attribute reaching the DOM through prop-spread — the
+ * underlying root cause of the dogfood P0s on the traces section.
+ */
 export type TargetSpec =
   | { kind: "selector"; selector: string }
   | { kind: "element"; resolve: () => Element | null }
-  | { kind: "ref"; ref: RefObject<Element | null> };
+  | { kind: "ref"; ref: RefObject<Element | null> }
+  | { kind: "queryHook"; hookId: string };
 
 // =============================================================================
 // Routes / navigation
@@ -46,14 +56,20 @@ export interface TourNavigator {
 }
 
 // =============================================================================
-// Advance triggers (when does a step move forward?)
+// Advance triggers
 // =============================================================================
 
+/**
+ * v1's typed action channel — replaces v0's untyped string `event` trigger.
+ * Actions flow through the engine mitt bus's `action:emit` event (no
+ * `document.dispatchEvent` round-trips). Consumers call
+ * `useTourAction()(name)` or `engine.emitAction(name)`.
+ */
 export type AdvanceTrigger =
   | { type: "manual" }
   | { type: "click"; selector?: string }
   | { type: "visible"; threshold?: number; rootMargin?: string }
-  | { type: "event"; name: string }
+  | { type: "action"; name: string }
   | { type: "custom"; key: string; options?: unknown };
 
 // =============================================================================
@@ -75,16 +91,6 @@ export type CircleHighlight = {
 
 export type NoHighlight = { shape: "none" };
 
-/**
- * Custom highlight shape rendered via a plugin-registered renderer. The `key`
- * must match a name passed to `registerHighlight(...)` in a `TourPlugin`'s
- * install hook; if no renderer is registered, the built-in `Spotlight` falls
- * back to a box cutout.
- *
- * `padding` is exposed at the top level so primitives like `BackdropBlocker`
- * can size the interactive cutout to match the visual one without unpacking
- * `options`. Renderer-specific config goes into `options`.
- */
 export type CustomHighlight = {
   shape: "custom";
   key: string;
@@ -95,46 +101,17 @@ export type CustomHighlight = {
 export type HighlightSpec = BoxHighlight | CircleHighlight | NoHighlight | CustomHighlight;
 
 // =============================================================================
-// Overlay (focus mode)
+// Overlay
 // =============================================================================
 
-/**
- * Optional configuration for the tour overlay/backdrop. By default the spotlight
- * is purely visual and pointer events fall through, so the user can still
- * interact with anything on the page. When `blockInteraction` is enabled, an
- * interactive backdrop is rendered around the spotlight cutout so the user can
- * only interact with the highlighted target (or the tour popover) — useful for
- * "really focus on one part of the app" walkthroughs.
- */
 export interface OverlayConfig {
-  /**
-   * When true, an interactive backdrop blocks pointer events on the page
-   * outside the spotlight cutout. The cutout itself stays clickable so the
-   * user can still interact with the highlighted target. When false (the
-   * default), the overlay is purely visual.
-   */
   blockInteraction?: boolean;
-  /**
-   * Action to perform when the user clicks the backdrop (the area outside the
-   * spotlight cutout and the popover). Only honored when `blockInteraction` is
-   * true. Default: `"none"`.
-   *
-   * - `"none"`: absorb the click and do nothing (user stays on the step).
-   * - `"next"`: advance to the next step.
-   * - `"skip"`: skip the entire tour.
-   * - `"dismiss"`: pause the tour and emit `tour:dismiss`.
-   */
   onBackdropClick?: "none" | "next" | "skip" | "dismiss";
-  /**
-   * Override the backdrop color (CSS color string, typically rgba). Forwarded
-   * to the visual `Spotlight` so the visual and interactive layers stay
-   * consistent.
-   */
   color?: string;
 }
 
 // =============================================================================
-// Section / step / tour configuration
+// Step / section / tour configuration
 // =============================================================================
 
 export interface StepIndex {
@@ -162,22 +139,45 @@ export interface IntroductionConfig {
   secondaryActionLabel?: string;
 }
 
+/**
+ * v1 narrows missing-target behavior to two first-class shapes:
+ *  - `show-hint`: surface a static string under the active checklist row
+ *    (the v0 dogfood report flagged that this used to be a scattered map of
+ *    strings consulted by ChecklistTour).
+ *  - `auto-complete`: emit `step:completed` after `afterMs` so empty-state
+ *    steps don't strand the user.
+ */
+export type StepFallback =
+  | { kind: "show-hint"; hint: string }
+  | { kind: "auto-complete"; afterMs: number };
+
 export interface StepConfig {
   id: string;
   target: TargetSpec;
   content: ReactNode | ((ctx: StepRenderContext) => ReactNode);
   placement?: Placement;
   highlight?: HighlightSpec;
-  /**
-   * Per-step overlay/backdrop configuration. When omitted, the overlay is
-   * purely visual (the spotlight dims the page but pointer events fall
-   * through). Set `blockInteraction: true` to focus the user on the
-   * highlighted target.
-   */
   overlay?: OverlayConfig;
   advanceOn?: AdvanceTrigger | AdvanceTrigger[];
   awaitTarget?: { timeoutMs?: number };
   route?: string | RouteSpec;
+  /**
+   * Auto-skip predicate evaluated when the engine enters the step. When it
+   * returns `true` the engine emits `step:left` with cause `auto-skip` and
+   * moves on without firing `step:enter`. Used for empty-state steps that
+   * have no meaningful target (e.g. an "Open evaluator" step on a task with
+   * zero evaluators).
+   */
+  skipWhen?: (ctx: StepContext) => boolean | Promise<boolean>;
+  /**
+   * Reference to a Preparation hook registered via
+   * `engineStore.registerPreparation(key, hook)`. The engine mounts the hook
+   * (through the `<PreparationRunner />` widget inside `TourHost`) before
+   * resolving the target so the prep can wait for lazy chunks / open
+   * drawers / etc.
+   */
+  prepare?: { key: string };
+  fallback?: StepFallback;
   onEnter?: (ctx: StepContext) => void | Promise<void>;
   onExit?: (ctx: StepContext) => void | Promise<void>;
 }
@@ -189,6 +189,11 @@ export interface SectionConfig {
   introduction?: IntroductionConfig;
   skipable?: boolean;
   route?: string | RouteSpec;
+  /**
+   * Sections may have **zero** steps in v1. An intro-only section advances
+   * straight from `intro:acknowledge` to the next section's intro/step —
+   * the stub-step hack from v0 is gone.
+   */
   steps: StepConfig[];
   onEnter?: (ctx: { tourId: string; sectionId: string }) => void | Promise<void>;
   onExit?: (ctx: { tourId: string; sectionId: string }) => void | Promise<void>;
@@ -203,55 +208,72 @@ export interface TourConfig {
 // State machine
 // =============================================================================
 
+/**
+ * Position inside the tour. Used by every status that has a "where the user
+ * is" pointer. Section-only positions (no stepId) represent an intro that
+ * hasn't been acknowledged yet.
+ */
+export interface TourPosition {
+  sectionId: string;
+  sectionIndex: number;
+  stepId?: string;
+  stepIndex?: number;
+}
+
+export type SkipReason = "user" | "section" | "programmatic" | "auto-skip";
+
 export type TourState =
   | { status: "idle" }
+  | { status: "intro"; sectionId: string; sectionIndex: number }
   | {
-      status: "running";
+      status: "step";
       sectionId: string;
       stepId: string;
       sectionIndex: number;
       stepIndex: number;
       globalStepIndex: number;
       totalSteps: number;
-      introductionPending: boolean;
     }
-  /**
-   * `introductionPending` is preserved on pause so that resuming a tour that
-   * was dismissed while a section intro was open re-shows the intro instead
-   * of silently jumping past it (the intro carries scenario/marketing copy
-   * that's part of the tour contract).
-   */
-  | { status: "paused"; sectionId: string; stepId: string; introductionPending: boolean }
+  | { status: "dismissed"; position: TourPosition }
   | { status: "completed" }
   | { status: "skipped"; reason: SkipReason };
 
-export type SkipReason = "user" | "section" | "programmatic";
-
 // =============================================================================
-// Public actions
+// Actions
 // =============================================================================
 
 export interface TourActions {
-  start: (options?: { sectionId?: string; stepId?: string }) => void;
+  /**
+   * Begin the tour. `resume: true` walks the state plugin's snapshot for the
+   * first incomplete position. `position` is an explicit jump-to.
+   */
+  start: (options?: { position?: { sectionId: string; stepId?: string }; resume?: boolean }) => void;
   next: () => void;
   prev: () => void;
   goTo: (target: { sectionId: string; stepId?: string }) => void;
   skipSection: () => void;
   skip: (reason?: SkipReason) => void;
-  pause: () => void;
-  resume: () => void;
   /**
-   * Pause the tour and emit `tour:dismiss`. Use this for "user closed the
-   * panel" — the engine retains its position so a subsequent `resume()` (or
-   * `start()` from a fresh session) picks up where the user left off, and
-   * persistence-aware plugins can mark the tour as dismissed.
+   * Pause the tour and emit `tour:dismiss`. Engine retains its position so a
+   * later `start({ resume: true })` returns the user to where they left off.
    */
   dismiss: () => void;
+  /**
+   * Resume from `dismissed`. The engine derives the resume target from the
+   * dismissed position (intro → re-show intro, step → re-enter step).
+   */
+  resume: () => void;
   acknowledgeIntroduction: () => void;
+  /**
+   * Emit a typed action onto the engine bus. The `action` trigger listens for
+   * matching names and advances the active step. Replaces v0's
+   * `dispatchTourEvent(name)` + `document.addEventListener` round-trip.
+   */
+  emitAction: (name: string) => void;
 }
 
 // =============================================================================
-// Event bus
+// Events
 // =============================================================================
 
 export interface SectionEnterEvent {
@@ -261,9 +283,7 @@ export interface SectionEnterEvent {
 }
 
 export type SectionExitEvent = SectionEnterEvent;
-
 export type SectionSkipEvent = SectionEnterEvent;
-
 export type StepLifecycleEvent = StepContext;
 
 export interface StepEnterEvent extends StepContext {
@@ -271,18 +291,24 @@ export interface StepEnterEvent extends StepContext {
 }
 
 /**
- * Cause of a step exit. Either one of the `advanceOn` trigger types fired
- * (`click`, `event`, `visible`, `custom`, `manual`) or the engine left the
- * step programmatically via one of the public actions (`next`, `prev`,
- * `goTo`, `skipSection`, `complete`, `skip`). Consumers — analytics,
- * progress plugins — should treat all of these as "the user moved on from
- * this step" so they don't need to bolt on parallel buses to capture
- * manual navigation.
+ * Forward-progress causes. `step:completed` is emitted only for these — the
+ * v0 progress plugin's misuse of `step:advance` for `prev`/`goTo` exits is
+ * impossible in v1.
  */
-export type StepAdvanceCause = AdvanceTrigger["type"] | "next" | "prev" | "goTo" | "skipSection" | "complete" | "skip";
+export type StepCompletedCause = "next" | "click" | "action" | "visible" | "custom" | "complete";
 
-export interface StepAdvanceEvent extends StepContext {
-  triggerType: StepAdvanceCause;
+/**
+ * Step exit causes. `step:left` fires on every exit (including the forward
+ * ones — `step:completed` is a strict subset).
+ */
+export type StepLeftCause = StepCompletedCause | "prev" | "goTo-backward" | "goTo-forward" | "skip" | "skipSection" | "dismiss" | "auto-skip" | "manual";
+
+export interface StepCompletedEvent extends StepContext {
+  cause: StepCompletedCause;
+}
+
+export interface StepLeftEvent extends StepContext {
+  cause: StepLeftCause;
 }
 
 export interface NavigationBeforeEvent {
@@ -296,44 +322,124 @@ export interface NavigationAfterEvent {
   to: ResolvedRoute;
 }
 
+export interface ActionEmitEvent {
+  tourId: string;
+  name: string;
+}
+
 export interface TourEvents extends Record<EventType, unknown> {
   "tour:start": { tourId: string };
   "tour:end": { tourId: string; reason: "completed" | "skipped" };
-  "tour:pause": { tourId: string };
-  "tour:resume": { tourId: string };
   "tour:dismiss": { tourId: string };
+  "tour:resume": { tourId: string };
   "section:enter": SectionEnterEvent;
   "section:exit": SectionExitEvent;
   "section:skip": SectionSkipEvent;
-  "section:introduction:show": { tourId: string; sectionId: string };
-  "section:introduction:acknowledge": { tourId: string; sectionId: string };
-  "step:before-enter": StepLifecycleEvent;
+  "section:intro:show": { tourId: string; sectionId: string };
+  "section:intro:acknowledge": { tourId: string; sectionId: string };
   "step:enter": StepEnterEvent;
-  "step:exit": StepLifecycleEvent;
-  "step:advance": StepAdvanceEvent;
+  /**
+   * Emitted only when the user / engine advances *forward* past the step
+   * (trigger fired, manual `next()`, `complete`, forward `goTo`). The state
+   * plugin records progress against this event; analytics treats it as
+   * the canonical "step done" signal.
+   */
+  "step:completed": StepCompletedEvent;
+  /**
+   * Emitted on every step exit — forward and backward. Superset of
+   * `step:completed`. Useful for symmetric cleanup (e.g. clearing the
+   * active spotlight) regardless of direction.
+   */
+  "step:left": StepLeftEvent;
   "target:found": { stepId: string; element: Element };
   "target:lost": { stepId: string };
   "navigation:before": NavigationBeforeEvent;
   "navigation:after": NavigationAfterEvent;
+  "action:emit": ActionEmitEvent;
 }
 
 export type TourBus = Emitter<TourEvents>;
 
 // =============================================================================
-// Middleware (for async side-effects in the enter pipeline)
+// Lifecycle middleware
 // =============================================================================
 
 export type LifecycleMiddleware = (ctx: StepContext) => void | Promise<void>;
 
 // =============================================================================
+// Preparation hooks
+// =============================================================================
+
+/**
+ * Result of a preparation hook execution. The `<PreparationRunner />` widget
+ * mounts the hook before target resolution; the hook performs whatever
+ * app-state mutation the step requires (open a drawer, set pagination, fetch
+ * a record) and returns `{ ready: true }` once the relevant DOM has settled.
+ * The engine waits for `ready` (or the awaitTarget timeout) before resolving
+ * the target.
+ */
+export interface PreparationResult {
+  ready: boolean;
+}
+
+/**
+ * Preparation hooks are React hooks, not pure functions — they need access to
+ * React Query caches, Zustand stores, refs, etc. The runner mounts a small
+ * component that calls the hook and reports the result back to the engine via
+ * a shared promise.
+ *
+ * Hooks may return `void` (synchronous prep, ready as soon as the React tree
+ * re-renders) or a promise resolving with the ready signal. They MAY also
+ * call `actions.emitAction(...)` to signal completion through the action bus.
+ */
+export type PreparationHook = (ctx: {
+  stepContext: StepContext;
+  actions: TourActions;
+}) => PreparationResult | Promise<PreparationResult>;
+
+// =============================================================================
+// Query-hook target resolvers
+// =============================================================================
+
+/**
+ * Hook-shaped resolver for `target.kind === "queryHook"`. The engine never
+ * calls this as a React hook; consumers register the resolver by reading a
+ * live ref or other reactive source from a widget and writing a function that
+ * returns the current `Element | null`. The widget is responsible for keeping
+ * the resolver up to date — typically by registering inside `useEffect`.
+ */
+export type QueryHookResolver = () => Element | null;
+
+// =============================================================================
 // Plugin contract
 // =============================================================================
 
+export interface TourEngineStore {
+  state: TourState;
+  layers: Record<string, number>;
+  triggers: Map<string, TriggerFactory>;
+  highlights: Map<string, HighlightRenderer>;
+  preparations: Map<string, PreparationHook>;
+  queryHooks: Map<string, QueryHookResolver>;
+  setState: (next: TourState) => void;
+  setLayer: (name: string, z: number) => void;
+  registerTrigger: (key: string, factory: TriggerFactory) => void;
+  registerHighlight: (key: string, renderer: HighlightRenderer) => void;
+  registerPreparation: (key: string, hook: PreparationHook) => void;
+  unregisterPreparation: (key: string) => void;
+  registerQueryHook: (hookId: string, resolver: QueryHookResolver) => void;
+  unregisterQueryHook: (hookId: string) => void;
+}
+
 export interface TourPluginContext {
   tourId: string;
+  store: StoreApi<TourEngineStore>;
   bus: TourBus;
   registerTrigger: (key: string, factory: TriggerFactory) => void;
-  registerHighlight: (shape: string, renderer: HighlightRenderer) => void;
+  registerHighlight: (key: string, renderer: HighlightRenderer) => void;
+  registerPreparation: (key: string, hook: PreparationHook) => void;
+  registerLayer: (name: string, zIndex: number) => void;
+  registerQueryHook: (hookId: string, resolver: QueryHookResolver) => void;
   use: (middleware: LifecycleMiddleware) => void;
 }
 
@@ -351,25 +457,16 @@ export interface TriggerAttachContext {
   stepContext: StepContext;
   targetElement: Element | null;
   bus: TourBus;
-  advance: (triggerType: StepAdvanceCause) => void;
+  advance: (cause: StepCompletedCause) => void;
   trigger: AdvanceTrigger;
 }
 
 export type TriggerFactory = (ctx: TriggerAttachContext) => () => void;
 
 // =============================================================================
-// Highlight renderer contract (for plugin-supplied custom shapes)
+// Highlight renderer contract
 // =============================================================================
 
-/**
- * Context passed to a registered highlight renderer. `rect` may be `null`
- * when the active step's target hasn't resolved yet — renderers that depend
- * on a rect should bail out in that case (returning `null`) rather than
- * paint a fallback. `backdropColor` and `style` are forwarded from the
- * `Spotlight` primitive so renderers can produce visuals consistent with the
- * surrounding overlay configuration without the caller wiring those props
- * twice.
- */
 export interface HighlightRenderContext {
   rect: DOMRect | null;
   spec: CustomHighlight;

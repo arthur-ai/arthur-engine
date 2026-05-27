@@ -26,10 +26,14 @@ export interface TaskTourItem {
   title: string;
   instructions: ReactNode;
   targetId: StepWiring["targetId"];
+  /** Optional queryHook ID — when present, supersedes the static selector. */
+  targetHookId?: string;
   route?: TaskSubRoute;
   search?: Record<string, string>;
-  eventName: string;
-  advance?: "click+event" | "event-only";
+  actionName: string;
+  advance?: "click+action" | "action-only";
+  prepareKey?: string;
+  skipWhenEmptyKey?: string;
 }
 
 /**
@@ -62,9 +66,12 @@ export interface TaskTourSection {
     };
     cta: string;
   };
+  /**
+   * The section's steps. v1 supports `items.length === 0` natively — an
+   * intro-only section advances straight from `intro:acknowledge` to the
+   * next section without the v0 stub-step placeholder.
+   */
   items: TaskTourItem[];
-  /** Stub sections collapse to a single auto-advancing placeholder step. */
-  stub?: boolean;
 }
 
 export const TASK_TOUR_TITLE = TASK_TOUR_META.title;

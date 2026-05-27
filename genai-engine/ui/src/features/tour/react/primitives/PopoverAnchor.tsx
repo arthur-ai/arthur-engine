@@ -4,24 +4,16 @@ import { useEffect, useMemo, type CSSProperties, type ReactNode } from "react";
 export interface PopoverAnchorProps {
   rect: DOMRect | null;
   placement?: Placement;
-  /** px offset between the popover and the anchor rect. Default 12. */
   offset?: number;
-  /** px padding from the viewport edge. Default 12. */
   viewportPadding?: number;
-  /** Inline style escape hatch (z-index, etc.). */
   style?: CSSProperties;
   className?: string;
   children: ReactNode;
 }
 
 /**
- * Positions `children` relative to the live target rect via floating-ui. The
- * rect is wrapped in a virtual reference element and assigned via
- * `refs.setReference()` (the `elements.reference` field in @floating-ui/react
- * is restricted to Element, so we use the imperative setter for the virtual
- * case).
- *
- * Renders nothing while `rect` is null.
+ * Positions `children` relative to a live rect via floating-ui. Renders
+ * nothing while `rect` is null.
  */
 export function PopoverAnchor({
   rect,

@@ -1,36 +1,28 @@
 import { TASK_TOUR_SECTIONS, type TaskTourItem } from "./data";
 import { TASK_TOUR_PULSE_HIGHLIGHT } from "./highlights";
 import { tourSelector } from "./selectors";
-import { prepareTracesTourStep } from "./tracesTourPrep";
 
-import type { AdvanceTrigger, RouteSpec, SectionConfig, StepConfig, TourConfig } from "@/features/tour";
+import type {
+  AdvanceTrigger,
+  RouteSpec,
+  SectionConfig,
+  StepConfig,
+  StepContext,
+  TargetSpec,
+  TourConfig,
+} from "@/features/tour";
 
-const STUB_STEP_ID = "__placeholder";
 const STEP_TIMEOUT_MS = 4000;
-/** Trace steps mount lazily (route + drawer chunk + suspense query). */
-const TRACES_STEP_TIMEOUT_MS = 20_000;
 /**
- * Backdrop tint used by the focus-mode overlay around every spotlighted step.
- * Declared on each `StepConfig.overlay.color` so the engine config is the
- * source of truth — `ChecklistTour` keeps an identical hardcoded fallback for
- * defensive defaulting only.
+ * Trace steps mount lazily (route + drawer chunk + suspense query). The
+ * `prepare` hook for trace steps opens the drawer and waits for the table to
+ * settle, but the engine still falls back to async-target resolution after the
+ * hook returns, so we keep a long upper bound.
  */
+const TRACES_STEP_TIMEOUT_MS = 20_000;
 const TASK_TOUR_BACKDROP_COLOR = "rgba(15, 23, 42, 0.68)";
 
-/**
- * Sentinel selector used by stub / intro-only sections. The placeholder step
- * exists only to satisfy the engine's "every section must have at least one
- * step" contract; `ChecklistTour.tsx` watches for the placeholder and calls
- * `actions.next()` immediately so the user never sees it.
- */
-const STUB_TARGET = "body";
-
-/**
- * Build a `RouteSpec` for `/tasks/:taskId/<sub-route>` from a tour item.
- * The sub-route is interpolated into the path string directly (not as a
- * `:param`) so multi-segment routes like `playgrounds/prompts` keep their
- * `/` separators — encoding via `params` would percent-encode the slash.
- */
+/** Build a `RouteSpec` for `/tasks/:taskId/<sub-route>` from a tour item. */
 function routeFor(taskId: string, item: TaskTourItem): RouteSpec | undefined {
   if (!item.route) return undefined;
   return {
@@ -41,64 +33,55 @@ function routeFor(taskId: string, item: TaskTourItem): RouteSpec | undefined {
 }
 
 function advanceFor(item: TaskTourItem): AdvanceTrigger[] {
-  const eventTrigger: AdvanceTrigger = { type: "event", name: item.eventName };
-  if (item.advance === "event-only") return [eventTrigger];
-  // Default: click on the spotlighted target OR the panel's "Mark step
-  // complete" event — whichever fires first advances.
-  return [{ type: "click" }, eventTrigger];
+  const actionTrigger: AdvanceTrigger = { type: "action", name: item.actionName };
+  if (item.advance === "action-only") return [actionTrigger];
+  return [{ type: "click" }, actionTrigger];
 }
 
-function buildStep(taskId: string, item: TaskTourItem): StepConfig {
+function targetFor(item: TaskTourItem): TargetSpec {
+  if (item.targetHookId) {
+    return { kind: "queryHook", hookId: item.targetHookId };
+  }
+  return { kind: "selector", selector: tourSelector(item.targetId) };
+}
+
+export interface BuildTourConfigOptions {
+  /** Bound at engine build time; the consumer's `skipWhen` predicate consults this map. */
+  isEmpty?: (skipWhenEmptyKey: string, ctx: StepContext) => boolean | Promise<boolean>;
+}
+
+function buildStep(taskId: string, item: TaskTourItem, opts: BuildTourConfigOptions): StepConfig {
   const route = routeFor(taskId, item);
   const isTracesRouteStep = item.route === "traces";
+  const skipWhen = item.skipWhenEmptyKey
+    ? (ctx: StepContext) => Promise.resolve(opts.isEmpty?.(item.skipWhenEmptyKey!, ctx) ?? false)
+    : undefined;
   return {
     id: item.id,
-    target: { kind: "selector", selector: tourSelector(item.targetId) },
+    target: targetFor(item),
     content: item.instructions,
-    // Brand-coloured cutout + pulse — handed off to the engine's highlight
-    // registry so the spotlight composition lives behind the same plugin
-    // contract as triggers and persistence (registered by
-    // `createTaskTourHighlightsPlugin`). `padding` is duplicated at the top
-    // level so `BackdropBlocker` can size the interactive cutout to match.
     highlight: {
       shape: "custom",
       key: TASK_TOUR_PULSE_HIGHLIGHT,
       padding: 6,
       options: { radius: 10 },
     },
-    // Block interaction with everything outside the spotlight so the user can
-    // only engage with the highlighted target (or the floating checklist
-    // panel, which sits above the blocker via z-index). Backdrop clicks are
-    // intentionally a no-op — the panel exposes explicit Skip / Close /
-    // Dismiss controls so a stray click on the dim can't end the tour.
     overlay: { blockInteraction: true, onBackdropClick: "none", color: TASK_TOUR_BACKDROP_COLOR },
     ...(route ? { route } : {}),
-    ...(isTracesRouteStep
-      ? {
-          onEnter: (ctx) => prepareTracesTourStep(ctx.stepId),
-          awaitTarget: { timeoutMs: TRACES_STEP_TIMEOUT_MS },
-        }
-      : { awaitTarget: { timeoutMs: STEP_TIMEOUT_MS } }),
+    ...(item.prepareKey ? { prepare: { key: item.prepareKey } } : {}),
+    ...(skipWhen ? { skipWhen } : {}),
+    awaitTarget: { timeoutMs: isTracesRouteStep ? TRACES_STEP_TIMEOUT_MS : STEP_TIMEOUT_MS },
     advanceOn: advanceFor(item),
   };
 }
 
-function buildStubStep(sectionId: string): StepConfig {
-  return {
-    id: STUB_STEP_ID,
-    target: { kind: "selector", selector: STUB_TARGET },
-    content: "",
-    highlight: { shape: "none" },
-    advanceOn: { type: "event", name: `task-tour:stub:${sectionId}` },
-  };
-}
-
 /**
- * Builds the engine `TourConfig` from the author-friendly section list,
- * resolving every section/step against the supplied `taskId` so navigation
- * routes through `/tasks/:taskId/...` correctly.
+ * Build the engine `TourConfig` for the task tour. v1 supports intro-only
+ * sections natively (the engine handles `acknowledgeIntroduction()` →
+ * advance-to-next-section when `steps.length === 0`), so the v0 stub-step
+ * placeholder is gone.
  */
-export function buildTourConfig(taskId: string): TourConfig {
+export function buildTourConfig(taskId: string, opts: BuildTourConfigOptions = {}): TourConfig {
   const sections: SectionConfig[] = TASK_TOUR_SECTIONS.map((section) => ({
     id: section.id,
     title: section.title,
@@ -108,7 +91,7 @@ export function buildTourConfig(taskId: string): TourConfig {
       primaryActionLabel: section.intro.cta,
     },
     skipable: true,
-    steps: section.items.length === 0 ? [buildStubStep(section.id)] : section.items.map((item) => buildStep(taskId, item)),
+    steps: section.items.map((item) => buildStep(taskId, item, opts)),
   }));
 
   return {
@@ -117,29 +100,15 @@ export function buildTourConfig(taskId: string): TourConfig {
   };
 }
 
-export function isStubStep(stepId: string): boolean {
-  return stepId === STUB_STEP_ID;
-}
-
 /**
  * Human-readable label for a task-tour step, keyed by engine section/step IDs.
- * Stub steps fall back to the section intro heading; real steps use the item
- * title from the author-friendly section list.
+ * Intro-only sections fall back to the section intro heading; real steps use
+ * the item title from the author-friendly section list.
  */
-export function getTaskTourStepLabel(sectionId: string, stepId: string): string {
+export function getTaskTourStepLabel(sectionId: string, stepId: string | undefined): string {
   const section = TASK_TOUR_SECTIONS.find((candidate) => candidate.id === sectionId);
-  if (!section) {
-    return "Resume tour";
-  }
-
-  if (isStubStep(stepId) || section.items.length === 0) {
-    return section.intro.heading;
-  }
-
+  if (!section) return "Resume tour";
+  if (!stepId || section.items.length === 0) return section.intro.heading;
   const item = section.items.find((candidate) => candidate.id === stepId);
   return item?.title ?? section.title;
-}
-
-export function getStubAdvanceEventName(sectionId: string): string {
-  return `task-tour:stub:${sectionId}`;
 }

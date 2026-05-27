@@ -1,15 +1,21 @@
-import type { TargetSpec } from "./types";
+import type { QueryHookResolver, TargetSpec } from "./types";
 
 export interface ResolveTargetOptions {
   timeoutMs?: number;
   signal?: AbortSignal;
+  /**
+   * Lookup function for `queryHook` targets. The engine wires this to read
+   * from the per-tour Zustand store's `queryHooks` slice.
+   */
+  resolveQueryHook?: (hookId: string) => QueryHookResolver | undefined;
 }
 
 /**
  * Synchronously resolve a target to an Element if it currently exists, or null.
- * Used by triggers and trackers that need to read the live element.
+ * For `queryHook` targets the resolver is invoked synchronously — it MUST be a
+ * pure read (no async, no React rendering).
  */
-export function resolveTargetSync(spec: TargetSpec): Element | null {
+export function resolveTargetSync(spec: TargetSpec, options: Pick<ResolveTargetOptions, "resolveQueryHook"> = {}): Element | null {
   switch (spec.kind) {
     case "selector":
       return document.querySelector(spec.selector);
@@ -17,20 +23,23 @@ export function resolveTargetSync(spec: TargetSpec): Element | null {
       return spec.resolve();
     case "ref":
       return spec.ref.current ?? null;
+    case "queryHook": {
+      const resolver = options.resolveQueryHook?.(spec.hookId);
+      return resolver ? resolver() : null;
+    }
   }
 }
 
 /**
- * Asynchronously resolve a target. If the element is already in the DOM, returns
- * immediately; otherwise observes mutations on `document.body` until the element
- * appears or the timeout elapses.
- *
- * - For "element" / "ref" targets we poll on mutations and animation frames since
- *   we have no selector to query.
- * - Resolves with `null` on timeout (the engine surfaces this via target:lost).
+ * Asynchronously resolve a target. Selector/element/ref targets fall back to
+ * mutation observers as in v0. `queryHook` targets poll the registered
+ * resolver on `requestAnimationFrame` since the registry write isn't a DOM
+ * event — the consumer registers from a React effect, and the next animation
+ * frame catches the update reliably without depending on `MutationObserver`
+ * firing for an unrelated change.
  */
 export function resolveTargetAsync(spec: TargetSpec, options: ResolveTargetOptions = {}): Promise<Element | null> {
-  const immediate = resolveTargetSync(spec);
+  const immediate = resolveTargetSync(spec, options);
   if (immediate) return Promise.resolve(immediate);
 
   const { timeoutMs = 0, signal } = options;
@@ -41,6 +50,7 @@ export function resolveTargetAsync(spec: TargetSpec, options: ResolveTargetOptio
     let observer: MutationObserver | null = null;
     let timeoutId: number | null = null;
     let abortHandler: (() => void) | null = null;
+    let frameId: number | null = null;
 
     const cleanup = () => {
       if (observer) {
@@ -50,6 +60,10 @@ export function resolveTargetAsync(spec: TargetSpec, options: ResolveTargetOptio
       if (timeoutId !== null) {
         window.clearTimeout(timeoutId);
         timeoutId = null;
+      }
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+        frameId = null;
       }
       if (abortHandler && signal) {
         signal.removeEventListener("abort", abortHandler);
@@ -65,7 +79,7 @@ export function resolveTargetAsync(spec: TargetSpec, options: ResolveTargetOptio
     };
 
     const check = () => {
-      const el = resolveTargetSync(spec);
+      const el = resolveTargetSync(spec, options);
       if (el) finish(el);
     };
 
@@ -78,22 +92,28 @@ export function resolveTargetAsync(spec: TargetSpec, options: ResolveTargetOptio
       signal.addEventListener("abort", abortHandler);
     }
 
-    observer = new MutationObserver(check);
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: spec.kind === "selector" ? attributeFilterFromSelector(spec.selector) : undefined,
-    });
+    if (spec.kind === "queryHook") {
+      const poll = () => {
+        if (resolved) return;
+        check();
+        if (resolved) return;
+        frameId = window.requestAnimationFrame(poll);
+      };
+      frameId = window.requestAnimationFrame(poll);
+    } else {
+      observer = new MutationObserver(check);
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: spec.kind === "selector" ? attributeFilterFromSelector(spec.selector) : undefined,
+      });
+    }
 
     timeoutId = window.setTimeout(() => finish(null), timeoutMs);
   });
 }
 
-/**
- * Heuristic: when the selector is attribute-based (e.g. [data-tour-id="x"]),
- * limit MutationObserver to the relevant attribute name to reduce noise.
- */
 function attributeFilterFromSelector(selector: string): string[] | undefined {
   const match = selector.match(/\[([a-zA-Z0-9-]+)/);
   if (!match) return undefined;

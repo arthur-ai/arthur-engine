@@ -6,11 +6,8 @@ import { useTourEngine } from "../useTour";
 export interface SpotlightProps {
   rect: DOMRect | null;
   highlight?: HighlightSpec;
-  /** Backdrop color (rgba). Defaults to a translucent black. */
   backdropColor?: string;
-  /** Optional additional className for the SVG. */
   className?: string;
-  /** Inline style escape hatch (z-index, transitions, etc.). */
   style?: CSSProperties;
 }
 
@@ -29,40 +26,21 @@ function normalize(spec: HighlightSpec | undefined): NormalizedHighlight {
   if (!spec) return fallback;
   switch (spec.shape) {
     case "box":
-      return {
-        shape: "box",
-        padding: spec.padding ?? 8,
-        radius: spec.radius ?? 8,
-        pulse: spec.pulse ?? false,
-      };
+      return { shape: "box", padding: spec.padding ?? 8, radius: spec.radius ?? 8, pulse: spec.pulse ?? false };
     case "circle":
-      return {
-        shape: "circle",
-        padding: spec.padding ?? 8,
-        radius: 0,
-        pulse: spec.pulse ?? false,
-      };
+      return { shape: "circle", padding: spec.padding ?? 8, radius: 0, pulse: spec.pulse ?? false };
     case "none":
       return { ...fallback, shape: "none" };
     case "custom":
     default:
-      // Custom shapes are rendered by plugins via the highlight registry; the
-      // built-in Spotlight falls back to box.
       return fallback;
   }
 }
 
 /**
- * Fixed full-screen SVG with a cutout around `rect`. If the highlight is `none`
- * or the rect is missing, renders a flat backdrop. Pointer events are disabled
- * on the SVG so clicks fall through; consumers wrap this in a clickable div if
- * they want backdrop dismissal.
- *
- * For `highlight.shape === "custom"`, the rendering is delegated to the
- * plugin-registered renderer looked up via `engine.getHighlight(key)`. If no
- * renderer is registered for the key, the spotlight falls back to its default
- * box cutout — this primitive must therefore be mounted inside a
- * `<TourProvider>`, which all real usages already are.
+ * Fixed full-screen SVG with a cutout around `rect`. Custom highlights
+ * delegate to the renderer registered via `registerHighlight(key, renderer)`;
+ * unregistered keys fall back to the default box cutout.
  */
 export function Spotlight({ rect, highlight, backdropColor = "rgba(0, 0, 0, 0.55)", className, style }: SpotlightProps) {
   const engine = useTourEngine();
@@ -72,8 +50,6 @@ export function Spotlight({ rect, highlight, backdropColor = "rgba(0, 0, 0, 0.55
     if (renderer) {
       return <>{renderer({ rect, spec: highlight, backdropColor, style })}</>;
     }
-    // No renderer registered for `highlight.key` — fall through to the
-    // default box cutout below so the page is still dimmed for the user.
   }
 
   const norm = normalize(highlight);

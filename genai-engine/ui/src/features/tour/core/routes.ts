@@ -1,19 +1,10 @@
 import type { ResolvedRoute, RouteSpec, SearchInput, TourLocation, TourNavigator } from "./types";
 
-/**
- * Normalize a `route` field (string or RouteSpec) into a RouteSpec.
- * String shorthand is treated as a fully-formed URL relative to the origin.
- */
 export function toRouteSpec(route: string | RouteSpec): RouteSpec {
   return typeof route === "string" ? parseStringRoute(route) : route;
 }
 
-/**
- * Parse a literal URL string into a RouteSpec. Uses URL with a synthetic base
- * since route strings are typically relative (e.g. "/tasks/abc?range=24h").
- */
 function parseStringRoute(value: string): RouteSpec {
-  // Reserve "://" detection for absolute URLs; otherwise treat as relative.
   const base = "http://__tour_base__";
   let url: URL;
   try {
@@ -31,10 +22,6 @@ function parseStringRoute(value: string): RouteSpec {
   return spec;
 }
 
-/**
- * Default route resolution. The engine uses this when the navigator does not
- * supply a `resolveRoute` override.
- */
 export function defaultResolveRoute(spec: RouteSpec): ResolvedRoute {
   const pathname = applyPathParams(spec.path, spec.params);
   const search = serializeSearch(spec.search);
@@ -42,10 +29,6 @@ export function defaultResolveRoute(spec: RouteSpec): ResolvedRoute {
   return { pathname, search, hash, full: `${pathname}${search}${hash}` };
 }
 
-/**
- * Default match: the user is "already on" the target if pathname matches and any
- * declared search/hash also matches. Undeclared search/hash are ignored.
- */
 export function defaultMatchesRoute(resolved: ResolvedRoute, current: TourLocation): boolean {
   if (resolved.pathname !== current.pathname) return false;
   if (resolved.search && resolved.search !== current.search) return false;

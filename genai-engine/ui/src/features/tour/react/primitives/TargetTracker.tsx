@@ -13,9 +13,8 @@ export interface TargetTrackerProps {
 }
 
 /**
- * Render-prop primitive that resolves the active target element and tracks its
- * bounding rect. Use this to compose your own tour overlay; the default UI
- * builds on this same primitive.
+ * Render-prop primitive that resolves the active target element and tracks
+ * its bounding rect.
  */
 export function TargetTracker({ children }: TargetTrackerProps) {
   const element = useActiveTarget();
