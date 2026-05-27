@@ -44,6 +44,10 @@ class IsolationCase:
     # Builds the httpx.Response. `c` is the shared base_client; `headers` is
     # K1's tenant headers; `w` is the seeded world.
     invoke: Callable[[httpx.Client, dict, TenantWorld], httpx.Response]
+    # When True, skip the admin-still-succeeds counterpart — admin would
+    # actually mutate T2a's state and cascade-break subsequent tests
+    # (e.g. hard-delete the task or its inference).
+    skip_admin: bool = False
 
 
 # Pattern A — path task_id. Caller K1 (O1); path carries T2a (O2). Expect 404.
@@ -59,6 +63,9 @@ PATTERN_A_CASES = [
         pattern="A",
         expected=404,
         invoke=lambda c, h, w: c.delete(f"/api/v2/tasks/{w.t2a.id}", headers=h),
+        # delete_task is a hard DELETE — admin counterpart would wipe T2a and
+        # cascade-break subsequent tests. Tenant-isolation coverage retained.
+        skip_admin=True,
     ),
     IsolationCase(
         name="POST /api/v2/tasks/{task_id}/unarchive",
@@ -200,8 +207,11 @@ def test_k1_cross_org_call_blocked(tenant_world: TenantWorld, case: IsolationCas
     ), f"{case.name}: expected {case.expected}, got {response.status_code}: {response.text[:300]}"
 
 
+_ADMIN_CASES = [c for c in ISOLATION_CASES if not c.skip_admin]
+
+
 @pytest.mark.unit_tests
-@pytest.mark.parametrize("case", ISOLATION_CASES, ids=lambda c: f"{c.pattern}-{c.name}")
+@pytest.mark.parametrize("case", _ADMIN_CASES, ids=lambda c: f"{c.pattern}-{c.name}")
 def test_admin_still_succeeds(tenant_world: TenantWorld, case: IsolationCase):
     """Admin caller hits the same paths against T2a and is not blocked by org
     scope. We accept any 2xx OR any non-403/404 (e.g. 422 from a malformed
@@ -276,8 +286,8 @@ def test_inference_id_shortcut_isolated(tenant_world: TenantWorld):
     )
     assert response.status_code == 200, response.text
     body = response.json()
-    inferences = body.get("inferences", body.get("results", []))
-    assert inferences == [] or len(inferences) == 0
+    assert body.get("inferences") == []
+    assert body.get("count") == 0
 
 
 # ---------------------------------------------------------------------------
