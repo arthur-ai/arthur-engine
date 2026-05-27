@@ -18,7 +18,13 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
 
-from tests.clients.base_test_client import GenaiEngineTestClientBase, app
+from db_models import DatabaseOrganization
+from db_models.onboarding_models import DatabaseOnboardingSubmission
+from tests.clients.base_test_client import (
+    GenaiEngineTestClientBase,
+    app,
+    override_get_db_session,
+)
 
 SIGNUP_URL = "/api/v2/tenant/signup"
 ME_URL = "/users/me"
@@ -49,9 +55,6 @@ def _signup(client: TestClient):
 def _count_demo_orgs() -> int:
     """Count organizations whose name starts with `demo-`. Used by the
     rollback test to verify no orphan org leaked into the DB."""
-    from db_models import DatabaseOrganization
-    from tests.clients.base_test_client import override_get_db_session
-
     db = override_get_db_session()
     return (
         db.query(DatabaseOrganization)
@@ -381,9 +384,6 @@ def test_signup_persists_onboarding_submission(
 
         assert response.status_code == 200
 
-        from db_models.onboarding_models import DatabaseOnboardingSubmission
-        from tests.clients.base_test_client import override_get_db_session
-
         db_session = override_get_db_session()
         try:
             submissions = (
@@ -401,8 +401,8 @@ def test_signup_persists_onboarding_submission(
                 None,
             )
             assert submission is not None
-            assert submission.form_variant == "linear"
             tracked_onboarding_submissions.append(submission.id)
+            assert submission.form_variant == "linear"
         finally:
             db_session.close()
     finally:

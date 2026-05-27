@@ -1399,9 +1399,9 @@ class OnboardingTryItOutFormData(BaseModel):
     brings: str = Field(min_length=1)
     brings_other: str = ""
     competitors: list[str] = Field(min_length=1)
-    competitor_other: str = ""
+    competitor_other: Optional[str] = Field(default=None)
     attribution: str = Field(min_length=1)
-    attribution_other: str = ""
+    attribution_other: Optional[str] = Field(default=None)
 
 
 class TenantSignupRequest(BaseModel):
