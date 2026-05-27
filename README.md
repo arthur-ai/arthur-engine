@@ -41,6 +41,7 @@ For each skill name in this list — arthur-onboard-oss, arthur-onboard-oss-engi
 ```
 
 **Codex users**
+
 Paste this prompt directly into a Codex session that's running on your agent application:
 
 ```
@@ -101,8 +102,10 @@ For each skill name in this list — arthur-onboard-platform, arthur-onboard-pla
 ```
 
 **Codex users**
+
 Install the Arthur Platform onboarding Codex skills from arthur-ai/arthur-engine.
 
+```
 Install these skill folders into ${CODEX_HOME:-~/.codex}/skills:
 - arthur-onboard-platform
 - arthur-onboard-platform-access
@@ -122,6 +125,10 @@ https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integrations/clau
 
 Create each directory as needed. After installation, remind me to restart Codex.
 ```
+
+**Everyone else**
+
+Onboard via the platform UI.
 
 ![Arthur Platform](./docs/images/arthur-platform.png)
 
