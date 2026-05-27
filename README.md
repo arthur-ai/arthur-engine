@@ -71,10 +71,33 @@ To unlock the full capabilities of the Arthur Platform, [sign up](https://platfo
 
 **Claude Code users**
 
-Paste this prompt directly into Claude Code that's running on your agent application:
+Paste this prompt directly into Claude Code session that's running on your agent application:
 
 ```
 For each skill name in this list — arthur-onboard-platform, arthur-onboard-platform-access, arthur-onboard-platform-workspace, arthur-onboard-platform-engine, arthur-onboard-platform-model, arthur-onboard-platform-token, arthur-onboard-analyze, arthur-onboard-instrument, arthur-onboard-prompts, arthur-onboard-verify, arthur-onboard-eval-provider, arthur-onboard-evals — fetch https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/integrations/claude-code-skills/arthur-onboard/<skill-name>/SKILL.md and save it to ~/.claude/skills/<skill-name>/SKILL.md (create the directory if it doesn't exist). Once all skills are saved, read ~/.claude/skills/arthur-onboard-platform/SKILL.md and follow its instructions.
+```
+
+**Codex users**
+Paste this prompt directly into Codex session that's running on your agent application:
+
+```
+Install the Arthur OSS onboarding Codex skills from arthur-ai/arthur-engine.
+
+Install these skill folders into ${CODEX_HOME:-~/.codex}/skills:
+- arthur-onboard-oss
+- arthur-onboard-oss-engine
+- arthur-onboard-task
+- arthur-onboard-analyze
+- arthur-onboard-instrument
+- arthur-onboard-prompts
+- arthur-onboard-verify
+- arthur-onboard-eval-provider
+- arthur-onboard-evals
+
+Fetch each SKILL.md from:
+https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integrations/claude-code-skills/arthur-onboard/<skill-name>/SKILL.md
+
+Create each directory as needed. After installation, remind me to restart Codex.
 ```
 
 ![Arthur Platform](./docs/images/arthur-platform.png)
