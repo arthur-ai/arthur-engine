@@ -29,7 +29,7 @@ export type TaskTourEventName = (typeof TASK_TOUR_EVENTS)[keyof typeof TASK_TOUR
 
 /** Keys are `${sectionId}.${stepId}` — shown under the active checklist row when the spotlight target is missing. */
 export const TASK_TOUR_TARGET_LOST_HINTS: Partial<Record<string, string>> = {
-  "traces.open-trace": "Click a trace row in the table to continue.",
+  "traces.open-trace": "Click a trace row, or mark this step complete to open the top trace automatically.",
   "traces.review-spans": "Open a trace first — the highlight appears once the drawer is visible.",
   "traces.review-annotations": "Open a trace and scroll to the eval annotations to continue.",
   "traces.add-feedback": "Open a trace, then submit manual feedback to continue.",

@@ -13,9 +13,8 @@ import { usePaginationContext } from "../stores/pagination-context";
 import { flattenSpans } from "../utils/spans";
 
 import { AddToDatasetDrawer } from "./add-to-dataset/Drawer";
-import { AnnotationCell } from "./AnnotationCell";
+import { TraceDrawerAnnotationBar } from "./TraceDrawerAnnotationBar";
 import { ContinuousEvalDrawer } from "./continuous-eval/ContinuousEvalDrawer";
-import { FeedbackPanel } from "./feedback/FeedbackPanel";
 
 import { TOUR_IDS } from "@/features/task-tour";
 import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
@@ -125,7 +124,8 @@ export const TraceDrawerContent = ({ id }: Props) => {
   const [continuousEvalOpen, setContinuousEvalOpen] = useState(false);
 
   const handleSelectSpan = useCallback(
-    (spanId: string) => {
+    (spanId: string | null) => {
+      if (!spanId) return;
       select(spanId);
       dispatchTourEvent(TASK_TOUR_EVENTS.spansReviewed);
     },
@@ -143,11 +143,6 @@ export const TraceDrawerContent = ({ id }: Props) => {
         "data-tour-id": TOUR_IDS.traceDrawerSpans,
         onClick: () => dispatchTourEvent(TASK_TOUR_EVENTS.spansReviewed),
       },
-      annotations: {
-        "data-tour-id": TOUR_IDS.traceDrawerEvals,
-        onClick: () => dispatchTourEvent(TASK_TOUR_EVENTS.annotationsReviewed),
-      },
-      feedback: { "data-tour-id": TOUR_IDS.traceDrawerFeedback },
     }),
     []
   );
@@ -175,11 +170,12 @@ export const TraceDrawerContent = ({ id }: Props) => {
       paginationContext={paginationContext}
       onNavigate={(target, navId) => setDrawerTarget({ target, id: navId })}
       slotProps={tourSlotProps}
-      renderAnnotations={({ annotations, traceId: tid }) => (
-        <AnnotationCell annotations={(annotations ?? []) as AgenticAnnotationResponse[]} traceId={tid} />
-      )}
-      renderFeedback={({ annotations, traceId: tid, containerRef }) => (
-        <FeedbackPanel containerRef={containerRef} annotations={(annotations ?? []) as AgenticAnnotationResponse[]} traceId={tid} />
+      renderAnnotationBar={({ annotations, traceId: tid, containerRef }) => (
+        <TraceDrawerAnnotationBar
+          annotations={(annotations ?? []) as AgenticAnnotationResponse[]}
+          traceId={tid}
+          containerRef={containerRef}
+        />
       )}
       renderAfterDrawer={() => (
         <>

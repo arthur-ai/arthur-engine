@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { CertificateDialog } from "./components/CertificateDialog";
 import { ChecklistTour } from "./components/ChecklistTour";
 import { ResumeFab } from "./components/ResumeFab";
+import { TracesTourBridge } from "./components/TracesTourBridge";
 import { createTaskTourHighlightsPlugin } from "./highlights";
 import { buildTourConfig, getTaskTourStepLabel, isStubStep } from "./tour-config";
 
@@ -233,6 +234,7 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
     <>
       {engine ? (
         <TourProvider tour={engine} navigator={navigator}>
+          <TracesTourBridge taskId={taskId} />
           <ChecklistTour
             enabled={checklistEnabled}
             progressPlugin={progressPlugin}

@@ -1,11 +1,14 @@
 import { TASK_TOUR_SECTIONS, type TaskTourItem } from "./data";
 import { TASK_TOUR_PULSE_HIGHLIGHT } from "./highlights";
 import { tourSelector } from "./selectors";
+import { prepareTracesTourStep } from "./tracesTourPrep";
 
 import type { AdvanceTrigger, RouteSpec, SectionConfig, StepConfig, TourConfig } from "@/features/tour";
 
 const STUB_STEP_ID = "__placeholder";
 const STEP_TIMEOUT_MS = 4000;
+/** Trace steps mount lazily (route + drawer chunk + suspense query). */
+const TRACES_STEP_TIMEOUT_MS = 20_000;
 /**
  * Backdrop tint used by the focus-mode overlay around every spotlighted step.
  * Declared on each `StepConfig.overlay.color` so the engine config is the
@@ -47,6 +50,7 @@ function advanceFor(item: TaskTourItem): AdvanceTrigger[] {
 
 function buildStep(taskId: string, item: TaskTourItem): StepConfig {
   const route = routeFor(taskId, item);
+  const isTracesRouteStep = item.route === "traces";
   return {
     id: item.id,
     target: { kind: "selector", selector: tourSelector(item.targetId) },
@@ -69,7 +73,12 @@ function buildStep(taskId: string, item: TaskTourItem): StepConfig {
     // Dismiss controls so a stray click on the dim can't end the tour.
     overlay: { blockInteraction: true, onBackdropClick: "none", color: TASK_TOUR_BACKDROP_COLOR },
     ...(route ? { route } : {}),
-    awaitTarget: { timeoutMs: STEP_TIMEOUT_MS },
+    ...(isTracesRouteStep
+      ? {
+          onEnter: (ctx) => prepareTracesTourStep(ctx.stepId),
+          awaitTarget: { timeoutMs: TRACES_STEP_TIMEOUT_MS },
+        }
+      : { awaitTarget: { timeoutMs: STEP_TIMEOUT_MS } }),
     advanceOn: advanceFor(item),
   };
 }

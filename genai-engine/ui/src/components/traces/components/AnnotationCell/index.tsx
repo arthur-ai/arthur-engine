@@ -10,6 +10,7 @@ import { AnnotationsTable } from "./table";
 
 import { CopyableChip } from "@/components/common";
 import type { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
+import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 
 type Props = {
   annotations: AgenticAnnotationResponse[];
@@ -55,10 +56,23 @@ export const AnnotationCell = ({ annotations, traceId, className }: Props) => {
     e.preventDefault();
     e.stopPropagation();
 
+    dispatchTourEvent(TASK_TOUR_EVENTS.annotationsReviewed);
     setModalOpen(true);
   };
 
-  if (parsed.length === 0) return null;
+  if (parsed.length === 0) {
+    if (annotations.length === 0) return null;
+    return (
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        sx={{ whiteSpace: "nowrap", cursor: "pointer" }}
+        onClick={() => dispatchTourEvent(TASK_TOUR_EVENTS.annotationsReviewed)}
+      >
+        {annotations.length} annotation{annotations.length !== 1 ? "s" : ""}
+      </Typography>
+    );
+  }
 
   return (
     <>

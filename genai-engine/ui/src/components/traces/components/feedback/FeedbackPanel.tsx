@@ -149,6 +149,14 @@ export const FeedbackPanel = ({ containerRef, annotations, traceId }: Props) => 
   const feedback = annotation ? (annotation.annotation_score === 1 ? "positive" : "negative") : null;
   const isMutating = sendFeedbackMutation.isPending || clearFeedbackMutation.isPending;
 
+  const handleOpenFeedback = (feedbackType: Feedback) => {
+    dispatchTourEvent(TASK_TOUR_EVENTS.feedbackAdded);
+    track(EVENT_NAMES.FEEDBACK_OPENED, {
+      trace_id: traceId,
+      feedback_type: feedbackType,
+    });
+  };
+
   return (
     <>
       <ButtonGroup ref={anchor} size="small" disableElevation disabled={isMutating}>
@@ -160,12 +168,7 @@ export const FeedbackPanel = ({ containerRef, annotations, traceId }: Props) => 
                 color={feedback === "positive" ? "success" : undefined}
                 variant={feedback === "positive" ? "contained" : "outlined"}
                 startIcon={<ThumbUpOutlinedIcon sx={{ fontSize: 16 }} />}
-                onClick={() =>
-                  track(EVENT_NAMES.FEEDBACK_OPENED, {
-                    trace_id: traceId,
-                    feedback_type: "positive",
-                  })
-                }
+                onClick={() => handleOpenFeedback("positive")}
               />
             }
             payload={{ feedback: "positive" }}
@@ -182,12 +185,7 @@ export const FeedbackPanel = ({ containerRef, annotations, traceId }: Props) => 
                 variant={feedback === "negative" ? "contained" : "outlined"}
                 color={feedback === "negative" ? "error" : undefined}
                 startIcon={<ThumbDownOutlinedIcon sx={{ fontSize: 16 }} />}
-                onClick={() =>
-                  track(EVENT_NAMES.FEEDBACK_OPENED, {
-                    trace_id: traceId,
-                    feedback_type: "negative",
-                  })
-                }
+                onClick={() => handleOpenFeedback("negative")}
               />
             }
             payload={{ feedback: "negative" }}

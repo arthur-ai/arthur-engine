@@ -13,11 +13,11 @@ steps:
   - id: open-trace
     title: Open a trace
   - id: review-spans
-    title: Review the trace and spans
+    title: Review the trace
   - id: review-annotations
-    title: Review the eval annotations
+    title: Review the annotations on the trace
   - id: add-feedback
-    title: Add manual feedback
+    title: Add manual feedback to the trace
 ---
 
 ## intro
@@ -30,20 +30,20 @@ Open Observe, drill into a trace, walk through the spans, read the eval annotati
 
 ## step: open-observe
 
-Click Observe in the sidebar to see the trail of requests this agent has generated.
+Open the Observe view to see the trail of requests this agent has generated. Click **Observe** in the sidebar.
 
 ## step: open-trace
 
-Click the top row to open the most recent trace. Any trace works for this exercise — we'll use whichever you pick to walk through what's inside.
+Open one of the traces to see what's actually inside — any trace works. Click the top row, or mark this step complete and we'll open the first trace for you.
 
 ## step: review-spans
 
-A trace is the full request; each span is one step the agent took (retrieval, model call, post-processing). Look at latency, cost, and tokens to see where time and money are going. (Mark complete when done.)
+A **trace** is the full request; each **span** is one step the agent took (retrieval, model call, post-processing). Look at latency, cost, and tokens to see where time and money are going. (Mark complete when done.)
 
 ## step: review-annotations
 
-Continuous Evals attach automatically to every trace. Notice the Readability Eval is failing here — that's the live signal pointing at the failure mode we're going to fix in the prompt playground. (Mark complete when done.)
+**Continuous Evals** attach automatically to every trace — they measure quality on every request so you catch regressions early. For the evals on this trace, notice the **Readability Eval** is failing — that's the live signal we'll fix in the prompt playground. (Mark complete when done.)
 
 ## step: add-feedback
 
-Manual feedback is how humans (or your own app, via the API) tell Arthur something an eval can't. Leave a quick note about this answer — devs use it to triage and apps can post it programmatically. (Mark complete when done.)
+**Manual feedback** is how humans (or your own app, via the API) tell Arthur something an automated eval can't capture. Leave a quick note about this answer — developers use it to triage, and production apps can post it programmatically. (Mark complete when done.)
