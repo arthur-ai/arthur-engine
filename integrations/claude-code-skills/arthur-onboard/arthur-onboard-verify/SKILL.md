@@ -37,6 +37,8 @@ Show the required env vars for their platform:
   set ARTHUR_TASK_ID=<ARTHUR_TASK_ID>
 ```
 
+Then ask the user to run the app with **inputs that resemble real production data** if possible — for example, actual user queries, realistic documents, or representative prompts from their domain. Explain that the traces captured here will be used in the next step to auto-generate continuous evaluations tailored to their use case, so realistic inputs produce much better eval coverage than "hello world" or synthetic test strings. If they don't have real data handy, ask them to describe typical inputs so you can suggest a few representative examples together.
+
 ---
 
 ## Poll for Traces
