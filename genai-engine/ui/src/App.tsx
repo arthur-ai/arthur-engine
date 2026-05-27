@@ -12,8 +12,8 @@ import { NewAgentExperiment } from "./components/agent-experiments/new";
 import { AgentNotebookDetail } from "./components/agent-notebook/[notebookId]";
 import { AllTasks } from "./components/AllTasks";
 import { ApiKeysManagement } from "./components/ApiKeysManagement";
-import { EngineConfigGate } from "./components/common/engine-config-gate";
 import { ChatbotPage } from "./components/chatbot/ChatbotPage";
+import { EngineConfigGate } from "./components/common/engine-config-gate";
 import { DatasetDetailView } from "./components/datasets/DatasetDetailView";
 import { DatasetExperimentsView } from "./components/datasets/DatasetExperimentsView";
 import { DatasetsView } from "./components/datasets/DatasetsView";
@@ -70,7 +70,7 @@ function AppRoutes() {
       <Route
         path="/settings/model-providers"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute adminOnly>
             <SettingsPage>
               <ModelProviders />
             </SettingsPage>
@@ -80,7 +80,7 @@ function AppRoutes() {
       <Route
         path="/settings/api-keys"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute adminOnly>
             <SettingsPage>
               <ApiKeysManagement />
             </SettingsPage>
