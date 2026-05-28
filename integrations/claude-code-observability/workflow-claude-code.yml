@@ -1,18 +1,29 @@
-name: Claude Code Review
+name: Claude Code
 
 on:
-  pull_request:
-    types: [opened, synchronize]
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened, assigned]
+  pull_request_review:
+    types: [submitted]
 
 jobs:
-  claude-review:
-    if: github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate[bot]'
+  claude:
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
-      issues: read
+      issues: write
       id-token: write
+      actions: read
 
     steps:
       - name: Checkout repository
@@ -24,16 +35,15 @@ jobs:
         run: |
           pip install opentelemetry-sdk opentelemetry-exporter-otlp-proto-http
           mkdir -p .claude/hooks
-          cp integrations/claude-code/claude_code_tracer.py .claude/hooks/claude_code_tracer.py
+          cp integrations/claude-code-observability/claude_code_tracer.py .claude/hooks/claude_code_tracer.py
 
-      - name: Run Claude Code Review
-        id: claude-review
+      - name: Run Claude Code
+        id: claude
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
-          plugins: 'code-review@claude-code-plugins'
-          prompt: '/code-review:code-review --comment https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
+          additional_permissions: |
+            actions: read
           settings: |
             {
               "hooks": {
