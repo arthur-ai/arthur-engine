@@ -6,9 +6,17 @@ design doc §7. A missing `org_scope` arg means the method can return a
 cross-org row to a tenant caller because the handler can't filter at the
 DB layer.
 
-The ticket explicitly permits dropping this if introspection gets brittle
-(varied method names, overloads, etc.) — start with the most-touched
-repositories and grow the list as new Pattern C surface gets added.
+This is a hand-maintained inclusion list. An auto-scan with exclusions
+was prototyped and surfaced ~14 genuine Pattern C gaps in repositories
+not covered by UP-4429 (metrics, rules, trace transforms, experiment
+test cases). Those are a follow-up; keeping the inclusion list here so
+this PR ships the test infra without scope creep. Track via:
+
+    https://arthurai.atlassian.net/browse/UP-4429
+
+The ticket explicitly permits dropping this if introspection gets
+brittle. Start with the most-touched repositories and grow the list as
+new Pattern C surface is added.
 """
 
 import inspect
