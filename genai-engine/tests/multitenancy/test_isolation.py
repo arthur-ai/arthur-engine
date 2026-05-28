@@ -13,7 +13,7 @@ design doc §7 and commit 72dced7f. No cases here.
 
 import os
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Optional
 from unittest.mock import patch
 
 import httpx
@@ -48,6 +48,10 @@ class IsolationCase:
     # actually mutate T2a's state and cascade-break subsequent tests
     # (e.g. hard-delete the task or its inference).
     skip_admin: bool = False
+    # Attribute on TenantWorld that the case depends on. If the attribute
+    # is None (seed failed), the test skips. Optional — only Pattern C
+    # cases that target dynamically-seeded resources need this.
+    requires_seed: Optional[str] = None
 
 
 # Pattern A — path task_id. Caller K1 (O1); path carries T2a (O2). Expect 404.
@@ -128,6 +132,8 @@ PATTERN_A_CASES = [
 ]
 
 # Pattern C — resource-id-scoped (repository filter). Expect 404.
+# Resources seeded under T2a (org=O2) by the fixture; cases that depend on
+# a dynamically-seeded ID skip via `requires_seed` when the seed failed.
 PATTERN_C_CASES = [
     IsolationCase(
         name="GET /api/v2/inferences/{inference_id}",
@@ -146,11 +152,62 @@ PATTERN_C_CASES = [
         expected=404,
         invoke=lambda c, h, w: c.post(
             f"/api/v2/feedback/{w.t2a.inference_id}",
-            json={"target": "context_relevance", "score": 1, "reason": "cross"},
+            json={"target": "response_results", "score": 1, "reason": "cross"},
             headers=h,
         ),
     ),
+    IsolationCase(
+        name="GET /api/v1/traces/{trace_id}",
+        pattern="C",
+        expected=404,
+        invoke=lambda c, h, w: c.get(f"/api/v1/traces/{w.t2a_trace_id}", headers=h),
+        requires_seed="t2a_trace_id",
+        # Admin path needs valid span raw_data to render a TraceResponse;
+        # the minimal seed only proves the org-scope check, so skip admin.
+        skip_admin=True,
+    ),
+    IsolationCase(
+        name="GET /api/v1/traces/annotations/{annotation_id}",
+        pattern="C",
+        expected=404,
+        invoke=lambda c, h, w: c.get(
+            f"/api/v1/traces/annotations/{w.t2a_annotation_id}", headers=h
+        ),
+        requires_seed="t2a_annotation_id",
+        skip_admin=True,
+    ),
+    IsolationCase(
+        name="GET /api/v2/datasets/{dataset_id}",
+        pattern="C",
+        expected=404,
+        invoke=lambda c, h, w: c.get(f"/api/v2/datasets/{w.t2a_dataset_id}", headers=h),
+        requires_seed="t2a_dataset_id",
+        skip_admin=True,
+    ),
+    IsolationCase(
+        name="GET /api/v1/agentic_experiments/{experiment_id}",
+        pattern="C",
+        expected=404,
+        invoke=lambda c, h, w: c.get(
+            f"/api/v1/agentic_experiments/{w.t2a_experiment_id}", headers=h
+        ),
+        requires_seed="t2a_experiment_id",
+        skip_admin=True,
+    ),
 ]
+
+
+# Pattern C handlers that 500 today on the in-memory SQLite test setup
+# because the repository filter is written as `org_id == str(org_scope)`.
+# SQLAlchemy 2.x's Uuid(as_uuid=True) processor rejects the string bind on
+# SQLite (Postgres' PGUUID coerces and hides this in prod). When that
+# `str(...)` pattern is dropped from the repo filters, these xfails flip
+# to xpass and reviewers see the contract is now actually enforced.
+_PATTERN_C_STR_UUID_BUG = {
+    "GET /api/v1/traces/annotations/{annotation_id}",
+    "GET /api/v2/datasets/{dataset_id}",
+    "GET /api/v1/agentic_experiments/{experiment_id}",
+}
 
 # Pattern D — query-param task_ids. Caller explicitly names a foreign ID.
 # Expect 403 (the caller named the ID; no enumeration concern to hide).
@@ -185,18 +242,64 @@ PATTERN_D_CASES = [
             headers=h,
         ),
     ),
+    # Mixed ownership: K1 names one own task + one foreign task. The
+    # decorator's `requested.issubset(org_task_ids)` check should 403 the
+    # whole request rather than silently filter the foreign id out.
+    IsolationCase(
+        name="POST /api/v2/tasks/search task_ids=[T1a, T2a]",
+        pattern="D",
+        expected=403,
+        invoke=lambda c, h, w: c.post(
+            "/api/v2/tasks/search",
+            json={"task_ids": [w.t1a.id, w.t2a.id]},
+            headers=h,
+        ),
+    ),
+    IsolationCase(
+        name="GET /api/v2/inferences/query?task_ids=[T1a, T2a]",
+        pattern="D",
+        expected=403,
+        invoke=lambda c, h, w: c.get(
+            "/api/v2/inferences/query",
+            params=[("task_ids", w.t1a.id), ("task_ids", w.t2a.id)],
+            headers=h,
+        ),
+    ),
 ]
 
 ISOLATION_CASES = PATTERN_A_CASES + PATTERN_C_CASES + PATTERN_D_CASES
 
 
+def _seed_target(case: IsolationCase, world: TenantWorld):
+    """Return the value of the seed attribute the case requires, or a sentinel
+    for cases that depend on the always-seeded inference_id."""
+    if case.requires_seed is not None:
+        return getattr(world, case.requires_seed)
+    if case.pattern == "C":
+        return world.t2a.inference_id
+    return "no-seed-needed"
+
+
 @pytest.mark.unit_tests
 @pytest.mark.parametrize("case", ISOLATION_CASES, ids=lambda c: f"{c.pattern}-{c.name}")
-def test_k1_cross_org_call_blocked(tenant_world: TenantWorld, case: IsolationCase):
+def test_k1_cross_org_call_blocked(
+    tenant_world: TenantWorld, case: IsolationCase, request: pytest.FixtureRequest
+):
     """K1 (org=O1) targets a resource in O2. Every call returns the documented
     isolation status: 404 for path/resource, 403 for query."""
-    if case.pattern == "C" and tenant_world.t2a.inference_id is None:
-        pytest.skip("Pattern C cases require seeded inference; seed failed")
+    if _seed_target(case, tenant_world) is None:
+        pytest.skip(f"{case.name}: required seed missing")
+    if case.name in _PATTERN_C_STR_UUID_BUG:
+        request.node.add_marker(
+            pytest.mark.xfail(
+                reason=(
+                    "Repository filter binds `str(org_scope)` to a Uuid column; "
+                    "SQLite trips on the bind. Will flip to xpass once the "
+                    "str(...) cast is removed from the repo filters."
+                ),
+                strict=False,
+            )
+        )
     response = case.invoke(
         tenant_world.client.base_client,
         tenant_world.headers_for(tenant_world.k1),
@@ -216,8 +319,8 @@ def test_admin_still_succeeds(tenant_world: TenantWorld, case: IsolationCase):
     """Admin caller hits the same paths against T2a and is not blocked by org
     scope. We accept any 2xx OR any non-403/404 (e.g. 422 from a malformed
     body) — the assertion is specifically that org-scope did not fire."""
-    if case.pattern == "C" and tenant_world.t2a.inference_id is None:
-        pytest.skip("Pattern C cases require seeded inference; seed failed")
+    if _seed_target(case, tenant_world) is None:
+        pytest.skip(f"{case.name}: required seed missing")
     response = case.invoke(
         tenant_world.client.base_client,
         tenant_world.admin_headers,
@@ -253,6 +356,59 @@ def test_pattern_d_no_task_ids_transparently_scoped(tenant_world: TenantWorld):
     assert tenant_world.t2b.id not in returned_ids
     # K1 SHOULD see its own tasks
     assert {tenant_world.t1a.id, tenant_world.t1b.id}.issubset(returned_ids)
+
+
+@pytest.mark.unit_tests
+@pytest.mark.xfail(
+    reason=(
+        "inference_repo.query_inferences binds `str(org_scope)` to a Uuid "
+        "column; SQLite trips. Will flip to xpass once the str(...) cast is "
+        "removed from the inference repo filter."
+    ),
+    strict=False,
+)
+def test_pattern_d_no_task_ids_inferences_query_scoped(tenant_world: TenantWorld):
+    """K1 calls inferences/query with no task_ids. The decorator should
+    inject K1's org's task_ids; the result must include T1a's inference
+    and must not include T2a's."""
+    if tenant_world.t2a.inference_id is None or tenant_world.t1a.inference_id is None:
+        pytest.skip("seeded inferences missing")
+    response = tenant_world.client.base_client.get(
+        "/api/v2/inferences/query",
+        headers=tenant_world.headers_for(tenant_world.k1),
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    returned_ids = {inf["id"] for inf in body.get("inferences", [])}
+    assert tenant_world.t2a.inference_id not in returned_ids
+    assert tenant_world.t2b.inference_id not in returned_ids
+    # K1's own inferences should still be reachable
+    assert tenant_world.t1a.inference_id in returned_ids
+
+
+@pytest.mark.unit_tests
+@pytest.mark.xfail(
+    reason=(
+        "feedback_repo query binds `str(org_scope)` to a Uuid column; SQLite "
+        "trips. Will flip to xpass once the str(...) cast is removed."
+    ),
+    strict=False,
+)
+def test_pattern_d_no_task_ids_feedback_query_scoped(tenant_world: TenantWorld):
+    """K1 calls feedback/query with no task_id. Result must exclude
+    feedback rows attached to O2 inferences."""
+    if tenant_world.t2a.feedback_id is None or tenant_world.t1a.feedback_id is None:
+        pytest.skip("seeded feedback missing")
+    response = tenant_world.client.base_client.get(
+        "/api/v2/feedback/query",
+        headers=tenant_world.headers_for(tenant_world.k1),
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    returned_ids = {item["id"] for item in body.get("feedback", [])}
+    assert tenant_world.t2a.feedback_id not in returned_ids
+    assert tenant_world.t2b.feedback_id not in returned_ids
+    assert tenant_world.t1a.feedback_id in returned_ids
 
 
 @pytest.mark.unit_tests
