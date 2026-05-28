@@ -13,9 +13,40 @@ function Prompt-EnvVar {
         [string]$DefaultValue,
         [bool]$OutputKeyPair = $false
     )
-    $inputValue = Read-Host "$VarName [Default: $DefaultValue]"
-    if ([string]::IsNullOrWhiteSpace($inputValue)) {
-        $inputValue = $DefaultValue
+    if ($NonInteractive) {
+        $inputValue = [System.Environment]::GetEnvironmentVariable($VarName)
+        if ([string]::IsNullOrWhiteSpace($inputValue)) { $inputValue = $DefaultValue }
+    } else {
+        $inputValue = Read-Host "$VarName [Default: $DefaultValue]"
+        if ([string]::IsNullOrWhiteSpace($inputValue)) {
+            $inputValue = $DefaultValue
+        }
+    }
+
+    if ($OutputKeyPair) {
+        return "$VarName=$inputValue"
+    } else {
+        return $inputValue
+    }
+}
+
+function Prompt-Secret {
+    param (
+        [string]$VarName,
+        [string]$DefaultValue,
+        [bool]$OutputKeyPair = $false
+    )
+    if ($NonInteractive) {
+        $inputValue = [System.Environment]::GetEnvironmentVariable($VarName)
+        if ([string]::IsNullOrWhiteSpace($inputValue)) { $inputValue = $DefaultValue }
+    } else {
+        $secureStr = Read-Host "$VarName (hidden)" -AsSecureString
+        $ptr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureStr)
+        $inputValue = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
+        [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
+        if ([string]::IsNullOrWhiteSpace($inputValue)) {
+            $inputValue = $DefaultValue
+        }
     }
 
     if ($OutputKeyPair) {
@@ -126,6 +157,8 @@ Write-Host "└─────────────────────�
 
 Check-DockerCompose
 
+$NonInteractive = $env:SETUP_NON_INTERACTIVE -eq "true"
+
 $userHome = [Environment]::GetFolderPath("UserProfile")
 $rootDir = Join-Path $userHome ".arthur-engine\\local-stack"
 $engineSubdir = Join-Path $rootDir "arthur-engine"
@@ -172,14 +205,22 @@ if ($DEFAULT_GENAI_CONFIG -eq "true") {
     }
 } else {
     if (-not $GENAI_ENGINE_OPENAI_PROVIDER) {
-        $openai = Read-Host "Do you have access to OpenAI? (y/n) [Default: y]"
-        $openai = if ([string]::IsNullOrWhiteSpace($openai)) { "y" } else { $openai }
+        if ($NonInteractive) {
+            if ($env:SETUP_SKIP_OPENAI -eq "true") {
+                $openai = "n"
+            } else {
+                $openai = "y"
+            }
+        } else {
+            $openai = Read-Host "Do you have access to OpenAI? (y/n) [Default: y]"
+            $openai = if ([string]::IsNullOrWhiteSpace($openai)) { "y" } else { $openai }
+        }
 
         if ($openai -match "^[Yy]$") {
             $envLines += Prompt-EnvVar -VarName "GENAI_ENGINE_OPENAI_PROVIDER" -DefaultValue "OpenAI" -OutputKeyPair $true
             $gptName = Prompt-EnvVar -VarName "GENAI_ENGINE_OPENAI_GPT_NAME" -DefaultValue "gpt-4o-mini-2024-07-18"
             $gptEndpoint = Prompt-EnvVar -VarName "GENAI_ENGINE_OPENAI_GPT_ENDPOINT" -DefaultValue ""
-            $gptKey = Prompt-EnvVar -VarName "GENAI_ENGINE_OPENAI_GPT_API_KEY" -DefaultValue "changeme_api_key"
+            $gptKey = Prompt-Secret -VarName "GENAI_ENGINE_OPENAI_GPT_API_KEY" -DefaultValue "changeme_api_key"
             $envLines += "GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$gptName::$gptEndpoint::$gptKey"
         } else {
             Write-Host "Skipping OpenAI configuration..."

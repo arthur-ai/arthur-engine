@@ -1,7 +1,7 @@
 """
 Unit tests for claude_code_tracer.py
 
-Run with:  python3 -m pytest integrations/claude-code/test_tracer.py -v
+Run with:  python3 -m pytest integrations/claude-code-observability/test_tracer.py -v
 """
 
 import json
