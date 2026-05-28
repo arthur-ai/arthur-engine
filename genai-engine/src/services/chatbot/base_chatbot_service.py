@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 from abc import ABC, abstractmethod
-from typing import AsyncGenerator, List, Optional, Tuple
+from typing import AsyncGenerator, Dict, List, Optional, Tuple
 
 import litellm
 from arthur_common.models.common_schemas import VariableTemplateValue
@@ -68,6 +68,10 @@ class BaseChatbotService(ABC):
         agent_span: TraceSpanBuilder,
     ) -> AsyncGenerator[Tuple[Optional[str], Optional[OpenAIMessage]], None]:
         raise NotImplementedError
+
+    def build_variable_map(self) -> Dict[str, str]:
+        """Hook for subclasses to supply per-request prompt variables."""
+        return {}
 
     def summarize_history(
         self,
@@ -167,6 +171,28 @@ class BaseChatbotService(ABC):
                 for m in current_prompt.messages
             ],
         )
+
+        variable_map = self.build_variable_map()
+        if variable_map:
+            template_snapshot = [
+                m.model_copy(deep=True) for m in current_prompt.messages
+            ]
+            prompt_span = self.tracing.start_prompt_span(
+                agent_span,
+                prompt_name=current_prompt.name,
+            )
+            self.tracing.set_prompt_template(
+                prompt_span,
+                template_snapshot,
+                variable_map,
+                version=current_prompt.version,
+            )
+            self.chat_completion_service.replace_variables(
+                variable_map,
+                current_prompt.messages,
+            )
+            self.tracing.set_prompt_rendered(prompt_span, current_prompt.messages)
+            self.tracing.end_span(prompt_span)
 
         for _ in range(MAX_ITERATIONS):
             final_response: AgenticPromptRunResponse | None = None
