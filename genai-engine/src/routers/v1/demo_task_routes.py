@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -34,6 +36,7 @@ async def stream_demo_chatbot(
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    x_user_timezone: Optional[str] = Header(default=None),
 ) -> StreamingResponse:
     if not Config.demo_mode():
         raise HTTPException(
@@ -62,6 +65,7 @@ async def stream_demo_chatbot(
             chatbot_request.history,
             current_user.id,
             chatbot_request.session_id,
+            x_user_timezone,
         )
     except ValueError as e:
         raise HTTPException(

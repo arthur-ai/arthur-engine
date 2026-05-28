@@ -45,7 +45,7 @@ from routers.api_key_routes import api_keys_routes
 from routers.auth_routes import auth_routes
 from routers.chat_routes import app_chat_routes
 from routers.health_routes import health_router
-from routers.user_routes import user_management_routes
+from routers.user_routes import user_identity_routes, user_management_routes
 from routers.v1.agent_polling_routes import agent_polling_routes
 from routers.v1.agentic_experiment_routes import agentic_experiment_routes
 from routers.v1.agentic_notebook_routes import agentic_notebook_routes
@@ -507,7 +507,7 @@ def get_app_with_routes() -> FastAPI:
     )
     if extra_feature_config.CHATBOT_ENABLED:
         add_routers(app, [chatbot_routes])
-    add_routers(app, [auth_routes, user_management_routes])
+    add_routers(app, [auth_routes, user_management_routes, user_identity_routes])
     add_routers(app, [app_chat_routes])
     return app
 
@@ -559,7 +559,7 @@ def get_test_app() -> FastAPI:
             tenant_signup_routes,
         ],
     )
-    add_routers(app, [auth_routes, user_management_routes])
+    add_routers(app, [auth_routes, user_management_routes, user_identity_routes])
     add_routers(app, [app_chat_routes])
 
     if is_api_only_mode_enabled():
@@ -626,6 +626,7 @@ def get_app() -> FastAPI:
         add_routers(app, [app_chat_routes])
     if extra_feature_config.DEMO_MODE:
         add_routers(app, [tenant_signup_routes])
+    add_routers(app, [user_identity_routes])
     if not is_api_only_mode_enabled():
         add_routers(app, [auth_routes, user_management_routes])
 

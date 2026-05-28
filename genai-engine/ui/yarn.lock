@@ -2497,14 +2497,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/form-core@https://pkg.pr.new/TanStack/form/@tanstack/form-core@9f16996":
-  version: 1.32.0
-  resolution: "@tanstack/form-core@https://pkg.pr.new/TanStack/form/@tanstack/form-core@9f16996"
+"@tanstack/form-core@https://pkg.pr.new/TanStack/form/@tanstack/form-core@b81ecee":
+  version: 1.32.1
+  resolution: "@tanstack/form-core@https://pkg.pr.new/TanStack/form/@tanstack/form-core@b81ecee"
   dependencies:
     "@tanstack/devtools-event-client": "npm:^0.4.1"
     "@tanstack/pacer-lite": "npm:^0.1.1"
     "@tanstack/store": "npm:^0.11.0"
-  checksum: 10c0/09a65271dc05446737f218f58686779c02e57be64f2c2932b408e5fe724a2d90025fbc72d4d5ef584ac72114f645dbb670ad790c81c0e7e4d6edba56a285bf11
+  checksum: 10c0/ce3af8abeeb8169e73ad1c53a013e64268d4633f30a4453e99541fcf5af42487ba21ec5b305a5d05ab5ae9df62ab7c2948af69e7a12427236913c5a1401d65bb
   languageName: node
   linkType: hard
 
@@ -2574,17 +2574,17 @@ __metadata:
   linkType: hard
 
 "@tanstack/react-form@https://pkg.pr.new/@tanstack/react-form@2128":
-  version: 1.32.0
+  version: 1.32.1
   resolution: "@tanstack/react-form@https://pkg.pr.new/@tanstack/react-form@2128"
   dependencies:
-    "@tanstack/form-core": "https://pkg.pr.new/TanStack/form/@tanstack/form-core@9f16996"
+    "@tanstack/form-core": "https://pkg.pr.new/TanStack/form/@tanstack/form-core@b81ecee"
     "@tanstack/react-store": "npm:^0.11.0"
   peerDependencies:
     react: ^17.0.0 || ^18.0.0 || ^19.0.0
   peerDependenciesMeta:
     "@tanstack/react-start":
       optional: true
-  checksum: 10c0/6ea3504b6e3be2d7fac2ea13d82bb7ff967fcdfc99997d87c94a601ac8f65a3ed7578337ab87ccf951beba2c763ccdcb5a85e15015b3a2a4daead4421f41d5a4
+  checksum: 10c0/ca028dd86c1954fa9ff20c17d4bbea9b429a5c5efa85965a8d033dfc38940719a153b6e1c852dad99b3ba9790b110e7b4527cf2b0dd02b3faca77ff0ed0cd146
   languageName: node
   linkType: hard
 

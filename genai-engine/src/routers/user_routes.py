@@ -20,6 +20,7 @@ from clients.auth.abc_keycloak_client import ABCAuthClient
 from dependencies import get_db_session, get_keycloak_client
 from repositories.organizations_repository import OrganizationsRepository
 from routers.route_handler import GenaiEngineRoute
+from routers.v2 import multi_validator as v2_multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
 from schemas.response_schemas import MeResponse, OrganizationResponse
@@ -33,6 +34,14 @@ multi_validator = MultiMethodValidator(api_key_validator_creators)
 logger = logging.getLogger()
 
 user_management_routes = APIRouter(
+    prefix="/users",
+    route_class=GenaiEngineRoute,
+    tags=["User Management"],
+)
+
+# Separate router for self-identity endpoints so they remain reachable even
+# when API-only mode is enabled (which gates the rest of user_management).
+user_identity_routes = APIRouter(
     prefix="/users",
     route_class=GenaiEngineRoute,
     tags=["User Management"],
@@ -82,7 +91,7 @@ def search_users(
     return [user._to_response_model() for user in users]
 
 
-@user_management_routes.get(
+@user_identity_routes.get(
     "/me",
     description=(
         "Returns the current caller's identity, roles, org_scope, and (when "
@@ -94,7 +103,7 @@ def search_users(
 )
 @public_endpoint
 def get_me(
-    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    current_user: User | None = Depends(v2_multi_validator.validate_api_multi_auth),
     db_session: Session = Depends(get_db_session),
 ) -> MeResponse:
     if not current_user:
