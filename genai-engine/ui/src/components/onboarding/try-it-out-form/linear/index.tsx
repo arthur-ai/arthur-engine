@@ -28,7 +28,7 @@ import type { TryItOutFormProps } from "../types";
 
 import { onboardingSchema } from "./schema";
 
-import { EVENT_NAMES, identify, track } from "@/services/amplitude";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 
 export type { TryItOutSubmission } from "./schema";
 
@@ -62,26 +62,8 @@ export const TryItOutFormLinear: React.FC<TryItOutFormProps> = ({ onBack, onSubm
         }
       },
     },
-    onSubmit: ({ value }) => {
-      track(EVENT_NAMES.ONBOARDING_FORM_SUBMITTED, {
-        variant: "linear",
-        maturity: value.maturity,
-        brings: value.brings,
-        bringsOther: value.bringsOther,
-        competitors: value.competitors,
-        competitorOther: value.competitorOther,
-        attribution: value.attribution,
-        attributionOther: value.attributionOther,
-        company: value.company,
-      });
-      identify(value.email, {
-        firstName: value.firstName,
-        lastName: value.lastName,
-        email: value.email,
-        jobTitle: value.jobTitle,
-        company: value.company,
-      });
-      onSubmit(value);
+    onSubmit: async ({ value }) => {
+      await onSubmit(value, { formVariant: "linear" });
     },
     onSubmitInvalid: ({ formApi }) => {
       const invalidFields = Object.entries(formApi.state.fieldMeta)

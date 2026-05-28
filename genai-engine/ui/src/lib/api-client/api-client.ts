@@ -2025,6 +2025,8 @@ export type CreateTaskRuleApiV2TasksTaskIdRulesPostError = HTTPValidationError;
 
 export type CreateTenantSignupApiV2TenantSignupPostData = DemoTaskSignupResponse;
 
+export type CreateTenantSignupApiV2TenantSignupPostError = HTTPValidationError;
+
 export type CreateTestRunApiV1ContinuousEvalsEvalIdTestRunsPostData = ContinuousEvalTestRunResponse;
 
 export type CreateTestRunApiV1ContinuousEvalsEvalIdTestRunsPostError = HTTPValidationError;
@@ -7255,6 +7257,73 @@ export interface OTELAgentCreationSource {
 }
 
 /**
+ * OnboardingTryItOutFormData
+ * Try-it-out onboarding form fields (matches UI TryItOutSubmission).
+ */
+export interface OnboardingTryItOutFormData {
+  /**
+   * Attribution
+   * @minLength 1
+   */
+  attribution: string;
+  /**
+   * Attribution Other
+   * @default ""
+   */
+  attribution_other?: string;
+  /**
+   * Brings
+   * @minLength 1
+   */
+  brings: string;
+  /**
+   * Brings Other
+   * @default ""
+   */
+  brings_other?: string;
+  /**
+   * Company
+   * @minLength 1
+   */
+  company: string;
+  /**
+   * Competitor Other
+   * @default ""
+   */
+  competitor_other?: string;
+  /**
+   * Competitors
+   * @minItems 1
+   */
+  competitors: string[];
+  /**
+   * Email
+   * @minLength 1
+   */
+  email: string;
+  /**
+   * First Name
+   * @minLength 1
+   */
+  first_name: string;
+  /**
+   * Job Title
+   * @minLength 1
+   */
+  job_title: string;
+  /**
+   * Last Name
+   * @minLength 1
+   */
+  last_name: string;
+  /**
+   * Maturity
+   * @minLength 1
+   */
+  maturity: string;
+}
+
+/**
  * OpenAIMessage
  * The message schema class for the prompts playground.
  * This class adheres to OpenAI's message schema.
@@ -11086,6 +11155,22 @@ export interface TemplateVariableMappingOutput {
 }
 
 /**
+ * TenantSignupRequest
+ * Public tenant signup payload; includes try-it-out onboarding form data.
+ */
+export interface TenantSignupRequest {
+  /** Try-it-out onboarding form fields (matches UI TryItOutSubmission). */
+  form_data: OnboardingTryItOutFormData;
+  /**
+   * Form Variant
+   * Which onboarding form variant was submitted.
+   */
+  form_variant?: TenantSignupRequestFormVariantEnum | null;
+}
+
+export type TenantSignupRequestFormVariantEnum = "linear" | "wizard";
+
+/**
  * TestCase
  * Individual test case result
  */
@@ -13897,17 +13982,19 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Public tenant signup. Creates a new organization, a default demo task scoped to that org, and a TENANT-USER API key with `org_scope` set to the new org. Returns the four identifiers; the raw `api_key` value appears only in this response (the DB stores only its hash). Gated by GENAI_ENGINE_DEMO_MODE — returns 404 when disabled.
+     * @description Public tenant signup. Accepts try-it-out onboarding form data, persists an onboarding submission, and creates a new organization, a default demo task scoped to that org, and a TENANT-USER API key with `org_scope` set to the new org. Returns the four identifiers; the raw `api_key` value appears only in this response (the DB stores only its hash). Gated by GENAI_ENGINE_DEMO_MODE — returns 404 when disabled.
      *
      * @tags Tenant Signup
      * @name CreateTenantSignupApiV2TenantSignupPost
      * @summary Create Tenant Signup
      * @request POST:/api/v2/tenant/signup
      */
-    createTenantSignupApiV2TenantSignupPost: (params: RequestParams = {}) =>
-      this.request<CreateTenantSignupApiV2TenantSignupPostData, any>({
+    createTenantSignupApiV2TenantSignupPost: (data: TenantSignupRequest, params: RequestParams = {}) =>
+      this.request<CreateTenantSignupApiV2TenantSignupPostData, CreateTenantSignupApiV2TenantSignupPostError>({
         path: `/api/v2/tenant/signup`,
         method: "POST",
+        body: data,
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),
