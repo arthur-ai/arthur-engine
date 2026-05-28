@@ -7,6 +7,7 @@
  * mapping centralized here means a selector rename only ever touches one file.
  */
 export const TOUR_IDS = {
+  navDemoAgent: "task-tour-nav-demo-agent",
   navObserve: "task-tour-nav-observe",
   navTest: "task-tour-nav-test",
   navEvaluate: "task-tour-nav-evaluate",
@@ -15,7 +16,9 @@ export const TOUR_IDS = {
   tracesFirstRow: "task-tour-traces-first-row",
   traceDrawerSpans: "task-tour-trace-spans",
   traceDrawerEvals: "task-tour-trace-evals",
+  traceAnnotationsModal: "task-tour-trace-annotations-modal",
   traceDrawerFeedback: "task-tour-trace-feedback",
+  traceFeedbackPopover: "task-tour-trace-feedback-popover",
   /**
    * Coarse wrapper around the trace drawer body for the "Add trace to dataset"
    * step. The Add-to-Dataset button itself lives inside
@@ -31,6 +34,8 @@ export const TOUR_IDS = {
   datasetsFirstRow: "task-tour-datasets-first-row",
   /** Generate-synthetic-data button on the dataset detail header. */
   datasetGenerateSynthetic: "task-tour-dataset-generate-synthetic",
+  /** Generate-synthetic-data modal surface after the header trigger opens it. */
+  datasetGenerateSyntheticModal: "task-tour-dataset-generate-synthetic-modal",
   promptsEntry: "task-tour-prompts-entry",
   /** Prompts management tab in PromptsView — used for "open the Prompts tab". */
   promptsManagementTab: "task-tour-prompts-management-tab",

@@ -19,6 +19,7 @@ interface ChatPanelProps {
   placeholder?: string;
   header?: React.ReactNode;
   inputMaxRows?: number;
+  inputTourId?: string;
 }
 
 export function ChatPanel({
@@ -32,6 +33,7 @@ export function ChatPanel({
   placeholder = "Ask something...",
   header,
   inputMaxRows = 4,
+  inputTourId,
 }: ChatPanelProps) {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLElement>(null);
@@ -80,7 +82,7 @@ export function ChatPanel({
 
       <Divider />
 
-      <Box sx={{ px: 2, py: 1.5, display: "flex", gap: 1, alignItems: "flex-end" }}>
+      <Box data-tour-id={inputTourId} sx={{ px: 2, py: 1.5, display: "flex", gap: 1, alignItems: "flex-end" }}>
         <TextField
           variant="filled"
           fullWidth

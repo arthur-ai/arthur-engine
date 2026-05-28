@@ -4,6 +4,8 @@ This directory holds the copy and imagery for the in-app **Evals 101** tour. Eve
 
 Engineering wiring (which UI element each step points at, what event advances it, etc.) lives in `wiring.ts` and is owned by engineers. The two are merged automatically when the app loads.
 
+Engineering notes for adding targets, events, and composite modal/popover steps live in [`../README.md`](../README.md).
+
 ---
 
 ## How edits ship

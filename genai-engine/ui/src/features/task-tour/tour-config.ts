@@ -86,6 +86,7 @@ export function buildTourConfig(taskId: string, opts: BuildTourConfigOptions = {
 
   return {
     id: "task-tour-evals-101",
+    sectionCompletion: "pause",
     sections,
   };
 }

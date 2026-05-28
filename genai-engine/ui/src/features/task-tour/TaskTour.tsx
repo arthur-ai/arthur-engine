@@ -2,9 +2,18 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { createTaskTourEmptyStatePredicate } from "./emptyState";
 import { useTracesTourPrep } from "./prep/useTracesTourPrep";
-import { registerTaskTourActionBridge } from "./tourActions";
+import { registerTaskTourActionBridge, registerTaskTourTargetRefreshBridge } from "./tourActions";
 import { useTaskTourEngine } from "./useTaskTourEngine";
-import { CertificateWidget, ChecklistWidget, IntroWidget, ResumeFabWidget, SpotlightWidget, TracesTargetWidget } from "./widgets";
+import {
+  CertificateWidget,
+  ChecklistWidget,
+  DatasetTargetWidget,
+  IntroWidget,
+  ResumeFabWidget,
+  SectionCompleteWidget,
+  SpotlightWidget,
+  TracesTargetWidget,
+} from "./widgets";
 
 import { TourHost, TourProvider, useReactRouterNavigator, useTourEngine } from "@/features/tour";
 import { useApi } from "@/hooks/useApi";
@@ -44,7 +53,12 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
   // routing actions through v1's typed engine bus.
   useEffect(() => {
     if (!engine) return;
-    return registerTaskTourActionBridge((name) => engine.emitAction(name));
+    const teardownActionBridge = registerTaskTourActionBridge((name) => engine.emitAction(name));
+    const teardownTargetRefreshBridge = registerTaskTourTargetRefreshBridge(() => engine.refreshTarget());
+    return () => {
+      teardownTargetRefreshBridge();
+      teardownActionBridge();
+    };
   }, [engine]);
 
   // The dock flag is only meaningful while the tour is actively running.
@@ -107,8 +121,10 @@ function TaskTourBody({
 
   return (
     <TourHost>
+      <DatasetTargetWidget />
       <TracesTargetWidget />
       <IntroWidget />
+      <SectionCompleteWidget anchorRect={panelAnchoredToFab ? fabAnchorRect : null} />
       <SpotlightWidget />
       <ChecklistWidget statePlugin={statePlugin} panelAnchorRect={panelAnchoredToFab ? fabAnchorRect : null} />
       <ResumeFabWrapper

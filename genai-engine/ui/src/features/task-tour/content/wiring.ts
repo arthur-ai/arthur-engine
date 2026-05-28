@@ -11,7 +11,16 @@ import { TASK_TOUR_ACTIONS } from "../tourActions";
  * those steps must rely on the user having reached the page from a prior
  * step's interaction.
  */
-export type TaskSubRoute = "overview" | "traces" | "test" | "evaluate" | "datasets" | "prompts" | "prompts-management" | "playgrounds/prompts";
+export type TaskSubRoute =
+  | "overview"
+  | "traces"
+  | "test"
+  | "chatbot"
+  | "evaluate"
+  | "datasets"
+  | "prompts"
+  | "prompts-management"
+  | "playgrounds/prompts";
 
 /**
  * Engineering-only wiring for one tour step. Lives next to the marketing
@@ -72,6 +81,7 @@ export const TASK_TOUR_QUERY_HOOKS = {
   traceDrawerEvals: "task-tour.traceDrawerEvals",
   traceDrawerFeedback: "task-tour.traceDrawerFeedback",
   traceDrawerAddToDataset: "task-tour.traceDrawerAddToDataset",
+  datasetGenerateSynthetic: "task-tour.datasetGenerateSynthetic",
 } as const;
 
 /** Stable keys used by widgets to register preparation hooks. */
@@ -89,7 +99,21 @@ export const TASK_TOUR_SKIP_WHEN = {
 
 export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
   intro: { steps: {} },
-  agent: { steps: {} },
+  agent: {
+    steps: {
+      "open-demo-agent": {
+        targetId: TOUR_IDS.navDemoAgent,
+        actionName: TASK_TOUR_ACTIONS.demoAgentOpened,
+        route: "chatbot",
+      },
+      "send-message": {
+        targetId: TOUR_IDS.chatSendPlaceholder,
+        actionName: TASK_TOUR_ACTIONS.demoAgentMessageSent,
+        route: "chatbot",
+        advance: "action-only",
+      },
+    },
+  },
   evals: {
     steps: {
       "open-evaluate": {
@@ -169,6 +193,7 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
       },
       "generate-synthetic": {
         targetId: TOUR_IDS.datasetGenerateSynthetic,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.datasetGenerateSynthetic,
         actionName: TASK_TOUR_ACTIONS.syntheticDataGenerated,
         advance: "action-only",
       },

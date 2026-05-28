@@ -68,6 +68,10 @@ function makeDataTourIdResolver(id: string): () => Element | null {
   return () => document.querySelector(tourSelector(id as never));
 }
 
+function makePreferredDataTourIdResolver(preferredId: string, fallbackId: string): () => Element | null {
+  return () => document.querySelector(tourSelector(preferredId as never)) ?? document.querySelector(tourSelector(fallbackId as never));
+}
+
 /**
  * Registers all task-tour queryHook resolvers in one place. Mounted once
  * under `<TourHost>` so the resolvers are available regardless of which
@@ -76,8 +80,8 @@ function makeDataTourIdResolver(id: string): () => Element | null {
  * drawer / table is in the DOM).
  */
 export function TracesTargetWidget() {
-  const drawerEvals = useMemo(() => makeDataTourIdResolver(TOUR_IDS.traceDrawerEvals), []);
-  const drawerFeedback = useMemo(() => makeDataTourIdResolver(TOUR_IDS.traceDrawerFeedback), []);
+  const drawerEvals = useMemo(() => makePreferredDataTourIdResolver(TOUR_IDS.traceAnnotationsModal, TOUR_IDS.traceDrawerEvals), []);
+  const drawerFeedback = useMemo(() => makePreferredDataTourIdResolver(TOUR_IDS.traceFeedbackPopover, TOUR_IDS.traceDrawerFeedback), []);
   const drawerAddToDataset = useMemo(() => makeDataTourIdResolver(TOUR_IDS.traceDrawerAddToDataset), []);
 
   useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.tracesFirstRow, resolveTracesFirstRow);

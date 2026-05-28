@@ -197,6 +197,12 @@ export interface SectionConfig {
 export interface TourConfig {
   id: string;
   sections: SectionConfig[];
+  /**
+   * Controls what happens after the final step in a section completes.
+   * - "auto" keeps legacy behavior: immediately enter the next section.
+   * - "pause" emits a section-complete state so UI can let the user continue intentionally.
+   */
+  sectionCompletion?: "auto" | "pause";
 }
 
 export function defineTourConfig<const T extends TourConfig>(config: T): T {
@@ -229,6 +235,7 @@ export interface TourPosition {
   sectionIndex: number;
   stepId?: string;
   stepIndex?: number;
+  boundary?: "sectionComplete";
 }
 
 export type SkipReason = "user" | "section" | "programmatic" | "auto-skip";
@@ -244,6 +251,13 @@ export type TourState =
       stepIndex: number;
       globalStepIndex: number;
       totalSteps: number;
+    }
+  | {
+      status: "sectionComplete";
+      sectionId: string;
+      sectionIndex: number;
+      nextSectionId?: string;
+      nextSectionIndex?: number;
     }
   | { status: "dismissed"; position: TourPosition }
   | { status: "completed" }
@@ -275,6 +289,13 @@ export interface TourActions {
    */
   resume: () => Promise<void>;
   acknowledgeIntroduction: () => Promise<void>;
+  continueFromSectionComplete: () => Promise<void>;
+  /**
+   * Re-resolve the active step target and emit a fresh `target:found` /
+   * `target:lost` event. Useful when a step opens a modal/popover and the
+   * highlight should move from the trigger to the newly mounted surface.
+   */
+  refreshTarget: () => void;
   /**
    * Emit a typed action onto the engine bus. The `action` trigger listens for
    * matching names and advances the active step. Replaces v0's
@@ -355,6 +376,7 @@ export interface TourEvents extends Record<EventType, unknown> {
   "section:enter": SectionEnterEvent;
   "section:exit": SectionExitEvent;
   "section:skip": SectionSkipEvent;
+  "section:complete": SectionEnterEvent & { nextSectionId?: string; nextSectionIndex?: number };
   "section:intro:show": { tourId: string; sectionId: string };
   "section:intro:acknowledge": { tourId: string; sectionId: string };
   "step:enter": StepEnterEvent;

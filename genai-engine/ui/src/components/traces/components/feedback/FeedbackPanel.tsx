@@ -10,7 +10,8 @@ import { useSnackbar } from "notistack";
 import { useRef } from "react";
 import z from "zod";
 
-import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
+import { dispatchTourEvent, refreshTaskTourTarget, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { useApi } from "@/hooks/useApi";
 import { AgenticAnnotationResponse, TraceResponse } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
@@ -150,7 +151,7 @@ export const FeedbackPanel = ({ containerRef, annotations, traceId }: Props) => 
   const isMutating = sendFeedbackMutation.isPending || clearFeedbackMutation.isPending;
 
   const handleOpenFeedback = (feedbackType: Feedback) => {
-    dispatchTourEvent(TASK_TOUR_EVENTS.feedbackAdded);
+    window.requestAnimationFrame(() => refreshTaskTourTarget());
     track(EVENT_NAMES.FEEDBACK_OPENED, {
       trace_id: traceId,
       feedback_type: feedbackType,
@@ -205,7 +206,10 @@ export const FeedbackPanel = ({ containerRef, annotations, traceId }: Props) => 
           return (
             <Popover.Portal container={containerRef.current}>
               <Popover.Positioner sideOffset={8} side="bottom" align="end" anchor={anchor.current}>
-                <Popover.Popup render={<Paper />} className="origin-(--transform-origin) p-4 w-80 outline-none">
+                <Popover.Popup
+                  render={<Paper data-tour-id={TOUR_IDS.traceFeedbackPopover} />}
+                  className="origin-(--transform-origin) p-4 w-80 outline-none"
+                >
                   <Stack direction="column" gap={1}>
                     <Stack direction="column" gap={0}>
                       <Popover.Title render={<Typography variant="body2" fontWeight="bold" color="text.primary" />}>

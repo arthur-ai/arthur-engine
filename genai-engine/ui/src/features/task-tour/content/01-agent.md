@@ -7,19 +7,25 @@ intro:
   cta: Continue
   scenario:
     label: Coming up
-steps: []
+steps:
+  - id: open-demo-agent
+    title: Open the Demo Agent
+  - id: send-message
+    title: Send a message
 ---
-
-<!--
-  Stubbed until the bundled Demo Agent ships. The current Test → Notebook
-  flow is a placeholder, not a real agent we can wire tour spotlights
-  against, so this section renders as an intro-only primer.
--->
 
 ## intro
 
-Once the bundled Demo Agent ships, you'll open it from the task sidebar, send it a question, and Arthur will record the run as a trace we'll inspect together. For now this section is a preview — keep going to see how Arthur handles the readability failures the agent has already produced.
+Start with the bundled Demo Agent: a Wikipedia-backed chatbot you can use to generate a realistic trace. Open it from the task sidebar, ask a question, and Arthur will record the run for the trace workflow we'll inspect together.
 
 ## scenario
 
-Two-step flow when the Demo Agent lands: (1) Open the Demo Agent from the sidebar — we'll describe what it does. (2) Send it any general-knowledge question and watch the trace land in Observe.
+First, open the Demo Agent from the sidebar. It answers general-knowledge questions by searching and fetching Wikipedia articles, which makes it a useful sandbox for seeing agent traces in Arthur.
+
+## step: open-demo-agent
+
+Open **Demo Agent** in the sidebar. This takes you to the sandbox chatbot, where you can ask a general-knowledge question and create a trace for the next part of the tour.
+
+## step: send-message
+
+Send any general-knowledge question to the Demo Agent. It will search Wikipedia as needed, answer in the chat, and leave behind a trace for us to inspect next.

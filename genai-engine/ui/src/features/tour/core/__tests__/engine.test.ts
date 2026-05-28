@@ -112,6 +112,47 @@ describe("createTourEngine actions", () => {
     expect(engine.getState()).toMatchObject({ status: "step", sectionId: "next", stepId: "first" });
   });
 
+  it("pauses at section boundaries when configured", async () => {
+    const engine = createTourEngine({
+      config: twoStepConfig({ sectionCompletion: "pause" }),
+    });
+
+    await engine.start();
+    await engine.next();
+    await engine.next();
+
+    expect(engine.getState()).toMatchObject({
+      status: "sectionComplete",
+      sectionId: "section-a",
+      sectionIndex: 0,
+      nextSectionId: "section-b",
+      nextSectionIndex: 1,
+    });
+  });
+
+  it("continues from a paused section boundary to the next section", async () => {
+    const engine = createTourEngine({
+      config: twoStepConfig({ sectionCompletion: "pause" }),
+    });
+
+    await engine.start();
+    await engine.next();
+    await engine.next();
+    await engine.continueFromSectionComplete();
+
+    expect(engine.getState()).toMatchObject({ status: "step", sectionId: "section-b", stepId: "three" });
+  });
+
+  it("preserves default auto-advance behavior at section boundaries", async () => {
+    const engine = createTourEngine({ config: twoStepConfig() });
+
+    await engine.start();
+    await engine.next();
+    await engine.next();
+
+    expect(engine.getState()).toMatchObject({ status: "step", sectionId: "section-b", stepId: "three" });
+  });
+
   it("emits one step:left event when skipWhen auto-advances", async () => {
     const left: StepLeftEvent[] = [];
     const engine = createTourEngine({
@@ -449,6 +490,35 @@ describe("createTourEngine actions", () => {
 
     await vi.waitFor(() => expect(engineB.getState()).toMatchObject({ status: "step", stepId: "b-two" }));
     expect(engineA.getState()).toMatchObject({ status: "step", stepId: "a-one" });
+  });
+
+  it("can refresh the active target after step UI changes", async () => {
+    const first = document.createElement("button");
+    const second = document.createElement("section");
+    let target: Element = first;
+    const found: Element[] = [];
+    const engine = createTourEngine({
+      config: {
+        id: "refresh-tour",
+        sections: [
+          {
+            id: "main",
+            steps: [
+              step("dynamic", {
+                target: { kind: "element", resolve: () => target },
+              }),
+            ],
+          },
+        ],
+      },
+    });
+    engine.on("target:found", (event) => found.push(event.element));
+
+    await engine.start();
+    target = second;
+    engine.refreshTarget();
+
+    expect(found).toEqual([first, second]);
   });
 
   it("clears pending fallback auto-complete timers when dismissed", async () => {

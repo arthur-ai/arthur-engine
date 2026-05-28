@@ -6,6 +6,7 @@
  */
 export {
   dispatchTourEvent,
+  refreshTaskTourTarget,
   TASK_TOUR_ACTIONS,
   TASK_TOUR_EVENTS,
   TASK_TOUR_TARGET_LOST_HINTS,

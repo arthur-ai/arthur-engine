@@ -2,6 +2,7 @@ import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Tooltip, Typography } from "@mui/material";
 import { alpha, type Theme, useTheme } from "@mui/material/styles";
 import { motion } from "framer-motion";
+import type { HTMLAttributes } from "react";
 import { useState } from "react";
 import useMeasure from "react-use-measure";
 
@@ -9,7 +10,8 @@ import { Annotation, isContinuousEvalAnnotation } from "./schema";
 import { AnnotationsTable } from "./table";
 
 import { CopyableChip } from "@/components/common";
-import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
+import { dispatchTourEvent, refreshTaskTourTarget, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import type { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
 
 type Props = {
@@ -56,8 +58,13 @@ export const AnnotationCell = ({ annotations, traceId, className }: Props) => {
     e.preventDefault();
     e.stopPropagation();
 
-    dispatchTourEvent(TASK_TOUR_EVENTS.annotationsReviewed);
     setModalOpen(true);
+    window.requestAnimationFrame(() => refreshTaskTourTarget());
+  };
+
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    dispatchTourEvent(TASK_TOUR_EVENTS.annotationsReviewed);
   };
 
   if (parsed.length === 0) {
@@ -113,7 +120,14 @@ export const AnnotationCell = ({ annotations, traceId, className }: Props) => {
         </motion.button>
       </Tooltip>
 
-      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} maxWidth="md" fullWidth onClick={(e) => e.stopPropagation()}>
+      <Dialog
+        open={modalOpen}
+        onClose={handleCloseModal}
+        maxWidth="md"
+        fullWidth
+        onClick={(e) => e.stopPropagation()}
+        slotProps={{ paper: { ...({ "data-tour-id": TOUR_IDS.traceAnnotationsModal } as HTMLAttributes<HTMLDivElement>) } }}
+      >
         <DialogTitle className="flex items-center gap-2">
           <Typography variant="h6">Annotations for trace</Typography>
           <CopyableChip label={traceId} sx={{ fontFamily: "monospace" }} />
@@ -122,7 +136,7 @@ export const AnnotationCell = ({ annotations, traceId, className }: Props) => {
           <AnnotationsTable annotations={parsed} />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setModalOpen(false)} variant="contained">
+          <Button onClick={handleCloseModal} variant="contained">
             Close
           </Button>
         </DialogActions>

@@ -16,7 +16,7 @@ export interface TourStateSnapshot {
    * Where the user was when last seen. Mirrors the engine's `dismissed`
    * position shape so `resumePosition()` is a trivial pluck.
    */
-  position?: { sectionId: string; stepId?: string };
+  position?: { sectionId: string; stepId?: string; boundary?: "sectionComplete" };
   /**
    * Set of completed step keys (sectionId.stepId). v0 split this into a
    * separate plugin; in v1 status and progress share one storage record.
@@ -48,7 +48,7 @@ function resolveStorage(storage: PersistenceStorage | undefined): PersistenceSto
 
 interface SerializedSnapshot {
   status: TourStateStatus;
-  position?: { sectionId: string; stepId?: string };
+  position?: { sectionId: string; stepId?: string; boundary?: "sectionComplete" };
   completed: string[];
 }
 
@@ -67,7 +67,11 @@ function parseSnapshot(raw: string | null): TourStateSnapshot {
     const completed = new Set<string>((obj.completed ?? []).filter((v): v is string => typeof v === "string"));
     const position =
       obj.position && typeof obj.position === "object" && typeof obj.position.sectionId === "string"
-        ? { sectionId: obj.position.sectionId, stepId: typeof obj.position.stepId === "string" ? obj.position.stepId : undefined }
+        ? {
+            sectionId: obj.position.sectionId,
+            stepId: typeof obj.position.stepId === "string" ? obj.position.stepId : undefined,
+            boundary: obj.position.boundary === "sectionComplete" ? obj.position.boundary : undefined,
+          }
         : undefined;
     return { status, position, completed };
   } catch {
@@ -88,6 +92,7 @@ function snapshotsEqual(a: TourStateSnapshot, b: TourStateSnapshot): boolean {
   if (a.status !== b.status) return false;
   if ((a.position?.sectionId ?? null) !== (b.position?.sectionId ?? null)) return false;
   if ((a.position?.stepId ?? null) !== (b.position?.stepId ?? null)) return false;
+  if ((a.position?.boundary ?? null) !== (b.position?.boundary ?? null)) return false;
   if (a.completed.size !== b.completed.size) return false;
   for (const v of a.completed) if (!b.completed.has(v)) return false;
   return true;
@@ -181,7 +186,7 @@ export function createTourStatePlugin(opts: CreateTourStatePluginOptions): TourS
     writeSnapshot(merge({ status }));
   };
 
-  const setPosition = (position: { sectionId: string; stepId?: string } | undefined) => {
+  const setPosition = (position: { sectionId: string; stepId?: string; boundary?: "sectionComplete" } | undefined) => {
     writeSnapshot(merge({ position }));
   };
 
@@ -264,6 +269,9 @@ export function createTourStatePlugin(opts: CreateTourStatePluginOptions): TourS
       const onIntroShow = (event: { sectionId: string }) => {
         setPosition({ sectionId: event.sectionId });
       };
+      const onSectionComplete = (event: { sectionId: string }) => {
+        setPosition({ sectionId: event.sectionId, boundary: "sectionComplete" });
+      };
       const onCompleted = (event: StepCompletedEvent) => {
         markCompleted(getKey(event));
       };
@@ -291,6 +299,7 @@ export function createTourStatePlugin(opts: CreateTourStatePluginOptions): TourS
       bus.on("tour:end", onEnd);
       bus.on("step:enter", onStepEnter);
       bus.on("section:intro:show", onIntroShow);
+      bus.on("section:complete", onSectionComplete);
       bus.on("section:intro:acknowledge", onIntroAck);
       bus.on("step:completed", onCompleted);
 
@@ -301,6 +310,7 @@ export function createTourStatePlugin(opts: CreateTourStatePluginOptions): TourS
         bus.off("tour:end", onEnd);
         bus.off("step:enter", onStepEnter);
         bus.off("section:intro:show", onIntroShow);
+        bus.off("section:complete", onSectionComplete);
         bus.off("section:intro:acknowledge", onIntroAck);
         bus.off("step:completed", onCompleted);
         detachStorage?.();

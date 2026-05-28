@@ -174,7 +174,10 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     state.status === "step" && state.sectionIndex === pos.sectionIndex && state.stepIndex === pos.stepIndex;
 
   const isActiveSection = (state: TourState, sectionPos: SectionPosition) =>
-    (state.status === "step" || state.status === "intro") && state.sectionIndex === sectionPos.sectionIndex;
+    (state.status === "step" || state.status === "intro" || state.status === "sectionComplete") && state.sectionIndex === sectionPos.sectionIndex;
+
+  const stateSectionIndex = (state: TourState): number | null =>
+    state.status === "step" || state.status === "intro" || state.status === "sectionComplete" ? state.sectionIndex : null;
 
   // ---------------------------------------------------------------------------
   // Plugins
@@ -237,6 +240,15 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
       });
       activeTriggerCleanups.push(cleanup);
     }
+  };
+
+  const resolveCurrentTarget = (): Element | null => {
+    const current = getState();
+    if (current.status !== "step") return null;
+    const section = config.sections[current.sectionIndex];
+    const step = section.steps[current.stepIndex];
+    const resolveQueryHook = (hookId: string): QueryHookResolver | undefined => store.getState().queryHooks.get(hookId);
+    return resolveTargetSync(step.target, { resolveQueryHook });
   };
 
   // ---------------------------------------------------------------------------
@@ -483,7 +495,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     if (!(await exitCurrentStep(opts.cause))) return;
 
     const stateAfterExit = getState();
-    const currentSectionIndex = stateAfterExit.status === "step" || stateAfterExit.status === "intro" ? stateAfterExit.sectionIndex : null;
+    const currentSectionIndex = stateSectionIndex(stateAfterExit);
     if (currentSectionIndex !== null && currentSectionIndex !== sectionPos.sectionIndex) {
       const fromSection = config.sections[currentSectionIndex];
       bus.emit("section:exit", {
@@ -538,7 +550,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     if (!(await exitCurrentStep(opts.cause))) return;
 
     if (sectionChanging) {
-      const fromIndex = current.status === "step" || current.status === "intro" ? current.sectionIndex : null;
+      const fromIndex = stateSectionIndex(current);
       if (fromIndex !== null) {
         const fromSection = config.sections[fromIndex];
         bus.emit("section:exit", { tourId: config.id, sectionId: fromSection.id, sectionIndex: fromIndex });
@@ -562,7 +574,29 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
       await goToStep({ sectionIndex: pos.sectionIndex, stepIndex: pos.stepIndex + 1 }, { cause });
       return;
     }
+    if (config.sectionCompletion === "pause") {
+      await completeCurrentSection(pos.sectionIndex, cause);
+      return;
+    }
     await advanceFromSection(pos.sectionIndex, cause);
+  };
+
+  const completeCurrentSection = async (sectionIndex: number, cause?: StepLeftCause): Promise<void> => {
+    if (!(await exitCurrentStep(cause))) return;
+    const section = config.sections[sectionIndex];
+    const nextSection = config.sections[sectionIndex + 1];
+    setState({
+      status: "sectionComplete",
+      sectionId: section.id,
+      sectionIndex,
+      ...(nextSection ? { nextSectionId: nextSection.id, nextSectionIndex: sectionIndex + 1 } : {}),
+    });
+    bus.emit("section:complete", {
+      tourId: config.id,
+      sectionId: section.id,
+      sectionIndex,
+      ...(nextSection ? { nextSectionId: nextSection.id, nextSectionIndex: sectionIndex + 1 } : {}),
+    });
   };
 
   const advanceFromSection = async (sectionIndex: number, cause?: StepLeftCause): Promise<void> => {
@@ -590,7 +624,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
   const completeTour = async (cause?: StepLeftCause): Promise<void> => {
     if (!(await exitCurrentStep(cause))) return;
     const current = getState();
-    if (current.status === "step" || current.status === "intro") {
+    if (current.status === "step" || current.status === "intro" || current.status === "sectionComplete") {
       const section = config.sections[current.sectionIndex];
       bus.emit("section:exit", {
         tourId: config.id,
@@ -698,7 +732,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     }
     const sectionPos = findSectionPosition(target.sectionId);
     if (!sectionPos) return;
-    const currentSectionIndex = s.status === "step" || s.status === "intro" ? s.sectionIndex : -1;
+    const currentSectionIndex = stateSectionIndex(s) ?? -1;
     const cause: StepLeftCause = sectionPos.sectionIndex >= currentSectionIndex ? "goTo-forward" : "goTo-backward";
     await goToSection(sectionPos, { cause });
   };
@@ -706,7 +740,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
   const skipSection: TourActions["skipSection"] = async () => {
     if (destroyed) return;
     const s = getState();
-    if (s.status !== "step" && s.status !== "intro") return;
+    if (s.status !== "step" && s.status !== "intro" && s.status !== "sectionComplete") return;
     const section = config.sections[s.sectionIndex];
     if (section.skipable === false) return;
     bus.emit("section:skip", {
@@ -744,12 +778,13 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
           stepIndex: s.stepIndex,
         },
       });
-    } else if (s.status === "intro") {
+    } else if (s.status === "intro" || s.status === "sectionComplete") {
       setState({
         status: "dismissed",
         position: {
           sectionId: s.sectionId,
           sectionIndex: s.sectionIndex,
+          ...(s.status === "sectionComplete" ? { boundary: "sectionComplete" } : {}),
         },
       });
     } else {
@@ -763,6 +798,18 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     const s = getState();
     if (s.status !== "dismissed") return;
     bus.emit("tour:resume", { tourId: config.id });
+    if (s.position.boundary === "sectionComplete") {
+      const section = config.sections[s.position.sectionIndex];
+      const nextSection = config.sections[s.position.sectionIndex + 1];
+      if (!section) return;
+      setState({
+        status: "sectionComplete",
+        sectionId: section.id,
+        sectionIndex: s.position.sectionIndex,
+        ...(nextSection ? { nextSectionId: nextSection.id, nextSectionIndex: s.position.sectionIndex + 1 } : {}),
+      });
+      return;
+    }
     if (s.position.stepId && s.position.stepIndex !== undefined) {
       await goToStep({ sectionIndex: s.position.sectionIndex, stepIndex: s.position.stepIndex });
       return;
@@ -783,8 +830,27 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     await enterStep({ sectionIndex: s.sectionIndex, stepIndex: 0 }, { runSectionEnter: false });
   };
 
+  const continueFromSectionComplete: TourActions["continueFromSectionComplete"] = async () => {
+    if (destroyed) return;
+    const s = getState();
+    if (s.status !== "sectionComplete") return;
+    await advanceFromSection(s.sectionIndex);
+  };
+
   const emitAction: TourActions["emitAction"] = (name) => {
     bus.emit("action:emit", { tourId: config.id, name });
+  };
+
+  const refreshTarget: TourActions["refreshTarget"] = () => {
+    if (destroyed) return;
+    const current = getState();
+    if (current.status !== "step") return;
+    const element = resolveCurrentTarget();
+    if (element) {
+      bus.emit("target:found", { tourId: config.id, sectionId: current.sectionId, stepId: current.stepId, element });
+    } else {
+      bus.emit("target:lost", { tourId: config.id, sectionId: current.sectionId, stepId: current.stepId });
+    }
   };
 
   // ---------------------------------------------------------------------------
@@ -846,6 +912,8 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     dismiss,
     resume,
     acknowledgeIntroduction,
+    continueFromSectionComplete,
+    refreshTarget,
     emitAction,
   } satisfies TourEngine;
 }

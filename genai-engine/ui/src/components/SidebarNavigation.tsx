@@ -44,7 +44,13 @@ interface NavigationItem {
 function buildNavigationSections(demoMode: boolean): NavigationSection[] {
   const agentItems: NavigationItem[] = [{ id: "test", label: "Test", icon: <ScienceOutlined />, tourId: TOUR_IDS.navTest }];
   if (demoMode) {
-    agentItems.push({ id: "chatbot", label: "Chatbot", icon: <ChatOutlined /> });
+    agentItems.push({
+      id: "chatbot",
+      label: "Demo Agent",
+      icon: <ChatOutlined />,
+      tourId: TOUR_IDS.navDemoAgent,
+      tourEvents: [TASK_TOUR_ACTIONS.demoAgentOpened],
+    });
   }
   return [
     {

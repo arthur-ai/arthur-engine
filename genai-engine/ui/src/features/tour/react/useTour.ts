@@ -63,6 +63,8 @@ function cachedActions(engine: TourEngine): TourActions {
     dismiss: engine.dismiss,
     resume: engine.resume,
     acknowledgeIntroduction: engine.acknowledgeIntroduction,
+    continueFromSectionComplete: engine.continueFromSectionComplete,
+    refreshTarget: engine.refreshTarget,
     emitAction: engine.emitAction,
   };
   defaultActionsCache.set(engine, cached);
@@ -97,7 +99,7 @@ export function useTour(): UseTourReturn {
   }, [engine, state]);
 
   const activeSection = useMemo<SectionConfig | null>(() => {
-    if (state.status === "step" || state.status === "intro") {
+    if (state.status === "step" || state.status === "intro" || state.status === "sectionComplete") {
       return engine.config.sections[state.sectionIndex] ?? null;
     }
     return null;

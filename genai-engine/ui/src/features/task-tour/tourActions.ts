@@ -18,6 +18,8 @@
  * "fire and forget" semantics (where the engine just wasn't listening yet).
  */
 export const TASK_TOUR_ACTIONS = {
+  demoAgentOpened: "task-tour:demo-agent-opened",
+  demoAgentMessageSent: "task-tour:demo-agent-message-sent",
   evaluateOpened: "task-tour:evaluate-opened",
   evaluatorReviewed: "task-tour:evaluator-reviewed",
   observeOpened: "task-tour:observe-opened",
@@ -53,6 +55,7 @@ export type TaskTourEventName = TaskTourAction;
 type Bridge = (name: string) => void;
 
 let activeBridge: Bridge | null = null;
+let activeTargetRefreshBridge: (() => void) | null = null;
 
 /**
  * Called by `TaskTour` once the engine is mounted to wire
@@ -65,6 +68,14 @@ export function registerTaskTourActionBridge(bridge: Bridge | null): () => void 
   activeBridge = bridge;
   return () => {
     activeBridge = previous;
+  };
+}
+
+export function registerTaskTourTargetRefreshBridge(bridge: (() => void) | null): () => void {
+  const previous = activeTargetRefreshBridge;
+  activeTargetRefreshBridge = bridge;
+  return () => {
+    activeTargetRefreshBridge = previous;
   };
 }
 
@@ -81,6 +92,10 @@ export function registerTaskTourActionBridge(bridge: Bridge | null): () => void 
  */
 export function dispatchTourEvent(name: string): void {
   activeBridge?.(name);
+}
+
+export function refreshTaskTourTarget(): void {
+  activeTargetRefreshBridge?.();
 }
 
 /** Keys are `${sectionId}.${stepId}` — shown under the active checklist row when the spotlight target is missing. */
