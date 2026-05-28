@@ -16620,6 +16620,48 @@
                 }
             }
         },
+        "/api/v2/tenant/signup": {
+            "post": {
+                "tags": [
+                    "Tenant Signup"
+                ],
+                "summary": "Create Tenant Signup",
+                "description": "Public tenant signup. Accepts try-it-out onboarding form data, persists an onboarding submission, and creates a new organization, a default demo task scoped to that org, and a TENANT-USER API key with `org_scope` set to the new org. Returns the four identifiers; the raw `api_key` value appears only in this response (the DB stores only its hash). Gated by GENAI_ENGINE_DEMO_MODE \u2014 returns 404 when disabled.",
+                "operationId": "create_tenant_signup_api_v2_tenant_signup_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TenantSignupRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DemoTaskSignupResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "post": {
                 "tags": [
@@ -25997,6 +26039,87 @@
                 "title": "OTELAgentCreationSource",
                 "description": "Creation source for OTEL-discovered agents (auto-created from traces)."
             },
+            "OnboardingTryItOutFormData": {
+                "properties": {
+                    "first_name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "First Name"
+                    },
+                    "last_name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Last Name"
+                    },
+                    "email": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Email"
+                    },
+                    "job_title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Job Title"
+                    },
+                    "company": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Company"
+                    },
+                    "maturity": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Maturity"
+                    },
+                    "brings": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Brings"
+                    },
+                    "brings_other": {
+                        "type": "string",
+                        "title": "Brings Other",
+                        "default": ""
+                    },
+                    "competitors": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "minItems": 1,
+                        "title": "Competitors"
+                    },
+                    "competitor_other": {
+                        "type": "string",
+                        "title": "Competitor Other",
+                        "default": ""
+                    },
+                    "attribution": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Attribution"
+                    },
+                    "attribution_other": {
+                        "type": "string",
+                        "title": "Attribution Other",
+                        "default": ""
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "first_name",
+                    "last_name",
+                    "email",
+                    "job_title",
+                    "company",
+                    "maturity",
+                    "brings",
+                    "competitors",
+                    "attribution"
+                ],
+                "title": "OnboardingTryItOutFormData",
+                "description": "Try-it-out onboarding form fields (matches UI TryItOutSubmission)."
+            },
             "OpenAIMessage-Input": {
                 "properties": {
                     "role": {
@@ -31093,6 +31216,35 @@
                 ],
                 "title": "TemplateVariableMapping",
                 "description": "Mapping of a template variable to its source"
+            },
+            "TenantSignupRequest": {
+                "properties": {
+                    "form_variant": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "linear",
+                                    "wizard"
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Form Variant",
+                        "description": "Which onboarding form variant was submitted."
+                    },
+                    "form_data": {
+                        "$ref": "#/components/schemas/OnboardingTryItOutFormData"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "form_data"
+                ],
+                "title": "TenantSignupRequest",
+                "description": "Public tenant signup payload; includes try-it-out onboarding form data."
             },
             "TestCase": {
                 "properties": {

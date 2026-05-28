@@ -24,11 +24,13 @@ from dependencies import get_application_config, get_db_session
 from repositories.api_key_repository import ApiKeyRepository
 from repositories.demo_task_repository import DemoTaskRepository
 from repositories.metrics_repository import MetricRepository
+from repositories.onboarding_repository import OnboardingRepository
 from repositories.organizations_repository import OrganizationsRepository
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
 from routers.route_handler import GenaiEngineRoute
 from schemas.internal_schemas import ApplicationConfiguration, Task
+from schemas.request_schemas import TenantSignupRequest
 from schemas.response_schemas import DemoTaskSignupResponse
 from utils.utils import public_endpoint
 
@@ -45,17 +47,20 @@ _ORG_NAME_RETRIES = 2
 @tenant_signup_routes.post(
     "/tenant/signup",
     description=(
-        "Public tenant signup. Creates a new organization, a default demo "
-        "task scoped to that org, and a TENANT-USER API key with `org_scope` "
-        "set to the new org. Returns the four identifiers; the raw `api_key` "
-        "value appears only in this response (the DB stores only its hash). "
-        "Gated by GENAI_ENGINE_DEMO_MODE — returns 404 when disabled."
+        "Public tenant signup. Accepts try-it-out onboarding form data, "
+        "persists an onboarding submission, and creates a new organization, "
+        "a default demo task scoped to that org, and a TENANT-USER API key "
+        "with `org_scope` set to the new org. Returns the four identifiers; "
+        "the raw `api_key` value appears only in this response (the DB stores "
+        "only its hash). Gated by GENAI_ENGINE_DEMO_MODE — returns 404 when "
+        "disabled."
     ),
     response_model=DemoTaskSignupResponse,
     tags=["Tenant Signup"],
 )
 @public_endpoint
 def create_tenant_signup(
+    body: TenantSignupRequest,
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
 ) -> DemoTaskSignupResponse:
@@ -110,10 +115,15 @@ def create_tenant_signup(
             commit=False,
         )
 
-        demo_task_repo = DemoTaskRepository(db_session)
-        demo_task_repo.create_demo_items_for_task(
+        DemoTaskRepository(db_session).create_demo_items_for_task(
             task_id=task.id,
             user_id=api_key.id,
+            commit=False,
+        )
+
+        OnboardingRepository(db_session).create_submission(
+            form_variant=body.form_variant,
+            form_data=body.form_data,
             commit=False,
         )
 

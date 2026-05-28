@@ -1,4 +1,5 @@
 import random
+import uuid
 from contextlib import contextmanager
 from copy import deepcopy
 from typing import Generator
@@ -7,6 +8,7 @@ from unittest.mock import MagicMock
 import pytest
 from arthur_common.models.response_schemas import TaskResponse
 
+from db_models.onboarding_models import DatabaseOnboardingSubmission
 from src.schemas.agentic_prompt_schemas import AgenticPrompt
 from src.schemas.request_schemas import (
     CreateAgenticPromptRequest,
@@ -17,6 +19,22 @@ from tests.clients.base_test_client import (
     override_get_db_session,
 )
 from tests.clients.unit_test_client import get_genai_engine_test_client
+
+
+@pytest.fixture
+def tracked_onboarding_submissions() -> Generator[list[uuid.UUID], None, None]:
+    submission_ids: list[uuid.UUID] = []
+    yield submission_ids
+
+    db_session = override_get_db_session()
+    try:
+        for submission_id in submission_ids:
+            db_session.query(DatabaseOnboardingSubmission).filter(
+                DatabaseOnboardingSubmission.id == submission_id,
+            ).delete()
+        db_session.commit()
+    finally:
+        db_session.close()
 
 
 @pytest.fixture(scope="module", autouse=True)

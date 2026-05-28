@@ -18,18 +18,43 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
 
-from tests.clients.base_test_client import GenaiEngineTestClientBase, app
+from db_models import DatabaseOrganization
+from db_models.onboarding_models import DatabaseOnboardingSubmission
+from tests.clients.base_test_client import (
+    GenaiEngineTestClientBase,
+    app,
+    override_get_db_session,
+)
 
 SIGNUP_URL = "/api/v2/tenant/signup"
 ME_URL = "/users/me"
+
+SAMPLE_SIGNUP_BODY = {
+    "form_variant": "linear",
+    "form_data": {
+        "first_name": "Ada",
+        "last_name": "Lovelace",
+        "email": "ada@example.com",
+        "job_title": "Engineer",
+        "company": "Analytical Engines",
+        "maturity": "exploring",
+        "brings": "evals",
+        "brings_other": "",
+        "competitors": ["langsmith"],
+        "competitor_other": "",
+        "attribution": "search",
+        "attribution_other": "",
+    },
+}
+
+
+def _signup(client: TestClient):
+    return client.post(SIGNUP_URL, json=SAMPLE_SIGNUP_BODY)
 
 
 def _count_demo_orgs() -> int:
     """Count organizations whose name starts with `demo-`. Used by the
     rollback test to verify no orphan org leaked into the DB."""
-    from db_models import DatabaseOrganization
-    from tests.clients.base_test_client import override_get_db_session
-
     db = override_get_db_session()
     return (
         db.query(DatabaseOrganization)
@@ -43,7 +68,7 @@ def test_signup_demo_mode_off_returns_404():
     with patch.dict(os.environ, {}, clear=False):
         os.environ.pop("GENAI_ENGINE_DEMO_MODE", None)
         client = TestClient(app)
-        response = client.post(SIGNUP_URL)
+        response = _signup(client)
     assert response.status_code == 404
 
 
@@ -61,7 +86,7 @@ def test_signup_demo_mode_on_returns_four_field_response(
     try:
         with patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "ENABLED"}):
             test_client = TestClient(app)
-            response = test_client.post(SIGNUP_URL)
+            response = _signup(test_client)
 
         assert response.status_code == 200
         body = response.json()
@@ -90,7 +115,11 @@ def test_signup_no_auth_required(client: GenaiEngineTestClientBase):
     try:
         with patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "ENABLED"}):
             test_client = TestClient(app)
-            response = test_client.post(SIGNUP_URL, headers={})
+            response = test_client.post(
+                SIGNUP_URL,
+                json=SAMPLE_SIGNUP_BODY,
+                headers={},
+            )
         assert response.status_code == 200
     finally:
         client.base_client.delete(
@@ -115,7 +144,7 @@ def test_signup_returned_key_authenticates_as_tenant(
     try:
         with patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "ENABLED"}):
             test_client = TestClient(app)
-            sig = test_client.post(SIGNUP_URL).json()
+            sig = _signup(test_client).json()
             me_resp = test_client.get(
                 ME_URL,
                 headers={"Authorization": f"Bearer {sig['api_key']}"},
@@ -147,8 +176,8 @@ def test_signup_each_call_mints_distinct_org(client: GenaiEngineTestClientBase):
     try:
         with patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "ENABLED"}):
             test_client = TestClient(app)
-            a = test_client.post(SIGNUP_URL).json()
-            b = test_client.post(SIGNUP_URL).json()
+            a = _signup(test_client).json()
+            b = _signup(test_client).json()
 
         assert a["org_id"] != b["org_id"]
         assert a["task_id"] != b["task_id"]
@@ -186,7 +215,10 @@ def test_signup_creates_demo_items_on_task(client: GenaiEngineTestClientBase):
                 return_value=None,
             ) as mock_enqueue,
         ):
-            sig = client.base_client.post(SIGNUP_URL).json()
+            sig = client.base_client.post(
+                SIGNUP_URL,
+                json=SAMPLE_SIGNUP_BODY,
+            ).json()
             task_id = sig["task_id"]
             tenant_headers = {"Authorization": f"Bearer {sig['api_key']}"}
 
@@ -299,7 +331,7 @@ def test_signup_retries_once_on_org_name_collision(
         with patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "ENABLED"}):
             monkeypatch.setattr(mod, "OrganizationsRepository", FlakyOrgRepo)
             test_client = TestClient(app)
-            response = test_client.post(SIGNUP_URL)
+            response = _signup(test_client)
 
         assert response.status_code == 200
         assert calls["n"] == 2
@@ -328,10 +360,56 @@ def test_signup_returns_500_after_two_collisions(monkeypatch):
     with patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "ENABLED"}):
         monkeypatch.setattr(mod, "OrganizationsRepository", AlwaysFlakyOrgRepo)
         client = TestClient(app)
-        response = client.post(SIGNUP_URL)
+        response = _signup(client)
 
     assert response.status_code == 500
     assert calls["n"] == 2
+
+
+@pytest.mark.unit_tests
+def test_signup_persists_onboarding_submission(
+    client: GenaiEngineTestClientBase,
+    tracked_onboarding_submissions,
+):
+    client.base_client.put(
+        "/api/v1/model_providers/anthropic",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+
+    try:
+        with patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "ENABLED"}):
+            test_client = TestClient(app)
+            response = _signup(test_client)
+
+        assert response.status_code == 200
+
+        db_session = override_get_db_session()
+        try:
+            submissions = (
+                db_session.query(DatabaseOnboardingSubmission)
+                .order_by(DatabaseOnboardingSubmission.created_at.desc())
+                .all()
+            )
+            submission = next(
+                (
+                    row
+                    for row in submissions
+                    if row.form_data.get("email")
+                    == SAMPLE_SIGNUP_BODY["form_data"]["email"]
+                ),
+                None,
+            )
+            assert submission is not None
+            tracked_onboarding_submissions.append(submission.id)
+            assert submission.form_variant == "linear"
+        finally:
+            db_session.close()
+    finally:
+        client.base_client.delete(
+            "/api/v1/model_providers/anthropic",
+            headers=client.authorized_user_api_key_headers,
+        )
 
 
 @pytest.mark.unit_tests
@@ -351,7 +429,7 @@ def test_signup_rolls_back_org_when_api_key_step_fails(monkeypatch):
     with patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "ENABLED"}):
         monkeypatch.setattr(mod, "ApiKeyRepository", BrokenApiKeyRepo)
         client = TestClient(app)
-        response = client.post(SIGNUP_URL)
+        response = _signup(client)
     after = _count_demo_orgs()
 
     assert response.status_code == 500
