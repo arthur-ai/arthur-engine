@@ -26,6 +26,7 @@ from pydantic import BaseModel
 
 from tests.clients.base_test_client import app
 from utils.constants import TENANT_USER
+from utils.users import enforce_org_scope, enforce_query_org_scope
 
 
 def _walk_wrapped(fn):
@@ -197,7 +198,6 @@ def test_marker_detection_negative_case():
 @pytest.mark.unit_tests
 def test_marker_detection_positive_case():
     """A handler decorated with `@enforce_org_scope` must be detected."""
-    from utils.users import enforce_org_scope, enforce_query_org_scope
 
     @enforce_org_scope()
     async def path_handler(task_id, db_session, current_user):

@@ -27,6 +27,7 @@ from arthur_common.models.request_schemas import FeedbackRequest, NewTaskRequest
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.agentic_experiment_models import DatabaseAgenticExperiment
 from db_models.dataset_models import DatabaseDatasetVersion
+from db_models.task_models import DatabaseTask
 from db_models.telemetry_models import DatabaseSpan, DatabaseTraceMetadata
 from dependencies import get_application_config
 from repositories.api_key_repository import ApiKeyRepository
@@ -306,8 +307,6 @@ def tenant_world(
     db.expire_all()
     system_task_id: Optional[str] = None
     try:
-        from db_models.task_models import DatabaseTask
-
         row = (
             db.query(DatabaseTask)
             .filter(DatabaseTask.is_system_task == True)  # noqa: E712
