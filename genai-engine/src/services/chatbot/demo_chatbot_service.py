@@ -1,5 +1,7 @@
 import logging
-from typing import AsyncGenerator, List, Optional, Tuple
+from datetime import datetime, timezone
+from typing import AsyncGenerator, Dict, List, Optional, Tuple
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from arthur_common.models.llm_model_providers import (
     MessageRole,
@@ -28,6 +30,7 @@ class DemoChatbotService(BaseChatbotService):
         db_session: Session,
         summarizer_prompt: AgenticPrompt,
         task_id: str,
+        user_timezone: Optional[str] = None,
     ):
         super().__init__(
             chat_completion_service=chat_completion_service,
@@ -37,6 +40,23 @@ class DemoChatbotService(BaseChatbotService):
             enqueue_continuous_evals=True,
         )
         self.task_id = task_id
+        self.user_timezone = user_timezone
+
+    def build_variable_map(self) -> Dict[str, str]:
+        try:
+            tz = ZoneInfo(self.user_timezone) if self.user_timezone else timezone.utc
+        except ZoneInfoNotFoundError:
+            tz = timezone.utc
+        now_utc = datetime.now(timezone.utc)
+        now_local = now_utc.astimezone(tz)
+        tz_label = self.user_timezone if isinstance(tz, ZoneInfo) else "UTC"
+
+        return {
+            "current_utc_time": now_utc.isoformat(timespec="seconds"),
+            "user_local_time": now_local.isoformat(timespec="seconds"),
+            "day_of_week": now_local.strftime("%A"),
+            "user_timezone": tz_label,
+        }
 
     @property
     def service_name(self) -> str:

@@ -14,11 +14,13 @@ import os
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from arthur_common.models.llm_model_providers import OpenAIMessage, ToolCall
 from openinference.semconv.trace import (
     MessageAttributes,
+    OpenInferenceSpanKindValues,
+    PromptAttributes,
     SpanAttributes,
     ToolCallAttributes,
 )
@@ -168,6 +170,53 @@ class InternalTraceService:
         span.set_attribute(SpanAttributes.TOOL_NAME, tool_name)
         self.spans.append(span)
         return span
+
+    def start_prompt_span(
+        self,
+        parent: TraceSpanBuilder,
+        prompt_name: str,
+    ) -> TraceSpanBuilder:
+        span = TraceSpanBuilder(self.trace_id, parent.span_id)
+        span.name = prompt_name
+        span.set_attribute(
+            SpanAttributes.OPENINFERENCE_SPAN_KIND,
+            OpenInferenceSpanKindValues.PROMPT.value,
+        )
+        self.spans.append(span)
+        return span
+
+    def set_prompt_template(
+        self,
+        span: TraceSpanBuilder,
+        template_messages: List[OpenAIMessage],
+        variables: Dict[str, str],
+        version: Optional[int] = None,
+    ) -> None:
+        span.set_attribute(
+            SpanAttributes.LLM_PROMPT_TEMPLATE,
+            json.dumps(
+                [m.model_dump(exclude_none=True) for m in template_messages],
+            ),
+        )
+        span.set_attribute(
+            SpanAttributes.LLM_PROMPT_TEMPLATE_VARIABLES,
+            json.dumps(variables),
+        )
+        if version is not None:
+            span.set_attribute(SpanAttributes.LLM_PROMPT_TEMPLATE_VERSION, version)
+        self.set_input_json(span, variables)
+
+    def set_prompt_rendered(
+        self,
+        span: TraceSpanBuilder,
+        rendered_messages: List[OpenAIMessage],
+    ) -> None:
+        rendered_payload = [
+            m.model_dump(exclude_none=True) for m in rendered_messages
+        ]
+        rendered_json = json.dumps(rendered_payload)
+        span.set_attribute(PromptAttributes.PROMPT_TEXT, rendered_json)
+        self.set_output_json(span, rendered_payload)
 
     def set_llm_input_messages(
         self,
