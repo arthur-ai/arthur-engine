@@ -86,7 +86,7 @@ class TaskRepository:
         # Tenant callers see only their own org's tasks. Admin (org_scope=None)
         # passes through and sees everything.
         if org_scope is not None:
-            stmt = stmt.where(DatabaseTask.org_id == str(org_scope))
+            stmt = stmt.where(DatabaseTask.org_id == org_scope)
         if ids:
             stmt = stmt.where(DatabaseTask.id.in_(ids))
         if task_name:

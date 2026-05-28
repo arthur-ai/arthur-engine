@@ -66,6 +66,7 @@ def permission_checker(permissions: frozenset[str]) -> Callable[[FunctionT], Fun
 
             return func(*args, **kwargs)
 
+        wrapper._required_permissions = permissions  # type: ignore[attr-defined]
         return cast(FunctionT, wrapper)
 
     return auth_required
@@ -146,6 +147,9 @@ def enforce_org_scope(
 
             return await _call(func, *args, **kwargs)
 
+        wrapper._org_scope_enforced = True  # type: ignore[attr-defined]
+        wrapper._org_scope_kind = "path"  # type: ignore[attr-defined]
+        wrapper._org_scope_param = path_param  # type: ignore[attr-defined]
         return cast(FunctionT, wrapper)
 
     return decorator
@@ -249,6 +253,9 @@ def enforce_query_org_scope(
 
             return await _call(func, *args, **kwargs)
 
+        wrapper._org_scope_enforced = True  # type: ignore[attr-defined]
+        wrapper._org_scope_kind = "query"  # type: ignore[attr-defined]
+        wrapper._org_scope_param = query_param  # type: ignore[attr-defined]
         return cast(FunctionT, wrapper)
 
     return decorator

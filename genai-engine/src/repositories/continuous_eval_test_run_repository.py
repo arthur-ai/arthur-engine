@@ -162,7 +162,7 @@ class ContinuousEvalTestRunRepository:
         if org_scope is not None:
             q = q.join(
                 DatabaseTask, DatabaseTask.id == DatabaseContinuousEvalTestRun.task_id
-            ).filter(DatabaseTask.org_id == str(org_scope))
+            ).filter(DatabaseTask.org_id == org_scope)
         db_test_run = q.first()
         if not db_test_run:
             raise HTTPException(
@@ -184,7 +184,7 @@ class ContinuousEvalTestRunRepository:
         if org_scope is not None:
             base_query = base_query.join(
                 DatabaseTask, DatabaseTask.id == DatabaseContinuousEvalTestRun.task_id
-            ).filter(DatabaseTask.org_id == str(org_scope))
+            ).filter(DatabaseTask.org_id == org_scope)
 
         if pagination_parameters:
             sort_fn = (
@@ -224,7 +224,7 @@ class ContinuousEvalTestRunRepository:
         # agentic_annotations carries denormalized org_id — direct filter.
         if org_scope is not None:
             base_query = base_query.filter(
-                DatabaseAgenticAnnotation.org_id == str(org_scope),
+                DatabaseAgenticAnnotation.org_id == org_scope,
             )
 
         if pagination_parameters:
@@ -268,7 +268,7 @@ class ContinuousEvalTestRunRepository:
         if org_scope is not None:
             q = q.join(
                 DatabaseTask, DatabaseTask.id == DatabaseContinuousEvalTestRun.task_id
-            ).filter(DatabaseTask.org_id == str(org_scope))
+            ).filter(DatabaseTask.org_id == org_scope)
         db_test_run = q.first()
         if not db_test_run:
             raise HTTPException(

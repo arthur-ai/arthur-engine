@@ -83,7 +83,7 @@ class TraceAnnotationService:
         )
         if org_scope is not None:
             existing_annotation_q = existing_annotation_q.filter(
-                DatabaseAgenticAnnotation.org_id == str(org_scope),
+                DatabaseAgenticAnnotation.org_id == org_scope,
             )
         existing_annotation = existing_annotation_q.one_or_none()
 
@@ -121,7 +121,7 @@ class TraceAnnotationService:
             DatabaseAgenticAnnotation.id == annotation_id,
         )
         if org_scope is not None:
-            q = q.filter(DatabaseAgenticAnnotation.org_id == str(org_scope))
+            q = q.filter(DatabaseAgenticAnnotation.org_id == org_scope)
         db_annotation = q.one_or_none()
 
         if not db_annotation:
@@ -157,7 +157,7 @@ class TraceAnnotationService:
         )
         if org_scope is not None:
             base_query = base_query.filter(
-                DatabaseAgenticAnnotation.org_id == str(org_scope),
+                DatabaseAgenticAnnotation.org_id == org_scope,
             )
 
         if filter_request:
@@ -219,7 +219,7 @@ class TraceAnnotationService:
             == AgenticAnnotationType.HUMAN.value,
         )
         if org_scope is not None:
-            q = q.filter(DatabaseAgenticAnnotation.org_id == str(org_scope))
+            q = q.filter(DatabaseAgenticAnnotation.org_id == org_scope)
         db_annotation = q.one_or_none()
 
         if db_annotation is None:

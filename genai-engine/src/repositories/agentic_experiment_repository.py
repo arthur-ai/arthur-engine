@@ -69,7 +69,7 @@ class AgenticExperimentRepository:
         if org_scope is not None:
             q = q.join(
                 DatabaseTask, DatabaseTask.id == DatabaseAgenticExperiment.task_id
-            ).filter(DatabaseTask.org_id == str(org_scope))
+            ).filter(DatabaseTask.org_id == org_scope)
         db_experiment = q.first()
         if not db_experiment:
             raise HTTPException(
