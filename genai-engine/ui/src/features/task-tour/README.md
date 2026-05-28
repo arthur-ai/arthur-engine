@@ -16,7 +16,11 @@ Examples:
 - Manual feedback: click a feedback button, fill the feedback popover, then
   submit successfully to complete the step.
 - Generate synthetic data: click the Generate button, configure the modal, then
-  start generation to complete the step.
+  start generation or cancel the optional modal to complete the step.
+- Evaluate results: open the Results tab, click the first result row, then
+  close the details modal after reviewing it.
+- Add trace to dataset: open Add to Dataset from a trace drawer, configure the
+  drawer, then save the row successfully.
 
 ### Desired Behavior
 
@@ -30,7 +34,8 @@ A composite step has three separate concepts:
 Do not complete a composite step just because the user opened a modal or popover.
 Opening the surface only moves the spotlight. Completion should happen on the
 real outcome: submit success, generation started, modal closed after review, and
-so on.
+so on. Optional steps may also complete on cancel when skipping the optional work
+is an accepted outcome.
 
 ## Implementation Recipe
 

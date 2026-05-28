@@ -8,6 +8,8 @@ intro:
   scenario:
     label: What you'll do
 steps:
+  - id: open-production-prompt
+    title: Reopen the winning prompt
   - id: tag-production
     title: Tag the winning prompt as production
   - id: verify-eval-passes
@@ -16,11 +18,15 @@ steps:
 
 ## intro
 
-Tag the winning prompt as production, then re-run the agent and confirm the readability eval is green on fresh traces. That's the loop closing — the failure you found in Observe is the failure you just shipped a fix for.
+Reopen the winning prompt, tag it as production, then re-run the agent and confirm the readability eval is green on fresh traces. That's the loop closing — the failure you found in Observe is the failure you just shipped a fix for.
 
 ## scenario
 
-On the prompt detail view, promote the best experiment candidate to production. Then return to Observe and verify a new trace clears the readability eval.
+Return to the prompt detail view, promote the best experiment candidate to production, then return to Observe and verify a new trace clears the readability eval.
+
+## step: open-production-prompt
+
+Open the prompt you want to ship. The production tag is applied from the prompt detail view, so this brings you back to the version metadata before you promote it.
 
 ## step: tag-production
 

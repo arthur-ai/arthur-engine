@@ -23,7 +23,6 @@ import {
   selectHasUnsavedChanges,
   useDatasetContext,
 } from "@/contexts/dataset";
-import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { EVENT_NAMES, track } from "@/services/amplitude";
@@ -249,7 +248,6 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
       });
       dispatch({ type: "UI/TOGGLE_SYNTHETIC_MODAL", payload: false });
       showSnackbar(`Added ${rows.length} synthetic row${rows.length !== 1 ? "s" : ""}`, "success");
-      dispatchTourEvent(TASK_TOUR_EVENTS.syntheticDataGenerated);
     },
     [dispatch, showSnackbar]
   );

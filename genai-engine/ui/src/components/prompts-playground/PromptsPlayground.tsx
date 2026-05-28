@@ -24,6 +24,8 @@ import SetConfigDrawer from "./SetConfigDrawer";
 import { PlaygroundInitialData } from "./types";
 
 import { CreateExperimentModal } from "@/components/prompt-experiments/CreateExperimentModal";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
+import { refreshTaskTourTarget } from "@/features/task-tour/tourEvents";
 import { useModelProviders, useAvailableModels } from "@/hooks/useModelProviders";
 import { useNotebookHistory } from "@/hooks/useNotebooks";
 import { useTask } from "@/hooks/useTask";
@@ -107,6 +109,14 @@ const PromptsPlayground = ({ initialData }: { initialData: PlaygroundInitialData
   };
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const promptCountRef = useRef(state.prompts.length);
+
+  useEffect(() => {
+    if (promptCountRef.current === state.prompts.length) return;
+    promptCountRef.current = state.prompts.length;
+    const frame = window.requestAnimationFrame(() => refreshTaskTourTarget());
+    return () => window.cancelAnimationFrame(frame);
+  }, [state.prompts.length]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -211,7 +221,7 @@ const PromptsPlayground = ({ initialData }: { initialData: PlaygroundInitialData
         <Box component="main" className="flex-1 flex flex-col">
           <Box ref={scrollContainerRef} className="flex-1 overflow-x-auto overflow-y-auto p-1">
             <Stack direction="row" spacing={1} sx={{ height: "100%" }}>
-              {state.prompts.map((prompt) => {
+              {state.prompts.map((prompt, index) => {
                 const promptHasCost = !!(
                   prompt.runResponse?.cost &&
                   prompt.runResponse.cost !== "-" &&
@@ -219,9 +229,15 @@ const PromptsPlayground = ({ initialData }: { initialData: PlaygroundInitialData
                   parseFloat(prompt.runResponse.cost) > 0
                 );
                 const highlightThisPrompt = shouldHighlightCosts && promptHasCost;
+                const isNewestPrompt = index === state.prompts.length - 1;
 
                 return (
-                  <Box key={prompt.id} className="flex-1 h-full" sx={{ minWidth: 400 }}>
+                  <Box
+                    key={prompt.id}
+                    className="flex-1 h-full"
+                    data-tour-id={isNewestPrompt ? TOUR_IDS.playgroundPromptCard : undefined}
+                    sx={{ minWidth: 400 }}
+                  >
                     <PromptComponent prompt={prompt} useIconOnlyMode={false} highlightCost={highlightThisPrompt} />
                   </Box>
                 );

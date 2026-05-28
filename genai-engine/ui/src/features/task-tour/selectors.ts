@@ -13,12 +13,20 @@ export const TOUR_IDS = {
   navEvaluate: "task-tour-nav-evaluate",
   navDatasets: "task-tour-nav-datasets",
   navPrompts: "task-tour-nav-prompts",
+  /** Results tab on the Evaluate page. */
+  evaluateResultsTab: "task-tour-evaluate-results-tab",
+  /** First row in Evaluate > Results. */
+  evaluateResultsFirstRow: "task-tour-evaluate-results-first-row",
+  /** Details dialog opened from an Evaluate results row. */
+  evaluateResultsDetailsDialog: "task-tour-evaluate-results-details-dialog",
   tracesFirstRow: "task-tour-traces-first-row",
   traceDrawerSpans: "task-tour-trace-spans",
   traceDrawerEvals: "task-tour-trace-evals",
   traceAnnotationsModal: "task-tour-trace-annotations-modal",
   traceDrawerFeedback: "task-tour-trace-feedback",
   traceFeedbackPopover: "task-tour-trace-feedback-popover",
+  /** Trace drawer actions region containing secondary trace actions. */
+  traceActions: "task-tour-trace-actions",
   /**
    * Coarse wrapper around the trace drawer body for the "Add trace to dataset"
    * step. The Add-to-Dataset button itself lives inside
@@ -26,6 +34,10 @@ export const TOUR_IDS = {
    * it; the step is `event-only` and uses this wrapper as the visual anchor.
    */
   traceDrawerAddToDataset: "task-tour-trace-add-to-dataset",
+  /** Trace drawer Add-to-Dataset action control when discoverable in the DOM. */
+  traceAddToDatasetAction: "task-tour-trace-add-to-dataset-action",
+  /** Add-to-Dataset drawer surface after the trace drawer trigger opens it. */
+  traceAddToDatasetDrawer: "task-tour-trace-add-to-dataset-drawer",
   evaluatorsFirstCard: "task-tour-evaluator-first",
   testNotebookCreate: "task-tour-test-notebook-create",
   chatSendPlaceholder: "task-tour-chat-send",
@@ -41,10 +53,18 @@ export const TOUR_IDS = {
   promptsManagementTab: "task-tour-prompts-management-tab",
   /** First row in the prompts management table — used for "inspect a prompt". */
   promptsFirstRow: "task-tour-prompts-first-row",
+  /** Prompt detail button that opens the selected prompt in the playground. */
+  promptOpenInPlayground: "task-tour-prompt-open-in-playground",
   /** Add-tag icon-button on the prompt detail view — used for "tag as production". */
   promptAddTag: "task-tour-prompt-add-tag",
+  /** Prompt tags popover opened by the add-tag icon button. */
+  promptTagsPopover: "task-tour-prompt-tags-popover",
   /** "Add Prompt" button in the playground header — used for the prompt-tuning step. */
   playgroundAddPrompt: "task-tour-playground-add-prompt",
+  /** Newest prompt card in the playground prompt column list. */
+  playgroundPromptCard: "task-tour-playground-prompt-card",
+  /** Variables control in the playground header. */
+  playgroundVariablesButton: "task-tour-playground-variables",
   /** "Experiment" button in the prompts view (visible on the Runs tab). */
   promptsExperimentButton: "task-tour-prompts-experiment",
 } as const;

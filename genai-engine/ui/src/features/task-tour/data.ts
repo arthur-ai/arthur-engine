@@ -31,9 +31,10 @@ export interface TaskTourItem {
   route?: TaskSubRoute;
   search?: Record<string, string>;
   actionName: string;
-  advance?: "click+action" | "action-only";
+  advance?: StepWiring["advance"];
   prepareKey?: string;
   skipWhenEmptyKey?: string;
+  popover?: StepWiring["popover"];
 }
 
 /**

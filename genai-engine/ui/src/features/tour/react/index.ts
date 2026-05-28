@@ -1,10 +1,12 @@
 export { useReactRouterNavigator } from "./adapters/reactRouter";
 export { TourEngineContext } from "./context";
 export { PreparationRunner } from "./PreparationRunner";
+export { QueryHookTargetRefresh } from "./QueryHookTargetRefresh";
 export {
   applyBackdropAction,
   BackdropBlocker,
   getHighlightPadding,
+  GuidedStepPopover,
   PopoverAnchor,
   Spotlight,
   TargetTracker,

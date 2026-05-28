@@ -135,6 +135,7 @@ function buildItems(sectionId: string, frontmatter: SectionFrontmatter, bodyStep
       advance: wired.advance,
       prepareKey: wired.prepareKey,
       skipWhenEmptyKey: wired.skipWhenEmptyKey,
+      popover: wired.popover,
     };
   });
 }

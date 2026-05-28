@@ -110,6 +110,12 @@ export interface OverlayConfig {
   color?: string;
 }
 
+export interface StepPopoverConfig {
+  placement?: Placement;
+  showNext?: boolean;
+  nextLabel?: string;
+}
+
 // =============================================================================
 // Step / section / tour configuration
 // =============================================================================
@@ -151,6 +157,7 @@ export interface StepConfig {
   target: TargetSpec;
   content: ReactNode | ((ctx: StepRenderContext) => ReactNode);
   placement?: Placement;
+  popover?: StepPopoverConfig;
   highlight?: HighlightSpec;
   overlay?: OverlayConfig;
   advanceOn?: AdvanceTrigger | AdvanceTrigger[];

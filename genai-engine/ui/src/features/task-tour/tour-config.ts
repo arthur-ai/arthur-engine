@@ -5,6 +5,7 @@ import { tourSelector } from "./selectors";
 import type { AdvanceTrigger, RouteSpec, SectionConfig, StepConfig, StepContext, TargetSpec, TourConfig } from "@/features/tour";
 
 const STEP_TIMEOUT_MS = 4000;
+const PROMPT_DETAIL_STEP_TIMEOUT_MS = 10_000;
 /**
  * Trace steps mount lazily (route + drawer chunk + suspense query). The
  * `prepare` hook for trace steps opens the drawer and waits for the table to
@@ -25,6 +26,7 @@ function routeFor(taskId: string, item: TaskTourItem): RouteSpec | undefined {
 }
 
 function advanceFor(item: TaskTourItem): AdvanceTrigger[] {
+  if (item.advance === "manual") return [{ type: "manual" }];
   const actionTrigger: AdvanceTrigger = { type: "action", name: item.actionName };
   if (item.advance === "action-only") return [actionTrigger];
   return [{ type: "click" }, actionTrigger];
@@ -45,6 +47,7 @@ export interface BuildTourConfigOptions {
 function buildStep(taskId: string, item: TaskTourItem, opts: BuildTourConfigOptions): StepConfig {
   const route = routeFor(taskId, item);
   const isTracesRouteStep = item.route === "traces";
+  const isPromptDetailStep = item.targetHookId === "task-tour.promptOpenInPlayground";
   const skipWhen = item.skipWhenEmptyKey ? (ctx: StepContext) => Promise.resolve(opts.isEmpty?.(item.skipWhenEmptyKey!, ctx) ?? false) : undefined;
   return {
     id: item.id,
@@ -58,9 +61,10 @@ function buildStep(taskId: string, item: TaskTourItem, opts: BuildTourConfigOpti
     },
     overlay: { blockInteraction: true, onBackdropClick: "none", color: TASK_TOUR_BACKDROP_COLOR },
     ...(route ? { route } : {}),
+    ...(item.popover ? { popover: item.popover } : {}),
     ...(item.prepareKey ? { prepare: { key: item.prepareKey } } : {}),
     ...(skipWhen ? { skipWhen } : {}),
-    awaitTarget: { timeoutMs: isTracesRouteStep ? TRACES_STEP_TIMEOUT_MS : STEP_TIMEOUT_MS },
+    awaitTarget: { timeoutMs: isTracesRouteStep ? TRACES_STEP_TIMEOUT_MS : isPromptDetailStep ? PROMPT_DETAIL_STEP_TIMEOUT_MS : STEP_TIMEOUT_MS },
     advanceOn: advanceFor(item),
   };
 }

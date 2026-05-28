@@ -12,8 +12,16 @@ steps:
     title: Open Datasets
   - id: open-preloaded-dataset
     title: Open the pre-loaded dataset
-  - id: add-trace-to-dataset
-    title: Add a trace to the dataset
+  - id: open-traces-for-dataset
+    title: Return to Observe
+  - id: open-trace-for-dataset
+    title: Open a failing trace
+  - id: review-trace-actions
+    title: Find Trace Actions
+  - id: open-add-to-dataset
+    title: Open Add to Dataset
+  - id: save-trace-to-dataset
+    title: Save the trace to the dataset
   - id: verify-new-row
     title: Confirm the new row landed
   - id: generate-synthetic
@@ -36,9 +44,25 @@ Click Dataset in the sidebar to see the test sets available on this task.
 
 Click the top dataset row. This is the test suite developers use to make sure the agent doesn't regress on cases we already know matter.
 
-## step: add-trace-to-dataset
+## step: open-traces-for-dataset
 
-Head back to Observe, open the trace with the failing readability eval, and use 'Add to Dataset' to capture it as a test case. This is how you turn a real-world failure into a permanent regression check. (Mark complete when done.)
+Head back to Observe so you can capture the real failing trace as a regression case.
+
+## step: open-trace-for-dataset
+
+Open the trace with the failing readability eval. This is the example you want future prompt versions to pass.
+
+## step: review-trace-actions
+
+Trace Actions is where you can promote real production behavior into reusable assets. Find the actions area before opening the dataset drawer.
+
+## step: open-add-to-dataset
+
+Click **Add to Dataset** in Trace Actions to start capturing this trace as a test case.
+
+## step: save-trace-to-dataset
+
+Configure the drawer and save the row. This turns the observed failure into a permanent regression check.
 
 ## step: verify-new-row
 
@@ -46,4 +70,4 @@ Reopen Datasets and click the same dataset — the trace you just added should b
 
 ## step: generate-synthetic
 
-Click Generate to enrich the dataset with 5–10 synthetic rows based on the examples already captured. Synthetic data broadens test coverage without waiting for real users to hit edge cases. (Mark complete when done — or skip if you'd rather move on.)
+Click Generate to enrich the dataset with 5–10 synthetic rows based on the examples already captured. Synthetic data broadens test coverage without waiting for real users to hit edge cases. You can also cancel the modal to skip this optional step and keep moving.

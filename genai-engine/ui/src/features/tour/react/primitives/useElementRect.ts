@@ -20,11 +20,13 @@ export function useElementRect(element: Element | null): DOMRect | null {
     update();
     const ro = new ResizeObserver(update);
     ro.observe(element);
+    element.addEventListener("transitionend", update);
     window.addEventListener("scroll", update, true);
     window.addEventListener("resize", update);
     return () => {
       cancelAnimationFrame(frame);
       ro.disconnect();
+      element.removeEventListener("transitionend", update);
       window.removeEventListener("scroll", update, true);
       window.removeEventListener("resize", update);
     };

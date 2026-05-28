@@ -1,6 +1,8 @@
 import { TOUR_IDS, type TourId } from "../selectors";
 import { TASK_TOUR_ACTIONS } from "../tourActions";
 
+import type { StepPopoverConfig } from "@/features/tour";
+
 /**
  * Real-app sub-route under `/tasks/:taskId/`. Mirrors the keys in `App.tsx`
  * — both flat segments (`overview`) and nested ones (`playgrounds/prompts`)
@@ -55,9 +57,10 @@ export interface StepWiring {
   actionName: string;
   route?: TaskSubRoute;
   search?: Record<string, string>;
-  advance?: "click+action" | "action-only";
+  advance?: "click+action" | "action-only" | "manual";
   prepareKey?: string;
   skipWhenEmptyKey?: string;
+  popover?: StepPopoverConfig;
 }
 
 /**
@@ -76,12 +79,19 @@ export interface SectionWiring {
  */
 /** Stable keys used by widgets to register query-hook resolvers. */
 export const TASK_TOUR_QUERY_HOOKS = {
+  evaluateResultDetails: "task-tour.evaluateResultDetails",
   tracesFirstRow: "task-tour.tracesFirstRow",
   traceDrawerSpans: "task-tour.traceDrawerSpans",
   traceDrawerEvals: "task-tour.traceDrawerEvals",
   traceDrawerFeedback: "task-tour.traceDrawerFeedback",
   traceDrawerAddToDataset: "task-tour.traceDrawerAddToDataset",
+  traceActions: "task-tour.traceActions",
+  traceAddToDatasetAction: "task-tour.traceAddToDatasetAction",
+  traceAddToDatasetDrawer: "task-tour.traceAddToDatasetDrawer",
   datasetGenerateSynthetic: "task-tour.datasetGenerateSynthetic",
+  promptOpenInPlayground: "task-tour.promptOpenInPlayground",
+  promptTags: "task-tour.promptTags",
+  playgroundPromptCard: "task-tour.playgroundPromptCard",
 } as const;
 
 /** Stable keys used by widgets to register preparation hooks. */
@@ -125,6 +135,19 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
         route: "evaluate",
         actionName: TASK_TOUR_ACTIONS.evaluatorReviewed,
         skipWhenEmptyKey: TASK_TOUR_SKIP_WHEN.noEvaluators,
+      },
+      "open-results-tab": {
+        targetId: TOUR_IDS.evaluateResultsTab,
+        route: "evaluate",
+        actionName: TASK_TOUR_ACTIONS.evaluateResultsOpened,
+      },
+      "review-result-details": {
+        targetId: TOUR_IDS.evaluateResultsFirstRow,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.evaluateResultDetails,
+        route: "evaluate",
+        search: { section: "results" },
+        actionName: TASK_TOUR_ACTIONS.evaluateResultDetailsReviewed,
+        advance: "action-only",
       },
     },
   },
@@ -177,9 +200,35 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
         route: "datasets",
         actionName: TASK_TOUR_ACTIONS.datasetOpened,
       },
-      "add-trace-to-dataset": {
-        targetId: TOUR_IDS.traceDrawerAddToDataset,
-        targetHookId: TASK_TOUR_QUERY_HOOKS.traceDrawerAddToDataset,
+      "open-traces-for-dataset": {
+        targetId: TOUR_IDS.navObserve,
+        actionName: TASK_TOUR_ACTIONS.observeOpened,
+      },
+      "open-trace-for-dataset": {
+        targetId: TOUR_IDS.tracesFirstRow,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.tracesFirstRow,
+        route: "traces",
+        actionName: TASK_TOUR_ACTIONS.traceOpened,
+      },
+      "review-trace-actions": {
+        targetId: TOUR_IDS.traceActions,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.traceActions,
+        route: "traces",
+        actionName: TASK_TOUR_ACTIONS.traceAddedToDataset,
+        advance: "manual",
+        prepareKey: TASK_TOUR_PREPARATIONS.traceOpened,
+        popover: { showNext: true, nextLabel: "Next", placement: "left" },
+      },
+      "open-add-to-dataset": {
+        targetId: TOUR_IDS.traceAddToDatasetAction,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.traceAddToDatasetAction,
+        route: "traces",
+        actionName: TASK_TOUR_ACTIONS.traceAddToDatasetOpened,
+        prepareKey: TASK_TOUR_PREPARATIONS.traceOpened,
+      },
+      "save-trace-to-dataset": {
+        targetId: TOUR_IDS.traceAddToDatasetDrawer,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.traceAddToDatasetDrawer,
         route: "traces",
         actionName: TASK_TOUR_ACTIONS.traceAddedToDataset,
         advance: "action-only",
@@ -194,7 +243,7 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
       "generate-synthetic": {
         targetId: TOUR_IDS.datasetGenerateSynthetic,
         targetHookId: TASK_TOUR_QUERY_HOOKS.datasetGenerateSynthetic,
-        actionName: TASK_TOUR_ACTIONS.syntheticDataGenerated,
+        actionName: TASK_TOUR_ACTIONS.syntheticDataFinished,
         advance: "action-only",
       },
     },
@@ -213,20 +262,34 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
       "inspect-prompt": {
         targetId: TOUR_IDS.promptsFirstRow,
         route: "prompts",
+        search: { tab: "prompts-management" },
         actionName: TASK_TOUR_ACTIONS.promptInspected,
       },
-      // Routes to the Notebooks tab — the entry point for the playground
-      // workflow described in the markdown copy. The actual target
-      // (`playgroundAddPrompt`) lives inside the playground, reached by
-      // opening a notebook from the listing; the step stays `action-only`
-      // because we can't statically deep-link to a notebook's playground
-      // URL (it requires a `notebookId` we don't know at config time).
-      "create-prompts-in-playground": {
-        targetId: TOUR_IDS.playgroundAddPrompt,
-        route: "prompts",
-        search: { tab: "notebooks" },
-        actionName: TASK_TOUR_ACTIONS.playgroundPromptsCreated,
+      "open-in-playground": {
+        targetId: TOUR_IDS.promptOpenInPlayground,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.promptOpenInPlayground,
+        actionName: TASK_TOUR_ACTIONS.promptOpenedInPlayground,
         advance: "action-only",
+      },
+      // The preceding prompt-detail step navigates to a runtime notebook URL
+      // that includes notebookId. Keep this step on the current page so the
+      // static router does not strip that dynamic query param.
+      "add-prompt-in-playground": {
+        targetId: TOUR_IDS.playgroundAddPrompt,
+        actionName: TASK_TOUR_ACTIONS.playgroundPromptsCreated,
+      },
+      "review-playground-prompt": {
+        targetId: TOUR_IDS.playgroundPromptCard,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.playgroundPromptCard,
+        actionName: TASK_TOUR_ACTIONS.playgroundPromptsCreated,
+        advance: "manual",
+        popover: { showNext: true, nextLabel: "Next", placement: "right" },
+      },
+      "review-playground-controls": {
+        targetId: TOUR_IDS.playgroundVariablesButton,
+        actionName: TASK_TOUR_ACTIONS.playgroundPromptsCreated,
+        advance: "manual",
+        popover: { showNext: true, nextLabel: "Next", placement: "bottom" },
       },
       "run-experiment": {
         targetId: TOUR_IDS.promptsExperimentButton,
@@ -238,8 +301,15 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
   },
   deploy: {
     steps: {
+      "open-production-prompt": {
+        targetId: TOUR_IDS.promptsFirstRow,
+        route: "prompts",
+        search: { tab: "prompts-management" },
+        actionName: TASK_TOUR_ACTIONS.promptInspected,
+      },
       "tag-production": {
         targetId: TOUR_IDS.promptAddTag,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.promptTags,
         actionName: TASK_TOUR_ACTIONS.promptPromoted,
         advance: "action-only",
       },

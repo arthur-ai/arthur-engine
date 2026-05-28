@@ -133,12 +133,12 @@ export const TraceDrawerContent = ({ id }: Props) => {
   );
 
   // Task-tour anchors. `TraceDrawerBody`'s `slotProps` spreads each entry onto
-  // a wrapping `<div>` inside the drawer, so we can attach `data-tour-id` (and
-  // the corresponding `dispatchTourEvent` click handler for `event-only`
-  // steps) without resorting to opaque DOM wrappers.
+  // a wrapping `<div>` inside the drawer, so we can attach `data-tour-id`
+  // without resorting to opaque DOM wrappers.
   const tourSlotProps = useMemo<TraceDrawerBodySlotProps>(
     () => ({
       root: { "data-tour-id": TOUR_IDS.traceDrawerAddToDataset },
+      actions: { "data-tour-id": TOUR_IDS.traceActions },
       spans: {
         "data-tour-id": TOUR_IDS.traceDrawerSpans,
         onClick: () => dispatchTourEvent(TASK_TOUR_EVENTS.spansReviewed),
@@ -160,6 +160,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
       onAddToDataset={() => {
         handleAddToDataset();
         setAddToDatasetOpen(true);
+        dispatchTourEvent(TASK_TOUR_EVENTS.traceAddToDatasetOpened);
       }}
       onOpenSpanDrawer={(spanId) => setDrawerTarget({ target: "span", id: spanId })}
       onOpenPlayground={(spanId, taskId) => navigate(`/tasks/${taskId}/playgrounds/prompts?spanId=${spanId}`)}

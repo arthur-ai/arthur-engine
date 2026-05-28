@@ -59,17 +59,31 @@ function resolveTraceDrawerSpans(): Element | null {
   );
 }
 
-/**
- * Construct a stable resolver bound to a single `data-tour-id` value. The
- * returned function is identity-stable across renders (it's a fresh closure
- * each call, but the caller pins it via `useMemo` below).
- */
-function makeDataTourIdResolver(id: string): () => Element | null {
-  return () => document.querySelector(tourSelector(id as never));
-}
-
 function makePreferredDataTourIdResolver(preferredId: string, fallbackId: string): () => Element | null {
   return () => document.querySelector(tourSelector(preferredId as never)) ?? document.querySelector(tourSelector(fallbackId as never));
+}
+
+function findButtonByText(root: ParentNode, label: RegExp): Element | null {
+  const buttons = Array.from(root.querySelectorAll("button, [role='button']"));
+  return buttons.find((button) => label.test(button.textContent ?? "")) ?? null;
+}
+
+export function resolveTraceActionsTarget(): Element | null {
+  return document.querySelector(tourSelector(TOUR_IDS.traceActions)) ?? document.querySelector(tourSelector(TOUR_IDS.traceDrawerAddToDataset));
+}
+
+export function resolveTraceAddToDatasetActionTarget(): Element | null {
+  const explicitAction = document.querySelector(tourSelector(TOUR_IDS.traceAddToDatasetAction));
+  if (explicitAction) return explicitAction;
+  const traceActions = resolveTraceActionsTarget();
+  const actionByText = findButtonByText(traceActions ?? document, /add\s+to\s+dataset/i);
+  if (actionByText) return actionByText;
+  const traceDrawer = document.querySelector(tourSelector(TOUR_IDS.traceDrawerAddToDataset));
+  return traceDrawer ? (findButtonByText(traceDrawer, /add\s+to\s+dataset/i) ?? traceDrawer) : null;
+}
+
+export function resolveTraceAddToDatasetDrawerTarget(): Element | null {
+  return document.querySelector(tourSelector(TOUR_IDS.traceAddToDatasetDrawer)) ?? resolveTraceAddToDatasetActionTarget();
 }
 
 /**
@@ -82,13 +96,15 @@ function makePreferredDataTourIdResolver(preferredId: string, fallbackId: string
 export function TracesTargetWidget() {
   const drawerEvals = useMemo(() => makePreferredDataTourIdResolver(TOUR_IDS.traceAnnotationsModal, TOUR_IDS.traceDrawerEvals), []);
   const drawerFeedback = useMemo(() => makePreferredDataTourIdResolver(TOUR_IDS.traceFeedbackPopover, TOUR_IDS.traceDrawerFeedback), []);
-  const drawerAddToDataset = useMemo(() => makeDataTourIdResolver(TOUR_IDS.traceDrawerAddToDataset), []);
 
   useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.tracesFirstRow, resolveTracesFirstRow);
   useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.traceDrawerSpans, resolveTraceDrawerSpans);
   useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.traceDrawerEvals, drawerEvals);
   useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.traceDrawerFeedback, drawerFeedback);
-  useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.traceDrawerAddToDataset, drawerAddToDataset);
+  useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.traceDrawerAddToDataset, resolveTraceAddToDatasetDrawerTarget);
+  useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.traceActions, resolveTraceActionsTarget);
+  useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.traceAddToDatasetAction, resolveTraceAddToDatasetActionTarget);
+  useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.traceAddToDatasetDrawer, resolveTraceAddToDatasetDrawerTarget);
 
   return null;
 }

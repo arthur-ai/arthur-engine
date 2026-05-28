@@ -8,14 +8,17 @@ import {
   CertificateWidget,
   ChecklistWidget,
   DatasetTargetWidget,
+  EvaluateTargetWidget,
   IntroWidget,
+  PromptTargetWidget,
   ResumeFabWidget,
   SectionCompleteWidget,
   SpotlightWidget,
   TracesTargetWidget,
+  TracesTourCleanupWidget,
 } from "./widgets";
 
-import { TourHost, TourProvider, useReactRouterNavigator, useTourEngine } from "@/features/tour";
+import { GuidedStepPopover, TourHost, TourProvider, useReactRouterNavigator, useTourEngine } from "@/features/tour";
 import { useApi } from "@/hooks/useApi";
 
 export interface TaskTourProps {
@@ -122,10 +125,14 @@ function TaskTourBody({
   return (
     <TourHost>
       <DatasetTargetWidget />
+      <EvaluateTargetWidget />
+      <PromptTargetWidget />
       <TracesTargetWidget />
+      <TracesTourCleanupWidget />
       <IntroWidget />
       <SectionCompleteWidget anchorRect={panelAnchoredToFab ? fabAnchorRect : null} />
       <SpotlightWidget />
+      <GuidedStepPopover />
       <ChecklistWidget statePlugin={statePlugin} panelAnchorRect={panelAnchoredToFab ? fabAnchorRect : null} />
       <ResumeFabWrapper
         statePlugin={statePlugin}
