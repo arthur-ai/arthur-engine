@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, tzinfo
 from typing import AsyncGenerator, Dict, List, Optional, Tuple
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -43,13 +43,17 @@ class DemoChatbotService(BaseChatbotService):
         self.user_timezone = user_timezone
 
     def build_variable_map(self) -> Dict[str, str]:
-        try:
-            tz = ZoneInfo(self.user_timezone) if self.user_timezone else timezone.utc
-        except ZoneInfoNotFoundError:
-            tz = timezone.utc
+        tz: tzinfo = timezone.utc
+        tz_label = "UTC"
+        if self.user_timezone:
+            try:
+                tz = ZoneInfo(self.user_timezone)
+                tz_label = self.user_timezone
+            except ZoneInfoNotFoundError:
+                pass
+
         now_utc = datetime.now(timezone.utc)
         now_local = now_utc.astimezone(tz)
-        tz_label = self.user_timezone if isinstance(tz, ZoneInfo) else "UTC"
 
         return {
             "current_utc_time": now_utc.isoformat(timespec="seconds"),

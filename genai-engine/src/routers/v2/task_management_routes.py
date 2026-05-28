@@ -29,9 +29,7 @@ from clients.telemetry.telemetry_client import (
     send_telemetry_event_for_task_rule_create_completed,
 )
 from config.cache_config import cache_config
-from config.config import Config
 from dependencies import get_application_config, get_db_session, get_org_scope
-from repositories.demo_task_repository import DemoTaskRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.task_polling_state_repository import TaskPollingStateRepository

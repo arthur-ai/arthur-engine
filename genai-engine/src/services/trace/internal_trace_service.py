@@ -211,9 +211,7 @@ class InternalTraceService:
         span: TraceSpanBuilder,
         rendered_messages: List[OpenAIMessage],
     ) -> None:
-        rendered_payload = [
-            m.model_dump(exclude_none=True) for m in rendered_messages
-        ]
+        rendered_payload = [m.model_dump(exclude_none=True) for m in rendered_messages]
         rendered_json = json.dumps(rendered_payload)
         span.set_attribute(PromptAttributes.PROMPT_TEXT, rendered_json)
         self.set_output_json(span, rendered_payload)

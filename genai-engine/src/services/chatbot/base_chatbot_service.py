@@ -174,7 +174,9 @@ class BaseChatbotService(ABC):
 
         variable_map = self.build_variable_map()
         if variable_map:
-            template_snapshot = [m.model_copy(deep=True) for m in current_prompt.messages]
+            template_snapshot = [
+                m.model_copy(deep=True) for m in current_prompt.messages
+            ]
             prompt_span = self.tracing.start_prompt_span(
                 agent_span,
                 prompt_name=current_prompt.name,
