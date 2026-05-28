@@ -47,7 +47,7 @@ class RuleRepository:
                 self.db_session.query(DatabaseTaskToRules)
                 .join(DatabaseTask, DatabaseTask.id == DatabaseTaskToRules.task_id)
                 .where(DatabaseTaskToRules.rule_id == DatabaseRule.id)
-                .where(DatabaseTask.org_id == str(org_scope))
+                .where(DatabaseTask.org_id == org_scope)
             )
             query = query.where(
                 (DatabaseRule.scope == RuleScope.DEFAULT)

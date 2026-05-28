@@ -80,7 +80,7 @@ class TraceTransformRepository:
             q = q.join(
                 DatabaseTask,
                 DatabaseTask.id == DatabaseTraceTransform.task_id,
-            ).filter(DatabaseTask.org_id == str(org_scope))
+            ).filter(DatabaseTask.org_id == org_scope)
         return q.one_or_none()
 
     def _get_latest_definition(self, transform_id: UUID) -> TraceTransformDefinition:

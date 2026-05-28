@@ -63,7 +63,7 @@ class RagProvidersRepository:
             q = q.join(
                 DatabaseTask,
                 DatabaseTask.id == DatabaseRagProviderConfiguration.task_id,
-            ).filter(DatabaseTask.org_id == str(org_scope))
+            ).filter(DatabaseTask.org_id == org_scope)
         db_config = q.first()
 
         if not db_config:
@@ -211,7 +211,7 @@ class RagProvidersRepository:
             q = q.join(
                 DatabaseTask,
                 DatabaseTask.id == DatabaseRagSearchSettingConfiguration.task_id,
-            ).filter(DatabaseTask.org_id == str(org_scope))
+            ).filter(DatabaseTask.org_id == org_scope)
         db_config = q.first()
 
         if not db_config:

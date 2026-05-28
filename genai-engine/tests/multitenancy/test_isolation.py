@@ -197,18 +197,6 @@ PATTERN_C_CASES = [
 ]
 
 
-# Pattern C handlers that 500 today on the in-memory SQLite test setup
-# because the repository filter is written as `org_id == str(org_scope)`.
-# SQLAlchemy 2.x's Uuid(as_uuid=True) processor rejects the string bind on
-# SQLite (Postgres' PGUUID coerces and hides this in prod). When that
-# `str(...)` pattern is dropped from the repo filters, these xfails flip
-# to xpass and reviewers see the contract is now actually enforced.
-_PATTERN_C_STR_UUID_BUG = {
-    "GET /api/v1/traces/annotations/{annotation_id}",
-    "GET /api/v2/datasets/{dataset_id}",
-    "GET /api/v1/agentic_experiments/{experiment_id}",
-}
-
 # Pattern D — query-param task_ids. Caller explicitly names a foreign ID.
 # Expect 403 (the caller named the ID; no enumeration concern to hide).
 PATTERN_D_CASES = [
@@ -282,24 +270,11 @@ def _seed_target(case: IsolationCase, world: TenantWorld):
 
 @pytest.mark.unit_tests
 @pytest.mark.parametrize("case", ISOLATION_CASES, ids=lambda c: f"{c.pattern}-{c.name}")
-def test_k1_cross_org_call_blocked(
-    tenant_world: TenantWorld, case: IsolationCase, request: pytest.FixtureRequest
-):
+def test_k1_cross_org_call_blocked(tenant_world: TenantWorld, case: IsolationCase):
     """K1 (org=O1) targets a resource in O2. Every call returns the documented
     isolation status: 404 for path/resource, 403 for query."""
     if _seed_target(case, tenant_world) is None:
         pytest.skip(f"{case.name}: required seed missing")
-    if case.name in _PATTERN_C_STR_UUID_BUG:
-        request.node.add_marker(
-            pytest.mark.xfail(
-                reason=(
-                    "Repository filter binds `str(org_scope)` to a Uuid column; "
-                    "SQLite trips on the bind. Will flip to xpass once the "
-                    "str(...) cast is removed from the repo filters."
-                ),
-                strict=False,
-            )
-        )
     response = case.invoke(
         tenant_world.client.base_client,
         tenant_world.headers_for(tenant_world.k1),
@@ -359,14 +334,6 @@ def test_pattern_d_no_task_ids_transparently_scoped(tenant_world: TenantWorld):
 
 
 @pytest.mark.unit_tests
-@pytest.mark.xfail(
-    reason=(
-        "inference_repo.query_inferences binds `str(org_scope)` to a Uuid "
-        "column; SQLite trips. Will flip to xpass once the str(...) cast is "
-        "removed from the inference repo filter."
-    ),
-    strict=False,
-)
 def test_pattern_d_no_task_ids_inferences_query_scoped(tenant_world: TenantWorld):
     """K1 calls inferences/query with no task_ids. The decorator should
     inject K1's org's task_ids; the result must include T1a's inference
@@ -387,13 +354,6 @@ def test_pattern_d_no_task_ids_inferences_query_scoped(tenant_world: TenantWorld
 
 
 @pytest.mark.unit_tests
-@pytest.mark.xfail(
-    reason=(
-        "feedback_repo query binds `str(org_scope)` to a Uuid column; SQLite "
-        "trips. Will flip to xpass once the str(...) cast is removed."
-    ),
-    strict=False,
-)
 def test_pattern_d_no_task_ids_feedback_query_scoped(tenant_world: TenantWorld):
     """K1 calls feedback/query with no task_id. Result must exclude
     feedback rows attached to O2 inferences."""

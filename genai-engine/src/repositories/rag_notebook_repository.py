@@ -59,7 +59,7 @@ class RagNotebookRepository:
         if org_scope is not None:
             q = q.join(
                 DatabaseTask, DatabaseTask.id == DatabaseRagNotebook.task_id
-            ).filter(DatabaseTask.org_id == str(org_scope))
+            ).filter(DatabaseTask.org_id == org_scope)
         db_notebook = q.first()
         if not db_notebook:
             raise HTTPException(
