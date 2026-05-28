@@ -12,6 +12,7 @@ import { getSpanDuration, isSpanOfType } from "../utils/spans";
 
 import { DurationCell } from "./DurationCell";
 import { SpanStatusBadge } from "./span-status-badge";
+import { SpanErrorPanel } from "./SpanErrorPanel";
 
 import { CopyableChip } from "@/components/common";
 import { Tabs } from "@/components/ui/Tabs";
@@ -131,6 +132,7 @@ export const SpanDetailsPanels = () => {
           <Tabs.Indicator />
         </Tabs.List>
         <Tabs.Panel value="formatted" render={<Stack direction="column" gap={1} />}>
+          <SpanErrorPanel span={span} />
           {strategy?.panels.map((panel) => (
             <Collapsible.Root render={<Stack direction="column" spacing={1} />} key={panel.label} defaultOpen={panel.defaultOpen}>
               <Collapsible.Trigger className="group">

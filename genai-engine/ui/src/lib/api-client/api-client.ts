@@ -10,7 +10,7 @@
  */
 
 /** APIKeysRolesEnum */
-export type APIKeysRolesEnum = "DEFAULT-RULE-ADMIN" | "TASK-ADMIN" | "VALIDATION-USER" | "ORG-AUDITOR" | "ORG-ADMIN";
+export type APIKeysRolesEnum = "DEFAULT-RULE-ADMIN" | "TASK-ADMIN" | "VALIDATION-USER" | "ORG-AUDITOR" | "ORG-ADMIN" | "TENANT-USER";
 
 export type AddTagToAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionTagsPutData = AgenticPrompt;
 
@@ -6828,7 +6828,7 @@ export interface NewApiKeyRequest {
   description?: string | null;
   /**
    * Roles
-   * Role that will be assigned to API key. Allowed values: [<APIKeysRolesEnum.DEFAULT_RULE_ADMIN: 'DEFAULT-RULE-ADMIN'>, <APIKeysRolesEnum.TASK_ADMIN: 'TASK-ADMIN'>, <APIKeysRolesEnum.VALIDATION_USER: 'VALIDATION-USER'>, <APIKeysRolesEnum.ORG_AUDITOR: 'ORG-AUDITOR'>, <APIKeysRolesEnum.ORG_ADMIN: 'ORG-ADMIN'>]
+   * Role that will be assigned to API key. Allowed values: [<APIKeysRolesEnum.DEFAULT_RULE_ADMIN: 'DEFAULT-RULE-ADMIN'>, <APIKeysRolesEnum.TASK_ADMIN: 'TASK-ADMIN'>, <APIKeysRolesEnum.VALIDATION_USER: 'VALIDATION-USER'>, <APIKeysRolesEnum.ORG_AUDITOR: 'ORG-AUDITOR'>, <APIKeysRolesEnum.ORG_ADMIN: 'ORG-ADMIN'>, <APIKeysRolesEnum.TENANT_USER: 'TENANT-USER'>]
    * @default ["VALIDATION-USER"]
    */
   roles?: APIKeysRolesEnum[] | null;
@@ -11546,6 +11546,8 @@ export interface TraceTransformResponse {
    * @format date-time
    */
   created_at: string;
+  /** Latest version of the transform definition. */
+  definition: TraceTransformDefinition;
   /**
    * Description
    * Description of the transform.
@@ -13213,7 +13215,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.569
+ * @version 2.1.579
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -17261,7 +17263,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
   };
   auth = {
     /**
-     * @description Generates a new API key. Up to 1000 active keys can exist at the same time by default. Contact your system administrator if you need more. Allowed roles are: DEFAULT-RULE-ADMIN, TASK-ADMIN, VALIDATION-USER, ORG-AUDITOR, ORG-ADMIN.
+     * @description Generates a new API key. Up to 1000 active keys can exist at the same time by default. Contact your system administrator if you need more. Allowed roles are: DEFAULT-RULE-ADMIN, TASK-ADMIN, VALIDATION-USER, ORG-AUDITOR, ORG-ADMIN, TENANT-USER.
      *
      * @tags API Keys
      * @name CreateApiKeyAuthApiKeysPost
