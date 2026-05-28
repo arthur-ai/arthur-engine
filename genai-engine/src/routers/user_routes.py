@@ -38,6 +38,14 @@ user_management_routes = APIRouter(
     tags=["User Management"],
 )
 
+# Separate router for self-identity endpoints so they remain reachable even
+# when API-only mode is enabled (which gates the rest of user_management).
+user_identity_routes = APIRouter(
+    prefix="/users",
+    route_class=GenaiEngineRoute,
+    tags=["User Management"],
+)
+
 
 @user_management_routes.post(
     "",
@@ -82,7 +90,7 @@ def search_users(
     return [user._to_response_model() for user in users]
 
 
-@user_management_routes.get(
+@user_identity_routes.get(
     "/me",
     description=(
         "Returns the current caller's identity, roles, org_scope, and (when "
