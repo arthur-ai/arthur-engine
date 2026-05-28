@@ -12,6 +12,7 @@ design doc §7 and commit 72dced7f. No cases here.
 """
 
 import os
+import uuid
 from dataclasses import dataclass
 from typing import Callable, Optional
 from unittest.mock import patch
@@ -51,6 +52,68 @@ class IsolationCase:
     # is None (seed failed), the test skips. Optional — only Pattern C
     # cases that target dynamically-seeded resources need this.
     requires_seed: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# Body builders for cross-org-reference cases.
+#
+# These bodies are Pydantic-valid and reference resources OWNED BY T1a where
+# applicable, with one foreign field (dataset_ref.id or transform_id) pointing
+# at T2a. The point of seeding own-task evals/transforms in `conftest.py` is
+# to make every other caller-side validation step succeed, leaving the
+# cross-org reference as the ONLY thing that can reject the request. Without
+# the leak fix, these calls would 200; with the fix, they 400/404.
+# ---------------------------------------------------------------------------
+
+
+def _agentic_experiment_body_with_cross_org_dataset(w: TenantWorld) -> dict:
+    return {
+        "name": "mt-cross-agentic",
+        "dataset_ref": {"id": w.t2a_dataset_id, "version": 1},
+        "http_template": {
+            "endpoint_name": "x",
+            "endpoint_url": "http://example.com",
+            "headers": [],
+            "request_body": "{}",
+        },
+        "template_variable_mapping": [
+            {
+                "variable_name": "session_id",
+                "source": {"type": "generated", "generator_type": "session_id"},
+            },
+        ],
+        "eval_list": [
+            {
+                "name": w.t1a_llm_eval_name,
+                "version": 1,
+                "transform_id": w.t1a_transform_id,
+                "variable_mapping": [],
+            },
+        ],
+    }
+
+
+def _prompt_experiment_body_with_cross_org_dataset(w: TenantWorld) -> dict:
+    return {
+        "name": "mt-cross-prompt",
+        "dataset_ref": {"id": w.t2a_dataset_id, "version": 1},
+        "prompt_configs": [
+            {
+                "type": "unsaved",
+                "messages": [{"role": "user", "content": "test"}],
+                "model_name": "gpt-4",
+                "model_provider": "openai",
+            },
+        ],
+        "prompt_variable_mapping": [],
+        "eval_list": [
+            {
+                "name": w.t1a_llm_eval_name,
+                "version": 1,
+                "variable_mapping": [],
+            },
+        ],
+    }
 
 
 # Pattern A — path task_id. Caller K1 (O1); path carries T2a (O2). Expect 404.
@@ -196,6 +259,203 @@ PATTERN_C_CASES = [
             f"/api/v1/agentic_experiments/{w.t2a_experiment_id}", headers=h
         ),
         requires_seed="t2a_experiment_id",
+        skip_admin=True,
+    ),
+    # -----------------------------------------------------------------
+    # Cross-org-reference leaks (Family A — continuous-eval / transform).
+    # K1 calls a continuous-eval handler on T1a (its own task) with a
+    # transform_id from T2a in path/body. Without the fix, the handler
+    # reads or pins the foreign transform; with the fix, the org-scoped
+    # transform lookup returns 404.
+    # -----------------------------------------------------------------
+    IsolationCase(
+        name="GET /api/v1/tasks/{task_id}/continuous_evals/transforms/{transform_id}/llm_evals/{eval_name}/versions/{ver}/variables (cross-org transform_id)",
+        pattern="C",
+        expected=404,
+        invoke=lambda c, h, w: c.get(
+            f"/api/v1/tasks/{w.t1a.id}/continuous_evals/transforms/{w.t2a_transform_id}/llm_evals/{w.t1a_llm_eval_name}/versions/1/variables",
+            headers=h,
+        ),
+        requires_seed="t2a_transform_id",
+        # Admin without org scope would actually read the foreign transform's
+        # definition — admin path is correct, we just don't assert on it here.
+        skip_admin=True,
+    ),
+    IsolationCase(
+        name="POST /api/v1/tasks/{task_id}/continuous_evals (cross-org transform_id in body)",
+        pattern="C",
+        expected=404,
+        invoke=lambda c, h, w: c.post(
+            f"/api/v1/tasks/{w.t1a.id}/continuous_evals",
+            json={
+                "name": "mt-cross-ceval",
+                "description": "cross-org-leak-test",
+                "llm_eval_name": w.t1a_llm_eval_name,
+                "llm_eval_version": 1,
+                "transform_id": w.t2a_transform_id,
+                "transform_variable_mapping": [],
+            },
+            headers=h,
+        ),
+        requires_seed="t2a_transform_id",
+        # Admin would succeed and persist a cross-org-referencing continuous
+        # eval, polluting subsequent fixture state.
+        skip_admin=True,
+    ),
+    IsolationCase(
+        name="PATCH /api/v1/continuous_evals/{eval_id} (cross-org transform_id in body)",
+        pattern="C",
+        expected=404,
+        invoke=lambda c, h, w: c.patch(
+            f"/api/v1/continuous_evals/{w.t1a_continuous_eval_id}",
+            json={
+                "transform_id": w.t2a_transform_id,
+                "transform_variable_mapping": [],
+            },
+            headers=h,
+        ),
+        requires_seed="t1a_continuous_eval_id",
+        # Admin would successfully repoint K1's own eval to T2a's transform.
+        skip_admin=True,
+    ),
+    # -----------------------------------------------------------------
+    # Cross-org-reference leaks (Family B — experiment creation / dataset).
+    # K1 creates an experiment on T1a with a dataset_ref pointing at T2a's
+    # dataset. Without the fix, the experiment is created and reads cross-
+    # org rows at execution time; with the fix, the dataset lookup filters
+    # by task_id and 400s before any row is written.
+    # -----------------------------------------------------------------
+    IsolationCase(
+        name="POST /api/v1/tasks/{task_id}/agentic_experiments (cross-org dataset_id)",
+        pattern="C",
+        expected=400,
+        invoke=lambda c, h, w: c.post(
+            f"/api/v1/tasks/{w.t1a.id}/agentic_experiments",
+            json=_agentic_experiment_body_with_cross_org_dataset(w),
+            headers=h,
+        ),
+        requires_seed="t2a_dataset_id",
+        skip_admin=True,
+    ),
+    IsolationCase(
+        name="POST /api/v1/tasks/{task_id}/prompt_experiments (cross-org dataset_id)",
+        pattern="C",
+        expected=400,
+        invoke=lambda c, h, w: c.post(
+            f"/api/v1/tasks/{w.t1a.id}/prompt_experiments",
+            json=_prompt_experiment_body_with_cross_org_dataset(w),
+            headers=h,
+        ),
+        requires_seed="t2a_dataset_id",
+        skip_admin=True,
+    ),
+    # RAG experiment is a smoke test: rag_configs require a real RAG
+    # provider or setting configuration that we don't seed, so the
+    # rag_config validation 400s downstream of the dataset check both
+    # with and without the fix. The case still asserts the endpoint
+    # never returns 200 for a cross-org dataset_ref; the unit-level
+    # validator test pins the fix-specific behavior.
+    IsolationCase(
+        name="POST /api/v1/tasks/{task_id}/rag_experiments (cross-org dataset_id, smoke)",
+        pattern="C",
+        expected=400,
+        invoke=lambda c, h, w: c.post(
+            f"/api/v1/tasks/{w.t1a.id}/rag_experiments",
+            json={
+                "name": "mt-cross-rag",
+                "dataset_ref": {"id": w.t2a_dataset_id, "version": 1},
+                "rag_configs": [
+                    {
+                        "type": "saved",
+                        "setting_configuration_id": str(uuid.uuid4()),
+                        "version": 1,
+                        "query_column": {
+                            "type": "dataset_column",
+                            "dataset_column": {"name": "query"},
+                        },
+                    },
+                ],
+                "eval_list": [
+                    {
+                        "name": w.t1a_llm_eval_name,
+                        "version": 1,
+                        "variable_mapping": [],
+                    },
+                ],
+            },
+            headers=h,
+        ),
+        requires_seed="t2a_dataset_id",
+        skip_admin=True,
+    ),
+    # -----------------------------------------------------------------
+    # Cross-org-reference leaks (Family C — notebook state / dataset).
+    # K1 creates a notebook on T1a with state.dataset_ref pointing at
+    # T2a's dataset. Without the fix, the notebook is persisted with a
+    # cross-org reference; with the fix, the dataset filter by task_id
+    # 400s before the insert.
+    # -----------------------------------------------------------------
+    IsolationCase(
+        name="POST /api/v1/tasks/{task_id}/notebooks (cross-org dataset_id in state)",
+        pattern="C",
+        expected=400,
+        invoke=lambda c, h, w: c.post(
+            f"/api/v1/tasks/{w.t1a.id}/notebooks",
+            json={
+                "name": "mt-cross-notebook",
+                "state": {
+                    "dataset_ref": {
+                        "id": w.t2a_dataset_id,
+                        "version": 1,
+                        "name": "mt-cross",
+                    },
+                },
+            },
+            headers=h,
+        ),
+        requires_seed="t2a_dataset_id",
+        skip_admin=True,
+    ),
+    IsolationCase(
+        name="POST /api/v1/tasks/{task_id}/agentic_notebooks (cross-org dataset_id in state)",
+        pattern="C",
+        expected=400,
+        invoke=lambda c, h, w: c.post(
+            f"/api/v1/tasks/{w.t1a.id}/agentic_notebooks",
+            json={
+                "name": "mt-cross-agentic-nb",
+                "state": {
+                    "dataset_ref": {
+                        "id": w.t2a_dataset_id,
+                        "version": 1,
+                        "name": "mt-cross",
+                    },
+                },
+            },
+            headers=h,
+        ),
+        requires_seed="t2a_dataset_id",
+        skip_admin=True,
+    ),
+    IsolationCase(
+        name="POST /api/v1/tasks/{task_id}/rag_notebooks (cross-org dataset_id in state)",
+        pattern="C",
+        expected=400,
+        invoke=lambda c, h, w: c.post(
+            f"/api/v1/tasks/{w.t1a.id}/rag_notebooks",
+            json={
+                "name": "mt-cross-rag-nb",
+                "state": {
+                    "dataset_ref": {
+                        "id": w.t2a_dataset_id,
+                        "version": 1,
+                        "name": "mt-cross",
+                    },
+                },
+            },
+            headers=h,
+        ),
+        requires_seed="t2a_dataset_id",
         skip_admin=True,
     ),
 ]
