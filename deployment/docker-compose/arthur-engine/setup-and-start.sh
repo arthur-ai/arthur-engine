@@ -13,9 +13,13 @@ prompt_env_var() {
   local output_key_pair=$3
   local input_value
 
-  read -p "$var_name [Default: $default_value]: " input_value
-  if [[ -z "$input_value" ]]; then
-    input_value=$default_value
+  if [[ "$NON_INTERACTIVE" == "true" ]]; then
+    input_value="${!var_name:-$default_value}"
+  else
+    read -p "$var_name [Default: $default_value]: " input_value
+    if [[ -z "$input_value" ]]; then
+      input_value=$default_value
+    fi
   fi
 
   if [[ -n "$output_key_pair" ]]; then
@@ -23,6 +27,24 @@ prompt_env_var() {
   else
     echo "$input_value"
   fi
+}
+
+prompt_secret() {
+  local var_name=$1
+  local default_value=$2
+  local input_value
+
+  if [[ "$NON_INTERACTIVE" == "true" ]]; then
+    input_value="${!var_name:-$default_value}"
+  else
+    read -s -p "$var_name (hidden): " input_value
+    echo  # newline after silent input
+    if [[ -z "$input_value" ]]; then
+      input_value=$default_value
+    fi
+  fi
+
+  echo "$input_value"
 }
 
 parse_boolean() {
@@ -120,6 +142,8 @@ echo "└───────────────────────�
 
 check_docker_compose
 
+NON_INTERACTIVE="${SETUP_NON_INTERACTIVE:-false}"
+
 # create necessary directories if not already present
 root_dir="$HOME/.arthur-engine/local-stack"
 engine_subdir="$root_dir/arthur-engine"
@@ -184,8 +208,16 @@ else
         echo "You can use a new or existing key tied to the OpenAI project/org your LLM calls are billed to."
         echo "Don't have a key? You can skip for now and add it later. Just note: hallucination & sensitive data guardrails won't run without it."
         echo ""
-        read -p "Do you have access to OpenAI? (y/n) [Default: y]: " has_openai
-        has_openai=${has_openai:-y}
+        if [[ "$NON_INTERACTIVE" == "true" ]]; then
+            if [[ "${SETUP_SKIP_OPENAI:-false}" == "true" ]]; then
+                has_openai="n"
+            else
+                has_openai="y"
+            fi
+        else
+            read -p "Do you have access to OpenAI? (y/n) [Default: y]: " has_openai
+            has_openai=${has_openai:-y}
+        fi
 
         if [[ $has_openai =~ ^[Yy]$ ]]; then
             echo ""
@@ -200,7 +232,7 @@ else
             genai_engine_openai_gpt_endpoint=$(prompt_env_var "GENAI_ENGINE_OPENAI_GPT_ENDPOINT" "")
             echo ""
             echo "Enter the OpenAI GPT API key:"
-            genai_engine_openai_api_key=$(prompt_env_var "GENAI_ENGINE_OPENAI_GPT_API_KEY" "changeme_api_key")
+            genai_engine_openai_api_key=$(prompt_secret "GENAI_ENGINE_OPENAI_GPT_API_KEY" "changeme_api_key")
 
             all_env_vars+="$genai_engine_openai_provider
 GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$genai_engine_openai_gpt_name::$genai_engine_openai_gpt_endpoint::$genai_engine_openai_api_key"

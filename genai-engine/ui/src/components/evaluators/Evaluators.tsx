@@ -22,8 +22,16 @@ import { getContentHeight } from "@/constants/layout";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useTask } from "@/hooks/useTask";
 import { CreateEvalRequest } from "@/lib/api-client/api-client";
+import type { LLMMetadataSortField, PaginationSortMethod } from "@/lib/api-client/api-client";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+
+// Order the Evaluators list by the most recent version's creation timestamp
+// (descending) so the displayed "Updated" column is consistent across pages.
+// Without this, BE pagination by name lets page 2 contain rows updated more
+// recently than page 1.
+const EVALUATORS_SORT_BY: LLMMetadataSortField = "latest_version_created_at";
+const EVALUATORS_SORT_DIR: PaginationSortMethod = "desc";
 
 interface EvaluatorsProps {
   embedded?: boolean;
@@ -74,7 +82,8 @@ const Evaluators: React.FC<EvaluatorsProps> = ({ embedded = false, isCreateModal
     () => ({
       page: debouncedSearchQuery ? 0 : page,
       pageSize: debouncedSearchQuery ? 5000 : pageSize,
-      sort: "desc" as const,
+      sort: EVALUATORS_SORT_DIR,
+      sort_by: EVALUATORS_SORT_BY,
     }),
     [page, pageSize, debouncedSearchQuery]
   );

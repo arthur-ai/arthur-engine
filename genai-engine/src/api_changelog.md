@@ -2,6 +2,20 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 05/21/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the required property 'transforms/items/definition' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the required property 'definition' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the required property 'definition' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the required property 'definition' to the response with the '200' status
+- **CHANGE** for **URL**: /auth/api_keys/  added the new 'TENANT-USER' enum value to the request property 'roles/anyOf[subschema #1]/items/'
+
+# 05/15/2026
+- **CHANGE** for **URL**: /api/v2/validate endpoint added
+
+# 05/13/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals  added the new optional `query` request parameter `sort_by`
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  added the new optional `query` request parameter `sort_by`
+
 # 05/11/2026
 - **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  added the new optional request property 'transform_version_id'
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  added the new optional request property 'transform_version_id'

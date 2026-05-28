@@ -29,6 +29,24 @@ prompt_env_var() {
   fi
 }
 
+prompt_secret() {
+  local var_name=$1
+  local default_value=$2
+  local input_value
+
+  if [[ "$NON_INTERACTIVE" == "true" ]]; then
+    input_value="${!var_name:-$default_value}"
+  else
+    read -s -p "$var_name (hidden): " input_value
+    echo  # newline after silent input
+    if [[ -z "$input_value" ]]; then
+      input_value=$default_value
+    fi
+  fi
+
+  echo "$input_value"
+}
+
 create_directory_if_not_present() {
   local dir_name=$1
   # creates base directories if they don't exist
@@ -89,7 +107,7 @@ else
         genai_engine_openai_gpt_endpoint=$(prompt_env_var "GENAI_ENGINE_OPENAI_GPT_ENDPOINT" "")
         echo ""
         echo "Enter the OpenAI GPT API key:"
-        genai_engine_openai_api_key=$(prompt_env_var "GENAI_ENGINE_OPENAI_GPT_API_KEY" "changeme_api_key")
+        genai_engine_openai_api_key=$(prompt_secret "GENAI_ENGINE_OPENAI_GPT_API_KEY" "changeme_api_key")
 
         all_env_vars="$genai_engine_openai_provider
 GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$genai_engine_openai_gpt_name::$genai_engine_openai_gpt_endpoint::$genai_engine_openai_api_key"

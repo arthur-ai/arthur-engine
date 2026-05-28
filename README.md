@@ -15,15 +15,15 @@
 
 The Arthur Engine provides a **complete service** for developing, monitoring, and governing your AI/ML workloads using popular open-source technologies and frameworks. It is a tool designed for:
 
-- **Enforcing guardrails in your LLM Applications and Generative AI Workflows**
+- **Enforcing Guardrails in your LLM Applications and Generative AI Workflows**
   - Configurable metrics for real-time detection of PII or Sensitive Data leakage, Hallucination, Prompt Injection attempts, Toxic language, and other quality metrics
-- **Building, Observing and Governing Agentic Applications**
-  - Collect and analyze OpenInference traces from any agentic workflow or LLM application
+- **Building, Evaluating, Observing and Governing Agentic Applications**
+  - Collect and analyze OpenInference OpenTelemetry (OTEL) traces from any agentic workflow or LLM application
   - Run continuous evaluations on live traces to catch regressions and quality issues automatically
   - Manage, version, and iterate on prompts across your applications
   - Run experiments to compare prompt variants and measure their impact on quality metrics
   - Evaluate and monitor Retrieval-Augmented Generation (RAG) pipelines end-to-end
-- **Evaluating and Benchmarking Machine Learning models (requires the Arthur Platform)**
+- **Monitoring and Benchmarking Machine Learning models (requires the Arthur Platform)**
   - Support for a wide range of evaluation metrics (e.g., drift, accuracy, precision, recall, F1, and AUC)
   - Tools for comparing models, exploring feature importance, and identifying areas for optimization
   - For LLMs/GenAI applications, measure and monitor response relevance, hallucination rates, token counts, latency, and more
@@ -34,10 +34,34 @@ The Arthur Engine provides a **complete service** for developing, monitoring, an
 
 **Claude Code users**
 
-Paste this prompt directly into Claude Code — no installation needed:
+Paste this prompt directly into Claude Code that's running on your agent application:
 
 ```
-Fetch https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/integrations/claude-code-skills/arthur-onboard/SKILL.md, save it to ~/.claude/skills/arthur-onboard/SKILL.md (create the directory if it doesn't exist), read the saved file, and follow its instructions.
+For each skill name in this list — arthur-onboard-oss, arthur-onboard-oss-engine, arthur-onboard-task, arthur-onboard-analyze, arthur-onboard-instrument, arthur-onboard-prompts, arthur-onboard-verify, arthur-onboard-eval-provider, arthur-onboard-evals — fetch https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/integrations/claude-code-skills/arthur-onboard/<skill-name>/SKILL.md and save it to ~/.claude/skills/<skill-name>/SKILL.md (create the directory if it doesn't exist). Once all skills are saved, read ~/.claude/skills/arthur-onboard-oss/SKILL.md and follow its instructions.
+```
+
+**Codex users**
+
+Paste this prompt directly into a Codex session that's running on your agent application:
+
+```
+Install the Arthur OSS onboarding Codex skills from arthur-ai/arthur-engine.
+
+Install these skill folders into ${CODEX_HOME:-~/.codex}/skills:
+- arthur-onboard-oss
+- arthur-onboard-oss-engine
+- arthur-onboard-task
+- arthur-onboard-analyze
+- arthur-onboard-instrument
+- arthur-onboard-prompts
+- arthur-onboard-verify
+- arthur-onboard-eval-provider
+- arthur-onboard-evals
+
+Fetch each SKILL.md from:
+https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integrations/claude-code-skills/arthur-onboard/<skill-name>/SKILL.md
+
+Create each directory as needed. After installation, remind me to restart Codex.
 ```
 
 **Everyone else**
@@ -68,6 +92,43 @@ To unlock the full capabilities of the Arthur Platform, [sign up](https://platfo
 * Configurable webhook that can trigger any workflow
 * Agent discovery
 * Governance
+
+**Claude Code users**
+
+Paste this prompt directly into a Claude Code session that's running on your agent application:
+
+```
+For each skill name in this list — arthur-onboard-platform, arthur-onboard-platform-access, arthur-onboard-platform-workspace, arthur-onboard-platform-engine, arthur-onboard-platform-model, arthur-onboard-platform-token, arthur-onboard-analyze, arthur-onboard-instrument, arthur-onboard-prompts, arthur-onboard-verify, arthur-onboard-eval-provider, arthur-onboard-evals — fetch https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/integrations/claude-code-skills/arthur-onboard/<skill-name>/SKILL.md and save it to ~/.claude/skills/<skill-name>/SKILL.md (create the directory if it doesn't exist). Once all skills are saved, read ~/.claude/skills/arthur-onboard-platform/SKILL.md and follow its instructions.
+```
+
+**Codex users**
+
+Install the Arthur Platform onboarding Codex skills from arthur-ai/arthur-engine.
+
+```
+Install these skill folders into ${CODEX_HOME:-~/.codex}/skills:
+- arthur-onboard-platform
+- arthur-onboard-platform-access
+- arthur-onboard-platform-workspace
+- arthur-onboard-platform-engine
+- arthur-onboard-platform-model
+- arthur-onboard-platform-token
+- arthur-onboard-analyze
+- arthur-onboard-instrument
+- arthur-onboard-prompts
+- arthur-onboard-verify
+- arthur-onboard-eval-provider
+- arthur-onboard-evals
+
+Fetch each SKILL.md from:
+https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integrations/claude-code-skills/arthur-onboard/<skill-name>/SKILL.md
+
+Create each directory as needed. After installation, remind me to restart Codex.
+```
+
+**Everyone else**
+
+Onboard via the platform UI.
 
 ![Arthur Platform](./docs/images/arthur-platform.png)
 
