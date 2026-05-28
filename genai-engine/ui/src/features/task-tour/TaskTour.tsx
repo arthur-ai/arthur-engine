@@ -46,6 +46,7 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
 
   const [fabAnchorRect, setFabAnchorRect] = useState<DOMRect | null>(null);
   const [panelAnchoredToFab, setPanelAnchoredToFab] = useState(false);
+  const [checklistMinimized, setChecklistMinimized] = useState(false);
 
   const handleFabAnchorRectChange = useCallback((rect: DOMRect | null) => {
     setFabAnchorRect(rect);
@@ -72,7 +73,10 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
   useEffect(() => {
     return statePlugin.store.subscribe((state, prev) => {
       if (prev.snapshot.status === state.snapshot.status) return;
-      if (state.snapshot.status !== "in-progress") setPanelAnchoredToFab(false);
+      if (state.snapshot.status !== "in-progress") {
+        setPanelAnchoredToFab(false);
+        setChecklistMinimized(false);
+      }
     });
   }, [statePlugin]);
 
@@ -84,9 +88,12 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
         workspaceLabel={workspaceLabel}
         taskId={taskId}
         panelAnchoredToFab={panelAnchoredToFab}
+        checklistMinimized={checklistMinimized}
         fabAnchorRect={fabAnchorRect}
         onFabAnchorRectChange={handleFabAnchorRectChange}
         onResume={() => setPanelAnchoredToFab(true)}
+        onChecklistMinimize={() => setChecklistMinimized(true)}
+        onChecklistExpand={() => setChecklistMinimized(false)}
       />
     </TourProvider>
   );
@@ -97,9 +104,12 @@ interface TaskTourBodyProps {
   workspaceLabel?: string;
   taskId: string;
   panelAnchoredToFab: boolean;
+  checklistMinimized: boolean;
   fabAnchorRect: DOMRect | null;
   onFabAnchorRectChange: (rect: DOMRect | null) => void;
   onResume: () => void;
+  onChecklistMinimize: () => void;
+  onChecklistExpand: () => void;
 }
 
 /**
@@ -113,9 +123,12 @@ function TaskTourBody({
   workspaceLabel,
   taskId,
   panelAnchoredToFab,
+  checklistMinimized,
   fabAnchorRect,
   onFabAnchorRectChange,
   onResume,
+  onChecklistMinimize,
+  onChecklistExpand,
 }: TaskTourBodyProps) {
   // Register the traces preparation hook (keyed by
   // `TASK_TOUR_PREPARATIONS.traceOpened`). The engine consults this on
@@ -133,7 +146,13 @@ function TaskTourBody({
       <SectionCompleteWidget anchorRect={panelAnchoredToFab ? fabAnchorRect : null} />
       <SpotlightWidget />
       <GuidedStepPopover />
-      <ChecklistWidget statePlugin={statePlugin} panelAnchorRect={panelAnchoredToFab ? fabAnchorRect : null} />
+      <ChecklistWidget
+        statePlugin={statePlugin}
+        isMinimized={checklistMinimized}
+        onMinimize={onChecklistMinimize}
+        onExpand={onChecklistExpand}
+        panelAnchorRect={panelAnchoredToFab ? fabAnchorRect : null}
+      />
       <ResumeFabWrapper
         statePlugin={statePlugin}
         onAnchorRectChange={onFabAnchorRectChange}

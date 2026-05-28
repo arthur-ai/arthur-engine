@@ -1433,6 +1433,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@hugocxl/react-to-image@npm:^0.0.9":
+  version: 0.0.9
+  resolution: "@hugocxl/react-to-image@npm:0.0.9"
+  peerDependencies:
+    html-to-image: ">=1"
+    react: ">=16"
+  checksum: 10c0/53abfba21482a693402eed876f873606938ccc490632c426c90f91a4b01216e871ee5ca417ff0196bf610744d18b7833d27bbfe914e7aa35871fe05af1da18d1
+  languageName: node
+  linkType: hard
+
 "@humanfs/core@npm:^0.19.1":
   version: 0.19.1
   resolution: "@humanfs/core@npm:0.19.1"
@@ -6441,6 +6451,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"html-to-image@npm:^1.11.13":
+  version: 1.11.13
+  resolution: "html-to-image@npm:1.11.13"
+  checksum: 10c0/03bd7192d87b99499e37ff12a8e2b41ddce4cf8e33a93dfadff18df0f213434c7f1ba8328db2158f4805da07b7aec3c90aec3152908281153217e86784218b10
+  languageName: node
+  linkType: hard
+
 "html-url-attributes@npm:^3.0.0":
   version: 3.0.1
   resolution: "html-url-attributes@npm:3.0.1"
@@ -10712,6 +10729,7 @@ __metadata:
     "@emotion/styled": "npm:11.14.1"
     "@eslint/js": "npm:9.39.4"
     "@floating-ui/react": "npm:^0.27.19"
+    "@hugocxl/react-to-image": "npm:^0.0.9"
     "@monaco-editor/react": "npm:4.7.0"
     "@mui/icons-material": "npm:7.3.9"
     "@mui/material": "npm:7.3.9"
@@ -10744,6 +10762,7 @@ __metadata:
     framer-motion: "npm:12.35.2"
     globals: "npm:16.5.0"
     gray-matter: "npm:^4.0.3"
+    html-to-image: "npm:^1.11.13"
     jsdom: "npm:^29.1.1"
     material-react-table: "npm:3.2.1"
     mitt: "npm:^3.0.1"

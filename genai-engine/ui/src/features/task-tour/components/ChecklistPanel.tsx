@@ -2,6 +2,7 @@ import type { Placement } from "@floating-ui/react";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import EastIcon from "@mui/icons-material/East";
+import RemoveIcon from "@mui/icons-material/Remove";
 import WestIcon from "@mui/icons-material/West";
 import { Box, Button, IconButton, LinearProgress, Paper, Stack, Tooltip, Typography, useTheme } from "@mui/material";
 import type { ReactNode } from "react";
@@ -31,6 +32,10 @@ export interface ChecklistPanelProps {
   onPrevSection: () => void;
   onNextSection: () => void;
   onClose: () => void;
+  /** Renders a compact active-step card instead of the full checklist. */
+  isMinimized?: boolean;
+  onMinimize?: () => void;
+  onExpand?: () => void;
   /** When set, the panel is positioned next to this rect via floating-ui. */
   anchorRect?: DOMRect | null;
   /** Placement relative to `anchorRect`. Defaults to `top-start`. */
@@ -67,6 +72,9 @@ export function ChecklistPanel({
   onPrevSection,
   onNextSection,
   onClose,
+  isMinimized = false,
+  onMinimize,
+  onExpand,
   anchorRect,
   anchorPlacement = "top-start",
 }: ChecklistPanelProps) {
@@ -78,6 +86,83 @@ export function ChecklistPanel({
   const sectionStepLabel =
     items.length === 0 ? "Intro" : currentItemIndex >= 0 ? `Step ${currentItemIndex + 1} of ${stepsInSection}` : `Step 1 of ${stepsInSection}`;
   const progressCaption = `Section ${currentSectionIndex + 1} of ${TASK_TOUR_SECTIONS.length} · ${sectionStepLabel}`;
+  const activeItem = currentItemIndex >= 0 ? items[currentItemIndex] : null;
+  const activeStepTitle = activeItem?.title ?? section.title;
+
+  const renderAnchored = (node: ReactNode) => {
+    if (anchorRect) {
+      return (
+        <PopoverAnchor rect={anchorRect} placement={anchorPlacement} offset={12} style={{ zIndex: PANEL_Z_INDEX }}>
+          {node}
+        </PopoverAnchor>
+      );
+    }
+
+    return node;
+  };
+
+  if (isMinimized) {
+    const compactPanel = (
+      <Paper
+        component="button"
+        type="button"
+        aria-label="Expand walkthrough"
+        elevation={8}
+        onClick={onExpand}
+        sx={{
+          width: 280,
+          p: 0,
+          textAlign: "left",
+          borderRadius: 2,
+          overflow: "hidden",
+          zIndex: PANEL_Z_INDEX,
+          border: 1,
+          borderColor: "divider",
+          bgcolor: "background.paper",
+          cursor: "pointer",
+          ...(anchorRect
+            ? {}
+            : {
+                position: "fixed",
+                bottom: 20,
+                right: 20,
+              }),
+          "&:hover": { borderColor: "secondary.main" },
+          "&:focus-visible": {
+            outline: 2,
+            outlineColor: "secondary.main",
+            outlineOffset: 2,
+          },
+        }}
+      >
+        <Typography
+          variant="body2"
+          sx={{
+            px: 1.5,
+            py: 1.25,
+            fontWeight: 600,
+            color: "text.primary",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {activeStepTitle}
+        </Typography>
+        <LinearProgress
+          variant="determinate"
+          value={Math.min(100, Math.max(0, totalProgress * 100))}
+          sx={{
+            height: 3,
+            bgcolor: "action.hover",
+            "& .MuiLinearProgress-bar": { bgcolor: "secondary.main" },
+          }}
+        />
+      </Paper>
+    );
+
+    return renderAnchored(compactPanel);
+  }
 
   const panel = (
     <Paper
@@ -124,8 +209,13 @@ export function ChecklistPanel({
         >
           {TASK_TOUR_TITLE}
         </Typography>
+        <Tooltip title="Minimize walkthrough">
+          <IconButton aria-label="Minimize walkthrough" size="small" onClick={onMinimize} sx={{ color: "text.disabled" }}>
+            <RemoveIcon sx={{ fontSize: 14 }} />
+          </IconButton>
+        </Tooltip>
         <Tooltip title="Hide walkthrough">
-          <IconButton size="small" onClick={onClose} sx={{ color: "text.disabled" }}>
+          <IconButton aria-label="Hide walkthrough" size="small" onClick={onClose} sx={{ color: "text.disabled" }}>
             <CloseIcon sx={{ fontSize: 14 }} />
           </IconButton>
         </Tooltip>
@@ -306,13 +396,5 @@ export function ChecklistPanel({
     </Paper>
   );
 
-  if (anchorRect) {
-    return (
-      <PopoverAnchor rect={anchorRect} placement={anchorPlacement} offset={12} style={{ zIndex: PANEL_Z_INDEX }}>
-        {panel}
-      </PopoverAnchor>
-    );
-  }
-
-  return panel;
+  return renderAnchored(panel);
 }

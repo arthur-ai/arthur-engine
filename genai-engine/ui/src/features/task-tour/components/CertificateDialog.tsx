@@ -1,15 +1,13 @@
-import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import CheckIcon from "@mui/icons-material/Check";
+import { downloadFile } from "@arthur/shared-components";
+import { useToPng } from "@hugocxl/react-to-image";
 import CloseIcon from "@mui/icons-material/Close";
+import DownloadIcon from "@mui/icons-material/Download";
+import LinkedInIcon from "@mui/icons-material/LinkedIn";
+import XIcon from "@mui/icons-material/X";
 import { Box, Button, Dialog, IconButton, Paper, Stack, Typography, useTheme } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 
-/**
- * Placeholder mailto target for the "Schedule a chat with our CTO" CTA on the
- * completion certificate. Swap the address (and/or subject) when the real
- * scheduling link is available.
- */
-const CTO_SCHEDULE_MAILTO =
-  "mailto:cto@arthur.ai?subject=Bringing%20evals%20into%20our%20organization&body=Hi%20%E2%80%94%20I%20just%20completed%20Arthur%27s%20Evals%20101%20walkthrough%20and%20would%20love%20to%20chat%20about%20bringing%20evals%20into%20our%20organization.";
+import { ArthurLogo } from "@/components/common/ArthurLogo";
 
 export interface CertificateDialogProps {
   open: boolean;
@@ -23,24 +21,26 @@ export interface CertificateDialogProps {
 }
 
 function formatToday(): string {
-  return new Date().toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  return new Date().toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
 }
 
 /**
  * Completion dialog shown on `tour:end{reason:"completed"}`. Mirrors the
- * design's certificate-screen layout (Evals 101 wordmark, recipient name in
- * brand purple, issued metadata, big green check) but renders as a modal
- * rather than a dedicated route so it overlays whichever task page the user
- * happens to be on when they finish the tour.
+ * final certificate-screen design but renders as a modal rather than a
+ * dedicated route so it overlays whichever task page the user finishes on.
  */
-export function CertificateDialog({
-  open,
-  recipientName = "you",
-  workspaceLabel = "Arthur",
-  issuedOn = formatToday(),
-  onClose,
-}: CertificateDialogProps) {
+export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedOn = formatToday(), onClose }: CertificateDialogProps) {
   const theme = useTheme();
+  const shareText = `I completed Arthur AI's Intro to Evals course with the Arthur Evals Engine.`;
+  const shareUrl = "https://www.arthur.ai/";
+  const linkedInShareHref = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
+  const xShareHref = `https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+
+  const [, toPng, ref] = useToPng<HTMLDivElement>({
+    onSuccess: (data) => {
+      downloadFile(data, "certificate.png", "image/png");
+    },
+  });
 
   return (
     <Dialog
@@ -52,7 +52,12 @@ export function CertificateDialog({
       slotProps={{
         paper: {
           elevation: 16,
-          sx: { borderRadius: 4, overflow: "visible", position: "relative" },
+          sx: {
+            borderRadius: 0,
+            overflow: "visible",
+            position: "relative",
+            bgcolor: "background.paper",
+          },
         },
       }}
     >
@@ -73,104 +78,173 @@ export function CertificateDialog({
       </IconButton>
 
       <Paper
+        ref={ref}
         elevation={0}
         sx={{
           position: "relative",
-          py: 7,
-          px: { xs: 4, md: 8 },
+          m: 2,
+          minHeight: { xs: 520, md: 480 },
+          px: { xs: 3, md: 6 },
+          py: { xs: 5, md: 4 },
           textAlign: "center",
-          backgroundImage: `radial-gradient(circle at 12% 12%, ${theme.palette.secondary.light}33, transparent 40%), radial-gradient(circle at 88% 88%, ${theme.palette.primary.light}33, transparent 40%)`,
+          border: 2,
+          borderColor: "secondary.dark",
+          borderRadius: 3,
+          overflow: "hidden",
+          backgroundImage: `linear-gradient(to bottom, #FBF2D9, #F8D9B6)`,
+          color: "common.black",
         }}
       >
         <Typography
-          variant="caption"
+          id="task-tour-certificate-title"
+          variant="h2"
           sx={{
-            color: "secondary.main",
-            letterSpacing: 3,
-            textTransform: "uppercase",
-            fontWeight: 600,
-            fontSize: 11,
+            fontFamily: '"Georgia", "Times New Roman", serif',
+            fontSize: { xs: 36, md: 48 },
+            fontWeight: 700,
+            lineHeight: 1.05,
+            letterSpacing: -1,
           }}
         >
-          Certificate of Completion
+          Certificate of Achievement
         </Typography>
-        <Typography id="task-tour-certificate-title" variant="h3" sx={{ fontWeight: 700, mt: 1.5, mb: 2.5, letterSpacing: -1 }}>
-          Evals 101
+        <Typography
+          variant="h6"
+          sx={{
+            fontFamily: '"Georgia", "Times New Roman", serif',
+            fontSize: { xs: 18, md: 22 },
+            fontWeight: 600,
+            mt: 1.25,
+          }}
+        >
+          Arthur AI · Intro to Evals
         </Typography>
-        <Typography variant="body2" sx={{ color: "text.secondary" }}>
-          Awarded to
+        <Typography
+          variant="caption"
+          sx={{
+            display: "block",
+
+            letterSpacing: 6,
+            textTransform: "uppercase",
+            fontWeight: 700,
+            fontSize: 10,
+            mt: { xs: 4, md: 4.5 },
+            mb: 1.75,
+          }}
+        >
+          THIS IS TO CERTIFY THAT
         </Typography>
         <Typography
           variant="h2"
           sx={{
+            fontFamily: '"Georgia", "Times New Roman", serif',
             fontWeight: 700,
-            color: "secondary.main",
-            mt: 1,
-            mb: 3,
-            letterSpacing: -1.5,
-            fontSize: { xs: 32, md: 52 },
+
+            fontSize: { xs: 42, md: 52 },
+            lineHeight: 1.05,
+            letterSpacing: -1,
           }}
         >
           {recipientName}
         </Typography>
-        <Box sx={{ width: 360, height: "1px", bgcolor: "divider", mx: "auto", mb: 3.5 }} />
-        <Typography variant="body1" sx={{ color: "text.secondary", lineHeight: 1.65, maxWidth: 520, mx: "auto" }}>
-          For passing the <strong>Evals 101</strong> course — measuring agent quality with continuous evals, debugging failures with traces, refining
-          with datasets and prompts, and shipping tested updates with confidence. You're now an <strong>Arthur-certified agent developer</strong>.
+        <Typography variant="body2" sx={{ lineHeight: 1.55, maxWidth: 650, mx: "auto", mt: 3 }}>
+          Has successfully completed the{" "}
+          <Box component="span" sx={{ fontWeight: 700 }}>
+            Intro to Evals
+          </Box>{" "}
+          course and used the{" "}
+          <Box component="span" sx={{ fontWeight: 700 }}>
+            Arthur Evals Engine
+          </Box>{" "}
+          to design, measure, and ship a production-grade AI agent.
         </Typography>
 
-        <Stack direction="row" spacing={3} justifyContent="center" sx={{ mt: 3.5, flexWrap: "wrap" }}>
-          {[
-            ["Issued", issuedOn],
-            ["Workspace", workspaceLabel],
-            ["Course", "Evals 101 (v1)"],
-          ].map(([k, v]) => (
-            <Box key={k}>
-              <Typography variant="caption" sx={{ color: "text.disabled", display: "block" }}>
-                {k}
-              </Typography>
-              <Typography variant="caption" sx={{ color: "text.primary", fontWeight: 600 }}>
-                {v}
-              </Typography>
-            </Box>
-          ))}
-        </Stack>
-
-        <Stack direction="row" spacing={1.5} justifyContent="center" sx={{ mt: 4, flexWrap: "wrap", rowGap: 1.5 }}>
-          <Button variant="outlined" color="inherit" onClick={onClose}>
-            Back to task
-          </Button>
-          <Button
-            variant="contained"
-            color="secondary"
-            startIcon={<CalendarMonthIcon sx={{ fontSize: 18 }} />}
-            href={CTO_SCHEDULE_MAILTO}
-            target="_blank"
-            rel="noopener"
-          >
-            Chat with our CTO about evals
-          </Button>
-        </Stack>
-
-        <Box
+        <Stack
+          direction="row"
+          alignItems="flex-end"
+          justifyContent="space-between"
           sx={{
-            position: "absolute",
-            bottom: -32,
-            right: { xs: 32, md: 64 },
-            width: 96,
-            height: 96,
-            borderRadius: "50%",
-            bgcolor: "secondary.main",
-            color: "common.white",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: `0 12px 32px ${theme.palette.secondary.main}55`,
+            position: { xs: "static", md: "absolute" },
+            left: { md: 54 },
+            right: { md: 54 },
+            bottom: { md: 22 },
+            mt: { xs: 8, md: 0 },
+            gap: 2,
           }}
         >
-          <CheckIcon sx={{ fontSize: 40 }} />
-        </Box>
+          <Box sx={{ width: 150, textAlign: "center" }}>
+            <Box
+              sx={{
+                width: 64,
+                height: 64,
+                mx: "auto",
+                mb: 1.25,
+                borderRadius: "50%",
+                border: 2,
+                borderColor: "warning.dark",
+                bgcolor: alpha(theme.palette.warning.main, 0.34),
+                boxShadow: `inset 0 0 0 5px ${alpha(theme.palette.warning.light, 0.46)}`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <ArthurLogo width={22} height={22} aria-hidden="true" />
+            </Box>
+            <Box sx={{ borderTop: 1, borderColor: "common.black", pt: 0.75 }}>
+              <Typography variant="caption" sx={{ fontSize: 10 }}>
+                Arthur AI Instructors
+              </Typography>
+            </Box>
+          </Box>
+
+          <Stack direction="row" alignItems="center" spacing={0.75} sx={{ pb: 3 }}>
+            <ArthurLogo width={26} height={26} aria-hidden="true" />
+            <Typography variant="h6" sx={{ fontWeight: 700, letterSpacing: -0.5, opacity: 0.6 }}>
+              Arthur
+            </Typography>
+          </Stack>
+
+          <Box sx={{ width: 150, textAlign: "center", pb: 0.25 }}>
+            <Typography variant="caption" sx={{ display: "block", mb: 0.75, fontFamily: '"Georgia", serif' }}>
+              {issuedOn}
+            </Typography>
+            <Box sx={{ borderTop: 1, borderColor: "common.black", pt: 0.75 }}>
+              <Typography variant="caption" sx={{ fontSize: 10 }}>
+                Date
+              </Typography>
+            </Box>
+          </Box>
+        </Stack>
       </Paper>
+
+      <Stack direction="row" justifyContent="center" spacing={1} sx={{ px: 2, pb: 1.5, flexWrap: "wrap", rowGap: 1 }}>
+        <Button size="small" variant="contained" color="secondary" startIcon={<DownloadIcon sx={{ fontSize: 16 }} />} onClick={toPng}>
+          Download PNG
+        </Button>
+        <Button
+          size="small"
+          variant="outlined"
+          color="inherit"
+          href={linkedInShareHref}
+          target="_blank"
+          rel="noopener"
+          startIcon={<LinkedInIcon sx={{ fontSize: 16 }} />}
+        >
+          Share to LinkedIn
+        </Button>
+        <Button
+          size="small"
+          variant="outlined"
+          color="inherit"
+          href={xShareHref}
+          target="_blank"
+          rel="noopener"
+          startIcon={<XIcon sx={{ fontSize: 14 }} />}
+        >
+          Share to X
+        </Button>
+      </Stack>
     </Dialog>
   );
 }
