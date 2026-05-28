@@ -67,11 +67,16 @@ class AgenticNotebookRepository:
         if state is None:
             return
 
-        # Validate dataset exists if provided
+        # Validate dataset exists within the caller's task scope.
+        # Filtering on task_id prevents a tenant from pinning a notebook to a
+        # cross-org dataset by guessing its UUID.
         if state.dataset_ref is not None:
             dataset = (
                 self.db_session.query(DatabaseDataset)
-                .filter(DatabaseDataset.id == state.dataset_ref.id)
+                .filter(
+                    DatabaseDataset.id == state.dataset_ref.id,
+                    DatabaseDataset.task_id == task_id,
+                )
                 .first()
             )
             if not dataset:

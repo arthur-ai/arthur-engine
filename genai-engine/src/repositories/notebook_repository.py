@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
+from db_models.dataset_models import DatabaseDataset, DatabaseDatasetVersion
 from db_models.notebook_models import DatabaseNotebook
 from db_models.prompt_experiment_models import DatabasePromptExperiment
 from db_models.task_models import DatabaseTask
@@ -52,12 +53,60 @@ class NotebookRepository:
             )
         return db_notebook
 
+    def _validate_notebook_state(
+        self,
+        task_id: str,
+        state: NotebookState | None,
+    ) -> None:
+        """Validate that referenced resources in notebook state belong to this task.
+
+        The only UUID-referenced resource in a prompt notebook's state is the
+        dataset; saved prompts and evals are looked up by `task_id + name +
+        version` at execution time, so they're inherently confined to this
+        notebook's task. The dataset lookup must filter on `task_id` to
+        prevent a tenant from pinning the notebook to a cross-org dataset by
+        guessing its UUID.
+        """
+        if state is None or state.dataset_ref is None:
+            return
+
+        dataset = (
+            self.db_session.query(DatabaseDataset)
+            .filter(
+                DatabaseDataset.id == state.dataset_ref.id,
+                DatabaseDataset.task_id == task_id,
+            )
+            .first()
+        )
+        if not dataset:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Dataset {state.dataset_ref.id} not found",
+            )
+
+        dataset_version = (
+            self.db_session.query(DatabaseDatasetVersion)
+            .filter(
+                DatabaseDatasetVersion.dataset_id == state.dataset_ref.id,
+                DatabaseDatasetVersion.version_number == state.dataset_ref.version,
+            )
+            .first()
+        )
+        if not dataset_version:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Dataset version {state.dataset_ref.version} not found for dataset {state.dataset_ref.id}",
+            )
+
     def create_notebook(
         self,
         task_id: str,
         request: CreateNotebookRequest,
     ) -> NotebookDetail:
         """Create a new notebook with optional initial state"""
+        # Validate state resources belong to this task
+        self._validate_notebook_state(task_id, request.state)
+
         # Generate notebook ID
         notebook_id = str(uuid4())
 
@@ -201,6 +250,11 @@ class NotebookRepository:
     ) -> NotebookDetail:
         """Set the notebook state"""
         db_notebook = self._get_db_notebook(notebook_id, org_scope=org_scope)
+
+        # Validate state resources belong to the notebook's task.
+        # `_get_db_notebook` already gates the notebook by org via org_scope, so
+        # `db_notebook.task_id` is trusted here.
+        self._validate_notebook_state(db_notebook.task_id, request.state)
 
         # Update state fields
         if request.state.prompt_configs is not None:

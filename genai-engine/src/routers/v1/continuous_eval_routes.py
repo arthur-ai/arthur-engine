@@ -51,6 +51,25 @@ continuous_eval_routes = APIRouter(
 )
 
 
+def _assert_transform_accessible(
+    transform_repo: TraceTransformRepository,
+    transform_id: UUID,
+    org_scope: UUID | None,
+) -> None:
+    """404 if the transform doesn't exist or is outside the caller's org.
+
+    Used by handlers that take a `transform_id` from path or body where the
+    route-level decorator only scopes a sibling `task_id` (or no task_id at
+    all). Without this guard a tenant could read or pin a cross-org
+    transform by guessing its UUID.
+    """
+    if transform_repo.get_transform_by_id(transform_id, org_scope=org_scope) is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Transform {transform_id} not found.",
+        )
+
+
 @continuous_eval_routes.get(
     "/continuous_evals/{eval_id}",
     summary="Get a continuous eval by id",
@@ -195,6 +214,7 @@ def get_continuous_eval_variables_and_mappings(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> ContinuousEvalVariableMappingResponse:
     try:
         # Validate the llm eval exists and hasn't been deleted
@@ -210,14 +230,9 @@ def get_continuous_eval_variables_and_mappings(
                 detail=f"LLM Eval {llm_eval.name} (version {llm_eval.version}) has been deleted.",
             )
 
-        # Validate the transform exists and hasn't been deleted
+        # Validate the transform exists and is in the caller's org
         transform_repo = TraceTransformRepository(db_session)
-        transform = transform_repo.get_transform_by_id(transform_id)
-        if not transform:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Transform {transform_id} not found.",
-            )
+        _assert_transform_accessible(transform_repo, transform_id, org_scope)
 
         transform_definition = transform_repo.get_latest_definition(transform_id)
         eval_vars = set(llm_eval.variables)
@@ -256,6 +271,7 @@ def create_continuous_eval(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> ContinuousEvalResponse:
     try:
         # Validate the llm eval exists and hasn't been deleted
@@ -280,14 +296,13 @@ def create_continuous_eval(
         # set the version to the integer version of the llm eval
         create_request.llm_eval_version = llm_eval.version
 
-        # Validate the transform variable mapping
+        # Validate the transform exists and is in the caller's org
         transform_repo = TraceTransformRepository(db_session)
-        transform = transform_repo.get_transform_by_id(create_request.transform_id)
-        if not transform:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Transform {create_request.transform_id} not found.",
-            )
+        _assert_transform_accessible(
+            transform_repo,
+            create_request.transform_id,
+            org_scope,
+        )
 
         if create_request.transform_version_id is not None:
             # Validate version belongs to this transform (raises 404 if not found)
@@ -392,6 +407,7 @@ def update_continuous_eval(
                 if update_request.transform_id is not None
                 else existing_eval.transform_id
             )
+            _assert_transform_accessible(transform_repo, transform_id, org_scope)
             transform_repo.get_version_by_id(
                 transform_id,
                 update_request.transform_version_id,
@@ -404,12 +420,7 @@ def update_continuous_eval(
                 if update_request.transform_id is not None
                 else existing_eval.transform_id
             )
-            transform = transform_repo.get_transform_by_id(transform_id)
-            if not transform:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"Transform {transform_id} not found.",
-                )
+            _assert_transform_accessible(transform_repo, transform_id, org_scope)
 
             # If a version is being pinned (new or existing), validate and use its snapshot
             effective_version_id = (
