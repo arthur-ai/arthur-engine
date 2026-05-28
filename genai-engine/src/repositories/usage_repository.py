@@ -144,10 +144,10 @@ def get_token_query_statement(
     # the whole engine's usage.
     if org_scope is not None:
         prompt_subquery = prompt_subquery.where(
-            DatabasePromptRuleResult.org_id == str(org_scope),
+            DatabasePromptRuleResult.org_id == org_scope,
         )
         response_subquery = response_subquery.where(
-            DatabaseResponseRuleResult.org_id == str(org_scope),
+            DatabaseResponseRuleResult.org_id == org_scope,
         )
 
     if start_time:

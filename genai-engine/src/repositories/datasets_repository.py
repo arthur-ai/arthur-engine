@@ -52,7 +52,7 @@ class DatasetRepository:
         # Datasets carry only task_id — join through tasks for the org filter.
         if org_scope is not None:
             q = q.join(DatabaseTask, DatabaseTask.id == DatabaseDataset.task_id).filter(
-                DatabaseTask.org_id == str(org_scope),
+                DatabaseTask.org_id == org_scope,
             )
         db_dataset = q.first()
         if not db_dataset:

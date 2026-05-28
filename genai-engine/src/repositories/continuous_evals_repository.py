@@ -89,7 +89,7 @@ class ContinuousEvalsRepository:
             q = q.join(
                 DatabaseTask,
                 DatabaseTask.id == DatabaseContinuousEval.task_id,
-            ).filter(DatabaseTask.org_id == str(org_scope))
+            ).filter(DatabaseTask.org_id == org_scope)
         return q.first()
 
     def validate_transform_variable_mapping(
@@ -550,7 +550,7 @@ class ContinuousEvalsRepository:
         )
         # agentic_annotations carries a denormalized org_id (UP-4424) — filter directly.
         if org_scope is not None:
-            q = q.filter(DatabaseAgenticAnnotation.org_id == str(org_scope))
+            q = q.filter(DatabaseAgenticAnnotation.org_id == org_scope)
         annotation = q.first()
 
         if not annotation:

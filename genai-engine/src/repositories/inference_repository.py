@@ -104,7 +104,7 @@ class InferenceRepository:
         if org_scope is not None:
             q = q.join(
                 DatabaseTask, DatabaseTask.id == DatabaseInference.task_id
-            ).filter(DatabaseTask.org_id == str(org_scope))
+            ).filter(DatabaseTask.org_id == org_scope)
         inference = q.first()
         if not inference:
             # Same 404 body for "missing" and "in another org" — avoids the
@@ -143,7 +143,7 @@ class InferenceRepository:
         if org_scope is not None:
             stmt = stmt.join(
                 DatabaseTask, DatabaseTask.id == DatabaseInference.task_id
-            ).filter(DatabaseTask.org_id == str(org_scope))
+            ).filter(DatabaseTask.org_id == org_scope)
 
         # Rule types and rule results need this join as a prereq to their later joins
         if prompt_statuses or response_statuses or rule_types or rule_results:
@@ -533,7 +533,7 @@ class InferenceRepository:
         if org_scope is not None:
             q = q.join(
                 DatabaseTask, DatabaseTask.id == DatabaseInference.task_id
-            ).filter(DatabaseTask.org_id == str(org_scope))
+            ).filter(DatabaseTask.org_id == org_scope)
         inferences = q.order_by(DatabaseInference.updated_at.desc()).all()
         if not inferences:
             return None

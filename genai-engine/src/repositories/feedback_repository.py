@@ -79,7 +79,7 @@ class FeedbackRepository:
         # apply org-scope filter — inference_feedback has a denormalized org_id
         # so this is a single-column filter, no join required.
         if org_scope is not None:
-            stmt = stmt.where(DatabaseInferenceFeedback.org_id == str(org_scope))
+            stmt = stmt.where(DatabaseInferenceFeedback.org_id == org_scope)
 
         # apply sorting
         if sort == PaginationSortMethod.DESCENDING or sort is None:
