@@ -407,7 +407,6 @@ class DemoTaskRepository:
         history: List[OpenAIMessage],
         user_id: str,
         session_id: Optional[str] = None,
-        user_timezone: Optional[str] = None,
     ) -> StreamingResponse:
         chatbot_prompt = cast(
             AgenticPrompt,
@@ -436,7 +435,6 @@ class DemoTaskRepository:
             db_session=self.db_session,
             summarizer_prompt=summarizer_prompt,
             task_id=task_id,
-            user_timezone=user_timezone,
         )
 
         prompt = chatbot_service.build_prompt(
