@@ -526,7 +526,23 @@ class GenaiEngineTestClientBase(httpx.Client):
         )
 
     def signup_tenant(self) -> tuple[int, DemoTaskSignupResponse | None]:
-        resp = self.base_client.post("/api/v2/tenant/signup")
+        resp = self.base_client.post(
+            "/api/v2/tenant/signup",
+            json={
+                "form_variant": "linear",
+                "form_data": {
+                    "first_name": "Test",
+                    "last_name": "Tenant",
+                    "email": "test@example.com",
+                    "job_title": "Engineer",
+                    "company": "TestCo",
+                    "maturity": "exploring",
+                    "brings": "evals",
+                    "competitors": ["langsmith"],
+                    "attribution": "search",
+                },
+            },
+        )
 
         log_response(resp)
 
