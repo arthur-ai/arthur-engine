@@ -92,6 +92,7 @@ export const TASK_TOUR_QUERY_HOOKS = {
   traceAddToDatasetAction: "task-tour.traceAddToDatasetAction",
   traceAddToDatasetDrawer: "task-tour.traceAddToDatasetDrawer",
   datasetGenerateSynthetic: "task-tour.datasetGenerateSynthetic",
+  demoTaskPromptRow: "task-tour.demoTaskPromptRow",
   promptOpenInPlayground: "task-tour.promptOpenInPlayground",
   promptTags: "task-tour.promptTags",
   playgroundPromptCard: "task-tour.playgroundPromptCard",
@@ -297,6 +298,7 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
       },
       "inspect-prompt": {
         targetId: TOUR_IDS.promptsFirstRow,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.demoTaskPromptRow,
         route: "prompts",
         search: { tab: "prompts-management" },
         actionName: TASK_TOUR_ACTIONS.promptInspected,
@@ -310,9 +312,15 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
       // The preceding prompt-detail step navigates to a runtime notebook URL
       // that includes notebookId. Keep this step on the current page so the
       // static router does not strip that dynamic query param.
+      "duplicate-prompt-in-playground": {
+        targetId: TOUR_IDS.playgroundDuplicatePrompt,
+        actionName: TASK_TOUR_ACTIONS.playgroundPromptsCreated,
+        popover: { placement: "left" },
+      },
       "add-prompt-in-playground": {
         targetId: TOUR_IDS.playgroundAddPrompt,
         actionName: TASK_TOUR_ACTIONS.playgroundPromptsCreated,
+        popover: { placement: "left" },
       },
       "review-playground-prompt": {
         targetId: TOUR_IDS.playgroundPromptCard,
@@ -326,6 +334,16 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
         actionName: TASK_TOUR_ACTIONS.playgroundPromptsCreated,
         advance: "manual",
         popover: { showNext: true, nextLabel: "Next", placement: "bottom" },
+      },
+      // Final notebook beat: highlight the whole playground panel and wait for
+      // an explicit Next click before `open-create-experiment` navigates the
+      // user out to the experiments tab. Without this pause the route change
+      // yanks them off the notebook the instant they finish the controls step.
+      "review-notebook": {
+        targetId: TOUR_IDS.playgroundPanel,
+        actionName: TASK_TOUR_ACTIONS.playgroundPromptsCreated,
+        advance: "manual",
+        popover: { showNext: true, nextLabel: "Next", placement: "left" },
       },
       "open-create-experiment": {
         targetId: TOUR_IDS.promptsExperimentButton,

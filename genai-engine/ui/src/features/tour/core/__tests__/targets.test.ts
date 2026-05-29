@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { resolveTargetAsync, resolveTargetSync } from "../targets";
+import { findElementByExactText, resolveTargetAsync, resolveTargetSync } from "../targets";
 
 describe("tour target resolution", () => {
   beforeEach(() => {
@@ -69,5 +69,24 @@ describe("tour target resolution", () => {
     controller.abort();
 
     await expect(promise).resolves.toBeNull();
+  });
+
+  it("finds an element by exact normalized text and can return its closest ancestor", () => {
+    document.body.innerHTML = `
+      <table>
+        <tbody>
+          <tr data-row="other">
+            <td>demo_task_prompt_v2</td>
+          </tr>
+          <tr data-row="target">
+            <td>
+              <span> demo_task_prompt </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+
+    expect(findElementByExactText("demo_task_prompt", { selector: "td", closestSelector: "tr" })).toBe(document.querySelector('[data-row="target"]'));
   });
 });

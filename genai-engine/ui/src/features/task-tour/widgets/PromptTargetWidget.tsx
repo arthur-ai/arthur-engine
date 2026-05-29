@@ -1,7 +1,16 @@
 import { TASK_TOUR_QUERY_HOOKS } from "../content/wiring";
 import { tourSelector, TOUR_IDS } from "../selectors";
 
-import { useRegisterQueryHook } from "@/features/tour";
+import { findElementByExactText, useRegisterQueryHook } from "@/features/tour";
+
+const DEMO_TASK_PROMPT_NAME = "demo_task_prompt";
+
+export function resolveDemoTaskPromptRowTarget(): Element | null {
+  return findElementByExactText(DEMO_TASK_PROMPT_NAME, {
+    selector: "th, th *, td, td *, [role='cell'], [role='cell'] *, [role='rowheader'], [role='rowheader'] *",
+    closestSelector: "tr, [role='row']",
+  });
+}
 
 export function resolvePromptOpenInPlaygroundTarget(): Element | null {
   return document.querySelector(tourSelector(TOUR_IDS.promptOpenInPlayground)) ?? document.querySelector(tourSelector(TOUR_IDS.promptsFirstRow));
@@ -48,6 +57,7 @@ export function resolveCreateExperimentFinalTarget(): Element | null {
 }
 
 export function PromptTargetWidget() {
+  useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.demoTaskPromptRow, resolveDemoTaskPromptRowTarget);
   useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.promptOpenInPlayground, resolvePromptOpenInPlaygroundTarget);
   useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.promptTags, resolvePromptTagsTarget);
   useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.playgroundPromptCard, resolvePlaygroundPromptCardTarget);

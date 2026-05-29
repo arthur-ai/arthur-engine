@@ -7,6 +7,7 @@ import {
   resolveCreateExperimentFinalTarget,
   resolveCreateExperimentInfoTarget,
   resolveCreateExperimentPromptMappingsTarget,
+  resolveDemoTaskPromptRowTarget,
   resolvePlaygroundPromptCardTarget,
   resolvePromptOpenInPlaygroundTarget,
   resolvePromptTagsTarget,
@@ -25,6 +26,53 @@ describe("PromptTargetWidget resolvers", () => {
 
     document.body.innerHTML += `<button data-tour-id="${TOUR_IDS.promptOpenInPlayground}">Open in Playground</button>`;
     expect(resolvePromptOpenInPlaygroundTarget()).toBe(document.querySelector(`[data-tour-id="${TOUR_IDS.promptOpenInPlayground}"]`));
+  });
+
+  it("targets the prompt row whose name exactly matches demo_task_prompt", () => {
+    document.body.innerHTML = `
+      <table>
+        <tbody>
+          <tr data-row="first" data-tour-id="${TOUR_IDS.promptsFirstRow}">
+            <td>other_prompt</td>
+          </tr>
+          <tr data-row="target">
+            <th scope="row"><span>demo_task_prompt</span></th>
+          </tr>
+          <tr data-row="partial">
+            <th scope="row"><span>demo_task_prompt_v2</span></th>
+          </tr>
+        </tbody>
+      </table>
+    `;
+
+    expect(resolveDemoTaskPromptRowTarget()).toBe(document.querySelector('[data-row="target"]'));
+  });
+
+  it("targets demo_task_prompt when the name cell also renders a version chip", () => {
+    document.body.innerHTML = `
+      <table>
+        <tbody>
+          <tr data-row="first" data-tour-id="${TOUR_IDS.promptsFirstRow}">
+            <th scope="row">
+              <div>
+                <div>other_prompt</div>
+                <span>v4</span>
+              </div>
+            </th>
+          </tr>
+          <tr data-row="target">
+            <th scope="row">
+              <div>
+                <div>demo_task_prompt</div>
+                <span>v3</span>
+              </div>
+            </th>
+          </tr>
+        </tbody>
+      </table>
+    `;
+
+    expect(resolveDemoTaskPromptRowTarget()).toBe(document.querySelector('[data-row="target"]'));
   });
 
   it("targets the newest playground prompt card after Add Prompt creates one", () => {

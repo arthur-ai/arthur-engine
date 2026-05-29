@@ -111,18 +111,31 @@ describe("task tour config", () => {
   it("guides prompt playground entry and splits drafting into anchored popovers", () => {
     const config = buildTourConfig("task-id");
     const promptsSection = config.sections.find((section) => section.id === "prompts");
+    const inspectPromptStep = promptsSection?.steps.find((step) => step.id === "inspect-prompt");
     const openInPlaygroundStep = promptsSection?.steps.find((step) => step.id === "open-in-playground");
+    const duplicatePromptStep = promptsSection?.steps.find((step) => step.id === "duplicate-prompt-in-playground");
     const addPromptStep = promptsSection?.steps.find((step) => step.id === "add-prompt-in-playground");
     const reviewPromptStep = promptsSection?.steps.find((step) => step.id === "review-playground-prompt");
     const reviewControlsStep = promptsSection?.steps.find((step) => step.id === "review-playground-controls");
+    const reviewNotebookStep = promptsSection?.steps.find((step) => step.id === "review-notebook");
 
+    expect(inspectPromptStep).toMatchObject({
+      target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.demoTaskPromptRow },
+    });
     expect(openInPlaygroundStep).toMatchObject({
       target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.promptOpenInPlayground },
       advanceOn: [{ type: "action", name: TASK_TOUR_ACTIONS.promptOpenedInPlayground }],
     });
+    expect(duplicatePromptStep).toMatchObject({
+      target: { kind: "selector", selector: tourSelector(TOUR_IDS.playgroundDuplicatePrompt) },
+      advanceOn: expect.arrayContaining([{ type: "click" }]),
+      popover: { placement: "left" },
+    });
+    expect(duplicatePromptStep?.route).toBeUndefined();
     expect(addPromptStep).toMatchObject({
       target: { kind: "selector", selector: tourSelector(TOUR_IDS.playgroundAddPrompt) },
       advanceOn: expect.arrayContaining([{ type: "click" }]),
+      popover: { placement: "left" },
     });
     expect(addPromptStep?.route).toBeUndefined();
     expect(reviewPromptStep).toMatchObject({
@@ -135,6 +148,12 @@ describe("task tour config", () => {
       advanceOn: [{ type: "manual" }],
       popover: { showNext: true },
     });
+    expect(reviewNotebookStep).toMatchObject({
+      target: { kind: "selector", selector: tourSelector(TOUR_IDS.playgroundPanel) },
+      advanceOn: [{ type: "manual" }],
+      popover: { showNext: true, placement: "left" },
+    });
+    expect(reviewNotebookStep?.route).toBeUndefined();
   });
 
   it("guides create experiment through modal sections with action-only popovers", () => {

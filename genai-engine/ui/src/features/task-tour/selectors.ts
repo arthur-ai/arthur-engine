@@ -59,7 +59,7 @@ export const TOUR_IDS = {
   promptsEntry: "task-tour-prompts-entry",
   /** Prompts management tab in PromptsView — used for "open the Prompts tab". */
   promptsManagementTab: "task-tour-prompts-management-tab",
-  /** First row in the prompts management table — used for "inspect a prompt". */
+  /** Demo prompt row in the prompts management table — used for "inspect a prompt". */
   promptsFirstRow: "task-tour-prompts-first-row",
   /** Prompt detail button that opens the selected prompt in the playground. */
   promptOpenInPlayground: "task-tour-prompt-open-in-playground",
@@ -67,12 +67,16 @@ export const TOUR_IDS = {
   promptAddTag: "task-tour-prompt-add-tag",
   /** Prompt tags popover opened by the add-tag icon button. */
   promptTagsPopover: "task-tour-prompt-tags-popover",
-  /** "Add Prompt" button in the playground header — used for the prompt-tuning step. */
+  /** Duplicate Prompt icon-button on the first playground prompt card. */
+  playgroundDuplicatePrompt: "task-tour-playground-duplicate-prompt",
+  /** "Add Prompt" button in the playground header — used after duplicating the seeded prompt. */
   playgroundAddPrompt: "task-tour-playground-add-prompt",
   /** Newest prompt card in the playground prompt column list. */
   playgroundPromptCard: "task-tour-playground-prompt-card",
   /** Variables control in the playground header. */
   playgroundVariablesButton: "task-tour-playground-variables",
+  /** Root panel of the prompts playground — used for the full-notebook wrap-up step. */
+  playgroundPanel: "task-tour-playground-panel",
   /** "Experiment" button in the prompts view (visible on the Runs tab). */
   promptsExperimentButton: "task-tour-prompts-experiment",
   /** Create New item in the Prompt Runs Experiment menu. */

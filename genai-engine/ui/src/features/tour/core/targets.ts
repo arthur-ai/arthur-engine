@@ -1,5 +1,11 @@
 import type { QueryHookResolver, TargetSpec } from "./types";
 
+export interface FindElementByExactTextOptions {
+  root?: ParentNode;
+  selector?: string;
+  closestSelector?: string;
+}
+
 export interface ResolveTargetOptions {
   timeoutMs?: number;
   signal?: AbortSignal;
@@ -28,6 +34,15 @@ export function resolveTargetSync(spec: TargetSpec, options: Pick<ResolveTargetO
       return resolver ? resolver() : null;
     }
   }
+}
+
+export function findElementByExactText(text: string, options: FindElementByExactTextOptions = {}): Element | null {
+  const { root = document, selector = "*", closestSelector } = options;
+  const expectedText = normalizeElementText(text);
+  const candidates = Array.from(root.querySelectorAll(selector));
+  const match = candidates.find((element) => normalizeElementText(element.textContent ?? "") === expectedText);
+  if (!match) return null;
+  return closestSelector ? (match.closest(closestSelector) ?? match) : match;
 }
 
 /**
@@ -118,4 +133,8 @@ function attributeFilterFromSelector(selector: string): string[] | undefined {
   const match = selector.match(/\[([a-zA-Z0-9-]+)/);
   if (!match) return undefined;
   return [match[1]];
+}
+
+function normalizeElementText(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
 }

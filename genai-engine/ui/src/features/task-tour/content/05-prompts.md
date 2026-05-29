@@ -16,12 +16,16 @@ steps:
     title: Inspect a prompt
   - id: open-in-playground
     title: Open it in the playground
+  - id: duplicate-prompt-in-playground
+    title: Duplicate the prompt
   - id: add-prompt-in-playground
-    title: Add a prompt variant
+    title: Add a new prompt
   - id: review-playground-prompt
     title: Review the prompt card
   - id: review-playground-controls
     title: Review variables and config
+  - id: review-notebook
+    title: Review your notebook
   - id: open-create-experiment
     title: Start an experiment
   - id: complete-experiment-info
@@ -56,9 +60,13 @@ Click the top prompt in the list. Each prompt is a bundle of messages, variables
 
 Click **Open in Playground** from the prompt detail view. This creates or reuses a notebook seeded with the prompt so you can iterate without losing the production version.
 
+## step: duplicate-prompt-in-playground
+
+Click **Duplicate Prompt** to copy the seeded prompt into a side-by-side variant. Start from a copy first so you can make targeted edits without losing the original baseline.
+
 ## step: add-prompt-in-playground
 
-Click **Add Prompt** to create a side-by-side variant seeded from the current notebook.
+Click **Add Prompt** to create a fresh side-by-side prompt. You now have both a copied variant and a blank candidate to compare.
 
 ## step: review-playground-prompt
 
@@ -67,6 +75,10 @@ Use this new prompt card to draft a tighter system prompt for readability. Try a
 ## step: review-playground-controls
 
 Variables and config control what data your prompts run against. Review them before you move on so the experiment compares the same scenario fairly.
+
+## step: review-notebook
+
+This is your notebook — prompts, variables, and config all live together here so you can iterate side-by-side. Take one last look. When you're ready to prove which variant actually wins, continue to set up an experiment.
 
 ## step: open-create-experiment
 
