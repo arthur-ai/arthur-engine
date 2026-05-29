@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.579"
+        "version": "2.1.503"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -16469,6 +16469,48 @@
                 }
             }
         },
+        "/api/v2/tenant/signup": {
+            "post": {
+                "tags": [
+                    "Tenant Signup"
+                ],
+                "summary": "Create Tenant Signup",
+                "description": "Public tenant signup. Accepts try-it-out onboarding form data, persists an onboarding submission, and creates a new organization, a default demo task scoped to that org, and a TENANT-USER API key with `org_scope` set to the new org. Returns the four identifiers; the raw `api_key` value appears only in this response (the DB stores only its hash). Gated by GENAI_ENGINE_DEMO_MODE \u2014 returns 404 when disabled.",
+                "operationId": "create_tenant_signup_api_v2_tenant_signup_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TenantSignupRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DemoTaskSignupResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tasks/{task_id}/chatbot/stream": {
             "post": {
                 "tags": [
@@ -16596,70 +16638,6 @@
                         "API Key": []
                     }
                 ]
-            }
-        },
-        "/api/v2/tenant/signup": {
-            "post": {
-                "tags": [
-                    "Tenant Signup"
-                ],
-                "summary": "Create Tenant Signup",
-                "description": "Public tenant signup. Creates a new organization, a default demo task scoped to that org, and a TENANT-USER API key with `org_scope` set to the new org. Returns the four identifiers; the raw `api_key` value appears only in this response (the DB stores only its hash). Gated by GENAI_ENGINE_DEMO_MODE \u2014 returns 404 when disabled.",
-                "operationId": "create_tenant_signup_api_v2_tenant_signup_post",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/DemoTaskSignupResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v2/tenant/signup": {
-            "post": {
-                "tags": [
-                    "Tenant Signup"
-                ],
-                "summary": "Create Tenant Signup",
-                "description": "Public tenant signup. Accepts try-it-out onboarding form data, persists an onboarding submission, and creates a new organization, a default demo task scoped to that org, and a TENANT-USER API key with `org_scope` set to the new org. Returns the four identifiers; the raw `api_key` value appears only in this response (the DB stores only its hash). Gated by GENAI_ENGINE_DEMO_MODE \u2014 returns 404 when disabled.",
-                "operationId": "create_tenant_signup_api_v2_tenant_signup_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/TenantSignupRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/DemoTaskSignupResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
             }
         },
         "/users": {
@@ -16799,33 +16777,6 @@
                         }
                     }
                 }
-            }
-        },
-        "/users/me": {
-            "get": {
-                "tags": [
-                    "User Management"
-                ],
-                "summary": "Get Me",
-                "description": "Returns the current caller's identity, roles, org_scope, and (when scoped) the organization record. Used by the UI on login to decide between admin and tenant render branches. Admin callers and JWT callers receive org_scope=null and org=null.",
-                "operationId": "get_me_users_me_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/MeResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ]
             }
         },
         "/users/permissions/check": {
@@ -16982,6 +16933,33 @@
                         }
                     }
                 }
+            }
+        },
+        "/users/me": {
+            "get": {
+                "tags": [
+                    "User Management"
+                ],
+                "summary": "Get Me",
+                "description": "Returns the current caller's identity, roles, org_scope, and (when scoped) the organization record. Used by the UI on login to decide between admin and tenant render branches. Admin callers and JWT callers receive org_scope=null and org=null.",
+                "operationId": "get_me_users_me_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MeResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
             }
         },
         "/api/chat/files": {
@@ -26090,9 +26068,15 @@
                         "title": "Competitors"
                     },
                     "competitor_other": {
-                        "type": "string",
-                        "title": "Competitor Other",
-                        "default": ""
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Competitor Other"
                     },
                     "attribution": {
                         "type": "string",
@@ -26100,9 +26084,15 @@
                         "title": "Attribution"
                     },
                     "attribution_other": {
-                        "type": "string",
-                        "title": "Attribution Other",
-                        "default": ""
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Attribution Other"
                     }
                 },
                 "type": "object",

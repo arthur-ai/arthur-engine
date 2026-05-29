@@ -2,6 +2,14 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 05/29/2026
+- **BREAKING CHANGE** for **URL**: /api/v2/tenant/signup  the 'form_data/attribution_other' request property type/format changed from 'string'/'' to ''/''
+- **BREAKING CHANGE** for **URL**: /api/v2/tenant/signup  the 'form_data/competitor_other' request property type/format changed from 'string'/'' to ''/''
+- **CHANGE** for **URL**: /api/v2/tenant/signup  added 'subschema #1, subschema #2' to the 'form_data/attribution_other' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v2/tenant/signup  added 'subschema #1, subschema #2' to the 'form_data/competitor_other' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v2/tenant/signup  the 'attribution_other' request property default value '' was removed
+- **CHANGE** for **URL**: /api/v2/tenant/signup  the 'competitor_other' request property default value '' was removed
+
 # 05/26/2026
 - **BREAKING CHANGE** for **URL**: /api/v2/onboarding/submissions  api path removed without deprecation
 - **CHANGE** for Component/Schema:  removed the schema `OnboardingSubmissionRequest`
