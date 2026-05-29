@@ -81,8 +81,8 @@ class DemoTaskRepository:
         Raises a 400 err if neither provider is configured.
         """
         for provider, model_name in (
-            (ModelProvider.ANTHROPIC, "claude-sonnet-4-6"),
-            (ModelProvider.OPENAI, "gpt-5-mini"),
+            (ModelProvider.ANTHROPIC, "claude-haiku-4-5"),
+            (ModelProvider.OPENAI, "gpt-5.4-nano"),
         ):
             try:
                 self.model_provider_repo.get_model_provider_client(provider)
