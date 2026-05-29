@@ -35,6 +35,7 @@ export interface TaskTourItem {
   prepareKey?: string;
   skipWhenEmptyKey?: string;
   popover?: StepWiring["popover"];
+  formPrefill?: StepWiring["formPrefill"];
 }
 
 /**

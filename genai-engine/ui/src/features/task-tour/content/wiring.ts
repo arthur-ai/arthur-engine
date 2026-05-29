@@ -1,7 +1,7 @@
 import { TOUR_IDS, type TourId } from "../selectors";
 import { TASK_TOUR_ACTIONS } from "../tourActions";
 
-import type { StepPopoverConfig } from "@/features/tour";
+import type { StepFormPrefill, StepPopoverConfig } from "@/features/tour";
 
 /**
  * Real-app sub-route under `/tasks/:taskId/`. Mirrors the keys in `App.tsx`
@@ -61,6 +61,7 @@ export interface StepWiring {
   prepareKey?: string;
   skipWhenEmptyKey?: string;
   popover?: StepPopoverConfig;
+  formPrefill?: StepFormPrefill;
 }
 
 /**
@@ -129,6 +130,10 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
         actionName: TASK_TOUR_ACTIONS.demoAgentMessageSent,
         route: "chatbot",
         advance: "action-only",
+        formPrefill: {
+          targetId: TOUR_IDS.chatSendPlaceholder,
+          value: "What are AI Agent Evals?",
+        },
       },
     },
   },
@@ -282,6 +287,17 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
         targetHookId: TASK_TOUR_QUERY_HOOKS.datasetGenerateSynthetic,
         actionName: TASK_TOUR_ACTIONS.syntheticDataFinished,
         advance: "action-only",
+        formPrefill: {
+          targetId: TOUR_IDS.datasetGenerateSyntheticModal,
+          values: {
+            datasetPurpose: "Data for testing general-purpose wikipedia search agent",
+            columnDescriptions: {
+              query: "A general-purpose question for the Wikipedia search agent to answer.",
+              response: "The expected answer from the Wikipedia search agent.",
+            },
+          },
+          mode: "empty-only",
+        },
       },
     },
   },

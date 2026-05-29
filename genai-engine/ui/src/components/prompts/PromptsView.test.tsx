@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PromptsView } from "./PromptsView";
 
@@ -62,6 +62,10 @@ vi.mock("@/features/task-tour/tourEvents", () => ({
 describe("PromptsView create experiment tour action", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   it("refreshes the tour target when the Experiment menu opens", async () => {

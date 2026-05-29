@@ -200,7 +200,11 @@ const PromptsPlayground = ({ initialData }: { initialData: PlaygroundInitialData
       lastCompletedExperimentId={execution.lastCompletedExperimentId}
       triggerNotebookSave={autoSave.requestImmediateSave}
     >
-      <Box className="flex flex-col h-full" sx={{ position: "relative", backgroundColor: "background.default" }}>
+      <Box
+        data-tour-id={TOUR_IDS.playgroundPanel}
+        className="flex flex-col h-full"
+        sx={{ position: "relative", backgroundColor: "background.default" }}
+      >
         <PlaygroundHeader
           notebookId={notebookId}
           saveStatus={autoSave.saveStatus}

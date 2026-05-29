@@ -2,10 +2,11 @@ import CloseIcon from "@mui/icons-material/Close";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SendIcon from "@mui/icons-material/Send";
 import { Box, Divider, IconButton, Stack, TextField, Tooltip, Typography } from "@mui/material";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ChatMessage, ThinkingIndicator, ToolCallIndicator } from "./ChatMessage";
 
+import { useTaskTourFormPrefill, type TaskTourFormPrefill } from "@/features/task-tour/formPrefill";
 import type { ChatMessage as ChatMessageType, ToolCallPayload } from "@/hooks/useChatbot";
 
 interface ChatPanelProps {
@@ -37,6 +38,13 @@ export function ChatPanel({
 }: ChatPanelProps) {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLElement>(null);
+  const handleTourPrefill = useCallback((prefill: TaskTourFormPrefill) => {
+    if (typeof prefill.value !== "string") return;
+    const value = prefill.value;
+    setInput((current) => (prefill.mode === "empty-only" && current.trim() ? current : value));
+  }, []);
+
+  useTaskTourFormPrefill(inputTourId, handleTourPrefill);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

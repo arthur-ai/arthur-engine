@@ -14,6 +14,7 @@ import {
   ResumeFabWidget,
   SectionCompleteWidget,
   SpotlightWidget,
+  TaskTourFormPrefillWidget,
   TracesTargetWidget,
   TracesTourCleanupWidget,
 } from "./widgets";
@@ -145,6 +146,7 @@ function TaskTourBody({
       <PromptTargetWidget />
       <TracesTargetWidget />
       <TracesTourCleanupWidget />
+      <TaskTourFormPrefillWidget />
       <IntroWidget />
       <SectionCompleteWidget anchorRect={panelAnchoredToFab ? fabAnchorRect : null} />
       <SpotlightWidget />

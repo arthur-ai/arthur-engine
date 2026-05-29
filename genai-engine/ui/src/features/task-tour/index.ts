@@ -1,4 +1,5 @@
 export { TaskTour, type TaskTourProps } from "./TaskTour";
+export { dispatchTaskTourFormPrefill, useTaskTourFormPrefill, type TaskTourFormPrefill } from "./formPrefill";
 export { TASK_TOUR_STORAGE_KEY, useTaskTourEngine } from "./useTaskTourEngine";
 export { TOUR_IDS, tourSelector, type TourId } from "./selectors";
 export {

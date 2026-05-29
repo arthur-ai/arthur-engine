@@ -7,5 +7,6 @@ export { PromptTargetWidget } from "./PromptTargetWidget";
 export { ResumeFabWidget, type ResumeFabWidgetProps } from "./ResumeFabWidget";
 export { SectionCompleteWidget, type SectionCompleteWidgetProps } from "./SectionCompleteWidget";
 export { SpotlightWidget } from "./SpotlightWidget";
+export { TaskTourFormPrefillWidget } from "./TaskTourFormPrefillWidget";
 export { TracesTargetWidget } from "./TracesTargetWidget";
 export { TracesTourCleanupWidget } from "./TracesTourCleanupWidget";

@@ -152,12 +152,20 @@ export interface IntroductionConfig {
  */
 export type StepFallback = { kind: "auto-complete"; afterMs: number };
 
+export interface StepFormPrefill {
+  targetId: string;
+  value?: string;
+  values?: Record<string, unknown>;
+  mode?: "replace" | "empty-only";
+}
+
 export interface StepConfig {
   id: string;
   target: TargetSpec;
   content: ReactNode | ((ctx: StepRenderContext) => ReactNode);
   placement?: Placement;
   popover?: StepPopoverConfig;
+  formPrefill?: StepFormPrefill;
   highlight?: HighlightSpec;
   overlay?: OverlayConfig;
   advanceOn?: AdvanceTrigger | AdvanceTrigger[];

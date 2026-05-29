@@ -24,6 +24,10 @@ describe("task tour config", () => {
         path: "/tasks/:taskId/chatbot",
         params: { taskId: "task-id" },
       },
+      formPrefill: {
+        targetId: TOUR_IDS.chatSendPlaceholder,
+        value: "What are AI Agent Evals?",
+      },
       advanceOn: [{ type: "action", name: TASK_TOUR_ACTIONS.demoAgentMessageSent }],
     });
   });
@@ -39,6 +43,17 @@ describe("task tour config", () => {
 
     expect(generateSyntheticStep).toMatchObject({
       target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.datasetGenerateSynthetic },
+      formPrefill: {
+        targetId: TOUR_IDS.datasetGenerateSyntheticModal,
+        values: {
+          datasetPurpose: "Data for testing general-purpose wikipedia search agent",
+          columnDescriptions: {
+            query: "A general-purpose question for the Wikipedia search agent to answer.",
+            response: "The expected answer from the Wikipedia search agent.",
+          },
+        },
+        mode: "empty-only",
+      },
       advanceOn: [{ type: "action", name: TASK_TOUR_ACTIONS.syntheticDataFinished }],
     });
   });

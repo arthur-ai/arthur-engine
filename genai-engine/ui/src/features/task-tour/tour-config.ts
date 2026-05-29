@@ -62,6 +62,7 @@ function buildStep(taskId: string, item: TaskTourItem, opts: BuildTourConfigOpti
     overlay: { blockInteraction: true, onBackdropClick: "none", color: TASK_TOUR_BACKDROP_COLOR },
     ...(route ? { route } : {}),
     ...(item.popover ? { popover: item.popover } : {}),
+    ...(item.formPrefill ? { formPrefill: item.formPrefill } : {}),
     ...(item.prepareKey ? { prepare: { key: item.prepareKey } } : {}),
     ...(skipWhen ? { skipWhen } : {}),
     awaitTarget: { timeoutMs: isTracesRouteStep ? TRACES_STEP_TIMEOUT_MS : isPromptDetailStep ? PROMPT_DETAIL_STEP_TIMEOUT_MS : STEP_TIMEOUT_MS },
