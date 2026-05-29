@@ -11166,6 +11166,11 @@ export interface TenantSignupRequest {
    * Which onboarding form variant was submitted.
    */
   form_variant?: TenantSignupRequestFormVariantEnum | null;
+  /**
+   * Recaptcha Token
+   * reCAPTCHA Enterprise token obtained client-side. Required when reCAPTCHA is configured server-side; ignored otherwise.
+   */
+  recaptcha_token?: string | null;
 }
 
 export type TenantSignupRequestFormVariantEnum = "linear" | "wizard";

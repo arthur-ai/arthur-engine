@@ -19,7 +19,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from clients.recaptcha.recaptcha_verifier import RecaptchaEnterpriseVerifier
 from config.config import Config
+from config.recaptcha_config import RecaptchaConfig
 from dependencies import get_application_config, get_db_session
 from repositories.api_key_repository import ApiKeyRepository
 from repositories.demo_task_repository import DemoTaskRepository
@@ -68,6 +70,23 @@ def create_tenant_signup(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Not Found",
+        )
+
+    # Gate on reCAPTCHA Enterprise before doing any provisioning work. When
+    # reCAPTCHA is not configured the verifier fails open, so demo/dev flows
+    # are unaffected.
+    recaptcha_result = RecaptchaEnterpriseVerifier().verify(
+        body.recaptcha_token,
+        action=RecaptchaConfig.expected_action(),
+    )
+    if not recaptcha_result.success:
+        logger.info(
+            "Rejecting tenant signup: reCAPTCHA verification failed (%s)",
+            recaptcha_result.reason,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="reCAPTCHA verification failed.",
         )
 
     try:

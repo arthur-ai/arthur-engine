@@ -6,6 +6,10 @@ import { useApi } from "@/hooks/useApi";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { createApiClient } from "@/lib/api";
 import type { DemoTaskSignupResponse, OnboardingTryItOutFormData, TenantSignupRequest } from "@/lib/api-client/api-client";
+import { executeRecaptcha } from "@/lib/recaptcha";
+
+/** reCAPTCHA Enterprise action name; must match the backend expected action. */
+const RECAPTCHA_ACTION = "onboarding_signup";
 
 export function toOnboardingFormData(data: TryItOutSubmission): OnboardingTryItOutFormData {
   return {
@@ -41,9 +45,11 @@ export function useCreateOnboardingSubmissionMutation(options?: UseCreateOnboard
 
   return useApiMutation<DemoTaskSignupResponse, CreateOnboardingSubmissionVariables>({
     mutationFn: async ({ data, meta }) => {
+      const recaptchaToken = await executeRecaptcha(RECAPTCHA_ACTION);
       const payload: TenantSignupRequest = {
         form_variant: meta.formVariant,
         form_data: toOnboardingFormData(data),
+        recaptcha_token: recaptchaToken ?? undefined,
       };
       const response = await api.api.createTenantSignupApiV2TenantSignupPost(payload);
       return response.data;

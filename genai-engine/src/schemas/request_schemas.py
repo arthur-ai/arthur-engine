@@ -1412,6 +1412,13 @@ class TenantSignupRequest(BaseModel):
         description="Which onboarding form variant was submitted.",
     )
     form_data: OnboardingTryItOutFormData
+    recaptcha_token: Optional[str] = Field(
+        default=None,
+        description=(
+            "reCAPTCHA Enterprise token obtained client-side. Required when "
+            "reCAPTCHA is configured server-side; ignored otherwise."
+        ),
+    )
 
 
 class SyntheticDataConversationRequest(BaseModel):

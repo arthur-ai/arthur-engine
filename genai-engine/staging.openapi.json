@@ -31227,6 +31227,18 @@
                     },
                     "form_data": {
                         "$ref": "#/components/schemas/OnboardingTryItOutFormData"
+                    },
+                    "recaptcha_token": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Recaptcha Token",
+                        "description": "reCAPTCHA Enterprise token obtained client-side. Required when reCAPTCHA is configured server-side; ignored otherwise."
                     }
                 },
                 "type": "object",

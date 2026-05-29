@@ -3,12 +3,15 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 05/29/2026
-- **BREAKING CHANGE** for **URL**: /api/v2/tenant/signup  the 'form_data/attribution_other' request property type/format changed from 'string'/'' to ''/''
-- **BREAKING CHANGE** for **URL**: /api/v2/tenant/signup  the 'form_data/competitor_other' request property type/format changed from 'string'/'' to ''/''
-- **CHANGE** for **URL**: /api/v2/tenant/signup  added 'subschema #1, subschema #2' to the 'form_data/attribution_other' request property 'anyOf' list
-- **CHANGE** for **URL**: /api/v2/tenant/signup  added 'subschema #1, subschema #2' to the 'form_data/competitor_other' request property 'anyOf' list
-- **CHANGE** for **URL**: /api/v2/tenant/signup  the 'attribution_other' request property default value '' was removed
-- **CHANGE** for **URL**: /api/v2/tenant/signup  the 'competitor_other' request property default value '' was removed
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/demos/chatbot/stream  deleted the `header` request parameter `x-user-timezone`
+
+# 05/29/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/demos/chatbot/stream  added the new optional `header` request parameter `x-user-timezone`
+- **CHANGE** for **URL**: /api/v2/tenant/signup  added the new optional request property `recaptcha_token`
+- **CHANGE** for **URL**: /api/v2/tenant/signup  the `attribution_other` request property default value `` was removed
+- **CHANGE** for **URL**: /api/v2/tenant/signup  the `competitor_other` request property default value `` was removed
+- **CHANGE** for **URL**: /api/v2/tenant/signup  request property `form_data/attribution_other` list-of-types was widened by adding types `null` to media type `application/json`
+- **CHANGE** for **URL**: /api/v2/tenant/signup  request property `form_data/competitor_other` list-of-types was widened by adding types `null` to media type `application/json`
 
 # 05/26/2026
 - **BREAKING CHANGE** for **URL**: /api/v2/onboarding/submissions  api path removed without deprecation

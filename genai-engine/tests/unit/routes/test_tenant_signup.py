@@ -48,6 +48,22 @@ SAMPLE_SIGNUP_BODY = {
 }
 
 
+@pytest.fixture(autouse=True)
+def _disable_recaptcha_by_default(monkeypatch):
+    """Keep reCAPTCHA unconfigured for every test in this module so the
+    fail-open signup paths are deterministic regardless of the developer's
+    local ``.env`` (which may carry real reCAPTCHA credentials). The tests that
+    exercise the reCAPTCHA gate stub the verifier directly and so are
+    unaffected by config state.
+    """
+    for var in (
+        "RECAPTCHA_ENTERPRISE_PROJECT_ID",
+        "RECAPTCHA_ENTERPRISE_SITE_KEY",
+        "RECAPTCHA_ENTERPRISE_API_KEY",
+    ):
+        monkeypatch.delenv(var, raising=False)
+
+
 def _signup(client: TestClient):
     return client.post(SIGNUP_URL, json=SAMPLE_SIGNUP_BODY)
 
@@ -405,6 +421,79 @@ def test_signup_persists_onboarding_submission(
             assert submission.form_variant == "linear"
         finally:
             db_session.close()
+    finally:
+        client.base_client.delete(
+            "/api/v1/model_providers/anthropic",
+            headers=client.authorized_user_api_key_headers,
+        )
+
+
+# --- reCAPTCHA gate ------------------------------------------------------
+# The verifier fails open when reCAPTCHA is unconfigured (the default in the
+# test env), so the happy-path tests above exercise that branch. These tests
+# stub the verifier the route module imports to assert the rejection path and
+# that the submitted token is forwarded for assessment.
+
+
+@pytest.mark.unit_tests
+def test_signup_rejected_when_recaptcha_fails(monkeypatch):
+    """A failed assessment short-circuits provisioning with a 400."""
+    from clients.recaptcha.recaptcha_verifier import RecaptchaVerificationResult
+    from routers.v2 import tenant_signup_routes as mod
+
+    class RejectingVerifier:
+        def verify(self, token, action=None):
+            return RecaptchaVerificationResult(success=False, reason="low_score")
+
+    before = _count_demo_orgs()
+    with patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "ENABLED"}):
+        monkeypatch.setattr(mod, "RecaptchaEnterpriseVerifier", RejectingVerifier)
+        client = TestClient(app)
+        response = _signup(client)
+    after = _count_demo_orgs()
+
+    assert response.status_code == 400
+    assert "reCAPTCHA" in response.json()["detail"]
+    # No provisioning happened.
+    assert after == before
+
+
+@pytest.mark.unit_tests
+def test_signup_forwards_recaptcha_token_to_verifier(
+    client: GenaiEngineTestClientBase,
+    monkeypatch,
+):
+    """The token from the request body is handed to the verifier."""
+    from clients.recaptcha.recaptcha_verifier import RecaptchaVerificationResult
+    from routers.v2 import tenant_signup_routes as mod
+
+    seen = {}
+
+    class CapturingVerifier:
+        def verify(self, token, action=None):
+            seen["token"] = token
+            seen["action"] = action
+            return RecaptchaVerificationResult(success=True, score=0.9)
+
+    client.base_client.put(
+        "/api/v1/model_providers/anthropic",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+
+    try:
+        body = {**SAMPLE_SIGNUP_BODY, "recaptcha_token": "the-token"}
+        with patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "ENABLED"}):
+            monkeypatch.setattr(
+                mod,
+                "RecaptchaEnterpriseVerifier",
+                CapturingVerifier,
+            )
+            test_client = TestClient(app)
+            response = test_client.post(SIGNUP_URL, json=body)
+
+        assert response.status_code == 200
+        assert seen["token"] == "the-token"
     finally:
         client.base_client.delete(
             "/api/v1/model_providers/anthropic",
