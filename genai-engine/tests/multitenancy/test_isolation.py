@@ -1008,3 +1008,371 @@ def test_k1_reads_both_own_tasks(tenant_world: TenantWorld):
     )
     assert a.status_code == 200
     assert b.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Repository-level: attach_notebook_to_experiment cross-org rejection.
+#
+# Regression coverage for the bug fixed in commit e29225c5 (PR #1693) across
+# all three experiment repositories. The pre-fix code org-validated the
+# experiment via `_get_db_experiment(..., org_scope=)` but then blindly wrote
+# `db_experiment.notebook_id = notebook_id` without validating that the
+# notebook itself belonged to the experiment's task. A tenant could attach a
+# foreign-org notebook UUID to their own experiment.
+#
+# The fix adds a `DatabaseNotebook.task_id == db_experiment.task_id` filter on
+# the notebook lookup — since the experiment is already org-validated, the
+# task_id match transitively enforces org ownership. 404 is returned (parity
+# with `_get_db_experiment` / `_get_db_notebook` helpers) for both
+# "notebook doesn't exist" and "notebook is in a foreign task/org."
+# ---------------------------------------------------------------------------
+
+from datetime import datetime, timezone
+
+from fastapi import HTTPException
+
+from db_models.agentic_experiment_models import DatabaseAgenticExperiment
+from db_models.agentic_notebook_models import DatabaseAgenticNotebook
+from db_models.dataset_models import DatabaseDataset, DatabaseDatasetVersion
+from db_models.notebook_models import DatabaseNotebook
+from db_models.prompt_experiment_models import DatabasePromptExperiment
+from db_models.rag_experiment_models import DatabaseRagExperiment
+from db_models.rag_notebook_models import DatabaseRagNotebook
+from repositories.agentic_experiment_repository import AgenticExperimentRepository
+from repositories.prompt_experiment_repository import PromptExperimentRepository
+from repositories.rag_experiment_repository import RagExperimentRepository
+from schemas.base_experiment_schemas import ExperimentStatus
+from tests.clients.base_test_client import override_get_db_session
+
+
+def _attach_suffix() -> str:
+    """Short unique suffix for ids/names used by the attach-notebook tests."""
+    return uuid.uuid4().hex[:8]
+
+
+def _seed_dataset_with_version(db, task_id: str) -> tuple[uuid.UUID, int]:
+    """Create a DatabaseDataset + DatabaseDatasetVersion on `task_id`.
+
+    Returns (dataset_id, version_number). The experiment FK constraint
+    points at dataset_versions, so both rows are required.
+    """
+    now = datetime.now(timezone.utc)
+    dataset_id = uuid.uuid4()
+    db.add(
+        DatabaseDataset(
+            id=dataset_id,
+            task_id=task_id,
+            name=f"mt-attach-ds-{_attach_suffix()}",
+            description="mt-attach-seed",
+            created_at=now,
+            updated_at=now,
+            latest_version_number=1,
+        )
+    )
+    db.flush()
+    db.add(
+        DatabaseDatasetVersion(
+            version_number=1,
+            dataset_id=dataset_id,
+            column_names=[],
+        )
+    )
+    db.commit()
+    return dataset_id, 1
+
+
+@pytest.fixture
+def attach_notebook_seed(tenant_world: TenantWorld):
+    """Per-test seed: dataset+version on T1a (caller's task) and T2a
+    (foreign task), used to anchor experiments/notebooks for the three
+    repository-level cross-org attach tests.
+
+    Each test creates its own experiment + notebook ids on top of these
+    datasets so writes from one test do not leak into another. The fixture
+    cleans up the dataset rows on teardown (cascade handles version rows).
+    """
+    db = override_get_db_session()
+    t1a_dataset_id, _ = _seed_dataset_with_version(db, tenant_world.t1a.id)
+    t2a_dataset_id, _ = _seed_dataset_with_version(db, tenant_world.t2a.id)
+    try:
+        yield db, t1a_dataset_id, t2a_dataset_id
+    finally:
+        for ds_id in (t1a_dataset_id, t2a_dataset_id):
+            try:
+                row = (
+                    db.query(DatabaseDataset)
+                    .filter(DatabaseDataset.id == ds_id)
+                    .first()
+                )
+                if row is not None:
+                    db.delete(row)
+                db.commit()
+            except Exception:
+                db.rollback()
+        db.close()
+
+
+def _cleanup_rows(db, pairs):
+    """Best-effort delete + commit per (model, pk). Used to keep sub-cases
+    of the consolidated attach-notebook test isolated."""
+    for model, pk in pairs:
+        try:
+            row = db.query(model).filter(model.id == pk).first()
+            if row is not None:
+                db.delete(row)
+            db.commit()
+        except Exception:
+            db.rollback()
+
+
+@pytest.mark.unit_tests
+def test_attach_notebook_isolation_matrix(
+    tenant_world: TenantWorld, attach_notebook_seed
+):
+    """Consolidated regression for the attach_notebook_to_experiment fix
+    (commit e29225c5, PR #1693) across all three experiment repositories,
+    plus the prompt-repo happy-path.
+
+    Sub-cases run sequentially against the shared `tenant_world` +
+    `attach_notebook_seed` fixtures to amortize the expensive dataset/
+    experiment/notebook seeding. Each sub-case cleans up its own writes in
+    a `finally` block so they don't bleed into the next sub-case.
+
+    Sub-cases:
+      1. prompt   — cross-org notebook → 404, no mutation
+      2. agentic  — cross-org notebook → 404, no mutation
+      3. rag      — cross-org notebook → 404, no mutation
+      4. prompt   — same-task notebook → succeeds, notebook_id set
+    """
+    db, t1a_dataset_id, t2a_dataset_id = attach_notebook_seed
+    now = datetime.now(timezone.utc)
+
+    # -- Sub-case 1: prompt repo, cross-org notebook rejected -------------
+    sub = "prompt-cross-org"
+    experiment_id = uuid.uuid4().hex
+    notebook_id = uuid.uuid4().hex
+    db.add(
+        DatabasePromptExperiment(
+            id=experiment_id,
+            task_id=tenant_world.t1a.id,
+            name=f"mt-attach-prompt-exp-{_attach_suffix()}",
+            description="own-org experiment",
+            status=ExperimentStatus.QUEUED,
+            dataset_id=t1a_dataset_id,
+            dataset_version=1,
+            prompt_configs=[],
+            prompt_variable_mapping=[],
+            eval_configs=[],
+        )
+    )
+    db.add(
+        DatabaseNotebook(
+            id=notebook_id,
+            task_id=tenant_world.t2a.id,  # foreign-org task
+            name=f"mt-attach-prompt-nb-{_attach_suffix()}",
+            created_at=now,
+            updated_at=now,
+        )
+    )
+    db.commit()
+    try:
+        repo = PromptExperimentRepository(db)
+        with pytest.raises(HTTPException) as exc_info:
+            repo.attach_notebook_to_experiment(
+                experiment_id=experiment_id,
+                notebook_id=notebook_id,
+                org_scope=tenant_world.o1_id,
+            )
+        assert exc_info.value.status_code == 404, sub
+        assert f"Notebook {notebook_id} not found." in str(exc_info.value.detail), sub
+
+        db.expire_all()
+        refetched = (
+            db.query(DatabasePromptExperiment)
+            .filter(DatabasePromptExperiment.id == experiment_id)
+            .first()
+        )
+        assert refetched is not None, sub
+        assert refetched.notebook_id is None, sub
+    finally:
+        _cleanup_rows(
+            db,
+            (
+                (DatabasePromptExperiment, experiment_id),
+                (DatabaseNotebook, notebook_id),
+            ),
+        )
+
+    # -- Sub-case 2: agentic repo, cross-org notebook rejected ------------
+    sub = "agentic-cross-org"
+    experiment_id = uuid.uuid4().hex
+    notebook_id = uuid.uuid4().hex
+    db.add(
+        DatabaseAgenticExperiment(
+            id=experiment_id,
+            task_id=tenant_world.t1a.id,
+            name=f"mt-attach-agentic-exp-{_attach_suffix()}",
+            description="own-org agentic experiment",
+            status=ExperimentStatus.QUEUED,
+            dataset_id=t1a_dataset_id,
+            dataset_version=1,
+            http_template={},
+            template_variable_mapping=[],
+            eval_configs=[],
+        )
+    )
+    db.add(
+        DatabaseAgenticNotebook(
+            id=notebook_id,
+            task_id=tenant_world.t2a.id,  # foreign-org task
+            name=f"mt-attach-agentic-nb-{_attach_suffix()}",
+            created_at=now,
+            updated_at=now,
+        )
+    )
+    db.commit()
+    try:
+        repo = AgenticExperimentRepository(db)
+        with pytest.raises(HTTPException) as exc_info:
+            repo.attach_notebook_to_experiment(
+                experiment_id=experiment_id,
+                notebook_id=notebook_id,
+                org_scope=tenant_world.o1_id,
+            )
+        assert exc_info.value.status_code == 404, sub
+        assert f"Agentic notebook {notebook_id} not found." in str(
+            exc_info.value.detail
+        ), sub
+
+        db.expire_all()
+        refetched = (
+            db.query(DatabaseAgenticExperiment)
+            .filter(DatabaseAgenticExperiment.id == experiment_id)
+            .first()
+        )
+        assert refetched is not None, sub
+        assert refetched.notebook_id is None, sub
+    finally:
+        _cleanup_rows(
+            db,
+            (
+                (DatabaseAgenticExperiment, experiment_id),
+                (DatabaseAgenticNotebook, notebook_id),
+            ),
+        )
+
+    # -- Sub-case 3: rag repo, cross-org notebook rejected ----------------
+    sub = "rag-cross-org"
+    experiment_id = uuid.uuid4().hex
+    notebook_id = uuid.uuid4().hex
+    db.add(
+        DatabaseRagExperiment(
+            id=experiment_id,
+            task_id=tenant_world.t1a.id,
+            name=f"mt-attach-rag-exp-{_attach_suffix()}",
+            description="own-org RAG experiment",
+            status=ExperimentStatus.QUEUED,
+            dataset_id=t1a_dataset_id,
+            dataset_version=1,
+            rag_configs=[],
+            eval_configs=[],
+        )
+    )
+    db.add(
+        DatabaseRagNotebook(
+            id=notebook_id,
+            task_id=tenant_world.t2a.id,  # foreign-org task
+            name=f"mt-attach-rag-nb-{_attach_suffix()}",
+            created_at=now,
+            updated_at=now,
+        )
+    )
+    db.commit()
+    try:
+        repo = RagExperimentRepository(db)
+        with pytest.raises(HTTPException) as exc_info:
+            repo.attach_notebook_to_experiment(
+                experiment_id=experiment_id,
+                notebook_id=notebook_id,
+                org_scope=tenant_world.o1_id,
+            )
+        assert exc_info.value.status_code == 404, sub
+        assert f"RAG notebook {notebook_id} not found." in str(
+            exc_info.value.detail
+        ), sub
+
+        db.expire_all()
+        refetched = (
+            db.query(DatabaseRagExperiment)
+            .filter(DatabaseRagExperiment.id == experiment_id)
+            .first()
+        )
+        assert refetched is not None, sub
+        assert refetched.notebook_id is None, sub
+    finally:
+        _cleanup_rows(
+            db,
+            (
+                (DatabaseRagExperiment, experiment_id),
+                (DatabaseRagNotebook, notebook_id),
+            ),
+        )
+
+    # -- Sub-case 4: prompt repo, same-task notebook attaches -------------
+    # Covers the prompt repo specifically; the agentic and RAG repos share
+    # the same implementation shape, so one representative happy-path is
+    # sufficient regression coverage for the new filter clause.
+    sub = "prompt-same-task-happy-path"
+    experiment_id = uuid.uuid4().hex
+    notebook_id = uuid.uuid4().hex
+    db.add(
+        DatabasePromptExperiment(
+            id=experiment_id,
+            task_id=tenant_world.t1a.id,
+            name=f"mt-attach-prompt-exp-ok-{_attach_suffix()}",
+            description="own-task experiment",
+            status=ExperimentStatus.QUEUED,
+            dataset_id=t1a_dataset_id,
+            dataset_version=1,
+            prompt_configs=[],
+            prompt_variable_mapping=[],
+            eval_configs=[],
+        )
+    )
+    db.add(
+        DatabaseNotebook(
+            id=notebook_id,
+            task_id=tenant_world.t1a.id,  # SAME task as the experiment
+            name=f"mt-attach-prompt-nb-ok-{_attach_suffix()}",
+            created_at=now,
+            updated_at=now,
+        )
+    )
+    db.commit()
+    try:
+        repo = PromptExperimentRepository(db)
+        result = repo.attach_notebook_to_experiment(
+            experiment_id=experiment_id,
+            notebook_id=notebook_id,
+            org_scope=tenant_world.o1_id,
+        )
+        # Summary builder reads db_experiment.dataset.name — the seeded
+        # dataset row guarantees that lookup resolves.
+        assert result.id == experiment_id, sub
+
+        db.expire_all()
+        refetched = (
+            db.query(DatabasePromptExperiment)
+            .filter(DatabasePromptExperiment.id == experiment_id)
+            .first()
+        )
+        assert refetched is not None, sub
+        assert refetched.notebook_id == notebook_id, sub
+    finally:
+        _cleanup_rows(
+            db,
+            (
+                (DatabasePromptExperiment, experiment_id),
+                (DatabaseNotebook, notebook_id),
+            ),
+        )

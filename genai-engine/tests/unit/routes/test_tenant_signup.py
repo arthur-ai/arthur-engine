@@ -524,3 +524,140 @@ def test_signup_rolls_back_org_when_api_key_step_fails(monkeypatch):
     assert response.status_code == 500
     # rollback worked: no new demo-* org leaked into the DB
     assert after == before
+
+
+# --- Error-detail sanitization -------------------------------------------
+# These tests pin the contract that the public, unauthenticated signup
+# endpoint never leaks raw exception text (Pydantic validation messages,
+# SQLAlchemy IntegrityError strings, RuntimeError messages, table/constraint
+# names, SQL fragments) to anonymous callers. Regression guards for the fix
+# that replaced f"Failed to signup tenant: {e}" with static detail strings.
+
+
+@pytest.mark.unit_tests
+def test_signup_error_paths_return_sanitized_detail(monkeypatch):
+    """Consolidated regression guard for the static-detail / rollback contract.
+
+    The original four tests each spun up a fresh TestClient, monkeypatched a
+    repo on ``tenant_signup_routes``, and POSTed to the signup endpoint —
+    expensive setup we amortize here by running every sub-case sequentially
+    against a single TestClient. Between sub-cases we use
+    ``monkeypatch.undo()`` to peel off the previous patch so the next one
+    starts from the unmodified module, then re-apply the next failure
+    injection with ``monkeypatch.setattr``.
+
+    Sub-cases covered:
+      1. ValueError from create_organization → 400 + "Invalid signup request."
+      2. RuntimeError from create_api_key   → 500 + "Failed to signup tenant."
+      3. IntegrityError outside the retry window (from create_api_key) →
+         500 + "Failed to signup tenant." and no SQL/driver leakage.
+      4. ValueError from create_api_key after the org has been flushed →
+         400 + "Invalid signup request." and the org row rolled back so no
+         orphan demo-* row remains in the DB.
+    """
+    from routers.v2 import tenant_signup_routes as mod
+
+    test_client = TestClient(app)
+    env_patch = patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "ENABLED"})
+
+    # --- Sub-case 1: ValueError from create_organization ---------------
+    case = "ValueError -> 400 sanitized"
+    leaky_value_msg = "pydantic: name must be non-empty / secret_internal_path"
+
+    class ValueErrorOrgRepo:
+        def __init__(self, db_session):
+            pass
+
+        def create_organization(self, **kwargs):
+            raise ValueError(leaky_value_msg)
+
+    monkeypatch.setattr(mod, "OrganizationsRepository", ValueErrorOrgRepo)
+    with env_patch:
+        response = _signup(test_client)
+    assert response.status_code == 400, case
+    assert response.json()["detail"] == "Invalid signup request.", case
+    assert leaky_value_msg not in response.text, case
+    assert "ValueError" not in response.text, case
+    assert "pydantic" not in response.text, case
+    assert "secret_internal_path" not in response.text, case
+    monkeypatch.undo()
+
+    # --- Sub-case 2: RuntimeError from create_api_key ------------------
+    case = "RuntimeError -> 500 sanitized"
+    leaky_runtime_msg = "simulated api key failure / SECRET_TABLE.api_keys_pkey"
+
+    class BrokenApiKeyRepo:
+        def __init__(self, db_session):
+            pass
+
+        def create_api_key(self, **kwargs):
+            raise RuntimeError(leaky_runtime_msg)
+
+    monkeypatch.setattr(mod, "ApiKeyRepository", BrokenApiKeyRepo)
+    with env_patch:
+        response = _signup(test_client)
+    assert response.status_code == 500, case
+    assert response.json()["detail"] == "Failed to signup tenant.", case
+    assert leaky_runtime_msg not in response.text, case
+    assert "RuntimeError" not in response.text, case
+    assert "SECRET_TABLE" not in response.text, case
+    assert "api_keys_pkey" not in response.text, case
+    monkeypatch.undo()
+
+    # --- Sub-case 3: IntegrityError outside retry window (api_key) ------
+    case = "IntegrityError outside retry window -> 500 sanitized"
+
+    class IntegrityFailingApiKeyRepo:
+        def __init__(self, db_session):
+            pass
+
+        def create_api_key(self, **kwargs):
+            # Mimic what psycopg/SQLAlchemy actually surface: constraint
+            # name, SQL fragment, table schema.
+            raise IntegrityError(
+                'INSERT INTO api_keys (id, key_hash) VALUES (...) -- duplicate key value violates unique constraint "api_keys_pkey"',
+                {},
+                Exception("psycopg.errors.UniqueViolation: api_keys_pkey"),
+            )
+
+    monkeypatch.setattr(mod, "ApiKeyRepository", IntegrityFailingApiKeyRepo)
+    with env_patch:
+        response = _signup(test_client)
+    assert response.status_code == 500, case
+    assert response.json()["detail"] == "Failed to signup tenant.", case
+    assert "IntegrityError" not in response.text, case
+    assert "psycopg" not in response.text, case
+    assert "api_keys_pkey" not in response.text, case
+    assert "INSERT INTO" not in response.text, case
+    assert "UniqueViolation" not in response.text, case
+    monkeypatch.undo()
+
+    # --- Sub-case 4: ValueError from api_key after org flushed (rollback)
+    case = "ValueError from api_key step rolls back org"
+    real_org_cls = mod.OrganizationsRepository
+
+    class ValueErrorApiKeyRepo:
+        """Let the org be created (so the rollback has something to undo),
+        then raise ValueError from the api_key step."""
+
+        def __init__(self, db_session):
+            pass
+
+        def create_api_key(self, **kwargs):
+            raise ValueError("simulated invalid signup")
+
+    # Sanity: org repo is left as the real one so an org row is actually
+    # flushed before the ValueError lands.
+    assert mod.OrganizationsRepository is real_org_cls, case
+
+    before = _count_demo_orgs()
+    monkeypatch.setattr(mod, "ApiKeyRepository", ValueErrorApiKeyRepo)
+    with env_patch:
+        response = _signup(test_client)
+    after = _count_demo_orgs()
+
+    assert response.status_code == 400, case
+    assert response.json()["detail"] == "Invalid signup request.", case
+    # Rollback ran: no orphan demo-* org leaked.
+    assert after == before, case
+    monkeypatch.undo()

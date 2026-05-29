@@ -140,3 +140,77 @@ def test_verify_transport_error_fails_open():
 
     assert result.success is True
     assert result.reason == "verification_error"
+
+
+@pytest.mark.unit_tests
+def test_verify_error_handling_fail_open_vs_closed():
+    """Consolidated coverage of fail-OPEN vs fail-CLOSED error paths.
+
+    Pins the intent of the post-PR-1693 split: only true network failures
+    are allowed to bypass reCAPTCHA; every other failure (HTTP 4xx, malformed
+    body, unexpected schema) must fail CLOSED. Each sub-case asserts both
+    ``success`` and ``reason``; the case name is included in assert messages
+    so failures still identify the offending case.
+    """
+
+    def _http_status_response() -> MagicMock:
+        response = MagicMock()
+        response.raise_for_status = MagicMock(
+            side_effect=httpx.HTTPStatusError(
+                "Bad Request",
+                request=MagicMock(),
+                response=MagicMock(status_code=400),
+            ),
+        )
+        return response
+
+    def _malformed_json_response() -> MagicMock:
+        response = MagicMock()
+        response.raise_for_status = lambda: None
+        response.json = MagicMock(side_effect=ValueError("not json"))
+        return response
+
+    # Each sub-case: (case_name, patch kwargs for httpx.post, expected_success).
+    # _RiskAnalysis.score is typed as float; a list cannot be coerced and
+    # will raise a pydantic ValidationError during model_validate -> fail CLOSED.
+    unexpected_schema_payload = {
+        "tokenProperties": {"valid": True, "action": "signup"},
+        "riskAnalysis": {"score": ["not", "a", "float"], "reasons": []},
+    }
+
+    cases = [
+        (
+            "generic_transport_error_fails_open",
+            {"side_effect": httpx.TransportError("connection reset")},
+            True,
+        ),
+        (
+            "http_4xx_fails_closed",
+            {"return_value": _http_status_response()},
+            False,
+        ),
+        (
+            "malformed_json_body_fails_closed",
+            {"return_value": _malformed_json_response()},
+            False,
+        ),
+        (
+            "unexpected_schema_fails_closed",
+            {"return_value": _mock_post(unexpected_schema_payload)},
+            False,
+        ),
+    ]
+
+    for case_name, post_patch_kwargs, expected_success in cases:
+        with patch.dict(os.environ, CONFIGURED_ENV):
+            with patch(
+                "clients.recaptcha.recaptcha_verifier.httpx.post",
+                **post_patch_kwargs,
+            ):
+                result = RecaptchaEnterpriseVerifier().verify(
+                    "tok",
+                    action="signup",
+                )
+
+        assert result.success is expected_success, case_name
+        assert result.reason == "verification_error", case_name
