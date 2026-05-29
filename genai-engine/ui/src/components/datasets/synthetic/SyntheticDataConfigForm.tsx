@@ -109,6 +109,7 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
   const handleTourPrefill = useCallback((prefill: TaskTourFormPrefill) => {
     const nextDatasetPurpose = getTaskTourFormPrefillValue(prefill, "datasetPurpose");
     const nextColumnDescriptions = getTaskTourFormPrefillValue(prefill, "columnDescriptions");
+    const nextModelName = getTaskTourFormPrefillValue(prefill, "modelName");
 
     if (typeof nextDatasetPurpose === "string") {
       setDatasetPurpose((current) => (shouldApplyTaskTourFormPrefill(prefill, Boolean(current.trim())) ? nextDatasetPurpose : current));
@@ -123,6 +124,14 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
           return { ...column, description: nextDescription };
         })
       );
+    }
+
+    // The chosen model only resolves once the provider's available-models list
+    // loads (see `activeModelName`); storing the raw selection now lets the
+    // derivation pick it up. Skipped entirely when the stored prompt already
+    // pins a real model — the selection UI is hidden in that case.
+    if (typeof nextModelName === "string") {
+      setSelectedModelName((current) => (shouldApplyTaskTourFormPrefill(prefill, Boolean(current)) ? nextModelName : current));
     }
   }, []);
 

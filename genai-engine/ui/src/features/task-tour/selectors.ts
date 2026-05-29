@@ -56,6 +56,16 @@ export const TOUR_IDS = {
   datasetGenerateSynthetic: "task-tour-dataset-generate-synthetic",
   /** Generate-synthetic-data modal surface after the header trigger opens it. */
   datasetGenerateSyntheticModal: "task-tour-dataset-generate-synthetic-modal",
+  /** Row table on the dataset detail view — "each row is a test case". */
+  datasetTable: "task-tour-dataset-table",
+  /** Configure-columns button on the dataset detail header. */
+  datasetConfigureColumns: "task-tour-dataset-configure-columns",
+  /** Import / Generate / Add Row button group on the dataset detail header. */
+  datasetDataActions: "task-tour-dataset-data-actions",
+  /** Versions button on the dataset detail header. */
+  datasetVersions: "task-tour-dataset-versions",
+  /** Experiments button on the dataset detail header. */
+  datasetExperiments: "task-tour-dataset-experiments",
   promptsEntry: "task-tour-prompts-entry",
   /** Prompts management tab in PromptsView — used for "open the Prompts tab". */
   promptsManagementTab: "task-tour-prompts-management-tab",

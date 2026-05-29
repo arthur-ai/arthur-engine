@@ -51,6 +51,7 @@ describe("task tour config", () => {
             query: "A general-purpose question for the Wikipedia search agent to answer.",
             response: "The expected answer from the Wikipedia search agent.",
           },
+          modelName: "gpt-5-nano",
         },
         mode: "empty-only",
       },
@@ -96,6 +97,67 @@ describe("task tour config", () => {
       target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.traceAddToDatasetDrawer },
       advanceOn: [{ type: "action", name: TASK_TOUR_ACTIONS.traceAddedToDataset }],
     });
+  });
+
+  it("walks the dataset detail UI with manual popovers between opening the dataset and the trace detour", () => {
+    const config = buildTourConfig("task-id");
+    const datasetsSection = config.sections.find((section) => section.id === "datasets");
+
+    const rowsStep = datasetsSection?.steps.find((step) => step.id === "review-dataset-rows");
+    const columnsStep = datasetsSection?.steps.find((step) => step.id === "review-dataset-columns");
+    const growStep = datasetsSection?.steps.find((step) => step.id === "review-dataset-grow");
+    const versionsStep = datasetsSection?.steps.find((step) => step.id === "review-dataset-versions");
+    const experimentsStep = datasetsSection?.steps.find((step) => step.id === "review-dataset-experiments");
+
+    // Every beat is a static-selector spotlight that waits for an explicit
+    // Next click. None carries a `route` — the prior step landed on the dynamic
+    // /datasets/:datasetId URL and a static route would strip it.
+    expect(rowsStep).toMatchObject({
+      target: { kind: "selector", selector: tourSelector(TOUR_IDS.datasetTable) },
+      advanceOn: [{ type: "manual" }],
+      popover: { showNext: true },
+    });
+    expect(rowsStep?.route).toBeUndefined();
+
+    expect(columnsStep).toMatchObject({
+      target: { kind: "selector", selector: tourSelector(TOUR_IDS.datasetConfigureColumns) },
+      advanceOn: [{ type: "manual" }],
+      popover: { showNext: true },
+    });
+    expect(columnsStep?.route).toBeUndefined();
+
+    expect(growStep).toMatchObject({
+      target: { kind: "selector", selector: tourSelector(TOUR_IDS.datasetDataActions) },
+      advanceOn: [{ type: "manual" }],
+      popover: { showNext: true },
+    });
+    expect(growStep?.route).toBeUndefined();
+
+    expect(versionsStep).toMatchObject({
+      target: { kind: "selector", selector: tourSelector(TOUR_IDS.datasetVersions) },
+      advanceOn: [{ type: "manual" }],
+      popover: { showNext: true },
+    });
+    expect(versionsStep?.route).toBeUndefined();
+
+    expect(experimentsStep).toMatchObject({
+      target: { kind: "selector", selector: tourSelector(TOUR_IDS.datasetExperiments) },
+      advanceOn: [{ type: "manual" }],
+      popover: { showNext: true },
+    });
+    expect(experimentsStep?.route).toBeUndefined();
+
+    // The mini-tour sits between opening the dataset and the trace round-trip.
+    const stepIds = datasetsSection?.steps.map((step) => step.id) ?? [];
+    const start = stepIds.indexOf("open-preloaded-dataset");
+    const end = stepIds.indexOf("open-traces-for-dataset");
+    expect(stepIds.slice(start + 1, end)).toEqual([
+      "review-dataset-rows",
+      "review-dataset-columns",
+      "review-dataset-grow",
+      "review-dataset-versions",
+      "review-dataset-experiments",
+    ]);
   });
 
   it("wires evaluate results as a tab step followed by an action-only details composite", () => {

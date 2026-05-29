@@ -97,3 +97,63 @@ describe("SyntheticDataConfigForm task tour prefill", () => {
     expect(columnDescriptionInput("response").value).toBe("The expected answer from the Wikipedia search agent.");
   });
 });
+
+describe("SyntheticDataConfigForm model prefill", () => {
+  // The model selector only renders when the stored prompt uses a placeholder
+  // model, so this suite mocks that state plus an enabled provider whose
+  // available models include the tour's predefined `gpt-5-nano`.
+  beforeEach(() => {
+    useApiQueryMock.mockImplementation(({ method }: { method: string }) => {
+      if (method === "getSyntheticDataPromptStatusApiV2DatasetsSyntheticDataPromptStatusGet") {
+        return { data: { is_placeholder: true }, isLoading: false };
+      }
+      if (method === "getModelProvidersApiV1ModelProvidersGet") {
+        return { data: { providers: [{ provider: "openai", enabled: true }] }, isLoading: false };
+      }
+      if (method === "getModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailableModelsGet") {
+        return { data: { available_models: ["gpt-4o-mini", "gpt-5-nano"] }, isLoading: false };
+      }
+      return { data: undefined, isLoading: false };
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+  });
+
+  function modelInput(): HTMLInputElement {
+    return screen.getByRole("combobox", { name: "Model" }) as HTMLInputElement;
+  }
+
+  it("prefills the model selection with the tour's predefined model", () => {
+    renderForm();
+
+    act(() => {
+      dispatchTaskTourFormPrefill({
+        targetId: TOUR_IDS.datasetGenerateSyntheticModal,
+        values: { modelName: "gpt-5-nano" },
+        mode: "empty-only",
+      });
+    });
+
+    expect(modelInput().value).toBe("gpt-5-nano");
+  });
+
+  it("does not overwrite a model the user already picked in empty-only mode", () => {
+    renderForm();
+    fireEvent.change(modelInput(), { target: { value: "gpt-4o-mini" } });
+    fireEvent.keyDown(modelInput(), { key: "ArrowDown" });
+    fireEvent.click(screen.getByText("gpt-4o-mini"));
+
+    act(() => {
+      dispatchTaskTourFormPrefill({
+        targetId: TOUR_IDS.datasetGenerateSyntheticModal,
+        values: { modelName: "gpt-5-nano" },
+        mode: "empty-only",
+      });
+    });
+
+    expect(modelInput().value).toBe("gpt-4o-mini");
+  });
+});

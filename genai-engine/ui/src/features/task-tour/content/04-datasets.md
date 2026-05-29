@@ -12,6 +12,16 @@ steps:
     title: Open Datasets
   - id: open-preloaded-dataset
     title: Open the pre-loaded dataset
+  - id: review-dataset-rows
+    title: Read a test case
+  - id: review-dataset-columns
+    title: Shape the columns
+  - id: review-dataset-grow
+    title: Grow the suite
+  - id: review-dataset-versions
+    title: Track versions
+  - id: review-dataset-experiments
+    title: Run experiments
   - id: open-traces-for-dataset
     title: Return to Observe
   - id: open-trace-for-dataset
@@ -34,7 +44,7 @@ Datasets are the test cases your agent has to pass before every release. Promote
 
 ## scenario
 
-Open the pre-loaded dataset, then add the failing trace from Observe into it, return to the dataset to see the new row land, and (optional) generate a few synthetic rows to broaden coverage.
+Open the pre-loaded dataset and look at how a test suite is built, then add the failing trace from Observe into it, return to the dataset to see the new row land, and (optional) generate a few synthetic rows to broaden coverage.
 
 ## step: open-datasets
 
@@ -43,6 +53,26 @@ Click Dataset in the sidebar to see the test sets available on this task.
 ## step: open-preloaded-dataset
 
 Click the top dataset row. This is the test suite developers use to make sure the agent doesn't regress on cases we already know matter.
+
+## step: review-dataset-rows
+
+Each row is a test case — the inputs your agent receives plus the expected output it should reproduce. This pre-loaded suite is what every release has to pass.
+
+## step: review-dataset-columns
+
+Columns define the fields of each case. **Configure Columns** is where you add or rename the input and expected-output fields.
+
+## step: review-dataset-grow
+
+Three ways to add cases: **Add Row** by hand, **Import** a CSV in bulk, or **Generate** synthetic rows with AI — we'll generate some at the end of this section.
+
+## step: review-dataset-versions
+
+Datasets are versioned. Every save creates a new version, and experiments pin a specific one so results stay reproducible.
+
+## step: review-dataset-experiments
+
+**Experiments** replay your prompt candidates against this dataset and score them with your evals — that's how you prove a fix before shipping. We'll set one up in the Prompts section.
 
 ## step: open-traces-for-dataset
 

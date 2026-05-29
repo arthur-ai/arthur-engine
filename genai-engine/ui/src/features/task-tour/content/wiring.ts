@@ -242,6 +242,43 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
         route: "datasets",
         actionName: TASK_TOUR_ACTIONS.datasetOpened,
       },
+      // Mini-tour of the dataset detail UI. These are pure orientation beats
+      // (manual "Next" popovers, like the prompt-notebook review-* steps), so
+      // the spotlight points at a control without the blocking overlay letting
+      // a click open it. They omit `route` because `open-preloaded-dataset`
+      // already navigated to the dynamic /datasets/:datasetId URL — a static
+      // route here would strip it. `actionName` is required but inert under
+      // manual advance, so it reuses `datasetOpened`.
+      "review-dataset-rows": {
+        targetId: TOUR_IDS.datasetTable,
+        actionName: TASK_TOUR_ACTIONS.datasetOpened,
+        advance: "manual",
+        popover: { showNext: true, nextLabel: "Next", placement: "top" },
+      },
+      "review-dataset-columns": {
+        targetId: TOUR_IDS.datasetConfigureColumns,
+        actionName: TASK_TOUR_ACTIONS.datasetOpened,
+        advance: "manual",
+        popover: { showNext: true, nextLabel: "Next", placement: "bottom" },
+      },
+      "review-dataset-grow": {
+        targetId: TOUR_IDS.datasetDataActions,
+        actionName: TASK_TOUR_ACTIONS.datasetOpened,
+        advance: "manual",
+        popover: { showNext: true, nextLabel: "Next", placement: "bottom" },
+      },
+      "review-dataset-versions": {
+        targetId: TOUR_IDS.datasetVersions,
+        actionName: TASK_TOUR_ACTIONS.datasetOpened,
+        advance: "manual",
+        popover: { showNext: true, nextLabel: "Next", placement: "bottom" },
+      },
+      "review-dataset-experiments": {
+        targetId: TOUR_IDS.datasetExperiments,
+        actionName: TASK_TOUR_ACTIONS.datasetOpened,
+        advance: "manual",
+        popover: { showNext: true, nextLabel: "Next", placement: "bottom" },
+      },
       "open-traces-for-dataset": {
         targetId: TOUR_IDS.navObserve,
         actionName: TASK_TOUR_ACTIONS.observeOpened,
@@ -295,6 +332,7 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
               query: "A general-purpose question for the Wikipedia search agent to answer.",
               response: "The expected answer from the Wikipedia search agent.",
             },
+            modelName: "gpt-5-nano",
           },
           mode: "empty-only",
         },
