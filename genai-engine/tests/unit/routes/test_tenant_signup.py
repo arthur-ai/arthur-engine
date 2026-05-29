@@ -18,8 +18,10 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
 
+from clients.recaptcha.recaptcha_verifier import RecaptchaVerificationResult
 from db_models import DatabaseOrganization
 from db_models.onboarding_models import DatabaseOnboardingSubmission
+from routers.v2 import tenant_signup_routes as tenant_signup_module
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     app,
@@ -318,7 +320,7 @@ def test_signup_retries_once_on_org_name_collision(
     monkeypatch,
 ):
     """First create_organization raises IntegrityError; the retry succeeds."""
-    from routers.v2 import tenant_signup_routes as mod
+    mod = tenant_signup_module
 
     real_cls = mod.OrganizationsRepository
     calls = {"n": 0}
@@ -361,7 +363,7 @@ def test_signup_retries_once_on_org_name_collision(
 @pytest.mark.unit_tests
 def test_signup_returns_500_after_two_collisions(monkeypatch):
     """Both create_organization attempts raise IntegrityError → handler 500s."""
-    from routers.v2 import tenant_signup_routes as mod
+    mod = tenant_signup_module
 
     calls = {"n": 0}
 
@@ -438,8 +440,7 @@ def test_signup_persists_onboarding_submission(
 @pytest.mark.unit_tests
 def test_signup_rejected_when_recaptcha_fails(monkeypatch):
     """A failed assessment short-circuits provisioning with a 400."""
-    from clients.recaptcha.recaptcha_verifier import RecaptchaVerificationResult
-    from routers.v2 import tenant_signup_routes as mod
+    mod = tenant_signup_module
 
     class RejectingVerifier:
         def verify(self, token, action=None):
@@ -464,8 +465,7 @@ def test_signup_forwards_recaptcha_token_to_verifier(
     monkeypatch,
 ):
     """The token from the request body is handed to the verifier."""
-    from clients.recaptcha.recaptcha_verifier import RecaptchaVerificationResult
-    from routers.v2 import tenant_signup_routes as mod
+    mod = tenant_signup_module
 
     seen = {}
 
@@ -505,7 +505,7 @@ def test_signup_forwards_recaptcha_token_to_verifier(
 def test_signup_rolls_back_org_when_api_key_step_fails(monkeypatch):
     """If api_key creation fails after the org has been flushed, no orphan
     org persists in the DB — the whole transaction rolls back."""
-    from routers.v2 import tenant_signup_routes as mod
+    mod = tenant_signup_module
 
     class BrokenApiKeyRepo:
         def __init__(self, db_session):
@@ -555,7 +555,7 @@ def test_signup_error_paths_return_sanitized_detail(monkeypatch):
          400 + "Invalid signup request." and the org row rolled back so no
          orphan demo-* row remains in the DB.
     """
-    from routers.v2 import tenant_signup_routes as mod
+    mod = tenant_signup_module
 
     test_client = TestClient(app)
     env_patch = patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "ENABLED"})
