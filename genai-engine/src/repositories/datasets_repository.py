@@ -15,6 +15,7 @@ from db_models.dataset_models import (
     DatabaseDatasetVersion,
     DatabaseDatasetVersionRow,
 )
+from db_models.task_models import DatabaseTask
 from schemas.internal_schemas import (
     Dataset,
     DatasetVersion,
@@ -32,17 +33,28 @@ class DatasetRepository:
     def __init__(self, db_session: Session):
         self.db_session = db_session
 
-    def create_dataset(self, dataset: Dataset) -> None:
+    def create_dataset(self, dataset: Dataset, commit: bool = True) -> None:
         db_dataset = dataset._to_database_model()
         self.db_session.add(db_dataset)
-        self.db_session.commit()
+        if commit:
+            self.db_session.commit()
+        else:
+            self.db_session.flush()
 
-    def _get_db_dataset(self, dataset_id: UUID) -> DatabaseDataset:
-        db_dataset = (
-            self.db_session.query(DatabaseDataset)
-            .filter(DatabaseDataset.id == dataset_id)
-            .first()
+    def _get_db_dataset(
+        self,
+        dataset_id: UUID,
+        org_scope: UUID | None = None,
+    ) -> DatabaseDataset:
+        q = self.db_session.query(DatabaseDataset).filter(
+            DatabaseDataset.id == dataset_id,
         )
+        # Datasets carry only task_id — join through tasks for the org filter.
+        if org_scope is not None:
+            q = q.join(DatabaseTask, DatabaseTask.id == DatabaseDataset.task_id).filter(
+                DatabaseTask.org_id == org_scope,
+            )
+        db_dataset = q.first()
         if not db_dataset:
             raise HTTPException(
                 status_code=404,
@@ -51,16 +63,17 @@ class DatasetRepository:
             )
         return db_dataset
 
-    def get_dataset(self, dataset_id: UUID) -> Dataset:
-        db_dataset = self._get_db_dataset(dataset_id)
+    def get_dataset(self, dataset_id: UUID, org_scope: UUID | None = None) -> Dataset:
+        db_dataset = self._get_db_dataset(dataset_id, org_scope=org_scope)
         return Dataset._from_database_model(db_dataset)
 
     def update_dataset(
         self,
         dataset_id: UUID,
         update_dataset_request: DatasetUpdateRequest,
+        org_scope: UUID | None = None,
     ) -> None:
-        db_dataset = self._get_db_dataset(dataset_id)
+        db_dataset = self._get_db_dataset(dataset_id, org_scope=org_scope)
         if update_dataset_request.name:
             db_dataset.name = update_dataset_request.name
         if update_dataset_request.description is not None:
@@ -109,15 +122,19 @@ class DatasetRepository:
             Dataset._from_database_model(db_dataset) for db_dataset in db_datasets
         ], count
 
-    def delete_dataset(self, dataset_id: UUID) -> None:
-        db_dataset = self._get_db_dataset(dataset_id)
+    def delete_dataset(self, dataset_id: UUID, org_scope: UUID | None = None) -> None:
+        db_dataset = self._get_db_dataset(dataset_id, org_scope=org_scope)
         self.db_session.delete(db_dataset)
         self.db_session.commit()
 
     def _get_latest_db_dataset_version(
         self,
         dataset_id: UUID,
+        org_scope: UUID | None = None,
     ) -> DatabaseDatasetVersion:
+        # Validate ownership via the parent dataset; raises 404 if cross-org.
+        if org_scope is not None:
+            self._get_db_dataset(dataset_id, org_scope=org_scope)
         db_dataset_version = (
             self.db_session.query(DatabaseDatasetVersion)
             .filter(DatabaseDatasetVersion.dataset_id == dataset_id)
@@ -132,8 +149,15 @@ class DatasetRepository:
             )
         return db_dataset_version
 
-    def get_latest_dataset_version(self, dataset_id: UUID) -> DatasetVersion:
-        db_dataset_version = self._get_latest_db_dataset_version(dataset_id)
+    def get_latest_dataset_version(
+        self,
+        dataset_id: UUID,
+        org_scope: UUID | None = None,
+    ) -> DatasetVersion:
+        db_dataset_version = self._get_latest_db_dataset_version(
+            dataset_id,
+            org_scope=org_scope,
+        )
         # return page params representing that all rows have been fetched
         return DatasetVersion._from_database_model(
             db_dataset_version,
@@ -150,7 +174,11 @@ class DatasetRepository:
         dataset_version: int,
         pagination_params: PaginationParameters,
         search_query: Optional[str] = None,
+        org_scope: UUID | None = None,
     ) -> DatasetVersion:
+        # Validate ownership via the parent dataset; raises 404 if cross-org.
+        if org_scope is not None:
+            self._get_db_dataset(dataset_id, org_scope=org_scope)
         base_query = (
             self.db_session.query(DatabaseDatasetVersion, DatabaseDatasetVersionRow)
             .join(
@@ -238,8 +266,11 @@ class DatasetRepository:
         dataset_id: UUID,
         dataset_version: int,
         row_id: UUID,
+        org_scope: UUID | None = None,
     ) -> DatabaseDatasetVersionRow:
         """Get a specific row by ID from a dataset version"""
+        if org_scope is not None:
+            self._get_db_dataset(dataset_id, org_scope=org_scope)
         db_row = (
             self.db_session.query(DatabaseDatasetVersionRow)
             .filter(
@@ -263,10 +294,15 @@ class DatasetRepository:
         self,
         dataset_id: UUID,
         dataset_version: NewDatasetVersionRequest,
+        org_scope: UUID | None = None,
+        commit: bool = True,
     ) -> None:
-        db_dataset = self._get_db_dataset(dataset_id)
+        db_dataset = self._get_db_dataset(dataset_id, org_scope=org_scope)
         try:
-            latest_version = self._get_latest_db_dataset_version(dataset_id)
+            latest_version = self._get_latest_db_dataset_version(
+                dataset_id,
+                org_scope=org_scope,
+            )
         except HTTPException:
             # no version exists for this dataset yet
             latest_version = None
@@ -279,14 +315,20 @@ class DatasetRepository:
         self.db_session.add(internal_dataset_version._to_database_model())
         db_dataset.updated_at = datetime.now()
         db_dataset.latest_version_number = internal_dataset_version.version_number
-        self.db_session.commit()
+        if commit:
+            self.db_session.commit()
+        else:
+            self.db_session.flush()
 
     def get_dataset_versions(
         self,
         dataset_id: UUID,
         latest_version_only: bool,
         pagination_params: PaginationParameters,
+        org_scope: UUID | None = None,
     ) -> ListDatasetVersions:
+        if org_scope is not None:
+            self._get_db_dataset(dataset_id, org_scope=org_scope)
         base_query = self.db_session.query(DatabaseDatasetVersion).filter(
             DatabaseDatasetVersion.dataset_id == dataset_id,
         )

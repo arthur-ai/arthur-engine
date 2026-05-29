@@ -42,6 +42,8 @@ export interface UserSettingsModalProps {
   allowedTraceRetentionDays?: number[];
   /** Whether the application configuration is still loading. */
   isLoadingTraceRetention?: boolean;
+  /** True for org-scoped tenant users; hides global-config subsections (chatbot, trace retention). */
+  isTenant?: boolean;
   title?: string;
   saveLabel?: string;
   /** Shown on Save button when isSaving is true. */

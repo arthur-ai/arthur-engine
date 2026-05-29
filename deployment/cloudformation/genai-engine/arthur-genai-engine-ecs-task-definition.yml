@@ -115,6 +115,13 @@ Parameters:
       - 'enabled'
       - 'disabled'
     Default: 'enabled'
+  GenaiEngineDemoMode:
+    Type: String
+    Description: 'Enable GenAI Engine demo mode'
+    AllowedValues:
+      - 'enabled'
+      - 'disabled'
+    Default: 'disabled'
   TransferEncodingMiddlewareEnabled:
     Type: String
     Description: 'Set to enabled to add Transfer-Encoding: chunked header and strip Content-Length from all responses'
@@ -296,6 +303,8 @@ Resources:
               Value: !Ref GenaiEnginePostgresSSLCertDownloadURL
             - Name: 'GENAI_ENGINE_API_ONLY_MODE_ENABLED'
               Value: !Ref GenaiEngineAPIOnlyModeEnabled
+            - Name: 'GENAI_ENGINE_DEMO_MODE'
+              Value: !Ref GenaiEngineDemoMode
             - Name: 'TRANSFER_ENCODING_MIDDLEWARE_ENABLED'
               Value: !Ref TransferEncodingMiddlewareEnabled
             - Name: 'GENAI_ENGINE_SENSITIVE_DATA_CHECK_MAX_TOKEN_LIMIT'

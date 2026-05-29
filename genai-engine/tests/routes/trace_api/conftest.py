@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timedelta
 from typing import Generator, List
+from utils.constants import DEFAULT_ORG_ID
 
 import pytest
 from arthur_common.models.enums import MetricType
@@ -69,6 +70,7 @@ def unmapped_task():
         updated_at=current_time,
         is_agentic=True,
         archived=False,
+        org_id=DEFAULT_ORG_ID,
     )
     db_session.add(unmapped_task)
     db_session.commit()
@@ -264,6 +266,7 @@ def _create_database_span(
         start_time=start_time,
         end_time=end_time,
         task_id=task_id,
+        org_id=DEFAULT_ORG_ID,
         session_id=session_id,
         user_id=user_id,
         status_code="Ok",
@@ -607,6 +610,7 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
             start_time=span.start_time,
             end_time=span.end_time,
             task_id=span.task_id,
+            org_id=DEFAULT_ORG_ID,
             session_id=span.session_id,
             user_id=span.user_id,
             status_code="Ok",
@@ -680,6 +684,7 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
 
         trace_metadata = DatabaseTraceMetadata(
             task_id=trace_spans[0].task_id,
+            org_id=DEFAULT_ORG_ID,
             trace_id=trace_id,
             session_id=trace_spans[0].session_id,
             user_id=trace_spans[0].user_id,
@@ -708,12 +713,14 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
         name="API Test Task 1",
         created_at=base_time,
         updated_at=base_time,
+        org_id=DEFAULT_ORG_ID,
     )
     task2 = DatabaseTask(
         id="api_task2",
         name="API Test Task 2",
         created_at=base_time,
         updated_at=base_time,
+        org_id=DEFAULT_ORG_ID,
     )
     db_session.add(task1)
     db_session.add(task2)

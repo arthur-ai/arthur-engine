@@ -3,6 +3,7 @@ import logging
 from datetime import datetime
 from enum import Enum
 from typing import Annotated, Optional
+from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import (
@@ -24,7 +25,7 @@ from openinference.semconv.trace import OpenInferenceSpanKindValues
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
-from dependencies import get_db_session
+from dependencies import get_db_session, get_org_scope
 from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
@@ -32,7 +33,7 @@ from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
-from utils.users import permission_checker
+from utils.users import enforce_query_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
 logger = logging.getLogger(__name__)
@@ -456,7 +457,7 @@ def trace_query_parameters(
     deprecated=True,
     tags=["Traces"],
 )
-@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_WRITE.value)
+@permission_checker(permissions=PermissionLevelsEnum.TRACES_WRITE.value)
 def receive_traces(
     body: bytes = Body(...),
     db_session: Session = Depends(get_db_session),
@@ -487,6 +488,7 @@ def receive_traces(
     tags=["Spans"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+@enforce_query_org_scope()
 def query_spans(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -537,6 +539,7 @@ def query_spans(
     tags=["Spans"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+@enforce_query_org_scope()
 def query_spans_with_metrics(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -591,6 +594,7 @@ def query_spans_with_metrics(
     },
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+@enforce_query_org_scope()
 def query_spans_by_type(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -711,11 +715,14 @@ def compute_span_metrics(
     span_id: str,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> SpanWithMetricsResponse:
     """Compute metrics for a single span. Validates that the span is an LLM span."""
     try:
         span_repo = _get_span_repository(db_session)
-        span = span_repo.query_span_by_span_id_with_metrics(span_id)
+        span = span_repo.query_span_by_span_id_with_metrics(
+            span_id, org_scope=org_scope
+        )
 
         # Return the single span with metrics
         return span._to_response_model()

@@ -6,6 +6,7 @@ from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
 from arthur_common.models.llm_model_providers import OpenAIMessage
 from fastapi import HTTPException
+from litellm import ChatCompletionMessageToolCall
 from sqlalchemy import asc, column, desc, exists, func, or_, select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session, joinedload
@@ -60,14 +61,20 @@ class PromptExperimentRepository:
         self.db_session = db_session
         self.chat_completion_service = ChatCompletionService()
 
-    def _get_db_experiment(self, experiment_id: str) -> DatabasePromptExperiment:
+    def _get_db_experiment(
+        self, experiment_id: str, org_scope: UUID | None = None
+    ) -> DatabasePromptExperiment:
         """Get database experiment by ID or raise 404"""
-        db_experiment = (
+        q = (
             self.db_session.query(DatabasePromptExperiment)
             .options(joinedload(DatabasePromptExperiment.dataset))
             .filter(DatabasePromptExperiment.id == experiment_id)
-            .first()
         )
+        if org_scope is not None:
+            q = q.join(
+                DatabaseTask, DatabaseTask.id == DatabasePromptExperiment.task_id
+            ).filter(DatabaseTask.org_id == org_scope)
+        db_experiment = q.first()
         if not db_experiment:
             raise HTTPException(
                 status_code=404,
@@ -259,7 +266,10 @@ class PromptExperimentRepository:
             ):
                 prompt_output = PromptOutput(
                     content=db_prompt_result.output_content or "",
-                    tool_calls=db_prompt_result.output_tool_calls or [],
+                    tool_calls=[
+                        ChatCompletionMessageToolCall.model_validate(tc)
+                        for tc in (db_prompt_result.output_tool_calls or [])
+                    ],
                     cost=db_prompt_result.output_cost or "0",
                 )
 
@@ -306,10 +316,15 @@ class PromptExperimentRepository:
         if not task:
             raise ValueError(f"Task {task_id} not found")
 
-        # Validate dataset and version exist
+        # Validate dataset and version exist within the caller's task scope.
+        # Filtering on task_id prevents a tenant from creating an experiment
+        # that references a cross-org dataset by guessing its UUID.
         dataset = (
             self.db_session.query(DatabaseDataset)
-            .filter(DatabaseDataset.id == request.dataset_ref.id)
+            .filter(
+                DatabaseDataset.id == request.dataset_ref.id,
+                DatabaseDataset.task_id == task_id,
+            )
             .first()
         )
         if not dataset:
@@ -718,9 +733,11 @@ class PromptExperimentRepository:
 
         return self._db_experiment_to_summary(db_experiment)
 
-    def get_experiment(self, experiment_id: str) -> PromptExperimentDetail:
+    def get_experiment(
+        self, experiment_id: str, org_scope: UUID | None = None
+    ) -> PromptExperimentDetail:
         """Get experiment by ID"""
-        db_experiment = self._get_db_experiment(experiment_id)
+        db_experiment = self._get_db_experiment(experiment_id, org_scope=org_scope)
         return self._db_experiment_to_detail(db_experiment)
 
     def list_experiments(
@@ -814,9 +831,11 @@ class PromptExperimentRepository:
             self._db_experiment_to_summary(db_exp) for db_exp in db_experiments
         ], count
 
-    def delete_experiment(self, experiment_id: str) -> None:
+    def delete_experiment(
+        self, experiment_id: str, org_scope: UUID | None = None
+    ) -> None:
         """Delete an experiment and its test cases (cascaded)"""
-        db_experiment = self._get_db_experiment(experiment_id)
+        db_experiment = self._get_db_experiment(experiment_id, org_scope=org_scope)
         self.db_session.delete(db_experiment)
         self.db_session.commit()
 
@@ -824,10 +843,11 @@ class PromptExperimentRepository:
         self,
         experiment_id: str,
         pagination_params: PaginationParameters,
+        org_scope: UUID | None = None,
     ) -> Tuple[List[TestCase], int]:
         """Get paginated test cases for an experiment"""
-        # Verify experiment exists first
-        self._get_db_experiment(experiment_id)
+        # Verify experiment exists first (and lives in caller's org for tenants)
+        self._get_db_experiment(experiment_id, org_scope=org_scope)
 
         base_query = self.db_session.query(DatabasePromptExperimentTestCase).filter(
             DatabasePromptExperimentTestCase.experiment_id == experiment_id,
@@ -859,10 +879,11 @@ class PromptExperimentRepository:
         experiment_id: str,
         prompt_key: str,
         pagination_params: PaginationParameters,
+        org_scope: UUID | None = None,
     ) -> Tuple[List[PromptVersionResult], int]:
         """Get paginated results for a specific prompt key within an experiment"""
-        # Verify experiment exists first
-        db_experiment = self._get_db_experiment(experiment_id)
+        # Verify experiment exists first (and lives in caller's org for tenants)
+        db_experiment = self._get_db_experiment(experiment_id, org_scope=org_scope)
 
         # Verify the prompt_key exists in this experiment's prompt_configs
         prompt_keys_in_experiment = []
@@ -975,7 +996,10 @@ class PromptExperimentRepository:
             ):
                 prompt_output = PromptOutput(
                     content=db_prompt_result.output_content or "",
-                    tool_calls=db_prompt_result.output_tool_calls or [],
+                    tool_calls=[
+                        ChatCompletionMessageToolCall.model_validate(tc)
+                        for tc in (db_prompt_result.output_tool_calls or [])
+                    ],
                     cost=db_prompt_result.output_cost or "0",
                 )
 
@@ -997,9 +1021,10 @@ class PromptExperimentRepository:
         self,
         experiment_id: str,
         notebook_id: str,
+        org_scope: UUID | None = None,
     ) -> PromptExperimentSummary:
         """Attach a notebook to an experiment."""
-        db_experiment = self._get_db_experiment(experiment_id)
+        db_experiment = self._get_db_experiment(experiment_id, org_scope=org_scope)
 
         # Update notebook_id
         db_experiment.notebook_id = notebook_id

@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.579"
+        "version": "2.1.580"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -2325,7 +2325,7 @@
                     "API Keys"
                 ],
                 "summary": "Create Api Key",
-                "description": "Generates a new API key. Up to 1000 active keys can exist at the same time by default. Contact your system administrator if you need more. Allowed roles are: DEFAULT-RULE-ADMIN, TASK-ADMIN, VALIDATION-USER, ORG-AUDITOR, ORG-ADMIN, TENANT-USER.",
+                "description": "Generates a new API key. Up to 1000 active keys can exist at the same time by default. Contact your system administrator if you need more. Allowed roles are: DEFAULT-RULE-ADMIN, TASK-ADMIN, VALIDATION-USER, ORG-AUDITOR, ORG-ADMIN.",
                 "operationId": "create_api_key_auth_api_keys__post",
                 "requestBody": {
                     "content": {
@@ -16413,6 +16413,104 @@
                 }
             }
         },
+        "/api/v1/tasks/{task_id}/demos/chatbot/stream": {
+            "post": {
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Stream Demo Chatbot",
+                "description": "Stream a demo chatbot response.",
+                "operationId": "stream_demo_chatbot_api_v1_tasks__task_id__demos_chatbot_stream_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChatbotRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/tenant/signup": {
+            "post": {
+                "tags": [
+                    "Tenant Signup"
+                ],
+                "summary": "Create Tenant Signup",
+                "description": "Public tenant signup. Accepts try-it-out onboarding form data, persists an onboarding submission, and creates a new organization, a default demo task scoped to that org, and a TENANT-USER API key with `org_scope` set to the new org. Returns the four identifiers; the raw `api_key` value appears only in this response (the DB stores only its hash). Gated by GENAI_ENGINE_DEMO_MODE \u2014 returns 404 when disabled.",
+                "operationId": "create_tenant_signup_api_v2_tenant_signup_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TenantSignupRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DemoTaskSignupResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tasks/{task_id}/chatbot/stream": {
             "post": {
                 "tags": [
@@ -16540,51 +16638,6 @@
                         "API Key": []
                     }
                 ]
-            }
-        },
-        "/api/v1/chatbot/history/{conversation_id}": {
-            "delete": {
-                "tags": [
-                    "Chatbot"
-                ],
-                "summary": "Clear chatbot conversation history",
-                "operationId": "clear_chatbot_history_api_v1_chatbot_history__conversation_id__delete",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "conversation_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "Conversation Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {}
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
             }
         },
         "/users": {
@@ -16880,6 +16933,33 @@
                         }
                     }
                 }
+            }
+        },
+        "/users/me": {
+            "get": {
+                "tags": [
+                    "User Management"
+                ],
+                "summary": "Get Me",
+                "description": "Returns the current caller's identity, roles, org_scope, and (when scoped) the organization record. Used by the UI on login to decide between admin and tenant render branches. Admin callers and JWT callers receive org_scope=null and org=null.",
+                "operationId": "get_me_users_me_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MeResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
             }
         },
         "/api/chat/files": {
@@ -19685,19 +19765,28 @@
             },
             "ChatbotRequest": {
                 "properties": {
-                    "message": {
-                        "type": "string",
-                        "title": "Message"
+                    "history": {
+                        "items": {
+                            "$ref": "#/components/schemas/OpenAIMessage-Input"
+                        },
+                        "type": "array",
+                        "title": "History"
                     },
-                    "conversation_id": {
-                        "type": "string",
-                        "title": "Conversation Id"
+                    "session_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Session Id"
                     }
                 },
                 "type": "object",
                 "required": [
-                    "message",
-                    "conversation_id"
+                    "history"
                 ],
                 "title": "ChatbotRequest"
             },
@@ -21133,6 +21222,35 @@
                     "created_at"
                 ],
                 "title": "DatasetVersionRowResponse"
+            },
+            "DemoTaskSignupResponse": {
+                "properties": {
+                    "org_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Org Id"
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id"
+                    },
+                    "task_name": {
+                        "type": "string",
+                        "title": "Task Name"
+                    },
+                    "api_key": {
+                        "type": "string",
+                        "title": "Api Key"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "org_id",
+                    "task_id",
+                    "task_name",
+                    "api_key"
+                ],
+                "title": "DemoTaskSignupResponse"
             },
             "DiscoverAndPollResponse": {
                 "properties": {
@@ -24415,6 +24533,49 @@
                 "title": "ManualAgentCreationSource",
                 "description": "Creation source for manually created tasks."
             },
+            "MeResponse": {
+                "properties": {
+                    "user_id": {
+                        "type": "string",
+                        "title": "User Id"
+                    },
+                    "roles": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Roles"
+                    },
+                    "org_scope": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Org Scope"
+                    },
+                    "org": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/OrganizationResponse"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "user_id",
+                    "roles"
+                ],
+                "title": "MeResponse"
+            },
             "MessageRole": {
                 "type": "string",
                 "enum": [
@@ -25856,6 +26017,99 @@
                 "title": "OTELAgentCreationSource",
                 "description": "Creation source for OTEL-discovered agents (auto-created from traces)."
             },
+            "OnboardingTryItOutFormData": {
+                "properties": {
+                    "first_name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "First Name"
+                    },
+                    "last_name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Last Name"
+                    },
+                    "email": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Email"
+                    },
+                    "job_title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Job Title"
+                    },
+                    "company": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Company"
+                    },
+                    "maturity": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Maturity"
+                    },
+                    "brings": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Brings"
+                    },
+                    "brings_other": {
+                        "type": "string",
+                        "title": "Brings Other",
+                        "default": ""
+                    },
+                    "competitors": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "minItems": 1,
+                        "title": "Competitors"
+                    },
+                    "competitor_other": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Competitor Other"
+                    },
+                    "attribution": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Attribution"
+                    },
+                    "attribution_other": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Attribution Other"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "first_name",
+                    "last_name",
+                    "email",
+                    "job_title",
+                    "company",
+                    "maturity",
+                    "brings",
+                    "competitors",
+                    "attribution"
+                ],
+                "title": "OnboardingTryItOutFormData",
+                "description": "Try-it-out onboarding form fields (matches UI TryItOutSubmission)."
+            },
             "OpenAIMessage-Input": {
                 "properties": {
                     "role": {
@@ -26053,6 +26307,25 @@
                     "input_audio"
                 ],
                 "title": "OpenAIMessageType"
+            },
+            "OrganizationResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name"
+                ],
+                "title": "OrganizationResponse"
             },
             "PIIConfig": {
                 "properties": {
@@ -30933,6 +31206,47 @@
                 ],
                 "title": "TemplateVariableMapping",
                 "description": "Mapping of a template variable to its source"
+            },
+            "TenantSignupRequest": {
+                "properties": {
+                    "form_variant": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "linear",
+                                    "wizard"
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Form Variant",
+                        "description": "Which onboarding form variant was submitted."
+                    },
+                    "form_data": {
+                        "$ref": "#/components/schemas/OnboardingTryItOutFormData"
+                    },
+                    "recaptcha_token": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Recaptcha Token",
+                        "description": "reCAPTCHA Enterprise token obtained client-side. Required when reCAPTCHA is configured server-side; ignored otherwise."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "form_data"
+                ],
+                "title": "TenantSignupRequest",
+                "description": "Public tenant signup payload; includes try-it-out onboarding form data."
             },
             "TestCase": {
                 "properties": {

@@ -634,6 +634,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         task_id: str,
         item_name: str,
         item: RequestT,
+        commit: bool = True,
     ) -> BaseModel:
         """
         Save an llm item to the database.
@@ -668,8 +669,11 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
 
         try:
             self.db_session.add(db_item)
-            self.db_session.commit()
-            self.db_session.refresh(db_item)
+            if commit:
+                self.db_session.commit()
+                self.db_session.refresh(db_item)
+            else:
+                self.db_session.flush()
             return self.from_db_model(db_item)
         except IntegrityError:
             self.db_session.rollback()
@@ -683,6 +687,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         item_name: str,
         item_version: str,
         tag: str,
+        commit: bool = True,
     ) -> BaseModel:
         """
         Add a tag to a specific version of an llm item.
@@ -726,7 +731,10 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         # Case 2: Tag exists on a DIFFERENT version → delete old row
         if existing_tag_row and existing_tag_row.version != retrieved_db_item.version:
             self.db_session.delete(existing_tag_row)
-            self.db_session.commit()
+            if commit:
+                self.db_session.commit()
+            else:
+                self.db_session.flush()
 
         # Case 3: Add tag to this version
         new_tag = cast(type, self.tag_db_model)(
@@ -736,10 +744,11 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
             tag=tag,
         )
         self.db_session.add(new_tag)
-        self.db_session.commit()
-
-        # refresh so the version tags and tags relationships reload
-        self.db_session.refresh(retrieved_db_item)
+        if commit:
+            self.db_session.commit()
+            self.db_session.refresh(retrieved_db_item)
+        else:
+            self.db_session.flush()
 
         return self.from_db_model(retrieved_db_item)
 

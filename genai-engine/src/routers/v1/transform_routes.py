@@ -13,6 +13,7 @@ from starlette.status import HTTP_204_NO_CONTENT
 
 from dependencies import (
     get_db_session,
+    get_org_scope,
     get_validated_task,
     transform_list_filter_parameters,
 )
@@ -36,7 +37,7 @@ from schemas.response_schemas import (
     TransformExtractionResponseList,
 )
 from utils.transform_executor import execute_transform
-from utils.users import permission_checker
+from utils.users import enforce_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
 transform_routes = APIRouter(
@@ -52,6 +53,7 @@ transform_routes = APIRouter(
     tags=["Transforms"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def list_transforms_for_task(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -97,10 +99,13 @@ def get_transform(
     transform_id: UUID = Path(description="ID of the transform to fetch."),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> TraceTransformResponse:
     try:
         trace_transform_repo = TraceTransformRepository(db_session)
-        trace_transform = trace_transform_repo.get_transform_by_id(transform_id)
+        trace_transform = trace_transform_repo.get_transform_by_id(
+            transform_id, org_scope=org_scope
+        )
 
         if not trace_transform:
             raise HTTPException(
@@ -127,10 +132,11 @@ def get_transform_dependents(
     transform_id: UUID = Path(description="ID of the transform."),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> TransformDependents:
     try:
         repo = TraceTransformRepository(db_session)
-        if not repo.get_transform_by_id(transform_id):
+        if not repo.get_transform_by_id(transform_id, org_scope=org_scope):
             raise HTTPException(
                 status_code=404,
                 detail=f"Transform {transform_id} not found",
@@ -149,6 +155,7 @@ def get_transform_dependents(
     tags=["Transforms"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def create_transform_for_task(
     request: NewTraceTransformRequest,
     db_session: Session = Depends(get_db_session),
@@ -177,10 +184,13 @@ def update_transform(
     transform_id: UUID = Path(description="ID of the transform to update."),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> TraceTransformResponse:
     try:
         trace_transform_repo = TraceTransformRepository(db_session)
-        trace_transform = trace_transform_repo.update_transform(transform_id, request)
+        trace_transform = trace_transform_repo.update_transform(
+            transform_id, request, org_scope=org_scope
+        )
         definition = trace_transform_repo.get_latest_definition(transform_id)
         return trace_transform.to_response_model(definition=definition)
     except HTTPException:
@@ -200,10 +210,11 @@ def list_transform_versions(
     transform_id: UUID = Path(description="ID of the transform."),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> ListTraceTransformVersionsResponse:
     try:
         repo = TraceTransformRepository(db_session)
-        if not repo.get_transform_by_id(transform_id):
+        if not repo.get_transform_by_id(transform_id, org_scope=org_scope):
             raise HTTPException(
                 status_code=404,
                 detail=f"Transform {transform_id} not found",
@@ -227,10 +238,11 @@ def get_transform_version(
     version_id: UUID = Path(description="ID of the version to fetch."),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> TraceTransformVersionResponse:
     try:
         repo = TraceTransformRepository(db_session)
-        if not repo.get_transform_by_id(transform_id):
+        if not repo.get_transform_by_id(transform_id, org_scope=org_scope):
             raise HTTPException(
                 status_code=404,
                 detail=f"Transform {transform_id} not found",
@@ -259,10 +271,11 @@ def delete_transform_version(
     version_id: UUID = Path(description="ID of the version to delete."),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> Response:
     try:
         repo = TraceTransformRepository(db_session)
-        if not repo.get_transform_by_id(transform_id):
+        if not repo.get_transform_by_id(transform_id, org_scope=org_scope):
             raise HTTPException(
                 status_code=404,
                 detail=f"Transform {transform_id} not found",
@@ -291,10 +304,11 @@ def delete_transform(
     transform_id: UUID = Path(description="ID of the transform to delete."),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> Response:
     try:
         trace_transform_repo = TraceTransformRepository(db_session)
-        trace_transform_repo.delete_transform(transform_id)
+        trace_transform_repo.delete_transform(transform_id, org_scope=org_scope)
         return Response(status_code=HTTP_204_NO_CONTENT)
     except HTTPException:
         raise
@@ -316,12 +330,14 @@ def execute_trace_transform_extraction(
     transform_id: UUID = Path(description="ID of the transform to execute."),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> TransformExtractionResponseList:
     try:
-        # Fetch the transform
+        # Fetch the transform (org-scoped for tenant callers)
         trace_transform_repo = TraceTransformRepository(db_session)
         trace_transform = trace_transform_repo.get_transform_by_id(
             transform_id,
+            org_scope=org_scope,
         )
 
         if not trace_transform:
@@ -330,7 +346,7 @@ def execute_trace_transform_extraction(
                 detail=f"Transform {transform_id} not found",
             )
 
-        # Fetch the trace
+        # Fetch the trace (org-scoped for tenant callers)
         tasks_metrics_repo = TasksMetricsRepository(db_session)
         metrics_repo = MetricRepository(db_session)
 
@@ -340,6 +356,7 @@ def execute_trace_transform_extraction(
             trace_id=trace_id,
             include_metrics=False,
             compute_new_metrics=False,
+            org_scope=org_scope,
         )
 
         if not trace:

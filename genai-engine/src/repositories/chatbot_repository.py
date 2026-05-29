@@ -20,11 +20,7 @@ from schemas.enums import ApplicationConfigurations
 from schemas.request_schemas import CreateAgenticPromptRequest
 from services.chatbot.api_call_service import ApiCallService
 from services.chatbot.chatbot_prompts import get_api_index
-from services.chatbot.chatbot_service import (
-    ChatbotService,
-    clear_conversation_history,
-    get_conversation_history,
-)
+from services.chatbot.chatbot_service import ChatbotService
 from services.prompt.chat_completion_service import ChatCompletionService
 from utils.constants import (
     ARTHUR_SYSTEM_TASK_ID,
@@ -116,8 +112,6 @@ class ChatbotRepository:
             summarizer_prompt=summarizer_prompt,
         )
 
-        history = get_conversation_history(user_id, request.conversation_id)
-
         chatbot_model_provider = chatbot_prompt.require_configured_provider()
         llm_client = self.model_provider_repo.get_model_provider_client(
             chatbot_model_provider,
@@ -126,20 +120,14 @@ class ChatbotRepository:
         prompt = chatbot_service.build_prompt(
             chatbot_prompt=chatbot_prompt,
             task_id=task_id,
-            history=history,
-            user_message=request.message,
+            history=request.history,
             model_provider=chatbot_model_provider,
             model_name=chatbot_prompt.model_name,
             blacklist=blacklist,
         )
 
         return StreamingResponse(
-            chatbot_service.stream(
-                prompt,
-                llm_client,
-                user_id,
-                request.conversation_id,
-            ),
+            chatbot_service.stream(prompt, llm_client, user_id, request.session_id),
             media_type="text/event-stream",
         )
 
@@ -244,10 +232,3 @@ class ChatbotRepository:
             blacklist_endpoints=self.get_blacklist_endpoints(),
             available_endpoints=get_api_index(app),
         )
-
-    def clear_conversation_history(
-        self,
-        user_id: str,
-        conversation_id: str,
-    ) -> None:
-        clear_conversation_history(user_id, conversation_id)

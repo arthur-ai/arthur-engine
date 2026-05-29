@@ -93,6 +93,7 @@ class PermissionLevelsEnum(Enum):
             constants.ORG_AUDITOR,
             constants.DEFAULT_RULE_ADMIN,
             constants.TASK_ADMIN,
+            constants.TENANT_USER,
         ],
     )
     FEEDBACK_READ = frozenset(
@@ -100,6 +101,7 @@ class PermissionLevelsEnum(Enum):
             constants.ORG_ADMIN,
             constants.ORG_AUDITOR,
             constants.TASK_ADMIN,
+            constants.TENANT_USER,
         ],
     )
     FEEDBACK_WRITE = frozenset(
@@ -108,6 +110,7 @@ class PermissionLevelsEnum(Enum):
             constants.TASK_ADMIN,
             constants.VALIDATION_USER,
             constants.CHAT_USER,
+            constants.TENANT_USER,
         ],
     )
     INFERENCE_READ = frozenset(
@@ -115,6 +118,7 @@ class PermissionLevelsEnum(Enum):
             constants.ORG_ADMIN,
             constants.ORG_AUDITOR,
             constants.TASK_ADMIN,
+            constants.TENANT_USER,
         ],
     )
     INFERENCE_WRITE = frozenset(
@@ -123,6 +127,7 @@ class PermissionLevelsEnum(Enum):
             constants.TASK_ADMIN,
             constants.VALIDATION_USER,
             constants.CHAT_USER,
+            constants.TENANT_USER,
         ],
     )
     PASSWORD_RESET = frozenset(
@@ -140,22 +145,41 @@ class PermissionLevelsEnum(Enum):
             constants.ORG_ADMIN,
             constants.ORG_AUDITOR,
             constants.TASK_ADMIN,
+            constants.TENANT_USER,
         ],
     )
     TASK_WRITE = frozenset(
         [
             constants.ORG_ADMIN,
             constants.TASK_ADMIN,
+            constants.TENANT_USER,
         ],
     )
-    USAGE_READ = frozenset([constants.ORG_ADMIN, constants.ORG_AUDITOR])
+    TRACES_WRITE = frozenset(
+        [
+            constants.ORG_ADMIN,
+            constants.TASK_ADMIN,
+        ],
+    )
+    USAGE_READ = frozenset(
+        [
+            constants.ORG_ADMIN,
+            constants.ORG_AUDITOR,
+            constants.TENANT_USER,
+        ],
+    )
     USER_READ = frozenset([constants.ORG_ADMIN, constants.ORG_AUDITOR])
     USER_WRITE = frozenset([constants.ORG_ADMIN])
     DATASET_WRITE = frozenset(
-        [constants.ORG_ADMIN, constants.TASK_ADMIN],
+        [constants.ORG_ADMIN, constants.TASK_ADMIN, constants.TENANT_USER],
     )
     DATASET_READ = frozenset(
-        [constants.ORG_ADMIN, constants.ORG_AUDITOR, constants.TASK_ADMIN],
+        [
+            constants.ORG_ADMIN,
+            constants.ORG_AUDITOR,
+            constants.TASK_ADMIN,
+            constants.TENANT_USER,
+        ],
     )
     ROTATE_SECRETS = frozenset(
         [constants.ORG_ADMIN],
@@ -164,7 +188,41 @@ class PermissionLevelsEnum(Enum):
         [constants.ORG_ADMIN, constants.TASK_ADMIN],
     )
     MODEL_PROVIDER_READ = frozenset(
+        [
+            constants.ORG_ADMIN,
+            constants.ORG_AUDITOR,
+            constants.TASK_ADMIN,
+            constants.TENANT_USER,
+        ],
+    )
+    # Read of the chatbot system task's model + prompt config. Admin-only:
+    # this is system-wide config, not tenant data.
+    CHATBOT_CONFIG_READ = frozenset(
+        [constants.ORG_ADMIN, constants.ORG_AUDITOR],
+    )
+    # Write of the chatbot system task's config + clearing chatbot history.
+    # Admin-only: chatbot is a system task; tenants have no business writing
+    # its config or clearing its history.
+    CHATBOT_CONFIG_WRITE = frozenset(
+        [constants.ORG_ADMIN],
+    )
+    # Trigger a global agent discovery + polling cycle. Admin-only: this
+    # discovers and polls every eligible task in the engine.
+    AGENT_POLLING_ADMIN = frozenset(
+        [constants.ORG_ADMIN, constants.TASK_ADMIN],
+    )
+    # Read of telemetry that isn't tied to any task (orphaned root spans,
+    # cross-task debug views). Admin-only — tenants have no use for this
+    # data and seeing it could expose other tenants' span names.
+    TELEMETRY_ADMIN_READ = frozenset(
         [constants.ORG_ADMIN, constants.ORG_AUDITOR, constants.TASK_ADMIN],
+    )
+    # Run validation using only default (non-task-scoped) rules. Covers the
+    # deprecated `/api/v2/validate_prompt` endpoint. Admin-only because there
+    # is no task to enforce org scope against — tenants use the task-scoped
+    # `/api/v2/tasks/{task_id}/validate_*` endpoints instead.
+    DEFAULT_VALIDATION_RUN = frozenset(
+        [constants.ORG_ADMIN, constants.TASK_ADMIN],
     )
 
 
@@ -209,6 +267,7 @@ class SSEEventType(str, Enum):
     SEARCH_COMPLETE = "search_complete"
     TOOL_CALL = "tool_call"
     TOOL_RESULT = "tool_result"
+    HISTORY_REPLACE = "history_replace"
 
 
 class LLMMetadataSortField(str, Enum):

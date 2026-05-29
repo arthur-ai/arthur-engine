@@ -43,7 +43,7 @@ from schemas.response_schemas import (
 )
 from services.prompt.chat_completion_service import ChatCompletionService
 from utils.url_encoding import decode_path_param
-from utils.users import permission_checker
+from utils.users import enforce_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
 agentic_prompt_routes = APIRouter(
@@ -61,6 +61,7 @@ agentic_prompt_routes = APIRouter(
     tags=["Prompts"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def get_agentic_prompt(
     prompt_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
     prompt_version: str = Path(
@@ -98,6 +99,7 @@ def get_agentic_prompt(
     tags=["Prompts"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def get_all_agentic_prompts(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -135,6 +137,7 @@ def get_all_agentic_prompts(
     tags=["Prompts"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def get_all_agentic_prompt_versions(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -434,6 +437,7 @@ def get_unsaved_prompt_variables_list(
     tags=["Prompts"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 async def run_saved_agentic_prompt(
     prompt_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
     prompt_version: str = Path(
@@ -488,6 +492,7 @@ async def run_saved_agentic_prompt(
     tags=["Prompts"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def render_saved_agentic_prompt(
     prompt_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
     prompt_version: str = Path(
@@ -548,6 +553,7 @@ def render_saved_agentic_prompt(
     tags=["Prompts"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def save_agentic_prompt(
     prompt_config: CreateAgenticPromptRequest,
     prompt_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
@@ -577,6 +583,7 @@ def save_agentic_prompt(
     tags=["Prompts"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def delete_agentic_prompt(
     prompt_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
     db_session: Session = Depends(get_db_session),
@@ -605,6 +612,7 @@ def delete_agentic_prompt(
     tags=["Prompts"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def delete_agentic_prompt_version(
     prompt_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
     prompt_version: str = Path(
@@ -643,6 +651,7 @@ def delete_agentic_prompt_version(
     tags=["Prompts"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def get_agentic_prompt_by_tag(
     prompt_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
     tag: Annotated[str, Path(), AfterValidator(decode_path_param)],
@@ -677,6 +686,7 @@ def get_agentic_prompt_by_tag(
     tags=["Prompts"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def add_tag_to_agentic_prompt_version(
     prompt_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
     prompt_version: str = Path(
@@ -725,6 +735,7 @@ def add_tag_to_agentic_prompt_version(
     tags=["Prompts"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def delete_tag_from_agentic_prompt_version(
     prompt_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
     prompt_version: Annotated[

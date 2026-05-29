@@ -29,6 +29,7 @@ from utils.constants import (
     SYNTHETIC_DATA_SYSTEM_PROMPT_NAME,
     SYNTHETIC_DATASET_TASK_ID,
     SYNTHETIC_DATASET_TASK_NAME,
+    SYSTEM_ORG_ID,
 )
 
 logger = logging.getLogger(__name__)
@@ -47,6 +48,8 @@ def _ensure_synthetic_dataset_task(db_session: Session) -> None:
     existing = db_session.get(DatabaseTask, SYNTHETIC_DATASET_TASK_ID)
     if not existing:
         logger.info(f"Creating system task: {SYNTHETIC_DATASET_TASK_NAME}")
+        # System tasks live in the seeded `system` org so they cannot be
+        # reached by tenant API keys via any org-scope code path.
         db_task = DatabaseTask(
             id=SYNTHETIC_DATASET_TASK_ID,
             name=SYNTHETIC_DATASET_TASK_NAME,
@@ -55,6 +58,7 @@ def _ensure_synthetic_dataset_task(db_session: Session) -> None:
             is_agentic=True,
             is_system_task=True,
             is_autocreated=False,
+            org_id=SYSTEM_ORG_ID,
         )
         db_session.add(db_task)
         try:

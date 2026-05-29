@@ -81,7 +81,7 @@ export const TaskLayout: React.FC = () => {
 
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-950 flex flex-col overflow-hidden">
-      <ChatbotDrawer taskId={taskId} />
+      {activeSection !== "chatbot" && <ChatbotDrawer taskId={taskId} />}
       <div className="flex flex-1 overflow-hidden">
         <SidebarNavigation onBackToDashboard={handleBack} onNavigate={handleNavigate} activeSection={activeSection} taskName={task?.name} />
 

@@ -234,6 +234,13 @@ Parameters:
       - 'false'
     Default: 'true'
     Description: 'Enable PII model v2'
+  GenaiEngineDemoMode:
+    Type: String
+    AllowedValues:
+      - 'enabled'
+      - 'disabled'
+    Default: 'disabled'
+    Description: 'Enable GenAI Engine demo mode'
   GenaiEngineOpenAIProvider:
     Type: String
     AllowedValues:
@@ -497,6 +504,7 @@ Metadata:
           - GenaiEngineHallucinationCheckMaxTokenLimit
           - GenaiEngineToxicityCheckMaxTokenLimit
           - GenaiEngineUsePIIModelV2
+          - GenaiEngineDemoMode
       - Label:
           default: 'Advanced - GenAI Engine (Internal Model Repository)'
         Parameters:
@@ -606,6 +614,8 @@ Metadata:
         default: 'GenAI Engine Toxicity Check Max Token Limit'
       GenaiEngineUsePIIModelV2:
         default: 'GenAI Engine Use PII Model V2'
+      GenaiEngineDemoMode:
+        default: 'GenAI Engine Demo Mode'
       GenaiEngineOpenAIProvider:
         default: 'OpenAI Service Provider'
       GenaiEngineECSClusterGPUInstanceScheduledScaleInCron:
@@ -808,6 +818,7 @@ Resources:
         GenaiEngineHallucinationCheckMaxTokenLimit: !Ref GenaiEngineHallucinationCheckMaxTokenLimit
         GenaiEngineToxicityCheckMaxTokenLimit: !Ref GenaiEngineToxicityCheckMaxTokenLimit
         GenaiEngineUsePIIModelV2: !Ref GenaiEngineUsePIIModelV2
+        GenaiEngineDemoMode: !Ref GenaiEngineDemoMode
         GenaiEngineEC2TaskCPUValue: !Ref GenaiEngineEC2TaskCPUValue
         GenaiEngineEC2TaskGPUValue: !Ref GenaiEngineEC2TaskGPUValue
         GenaiEngineEC2TaskMemoryValue: !Ref GenaiEngineEC2TaskMemoryValue

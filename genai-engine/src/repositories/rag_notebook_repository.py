@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
@@ -18,6 +18,7 @@ from db_models.rag_provider_models import (
     DatabaseRagSearchSettingConfiguration,
     DatabaseRagSearchSettingConfigurationVersion,
 )
+from db_models.task_models import DatabaseTask
 from repositories.rag_experiment_repository import RagExperimentRepository
 from schemas.internal_schemas import RagNotebook
 from schemas.rag_experiment_schemas import (
@@ -48,13 +49,18 @@ class RagNotebookRepository:
         self.db_session = db_session
         self.experiment_repo = RagExperimentRepository(db_session)
 
-    def _get_db_notebook(self, notebook_id: str) -> DatabaseRagNotebook:
+    def _get_db_notebook(
+        self, notebook_id: str, org_scope: UUID | None = None
+    ) -> DatabaseRagNotebook:
         """Get database RAG notebook by ID or raise 404"""
-        db_notebook = (
-            self.db_session.query(DatabaseRagNotebook)
-            .filter(DatabaseRagNotebook.id == notebook_id)
-            .first()
+        q = self.db_session.query(DatabaseRagNotebook).filter(
+            DatabaseRagNotebook.id == notebook_id,
         )
+        if org_scope is not None:
+            q = q.join(
+                DatabaseTask, DatabaseTask.id == DatabaseRagNotebook.task_id
+            ).filter(DatabaseTask.org_id == org_scope)
+        db_notebook = q.first()
         if not db_notebook:
             raise HTTPException(
                 status_code=404,
@@ -75,11 +81,16 @@ class RagNotebookRepository:
         if state is None:
             return
 
-        # Validate dataset exists if provided
+        # Validate dataset exists within the caller's task scope.
+        # Filtering on task_id prevents a tenant from pinning a notebook to a
+        # cross-org dataset by guessing its UUID.
         if state.dataset_ref is not None:
             dataset = (
                 self.db_session.query(DatabaseDataset)
-                .filter(DatabaseDataset.id == state.dataset_ref.id)
+                .filter(
+                    DatabaseDataset.id == state.dataset_ref.id,
+                    DatabaseDataset.task_id == task_id,
+                )
                 .first()
             )
             if not dataset:
@@ -212,9 +223,11 @@ class RagNotebookRepository:
         )
         return notebook_with_experiments._to_detail_response()
 
-    def get_notebook(self, notebook_id: str) -> RagNotebookDetail:
+    def get_notebook(
+        self, notebook_id: str, org_scope: UUID | None = None
+    ) -> RagNotebookDetail:
         """Get RAG notebook by ID"""
-        db_notebook = self._get_db_notebook(notebook_id)
+        db_notebook = self._get_db_notebook(notebook_id, org_scope=org_scope)
 
         # Get experiments and convert to summaries
         experiments = [
@@ -309,9 +322,10 @@ class RagNotebookRepository:
         self,
         notebook_id: str,
         request: UpdateRagNotebookRequest,
+        org_scope: UUID | None = None,
     ) -> RagNotebookDetail:
         """Update RAG notebook name or description"""
-        db_notebook = self._get_db_notebook(notebook_id)
+        db_notebook = self._get_db_notebook(notebook_id, org_scope=org_scope)
 
         if request.name is not None:
             db_notebook.name = request.name
@@ -343,9 +357,10 @@ class RagNotebookRepository:
         self,
         notebook_id: str,
         request: SetRagNotebookStateRequest,
+        org_scope: UUID | None = None,
     ) -> RagNotebookDetail:
         """Set the RAG notebook state"""
-        db_notebook = self._get_db_notebook(notebook_id)
+        db_notebook = self._get_db_notebook(notebook_id, org_scope=org_scope)
 
         # Validate state resources exist
         self._validate_notebook_state(db_notebook.task_id, request.state)
@@ -388,7 +403,7 @@ class RagNotebookRepository:
         logger.info(f"Set state for RAG notebook {notebook_id}")
 
         # Re-fetch with joinedload for updated dataset relationship
-        db_notebook = self._get_db_notebook(notebook_id)
+        db_notebook = self._get_db_notebook(notebook_id, org_scope=org_scope)
         experiments = [
             self.experiment_repo._db_experiment_to_summary(exp)
             for exp in db_notebook.experiments
@@ -401,18 +416,20 @@ class RagNotebookRepository:
         )
         return notebook._to_detail_response()
 
-    def get_notebook_state(self, notebook_id: str) -> RagNotebookStateResponse:
+    def get_notebook_state(
+        self, notebook_id: str, org_scope: UUID | None = None
+    ) -> RagNotebookStateResponse:
         """Get the current state of a RAG notebook"""
-        db_notebook = self._get_db_notebook(notebook_id)
+        db_notebook = self._get_db_notebook(notebook_id, org_scope=org_scope)
 
         # Convert to internal model and return state response
         dataset_name = db_notebook.dataset.name if db_notebook.dataset else None
         notebook = RagNotebook._from_database_model(db_notebook, [], dataset_name)
         return notebook._to_state_response()
 
-    def delete_notebook(self, notebook_id: str) -> None:
+    def delete_notebook(self, notebook_id: str, org_scope: UUID | None = None) -> None:
         """Delete a RAG notebook (experiments are kept with notebook_id=NULL)"""
-        db_notebook = self._get_db_notebook(notebook_id)
+        db_notebook = self._get_db_notebook(notebook_id, org_scope=org_scope)
 
         self.db_session.delete(db_notebook)
         self.db_session.commit()
@@ -423,9 +440,10 @@ class RagNotebookRepository:
         self,
         notebook_id: str,
         pagination_params: PaginationParameters,
+        org_scope: UUID | None = None,
     ) -> RagExperimentListResponse:
         """Get paginated history of experiments run from this RAG notebook"""
-        db_notebook = self._get_db_notebook(notebook_id)
+        db_notebook = self._get_db_notebook(notebook_id, org_scope=org_scope)
 
         # Base query for experiments linked to this notebook
         query = self.db_session.query(DatabaseRagExperiment).filter(

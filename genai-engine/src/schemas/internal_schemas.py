@@ -171,6 +171,7 @@ from schemas.rag_experiment_schemas import (
     RagConfig,
     RagConfigResponse,
     RagExperimentSummary,
+    SavedRagConfig,
     UnsavedRagConfigResponse,
 )
 from schemas.rag_notebook_schemas import (
@@ -590,6 +591,10 @@ class Task(BaseModel):
     is_autocreated: bool = False
     is_system_task: bool = False
     is_archived: bool = False
+    # FK to organizations.id; required after multi-tenancy. Caller identity
+    # determines the value at create time (admin -> default org, tenant ->
+    # caller's org). Not user-settable via request bodies.
+    org_id: uuid.UUID
     task_metadata: Optional[TaskMetadata] = None
     service_names: List[str] = Field(
         default_factory=list,
@@ -599,7 +604,7 @@ class Task(BaseModel):
     metric_links: Optional[List[TaskToMetricLink]] = None
 
     @staticmethod
-    def _from_request_model(x: NewTaskRequest) -> "Task":
+    def _from_request_model(x: NewTaskRequest, org_id: uuid.UUID) -> "Task":
         # Convert AgentMetadata request to new TaskMetadata format for DB storage
         task_metadata = None
         if x.agent_metadata:
@@ -629,6 +634,7 @@ class Task(BaseModel):
             created_at=datetime.now(),
             updated_at=datetime.now(),
             is_agentic=x.is_agentic,
+            org_id=org_id,
             task_metadata=task_metadata,
         )
 
@@ -643,6 +649,7 @@ class Task(BaseModel):
             is_autocreated=x.is_autocreated,
             is_system_task=x.is_system_task,
             is_archived=x.archived,
+            org_id=x.org_id,
             task_metadata=(
                 TaskMetadata.model_validate(x.task_metadata)
                 if x.task_metadata
@@ -665,6 +672,7 @@ class Task(BaseModel):
             is_agentic=self.is_agentic,
             is_autocreated=self.is_autocreated,
             is_system_task=self.is_system_task,
+            org_id=self.org_id,
             task_metadata=(
                 self.task_metadata.model_dump(exclude_none=True)
                 if self.task_metadata
@@ -829,21 +837,6 @@ class AgenticAnnotation(BaseModel):
             updated_at=db_annotation.updated_at,
         )
 
-    def to_db_model(self) -> DatabaseAgenticAnnotation:
-        return DatabaseAgenticAnnotation(
-            id=self.id,
-            annotation_type=self.annotation_type,
-            trace_id=self.trace_id,
-            continuous_eval_id=self.continuous_eval_id,
-            annotation_score=self.annotation_score,
-            annotation_description=self.annotation_description,
-            input_variables=self.input_variables,
-            cost=self.cost,
-            run_status=self.run_status,
-            created_at=self.created_at,
-            updated_at=self.updated_at,
-        )
-
     def to_response_model(self) -> AgenticAnnotationResponse:
         return AgenticAnnotationResponse(
             id=str(self.id),
@@ -868,6 +861,7 @@ class AgenticAnnotation(BaseModel):
 class TraceMetadata(TokenCountCostSchema):
     trace_id: str
     task_id: str
+    org_id: uuid.UUID
     user_id: Optional[str] = None
     session_id: Optional[str] = None
     start_time: datetime
@@ -894,6 +888,7 @@ class TraceMetadata(TokenCountCostSchema):
         return TraceMetadata(
             trace_id=x.trace_id,
             task_id=x.task_id or "",
+            org_id=x.org_id,
             user_id=x.user_id,
             session_id=x.session_id,
             start_time=x.start_time,
@@ -916,6 +911,7 @@ class TraceMetadata(TokenCountCostSchema):
         return DatabaseTraceMetadata(
             trace_id=self.trace_id,
             task_id=self.task_id,
+            org_id=self.org_id,
             user_id=self.user_id,
             session_id=self.session_id,
             start_time=self.start_time,
@@ -1808,6 +1804,9 @@ class User(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     roles: list[AuthUserRole]
+    # Set from api_key.org_id on the API-key auth path. None for JWT users
+    # and for admin API keys (org_id IS NULL). Drives request.state.org_scope.
+    org_scope: Optional[uuid.UUID] = None
 
     @staticmethod
     def _from_database_model(user: DatabaseUser) -> "User":
@@ -1970,6 +1969,8 @@ class ApiKey(BaseModel):
     created_at: datetime
     deactivated_at: Optional[datetime] = None
     roles: list[str] = [constants.TASK_ADMIN]
+    # NULL = admin (cross-org). Non-null = tenant scoped to that org.
+    org_id: Optional[uuid.UUID] = None
 
     @staticmethod
     def _from_database_model(api_key: DatabaseApiKey) -> "ApiKey":
@@ -1981,6 +1982,7 @@ class ApiKey(BaseModel):
             created_at=api_key.created_at,
             deactivated_at=api_key.deactivated_at,
             roles=api_key.roles,
+            org_id=api_key.org_id,
         )
 
     def _to_response_model(self, message: str = "") -> ApiKeyResponse:
@@ -2006,6 +2008,7 @@ class ApiKey(BaseModel):
                 AuthUserRole(name=role, description="API Key user", composite=True)
                 for role in self.roles
             ],
+            org_scope=self.org_id,
         )
 
 
@@ -2019,6 +2022,7 @@ class Span(TokenCountCostSchema):
     start_time: datetime
     end_time: datetime
     task_id: Optional[str] = None
+    org_id: Optional[uuid.UUID] = None
     session_id: Optional[str] = None
     user_id: Optional[str] = None
     status_code: str = "Unset"
@@ -2081,6 +2085,7 @@ class Span(TokenCountCostSchema):
             start_time=db_span.start_time,
             end_time=db_span.end_time,
             task_id=db_span.task_id,
+            org_id=db_span.org_id,
             session_id=db_span.session_id,
             user_id=db_span.user_id,
             status_code=db_span.status_code,
@@ -2110,6 +2115,7 @@ class Span(TokenCountCostSchema):
             start_time=self.start_time,
             end_time=self.end_time,
             task_id=self.task_id,
+            org_id=self.org_id,
             session_id=self.session_id,
             user_id=self.user_id,
             status_code=self.status_code,
@@ -3980,8 +3986,6 @@ class InternalSavedRagConfig(BaseModel):
         This method handles the conversion between request and response schemas
         for RAG configurations, converting request settings types to response settings types.
         """
-        from schemas.rag_experiment_schemas import SavedRagConfig
-
         if config.type == "saved":
             # Saved configs don't need conversion - they're the same in both request and response
             return SavedRagConfig(

@@ -26,6 +26,7 @@ from utils.constants import (
     CHATBOT_PROMPT_NAME,
     CHATBOT_SUMMARIZER_PROMPT_NAME,
     EMPTY_MODEL_PROVIDER,
+    SYSTEM_ORG_ID,
 )
 
 logger = logging.getLogger(__name__)
@@ -170,6 +171,7 @@ class SystemTaskRepository:
                     is_agentic=True,
                     is_autocreated=False,
                     is_system_task=True,
+                    org_id=SYSTEM_ORG_ID,
                 ),
             )
             self.db_session.commit()
