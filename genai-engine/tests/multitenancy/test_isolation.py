@@ -27,6 +27,24 @@ from tests.multitenancy.conftest import TenantWorld
 SIGNUP_URL = "/api/v2/tenant/signup"
 ME_URL = "/users/me"
 
+# Minimal valid body for POST /api/v2/tenant/signup. These tests don't care
+# about the onboarding payload itself — they only need the request to clear
+# body validation so the demo-mode gate / signup logic can be exercised.
+_VALID_SIGNUP_BODY = {
+    "form_variant": "linear",
+    "form_data": {
+        "first_name": "Test",
+        "last_name": "Tenant",
+        "email": "test@example.com",
+        "job_title": "Engineer",
+        "company": "TestCo",
+        "maturity": "exploring",
+        "brings": "evals",
+        "competitors": ["langsmith"],
+        "attribution": "search",
+    },
+}
+
 
 # ---------------------------------------------------------------------------
 # Parametrized isolation cases (Patterns A, C, D).
@@ -847,11 +865,12 @@ def test_users_me_for_admin(tenant_world: TenantWorld):
 
 @pytest.mark.unit_tests
 def test_signup_flag_off_returns_404():
-    """Without GENAI_ENGINE_DEMO_MODE the route 404s for everyone."""
+    """Without GENAI_ENGINE_DEMO_MODE the route 404s for everyone — even for
+    well-formed requests."""
     with patch.dict(os.environ, {}, clear=False):
         os.environ.pop("GENAI_ENGINE_DEMO_MODE", None)
         test_client = TestClient(app)
-        response = test_client.post(SIGNUP_URL)
+        response = test_client.post(SIGNUP_URL, json=_VALID_SIGNUP_BODY)
     assert response.status_code == 404
 
 
@@ -869,7 +888,7 @@ def test_signup_flag_on_returned_key_can_only_access_new_task(
     try:
         with patch.dict(os.environ, {"GENAI_ENGINE_DEMO_MODE": "ENABLED"}):
             test_client = TestClient(app)
-            sig = test_client.post(SIGNUP_URL).json()
+            sig = test_client.post(SIGNUP_URL, json=_VALID_SIGNUP_BODY).json()
         new_headers = {"Authorization": f"Bearer {sig['api_key']}"}
         # New tenant CANNOT see T1a
         cross = tenant_world.client.base_client.get(
