@@ -166,16 +166,16 @@ DEMO_TASK_DATASET_VERSION_REQUEST = NewDatasetVersionRequest(
         NewDatasetVersionRowRequest(
             data=[
                 NewDatasetVersionRowColumnItemRequest(
-                    column_name="query",
-                    column_value=query,
+                    column_name="input_messages",
+                    column_value=input_messages,
                 ),
                 NewDatasetVersionRowColumnItemRequest(
-                    column_name="response",
-                    column_value=response,
+                    column_name="output_messages",
+                    column_value=output_messages,
                 ),
             ],
         )
-        for query, response in DEMO_TASK_DATASET_ROWS
+        for input_messages, output_messages in DEMO_TASK_DATASET_ROWS
     ],
     rows_to_delete=[],
     rows_to_update=[],
