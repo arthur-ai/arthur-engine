@@ -7266,11 +7266,8 @@ export interface OnboardingTryItOutFormData {
    * @minLength 1
    */
   attribution: string;
-  /**
-   * Attribution Other
-   * @default ""
-   */
-  attribution_other?: string;
+  /** Attribution Other */
+  attribution_other?: string | null;
   /**
    * Brings
    * @minLength 1
@@ -7286,11 +7283,8 @@ export interface OnboardingTryItOutFormData {
    * @minLength 1
    */
   company: string;
-  /**
-   * Competitor Other
-   * @default ""
-   */
-  competitor_other?: string;
+  /** Competitor Other */
+  competitor_other?: string | null;
   /**
    * Competitors
    * @minItems 1
