@@ -40,7 +40,7 @@ spec:
       {{- end }}
       containers:
         - name: arthur-ml-engine
-          image: "{{ .Values.containerRepository.imageLocation }}/{{ .Values.mlEngine.deployment.containerImageName }}:{{ .Values.mlEngine.deployment.containerImageVersion }}"
+          image: "{{ .Values.containerRepository.imageLocation }}/{{ .Values.mlEngine.deployment.containerImageName }}:{{ if .Values.platformVersion }}{{ .Values.platformVersion }}{{ else }}{{ .Values.mlEngine.deployment.containerImageVersion }}{{ end }}"
           imagePullPolicy: Always
           securityContext:
             runAsUser: 65532

@@ -1,3 +1,9 @@
+# Set this to override the image tag for all Arthur-managed components at once.
+# Per-component version fields take precedence when platformVersion is empty.
+# Leave empty to use the chart's built-in AppVersion.
+# Example: helm install arthur-ml-engine ... --set platformVersion=0.0.15-lts
+platformVersion: ""
+
 containerRepository:
   imageLocation: "arthurplatform"
   credentialsRequired: false

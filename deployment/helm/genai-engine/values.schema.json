@@ -489,7 +489,13 @@
                     "description": "Name of the K8s secret containing the GCP service account JSON key"
                 }
             },
-            "required": ["isEnabled"]
+            "required": [
+                "isEnabled"
+            ]
+        },
+        "platformVersion": {
+            "type": "string",
+            "description": "Override the image tag for all Arthur-managed components. Takes precedence over genaiEngineVersion when set. Leave empty to use the per-component version."
         }
     },
     "required": [

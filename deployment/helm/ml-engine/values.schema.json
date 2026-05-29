@@ -1,158 +1,162 @@
 {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "title": "ML Engine Helm Chart Values",
-    "type": "object",
-    "properties": {
-        "resourceNameSuffix": {
-            "type": "string",
-            "description": "Optional suffix for resource names."
-        },
-        "containerRepository": {
-            "type": "object",
-            "properties": {
-                "imageLocation": {
-                    "type": "string",
-                    "description": "The location of the container image repository."
-                },
-                "credentialsRequired": {
-                    "type": "boolean",
-                    "description": "Indicates if credentials are required to pull the image."
-                },
-                "imagePullSecretName": {
-                    "type": "string",
-                    "description": "The name of the secret containing image pull credentials."
-                }
-            },
-            "required": [
-                "imageLocation",
-                "credentialsRequired",
-                "imagePullSecretName"
-            ]
-        },
-        "mlEngine": {
-            "type": "object",
-            "properties": {
-                "deployment": {
-                    "type": "object",
-                    "properties": {
-                        "replicas": {
-                            "type": "integer",
-                            "description": "The number of replicas for the deployment."
-                        },
-                        "labels": {
-                            "type": "object",
-                            "description": "Custom labels for the deployment."
-                        },
-                        "annotations": {
-                            "type": "object",
-                            "description": "Custom annotations for the deployment."
-                        },
-                        "mlEnginePodLabels": {
-                            "type": "object",
-                            "description": "Labels for the ML Engine pods."
-                        },
-                        "mlEngineServiceAccount": {
-                            "type": "object",
-                            "properties": {
-                                "create": {
-                                    "type": "boolean"
-                                },
-                                "name": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "create",
-                                "name"
-                            ],
-                            "description": "Name of the service account used by the ML Engine pod"
-                        },
-                        "containerImageName": {
-                            "type": "string",
-                            "description": "The name of the container image."
-                        },
-                        "containerImageVersion": {
-                            "type": "string",
-                            "description": "The version of the container image."
-                        },
-                        "containerMemoryRequests": {
-                            "type": "string",
-                            "description": "The memory requests for the container."
-                        },
-                        "containerCPURequests": {
-                            "type": "string",
-                            "description": "The CPU requests for the container."
-                        },
-                        "containerMemoryLimits": {
-                            "type": "string",
-                            "description": "The memory limits for the container."
-                        },
-                        "containerCPULimits": {
-                            "type": "string",
-                            "description": "The CPU limits for the container."
-                        },
-                        "appPlaneUrl": {
-                            "type": "string",
-                            "description": "The URL of the application plane."
-                        },
-                        "mlEngineClientSecretName": {
-                            "type": "string",
-                            "description": "The name of the ML Engine client credentials secret."
-                        },
-                        "mlEnginePodNodeSelector": {
-                            "type": "object",
-                            "description": "Node selector for the ml engine pods."
-                        },
-                        "mlEnginePodAffinity": {
-                            "type": "object",
-                            "description": "Affinity settings for the ml engine pods."
-                        },
-                        "mlEnginePodTolerations": {
-                            "type": "object",
-                            "description": "Tolerations for the ml engine pods."
-                        },
-                        "genaiEngineInternalAPIKeySecretName": {
-                            "type": "string",
-                            "description": "The name of the secret containing the internal API key for GenAI Engine."
-                        },
-                        "genaiEngineInternalHost": {
-                            "type": "string",
-                            "description": "The internal host name for the GenAI Engine service."
-                        },
-                        "genaiEngineInternalIngressHost": {
-                            "type": "string",
-                            "description": "The internal ingress host addressfor GenAI Engine."
-                        },
-                        "fetchRawDataEnabled": {
-                            "type": "boolean",
-                            "description": "Whether to fetch raw data from the data plane."
-                        },
-                        "genaiEngineMaxPageSize": {
-                            "type": "integer",
-                            "description": "Max page size for fetching data from the GenAI Engine.",
-                            "default": 1500
-                        }
-                    },
-                    "required": [
-                        "replicas",
-                        "containerImageName",
-                        "containerImageVersion",
-                        "containerMemoryRequests",
-                        "containerCPURequests",
-                        "containerMemoryLimits",
-                        "containerCPULimits",
-                        "appPlaneUrl",
-                        "mlEngineClientSecretName",
-                        "genaiEngineInternalAPIKeySecretName",
-                        "genaiEngineInternalHost",
-                        "genaiEngineInternalIngressHost"
-                    ]
-                }
-            }
-        }
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ML Engine Helm Chart Values",
+  "type": "object",
+  "properties": {
+    "resourceNameSuffix": {
+      "type": "string",
+      "description": "Optional suffix for resource names."
     },
-    "required": [
-        "containerRepository",
-        "mlEngine"
-    ]
+    "containerRepository": {
+      "type": "object",
+      "properties": {
+        "imageLocation": {
+          "type": "string",
+          "description": "The location of the container image repository."
+        },
+        "credentialsRequired": {
+          "type": "boolean",
+          "description": "Indicates if credentials are required to pull the image."
+        },
+        "imagePullSecretName": {
+          "type": "string",
+          "description": "The name of the secret containing image pull credentials."
+        }
+      },
+      "required": [
+        "imageLocation",
+        "credentialsRequired",
+        "imagePullSecretName"
+      ]
+    },
+    "mlEngine": {
+      "type": "object",
+      "properties": {
+        "deployment": {
+          "type": "object",
+          "properties": {
+            "replicas": {
+              "type": "integer",
+              "description": "The number of replicas for the deployment."
+            },
+            "labels": {
+              "type": "object",
+              "description": "Custom labels for the deployment."
+            },
+            "annotations": {
+              "type": "object",
+              "description": "Custom annotations for the deployment."
+            },
+            "mlEnginePodLabels": {
+              "type": "object",
+              "description": "Labels for the ML Engine pods."
+            },
+            "mlEngineServiceAccount": {
+              "type": "object",
+              "properties": {
+                "create": {
+                  "type": "boolean"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "create",
+                "name"
+              ],
+              "description": "Name of the service account used by the ML Engine pod"
+            },
+            "containerImageName": {
+              "type": "string",
+              "description": "The name of the container image."
+            },
+            "containerImageVersion": {
+              "type": "string",
+              "description": "The version of the container image."
+            },
+            "containerMemoryRequests": {
+              "type": "string",
+              "description": "The memory requests for the container."
+            },
+            "containerCPURequests": {
+              "type": "string",
+              "description": "The CPU requests for the container."
+            },
+            "containerMemoryLimits": {
+              "type": "string",
+              "description": "The memory limits for the container."
+            },
+            "containerCPULimits": {
+              "type": "string",
+              "description": "The CPU limits for the container."
+            },
+            "appPlaneUrl": {
+              "type": "string",
+              "description": "The URL of the application plane."
+            },
+            "mlEngineClientSecretName": {
+              "type": "string",
+              "description": "The name of the ML Engine client credentials secret."
+            },
+            "mlEnginePodNodeSelector": {
+              "type": "object",
+              "description": "Node selector for the ml engine pods."
+            },
+            "mlEnginePodAffinity": {
+              "type": "object",
+              "description": "Affinity settings for the ml engine pods."
+            },
+            "mlEnginePodTolerations": {
+              "type": "object",
+              "description": "Tolerations for the ml engine pods."
+            },
+            "genaiEngineInternalAPIKeySecretName": {
+              "type": "string",
+              "description": "The name of the secret containing the internal API key for GenAI Engine."
+            },
+            "genaiEngineInternalHost": {
+              "type": "string",
+              "description": "The internal host name for the GenAI Engine service."
+            },
+            "genaiEngineInternalIngressHost": {
+              "type": "string",
+              "description": "The internal ingress host addressfor GenAI Engine."
+            },
+            "fetchRawDataEnabled": {
+              "type": "boolean",
+              "description": "Whether to fetch raw data from the data plane."
+            },
+            "genaiEngineMaxPageSize": {
+              "type": "integer",
+              "description": "Max page size for fetching data from the GenAI Engine.",
+              "default": 1500
+            }
+          },
+          "required": [
+            "replicas",
+            "containerImageName",
+            "containerImageVersion",
+            "containerMemoryRequests",
+            "containerCPURequests",
+            "containerMemoryLimits",
+            "containerCPULimits",
+            "appPlaneUrl",
+            "mlEngineClientSecretName",
+            "genaiEngineInternalAPIKeySecretName",
+            "genaiEngineInternalHost",
+            "genaiEngineInternalIngressHost"
+          ]
+        }
+      }
+    },
+    "platformVersion": {
+      "type": "string",
+      "description": "Override the image tag for all Arthur-managed components. Takes precedence over mlEngine.deployment.containerImageVersion when set. Leave empty to use the per-component version."
+    }
+  },
+  "required": [
+    "containerRepository",
+    "mlEngine"
+  ]
 }

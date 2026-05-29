@@ -2,8 +2,13 @@
 
 env:
   suffix: &suffix ""
+  # Set platformVersion once here to apply it to all Arthur-managed images in both sub-charts.
+  # Per-component version fields take precedence when platformVersion is empty.
+  # Example: set platformVersion to "0.0.15-lts" and both sub-charts will use that image tag.
+  platformVersion: &platformVersion ""
 
 arthur-genai-engine:
+  platformVersion: *platformVersion
   ###################################
   ## Minimum Required Configurations for Arthur GenAI Engine
   ###################################
@@ -145,6 +150,7 @@ arthur-genai-engine:
   genaiEngineSecretOpenAIGPTModelNamesEndpointsKeysName: "genai-engine-secret-open-ai-gpt-model-names-endpoints-keys"
 
 arthur-ml-engine:
+  platformVersion: *platformVersion
   ###################################
   ## Minimum Required Configurations for Arthur ML Engine
   ###################################
