@@ -14,14 +14,27 @@ design doc §7 and commit 72dced7f. No cases here.
 import os
 import uuid
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Callable, Optional
 from unittest.mock import patch
 
 import httpx
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from tests.clients.base_test_client import app
+from db_models.agentic_experiment_models import DatabaseAgenticExperiment
+from db_models.agentic_notebook_models import DatabaseAgenticNotebook
+from db_models.dataset_models import DatabaseDataset, DatabaseDatasetVersion
+from db_models.notebook_models import DatabaseNotebook
+from db_models.prompt_experiment_models import DatabasePromptExperiment
+from db_models.rag_experiment_models import DatabaseRagExperiment
+from db_models.rag_notebook_models import DatabaseRagNotebook
+from repositories.agentic_experiment_repository import AgenticExperimentRepository
+from repositories.prompt_experiment_repository import PromptExperimentRepository
+from repositories.rag_experiment_repository import RagExperimentRepository
+from schemas.base_experiment_schemas import ExperimentStatus
+from tests.clients.base_test_client import app, override_get_db_session
 from tests.multitenancy.conftest import TenantWorld
 
 SIGNUP_URL = "/api/v2/tenant/signup"
@@ -1026,23 +1039,6 @@ def test_k1_reads_both_own_tasks(tenant_world: TenantWorld):
 # with `_get_db_experiment` / `_get_db_notebook` helpers) for both
 # "notebook doesn't exist" and "notebook is in a foreign task/org."
 # ---------------------------------------------------------------------------
-
-from datetime import datetime, timezone
-
-from fastapi import HTTPException
-
-from db_models.agentic_experiment_models import DatabaseAgenticExperiment
-from db_models.agentic_notebook_models import DatabaseAgenticNotebook
-from db_models.dataset_models import DatabaseDataset, DatabaseDatasetVersion
-from db_models.notebook_models import DatabaseNotebook
-from db_models.prompt_experiment_models import DatabasePromptExperiment
-from db_models.rag_experiment_models import DatabaseRagExperiment
-from db_models.rag_notebook_models import DatabaseRagNotebook
-from repositories.agentic_experiment_repository import AgenticExperimentRepository
-from repositories.prompt_experiment_repository import PromptExperimentRepository
-from repositories.rag_experiment_repository import RagExperimentRepository
-from schemas.base_experiment_schemas import ExperimentStatus
-from tests.clients.base_test_client import override_get_db_session
 
 
 def _attach_suffix() -> str:
