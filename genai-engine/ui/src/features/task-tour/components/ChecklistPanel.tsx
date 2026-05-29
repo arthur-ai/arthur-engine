@@ -135,20 +135,35 @@ export function ChecklistPanel({
           },
         }}
       >
-        <Typography
-          variant="body2"
-          sx={{
-            px: 1.5,
-            py: 1.25,
-            fontWeight: 600,
-            color: "text.primary",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {activeStepTitle}
-        </Typography>
+        <Stack spacing={0.5} sx={{ px: 1.5, py: 1.25 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              fontWeight: 600,
+              color: "text.primary",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {activeStepTitle}
+          </Typography>
+          {activeStepContent != null ? (
+            <Box
+              sx={{
+                color: "text.secondary",
+                fontSize: 12,
+                lineHeight: 1.45,
+                display: "-webkit-box",
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
+            >
+              {activeStepContent}
+            </Box>
+          ) : null}
+        </Stack>
         <LinearProgress
           variant="determinate"
           value={Math.min(100, Math.max(0, totalProgress * 100))}

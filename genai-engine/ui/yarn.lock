@@ -2872,17 +2872,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/form-core@https://pkg.pr.new/TanStack/form/@tanstack/form-core@f8c2a72":
-  version: 1.32.1
-  resolution: "@tanstack/form-core@https://pkg.pr.new/TanStack/form/@tanstack/form-core@f8c2a72"
-  dependencies:
-    "@tanstack/devtools-event-client": "npm:^0.4.1"
-    "@tanstack/pacer-lite": "npm:^0.1.1"
-    "@tanstack/store": "npm:^0.11.0"
-  checksum: 10c0/3b51df51fab1f8b71746214279b5ca92ab90f654c53d04916b3787809203d54bd413c8aa5c42d68eb6a4813eadf11566e353c364b579a11206bf8a723e2a330f
-  languageName: node
-  linkType: hard
-
 "@tanstack/form-core@npm:1.27.7":
   version: 1.27.7
   resolution: "@tanstack/form-core@npm:1.27.7"
@@ -2891,6 +2880,17 @@ __metadata:
     "@tanstack/pacer-lite": "npm:^0.1.1"
     "@tanstack/store": "npm:^0.7.7"
   checksum: 10c0/dc5057a6cb3cb2aa759b91cc7af913f80bf2967d0cc946f886a47ac9195a773ecaa8eb27604dd052f7182aab45a561da086bc9045fc35bbfbdb8a475f110958a
+  languageName: node
+  linkType: hard
+
+"@tanstack/form-core@npm:1.33.0":
+  version: 1.33.0
+  resolution: "@tanstack/form-core@npm:1.33.0"
+  dependencies:
+    "@tanstack/devtools-event-client": "npm:^0.4.1"
+    "@tanstack/pacer-lite": "npm:^0.1.1"
+    "@tanstack/store": "npm:^0.11.0"
+  checksum: 10c0/05edbc367d17170c38e938a01048982e824f704d30c67f6c448826605a57346d6c044d64e51215dfe757eb0283d16c5e6d8712a74bd70a266092bf70cf4af34b
   languageName: node
   linkType: hard
 
@@ -2948,21 +2948,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/react-form@https://pkg.pr.new/@tanstack/react-form@2128":
-  version: 1.32.1
-  resolution: "@tanstack/react-form@https://pkg.pr.new/@tanstack/react-form@2128"
-  dependencies:
-    "@tanstack/form-core": "https://pkg.pr.new/TanStack/form/@tanstack/form-core@f8c2a72"
-    "@tanstack/react-store": "npm:^0.11.0"
-  peerDependencies:
-    react: ^17.0.0 || ^18.0.0 || ^19.0.0
-  peerDependenciesMeta:
-    "@tanstack/react-start":
-      optional: true
-  checksum: 10c0/8689ad6681c2baceaea9860ce00507adaf5516ffaeab1cf430208f50da789b7235f3141f45096e2fad638ade18c1658010a22a37aa2be822c7d14185aad66e75
-  languageName: node
-  linkType: hard
-
 "@tanstack/react-form@npm:1.27.7":
   version: 1.27.7
   resolution: "@tanstack/react-form@npm:1.27.7"
@@ -2975,6 +2960,21 @@ __metadata:
     "@tanstack/react-start":
       optional: true
   checksum: 10c0/6944f77a87108620017093fcf72b5bfe9d60b7cf22c170fed4569c0d261aeea9c42419943663a468cbf851dd1ea21f908523080aa93e8ef93ad08a2fd70a58f3
+  languageName: node
+  linkType: hard
+
+"@tanstack/react-form@npm:1.33.0":
+  version: 1.33.0
+  resolution: "@tanstack/react-form@npm:1.33.0"
+  dependencies:
+    "@tanstack/form-core": "npm:1.33.0"
+    "@tanstack/react-store": "npm:^0.11.0"
+  peerDependencies:
+    react: ^17.0.0 || ^18.0.0 || ^19.0.0
+  peerDependenciesMeta:
+    "@tanstack/react-start":
+      optional: true
+  checksum: 10c0/c4856d057e51a0d37002cd2c334e50c0d6213fb814685d6f20beb5546b643879623648e82a7b84224ccd988245ab8ca6a228497d3fa608b245d5b90de8255fdc
   languageName: node
   linkType: hard
 
@@ -10738,7 +10738,7 @@ __metadata:
     "@rollup/rollup-linux-x64-gnu": "npm:4.54.0"
     "@tailwindcss/vite": "npm:4.2.1"
     "@tanstack/eslint-plugin-query": "npm:5.91.4"
-    "@tanstack/react-form": "https://pkg.pr.new/@tanstack/react-form@2128"
+    "@tanstack/react-form": "npm:1.33.0"
     "@tanstack/react-pacer": "npm:0.19.4"
     "@tanstack/react-query": "npm:5.90.21"
     "@tanstack/react-query-devtools": "npm:5.91.3"

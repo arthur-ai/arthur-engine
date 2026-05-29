@@ -46,7 +46,9 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
 
   const [fabAnchorRect, setFabAnchorRect] = useState<DOMRect | null>(null);
   const [panelAnchoredToFab, setPanelAnchoredToFab] = useState(false);
-  const [checklistMinimized, setChecklistMinimized] = useState(false);
+  // The checklist starts minimized so it stays out of the way; users opt into
+  // the full panel by expanding the compact card.
+  const [checklistMinimized, setChecklistMinimized] = useState(true);
 
   const handleFabAnchorRectChange = useCallback((rect: DOMRect | null) => {
     setFabAnchorRect(rect);
@@ -75,7 +77,8 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
       if (prev.snapshot.status === state.snapshot.status) return;
       if (state.snapshot.status !== "in-progress") {
         setPanelAnchoredToFab(false);
-        setChecklistMinimized(false);
+        // Revert to the default minimized state so the next run starts compact.
+        setChecklistMinimized(true);
       }
     });
   }, [statePlugin]);
