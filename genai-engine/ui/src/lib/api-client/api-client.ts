@@ -7266,11 +7266,8 @@ export interface OnboardingTryItOutFormData {
    * @minLength 1
    */
   attribution: string;
-  /**
-   * Attribution Other
-   * @default ""
-   */
-  attribution_other?: string;
+  /** Attribution Other */
+  attribution_other?: string | null;
   /**
    * Brings
    * @minLength 1
@@ -7286,11 +7283,8 @@ export interface OnboardingTryItOutFormData {
    * @minLength 1
    */
   company: string;
-  /**
-   * Competitor Other
-   * @default ""
-   */
-  competitor_other?: string;
+  /** Competitor Other */
+  competitor_other?: string | null;
   /**
    * Competitors
    * @minItems 1
@@ -11166,6 +11160,11 @@ export interface TenantSignupRequest {
    * Which onboarding form variant was submitted.
    */
   form_variant?: TenantSignupRequestFormVariantEnum | null;
+  /**
+   * Recaptcha Token
+   * reCAPTCHA Enterprise token obtained client-side. Required when reCAPTCHA is configured server-side; ignored otherwise.
+   */
+  recaptcha_token?: string | null;
 }
 
 export type TenantSignupRequestFormVariantEnum = "linear" | "wizard";

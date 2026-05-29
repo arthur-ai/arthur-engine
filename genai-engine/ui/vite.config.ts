@@ -35,12 +35,15 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const recordingToken = env.METICULOUS_RECORDING_TOKEN;
   const amplitudeApiKey = env.AMPLITUDE_API_KEY;
+  const recaptchaSiteKey = env.RECAPTCHA_ENTERPRISE_SITE_KEY;
 
   return {
     plugins: [injectMeticulousRecordingScript(mode, recordingToken), react(), tailwindcss()],
     define: {
       // Map AMPLITUDE_API_KEY from .env.local to VITE_AMPLITUDE_TOKEN for client-side access
       "import.meta.env.VITE_AMPLITUDE_TOKEN": JSON.stringify(amplitudeApiKey || ""),
+      // Map RECAPTCHA_ENTERPRISE_SITE_KEY to a VITE_-prefixed var for client-side access
+      "import.meta.env.VITE_RECAPTCHA_ENTERPRISE_SITE_KEY": JSON.stringify(recaptchaSiteKey || ""),
     },
     server: {
       port: parseInt(env.GENAI_UI_PORT || "3000", 10),
