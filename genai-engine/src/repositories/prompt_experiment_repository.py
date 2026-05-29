@@ -6,6 +6,7 @@ from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
 from arthur_common.models.llm_model_providers import OpenAIMessage
 from fastapi import HTTPException
+from litellm import ChatCompletionMessageToolCall
 from sqlalchemy import asc, column, desc, exists, func, or_, select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session, joinedload
@@ -265,7 +266,10 @@ class PromptExperimentRepository:
             ):
                 prompt_output = PromptOutput(
                     content=db_prompt_result.output_content or "",
-                    tool_calls=db_prompt_result.output_tool_calls or [],
+                    tool_calls=[
+                        ChatCompletionMessageToolCall.model_validate(tc)
+                        for tc in (db_prompt_result.output_tool_calls or [])
+                    ],
                     cost=db_prompt_result.output_cost or "0",
                 )
 
@@ -987,7 +991,10 @@ class PromptExperimentRepository:
             ):
                 prompt_output = PromptOutput(
                     content=db_prompt_result.output_content or "",
-                    tool_calls=db_prompt_result.output_tool_calls or [],
+                    tool_calls=[
+                        ChatCompletionMessageToolCall.model_validate(tc)
+                        for tc in (db_prompt_result.output_tool_calls or [])
+                    ],
                     cost=db_prompt_result.output_cost or "0",
                 )
 
