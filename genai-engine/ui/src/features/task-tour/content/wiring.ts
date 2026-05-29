@@ -92,6 +92,10 @@ export const TASK_TOUR_QUERY_HOOKS = {
   promptOpenInPlayground: "task-tour.promptOpenInPlayground",
   promptTags: "task-tour.promptTags",
   playgroundPromptCard: "task-tour.playgroundPromptCard",
+  createExperimentEntry: "task-tour.createExperimentEntry",
+  createExperimentInfo: "task-tour.createExperimentInfo",
+  createExperimentPromptMappings: "task-tour.createExperimentPromptMappings",
+  createExperimentFinal: "task-tour.createExperimentFinal",
 } as const;
 
 /** Stable keys used by widgets to register preparation hooks. */
@@ -291,11 +295,40 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
         advance: "manual",
         popover: { showNext: true, nextLabel: "Next", placement: "bottom" },
       },
-      "run-experiment": {
+      "open-create-experiment": {
         targetId: TOUR_IDS.promptsExperimentButton,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.createExperimentEntry,
         route: "prompts",
         search: { tab: "prompt-experiments" },
-        actionName: TASK_TOUR_ACTIONS.experimentRun,
+        actionName: TASK_TOUR_ACTIONS.createExperimentModalOpened,
+        advance: "action-only",
+      },
+      "complete-experiment-info": {
+        targetId: TOUR_IDS.createExperimentInfoStep,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.createExperimentInfo,
+        route: "prompts",
+        search: { tab: "prompt-experiments" },
+        actionName: TASK_TOUR_ACTIONS.createExperimentInfoCompleted,
+        advance: "action-only",
+        popover: { placement: "left" },
+      },
+      "complete-prompt-mapping": {
+        targetId: TOUR_IDS.createExperimentPromptMappingsStep,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.createExperimentPromptMappings,
+        route: "prompts",
+        search: { tab: "prompt-experiments" },
+        actionName: TASK_TOUR_ACTIONS.createExperimentPromptMappingsCompleted,
+        advance: "action-only",
+        popover: { placement: "left" },
+      },
+      "create-experiment": {
+        targetId: TOUR_IDS.createExperimentEvalMappingsStep,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.createExperimentFinal,
+        route: "prompts",
+        search: { tab: "prompt-experiments" },
+        actionName: TASK_TOUR_ACTIONS.createExperimentCreated,
+        advance: "action-only",
+        popover: { placement: "left" },
       },
     },
   },

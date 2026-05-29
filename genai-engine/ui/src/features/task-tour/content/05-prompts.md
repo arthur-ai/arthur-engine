@@ -22,8 +22,14 @@ steps:
     title: Review the prompt card
   - id: review-playground-controls
     title: Review variables and config
-  - id: run-experiment
-    title: Run an experiment
+  - id: open-create-experiment
+    title: Start an experiment
+  - id: complete-experiment-info
+    title: Configure experiment info
+  - id: complete-prompt-mapping
+    title: Map prompt variables
+  - id: create-experiment
+    title: Create the experiment
 ---
 
 ## intro
@@ -62,6 +68,18 @@ Use this new prompt card to draft a tighter system prompt for readability. Try a
 
 Variables and config control what data your prompts run against. Review them before you move on so the experiment compares the same scenario fairly.
 
-## step: run-experiment
+## step: open-create-experiment
 
-Click the highlighted Experiment button on the Runs tab to set up a run. Configure it with your dataset (the one with the captured failure), your candidate prompts, and the evals — then run it. This is the final ADLC checkpoint before you ship.
+Open the Experiment menu and choose **Create New**. The tour will stay with you inside the modal while you configure the run.
+
+## step: complete-experiment-info
+
+Fill out the experiment basics: name the run, choose the candidate prompt versions, select the dataset version with the captured failure, and add the evals that should judge the result.
+
+## step: complete-prompt-mapping
+
+Map each prompt variable to the dataset column that should feed it. Exact name matches are filled in for you, but review them before continuing.
+
+## step: create-experiment
+
+Review the final mappings, then click **Create Experiment**. If evals are configured, choose whether each eval variable comes from the dataset or from the prompt output before creating the run.

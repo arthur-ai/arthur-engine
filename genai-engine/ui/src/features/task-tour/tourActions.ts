@@ -41,7 +41,12 @@ export const TASK_TOUR_ACTIONS = {
   promptInspected: "task-tour:prompt-inspected",
   promptOpenedInPlayground: "task-tour:prompt-opened-in-playground",
   playgroundPromptsCreated: "task-tour:playground-prompts-created",
-  experimentRun: "task-tour:experiment-run",
+  createExperimentModalOpened: "task-tour:create-experiment-modal-opened",
+  createExperimentInfoCompleted: "task-tour:create-experiment-info-completed",
+  createExperimentPromptMappingsCompleted: "task-tour:create-experiment-prompt-mappings-completed",
+  createExperimentCreated: "task-tour:create-experiment-created",
+  /** Backward-compatible alias for older prompt-run call sites. */
+  experimentRun: "task-tour:create-experiment-modal-opened",
   promptPromoted: "task-tour:prompt-promoted",
   deployVerified: "task-tour:deploy-verified",
 } as const;

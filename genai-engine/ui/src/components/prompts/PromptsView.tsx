@@ -10,7 +10,7 @@ import PromptsManagement from "../prompts-management/PromptsManagement";
 
 import { getContentHeight } from "@/constants/layout";
 import { TOUR_IDS } from "@/features/task-tour";
-import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
+import { dispatchTourEvent, refreshTaskTourTarget, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 
 const TAB_TITLES: Record<string, string> = {
   notebooks: "Prompt Notebooks",
@@ -103,7 +103,10 @@ export const PromptsView = () => {
               color="primary"
               startIcon={<AddIcon />}
               endIcon={<ArrowDropDownIcon />}
-              onClick={(e) => setExperimentsMenuAnchor(e.currentTarget)}
+              onClick={(e) => {
+                setExperimentsMenuAnchor(e.currentTarget);
+                window.requestAnimationFrame(() => refreshTaskTourTarget());
+              }}
               data-tour-id={TOUR_IDS.promptsExperimentButton}
             >
               Experiment
@@ -117,9 +120,10 @@ export const PromptsView = () => {
               slotProps={{ paper: { sx: { minWidth: experimentsMenuAnchor?.offsetWidth } } }}
             >
               <MenuItem
+                data-tour-id={TOUR_IDS.promptsExperimentCreateNew}
                 onClick={() => {
                   setExperimentsMenuAnchor(null);
-                  dispatchTourEvent(TASK_TOUR_EVENTS.experimentRun);
+                  dispatchTourEvent(TASK_TOUR_EVENTS.createExperimentModalOpened);
                   experimentsCreateFn.current();
                 }}
               >

@@ -67,6 +67,18 @@ export const TOUR_IDS = {
   playgroundVariablesButton: "task-tour-playground-variables",
   /** "Experiment" button in the prompts view (visible on the Runs tab). */
   promptsExperimentButton: "task-tour-prompts-experiment",
+  /** Create New item in the Prompt Runs Experiment menu. */
+  promptsExperimentCreateNew: "task-tour-prompts-experiment-create-new",
+  /** Create Experiment dialog surface after the Prompt Runs Experiment menu opens it. */
+  createExperimentModal: "task-tour-create-experiment-modal",
+  /** Experiment Info section inside the Create Experiment dialog. */
+  createExperimentInfoStep: "task-tour-create-experiment-info",
+  /** Configure Prompts section inside the Create Experiment dialog. */
+  createExperimentPromptMappingsStep: "task-tour-create-experiment-prompt-mappings",
+  /** Configure Evals section inside the Create Experiment dialog. */
+  createExperimentEvalMappingsStep: "task-tour-create-experiment-eval-mappings",
+  /** Final Create Experiment action in the dialog. */
+  createExperimentSubmit: "task-tour-create-experiment-submit",
 } as const;
 
 export type TourId = (typeof TOUR_IDS)[keyof typeof TOUR_IDS];

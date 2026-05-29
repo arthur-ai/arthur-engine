@@ -2,7 +2,15 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { TOUR_IDS } from "../selectors";
 
-import { resolvePlaygroundPromptCardTarget, resolvePromptOpenInPlaygroundTarget, resolvePromptTagsTarget } from "./PromptTargetWidget";
+import {
+  resolveCreateExperimentEntryTarget,
+  resolveCreateExperimentFinalTarget,
+  resolveCreateExperimentInfoTarget,
+  resolveCreateExperimentPromptMappingsTarget,
+  resolvePlaygroundPromptCardTarget,
+  resolvePromptOpenInPlaygroundTarget,
+  resolvePromptTagsTarget,
+} from "./PromptTargetWidget";
 
 describe("PromptTargetWidget resolvers", () => {
   beforeEach(() => {
@@ -36,5 +44,48 @@ describe("PromptTargetWidget resolvers", () => {
 
     document.body.innerHTML += `<section data-tour-id="${TOUR_IDS.promptTagsPopover}">Prompt Tags</section>`;
     expect(resolvePromptTagsTarget()).toBe(document.querySelector(`[data-tour-id="${TOUR_IDS.promptTagsPopover}"]`));
+  });
+
+  it("targets Create New after the Experiment menu opens", () => {
+    document.body.innerHTML = `<button data-tour-id="${TOUR_IDS.promptsExperimentButton}">Experiment</button>`;
+    const trigger = document.querySelector("button");
+
+    expect(resolveCreateExperimentEntryTarget()).toBe(trigger);
+
+    document.body.innerHTML += `<button data-tour-id="${TOUR_IDS.promptsExperimentCreateNew}">Create New</button>`;
+    expect(resolveCreateExperimentEntryTarget()).toBe(document.querySelector(`[data-tour-id="${TOUR_IDS.promptsExperimentCreateNew}"]`));
+  });
+
+  it("targets Create Experiment info step after the modal opens", () => {
+    document.body.innerHTML = `<button data-tour-id="${TOUR_IDS.promptsExperimentButton}">Experiment</button>`;
+    const trigger = document.querySelector("button");
+
+    expect(resolveCreateExperimentInfoTarget()).toBe(trigger);
+
+    document.body.innerHTML += `<section data-tour-id="${TOUR_IDS.createExperimentInfoStep}">Experiment Info</section>`;
+    expect(resolveCreateExperimentInfoTarget()).toBe(document.querySelector(`[data-tour-id="${TOUR_IDS.createExperimentInfoStep}"]`));
+  });
+
+  it("targets Create Experiment prompt mappings after that modal section is visible", () => {
+    document.body.innerHTML = `
+      <section data-tour-id="${TOUR_IDS.createExperimentModal}">Create Experiment</section>
+      <section data-tour-id="${TOUR_IDS.createExperimentPromptMappingsStep}">Prompt mappings</section>
+    `;
+
+    expect(resolveCreateExperimentPromptMappingsTarget()).toBe(
+      document.querySelector(`[data-tour-id="${TOUR_IDS.createExperimentPromptMappingsStep}"]`)
+    );
+  });
+
+  it("targets eval mappings for final create when present, otherwise the create button", () => {
+    document.body.innerHTML = `
+      <button data-tour-id="${TOUR_IDS.createExperimentSubmit}">Create Experiment</button>
+    `;
+    const createButton = document.querySelector("button");
+
+    expect(resolveCreateExperimentFinalTarget()).toBe(createButton);
+
+    document.body.innerHTML += `<section data-tour-id="${TOUR_IDS.createExperimentEvalMappingsStep}">Eval mappings</section>`;
+    expect(resolveCreateExperimentFinalTarget()).toBe(document.querySelector(`[data-tour-id="${TOUR_IDS.createExperimentEvalMappingsStep}"]`));
   });
 });

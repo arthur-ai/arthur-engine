@@ -137,6 +137,44 @@ describe("task tour config", () => {
     });
   });
 
+  it("guides create experiment through modal sections with action-only popovers", () => {
+    const config = buildTourConfig("task-id");
+    const promptsSection = config.sections.find((section) => section.id === "prompts");
+
+    const openCreateStep = promptsSection?.steps.find((step) => step.id === "open-create-experiment");
+    const infoStep = promptsSection?.steps.find((step) => step.id === "complete-experiment-info");
+    const promptMappingStep = promptsSection?.steps.find((step) => step.id === "complete-prompt-mapping");
+    const createExperimentStep = promptsSection?.steps.find((step) => step.id === "create-experiment");
+
+    expect(openCreateStep).toMatchObject({
+      route: {
+        path: "/tasks/:taskId/prompts",
+        params: { taskId: "task-id" },
+        search: { tab: "prompt-experiments" },
+      },
+      target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.createExperimentEntry },
+      advanceOn: [{ type: "action", name: TASK_TOUR_ACTIONS.createExperimentModalOpened }],
+    });
+
+    expect(infoStep).toMatchObject({
+      target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.createExperimentInfo },
+      advanceOn: [{ type: "action", name: TASK_TOUR_ACTIONS.createExperimentInfoCompleted }],
+      popover: { placement: "left" },
+    });
+
+    expect(promptMappingStep).toMatchObject({
+      target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.createExperimentPromptMappings },
+      advanceOn: [{ type: "action", name: TASK_TOUR_ACTIONS.createExperimentPromptMappingsCompleted }],
+      popover: { placement: "left" },
+    });
+
+    expect(createExperimentStep).toMatchObject({
+      target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.createExperimentFinal },
+      advanceOn: [{ type: "action", name: TASK_TOUR_ACTIONS.createExperimentCreated }],
+      popover: { placement: "left" },
+    });
+  });
+
   it("routes deploy back to the prompt detail before production tagging", () => {
     const config = buildTourConfig("task-id");
     const deploySection = config.sections.find((section) => section.id === "deploy");

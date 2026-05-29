@@ -19,6 +19,7 @@ import { createExperimentModalFormOpts } from "../../form";
 import { EvalInstructions } from "../eval-instructions";
 
 import { withForm } from "@/components/traces/components/filtering/hooks/form";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
 import { useDatasetVersionData } from "@/hooks/useDatasetVersionData";
 
 export const EvalsStep = withForm({
@@ -153,7 +154,7 @@ export const EvalsStep = withForm({
           <Button onClick={() => form.setFieldValue("section", "prompts")}>Back</Button>
           <form.Subscribe selector={(state) => [state.isSubmitting]}>
             {([isSubmitting]) => (
-              <Button type="submit" variant="contained" loading={isSubmitting}>
+              <Button type="submit" variant="contained" loading={isSubmitting} data-tour-id={TOUR_IDS.createExperimentSubmit}>
                 Create Experiment
               </Button>
             )}
