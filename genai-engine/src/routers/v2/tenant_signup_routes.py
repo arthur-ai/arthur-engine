@@ -133,6 +133,16 @@ def create_tenant_signup(
             org_id=db_org.id,
             commit=False,
         )
+        # Narrow Optional[str] before commit so a missing key triggers
+        # rollback rather than orphaning the org/task/api_key rows after
+        # commit succeeds but the response 500s. Cannot use `assert`: under
+        # `python -O` asserts are stripped, and the orphan-state path
+        # described above is exactly what we'd ship in optimized builds.
+        if api_key.key is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to materialize tenant API key.",
+            )
 
         DemoTaskRepository(db_session).create_demo_items_for_task(
             task_id=task.id,
@@ -165,9 +175,6 @@ def create_tenant_signup(
             detail="Failed to signup tenant.",
         ) from e
 
-    # create_api_key always populates .key via set_key() before returning;
-    # narrow the Optional[str] for the response model.
-    assert api_key.key is not None
     return DemoTaskSignupResponse(
         org_id=db_org.id,
         task_id=task.id,

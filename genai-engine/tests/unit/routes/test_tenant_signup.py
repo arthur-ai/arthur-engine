@@ -12,6 +12,7 @@ to simulate failure modes that are hard to trigger through the real DB.
 
 import os
 import uuid
+from datetime import datetime, timezone
 from unittest.mock import patch
 
 import pytest
@@ -22,6 +23,7 @@ from clients.recaptcha.recaptcha_verifier import RecaptchaVerificationResult
 from db_models import DatabaseOrganization
 from db_models.onboarding_models import DatabaseOnboardingSubmission
 from routers.v2 import tenant_signup_routes as tenant_signup_module
+from schemas.internal_schemas import ApiKey
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     app,
@@ -554,6 +556,11 @@ def test_signup_error_paths_return_sanitized_detail(monkeypatch):
       4. ValueError from create_api_key after the org has been flushed →
          400 + "Invalid signup request." and the org row rolled back so no
          orphan demo-* row remains in the DB.
+      5. create_api_key returns an ApiKey with .key=None (the optional-narrowing
+         case formerly guarded by `assert api_key.key is not None`, which
+         python -O strips) → 500 + "Failed to materialize tenant API key." and
+         the in-flight transaction is rolled back so no orphan org/api_key
+         rows are committed before the response 500s.
     """
     mod = tenant_signup_module
 
@@ -659,5 +666,43 @@ def test_signup_error_paths_return_sanitized_detail(monkeypatch):
     assert response.status_code == 400, case
     assert response.json()["detail"] == "Invalid signup request.", case
     # Rollback ran: no orphan demo-* org leaked.
+    assert after == before, case
+    monkeypatch.undo()
+
+    # --- Sub-case 5: create_api_key returns ApiKey with key=None -----------
+    case = "ApiKey.key is None -> 500 sanitized, rollback prevents orphan"
+
+    class NoneKeyApiKeyRepo:
+        """Return a fully-formed ApiKey whose `.key` is None — mimics the
+        narrow window where set_key() didn't populate the raw secret. This is
+        the exact path the old `assert api_key.key is not None` purported to
+        guard against; under `python -O` that assert is stripped, the response
+        500s on Pydantic narrowing AFTER db_session.commit(), and the caller
+        gets a 500 with the org/api_key rows already persisted."""
+
+        def __init__(self, db_session):
+            pass
+
+        def create_api_key(self, **kwargs):
+            return ApiKey(
+                id=str(uuid.uuid4()),
+                key=None,
+                key_hash="x",
+                is_active=True,
+                created_at=datetime.now(timezone.utc),
+                roles=["TENANT-USER"],
+                org_id=kwargs.get("org_id"),
+            )
+
+    before = _count_demo_orgs()
+    monkeypatch.setattr(mod, "ApiKeyRepository", NoneKeyApiKeyRepo)
+    with env_patch:
+        response = _signup(test_client)
+    after = _count_demo_orgs()
+
+    assert response.status_code == 500, case
+    assert response.json()["detail"] == "Failed to materialize tenant API key.", case
+    # The check fires BEFORE db_session.commit(), so the in-flight org row
+    # must be rolled back — no orphan demo-* row.
     assert after == before, case
     monkeypatch.undo()
