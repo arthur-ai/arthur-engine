@@ -58,14 +58,14 @@ DEMO_TASK_SYSTEM_PROMPT = (
 )
 
 DEMO_TASK_ANSWER_RELEVANCE_EVAL_PROMPT = (
-    "Given a list of input and output messages:\n\n"
-    "<input_messages>\n"
-    "{{input_messages}}\n"
-    "</input_messages>\n\n"
-    "<output_messages>\n"
-    "{{output_messages}}\n"
-    "</output_messages>\n\n"
-    "Determine if the assistant's response is relevant to the input messages. "
+    "Given user's message and assistant's response:\n\n"
+    "<user_message>\n"
+    "{{query}}\n"
+    "</user_message>\n\n"
+    "<assistant_response>\n"
+    "{{response}}\n"
+    "</assistant_response>\n\n"
+    "Determine if the assistant's response is relevant to the user's message. "
     "Respond with 1 if it is and 0 if it is not. "
     "Ignore all formatting, structure, and metadata (e.g. markdown, json, tool calls, API responses, etc.) — "
     "extract and evaluate only the natural language text content within. "
@@ -80,12 +80,12 @@ DEMO_TASK_ANSWER_RELEVANCE_EVAL_TRANSFORM = NewTraceTransformRequest(
     definition=TraceTransformDefinition(
         variables=[
             TraceTransformVariableDefinition(
-                variable_name="input_messages",
+                variable_name="query",
                 span_name="chatbot",
-                attribute_path="attributes.input.value",
+                attribute_path="attributes.input.value.-1.content",
             ),
             TraceTransformVariableDefinition(
-                variable_name="output_messages",
+                variable_name="response",
                 span_name="chatbot",
                 attribute_path="attributes.output.value.text",
             ),
@@ -166,16 +166,16 @@ DEMO_TASK_DATASET_VERSION_REQUEST = NewDatasetVersionRequest(
         NewDatasetVersionRowRequest(
             data=[
                 NewDatasetVersionRowColumnItemRequest(
-                    column_name="input_messages",
-                    column_value=input_messages,
+                    column_name="query",
+                    column_value=query,
                 ),
                 NewDatasetVersionRowColumnItemRequest(
-                    column_name="output_messages",
-                    column_value=output_messages,
+                    column_name="response",
+                    column_value=response,
                 ),
             ],
         )
-        for input_messages, output_messages in DEMO_TASK_DATASET_ROWS
+        for query, response in DEMO_TASK_DATASET_ROWS
     ],
     rows_to_delete=[],
     rows_to_update=[],
