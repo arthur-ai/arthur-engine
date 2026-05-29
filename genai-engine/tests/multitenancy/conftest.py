@@ -27,8 +27,13 @@ from arthur_common.models.request_schemas import FeedbackRequest, NewTaskRequest
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.agentic_experiment_models import DatabaseAgenticExperiment
 from db_models.dataset_models import DatabaseDatasetVersion
+from db_models.llm_eval_models import DatabaseContinuousEval, DatabaseLLMEval
 from db_models.task_models import DatabaseTask
 from db_models.telemetry_models import DatabaseSpan, DatabaseTraceMetadata
+from db_models.transform_models import (
+    DatabaseTraceTransform,
+    DatabaseTraceTransformVersion,
+)
 from dependencies import get_application_config
 from repositories.api_key_repository import ApiKeyRepository
 from repositories.metrics_repository import MetricRepository
@@ -80,6 +85,14 @@ class TenantWorld:
     t2a_annotation_id: Optional[str] = None
     t2a_dataset_id: Optional[str] = None
     t2a_experiment_id: Optional[str] = None
+    # Foreign transform seeded under T2a for cross-org-transform leak cases.
+    t2a_transform_id: Optional[str] = None
+    # Own-task resources on T1a — used by cross-org-reference tests that need
+    # the eval/transform lookup on the caller's side to succeed so the leak
+    # check is the only thing left that can reject the request.
+    t1a_llm_eval_name: Optional[str] = None
+    t1a_transform_id: Optional[str] = None
+    t1a_continuous_eval_id: Optional[str] = None
 
     @property
     def admin_headers(self) -> dict:
@@ -251,6 +264,102 @@ def _seed_experiment(db, task_id: str, dataset_id: str) -> Optional[str]:
         return None
 
 
+def _seed_transform(db, task_id: str) -> Optional[str]:
+    """Insert a minimal trace transform + version on task_id directly.
+
+    Returns the transform_id (str-UUID) or None on failure. Used by the
+    cross-org-transform-reference cases — the transform is the resource
+    a tenant attempts to dereference from outside its org.
+    """
+    try:
+        transform_id = uuid.uuid4()
+        db.add(
+            DatabaseTraceTransform(
+                id=transform_id,
+                task_id=task_id,
+                name=f"mt-transform-{_short()}",
+                description="mt-seed",
+            ),
+        )
+        db.flush()
+        db.add(
+            DatabaseTraceTransformVersion(
+                id=uuid.uuid4(),
+                transform_id=transform_id,
+                version_number=1,
+                definition={"variables": []},
+            ),
+        )
+        db.commit()
+        return str(transform_id)
+    except Exception:
+        db.rollback()
+        return None
+
+
+def _seed_llm_eval(db, task_id: str) -> Optional[str]:
+    """Insert a minimal LLM eval on task_id. Returns the eval name or None.
+
+    Used so the caller-side eval lookup succeeds on T1a — leaves the
+    cross-org transform/dataset reference as the only thing left that
+    can reject the request.
+    """
+    try:
+        name = f"mt-eval-{_short()}"
+        db.add(
+            DatabaseLLMEval(
+                task_id=task_id,
+                name=name,
+                version=1,
+                model_name="gpt-4",
+                model_provider="openai",
+                instructions="mt-seed",
+                variables=[],
+            ),
+        )
+        db.commit()
+        return name
+    except Exception:
+        db.rollback()
+        return None
+
+
+def _seed_continuous_eval(
+    db,
+    task_id: str,
+    llm_eval_name: Optional[str],
+    transform_id: Optional[str],
+) -> Optional[str]:
+    """Insert a continuous_eval on task_id pointing at the seeded eval and
+    transform. Returns the eval_id (str-UUID) or None.
+
+    Used so the PATCH /continuous_evals/{eval_id} cross-org transform test
+    has an own-org eval to update. The FK back to llm_evals requires the
+    composite (task_id, name, version) to already exist — hence the eval
+    seed must succeed first.
+    """
+    if llm_eval_name is None or transform_id is None:
+        return None
+    try:
+        eval_id = uuid.uuid4()
+        db.add(
+            DatabaseContinuousEval(
+                id=eval_id,
+                name=f"mt-ceval-{_short()}",
+                task_id=task_id,
+                llm_eval_name=llm_eval_name,
+                llm_eval_version=1,
+                transform_id=uuid.UUID(transform_id),
+                transform_variable_mapping=[],
+            ),
+        )
+        db.commit()
+        return str(eval_id)
+    except Exception:
+        db.rollback()
+        return None
+
+
 @pytest.fixture(scope="module")
 def client() -> Generator[GenaiEngineTestClientBase, None, None]:
     yield get_genai_engine_test_client()
@@ -325,6 +434,19 @@ def tenant_world(
     )
     t2a_dataset_id = _seed_dataset(client, t2a_t.id)
     t2a_experiment_id = _seed_experiment(db, t2a_t.id, t2a_dataset_id)
+    t2a_transform_id = _seed_transform(db, t2a_t.id)
+
+    # Own resources on T1a — used by tests that need the caller-side
+    # lookup to succeed so the cross-org reference is the only failure
+    # path that remains.
+    t1a_llm_eval_name = _seed_llm_eval(db, t1a_t.id)
+    t1a_transform_id = _seed_transform(db, t1a_t.id)
+    t1a_continuous_eval_id = _seed_continuous_eval(
+        db,
+        t1a_t.id,
+        t1a_llm_eval_name,
+        t1a_transform_id,
+    )
 
     world = TenantWorld(
         client=client,
@@ -341,6 +463,10 @@ def tenant_world(
         t2a_annotation_id=t2a_annotation_id,
         t2a_dataset_id=t2a_dataset_id,
         t2a_experiment_id=t2a_experiment_id,
+        t2a_transform_id=t2a_transform_id,
+        t1a_llm_eval_name=t1a_llm_eval_name,
+        t1a_transform_id=t1a_transform_id,
+        t1a_continuous_eval_id=t1a_continuous_eval_id,
     )
 
     yield world
