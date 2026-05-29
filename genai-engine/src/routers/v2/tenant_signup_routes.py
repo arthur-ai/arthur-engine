@@ -149,19 +149,21 @@ def create_tenant_signup(
         db_session.commit()
     except ValueError as e:
         db_session.rollback()
+        logger.warning("Tenant signup rejected: %s", e)
         raise HTTPException(
-            status_code=400,
-            detail=f"Failed to signup tenant: {e}",
-        )
-    except HTTPException as e:
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid signup request.",
+        ) from e
+    except HTTPException:
         db_session.rollback()
-        raise e
+        raise
     except Exception as e:
         db_session.rollback()
+        logger.exception("Tenant signup failed unexpectedly")
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to signup tenant: {e}",
-        )
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to signup tenant.",
+        ) from e
 
     # create_api_key always populates .key via set_key() before returning;
     # narrow the Optional[str] for the response model.

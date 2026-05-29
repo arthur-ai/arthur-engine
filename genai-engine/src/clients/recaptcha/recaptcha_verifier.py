@@ -9,15 +9,17 @@ Verification semantics:
 
 * Not configured  -> success (fail-open) so local/dev/demo work unchanged.
 * Missing token   -> failure (the client should always send one when enabled).
-* Transport / unexpected error -> success (fail-open) so a Google outage does
+* Transport / network error -> success (fail-open) so a Google outage does
   not block real signups. The error is logged.
+* HTTP error from Google / unparseable response -> failure (fail-closed),
+  since these can be attacker-triggered by sending a malformed token.
 * Invalid token / action mismatch / score below threshold -> failure.
 """
 
 import logging
 
 import httpx
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from config.recaptcha_config import RecaptchaConfig
 
@@ -96,12 +98,25 @@ class RecaptchaEnterpriseVerifier:
                 json={"event": event},
                 timeout=self._timeout,
             )
-            response.raise_for_status()
-            assessment = _AssessmentResponse.model_validate(response.json())
-        except Exception as e:  # noqa: BLE001 - fail-open on any transport error
-            logger.error("reCAPTCHA assessment request failed: %s", e)
+        except (httpx.TransportError, httpx.TimeoutException) as e:
+            # Genuine network/transport failure. Fail OPEN so a Google outage
+            # does not brick real signups.
+            logger.error("reCAPTCHA assessment transport error: %s", e)
             return RecaptchaVerificationResult(
                 success=True,
+                reason="verification_error",
+            )
+
+        try:
+            response.raise_for_status()
+            assessment = _AssessmentResponse.model_validate(response.json())
+        except (httpx.HTTPStatusError, ValueError, ValidationError) as e:
+            # 4xx/5xx from Google, unparseable body, or unexpected schema.
+            # These are attacker-triggerable by sending a malformed token,
+            # so fail CLOSED — otherwise reCAPTCHA can be bypassed.
+            logger.warning("reCAPTCHA assessment response invalid: %s", e)
+            return RecaptchaVerificationResult(
+                success=False,
                 reason="verification_error",
             )
 
