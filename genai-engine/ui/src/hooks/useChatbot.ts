@@ -175,8 +175,6 @@ export function useChatbot(taskId: string, options: UseChatbotOptions = {}): Use
         session_id: getOrCreateSessionId(variant, taskId),
       };
 
-      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
       (async () => {
         try {
           const response = await fetch(url, {
@@ -184,7 +182,6 @@ export function useChatbot(taskId: string, options: UseChatbotOptions = {}): Use
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
-              ...(userTimezone ? { "X-User-Timezone": userTimezone } : {}),
             },
             body: JSON.stringify(body),
             signal: abortController.signal,

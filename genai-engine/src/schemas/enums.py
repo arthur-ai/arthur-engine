@@ -171,7 +171,7 @@ class PermissionLevelsEnum(Enum):
     USER_READ = frozenset([constants.ORG_ADMIN, constants.ORG_AUDITOR])
     USER_WRITE = frozenset([constants.ORG_ADMIN])
     DATASET_WRITE = frozenset(
-        [constants.ORG_ADMIN, constants.TASK_ADMIN],
+        [constants.ORG_ADMIN, constants.TASK_ADMIN, constants.TENANT_USER],
     )
     DATASET_READ = frozenset(
         [
