@@ -12,6 +12,12 @@ steps:
     title: Open Evaluate
   - id: review-evaluator
     title: Review an evaluator
+  - id: review-evaluator-versions
+    title: Browse evaluator versions
+  - id: review-evaluator-instructions
+    title: Read the instructions
+  - id: review-evaluator-model
+    title: Check the judge model
   - id: open-results-tab
     title: Open Results
   - id: review-result-details
@@ -32,7 +38,19 @@ Click Evaluate in the sidebar to see the evaluators currently running on this ta
 
 ## step: review-evaluator
 
-Open the first evaluator card. Each evaluator runs a model against a set of variables pulled from every trace, then scores the result against a threshold — that's how Arthur decides whether the agent is meeting the bar.
+Click the **maximize** icon on the first evaluator to open its full details. Each evaluator runs a model against a set of variables pulled from every trace, then scores the result against a threshold — that's how Arthur decides whether the agent is meeting the bar.
+
+## step: review-evaluator-versions
+
+Evaluators are **versioned**. The drawer on the left lists every version with its model and creation date, so you can track how the eval evolved and roll back if a change regresses.
+
+## step: review-evaluator-instructions
+
+The **instructions** are the prompt sent to the judge model. They define exactly what the model is asked to score — the clearer the instructions, the more reliable the evaluation.
+
+## step: review-evaluator-model
+
+This is the **model** that judges each trace. Picking the right model — and keeping it consistent across versions — is what makes scores comparable over time.
 
 ## step: open-results-tab
 

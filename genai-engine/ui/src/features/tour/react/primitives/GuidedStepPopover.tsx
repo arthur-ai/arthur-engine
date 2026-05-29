@@ -41,6 +41,7 @@ export function GuidedStepPopover() {
               elevation={8}
               sx={{
                 width: 280,
+                maxWidth: "100%",
                 borderRadius: 2,
                 border: 1,
                 borderColor: "divider",

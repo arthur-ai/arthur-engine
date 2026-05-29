@@ -80,6 +80,9 @@ export interface SectionWiring {
 /** Stable keys used by widgets to register query-hook resolvers. */
 export const TASK_TOUR_QUERY_HOOKS = {
   evaluateResultDetails: "task-tour.evaluateResultDetails",
+  evaluatorDetailVersions: "task-tour.evaluatorDetailVersions",
+  evaluatorDetailInstructions: "task-tour.evaluatorDetailInstructions",
+  evaluatorDetailModel: "task-tour.evaluatorDetailModel",
   tracesFirstRow: "task-tour.tracesFirstRow",
   traceDrawerSpans: "task-tour.traceDrawerSpans",
   traceDrawerEvals: "task-tour.traceDrawerEvals",
@@ -135,10 +138,39 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
         actionName: TASK_TOUR_ACTIONS.evaluateOpened,
       },
       "review-evaluator": {
-        targetId: TOUR_IDS.evaluatorsFirstCard,
+        targetId: TOUR_IDS.evaluatorMaximize,
         route: "evaluate",
-        actionName: TASK_TOUR_ACTIONS.evaluatorReviewed,
+        actionName: TASK_TOUR_ACTIONS.evaluatorMaximized,
+        advance: "action-only",
         skipWhenEmptyKey: TASK_TOUR_SKIP_WHEN.noEvaluators,
+      },
+      // The maximize click navigates to the dynamic evaluator-detail URL
+      // (/tasks/:taskId/evaluators/:evalName). The following sub-steps omit
+      // `route` so the static router does not strip that path back to
+      // /evaluate — mirrors the prompt-playground mini-tour pattern.
+      "review-evaluator-versions": {
+        targetId: TOUR_IDS.evaluatorDetailVersions,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.evaluatorDetailVersions,
+        actionName: TASK_TOUR_ACTIONS.evaluatorMaximized,
+        advance: "manual",
+        skipWhenEmptyKey: TASK_TOUR_SKIP_WHEN.noEvaluators,
+        popover: { showNext: true, nextLabel: "Next", placement: "right" },
+      },
+      "review-evaluator-instructions": {
+        targetId: TOUR_IDS.evaluatorDetailInstructions,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.evaluatorDetailInstructions,
+        actionName: TASK_TOUR_ACTIONS.evaluatorMaximized,
+        advance: "manual",
+        skipWhenEmptyKey: TASK_TOUR_SKIP_WHEN.noEvaluators,
+        popover: { showNext: true, nextLabel: "Next", placement: "top" },
+      },
+      "review-evaluator-model": {
+        targetId: TOUR_IDS.evaluatorDetailModel,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.evaluatorDetailModel,
+        actionName: TASK_TOUR_ACTIONS.evaluatorMaximized,
+        advance: "manual",
+        skipWhenEmptyKey: TASK_TOUR_SKIP_WHEN.noEvaluators,
+        popover: { showNext: true, nextLabel: "Next", placement: "bottom" },
       },
       "open-results-tab": {
         targetId: TOUR_IDS.evaluateResultsTab,

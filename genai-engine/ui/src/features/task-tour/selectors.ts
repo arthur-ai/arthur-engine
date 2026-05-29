@@ -39,6 +39,14 @@ export const TOUR_IDS = {
   /** Add-to-Dataset drawer surface after the trace drawer trigger opens it. */
   traceAddToDatasetDrawer: "task-tour-trace-add-to-dataset-drawer",
   evaluatorsFirstCard: "task-tour-evaluator-first",
+  /** "View full details" maximize button on the first evaluator card. */
+  evaluatorMaximize: "task-tour-evaluator-maximize",
+  /** Version drawer on the evaluator full-screen detail view. */
+  evaluatorDetailVersions: "task-tour-evaluator-detail-versions",
+  /** Instructions panel on the evaluator full-screen detail view. */
+  evaluatorDetailInstructions: "task-tour-evaluator-detail-instructions",
+  /** Judge-model field on the evaluator full-screen detail view. */
+  evaluatorDetailModel: "task-tour-evaluator-detail-model",
   testNotebookCreate: "task-tour-test-notebook-create",
   chatSendPlaceholder: "task-tour-chat-send",
   datasetsEntry: "task-tour-datasets-entry",

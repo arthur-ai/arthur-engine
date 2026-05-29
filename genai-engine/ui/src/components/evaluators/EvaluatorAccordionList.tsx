@@ -71,11 +71,8 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
     return map;
   }, [allCEsData]);
 
-  const handleAccordionChange = (evalName: string, evalIndex: number) => (_: React.SyntheticEvent, isExpanded: boolean) => {
+  const handleAccordionChange = (evalName: string) => (_: React.SyntheticEvent, isExpanded: boolean) => {
     setExpanded(isExpanded ? evalName : false);
-    if (isExpanded && evalIndex === 0) {
-      dispatchTourEvent(TASK_TOUR_EVENTS.evaluatorReviewed);
-    }
   };
 
   const handleDeleteClick = (e: React.MouseEvent, evalName: string) => {
@@ -137,7 +134,7 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
           <Box key={evalMeta.name} data-tour-id={evalIndex === 0 ? TOUR_IDS.evaluatorsFirstCard : undefined}>
             <Accordion
               expanded={expanded === evalMeta.name}
-              onChange={handleAccordionChange(evalMeta.name, evalIndex)}
+              onChange={handleAccordionChange(evalMeta.name)}
               disableGutters
               elevation={0}
               sx={{
@@ -186,7 +183,17 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
                       Updated {formatDateInTimezone(evalMeta.latest_version_created_at, timezone, { hour12: !use24Hour })}
                     </Typography>
                     <Tooltip title="View full details">
-                      <IconButton size="small" onClick={() => onExpandToFullScreen(evalMeta.name)} aria-label="View full details">
+                      <IconButton
+                        size="small"
+                        data-tour-id={evalIndex === 0 ? TOUR_IDS.evaluatorMaximize : undefined}
+                        onClick={() => {
+                          if (evalIndex === 0) {
+                            dispatchTourEvent(TASK_TOUR_EVENTS.evaluatorMaximized);
+                          }
+                          onExpandToFullScreen(evalMeta.name);
+                        }}
+                        aria-label="View full details"
+                      >
                         <OpenInFullIcon sx={{ fontSize: 16 }} />
                       </IconButton>
                     </Tooltip>
