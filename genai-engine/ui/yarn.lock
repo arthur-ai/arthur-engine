@@ -302,7 +302,6 @@ __metadata:
   dependencies:
     react: "npm:^19.1.1"
   checksum: 10c0/ac173b6bb3b991a12bbfb916d85e8a4e7b4f296443a305fd4079d7f77db69ac86b8142ca8b4897d84673294e6f7a58b146a52c397c371fc9a4a52b2fdf26fde8
-  checksum: 10c0/ac173b6bb3b991a12bbfb916d85e8a4e7b4f296443a305fd4079d7f77db69ac86b8142ca8b4897d84673294e6f7a58b146a52c397c371fc9a4a52b2fdf26fde8
   languageName: node
   linkType: hard
 
@@ -311,7 +310,6 @@ __metadata:
   resolution: "@arthur/unify-types@npm:3.16.0::__archiveUrl=https%3A%2F%2Fgitlab.com%2Fapi%2Fv4%2Fprojects%2F54848372%2Fpackages%2Fnpm%2F%40arthur%2Funify-types%2F-%2F%40arthur%2Funify-types-3.16.0.tgz"
   dependencies:
     react: "npm:^19.1.1"
-  checksum: 10c0/7081b574d32c79493927e0aa7e9dfd200f19629c8fcc94490a940ffe4ba39e922a11a3e0572190b0f8e0b3e44c3d9ba623062d632204fd05928c02d43da24ff5
   checksum: 10c0/7081b574d32c79493927e0aa7e9dfd200f19629c8fcc94490a940ffe4ba39e922a11a3e0572190b0f8e0b3e44c3d9ba623062d632204fd05928c02d43da24ff5
   languageName: node
   linkType: hard
