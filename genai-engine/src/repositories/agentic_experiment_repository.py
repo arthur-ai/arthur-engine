@@ -262,10 +262,15 @@ class AgenticExperimentRepository:
     ]:
         """Validate that all referenced resources exist and return validated configs"""
 
-        # Validate dataset and version exist
+        # Validate dataset and version exist within the caller's task scope.
+        # Filtering on task_id prevents a tenant from creating an experiment
+        # that references a cross-org dataset by guessing its UUID.
         dataset = (
             self.db_session.query(DatabaseDataset)
-            .filter(DatabaseDataset.id == request.dataset_ref.id)
+            .filter(
+                DatabaseDataset.id == request.dataset_ref.id,
+                DatabaseDataset.task_id == task_id,
+            )
             .first()
         )
         if not dataset:
