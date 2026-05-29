@@ -69,7 +69,7 @@ class BaseChatbotService(ABC):
     ) -> AsyncGenerator[Tuple[Optional[str], Optional[OpenAIMessage]], None]:
         raise NotImplementedError
 
-    def build_variable_map(self) -> Dict[str, str]:
+    def build_variable_map(self, prompt: AgenticPrompt) -> Dict[str, str]:
         """Hook for subclasses to supply per-request prompt variables."""
         return {}
 
@@ -172,7 +172,7 @@ class BaseChatbotService(ABC):
             ],
         )
 
-        variable_map = self.build_variable_map()
+        variable_map = self.build_variable_map(current_prompt)
         if variable_map:
             template_snapshot = [
                 m.model_copy(deep=True) for m in current_prompt.messages

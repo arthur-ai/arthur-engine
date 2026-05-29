@@ -1,12 +1,11 @@
 import logging
-from datetime import datetime, timezone, tzinfo
 from typing import AsyncGenerator, Dict, List, Optional, Tuple
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from arthur_common.models.llm_model_providers import (
     MessageRole,
     ModelProvider,
     OpenAIMessage,
+    OpenAIMessageType,
     ToolCall,
 )
 from sqlalchemy.orm import Session
@@ -23,6 +22,25 @@ from utils.wikipedia_tools import wikipedia_fetch, wikipedia_search
 logger = logging.getLogger(__name__)
 
 
+def _extract_latest_user_text(messages: List[OpenAIMessage]) -> str:
+    for msg in reversed(messages):
+        if msg.role != MessageRole.USER.value:  # type: ignore[comparison-overlap]
+            continue
+        content = msg.content
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            parts = [
+                item.text
+                for item in content
+                if item.type == OpenAIMessageType.TEXT.value and item.text
+            ]
+            if parts:
+                return " ".join(parts)
+        return ""
+    return ""
+
+
 class DemoChatbotService(BaseChatbotService):
     def __init__(
         self,
@@ -30,7 +48,6 @@ class DemoChatbotService(BaseChatbotService):
         db_session: Session,
         summarizer_prompt: AgenticPrompt,
         task_id: str,
-        user_timezone: Optional[str] = None,
     ):
         super().__init__(
             chat_completion_service=chat_completion_service,
@@ -40,27 +57,9 @@ class DemoChatbotService(BaseChatbotService):
             enqueue_continuous_evals=True,
         )
         self.task_id = task_id
-        self.user_timezone = user_timezone
 
-    def build_variable_map(self) -> Dict[str, str]:
-        tz: tzinfo = timezone.utc
-        tz_label = "UTC"
-        if self.user_timezone:
-            try:
-                tz = ZoneInfo(self.user_timezone)
-                tz_label = self.user_timezone
-            except ZoneInfoNotFoundError:
-                pass
-
-        now_utc = datetime.now(timezone.utc)
-        now_local = now_utc.astimezone(tz)
-
-        return {
-            "current_utc_time": now_utc.isoformat(timespec="seconds"),
-            "user_local_time": now_local.isoformat(timespec="seconds"),
-            "day_of_week": now_local.strftime("%A"),
-            "user_timezone": tz_label,
-        }
+    def build_variable_map(self, prompt: AgenticPrompt) -> Dict[str, str]:
+        return {"query": _extract_latest_user_text(prompt.messages)}
 
     @property
     def service_name(self) -> str:
