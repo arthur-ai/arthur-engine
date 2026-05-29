@@ -14,11 +14,13 @@ import os
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from arthur_common.models.llm_model_providers import OpenAIMessage, ToolCall
 from openinference.semconv.trace import (
     MessageAttributes,
+    OpenInferenceSpanKindValues,
+    PromptAttributes,
     SpanAttributes,
     ToolCallAttributes,
 )
@@ -35,6 +37,7 @@ from opentelemetry.proto.trace.v1.trace_pb2 import (
 )
 from sqlalchemy.orm import Session
 
+from repositories.continuous_evals_repository import ContinuousEvalsRepository
 from services.trace.trace_ingestion_service import TraceIngestionService
 from utils import constants
 
@@ -102,6 +105,10 @@ class InternalTraceService:
             trace shows up under the right task in the trace UI.
         service_name: Logical name of the calling service, used in log
             messages on flush. Not written to span attributes.
+        enqueue_continuous_evals: If True, enqueue continuous-eval jobs for
+            root spans after flush. Mirrors the behavior of the public
+            ``/api/v1/traces`` route. Defaults to False so internal-only
+            traces (chatbot, synthetic data generation) don't trigger evals.
     """
 
     def __init__(
@@ -110,10 +117,12 @@ class InternalTraceService:
         *,
         task_id: str,
         service_name: str,
+        enqueue_continuous_evals: bool = False,
     ) -> None:
         self.db_session = db_session
         self.task_id = task_id
         self.service_name = service_name
+        self.enqueue_continuous_evals = enqueue_continuous_evals
         self.spans: List[TraceSpanBuilder] = []
         self.trace_id = uuid.uuid4().bytes
 
@@ -161,6 +170,51 @@ class InternalTraceService:
         span.set_attribute(SpanAttributes.TOOL_NAME, tool_name)
         self.spans.append(span)
         return span
+
+    def start_prompt_span(
+        self,
+        parent: TraceSpanBuilder,
+        prompt_name: str,
+    ) -> TraceSpanBuilder:
+        span = TraceSpanBuilder(self.trace_id, parent.span_id)
+        span.name = prompt_name
+        span.set_attribute(
+            SpanAttributes.OPENINFERENCE_SPAN_KIND,
+            OpenInferenceSpanKindValues.PROMPT.value,
+        )
+        self.spans.append(span)
+        return span
+
+    def set_prompt_template(
+        self,
+        span: TraceSpanBuilder,
+        template_messages: List[OpenAIMessage],
+        variables: Dict[str, str],
+        version: Optional[int] = None,
+    ) -> None:
+        span.set_attribute(
+            SpanAttributes.LLM_PROMPT_TEMPLATE,
+            json.dumps(
+                [m.model_dump(exclude_none=True) for m in template_messages],
+            ),
+        )
+        span.set_attribute(
+            SpanAttributes.LLM_PROMPT_TEMPLATE_VARIABLES,
+            json.dumps(variables),
+        )
+        if version is not None:
+            span.set_attribute(SpanAttributes.LLM_PROMPT_TEMPLATE_VERSION, version)
+        self.set_input_json(span, variables)
+
+    def set_prompt_rendered(
+        self,
+        span: TraceSpanBuilder,
+        rendered_messages: List[OpenAIMessage],
+    ) -> None:
+        rendered_payload = [m.model_dump(exclude_none=True) for m in rendered_messages]
+        rendered_json = json.dumps(rendered_payload)
+        span.set_attribute(PromptAttributes.PROMPT_TEXT, rendered_json)
+        self.set_output_json(span, rendered_payload)
 
     def set_llm_input_messages(
         self,
@@ -295,12 +349,16 @@ class InternalTraceService:
 
         try:
             service = TraceIngestionService(self.db_session)
-            service.process_trace_data(request.SerializeToString())
+            db_spans, _ = service.process_trace_data(request.SerializeToString())
             logger.info(
                 "Flushed %d %s spans",
                 len(self.spans),
                 self.service_name,
             )
+            if self.enqueue_continuous_evals and db_spans:
+                ContinuousEvalsRepository(
+                    self.db_session,
+                ).enqueue_continuous_evals_for_root_spans(db_spans)
         except Exception:
             logger.exception("Failed to flush %s spans", self.service_name)
 

@@ -1,8 +1,10 @@
 """Tests for transform execution endpoint."""
 
+import ast
 import json
 import uuid
 from datetime import datetime
+from utils.constants import DEFAULT_ORG_ID
 
 import pytest
 from sqlalchemy.orm import Session
@@ -31,6 +33,7 @@ def setup_test_data():
         name="Test Task for Transform Execution",
         created_at=datetime.now(),
         updated_at=datetime.now(),
+        org_id=DEFAULT_ORG_ID,
     )
     db_session.add(task)
     db_session.commit()
@@ -153,6 +156,7 @@ def setup_test_data():
             start_time=span.start_time,
             end_time=span.end_time,
             task_id=span.task_id,
+            org_id=DEFAULT_ORG_ID,
             session_id=span.session_id,
             user_id=span.user_id,
             status_code="Ok",
@@ -168,6 +172,7 @@ def setup_test_data():
     # Create trace metadata
     trace_metadata = DatabaseTraceMetadata(
         task_id=task_id,
+        org_id=DEFAULT_ORG_ID,
         trace_id=trace_id,
         session_id=None,
         user_id=None,
@@ -506,6 +511,7 @@ def test_execute_transform_with_multiple_matching_spans(
         created_at=datetime.now(),
         updated_at=datetime.now(),
         is_agentic=True,
+        org_id=DEFAULT_ORG_ID,
     )
     db_session.add(task)
     db_session.commit()
@@ -556,6 +562,7 @@ def test_execute_transform_with_multiple_matching_spans(
             start_time=span.start_time,
             end_time=span.end_time,
             task_id=span.task_id,
+            org_id=DEFAULT_ORG_ID,
             session_id=span.session_id,
             user_id=span.user_id,
             status_code="Ok",
@@ -570,6 +577,7 @@ def test_execute_transform_with_multiple_matching_spans(
     # Create trace metadata
     trace_metadata = DatabaseTraceMetadata(
         task_id=task_id,
+        org_id=DEFAULT_ORG_ID,
         trace_id=trace_id,
         session_id=None,
         user_id=None,
@@ -849,6 +857,74 @@ def test_execute_transform_wildcard_extraction(
         variables = {var.name: var.value for var in result.variables}
         assert variables["missing_wildcard"] == "[]"
 
+    finally:
+        client.delete_transform(transform.id)
+
+        status_code = client.delete_task(agentic_task.id)
+        assert status_code == 204
+
+
+@pytest.mark.unit_tests
+def test_execute_transform_negative_index_extraction(
+    client: GenaiEngineTestClientBase,
+    setup_test_data,
+) -> None:
+    """Test transform execution with negative index extraction."""
+    test_data = setup_test_data
+
+    status_code, agentic_task = client.create_task(
+        name="test_execute_transform_complex_nested_data_task",
+        is_agentic=True,
+    )
+    assert status_code == 200
+
+    try:
+        # Create a transform that extracts data from the test spans successfully
+        transform_definition = {
+            "variables": [
+                {
+                    "variable_name": "last_result",
+                    "span_name": "rag-retrieval-savedQueries",
+                    "attribute_path": "attributes.output.value.results.-1",
+                    "fallback": "[]",
+                },
+                {
+                    "variable_name": "second_to_last_result_name",
+                    "span_name": "rag-retrieval-savedQueries",
+                    "attribute_path": "attributes.output.value.results.-2.name",
+                    "fallback": None,
+                },
+            ],
+        }
+
+        status_code, transform = client.create_transform(
+            task_id=agentic_task.id,
+            name="Test Negative Index Transform",
+            definition=transform_definition,
+        )
+        assert status_code == 200
+
+        # Execute the transform
+        status_code, result = client.execute_transform_extraction(
+            transform_id=transform.id,
+            trace_id=test_data["trace_id"],
+        )
+
+        assert status_code == 200
+        assert result is not None
+        assert len(result.variables) == 2
+
+        variables = {var.name: var.value for var in result.variables}
+
+        # Verify complex data is JSON stringified
+        assert "last_result" in variables
+        
+        last_result = ast.literal_eval(variables["last_result"])
+        assert last_result["id"] == 2
+        assert last_result["name"] == "Jane"
+        
+        assert "second_to_last_result_name" in variables
+        assert variables["second_to_last_result_name"] == "John"
     finally:
         client.delete_transform(transform.id)
 

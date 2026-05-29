@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, List, Optional
 
@@ -13,6 +14,7 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    Uuid,
     text,
 )
 from sqlalchemy.dialects import postgresql
@@ -32,6 +34,12 @@ class DatabaseTraceMetadata(Base):
     task_id: Mapped[str] = mapped_column(
         String,
         ForeignKey("tasks.id"),
+        nullable=False,
+        index=True,
+    )
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("organizations.id"),
         nullable=False,
         index=True,
     )
@@ -193,6 +201,12 @@ class DatabaseSpan(Base):
     task_id: Mapped[str] = mapped_column(
         String,
         ForeignKey("tasks.id"),
+        nullable=False,
+        index=True,
+    )
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("organizations.id"),
         nullable=False,
         index=True,
     )

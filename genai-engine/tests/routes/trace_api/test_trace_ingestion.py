@@ -3,6 +3,7 @@ import random
 from datetime import datetime
 from unittest.mock import patch
 from uuid import uuid4
+from utils.constants import DEFAULT_ORG_ID
 
 import pytest
 from opentelemetry.proto.common.v1.common_pb2 import AnyValue, KeyValue
@@ -718,6 +719,7 @@ def _create_gcp_task(db_session, engine_id: str, name: str = None) -> DatabaseTa
         is_autocreated=False,
         task_metadata=task_metadata.model_dump(mode="json"),
         archived=False,
+        org_id=DEFAULT_ORG_ID,
     )
     db_session.add(db_task)
     db_session.commit()
@@ -962,6 +964,7 @@ def test_resolve_task_id_existing_mapping_takes_priority_over_resource_id():
         is_agentic=True,
         is_autocreated=True,
         archived=False,
+        org_id=DEFAULT_ORG_ID,
     )
     db_session.add(other_task)
     db_session.commit()

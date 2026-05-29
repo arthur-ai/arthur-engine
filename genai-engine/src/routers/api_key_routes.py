@@ -4,7 +4,7 @@ from uuid import UUID
 from arthur_common.models.enums import APIKeysRolesEnum
 from arthur_common.models.request_schemas import NewApiKeyRequest
 from arthur_common.models.response_schemas import ApiKeyResponse
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from starlette import status
 from starlette.responses import Response
@@ -18,7 +18,12 @@ from repositories.api_key_repository import ApiKeyRepository
 from routers.route_handler import GenaiEngineRoute
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
+from utils import constants
 from utils.users import permission_checker
+
+# TENANT-USER keys are only mintable via the public tenant signup flow (UP-4430);
+# admins reach this endpoint via API_KEY_WRITE and must not be able to create them.
+_ADMIN_FORBIDDEN_ROLES = frozenset([constants.TENANT_USER])
 
 api_key_validator_creators = [APIKeyValidatorCreator(APIKeyValidatorType.MASTER)]
 multi_validator = MultiMethodValidator(api_key_validator_creators)
@@ -34,7 +39,12 @@ api_keys_routes = APIRouter(
 @api_keys_routes.post(
     "/",
     response_model=ApiKeyResponse,
-    description=f"Generates a new API key. Up to {Config.max_api_key_limit()} active keys can exist at the same time by default. Contact your system administrator if you need more. Allowed roles are: {', '.join(role.value for role in APIKeysRolesEnum)}.",
+    description=(
+        f"Generates a new API key. Up to {Config.max_api_key_limit()} active keys can exist at "
+        f"the same time by default. Contact your system administrator if you need more. "
+        f"Allowed roles are: "
+        f"{', '.join(r.value for r in APIKeysRolesEnum if r.value not in _ADMIN_FORBIDDEN_ROLES)}."
+    ),
     response_model_exclude_none=True,
 )
 @permission_checker(permissions=PermissionLevelsEnum.API_KEY_WRITE.value)
@@ -43,6 +53,17 @@ def create_api_key(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> ApiKeyResponse:
+    forbidden = {
+        r.value for r in (new_api_key.roles or []) if r.value in _ADMIN_FORBIDDEN_ROLES
+    }
+    if forbidden:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Roles {sorted(forbidden)} cannot be assigned via this endpoint; "
+                f"use the tenant signup flow."
+            ),
+        )
     try:
         api_key_repo = ApiKeyRepository(db_session)
         api_key = api_key_repo.create_api_key(

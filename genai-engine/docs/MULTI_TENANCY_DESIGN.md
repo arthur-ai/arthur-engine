@@ -231,7 +231,7 @@ POST /api/v2/tenant/signup       (no auth required)
 
 ### Feature flag
 
-The endpoint exists in every deployment but only responds when `ENABLE_PUBLIC_TENANT_SIGNUP` is `true` in `src/utils/config.py`. Default: `false`. With the flag off, the endpoint returns 404 — clients cannot distinguish "feature unavailable" from "endpoint doesn't exist," which is the desired behavior on production customer deployments.
+The endpoint exists in every deployment but only responds when `GENAI_ENGINE_DEMO_MODE` is `true` in `src/utils/config.py`. Default: `false`. With the flag off, the endpoint returns 404 — clients cannot distinguish "feature unavailable" from "endpoint doesn't exist," which is the desired behavior on production customer deployments.
 
 ### Request and response
 
@@ -407,63 +407,44 @@ The UI caches the response in `AuthContext` and uses it to pick its render branc
 
 ## 7. Enforcement Patterns
 
-Every endpoint that touches task-scoped data falls into one of five enforcement patterns, depending on how the affected task is identified in the request. The first four resolve a task ID to its `org_id` and compare against `request.state.org_scope`. The fifth is admin-only — never reachable by tenant keys.
+Every endpoint that touches task-scoped data falls into one of four enforcement patterns (down from five — see "Pattern B" below), depending on how the affected task is identified in the request. Patterns A and D resolve task IDs to their `org_id` via a FastAPI decorator. Pattern C pushes the check into the repository layer. Pattern E is admin-only — never reachable by tenant keys.
 
 ### Pattern A — Path task_id
 
 The endpoint takes `{task_id}` in its URL path. Example: `POST /api/v2/tasks/{task_id}/rules`.
 
-Enforced by a decorator that resolves the path's task to its org and compares:
+Enforced by a decorator that resolves the path's task to its org and compares against the caller's `org_scope`:
 
 ```python
 def enforce_org_scope(path_param: str = "task_id"):
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            request = kwargs["request"]
-            scope = request.state.org_scope
-            if scope is None:
-                return await func(*args, **kwargs)   # admin passthrough
-            task_id = kwargs.get(path_param)
-            task = tasks_repo.get_task_by_id(task_id)
-            if task is None or str(task.org_id) != str(scope):
+            user = kwargs.get("current_user")
+            if _is_admin(user):                          # admin passthrough
+                return await _call(func, *args, **kwargs)
+            path_task_id = kwargs.get(path_param)
+            db_session = _get_db_session_from_kwargs(kwargs)
+            task_org_id = _fetch_task_org_id(db_session, path_task_id)
+            if task_org_id is None or task_org_id != str(user.org_scope):
+                # 404 (not 403) so tenants can't enumerate foreign tasks.
                 raise HTTPException(404, "Task not found")
-            request.state.cached_task = task          # cache for the handler
-            return await func(*args, **kwargs)
+            return await _call(func, *args, **kwargs)
         return wrapper
     return decorator
 ```
 
-The resolved task is cached on `request.state` so handler-side repository calls don't re-fetch it. Mismatch returns 404 (not 403) to prevent enumeration.
+The decorator requires that the handler receives `current_user` and `db_session` as kwargs via FastAPI `Depends(...)` — which every authenticated route does.
 
-### Pattern B — Body task_id
+The fetch is a single `SELECT org_id FROM tasks WHERE id = ?` — no full task hydration. Routes that need the full `Task` continue to use the existing `get_validated_task` dependency, which was extended with the same `org_scope` check so it returns an identical `"Task not found"` 404 on either "missing" or "in another org" — closing a 404-body enumeration oracle.
 
-The endpoint accepts a `task_id` field in its request body. Example: `POST /api/v1/inferences` with body `{"task_id": "...", ...}`.
+Applied to **60 endpoints** across 17 router files (every path with `{task_id}` in genai-engine).
 
-A decorator pulls the field off the parsed Pydantic body and applies the same resolution:
+### Pattern B — Body task_id  *(removed)*
 
-```python
-def enforce_body_org_scope(body_field: str = "task_id"):
-    def decorator(func):
-        @wraps(func)
-        async def wrapper(*args, **kwargs):
-            request = kwargs["request"]
-            scope = request.state.org_scope
-            if scope is None:
-                return await func(*args, **kwargs)
-            body = next((v for v in kwargs.values() if hasattr(v, body_field)), None)
-            body_task_id = getattr(body, body_field, None)
-            if body_task_id is None:
-                raise HTTPException(400, f"{body_field} required in body")
-            task = tasks_repo.get_task_by_id(body_task_id)
-            if task is None or str(task.org_id) != str(scope):
-                raise HTTPException(404, "Task not found")
-            return await func(*args, **kwargs)
-        return wrapper
-    return decorator
-```
+The original design called for a third decorator (`enforce_body_org_scope`) for endpoints that accept `task_id` in the request body. **It was implemented and then deleted** because no endpoint in genai-engine actually takes `task_id` in the body — every endpoint that touches a specific task carries it in the URL path. The candidate endpoints originally listed for Pattern B (`POST /agentic-prompts`, `POST /chatbots`, etc.) actually have the shape `POST /tasks/{task_id}/<resource>` and are covered by Pattern A.
 
-Same 404-on-mismatch behavior.
+If a body-task_id endpoint is ever added, restore `enforce_body_org_scope` from git history (commit `72dced7f`).
 
 ### Pattern C — Resource-id-scoped (repository-level filter)
 
@@ -507,27 +488,40 @@ def enforce_query_org_scope(query_param: str = "task_ids"):
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            request = kwargs["request"]
-            scope = request.state.org_scope
-            if scope is None:
-                return await func(*args, **kwargs)
-            user_task_ids = kwargs.get(query_param) or []
-            if not user_task_ids:
-                # no filter supplied — expand to all tasks in caller's org
-                kwargs[query_param] = [str(t.id) for t in tasks_repo.list_tasks_by_org(scope)]
+            user = kwargs.get("current_user")
+            if _is_admin(user):
+                return await _call(func, *args, **kwargs)
+
+            # Get every task ID this tenant is allowed to see.
+            db_session = _get_db_session_from_kwargs(kwargs)
+            org_task_ids = {
+                str(tid) for tid in db_session.execute(
+                    select(DatabaseTask.id).where(DatabaseTask.org_id == str(user.org_scope))
+                ).scalars()
+            }
+
+            # Locate the field either as a direct kwarg (`task_ids: list[str] = Query(...)`)
+            # or as an attribute on a Pydantic dependency object (e.g. `TraceQueryRequest`).
+            holder, key, supplied = _find_task_ids_holder(kwargs, query_param)
+            if not supplied:
+                # No filter supplied — inject all of the caller's org's tasks.
+                _set_task_ids(holder, key, list(org_task_ids))
             else:
-                # filter supplied — every id must resolve to a task in caller's org
-                tasks = tasks_repo.get_tasks_by_ids(user_task_ids)
-                missing = set(user_task_ids) - {str(t.id) for t in tasks}
-                outside = [t for t in tasks if str(t.org_id) != str(scope)]
-                if missing or outside:
-                    raise HTTPException(403, "task_ids include items outside caller's org")
-            return await func(*args, **kwargs)
+                requested = {str(tid) for tid in (supplied if isinstance(supplied, list) else [supplied])}
+                if not requested.issubset(org_task_ids):
+                    raise HTTPException(403, "task_ids include items outside the caller's org")
+            return await _call(func, *args, **kwargs)
         return wrapper
     return decorator
 ```
 
 Mismatched IDs return 403 (not 404) because the caller explicitly named them — there is no enumeration concern to hide.
+
+The decorator also handles single-value `task_id` query params (e.g. `GET /feedback/query?task_id=…`) via `@enforce_query_org_scope(query_param="task_id")`; the value is normalized to a list before the subset check.
+
+Applied to **11 endpoints** in `trace_api_routes`, `legacy_span_routes`, `query_routes`, `feedback_routes`, and `task_management_routes` (search).
+
+**`inference_id` shortcut in `GET /api/v2/inferences/query`** — the route also accepts `?inference_id=…` and shortcuts to a direct fetch by ID, bypassing the `task_ids` filter. To keep tenant isolation honest, the handler now verifies the fetched inference's `task_id` is in the decorator-rewritten `task_ids` set (which is the caller's org's task list) and returns "not found" otherwise. Admin callers skip the check.
 
 ### Pattern E — Admin-only
 
@@ -540,7 +534,7 @@ No decorator change. These endpoints are gated by `@permission_checker` against 
 | Pattern | Match | Mismatch |
 |---|---|---|
 | A — Path | proceed | 404 |
-| B — Body | proceed | 404 (400 if field missing) |
+| ~~B — Body~~ | *(removed; no live callers)* | — |
 | C — Resource ID | proceed | 404 (row appears not to exist) |
 | D — Query | proceed | 403 (caller explicitly named the IDs) |
 | E — Admin-only | n/a | 403 from `permission_checker` |
@@ -563,13 +557,13 @@ Symbols: ✅ allowed for tenant keys · ❌ 403 or 404 · 🪟 allowed but filte
 
 ### One example per pattern
 
-**Pattern A — Path task_id.** Example: `POST /api/v2/tasks/{task_id}/rules`. Decorated `@enforce_org_scope`. Tenant succeeds if the path's task is in their org; 404 otherwise. Every `/tasks/{task_id}/*` endpoint in v2 plus every `{task_id}` path in v1 (continuous_eval, llm_eval, validate) follows this pattern.
+**Pattern A — Path task_id.** Example: `POST /api/v2/tasks/{task_id}/rules`. Decorated `@enforce_org_scope`. Tenant succeeds if the path's task is in their org; 404 otherwise. Covers 60 endpoints across 17 router files: every `/tasks/{task_id}/*` endpoint in v2 (task_management, validate, dataset_management) plus every `{task_id}` path in v1 (agent_polling, agentic_experiment, agentic_notebook, agentic_prompt, chatbot, continuous_eval, llm_eval, notebook, prompt_experiment, rag, rag_setting, rag_experiment, rag_notebook, transform).
 
-**Pattern B — Body task_id.** Example: `POST /api/v1/inferences` with body `{"task_id": "...", ...}`. Decorated `@enforce_body_org_scope`. Tenant succeeds if `body.task_id` is in their org; 404 otherwise. Used by ~10 POST endpoints across v1 (inferences, agentic-prompts, agentic-experiments, agentic-notebooks, prompt_experiments, agent_polling, chatbots, chat) and v2 chat.
+**~~Pattern B — Body task_id.~~** Removed during implementation. Every endpoint that originally seemed to be a Pattern B candidate (e.g. `POST /agentic-prompts`, `POST /chatbots`) actually has the shape `POST /tasks/{task_id}/<resource>` and is covered by Pattern A.
 
-**Pattern C — Resource-id-scoped.** Example: `GET /api/v1/inferences/{inference_id}`. Repository method `inference_repository.get_inference(id, org_scope)` filters at fetch time. Tenant gets the row only if its task belongs to their org; 404 otherwise. Used by ~35 endpoints across trace/span/session lookups, inference + feedback by-id, agentic prompt/experiment/notebook by-id, continuous eval by-id, prompt experiments by-id, chat conversations by-id, chatbots by-id, dataset by-id.
+**Pattern C — Resource-id-scoped.** Example: `GET /api/v1/inferences/{inference_id}`. Repository method `inference_repository.get_inference(id, org_scope)` filters at fetch time. Tenant gets the row only if its task belongs to their org; 404 otherwise. Used by trace/span/session lookups, inference + feedback by-id, agentic prompt/experiment/notebook by-id, continuous eval by-id, prompt experiments by-id, chat conversations by-id, chatbots by-id, dataset by-id. Tracked in UP-4429.
 
-**Pattern D — Query-param task_ids.** Example: `GET /api/v2/inferences/query?task_ids=...`. Decorated `@enforce_query_org_scope`. No `task_ids` → decorator injects all of the caller's org's task IDs. With `task_ids` supplied, every value must resolve to a task in the caller's org or the request 403s. Used by `GET /api/v1/traces`, `/traces/spans`, `/traces/sessions`, `/traces/users`, `/inferences`, `/api/v2/inferences/query`, `/api/v2/feedback/query`.
+**Pattern D — Query-param task_ids.** Example: `GET /api/v2/inferences/query?task_ids=...`. Decorated `@enforce_query_org_scope`. No `task_ids` → decorator injects all of the caller's org's task IDs. With `task_ids` supplied, every value must resolve to a task in the caller's org or the request 403s. Covers 11 endpoints in trace_api, legacy_span, query_routes, feedback (uses `task_id` singular), and `POST /api/v2/tasks/search`.
 
 **Pattern E — Admin-only.** Example: `POST /api/v1/traces`. Permission frozenset (`TRACES_WRITE`) excludes `TENANT-USER`. Tenant receives 403 from `permission_checker` before any handler logic runs.
 
@@ -581,13 +575,13 @@ Symbols: ✅ allowed for tenant keys · ❌ 403 or 404 · 🪟 allowed but filte
 | Task lifecycle on caller's own tasks (`POST /api/v2/tasks`, `GET/DELETE /api/v2/tasks/{id}`, unarchive) | ✅ in caller's org |
 | Task list / search (`GET /api/v2/tasks`, `POST /api/v2/tasks/search`) | 🪟 filtered to caller's org |
 | Task-scoped rules + metrics (`/api/v2/tasks/{task_id}/rules/*`, `/metrics/*`) | ✅ in caller's org (Pattern A) |
-| Inference writes (`POST /api/v1/inferences`, validate endpoints) | ✅ in caller's org (Pattern B) |
+| Inference writes (validate endpoints) | ✅ in caller's org (Pattern A — `/tasks/{task_id}/validate_*`) |
 | Inference / feedback / rule-result reads by ID | ✅ in caller's org (Pattern C) |
 | Trace / span / session / annotation **reads** | ✅ in caller's org (Patterns C and D) |
 | **Trace uploads** (`POST /api/v1/traces`) | ❌ admin-only (Pattern E) |
-| Agentic resources (prompts, experiments, notebooks; CRUD) | ✅ in caller's org (Patterns B and C) |
+| Agentic resources (prompts, experiments, notebooks; CRUD) | ✅ in caller's org (Patterns A and C) |
 | Continuous eval CRUD | ✅ in caller's org (Patterns A and C) |
-| Chat (conversations, messages, regenerate) | ✅ in caller's org (Patterns B and C) |
+| Chat (conversations, messages, regenerate) | ✅ in caller's org (Patterns A and C) |
 | Default rules — read | ✅ (globals visible to tenants) |
 | Default rules — write (`POST/DELETE /api/v2/default_rules`) | ❌ admin-only |
 | Rules search (`POST /api/v2/rules/search`) | 🪟 defaults + caller's org rules |
@@ -680,7 +674,7 @@ The intent is that single-tenant customer deployments operate exactly as today a
 3. **No existing endpoint changes shape.** No new required request fields, no new required response fields, no renamed properties.
 4. **No existing client SDK breaks.** Aggregate endpoints (`GET /api/v2/tasks`, search endpoints, query endpoints) stay shape-compatible. Tenant clients see a scoped subset; admin clients see everything.
 5. **Existing role frozensets are not narrowed.** `TENANT-USER` is added to relevant frozensets; existing roles are not removed from any frozenset. Existing operator and admin users keep all their permissions.
-6. **Feature flag off by default.** `ENABLE_PUBLIC_TENANT_SIGNUP=false` means customer deployments never expose the signup endpoint unless explicitly enabled. Multi-tenant behavior on a customer deployment is opt-in.
+6. **Feature flag off by default.** `GENAI_ENGINE_DEMO_MODE=false` means customer deployments never expose the signup endpoint unless explicitly enabled. Multi-tenant behavior on a customer deployment is opt-in.
 7. **`POST /api/v1/traces` remains accessible to every admin client.** The endpoint narrows `TRACES_WRITE` to exclude `TENANT-USER`. Admin clients (the only callers that exist today, given no tenant keys have been issued yet) are unaffected.
 
 ### Risk areas
@@ -725,16 +719,15 @@ No behavior change. Adds the data model and the auth-context plumbing without ch
 
 ### Phase 2 — Enforcement
 
-Wires the five patterns into the endpoint surface. Still no user-visible behavior change for admin callers; tenant keys do not exist yet because the signup flow ships in Phase 3.
+Wires the four patterns into the endpoint surface. Still no user-visible behavior change for admin callers; tenant keys do not exist yet because the signup flow ships in Phase 3.
 
 1. Implement decorators in `src/utils/users.py` alongside the existing `permission_checker`:
-   - `@enforce_org_scope` (path, Pattern A)
-   - `@enforce_body_org_scope` (body, Pattern B)
-   - `@enforce_query_org_scope` (query, Pattern D)
-2. Apply Pattern A decorator to every endpoint with `{task_id}` in the URL path: task_management, continuous_eval, llm_eval, validate, and similar v1 routes.
-3. Apply Pattern B decorator to the ~10 body-task_id endpoints from the audit (inferences, agentic-prompts, agentic-experiments, agentic-notebooks, prompt_experiments, agent_polling, chatbots, chat).
-4. Apply Pattern D decorator to the 7 query-param `task_ids` endpoints.
-5. Update repository methods (Pattern C) to accept `org_scope`:
+   - `@enforce_org_scope` (path, Pattern A) — **shipped in UP-4425**
+   - `@enforce_query_org_scope` (query, Pattern D) — **shipped in UP-4425**
+   - *(Pattern B `@enforce_body_org_scope` was implemented and then deleted; no live callers — see section 7.)*
+2. Apply Pattern A decorator to every endpoint with `{task_id}` in the URL path — 60 endpoints across 17 router files (task_management, validate, dataset_management, agent_polling, agentic_experiment, agentic_notebook, agentic_prompt, chatbot, continuous_eval, llm_eval, notebook, prompt_experiment, rag, rag_setting, rag_experiment, rag_notebook, transform). **Shipped in UP-4425.**
+3. Apply Pattern D decorator to the 11 query-param endpoints (trace_api, legacy_span, query_routes, feedback, task_management/search). **Shipped in UP-4425.**
+4. Update repository methods (Pattern C) to accept `org_scope` — tracked in **UP-4429**:
    - `inference_repository.get_inference`
    - `span_repository.get_trace_by_id`, `get_span_by_id`, `get_session_by_id`, `compute_span_metrics`
    - `feedback_repository.create_feedback` (resource lookup before write)
@@ -748,9 +741,9 @@ Wires the five patterns into the endpoint surface. Still no user-visible behavio
    - `chatbot_repository.get_chatbot_by_id`
    - `annotation_repository.get_annotation_by_id`
    - `tasks_repository.get_task_by_id` plus new `list_tasks_by_org`, `get_tasks_by_ids`
-6. Extend `PermissionLevelsEnum` frozensets (section 6) to include `TENANT-USER`.
-7. Narrow `TRACES_WRITE` to exclude `TENANT-USER` (admin-only trace uploads).
-8. `POST /api/v2/tasks` handler: read `request.state.org_scope`; admin → `default` org, tenant → caller's org.
+5. Extend `PermissionLevelsEnum` frozensets (section 6) to include `TENANT-USER`. **Shipped in UP-4428.**
+6. Narrow `TRACES_WRITE` to exclude `TENANT-USER` (admin-only trace uploads). **Shipped in UP-4428.**
+7. `POST /api/v2/tasks` handler: read `request.state.org_scope`; admin → `default` org, tenant → caller's org. **Shipped in UP-4425.**
 
 **Estimated effort:** ~7-10 days human / ~5-7 hours CC. The bulk of the work is touching repositories and applying decorators across the existing endpoint surface.
 
@@ -759,7 +752,7 @@ Wires the five patterns into the endpoint surface. Still no user-visible behavio
 Adds the public signup endpoint and the feature flag.
 
 1. New `POST /api/v2/tenant/signup` endpoint at `src/routers/v2/task_management_routes.py` (or a new `tenant_routes.py` for clarity).
-2. Add `ENABLE_PUBLIC_TENANT_SIGNUP` boolean to `src/utils/config.py`, default `False`.
+2. Add `GENAI_ENGINE_DEMO_MODE` boolean to `src/utils/config.py`, default `False`.
 3. Handler runs the four-step transaction (create org, create task, apply default rules, create API key) inside a single `db_session` transaction. Reuses the existing `tasks_repository.create_task()` and `api_key_repository.create_api_key()` plus the new `organizations_repository.create_organization()`.
 
 **Estimated effort:** ~1-2 days human / ~30 min CC.
@@ -784,7 +777,7 @@ Adds the public signup endpoint and the feature flag.
 
 ### Total estimate
 
-Roughly **16-22 days human / 10-14 hours CC** for v1. The repository work in Phase 2 dominates because the audit surfaced ~35 resource-id-scoped endpoints + 10 body-task_id endpoints + 7 query-param endpoints, each needing wiring.
+Roughly **16-22 days human / 10-14 hours CC** for v1. The repository work in Phase 2 dominates because the audit surfaced 60 path-task_id endpoints, 11 query-param endpoints, and ~35 resource-id-scoped endpoints (Pattern C, UP-4429) each needing wiring.
 
 ---
 
@@ -801,7 +794,6 @@ Three layers of testing: unit tests cover individual pieces, integration tests c
   - Migration 3: each denormalized table has `org_id` NOT NULL; backfilled values match the join chain.
 - `MultiMethodValidator` sets `request.state.org_scope` correctly for API key, JWT, and admin paths.
 - `@enforce_org_scope` raises 404 when the path's task belongs to a different org; passes when it matches; passes through for admin.
-- `@enforce_body_org_scope` raises 404 on mismatch, 400 when the field is missing, passes through for admin.
 - `@enforce_query_org_scope` raises 403 when `task_ids` contains anything outside scope; expands the filter to all-org-tasks when `task_ids` is empty; passes through for admin.
 - Repository methods (Pattern C): `get_X(id, org_scope=O2)` returns `None` for a row whose task is in `O1`. With `org_scope=None`, the row is returned regardless.
 - `permission_checker` admits/rejects `TENANT-USER` per the updated frozensets, including the negative case for `TRACES_WRITE`.
@@ -813,8 +805,7 @@ Seed two orgs (O1, O2), each with two tasks (O1 → {T1a, T1b}, O2 → {T2a, T2b
 
 - **Multi-task within org:** K1 reads both T1a and T1b. Both succeed; K1 sees every resource type across both tasks.
 - **Pattern A — Path scope:** K1 hits every `/tasks/{task_id}/*` endpoint with `task_id = T2a`. Every response is 404.
-- **Pattern B — Body scope:** K1 POSTs to every body-task_id endpoint with `body.task_id = T2a`. Every response is 404. With `body.task_id = T1a`, every response is the normal success code.
-- **Pattern C — Resource ID scope:** K1 calls every resource-id-scoped GET/PATCH/DELETE with a T2a-owned resource ID. Every response is 404. **Feedback planting:** K1 POSTs `/api/v2/feedback/{T2a_inference_id}` — expect 404, verify no feedback row written.
+- **Pattern C — Resource ID scope:** K1 calls every resource-id-scoped GET/PATCH/DELETE with a T2a-owned resource ID. Every response is 404. **Feedback planting:** K1 POSTs `/api/v2/feedback/{T2a_inference_id}` — expect 404, verify no feedback row written. **`inference_id` shortcut:** K1 hits `GET /api/v2/inferences/query?inference_id={T2a_inference_id}` — expect empty result (no 404; the empty list is the tenant-safe response shape).
 - **Pattern D — Query-param scope:** K1 calls every `task_ids`-accepting endpoint with `?task_ids=T2a`. Every response is 403. With no `task_ids`, every response transparently filters to {T1a, T1b}. With `?task_ids=T1a,T1b`, normal 200.
 - **Trace uploads blocked for tenants:** K1 POSTs `/api/v1/traces` with any payload. Expect 403. A (admin) posts the same payload — expect the existing 201 path.
 - **`POST /api/v2/tasks` routing:** K1 creates a task with the existing body shape. Verify the task lands in O1. A (admin) creates a task with the same body. Verify the task lands in the `default` org.
@@ -842,15 +833,10 @@ for route in app.routes:
     if "task_id" in route.path_params:
         assert has_decorator(handler, enforce_org_scope), \
             f"{route.path} has {{task_id}} in path but is missing @enforce_org_scope"
-    # Pattern B
-    body_model = inspect_body_model(handler)
-    if body_model is not None and "task_id" in body_model.__fields__:
-        assert has_decorator(handler, enforce_body_org_scope), \
-            f"{route.path} body has task_id but is missing @enforce_body_org_scope"
     # Pattern D
-    if "task_ids" in inspect_query_params(handler):
+    if "task_ids" in inspect_query_params(handler) or "task_id" in inspect_query_params(handler):
         assert has_decorator(handler, enforce_query_org_scope), \
-            f"{route.path} accepts task_ids query but is missing @enforce_query_org_scope"
+            f"{route.path} accepts task_ids/task_id query but is missing @enforce_query_org_scope"
 ```
 
 Pattern C is harder to assert generically. A complementary repository coverage test asserts every method on a task-scoped repository that takes a resource-id parameter also accepts `org_scope: UUID | None = None`. Easier to enforce via code review than fully automated.
@@ -858,7 +844,7 @@ Pattern C is harder to assert generically. A complementary repository coverage t
 ### Manual smoke test
 
 1. Run engine in single-tenant mode (default config). Existing admin key sees all tasks in default + system orgs.
-2. Set `ENABLE_PUBLIC_TENANT_SIGNUP=true`. `curl POST /api/v2/tenant/signup` returns a fresh `(org, task, api_key)`.
+2. Set `GENAI_ENGINE_DEMO_MODE=true`. `curl POST /api/v2/tenant/signup` returns a fresh `(org, task, api_key)`.
 3. Paste the tenant key into the UI's login form. Confirm the UI loads with admin nav hidden and the task switcher showing only the new task.
 4. Hit an admin endpoint with the tenant key. Confirm 403.
 5. Send an inference via the tenant key. Confirm it lands in the tenant's task.

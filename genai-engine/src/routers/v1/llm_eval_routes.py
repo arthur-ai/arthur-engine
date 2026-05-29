@@ -31,7 +31,7 @@ from schemas.response_schemas import (
     LLMGetAllMetadataListResponse,
 )
 from utils.url_encoding import decode_path_param
-from utils.users import permission_checker
+from utils.users import enforce_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
 llm_eval_routes = APIRouter(
@@ -49,6 +49,7 @@ llm_eval_routes = APIRouter(
     tags=["LLMEvals"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def get_llm_eval(
     eval_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
     eval_version: str = Path(
@@ -86,6 +87,7 @@ def get_llm_eval(
     tags=["LLMEvals"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def get_all_llm_eval_versions(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -126,6 +128,7 @@ def get_all_llm_eval_versions(
     tags=["LLMEvals"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def get_all_llm_evals(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -163,6 +166,7 @@ def get_all_llm_evals(
     tags=["LLMEvals"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def run_saved_llm_eval(
     completion_request: BaseCompletionRequest,
     eval_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
@@ -198,6 +202,7 @@ def run_saved_llm_eval(
     tags=["LLMEvals"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def save_llm_eval(
     eval_config: CreateEvalRequest,
     eval_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
@@ -227,6 +232,7 @@ def save_llm_eval(
     tags=["LLMEvals"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def delete_llm_eval(
     eval_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
     db_session: Session = Depends(get_db_session),
@@ -257,6 +263,7 @@ def delete_llm_eval(
     tags=["LLMEvals"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def soft_delete_llm_eval_version(
     eval_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
     eval_version: str = Path(
@@ -295,6 +302,7 @@ def soft_delete_llm_eval_version(
     tags=["LLMEvals"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def get_llm_eval_by_tag(
     eval_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
     tag: Annotated[str, Path(), AfterValidator(decode_path_param)],
@@ -332,6 +340,7 @@ def get_llm_eval_by_tag(
     tags=["LLMEvals"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def add_tag_to_llm_eval_version(
     eval_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
     eval_version: str = Path(
@@ -376,6 +385,7 @@ def add_tag_to_llm_eval_version(
     tags=["LLMEvals"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def delete_tag_from_llm_eval_version(
     eval_name: Annotated[str, Path(), AfterValidator(decode_path_param)],
     eval_version: Annotated[

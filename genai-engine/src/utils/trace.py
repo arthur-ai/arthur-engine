@@ -317,11 +317,12 @@ def get_nested_value(
             current = current[key]
         elif isinstance(current, list):
             # Try to parse key as integer index
-            if not key.isdigit():
+            try:
+                index = int(key)
+            except ValueError:
                 return default
 
-            index = int(key)
-            if 0 <= index < len(current):
+            if -len(current) <= index < len(current):
                 current = current[index]
             else:
                 return default
@@ -399,10 +400,11 @@ def _collect_wildcard(
         return _collect_wildcard(current[key], keys, index + 1)
 
     if isinstance(current, list):
-        if not key.isdigit():
+        try:
+            idx = int(key)
+        except ValueError:
             return []
-        idx = int(key)
-        if 0 <= idx < len(current):
+        if -len(current) <= idx < len(current):
             return _collect_wildcard(current[idx], keys, index + 1)
         return []
 

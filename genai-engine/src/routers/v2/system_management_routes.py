@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from uuid import UUID
 
 from arthur_common.models.enums import TokenUsageScope
 from arthur_common.models.response_schemas import TokenUsageResponse
@@ -9,7 +10,7 @@ from starlette import status
 from starlette.responses import Response
 
 from config.extra_features import extra_feature_config
-from dependencies import get_application_config, get_db_session, logger
+from dependencies import get_application_config, get_db_session, get_org_scope, logger
 from repositories.configuration_repository import ConfigurationRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
@@ -56,6 +57,7 @@ def get_token_usage(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> list[TokenUsageResponse]:
     try:
         usage_repo = UsageRepository(db_session)
@@ -63,6 +65,7 @@ def get_token_usage(
             start_time=start_time,
             end_time=end_time,
             group_by=group_by,
+            org_scope=org_scope,
         )
     finally:
         db_session.close()

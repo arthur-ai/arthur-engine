@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timedelta
 from typing import Optional
+from uuid import UUID
 
 from arthur_common.models.agent_governance_schemas import (
     AgentCreationSource,
@@ -42,6 +43,7 @@ from schemas.internal_schemas import (
     Task,
 )
 from utils import constants
+from utils.constants import DEFAULT_ORG_ID
 from utils.trace import get_nested_value
 
 tracer = trace.get_tracer(__name__)
@@ -78,8 +80,13 @@ class TaskRepository:
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
         page_size: int = 10,
         page: int = 0,
+        org_scope: Optional[UUID] = None,
     ) -> tuple[list[DatabaseTask], int]:
         stmt = self.db_session.query(DatabaseTask)
+        # Tenant callers see only their own org's tasks. Admin (org_scope=None)
+        # passes through and sees everything.
+        if org_scope is not None:
+            stmt = stmt.where(DatabaseTask.org_id == org_scope)
         if ids:
             stmt = stmt.where(DatabaseTask.id.in_(ids))
         if task_name:
@@ -271,7 +278,7 @@ class TaskRepository:
 
         return tasks
 
-    def get_all_tasks(self) -> list[Task]:
+    def get_all_tasks(self, org_scope: Optional[UUID] = None) -> list[Task]:
         # Continuously grab tasks until there are no more, DEFAULT_PAGE_SIZE at a time
         all_tasks: list[DatabaseTask] = []
         page = 0
@@ -279,6 +286,7 @@ class TaskRepository:
             db_tasks, _ = self.query_tasks(
                 page=page,
                 page_size=constants.DEFAULT_PAGE_SIZE,
+                org_scope=org_scope,
             )
             if not db_tasks:
                 break
@@ -338,7 +346,12 @@ class TaskRepository:
         db_task.archived = False
         self.db_session.commit()
 
-    def create_task(self, task: Task, with_default_rules: bool = True) -> Task:
+    def create_task(
+        self,
+        task: Task,
+        with_default_rules: bool = True,
+        commit: bool = True,
+    ) -> Task:
         db_task = task._to_database_model()
 
         if with_default_rules:
@@ -350,7 +363,10 @@ class TaskRepository:
                 for r in db_default_rules
             ]
         self.db_session.add(db_task)
-        self.db_session.commit()
+        if commit:
+            self.db_session.commit()
+        else:
+            self.db_session.flush()
 
         result = Task._from_database_model(db_task)
         return result
@@ -364,6 +380,7 @@ class TaskRepository:
         - Are agentic (is_agentic=True)
         - Do NOT get default rules (with_default_rules=False)
         - Have no task_metadata (not a registered agent)
+        - Are owned by the `default` org (OTEL auto-discovery is an admin path)
 
         Args:
             service_name: The service name to create a task for
@@ -380,6 +397,7 @@ class TaskRepository:
             updated_at=datetime.now(),
             is_agentic=True,
             is_autocreated=True,
+            org_id=DEFAULT_ORG_ID,
         )
 
         return self.create_task(task, with_default_rules=False)

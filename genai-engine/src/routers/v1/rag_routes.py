@@ -8,7 +8,7 @@ from starlette.responses import Response
 from starlette.status import HTTP_204_NO_CONTENT
 
 from clients.rag_providers.rag_client_constructor import RagClientConstructor
-from dependencies import get_application_config, get_db_session
+from dependencies import get_application_config, get_db_session, get_org_scope
 from repositories.metrics_repository import MetricRepository
 from repositories.rag_providers_repository import RagProvidersRepository
 from repositories.rules_repository import RuleRepository
@@ -41,7 +41,7 @@ from schemas.response_schemas import (
     SearchRagProviderCollectionsResponse,
     SearchRagProviderConfigurationsResponse,
 )
-from utils.users import permission_checker
+from utils.users import enforce_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
 rag_routes = APIRouter(
@@ -62,6 +62,7 @@ rag_router_tag = "RAG Providers"
     tags=[rag_router_tag],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def create_rag_provider(
     request: RagProviderConfigurationRequest,
     task_id: str = Path(
@@ -100,6 +101,7 @@ def create_rag_provider(
     tags=[rag_router_tag],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def get_rag_providers(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -156,10 +158,13 @@ def get_rag_provider(
     provider_id: UUID = Path(description="ID of RAG provider configuration."),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> RagProviderConfigurationResponse:
     try:
         rag_providers_repo = RagProvidersRepository(db_session)
-        config = rag_providers_repo.get_rag_provider_configuration(provider_id)
+        config = rag_providers_repo.get_rag_provider_configuration(
+            provider_id, org_scope=org_scope
+        )
         return config.to_response_model()
     finally:
         db_session.close()
@@ -179,11 +184,16 @@ def update_rag_provider(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> RagProviderConfigurationResponse:
     try:
         rag_providers_repo = RagProvidersRepository(db_session)
-        rag_providers_repo.update_rag_provider_configuration(provider_id, request)
-        config = rag_providers_repo.get_rag_provider_configuration(provider_id)
+        rag_providers_repo.update_rag_provider_configuration(
+            provider_id, request, org_scope=org_scope
+        )
+        config = rag_providers_repo.get_rag_provider_configuration(
+            provider_id, org_scope=org_scope
+        )
         return config.to_response_model()
     finally:
         db_session.close()
@@ -202,10 +212,13 @@ def delete_rag_provider(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> Response:
     try:
         rag_providers_repo = RagProvidersRepository(db_session)
-        rag_providers_repo.delete_rag_provider_configuration(provider_id)
+        rag_providers_repo.delete_rag_provider_configuration(
+            provider_id, org_scope=org_scope
+        )
         return Response(status_code=HTTP_204_NO_CONTENT)
     finally:
         db_session.close()
@@ -224,11 +237,13 @@ def list_rag_provider_collections(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> SearchRagProviderCollectionsResponse:
     try:
         rag_providers_repo = RagProvidersRepository(db_session)
         rag_provider_config = rag_providers_repo.get_rag_provider_configuration(
             provider_id,
+            org_scope=org_scope,
         )
         rag_client_constructor = RagClientConstructor(rag_provider_config)
         return rag_client_constructor.list_collections()
@@ -243,6 +258,7 @@ def list_rag_provider_collections(
     tags=[rag_router_tag],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def test_rag_provider_connection(
     request: RagProviderTestConfigurationRequest,
     task_id: str = Path(
@@ -286,11 +302,13 @@ def execute_similarity_text_search(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> RagProviderQueryResponse:
     try:
         rag_providers_repo = RagProvidersRepository(db_session)
         rag_provider_config = rag_providers_repo.get_rag_provider_configuration(
             provider_id,
+            org_scope=org_scope,
         )
         rag_client_constructor = RagClientConstructor(rag_provider_config)
         return rag_client_constructor.execute_similarity_text_search(request)
@@ -312,11 +330,13 @@ def execute_keyword_search(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> RagProviderQueryResponse:
     try:
         rag_providers_repo = RagProvidersRepository(db_session)
         rag_provider_config = rag_providers_repo.get_rag_provider_configuration(
             provider_id,
+            org_scope=org_scope,
         )
         rag_client_constructor = RagClientConstructor(rag_provider_config)
         return rag_client_constructor.execute_keyword_search(request)
@@ -338,11 +358,13 @@ def execute_hybrid_search(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> RagProviderQueryResponse:
     try:
         rag_providers_repo = RagProvidersRepository(db_session)
         rag_provider_config = rag_providers_repo.get_rag_provider_configuration(
             provider_id,
+            org_scope=org_scope,
         )
         rag_client_constructor = RagClientConstructor(rag_provider_config)
         return rag_client_constructor.execute_hybrid_search(request)

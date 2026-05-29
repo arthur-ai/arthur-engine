@@ -2,12 +2,45 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 05/29/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/demos/chatbot/stream  deleted the `header` request parameter `x-user-timezone`
+
+# 05/29/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/demos/chatbot/stream  added the new optional `header` request parameter `x-user-timezone`
+- **CHANGE** for **URL**: /api/v2/tenant/signup  added the new optional request property `recaptcha_token`
+- **CHANGE** for **URL**: /api/v2/tenant/signup  the `attribution_other` request property default value `` was removed
+- **CHANGE** for **URL**: /api/v2/tenant/signup  the `competitor_other` request property default value `` was removed
+- **CHANGE** for **URL**: /api/v2/tenant/signup  request property `form_data/attribution_other` list-of-types was widened by adding types `null` to media type `application/json`
+- **CHANGE** for **URL**: /api/v2/tenant/signup  request property `form_data/competitor_other` list-of-types was widened by adding types `null` to media type `application/json`
+
+# 05/26/2026
+- **BREAKING CHANGE** for **URL**: /api/v2/onboarding/submissions  api path removed without deprecation
+- **CHANGE** for Component/Schema:  removed the schema `OnboardingSubmissionRequest`
+- **CHANGE** for Component/Schema:  removed the schema `OnboardingSubmissionResponse`
+- **BREAKING CHANGE** for **URL**: /api/v2/tenant/signup  added required request body
+- **CHANGE** for **URL**: /api/v2/tenant/signup  added the non-success response with the status `422`
+
 # 05/21/2026
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the required property 'transforms/items/definition' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the required property 'definition' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the required property 'definition' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/traces/transforms/{transform_id}  added the required property 'definition' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tenant/signup  endpoint added
 - **CHANGE** for **URL**: /auth/api_keys/  added the new 'TENANT-USER' enum value to the request property 'roles/anyOf[subschema #1]/items/'
+
+# 05/20/2026
+- **CHANGE** for **URL**: /users/me  endpoint added
+
+# 05/19/2026
+- **CHANGE** for **URL**: /api/v2/onboarding/submissions  endpoint added (public)
+
+# 05/18/2026
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/chatbot/stream  added the new optional request property 'session_id'
+- **BREAKING CHANGE** for **URL**: /api/v1/chatbot/history/{conversation_id}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/chatbot/stream  added the new required request property 'history'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/chatbot/stream  removed the request property 'conversation_id'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/chatbot/stream  removed the request property 'message'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/demos/chatbot/stream  endpoint added
 
 # 05/15/2026
 - **CHANGE** for **URL**: /api/v2/validate endpoint added
