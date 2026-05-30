@@ -191,8 +191,8 @@ describe("task tour config", () => {
     const inspectPromptStep = promptsSection?.steps.find((step) => step.id === "inspect-prompt");
     const openInPlaygroundStep = promptsSection?.steps.find((step) => step.id === "open-in-playground");
     const duplicatePromptStep = promptsSection?.steps.find((step) => step.id === "duplicate-prompt-in-playground");
-    const addPromptStep = promptsSection?.steps.find((step) => step.id === "add-prompt-in-playground");
     const reviewPromptStep = promptsSection?.steps.find((step) => step.id === "review-playground-prompt");
+    const openVariablesStep = promptsSection?.steps.find((step) => step.id === "open-variables");
     const reviewControlsStep = promptsSection?.steps.find((step) => step.id === "review-playground-controls");
     const reviewNotebookStep = promptsSection?.steps.find((step) => step.id === "review-notebook");
 
@@ -209,21 +209,21 @@ describe("task tour config", () => {
       popover: { placement: "left" },
     });
     expect(duplicatePromptStep?.route).toBeUndefined();
-    expect(addPromptStep).toMatchObject({
-      target: { kind: "selector", selector: tourSelector(TOUR_IDS.playgroundAddPrompt) },
-      advanceOn: expect.arrayContaining([{ type: "click" }]),
-      popover: { placement: "left" },
-    });
-    expect(addPromptStep?.route).toBeUndefined();
     expect(reviewPromptStep).toMatchObject({
       target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.playgroundPromptCard },
       advanceOn: [{ type: "manual" }],
       popover: { showNext: true },
     });
-    expect(reviewControlsStep).toMatchObject({
+    expect(openVariablesStep).toMatchObject({
       target: { kind: "selector", selector: tourSelector(TOUR_IDS.playgroundVariablesButton) },
-      advanceOn: [{ type: "manual" }],
-      popover: { showNext: true },
+      advanceOn: expect.arrayContaining([{ type: "click" }]),
+      popover: { placement: "bottom" },
+    });
+    expect(openVariablesStep?.route).toBeUndefined();
+    expect(reviewControlsStep).toMatchObject({
+      target: { kind: "selector", selector: tourSelector(TOUR_IDS.playgroundVariablesPanel) },
+      advanceOn: [{ type: "action", name: TASK_TOUR_ACTIONS.playgroundVariablesReviewed }],
+      popover: { placement: "left" },
     });
     expect(reviewNotebookStep).toMatchObject({
       target: { kind: "selector", selector: tourSelector(TOUR_IDS.playgroundPanel) },

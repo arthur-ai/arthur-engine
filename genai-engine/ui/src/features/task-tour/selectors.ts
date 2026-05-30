@@ -87,6 +87,8 @@ export const TOUR_IDS = {
   playgroundPromptCard: "task-tour-playground-prompt-card",
   /** Variables control in the playground header. */
   playgroundVariablesButton: "task-tour-playground-variables",
+  /** Opened Variables panel surface (Base UI popover) in the playground header. */
+  playgroundVariablesPanel: "task-tour-playground-variables-panel",
   /** Save icon-button on a playground prompt card — used to nudge saving a new prompt version. */
   playgroundSavePrompt: "task-tour-playground-save-prompt",
   /** Root panel of the prompts playground — used for the full-notebook wrap-up step. */

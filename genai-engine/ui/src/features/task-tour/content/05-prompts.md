@@ -18,10 +18,10 @@ steps:
     title: Open it in the playground
   - id: duplicate-prompt-in-playground
     title: Duplicate the prompt
-  - id: add-prompt-in-playground
-    title: Add a new prompt
   - id: review-playground-prompt
     title: Review the prompt card
+  - id: open-variables
+    title: Open the variables panel
   - id: review-playground-controls
     title: Review variables and config
   - id: save-prompt-version
@@ -64,19 +64,19 @@ Click **Open in Playground** from the prompt detail view. This creates or reuses
 
 ## step: duplicate-prompt-in-playground
 
-Click **Duplicate Prompt** to copy the seeded prompt into a side-by-side variant. Start from a copy first so you can make targeted edits without losing the original baseline.
-
-## step: add-prompt-in-playground
-
-Click **Add Prompt** to create a fresh side-by-side prompt. You now have both a copied variant and a blank candidate to compare.
+Click **Duplicate Prompt** to copy the seeded prompt into a side-by-side variant. Start from a copy so you can make targeted edits without losing the original baseline.
 
 ## step: review-playground-prompt
 
-Use this new prompt card to draft a tighter system prompt for readability. Try a different model or edit the messages — anything that might fix the failure.
+Use this duplicated prompt card to draft a tighter system prompt for readability. Try a different model or edit the messages — anything that might fix the failure.
+
+## step: open-variables
+
+Click **Variables** to open the panel where you fill in the values your prompts run against.
 
 ## step: review-playground-controls
 
-Variables and config control what data your prompts run against. Review them before you move on so the experiment compares the same scenario fairly.
+This is the variables panel. The values here control what data your prompts run against — review or fill them in so the experiment compares the same scenario fairly, then close the panel to continue.
 
 ## step: save-prompt-version
 

@@ -372,11 +372,6 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
         actionName: TASK_TOUR_ACTIONS.playgroundPromptsCreated,
         popover: { placement: "left" },
       },
-      "add-prompt-in-playground": {
-        targetId: TOUR_IDS.playgroundAddPrompt,
-        actionName: TASK_TOUR_ACTIONS.playgroundPromptsCreated,
-        popover: { placement: "left" },
-      },
       "review-playground-prompt": {
         targetId: TOUR_IDS.playgroundPromptCard,
         targetHookId: TASK_TOUR_QUERY_HOOKS.playgroundPromptCard,
@@ -384,11 +379,22 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
         advance: "manual",
         popover: { showNext: true, nextLabel: "Next", placement: "right" },
       },
-      "review-playground-controls": {
+      // Composite variables beat: the trigger step spotlights the Variables
+      // button and advances on click (which opens the Base UI popover), then
+      // `review-playground-controls` spotlights the opened panel surface and
+      // advances when the user closes it. Closing is the advance gesture so
+      // the spotlight target (the popover) never gets stranded the way a
+      // manual "Next" would when the popover dismisses on outside-press.
+      "open-variables": {
         targetId: TOUR_IDS.playgroundVariablesButton,
         actionName: TASK_TOUR_ACTIONS.playgroundPromptsCreated,
-        advance: "manual",
-        popover: { showNext: true, nextLabel: "Next", placement: "bottom" },
+        popover: { placement: "bottom" },
+      },
+      "review-playground-controls": {
+        targetId: TOUR_IDS.playgroundVariablesPanel,
+        actionName: TASK_TOUR_ACTIONS.playgroundVariablesReviewed,
+        advance: "action-only",
+        popover: { placement: "left" },
       },
       // Nudge the user to persist a prompt as a new version before they leave
       // the notebook. The save control lives on every prompt card, so a query
