@@ -6,6 +6,8 @@ import { SidebarNavigation } from "@/components/SidebarNavigation";
 import { TaskErrorState } from "@/components/TaskErrorState";
 import { TaskLoadingState } from "@/components/TaskLoadingState";
 import { TaskNotFoundState } from "@/components/TaskNotFoundState";
+import { useAuth } from "@/contexts/AuthContext";
+import { useDemoMode } from "@/contexts/EngineConfigContext";
 import { TaskProvider } from "@/contexts/TaskContext";
 import { TaskTour } from "@/features/task-tour";
 import { useApi } from "@/hooks/useApi";
@@ -16,6 +18,14 @@ export const TaskLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const api = useApi();
+  const { demoMode } = useDemoMode();
+  const { isTenant } = useAuth();
+  // The guided demo tour is a demo-only experience: it should run only when the
+  // engine is in demo mode AND the signed-in user is a demo tenant. Gating at the
+  // mount point means the tour engine never initializes (and so never auto-starts)
+  // for anyone else. `demoMode` defaults to false while engine-config loads, so the
+  // tour stays off until both conditions are confirmed.
+  const showTaskTour = demoMode && isTenant;
   const [task, setTask] = useState<TaskResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -105,7 +115,7 @@ export const TaskLayout: React.FC = () => {
           {task && (
             <TaskProvider task={task}>
               <Outlet />
-              <TaskTour taskId={task.id} workspaceLabel={task.name} />
+              {showTaskTour && <TaskTour taskId={task.id} workspaceLabel={task.name} />}
             </TaskProvider>
           )}
         </main>
