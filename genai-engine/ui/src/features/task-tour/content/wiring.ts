@@ -97,6 +97,7 @@ export const TASK_TOUR_QUERY_HOOKS = {
   promptOpenInPlayground: "task-tour.promptOpenInPlayground",
   promptTags: "task-tour.promptTags",
   playgroundPromptCard: "task-tour.playgroundPromptCard",
+  playgroundSavePrompt: "task-tour.playgroundSavePrompt",
   createExperimentEntry: "task-tour.createExperimentEntry",
   createExperimentInfo: "task-tour.createExperimentInfo",
   createExperimentPromptMappings: "task-tour.createExperimentPromptMappings",
@@ -389,6 +390,17 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
         advance: "manual",
         popover: { showNext: true, nextLabel: "Next", placement: "bottom" },
       },
+      // Nudge the user to persist a prompt as a new version before they leave
+      // the notebook. The save control lives on every prompt card, so a query
+      // hook scopes the highlight to the newest card. Manual advance (with a
+      // Next button) keeps the step unblocked regardless of save state.
+      "save-prompt-version": {
+        targetId: TOUR_IDS.playgroundSavePrompt,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.playgroundSavePrompt,
+        actionName: TASK_TOUR_ACTIONS.playgroundPromptsCreated,
+        advance: "manual",
+        popover: { showNext: true, nextLabel: "Next", placement: "bottom" },
+      },
       // Final notebook beat: highlight the whole playground panel and wait for
       // an explicit Next click before `open-create-experiment` navigates the
       // user out to the experiments tab. Without this pause the route change
@@ -450,11 +462,40 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
         actionName: TASK_TOUR_ACTIONS.promptPromoted,
         advance: "action-only",
       },
+      "reopen-demo-agent": {
+        targetId: TOUR_IDS.navDemoAgent,
+        actionName: TASK_TOUR_ACTIONS.demoAgentOpened,
+        route: "chatbot",
+      },
+      "send-verification-message": {
+        targetId: TOUR_IDS.chatSendPlaceholder,
+        actionName: TASK_TOUR_ACTIONS.demoAgentMessageSent,
+        route: "chatbot",
+        advance: "action-only",
+        formPrefill: {
+          targetId: TOUR_IDS.chatSendPlaceholder,
+          value: "What are AI Agent Evals?",
+        },
+      },
+      "review-verification-message": {
+        targetId: TOUR_IDS.chatWindow,
+        actionName: TASK_TOUR_ACTIONS.demoAgentMessageSent,
+        advance: "manual",
+        popover: { showNext: true, nextLabel: "Next", placement: "top" },
+      },
       "verify-eval-passes": {
         targetId: TOUR_IDS.navObserve,
-        route: "traces",
         actionName: TASK_TOUR_ACTIONS.deployVerified,
-        advance: "action-only",
+      },
+      // Closing beat: drop the user on the freshest trace and advance when they
+      // open it. Reuses the traces-first-row query hook (the latest trace sorts
+      // to the top of the table) and the `traceOpened` action emitted when the
+      // drawer opens — same pattern as the `open-trace` step.
+      "review-latest-trace": {
+        targetId: TOUR_IDS.tracesFirstRow,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.tracesFirstRow,
+        route: "traces",
+        actionName: TASK_TOUR_ACTIONS.traceOpened,
       },
     },
   },

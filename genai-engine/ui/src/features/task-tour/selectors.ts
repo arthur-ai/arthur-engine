@@ -48,6 +48,8 @@ export const TOUR_IDS = {
   /** Judge-model field on the evaluator full-screen detail view. */
   evaluatorDetailModel: "task-tour-evaluator-detail-model",
   testNotebookCreate: "task-tour-test-notebook-create",
+  /** Full chat panel surface for Demo Agent mini-tour pauses. */
+  chatWindow: "task-tour-chat-window",
   chatSendPlaceholder: "task-tour-chat-send",
   datasetsEntry: "task-tour-datasets-entry",
   /** First row in the datasets list — used for "open the pre-loaded dataset". */
@@ -85,6 +87,8 @@ export const TOUR_IDS = {
   playgroundPromptCard: "task-tour-playground-prompt-card",
   /** Variables control in the playground header. */
   playgroundVariablesButton: "task-tour-playground-variables",
+  /** Save icon-button on a playground prompt card — used to nudge saving a new prompt version. */
+  playgroundSavePrompt: "task-tour-playground-save-prompt",
   /** Root panel of the prompts playground — used for the full-notebook wrap-up step. */
   playgroundPanel: "task-tour-playground-panel",
   /** "Experiment" button in the prompts view (visible on the Runs tab). */

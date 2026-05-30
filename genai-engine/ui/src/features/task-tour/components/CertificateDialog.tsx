@@ -1,5 +1,5 @@
 import { downloadFile } from "@arthur/shared-components";
-import { useToPng } from "@hugocxl/react-to-image";
+import { useToBlob } from "@hugocxl/react-to-image";
 import CloseIcon from "@mui/icons-material/Close";
 import DownloadIcon from "@mui/icons-material/Download";
 import LinkedInIcon from "@mui/icons-material/LinkedIn";
@@ -36,9 +36,14 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
   const linkedInShareHref = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
   const xShareHref = `https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
 
-  const [, toPng, ref] = useToPng<HTMLDivElement>({
-    onSuccess: (data) => {
-      downloadFile(data, "certificate.png", "image/png");
+  // Capture to a Blob (not a data-URL string): `downloadFile` writes a Blob's
+  // bytes verbatim, but wraps a string as text — feeding it the data URL from
+  // `useToPng` produced a "PNG" file containing the data-URI text, not pixels.
+  const [, downloadPng, ref] = useToBlob<HTMLDivElement>({
+    onSuccess: (blob) => {
+      if (blob) {
+        downloadFile(blob, "certificate.png", "image/png");
+      }
     },
   });
 
@@ -219,7 +224,7 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
       </Paper>
 
       <Stack direction="row" justifyContent="center" spacing={1} sx={{ px: 2, pb: 1.5, flexWrap: "wrap", rowGap: 1 }}>
-        <Button size="small" variant="contained" color="secondary" startIcon={<DownloadIcon sx={{ fontSize: 16 }} />} onClick={toPng}>
+        <Button size="small" variant="contained" color="secondary" startIcon={<DownloadIcon sx={{ fontSize: 16 }} />} onClick={downloadPng}>
           Download PNG
         </Button>
         <Button

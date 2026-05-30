@@ -12,17 +12,25 @@ steps:
     title: Reopen the winning prompt
   - id: tag-production
     title: Tag the winning prompt as production
+  - id: reopen-demo-agent
+    title: Reopen the Demo Agent
+  - id: send-verification-message
+    title: Send another message
+  - id: review-verification-message
+    title: Review the fresh chat
   - id: verify-eval-passes
     title: Verify the eval passes
+  - id: review-latest-trace
+    title: Check the latest trace
 ---
 
 ## intro
 
-Reopen the winning prompt, tag it as production, then re-run the agent and confirm the readability eval is green on fresh traces. That's the loop closing — the failure you found in Observe is the failure you just shipped a fix for.
+Reopen the winning prompt, tag it as production, then re-run the Demo Agent and confirm the readability eval is green on fresh traces. That's the loop closing — the failure you found in Observe is the failure you just shipped a fix for.
 
 ## scenario
 
-Return to the prompt detail view, promote the best experiment candidate to production, then return to Observe and verify a new trace clears the readability eval.
+Return to the prompt detail view, promote the best experiment candidate to production, send another Demo Agent message, then return to Observe and verify the new trace clears the readability eval.
 
 ## step: open-production-prompt
 
@@ -32,6 +40,22 @@ Open the prompt you want to ship. The production tag is applied from the prompt 
 
 Open the prompt detail view, click the tag icon next to the version chips, and mark this version as production. Whichever version you tag becomes the one production traffic uses. (Mark complete when done.)
 
+## step: reopen-demo-agent
+
+Open **Demo Agent** again from the sidebar. Now that the winning prompt is tagged as production, the next chat run will use that promoted version.
+
+## step: send-verification-message
+
+Send another general-knowledge question to create a fresh trace with the production prompt. Use the same question as before if you want an easy before-and-after comparison.
+
+## step: review-verification-message
+
+Wait for the Demo Agent to finish responding. When the reply is complete, click **Next** so you can check the evals on the new trace.
+
 ## step: verify-eval-passes
 
-Look at the most recent trace produced by the agent. With the new production prompt in place, the Readability Eval should now be passing — that's your proof the fix held. (Mark complete when done.)
+Open **Observe** from the sidebar to see the traces your verification message produced.
+
+## step: review-latest-trace
+
+This is the latest trace — the one from the message you just sent. Open it to check the evals: the **Readability Eval** should now be green. That passing eval is your proof the fix held, closing the loop you started back in Observe.

@@ -20,6 +20,7 @@ interface ChatPanelProps {
   placeholder?: string;
   header?: React.ReactNode;
   inputMaxRows?: number;
+  panelTourId?: string;
   inputTourId?: string;
 }
 
@@ -34,6 +35,7 @@ export function ChatPanel({
   placeholder = "Ask something...",
   header,
   inputMaxRows = 4,
+  panelTourId,
   inputTourId,
 }: ChatPanelProps) {
   const [input, setInput] = useState("");
@@ -65,7 +67,7 @@ export function ChatPanel({
   };
 
   return (
-    <Stack sx={{ height: "100%", minHeight: 0 }}>
+    <Stack data-tour-id={panelTourId} sx={{ height: "100%", minHeight: 0 }}>
       {header}
 
       <Box sx={{ flex: 1, overflowY: "auto", px: 2, py: 2 }}>

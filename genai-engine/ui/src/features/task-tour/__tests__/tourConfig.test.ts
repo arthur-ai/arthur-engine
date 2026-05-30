@@ -291,4 +291,64 @@ describe("task tour config", () => {
       advanceOn: [{ type: "action", name: TASK_TOUR_ACTIONS.promptPromoted }],
     });
   });
+
+  it("guides deploy back through the Demo Agent before verifying fresh evals", () => {
+    const config = buildTourConfig("task-id");
+    const deploySection = config.sections.find((section) => section.id === "deploy");
+    const stepIds = deploySection?.steps.map((step) => step.id);
+    const reopenDemoAgentStep = deploySection?.steps.find((step) => step.id === "reopen-demo-agent");
+    const sendVerificationMessageStep = deploySection?.steps.find((step) => step.id === "send-verification-message");
+    const reviewVerificationMessageStep = deploySection?.steps.find((step) => step.id === "review-verification-message");
+    const verifyEvalStep = deploySection?.steps.find((step) => step.id === "verify-eval-passes");
+    const reviewLatestTraceStep = deploySection?.steps.find((step) => step.id === "review-latest-trace");
+
+    expect(stepIds).toEqual([
+      "open-production-prompt",
+      "tag-production",
+      "reopen-demo-agent",
+      "send-verification-message",
+      "review-verification-message",
+      "verify-eval-passes",
+      "review-latest-trace",
+    ]);
+    expect(reopenDemoAgentStep).toMatchObject({
+      route: {
+        path: "/tasks/:taskId/chatbot",
+        params: { taskId: "task-id" },
+      },
+      target: { kind: "selector", selector: tourSelector(TOUR_IDS.navDemoAgent) },
+      advanceOn: expect.arrayContaining([{ type: "action", name: TASK_TOUR_ACTIONS.demoAgentOpened }]),
+    });
+    expect(sendVerificationMessageStep).toMatchObject({
+      route: {
+        path: "/tasks/:taskId/chatbot",
+        params: { taskId: "task-id" },
+      },
+      target: { kind: "selector", selector: tourSelector(TOUR_IDS.chatSendPlaceholder) },
+      formPrefill: {
+        targetId: TOUR_IDS.chatSendPlaceholder,
+        value: "What are AI Agent Evals?",
+      },
+      advanceOn: [{ type: "action", name: TASK_TOUR_ACTIONS.demoAgentMessageSent }],
+    });
+    expect(reviewVerificationMessageStep).toMatchObject({
+      target: { kind: "selector", selector: tourSelector(TOUR_IDS.chatWindow) },
+      advanceOn: [{ type: "manual" }],
+      popover: { showNext: true, nextLabel: "Next" },
+    });
+    expect(reviewVerificationMessageStep?.route).toBeUndefined();
+    expect(verifyEvalStep).toMatchObject({
+      target: { kind: "selector", selector: tourSelector(TOUR_IDS.navObserve) },
+      advanceOn: expect.arrayContaining([{ type: "click" }, { type: "action", name: TASK_TOUR_ACTIONS.deployVerified }]),
+    });
+    expect(verifyEvalStep?.route).toBeUndefined();
+    expect(reviewLatestTraceStep).toMatchObject({
+      route: {
+        path: "/tasks/:taskId/traces",
+        params: { taskId: "task-id" },
+      },
+      target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.tracesFirstRow },
+      advanceOn: expect.arrayContaining([{ type: "action", name: TASK_TOUR_ACTIONS.traceOpened }]),
+    });
+  });
 });

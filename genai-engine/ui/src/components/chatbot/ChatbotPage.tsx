@@ -65,6 +65,7 @@ export function ChatbotPage() {
           emptyStateText="Ask the demo agent any general-knowledge question. It can search and fetch Wikipedia articles."
           placeholder="Ask the demo agent..."
           inputMaxRows={8}
+          panelTourId={TOUR_IDS.chatWindow}
           inputTourId={TOUR_IDS.chatSendPlaceholder}
         />
       </Box>

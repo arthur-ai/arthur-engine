@@ -22,6 +22,12 @@ export function resolvePlaygroundPromptCardTarget(): Element | null {
   return document.querySelector(tourSelector(TOUR_IDS.playgroundAddPrompt));
 }
 
+export function resolvePlaygroundSavePromptTarget(): Element | null {
+  const cards = document.querySelectorAll(tourSelector(TOUR_IDS.playgroundPromptCard));
+  const newestCard = cards[cards.length - 1];
+  return newestCard?.querySelector(tourSelector(TOUR_IDS.playgroundSavePrompt)) ?? document.querySelector(tourSelector(TOUR_IDS.playgroundSavePrompt));
+}
+
 export function resolvePromptTagsTarget(): Element | null {
   return document.querySelector(tourSelector(TOUR_IDS.promptTagsPopover)) ?? document.querySelector(tourSelector(TOUR_IDS.promptAddTag));
 }
@@ -61,6 +67,7 @@ export function PromptTargetWidget() {
   useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.promptOpenInPlayground, resolvePromptOpenInPlaygroundTarget);
   useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.promptTags, resolvePromptTagsTarget);
   useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.playgroundPromptCard, resolvePlaygroundPromptCardTarget);
+  useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.playgroundSavePrompt, resolvePlaygroundSavePromptTarget);
   useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.createExperimentEntry, resolveCreateExperimentEntryTarget);
   useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.createExperimentInfo, resolveCreateExperimentInfoTarget);
   useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.createExperimentPromptMappings, resolveCreateExperimentPromptMappingsTarget);

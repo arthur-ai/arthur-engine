@@ -10,6 +10,7 @@ import { TryItOutForm, type TryItOutSubmission } from "../try-it-out-form";
 import type { TryItOutSubmitMeta } from "../try-it-out-form/types";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { storeRecipientName } from "@/features/task-tour/recipientName";
 import { EVENT_NAMES, identify, track } from "@/services/amplitude";
 
 export const OnboardingPage: React.FC = () => {
@@ -38,6 +39,10 @@ export const OnboardingPage: React.FC = () => {
         jobTitle: data.jobTitle,
         company: data.company,
       });
+
+      // Remember the recipient for the tour completion certificate, which renders
+      // after the user lands in the app post-signup.
+      storeRecipientName(`${data.firstName} ${data.lastName}`);
 
       const authenticated = await login(signup.api_key);
       if (authenticated) {

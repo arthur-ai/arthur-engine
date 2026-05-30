@@ -183,6 +183,7 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
       <Tooltip title={saveTooltip} placement="top-start" arrow>
         <IconButton
           aria-label="save"
+          data-tour-id={TOUR_IDS.playgroundSavePrompt}
           onClick={handleSavePromptOpen}
           sx={{
             ...(needsSave && {

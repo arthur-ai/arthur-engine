@@ -24,6 +24,8 @@ steps:
     title: Review the prompt card
   - id: review-playground-controls
     title: Review variables and config
+  - id: save-prompt-version
+    title: Save the prompt
   - id: review-notebook
     title: Review your notebook
   - id: open-create-experiment
@@ -75,6 +77,10 @@ Use this new prompt card to draft a tighter system prompt for readability. Try a
 ## step: review-playground-controls
 
 Variables and config control what data your prompts run against. Review them before you move on so the experiment compares the same scenario fairly.
+
+## step: save-prompt-version
+
+Click the **Save** icon on this prompt card to store it as a new prompt version. Save at least one prompt before moving on — each saved version is a candidate you can pit against the others in an experiment.
 
 ## step: review-notebook
 

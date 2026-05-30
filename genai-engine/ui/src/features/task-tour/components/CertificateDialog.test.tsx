@@ -1,3 +1,4 @@
+import { downloadFile } from "@arthur/shared-components";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -7,9 +8,36 @@ vi.mock("@arthur/shared-components", () => ({
   downloadFile: vi.fn(),
 }));
 
+// Mirror the real capture library: each hook's `onSuccess` receives the same
+// kind of value html-to-image produces — `toPng` a base64 data-URL *string*,
+// `toBlob` a real `Blob`. The trigger (2nd tuple slot) fires that callback.
+vi.mock("@hugocxl/react-to-image", () => {
+  const makeHook =
+    (payload: unknown) =>
+    (options?: { onSuccess?: (data: unknown) => void }) => {
+      const trigger = () => options?.onSuccess?.(payload);
+      return [{ status: "idle" }, trigger, () => {}];
+    };
+  return {
+    useToPng: makeHook(
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgYGAAAAAEAAH2FzhVAAAAAElFTkSuQmCC",
+    ),
+    useToBlob: makeHook(new Blob([new Uint8Array([137, 80, 78, 71])], { type: "image/png" })),
+  };
+});
+
 describe("CertificateDialog", () => {
   afterEach(() => {
     cleanup();
+    vi.clearAllMocks();
+  });
+
+  it("downloads a real PNG blob, not the data-URL string", () => {
+    render(<CertificateDialog open onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /download png/i }));
+
+    expect(downloadFile).toHaveBeenCalledWith(expect.any(Blob), "certificate.png", "image/png");
   });
 
   it("renders the achievement certificate design and sharing actions", () => {

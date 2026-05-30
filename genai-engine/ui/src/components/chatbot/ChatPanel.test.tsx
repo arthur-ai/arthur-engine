@@ -11,8 +11,8 @@ afterEach(() => {
   cleanup();
 });
 
-function renderPanel(inputTourId = "task-tour-chat-send") {
-  render(
+function renderPanel(inputTourId = "task-tour-chat-send", panelTourId?: string) {
+  return render(
     <ChatPanel
       messages={[]}
       isStreaming={false}
@@ -21,6 +21,7 @@ function renderPanel(inputTourId = "task-tour-chat-send") {
       onAbort={vi.fn()}
       placeholder="Ask the demo agent..."
       inputTourId={inputTourId}
+      panelTourId={panelTourId}
     />
   );
 }
@@ -52,5 +53,11 @@ describe("ChatPanel task tour prefill", () => {
     });
 
     expect((screen.getByPlaceholderText("Ask the demo agent...") as HTMLTextAreaElement).value).toBe("User typed first");
+  });
+
+  it("can expose the whole chat panel as a task-tour target", () => {
+    const { container } = renderPanel("task-tour-chat-send", "task-tour-chat-window");
+
+    expect(container.querySelector('[data-tour-id="task-tour-chat-window"]')).toBeTruthy();
   });
 });

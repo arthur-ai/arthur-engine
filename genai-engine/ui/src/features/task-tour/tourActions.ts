@@ -137,5 +137,8 @@ export const TASK_TOUR_TARGET_LOST_HINTS: Partial<Record<string, string>> = {
   "prompts.review-playground-controls": "Use the playground header to review variables before configuring the experiment.",
   "deploy.open-production-prompt": "Open the Prompts tab, then click the prompt you want to promote.",
   "deploy.tag-production": "Open a prompt detail view and tag the winning version as production.",
+  "deploy.reopen-demo-agent": "Open the Demo Agent so you can generate a fresh trace with the production prompt.",
+  "deploy.send-verification-message": "Send another Demo Agent message to create a fresh trace before checking evals.",
+  "deploy.review-verification-message": "Stay on the Demo Agent until the fresh response finishes, then continue.",
   "deploy.verify-eval-passes": "Open Observe and inspect a fresh trace to confirm the eval passes.",
 };
