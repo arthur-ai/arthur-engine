@@ -59,7 +59,7 @@ function buildStep(taskId: string, item: TaskTourItem, opts: BuildTourConfigOpti
       padding: 6,
       options: { radius: 10 },
     },
-    overlay: { blockInteraction: true, onBackdropClick: "none", color: TASK_TOUR_BACKDROP_COLOR },
+    overlay: { blockInteraction: item.blockInteraction ?? true, onBackdropClick: "none", color: TASK_TOUR_BACKDROP_COLOR },
     ...(route ? { route } : {}),
     ...(item.popover ? { popover: item.popover } : {}),
     ...(item.formPrefill ? { formPrefill: item.formPrefill } : {}),

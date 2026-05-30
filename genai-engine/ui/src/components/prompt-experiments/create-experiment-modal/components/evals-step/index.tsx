@@ -38,7 +38,7 @@ export const EvalsStep = withForm({
     return (
       <>
         <DialogContent>
-          <Stack py={2} gap={2}>
+          <Stack py={2} gap={2} data-tour-id={TOUR_IDS.createExperimentEvalMappingsList}>
             {evaluators.map((evaluator, index) => (
               <Stack key={index} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1, p: 2 }} gap={2} position="relative">
                 <Stack alignItems="flex-start">

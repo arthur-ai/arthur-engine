@@ -30,10 +30,22 @@ steps:
     title: Review your notebook
   - id: open-create-experiment
     title: Start an experiment
-  - id: complete-experiment-info
-    title: Configure experiment info
-  - id: complete-prompt-mapping
+  - id: experiment-info-name
+    title: Name the experiment
+  - id: experiment-info-versions
+    title: Pick prompt versions
+  - id: experiment-info-dataset
+    title: Choose the dataset
+  - id: experiment-info-evaluators
+    title: Add the evaluators
+  - id: review-experiment-info
+    title: Review the experiment setup
+  - id: explain-prompt-mapping
     title: Map prompt variables
+  - id: complete-prompt-mapping
+    title: Review the variable mapping
+  - id: explain-eval-mapping
+    title: Map evaluator variables
   - id: create-experiment
     title: Create the experiment
 ---
@@ -90,14 +102,38 @@ This is your notebook — prompts, variables, and config all live together here 
 
 Open the Experiment menu and choose **Create New**. The tour will stay with you inside the modal while you configure the run.
 
-## step: complete-experiment-info
+## step: experiment-info-name
 
-Fill out the experiment basics: name the run, choose the candidate prompt versions, select the dataset version with the captured failure, and add the evals that should judge the result.
+Start by naming the run — a clear name (and an optional description) makes it easy to find later when you're comparing results. Click **Next** when you're done.
+
+## step: experiment-info-versions
+
+Choose the candidate prompt versions you want to pit against each other. These are the saved variants from your notebook — pick the ones worth comparing, then click **Next**.
+
+## step: experiment-info-dataset
+
+Select the dataset and version that holds the captured failure. This is the data every prompt version will run against, so the comparison stays fair. Click **Next** to continue.
+
+## step: experiment-info-evaluators
+
+Add the evals that should judge each result — these decide which variant actually wins. Once your evaluators are in, click **Next**.
+
+## step: review-experiment-info
+
+Here's the full setup for the run — name, prompt versions, dataset, and evals. Give it a once-over, and when it looks right, click **Configure Prompts** to wire up the variables.
+
+## step: explain-prompt-mapping
+
+Map each prompt variable to the dataset column that should feed it. Exact name matches are filled in for you — just confirm them, then click **Next**.
 
 ## step: complete-prompt-mapping
 
-Map each prompt variable to the dataset column that should feed it. Exact name matches are filled in for you, but review them before continuing.
+That's your prompt-to-data wiring. When the mappings look right, click **Configure Evals** to set up the judges (or **Create Experiment** if you skipped evals).
+
+## step: explain-eval-mapping
+
+For each evaluator, map its variables to a dataset column or to the experiment's output. Wire them up, then click **Next**.
 
 ## step: create-experiment
 
-Review the final mappings, then click **Create Experiment**. If evals are configured, choose whether each eval variable comes from the dataset or from the prompt output before creating the run.
+This is the final review. Confirm the eval mappings, then click **Create Experiment** to launch the run.

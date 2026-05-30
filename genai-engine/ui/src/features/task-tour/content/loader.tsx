@@ -137,6 +137,7 @@ function buildItems(sectionId: string, frontmatter: SectionFrontmatter, bodyStep
       skipWhenEmptyKey: wired.skipWhenEmptyKey,
       popover: wired.popover,
       formPrefill: wired.formPrefill,
+      blockInteraction: wired.blockInteraction,
     };
   });
 }

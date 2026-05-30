@@ -238,8 +238,14 @@ describe("task tour config", () => {
     const promptsSection = config.sections.find((section) => section.id === "prompts");
 
     const openCreateStep = promptsSection?.steps.find((step) => step.id === "open-create-experiment");
-    const infoStep = promptsSection?.steps.find((step) => step.id === "complete-experiment-info");
+    const infoNameStep = promptsSection?.steps.find((step) => step.id === "experiment-info-name");
+    const infoVersionsStep = promptsSection?.steps.find((step) => step.id === "experiment-info-versions");
+    const infoDatasetStep = promptsSection?.steps.find((step) => step.id === "experiment-info-dataset");
+    const infoEvaluatorsStep = promptsSection?.steps.find((step) => step.id === "experiment-info-evaluators");
+    const reviewInfoStep = promptsSection?.steps.find((step) => step.id === "review-experiment-info");
+    const explainPromptMappingStep = promptsSection?.steps.find((step) => step.id === "explain-prompt-mapping");
     const promptMappingStep = promptsSection?.steps.find((step) => step.id === "complete-prompt-mapping");
+    const explainEvalMappingStep = promptsSection?.steps.find((step) => step.id === "explain-eval-mapping");
     const createExperimentStep = promptsSection?.steps.find((step) => step.id === "create-experiment");
 
     expect(openCreateStep).toMatchObject({
@@ -250,25 +256,78 @@ describe("task tour config", () => {
       },
       target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.createExperimentEntry },
       advanceOn: [{ type: "action", name: TASK_TOUR_ACTIONS.createExperimentModalOpened }],
+      // The entry beat spotlights a normal page button — keep the click trap.
+      overlay: { blockInteraction: true },
     });
 
-    expect(infoStep).toMatchObject({
+    // Each form step walks its sections via manual "Next" beats, then ends with
+    // a whole-form "review" beat that advances on the real submit click (no Next
+    // button). Every beat inside the modal disables the backdrop so the rest of
+    // the form (and its portaled dropdowns) stays interactive.
+    expect(infoNameStep).toMatchObject({
+      target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.createExperimentInfoName },
+      advanceOn: [{ type: "manual" }],
+      popover: { showNext: true, placement: "left" },
+      overlay: { blockInteraction: false },
+    });
+    expect(infoVersionsStep).toMatchObject({
+      target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.createExperimentInfoVersions },
+      advanceOn: [{ type: "manual" }],
+      popover: { showNext: true, placement: "left" },
+      overlay: { blockInteraction: false },
+    });
+    expect(infoDatasetStep).toMatchObject({
+      target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.createExperimentInfoDataset },
+      advanceOn: [{ type: "manual" }],
+      popover: { showNext: true, placement: "left" },
+      overlay: { blockInteraction: false },
+    });
+    // Evaluators now advances via Next like the other sections; the whole-form
+    // review beat below is what hands off on the real submit.
+    expect(infoEvaluatorsStep).toMatchObject({
+      target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.createExperimentInfoEvaluators },
+      advanceOn: [{ type: "manual" }],
+      popover: { showNext: true, placement: "left" },
+      overlay: { blockInteraction: false },
+    });
+    expect(reviewInfoStep).toMatchObject({
       target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.createExperimentInfo },
       advanceOn: [{ type: "action", name: TASK_TOUR_ACTIONS.createExperimentInfoCompleted }],
       popover: { placement: "left" },
+      overlay: { blockInteraction: false },
     });
+    // Review beats carry no popover Next button — only the submit action advances.
+    expect(reviewInfoStep?.popover).not.toHaveProperty("showNext", true);
 
+    expect(explainPromptMappingStep).toMatchObject({
+      target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.createExperimentPromptMappingsList },
+      advanceOn: [{ type: "manual" }],
+      popover: { showNext: true, placement: "left" },
+      overlay: { blockInteraction: false },
+    });
     expect(promptMappingStep).toMatchObject({
       target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.createExperimentPromptMappings },
       advanceOn: [{ type: "action", name: TASK_TOUR_ACTIONS.createExperimentPromptMappingsCompleted }],
       popover: { placement: "left" },
+      overlay: { blockInteraction: false },
     });
 
+    // The eval beats only render when evaluators were selected, so both carry a
+    // skipWhen predicate that auto-skips them when the task has no evals.
+    expect(explainEvalMappingStep).toMatchObject({
+      target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.createExperimentEvalMappingsList },
+      advanceOn: [{ type: "manual" }],
+      popover: { showNext: true, placement: "left" },
+      overlay: { blockInteraction: false },
+    });
+    expect(explainEvalMappingStep?.skipWhen).toBeDefined();
     expect(createExperimentStep).toMatchObject({
       target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.createExperimentFinal },
       advanceOn: [{ type: "action", name: TASK_TOUR_ACTIONS.createExperimentCreated }],
       popover: { placement: "left" },
+      overlay: { blockInteraction: false },
     });
+    expect(createExperimentStep?.skipWhen).toBeDefined();
   });
 
   it("routes deploy back to the prompt detail before production tagging", () => {

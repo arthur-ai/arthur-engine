@@ -101,10 +101,22 @@ export const TOUR_IDS = {
   createExperimentModal: "task-tour-create-experiment-modal",
   /** Experiment Info section inside the Create Experiment dialog. */
   createExperimentInfoStep: "task-tour-create-experiment-info",
+  /** Name + Description fields inside the Experiment Info step. */
+  createExperimentInfoName: "task-tour-create-experiment-info-name",
+  /** Prompt Versions block inside the Experiment Info step. */
+  createExperimentInfoVersions: "task-tour-create-experiment-info-versions",
+  /** Dataset block inside the Experiment Info step. */
+  createExperimentInfoDataset: "task-tour-create-experiment-info-dataset",
+  /** Evaluators block inside the Experiment Info step. */
+  createExperimentInfoEvaluators: "task-tour-create-experiment-info-evaluators",
   /** Configure Prompts section inside the Create Experiment dialog. */
   createExperimentPromptMappingsStep: "task-tour-create-experiment-prompt-mappings",
+  /** Prompt-variable mapping list inside the Configure Prompts step. */
+  createExperimentPromptMappingsList: "task-tour-create-experiment-prompt-mappings-list",
   /** Configure Evals section inside the Create Experiment dialog. */
   createExperimentEvalMappingsStep: "task-tour-create-experiment-eval-mappings",
+  /** Eval-variable mapping list inside the Configure Evals step. */
+  createExperimentEvalMappingsList: "task-tour-create-experiment-eval-mappings-list",
   /** Final Create Experiment action in the dialog. */
   createExperimentSubmit: "task-tour-create-experiment-submit",
 } as const;

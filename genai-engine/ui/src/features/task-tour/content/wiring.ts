@@ -50,6 +50,13 @@ export type TaskSubRoute =
  *   resolving the target (e.g. open the trace drawer for trace-row steps).
  * - `skipWhenEmptyKey` — opaque key the consumer-side `skipWhen` predicate
  *   reads to auto-skip empty-state steps (e.g. no evaluators).
+ * - `blockInteraction` — overrides the default click-blocking backdrop
+ *   (defaults to `true`). Set `false` for steps that spotlight one region of a
+ *   surface the user must keep interacting with — e.g. a single section of a
+ *   multi-field modal form, where the rest of the form and its portaled
+ *   dropdowns (which render at `document.body`, above the backdrop) must stay
+ *   clickable. The dimming spotlight still draws the eye; only the click trap
+ *   is dropped.
  */
 export interface StepWiring {
   targetId: TourId;
@@ -62,6 +69,7 @@ export interface StepWiring {
   skipWhenEmptyKey?: string;
   popover?: StepPopoverConfig;
   formPrefill?: StepFormPrefill;
+  blockInteraction?: boolean;
 }
 
 /**
@@ -100,8 +108,14 @@ export const TASK_TOUR_QUERY_HOOKS = {
   playgroundSavePrompt: "task-tour.playgroundSavePrompt",
   createExperimentEntry: "task-tour.createExperimentEntry",
   createExperimentInfo: "task-tour.createExperimentInfo",
+  createExperimentInfoName: "task-tour.createExperimentInfoName",
+  createExperimentInfoVersions: "task-tour.createExperimentInfoVersions",
+  createExperimentInfoDataset: "task-tour.createExperimentInfoDataset",
+  createExperimentInfoEvaluators: "task-tour.createExperimentInfoEvaluators",
   createExperimentPromptMappings: "task-tour.createExperimentPromptMappings",
+  createExperimentPromptMappingsList: "task-tour.createExperimentPromptMappingsList",
   createExperimentFinal: "task-tour.createExperimentFinal",
+  createExperimentEvalMappingsList: "task-tour.createExperimentEvalMappingsList",
 } as const;
 
 /** Stable keys used by widgets to register preparation hooks. */
@@ -425,14 +439,84 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
         actionName: TASK_TOUR_ACTIONS.createExperimentModalOpened,
         advance: "action-only",
       },
-      "complete-experiment-info": {
+      // The Experiment Info step is one screen with four stacked sections, so
+      // we walk the user down it with manual "Next" beats — fields don't submit
+      // individually, and the demo doesn't prefill them, so a click gesture is
+      // the only reliable advance. Only the final (evaluators) beat advances on
+      // the real "Configure Prompts" submit (createExperimentInfoCompleted).
+      // The resolvers fall back to the info-step box / modal, so if a user
+      // submits early from a manual beat the spotlight isn't stranded.
+      //
+      // Every beat inside the Create Experiment modal sets blockInteraction:
+      // false — the user must fill fields, open Autocomplete dropdowns (which
+      // portal to document.body, above the backdrop) and click the step's
+      // submit button, all of which live outside the spotlighted region. The
+      // backdrop would trap those clicks; the dimming spotlight alone guides
+      // attention without blocking the form.
+      "experiment-info-name": {
+        targetId: TOUR_IDS.createExperimentInfoName,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.createExperimentInfoName,
+        route: "prompts",
+        search: { tab: "prompt-experiments" },
+        actionName: TASK_TOUR_ACTIONS.createExperimentInfoCompleted,
+        advance: "manual",
+        blockInteraction: false,
+        popover: { showNext: true, nextLabel: "Next", placement: "left" },
+      },
+      "experiment-info-versions": {
+        targetId: TOUR_IDS.createExperimentInfoVersions,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.createExperimentInfoVersions,
+        route: "prompts",
+        search: { tab: "prompt-experiments" },
+        actionName: TASK_TOUR_ACTIONS.createExperimentInfoCompleted,
+        advance: "manual",
+        blockInteraction: false,
+        popover: { showNext: true, nextLabel: "Next", placement: "left" },
+      },
+      "experiment-info-dataset": {
+        targetId: TOUR_IDS.createExperimentInfoDataset,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.createExperimentInfoDataset,
+        route: "prompts",
+        search: { tab: "prompt-experiments" },
+        actionName: TASK_TOUR_ACTIONS.createExperimentInfoCompleted,
+        advance: "manual",
+        blockInteraction: false,
+        popover: { showNext: true, nextLabel: "Next", placement: "left" },
+      },
+      "experiment-info-evaluators": {
+        targetId: TOUR_IDS.createExperimentInfoEvaluators,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.createExperimentInfoEvaluators,
+        route: "prompts",
+        search: { tab: "prompt-experiments" },
+        actionName: TASK_TOUR_ACTIONS.createExperimentInfoCompleted,
+        advance: "manual",
+        blockInteraction: false,
+        popover: { showNext: true, nextLabel: "Next", placement: "left" },
+      },
+      // Each form step ends with a "review the whole form" beat: it spotlights
+      // the entire step surface and advances only on the real submit click
+      // (no popover Next — a Next would advance the tour while the modal is
+      // still on this step, stranding the next beat's target). The copy nudges
+      // the user to click the step's primary button to continue.
+      "review-experiment-info": {
         targetId: TOUR_IDS.createExperimentInfoStep,
         targetHookId: TASK_TOUR_QUERY_HOOKS.createExperimentInfo,
         route: "prompts",
         search: { tab: "prompt-experiments" },
         actionName: TASK_TOUR_ACTIONS.createExperimentInfoCompleted,
         advance: "action-only",
+        blockInteraction: false,
         popover: { placement: "left" },
+      },
+      "explain-prompt-mapping": {
+        targetId: TOUR_IDS.createExperimentPromptMappingsList,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.createExperimentPromptMappingsList,
+        route: "prompts",
+        search: { tab: "prompt-experiments" },
+        actionName: TASK_TOUR_ACTIONS.createExperimentPromptMappingsCompleted,
+        advance: "manual",
+        blockInteraction: false,
+        popover: { showNext: true, nextLabel: "Next", placement: "left" },
       },
       "complete-prompt-mapping": {
         targetId: TOUR_IDS.createExperimentPromptMappingsStep,
@@ -441,7 +525,23 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
         search: { tab: "prompt-experiments" },
         actionName: TASK_TOUR_ACTIONS.createExperimentPromptMappingsCompleted,
         advance: "action-only",
+        blockInteraction: false,
         popover: { placement: "left" },
+      },
+      // The Configure Evals step only renders when the user selected
+      // evaluators; the form creates the run straight from Configure Prompts
+      // otherwise. skipWhenEmptyKey auto-skips these two beats when the task
+      // has no evals so a manual "Next" never strands on an absent step.
+      "explain-eval-mapping": {
+        targetId: TOUR_IDS.createExperimentEvalMappingsList,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.createExperimentEvalMappingsList,
+        route: "prompts",
+        search: { tab: "prompt-experiments" },
+        actionName: TASK_TOUR_ACTIONS.createExperimentCreated,
+        advance: "manual",
+        blockInteraction: false,
+        skipWhenEmptyKey: TASK_TOUR_SKIP_WHEN.noEvaluators,
+        popover: { showNext: true, nextLabel: "Next", placement: "left" },
       },
       "create-experiment": {
         targetId: TOUR_IDS.createExperimentEvalMappingsStep,
@@ -450,6 +550,8 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
         search: { tab: "prompt-experiments" },
         actionName: TASK_TOUR_ACTIONS.createExperimentCreated,
         advance: "action-only",
+        blockInteraction: false,
+        skipWhenEmptyKey: TASK_TOUR_SKIP_WHEN.noEvaluators,
         popover: { placement: "left" },
       },
     },

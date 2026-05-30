@@ -21,7 +21,7 @@ export const PromptStep = withForm({
     return (
       <>
         <DialogContent>
-          <Box sx={{ py: 1 }}>
+          <Box sx={{ py: 1 }} data-tour-id={TOUR_IDS.createExperimentPromptMappingsList}>
             <form.AppField name="promptVariableMappings" mode="array">
               {(field) =>
                 field.state.value.map((mapping, index) => (

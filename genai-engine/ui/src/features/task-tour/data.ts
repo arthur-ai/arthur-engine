@@ -36,6 +36,8 @@ export interface TaskTourItem {
   skipWhenEmptyKey?: string;
   popover?: StepWiring["popover"];
   formPrefill?: StepWiring["formPrefill"];
+  /** Overrides the default click-blocking backdrop; defaults to `true`. */
+  blockInteraction?: StepWiring["blockInteraction"];
 }
 
 /**
