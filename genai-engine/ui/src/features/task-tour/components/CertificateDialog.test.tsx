@@ -12,16 +12,12 @@ vi.mock("@arthur/shared-components", () => ({
 // kind of value html-to-image produces — `toPng` a base64 data-URL *string*,
 // `toBlob` a real `Blob`. The trigger (2nd tuple slot) fires that callback.
 vi.mock("@hugocxl/react-to-image", () => {
-  const makeHook =
-    (payload: unknown) =>
-    (options?: { onSuccess?: (data: unknown) => void }) => {
-      const trigger = () => options?.onSuccess?.(payload);
-      return [{ status: "idle" }, trigger, () => {}];
-    };
+  const makeHook = (payload: unknown) => (options?: { onSuccess?: (data: unknown) => void }) => {
+    const trigger = () => options?.onSuccess?.(payload);
+    return [{ status: "idle" }, trigger, () => {}];
+  };
   return {
-    useToPng: makeHook(
-      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgYGAAAAAEAAH2FzhVAAAAAElFTkSuQmCC",
-    ),
+    useToPng: makeHook("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgYGAAAAAEAAH2FzhVAAAAAElFTkSuQmCC"),
     useToBlob: makeHook(new Blob([new Uint8Array([137, 80, 78, 71])], { type: "image/png" })),
   };
 });
@@ -59,6 +55,15 @@ describe("CertificateDialog", () => {
 
     render(<CertificateDialog open onClose={onClose} />);
     fireEvent.click(screen.getByRole("button", { name: /dismiss certificate/i }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("advances from a visible primary action button", () => {
+    const onClose = vi.fn();
+
+    render(<CertificateDialog open onClose={onClose} />);
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });

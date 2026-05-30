@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -87,5 +87,26 @@ describe("CertificateWidget", () => {
     });
 
     expect(screen.getByText("Alex Rivera")).toBeTruthy();
+  });
+
+  it("opens the CTA after the certificate is closed, then closes everything on dismiss", async () => {
+    const engine = renderWidget();
+
+    act(() => {
+      engine.bus.emit("tour:end", { tourId: "task-tour", reason: "completed" });
+    });
+
+    // Certificate is shown first; CTA is not yet visible.
+    expect(screen.getByRole("dialog", { name: /certificate of achievement/i })).toBeTruthy();
+    expect(screen.queryByRole("dialog", { name: /talk to our cto about agent evals/i })).toBeNull();
+
+    // Closing the certificate advances to the CTA dialog.
+    fireEvent.click(screen.getByRole("button", { name: /dismiss certificate/i }));
+    expect(screen.queryByRole("dialog", { name: /certificate of achievement/i })).toBeNull();
+    expect(screen.getByRole("dialog", { name: /talk to our cto about agent evals/i })).toBeTruthy();
+
+    // Dismissing the CTA ends the sequence (awaiting the exit transition).
+    fireEvent.click(screen.getByRole("button", { name: /^dismiss$/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: /talk to our cto about agent evals/i })).toBeNull());
   });
 });

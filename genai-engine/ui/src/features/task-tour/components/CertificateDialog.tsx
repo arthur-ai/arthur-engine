@@ -1,13 +1,22 @@
 import { downloadFile } from "@arthur/shared-components";
 import { useToBlob } from "@hugocxl/react-to-image";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CloseIcon from "@mui/icons-material/Close";
 import DownloadIcon from "@mui/icons-material/Download";
 import LinkedInIcon from "@mui/icons-material/LinkedIn";
 import XIcon from "@mui/icons-material/X";
-import { Box, Button, Dialog, IconButton, Paper, Stack, Typography, useTheme } from "@mui/material";
-import { alpha } from "@mui/material/styles";
+import { Box, Button, Dialog, IconButton, Paper, Stack, Typography } from "@mui/material";
+
+import { ArthurSeal } from "./arthur-seal";
 
 import { ArthurLogo } from "@/components/common/ArthurLogo";
+
+// Warm ink + parchment tones from the classic-diploma design. Kept as literals
+// because they're fixed brand-artwork values, not themeable surface colors.
+const INK = "#1A0016";
+const INK_LINE = "rgba(26, 0, 22, 0.55)";
+const EYEBROW = "#3A2A18";
+const CITATION = "#2A1F18";
 
 export interface CertificateDialogProps {
   open: boolean;
@@ -30,7 +39,6 @@ function formatToday(): string {
  * dedicated route so it overlays whichever task page the user finishes on.
  */
 export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedOn = formatToday(), onClose }: CertificateDialogProps) {
-  const theme = useTheme();
   const shareText = `I completed Arthur AI's Intro to Evals course with the Arthur Evals Engine.`;
   const shareUrl = "https://www.arthur.ai/";
   const linkedInShareHref = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
@@ -93,11 +101,11 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
           py: { xs: 5, md: 4 },
           textAlign: "center",
           border: 2,
-          borderColor: "secondary.dark",
+          borderColor: INK,
           borderRadius: 3,
           overflow: "hidden",
-          backgroundImage: `linear-gradient(to bottom, #FBF2D9, #F8D9B6)`,
-          color: "common.black",
+          backgroundImage: `linear-gradient(180deg, #FBF2D9 0%, #F7D8B5 100%)`,
+          color: INK,
         }}
       >
         <Typography
@@ -133,6 +141,7 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
             textTransform: "uppercase",
             fontWeight: 700,
             fontSize: 10,
+            color: EYEBROW,
             mt: { xs: 4, md: 4.5 },
             mb: 1.75,
           }}
@@ -152,7 +161,7 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
         >
           {recipientName}
         </Typography>
-        <Typography variant="body2" sx={{ lineHeight: 1.55, maxWidth: 650, mx: "auto", mt: 3 }}>
+        <Typography variant="body2" sx={{ lineHeight: 1.55, maxWidth: 650, mx: "auto", mt: 3, color: CITATION }}>
           Has successfully completed the{" "}
           <Box component="span" sx={{ fontWeight: 700 }}>
             Intro to Evals
@@ -178,25 +187,10 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
           }}
         >
           <Box sx={{ width: 150, textAlign: "center" }}>
-            <Box
-              sx={{
-                width: 64,
-                height: 64,
-                mx: "auto",
-                mb: 1.25,
-                borderRadius: "50%",
-                border: 2,
-                borderColor: "warning.dark",
-                bgcolor: alpha(theme.palette.warning.main, 0.34),
-                boxShadow: `inset 0 0 0 5px ${alpha(theme.palette.warning.light, 0.46)}`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <ArthurLogo width={22} height={22} aria-hidden="true" />
+            <Box sx={{ mb: 1, display: "flex", justifyContent: "center" }}>
+              <ArthurSeal size={104} variant="gold" />
             </Box>
-            <Box sx={{ borderTop: 1, borderColor: "common.black", pt: 0.75 }}>
+            <Box sx={{ borderTop: 1, borderColor: INK_LINE, pt: 0.75 }}>
               <Typography variant="caption" sx={{ fontSize: 10 }}>
                 Arthur AI Instructors
               </Typography>
@@ -214,7 +208,7 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
             <Typography variant="caption" sx={{ display: "block", mb: 0.75, fontFamily: '"Georgia", serif' }}>
               {issuedOn}
             </Typography>
-            <Box sx={{ borderTop: 1, borderColor: "common.black", pt: 0.75 }}>
+            <Box sx={{ borderTop: 1, borderColor: INK_LINE, pt: 0.75 }}>
               <Typography variant="caption" sx={{ fontSize: 10 }}>
                 Date
               </Typography>
@@ -248,6 +242,12 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
           startIcon={<XIcon sx={{ fontSize: 14 }} />}
         >
           Share to X
+        </Button>
+        {/* Primary forward action. The corner close affordance is easy to miss
+            against the parchment artwork, so give the flow an explicit next step;
+            `onClose` advances the post-completion sequence to the CTA. */}
+        <Button size="small" variant="contained" color="primary" endIcon={<ArrowForwardIcon sx={{ fontSize: 16 }} />} onClick={onClose}>
+          Continue
         </Button>
       </Stack>
     </Dialog>
