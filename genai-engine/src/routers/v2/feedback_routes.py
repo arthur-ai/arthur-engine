@@ -60,6 +60,7 @@ def post_feedback(
         body.reason or "",
         body.user_id,
         db_session,
+        org_scope=org_scope,
     )
 
 

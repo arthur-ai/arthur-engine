@@ -20,9 +20,11 @@ from unittest.mock import patch
 
 import httpx
 import pytest
+from arthur_common.models.enums import InferenceFeedbackTarget
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
+from db_models import DatabaseInferenceFeedback
 from db_models.agentic_experiment_models import DatabaseAgenticExperiment
 from db_models.agentic_notebook_models import DatabaseAgenticNotebook
 from db_models.dataset_models import DatabaseDataset, DatabaseDatasetVersion
@@ -31,11 +33,13 @@ from db_models.prompt_experiment_models import DatabasePromptExperiment
 from db_models.rag_experiment_models import DatabaseRagExperiment
 from db_models.rag_notebook_models import DatabaseRagNotebook
 from repositories.agentic_experiment_repository import AgenticExperimentRepository
+from repositories.feedback_repository import FeedbackRepository
 from repositories.prompt_experiment_repository import PromptExperimentRepository
 from repositories.rag_experiment_repository import RagExperimentRepository
 from schemas.base_experiment_schemas import ExperimentStatus
 from tests.clients.base_test_client import app, override_get_db_session
 from tests.multitenancy.conftest import TenantWorld
+from utils.constants import DEFAULT_ORG_ID
 
 SIGNUP_URL = "/api/v2/tenant/signup"
 ME_URL = "/users/me"
@@ -1372,3 +1376,63 @@ def test_attach_notebook_isolation_matrix(
                 (DatabaseNotebook, notebook_id),
             ),
         )
+
+
+@pytest.mark.unit_tests
+def test_feedback_org_id_derived_from_inference_not_caller(
+    tenant_world: TenantWorld,
+):
+    """Repo-layer defense-in-depth for item 8.
+
+    Sub-cases (one fixture setup, multiple assertions):
+      1) Tenant K1 supplying T2a's inference_id with org_scope=O1 -> 404
+         (mismatch between derived inference org and caller org).
+      2) Admin (org_scope=None) writing on T2a's inference -> row gets T2a's
+         org_id (= O2), not the caller's identity and not DEFAULT_ORG_ID.
+    """
+    db = override_get_db_session()
+    repo = FeedbackRepository(db)
+    created_ids: list[str] = []
+    try:
+        if tenant_world.t2a.inference_id is None:
+            pytest.skip("seeded T2a inference missing")
+
+        # Sub-case 1: tenant/inference org mismatch -> 404.
+        with pytest.raises(HTTPException) as exc_info:
+            repo.create_feedback(
+                inference_id=tenant_world.t2a.inference_id,
+                target=InferenceFeedbackTarget.RESPONSE_RESULTS,
+                score=1,
+                reason="cross-org repo call",
+                user_id=None,
+                org_scope=tenant_world.o1_id,
+            )
+        assert exc_info.value.status_code == 404
+        db.rollback()
+
+        # Sub-case 2: admin caller -> derived org from inference's task wins.
+        row = repo.create_feedback(
+            inference_id=tenant_world.t2a.inference_id,
+            target=InferenceFeedbackTarget.RESPONSE_RESULTS,
+            score=1,
+            reason="admin write",
+            user_id=None,
+            org_scope=None,
+        )
+        created_ids.append(row.id)
+        assert row.org_id == tenant_world.o2_id
+        assert row.org_id != DEFAULT_ORG_ID
+    finally:
+        for fid in created_ids:
+            try:
+                stale = (
+                    db.query(DatabaseInferenceFeedback)
+                    .filter(DatabaseInferenceFeedback.id == fid)
+                    .first()
+                )
+                if stale is not None:
+                    db.delete(stale)
+                db.commit()
+            except Exception:
+                db.rollback()
+        db.close()
