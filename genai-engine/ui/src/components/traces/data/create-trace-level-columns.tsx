@@ -14,6 +14,7 @@ export const createTraceLevelColumns = (deps: ColumnDependencies) => {
     createIdColumn(columnHelper, "trace_id", "Trace ID", "trace", "trace", deps, {
       size: 200,
       useFullWidth: true,
+      propagateClick: true,
     }),
     columnHelper.accessor("annotations", {
       header: "Annotations",

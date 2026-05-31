@@ -14,6 +14,7 @@ import { useEvalVersions } from "@/components/evaluators/hooks/useEvalVersions";
 import { usePrompts } from "@/components/prompts-management/hooks/usePrompts";
 import { usePromptVersions } from "@/components/prompts-management/hooks/usePromptVersions";
 import { withForm } from "@/components/traces/components/filtering/hooks/form";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
 import { useDatasets } from "@/hooks/useDatasets";
 import { useDatasetVersionData } from "@/hooks/useDatasetVersionData";
 import { useDatasetVersionHistory } from "@/hooks/useDatasetVersionHistory";
@@ -77,58 +78,66 @@ export const InfoStep = withForm({
       <>
         <DialogContent>
           <Box className="flex flex-col gap-4 mt-2">
-            <form.AppField name="info.name">
-              {(field) => (
-                <TextField
-                  label="Experiment Name"
-                  variant="filled"
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  onBlur={field.handleBlur}
-                  error={field.state.meta.errors.length > 0}
-                  helperText={field.state.meta.errors[0]?.message}
-                />
-              )}
-            </form.AppField>
-            <form.AppField name="info.description">
-              {(field) => (
-                <TextField
-                  label="Description"
-                  variant="filled"
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  onBlur={field.handleBlur}
-                  error={field.state.meta.errors.length > 0}
-                  helperText={field.state.meta.errors[0]?.message}
-                />
-              )}
-            </form.AppField>
-            <PromptSelector form={form} />
-            <DatasetSelector form={form} />
-            <DatasetRowFilterSection form={form} />
-            <form.Field
-              name="info.evaluators"
-              mode="array"
-              listeners={{
-                onChange: () => {
-                  form.setFieldValue("evalVariableMappings", []);
-                },
-              }}
-            >
-              {(field) => {
-                return (
-                  <EvaluatorsSelector
-                    evaluators={field.state.value}
-                    onAdd={(value) => {
-                      field.pushValue(value);
-                    }}
-                    onRemove={(index) => {
-                      field.removeValue(index);
-                    }}
+            <Stack gap={2} data-tour-id={TOUR_IDS.createExperimentInfoName}>
+              <form.AppField name="info.name">
+                {(field) => (
+                  <TextField
+                    label="Experiment Name"
+                    variant="filled"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                    error={field.state.meta.errors.length > 0}
+                    helperText={field.state.meta.errors[0]?.message}
                   />
-                );
-              }}
-            </form.Field>
+                )}
+              </form.AppField>
+              <form.AppField name="info.description">
+                {(field) => (
+                  <TextField
+                    label="Description"
+                    variant="filled"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                    error={field.state.meta.errors.length > 0}
+                    helperText={field.state.meta.errors[0]?.message}
+                  />
+                )}
+              </form.AppField>
+            </Stack>
+            <Box data-tour-id={TOUR_IDS.createExperimentInfoVersions}>
+              <PromptSelector form={form} />
+            </Box>
+            <Box data-tour-id={TOUR_IDS.createExperimentInfoDataset}>
+              <DatasetSelector form={form} />
+            </Box>
+            <DatasetRowFilterSection form={form} />
+            <Box data-tour-id={TOUR_IDS.createExperimentInfoEvaluators}>
+              <form.Field
+                name="info.evaluators"
+                mode="array"
+                listeners={{
+                  onChange: () => {
+                    form.setFieldValue("evalVariableMappings", []);
+                  },
+                }}
+              >
+                {(field) => {
+                  return (
+                    <EvaluatorsSelector
+                      evaluators={field.state.value}
+                      onAdd={(value) => {
+                        field.pushValue(value);
+                      }}
+                      onRemove={(index) => {
+                        field.removeValue(index);
+                      }}
+                    />
+                  );
+                }}
+              </form.Field>
+            </Box>
           </Box>
         </DialogContent>
         <DialogActions>

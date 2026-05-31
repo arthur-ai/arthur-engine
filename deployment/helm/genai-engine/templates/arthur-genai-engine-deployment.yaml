@@ -115,6 +115,21 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.genaiEngineSecretStoreKeyName }}
                   key: key
+            {{- if .Values.recaptchaEnterpriseProjectId }}
+            - name: RECAPTCHA_ENTERPRISE_PROJECT_ID
+              value: {{ .Values.recaptchaEnterpriseProjectId | quote }}
+            {{- end }}
+            {{- if .Values.recaptchaEnterpriseSiteKey }}
+            - name: RECAPTCHA_ENTERPRISE_SITE_KEY
+              value: {{ .Values.recaptchaEnterpriseSiteKey | quote }}
+            {{- end }}
+            {{- if .Values.genaiEngineSecretRecaptchaApiKeyName }}
+            - name: RECAPTCHA_ENTERPRISE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.genaiEngineSecretRecaptchaApiKeyName }}
+                  key: key
+            {{- end }}
             {{- if .Values.gpuEnabled }}
             - name: NVIDIA_DRIVER_CAPABILITIES
               value: "compute,utility"

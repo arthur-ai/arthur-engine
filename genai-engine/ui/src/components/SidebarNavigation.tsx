@@ -15,6 +15,7 @@ import React from "react";
 import { useParams } from "react-router-dom";
 
 import { useDemoMode } from "@/contexts/EngineConfigContext";
+import { TOUR_IDS, dispatchTourEvent, TASK_TOUR_ACTIONS, type TaskTourEventName } from "@/features/task-tour";
 
 interface SidebarNavigationProps {
   onBackToDashboard: () => void;
@@ -34,23 +35,49 @@ interface NavigationItem {
   label: string;
   icon: React.ReactNode;
   onClick?: () => void;
+  /** Optional `data-tour-id` attribute used by the in-task guided tour. */
+  tourId?: string;
+  /** Tour events dispatched when this nav item is activated. */
+  tourEvents?: TaskTourEventName[];
 }
 
 function buildNavigationSections(demoMode: boolean): NavigationSection[] {
-  const agentItems: NavigationItem[] = [{ id: "test", label: "Test", icon: <ScienceOutlined /> }];
+  const agentItems: NavigationItem[] = [{ id: "test", label: "Test", icon: <ScienceOutlined />, tourId: TOUR_IDS.navTest }];
   if (demoMode) {
-    agentItems.push({ id: "chatbot", label: "Chatbot", icon: <ChatOutlined /> });
+    agentItems.push({
+      id: "chatbot",
+      label: "Demo Agent",
+      icon: <ChatOutlined />,
+      tourId: TOUR_IDS.navDemoAgent,
+      tourEvents: [TASK_TOUR_ACTIONS.demoAgentOpened],
+    });
   }
   return [
     {
       id: "observability",
       label: "Observability",
-      items: [{ id: "traces", label: "Observe", icon: <TrendingUpOutlined /> }],
+      items: [
+        {
+          id: "traces",
+          label: "Observe",
+          icon: <TrendingUpOutlined />,
+          tourId: TOUR_IDS.navObserve,
+          tourEvents: [TASK_TOUR_ACTIONS.observeOpened, TASK_TOUR_ACTIONS.deployVerified],
+        },
+      ],
     },
     {
       id: "prompts",
       label: "Prompts",
-      items: [{ id: "prompts", label: "Prompt", icon: <DescriptionOutlined /> }],
+      items: [
+        {
+          id: "prompts",
+          label: "Prompt",
+          icon: <DescriptionOutlined />,
+          tourId: TOUR_IDS.navPrompts,
+          tourEvents: [TASK_TOUR_ACTIONS.promptsOpened],
+        },
+      ],
     },
     {
       id: "rag",
@@ -61,8 +88,20 @@ function buildNavigationSections(demoMode: boolean): NavigationSection[] {
       id: "evals",
       label: "Evals",
       items: [
-        { id: "evaluate", label: "Evaluate", icon: <BalanceOutlined /> },
-        { id: "datasets", label: "Dataset", icon: <TableChartOutlined /> },
+        {
+          id: "evaluate",
+          label: "Evaluate",
+          icon: <BalanceOutlined />,
+          tourId: TOUR_IDS.navEvaluate,
+          tourEvents: [TASK_TOUR_ACTIONS.evaluateOpened],
+        },
+        {
+          id: "datasets",
+          label: "Dataset",
+          icon: <TableChartOutlined />,
+          tourId: TOUR_IDS.navDatasets,
+          tourEvents: [TASK_TOUR_ACTIONS.datasetsOpened, TASK_TOUR_ACTIONS.datasetRowVerified],
+        },
         { id: "transforms", label: "Transform", icon: <StorageOutlined /> },
       ],
     },
@@ -129,8 +168,10 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ onBackToDa
                   <Link
                     href={`/tasks/${id}/${item.id}`}
                     underline="none"
+                    data-tour-id={item.tourId}
                     onClick={(e) => {
                       e.preventDefault();
+                      item.tourEvents?.forEach((eventName) => dispatchTourEvent(eventName));
                       onNavigate(item.id);
                     }}
                     className={`w-full text-left px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 flex items-center gap-3 ${
