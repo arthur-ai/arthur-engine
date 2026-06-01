@@ -1,13 +1,15 @@
 import { Box, CircularProgress, Dialog, DialogTitle, Step, StepLabel, Stepper } from "@mui/material";
+import { ThemeProvider, useTheme } from "@mui/material/styles";
 import { useStore } from "@tanstack/react-form";
 import { useSnackbar } from "notistack";
-import { useCallback, useEffect, useState, type HTMLAttributes } from "react";
+import { useCallback, useEffect, useMemo, useState, type HTMLAttributes } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { EvalsStep } from "./components/evals-step";
 import { InfoStep } from "./components/info-step";
 import { PromptStep } from "./components/prompt-step";
 import { createExperimentModalFormOpts, CreateExperimentModalFormValues } from "./form";
+import { createExperimentDropdownTheme } from "./tourDropdownTheme";
 import { DeepPartial, deepMerge, formDataToRequest, templateToFormData } from "./utils";
 
 import { ConfirmationModal } from "@/components/common/ConfirmationModal";
@@ -28,23 +30,31 @@ type Props = {
 export const CreateExperimentModal = ({ templateId, initialData, open, onClose }: Props) => {
   const { experiment, isLoading } = usePromptExperiment(templateId);
 
+  // Lift this modal's dropdown popups above the task tour overlay so the guided
+  // "Create Experiment" step can open them without the tour backdrop/blocker
+  // clipping them (UP-4482). See createExperimentDropdownTheme for details.
+  const parentTheme = useTheme();
+  const dropdownTheme = useMemo(() => createExperimentDropdownTheme(parentTheme), [parentTheme]);
+
   return (
-    <Dialog
-      open={open}
-      maxWidth="md"
-      fullWidth
-      aria-labelledby="create-experiment-dialog-title"
-      slotProps={{ paper: { ...({ "data-tour-id": TOUR_IDS.createExperimentModal } as HTMLAttributes<HTMLDivElement>) } }}
-    >
-      <DialogTitle id="create-experiment-dialog-title">Create Experiment</DialogTitle>
-      {isLoading ? (
-        <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%", pb: 4 }}>
-          <CircularProgress />
-        </Box>
-      ) : (
-        <CreateExperimentModalInner template={experiment} initialData={initialData} onClose={onClose} />
-      )}
-    </Dialog>
+    <ThemeProvider theme={dropdownTheme}>
+      <Dialog
+        open={open}
+        maxWidth="md"
+        fullWidth
+        aria-labelledby="create-experiment-dialog-title"
+        slotProps={{ paper: { ...({ "data-tour-id": TOUR_IDS.createExperimentModal } as HTMLAttributes<HTMLDivElement>) } }}
+      >
+        <DialogTitle id="create-experiment-dialog-title">Create Experiment</DialogTitle>
+        {isLoading ? (
+          <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%", pb: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <CreateExperimentModalInner template={experiment} initialData={initialData} onClose={onClose} />
+        )}
+      </Dialog>
+    </ThemeProvider>
   );
 };
 

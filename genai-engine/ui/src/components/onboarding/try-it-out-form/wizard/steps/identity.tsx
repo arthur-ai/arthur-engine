@@ -4,8 +4,8 @@ import EmailIcon from "@mui/icons-material/Email";
 import PersonIcon from "@mui/icons-material/Person";
 import { Box, Button, FormLabel, Stack, TextField, Typography } from "@mui/material";
 
+import { withForm } from "../../hooks/form";
 import { fieldErrorMessage, labelSx, textFieldSx } from "../../styles";
-import { withForm } from "../hooks/form";
 import { STEP_HEADINGS } from "../options";
 import { identitySchema, wizardFormOpts } from "../schema";
 
@@ -171,16 +171,21 @@ export const TryItOutFormWizardIdentityStep = withForm({
                   Back
                 </Button>
                 <Box sx={{ flex: 1 }} />
-                <Button
-                  type="submit"
-                  variant="contained"
-                  color="primary"
-                  disableElevation
-                  endIcon={<ArrowForwardIcon sx={{ fontSize: 16 }} />}
-                  sx={{ textTransform: "none", fontSize: 14, fontWeight: 600, borderRadius: "8px", px: 2.5 }}
-                >
-                  Continue
-                </Button>
+                <form.Subscribe selector={(s) => identitySchema.safeParse(s.values.identity).success}>
+                  {(isValid) => (
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      color="primary"
+                      disabled={!isValid}
+                      disableElevation
+                      endIcon={<ArrowForwardIcon sx={{ fontSize: 16 }} />}
+                      sx={{ textTransform: "none", fontSize: 14, fontWeight: 600, borderRadius: "8px", px: 2.5 }}
+                    >
+                      Continue
+                    </Button>
+                  )}
+                </form.Subscribe>
               </Stack>
             </Stack>
           </Box>

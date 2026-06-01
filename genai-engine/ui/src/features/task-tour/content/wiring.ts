@@ -560,6 +560,13 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
     steps: {
       "open-production-prompt": {
         targetId: TOUR_IDS.promptsFirstRow,
+        // Same row as the prompts-section "inspect-prompt" step. Use the query
+        // hook (not the static selector) so QueryHookTargetRefresh re-resolves
+        // the row on DOM mutations: the deploy section navigates back to
+        // prompts-management and the table re-renders, replacing the <tr> node.
+        // A one-shot selector target would keep measuring the stale, detached
+        // node and strand the highlight above the live row.
+        targetHookId: TASK_TOUR_QUERY_HOOKS.demoTaskPromptRow,
         route: "prompts",
         search: { tab: "prompts-management" },
         actionName: TASK_TOUR_ACTIONS.promptInspected,
