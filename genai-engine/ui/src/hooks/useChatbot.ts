@@ -214,7 +214,11 @@ export function useChatbot(taskId: string, options: UseChatbotOptions = {}): Use
 
               const eventType = line.substring(7).trim();
               const nextLine = lines[i + 1];
-              if (!nextLine?.startsWith("data: ")) continue;
+              if (nextLine === undefined) {
+                buffer = line + "\n" + buffer;
+                break;
+              }
+              if (!nextLine.startsWith("data: ")) continue;
 
               const dataStr = nextLine.substring(6).trim();
               i++;
