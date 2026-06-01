@@ -16,12 +16,13 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Literal, Optional
 
-from arthur_common.models.llm_model_providers import OpenAIMessage, ToolCall
+from arthur_common.models.llm_model_providers import LLMTool, OpenAIMessage, ToolCall
 from openinference.semconv.trace import (
     MessageAttributes,
     OpenInferenceSpanKindValues,
     PromptAttributes,
     SpanAttributes,
+    ToolAttributes,
     ToolCallAttributes,
 )
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
@@ -225,6 +226,7 @@ class InternalTraceService:
         for i, msg in enumerate(messages):
             prefix = f"{SpanAttributes.LLM_INPUT_MESSAGES}.{i}"
             span.set_attribute(f"{prefix}.{MessageAttributes.MESSAGE_ROLE}", msg.role)
+            part: Dict[str, Any] = {"role": str(msg.role)}
             if msg.content:
                 content = (
                     msg.content if isinstance(msg.content, str) else str(msg.content)
@@ -233,12 +235,62 @@ class InternalTraceService:
                     f"{prefix}.{MessageAttributes.MESSAGE_CONTENT}",
                     content,
                 )
-                input_parts.append({"role": str(msg.role), "content": content})
+                part["content"] = content
+            # Assistant messages that only issue tool calls carry their payload
+            # in ``tool_calls`` with ``content=None``. Without this, those
+            # messages serialize to just ``{"role": "assistant"}`` once they are
+            # replayed as input on the next agent turn. Mirror the output-side
+            # serialization in ``set_llm_response``.
+            if msg.tool_calls:
+                tool_call_parts = []
+                for j, tc in enumerate(msg.tool_calls):
+                    tc_prefix = f"{prefix}.{MessageAttributes.MESSAGE_TOOL_CALLS}.{j}"
+                    span.set_attribute(
+                        f"{tc_prefix}.{ToolCallAttributes.TOOL_CALL_FUNCTION_NAME}",
+                        tc.function.name,
+                    )
+                    span.set_attribute(
+                        f"{tc_prefix}.{ToolCallAttributes.TOOL_CALL_FUNCTION_ARGUMENTS_JSON}",
+                        tc.function.arguments,
+                    )
+                    tool_call_parts.append(
+                        {
+                            "function": {
+                                "name": tc.function.name,
+                                "arguments": tc.function.arguments,
+                            },
+                        },
+                    )
+                part["tool_calls"] = tool_call_parts
+            # Record the message in the JSON blob when it carries content or
+            # tool calls. A bare role with neither adds nothing useful.
+            if len(part) > 1:
+                input_parts.append(part)
         span.set_attribute(
             SpanAttributes.INPUT_VALUE,
             json.dumps({"messages": input_parts}),
         )
         span.set_attribute(SpanAttributes.INPUT_MIME_TYPE, "application/json")
+
+    def set_llm_tools(
+        self,
+        span: TraceSpanBuilder,
+        tools: Optional[List[LLMTool]],
+    ) -> None:
+        """Record the tools available to the LLM on an LLM span.
+
+        Follows the OpenInference convention ``llm.tools.{i}.tool.json_schema``,
+        where each value is the tool's JSON schema in OpenAI tool-calling
+        format. ``LLMTool`` already matches that shape, so it is dumped as-is.
+        """
+        if not tools:
+            return
+        for i, tool in enumerate(tools):
+            prefix = f"{SpanAttributes.LLM_TOOLS}.{i}"
+            span.set_attribute(
+                f"{prefix}.{ToolAttributes.TOOL_JSON_SCHEMA}",
+                json.dumps(tool.model_dump(exclude_none=True)),
+            )
 
     def set_llm_response(
         self,
