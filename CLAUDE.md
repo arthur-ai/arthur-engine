@@ -426,6 +426,18 @@ GENAI_ENGINE_INTERNAL_API_KEY=<api-key>
 - `dev` - Development/staging
 - Feature branches created from `dev`
 
+## Release Process
+
+**IMPORTANT: Never manually create a PR from `dev` to `main`.**
+
+Releases are gated by the "Create Release PR" GitHub Actions workflow. Always use it:
+
+1. Go to **Actions → "Create Release PR" → "Run workflow"** (no inputs required)
+2. The workflow validates versions and creates the `dev → main` PR automatically
+3. Merging that PR triggers the production build and deployment pipeline
+
+Manually creating a `dev → main` PR bypasses version validation, risks duplicate releases, and breaks the automation. If you see a manually created `dev → main` PR, close it and use the workflow instead.
+
 ## Important Notes
 
 - GenAI Engine uses Python 3.12, ML Engine uses Python 3.13
