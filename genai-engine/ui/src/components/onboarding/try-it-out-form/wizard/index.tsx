@@ -3,9 +3,9 @@ import { Box, Button, Paper, Slide, Step, StepLabel, Stepper, Typography } from 
 import { revalidateLogic, useStore } from "@tanstack/react-form";
 import { useEffect, useRef, useState } from "react";
 
+import { useAppForm } from "../hooks/form";
 import type { TryItOutFormProps } from "../types";
 
-import { useAppForm } from "./hooks/form";
 import { STEP_COUNT, STEP_LABELS, STEP_NAMES, type StepIndex, type StepName } from "./options";
 import { flattenWizardValues, getInvalidGroupFields, wizardFormOpts, wizardSchema, type WizardValues } from "./schema";
 import { TryItOutFormWizardAboutStep } from "./steps/about";

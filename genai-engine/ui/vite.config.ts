@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
 import type { PluginOption } from "vite";
+import { nodePolyfills } from "vite-plugin-node-polyfills";
 
 const injectMeticulousRecordingScript = (mode: string, recordingToken: string | undefined): PluginOption => ({
   name: "inject-meticulous-script",
@@ -38,7 +39,7 @@ export default defineConfig(({ mode }) => {
   const recaptchaSiteKey = env.RECAPTCHA_ENTERPRISE_SITE_KEY;
 
   return {
-    plugins: [injectMeticulousRecordingScript(mode, recordingToken), react(), tailwindcss()],
+    plugins: [injectMeticulousRecordingScript(mode, recordingToken), react(), tailwindcss(), nodePolyfills()],
     define: {
       // Map AMPLITUDE_API_KEY from .env.local to VITE_AMPLITUDE_TOKEN for client-side access
       "import.meta.env.VITE_AMPLITUDE_TOKEN": JSON.stringify(amplitudeApiKey || ""),

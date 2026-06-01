@@ -1,9 +1,9 @@
-import { type GetSpanDetailsStrategy, TraceDrawerBody } from "@arthur/shared-components";
+import { type GetSpanDetailsStrategy, type TraceDrawerBodySlotProps, TraceDrawerBody } from "@arthur/shared-components";
 import { Skeleton } from "@mui/material";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { useEffect, useEffectEvent, useMemo, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { getSpanDetailsStrategy } from "../data/details-strategy";
@@ -13,10 +13,11 @@ import { usePaginationContext } from "../stores/pagination-context";
 import { flattenSpans } from "../utils/spans";
 
 import { AddToDatasetDrawer } from "./add-to-dataset/Drawer";
-import { AnnotationCell } from "./AnnotationCell";
 import { ContinuousEvalDrawer } from "./continuous-eval/ContinuousEvalDrawer";
-import { FeedbackPanel } from "./feedback/FeedbackPanel";
+import { TraceDrawerAnnotationBar } from "./TraceDrawerAnnotationBar";
 
+import { TOUR_IDS } from "@/features/task-tour";
+import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import type { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
@@ -122,6 +123,30 @@ export const TraceDrawerContent = ({ id }: Props) => {
   const [addToDatasetOpen, setAddToDatasetOpen] = useState(false);
   const [continuousEvalOpen, setContinuousEvalOpen] = useState(false);
 
+  const handleSelectSpan = useCallback(
+    (spanId: string | null) => {
+      if (!spanId) return;
+      select(spanId);
+      dispatchTourEvent(TASK_TOUR_EVENTS.spansReviewed);
+    },
+    [select]
+  );
+
+  // Task-tour anchors. `TraceDrawerBody`'s `slotProps` spreads each entry onto
+  // a wrapping `<div>` inside the drawer, so we can attach `data-tour-id`
+  // without resorting to opaque DOM wrappers.
+  const tourSlotProps = useMemo<TraceDrawerBodySlotProps>(
+    () => ({
+      root: { "data-tour-id": TOUR_IDS.traceDrawerAddToDataset },
+      actions: { "data-tour-id": TOUR_IDS.traceActions },
+      spans: {
+        "data-tour-id": TOUR_IDS.traceDrawerSpans,
+        onClick: () => dispatchTourEvent(TASK_TOUR_EVENTS.spansReviewed),
+      },
+    }),
+    []
+  );
+
   if (!trace) return null;
 
   return (
@@ -129,12 +154,13 @@ export const TraceDrawerContent = ({ id }: Props) => {
       trace={trace}
       traceId={id}
       selectedSpanId={selectedSpanId}
-      onSelectSpan={select}
+      onSelectSpan={handleSelectSpan}
       onRefreshMetrics={handleRefreshMetrics}
       isRefreshingMetrics={refreshMetrics.isPending}
       onAddToDataset={() => {
         handleAddToDataset();
         setAddToDatasetOpen(true);
+        dispatchTourEvent(TASK_TOUR_EVENTS.traceAddToDatasetOpened);
       }}
       onOpenSpanDrawer={(spanId) => setDrawerTarget({ target: "span", id: spanId })}
       onOpenPlayground={(spanId, taskId) => navigate(`/tasks/${taskId}/playgrounds/prompts?spanId=${spanId}`)}
@@ -144,11 +170,9 @@ export const TraceDrawerContent = ({ id }: Props) => {
       currentId={current?.id ?? null}
       paginationContext={paginationContext}
       onNavigate={(target, navId) => setDrawerTarget({ target, id: navId })}
+      slotProps={tourSlotProps}
       renderAnnotationBar={({ annotations, traceId: tid, containerRef }) => (
-        <>
-          <AnnotationCell annotations={(annotations ?? []) as AgenticAnnotationResponse[]} traceId={tid} />
-          <FeedbackPanel containerRef={containerRef} annotations={(annotations ?? []) as AgenticAnnotationResponse[]} traceId={tid} />
-        </>
+        <TraceDrawerAnnotationBar annotations={(annotations ?? []) as AgenticAnnotationResponse[]} traceId={tid} containerRef={containerRef} />
       )}
       renderAfterDrawer={() => (
         <>

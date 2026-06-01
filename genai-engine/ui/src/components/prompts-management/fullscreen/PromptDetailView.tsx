@@ -20,7 +20,7 @@ import Radio from "@mui/material/Radio";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useSnackbar } from "notistack";
-import { useState, useCallback } from "react";
+import { useState, useCallback, type HTMLAttributes } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAddTagToPromptVersionMutation } from "../hooks/useAddTagToPromptVersionMutation";
@@ -28,6 +28,8 @@ import { useDeleteTagFromPromptVersionMutation } from "../hooks/useDeleteTagFrom
 import type { PromptDetailViewProps } from "../types";
 
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
+import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { useApi } from "@/hooks/useApi";
 import { useCreateNotebookMutation, useSetNotebookStateMutation } from "@/hooks/useNotebooks";
 import { formatDateInTimezone } from "@/utils/formatters";
@@ -71,6 +73,7 @@ const PromptDetailView = ({
     setNewTag("");
     setTagError("");
     setPromoteToProduction(false);
+    dispatchTourEvent(TASK_TOUR_EVENTS.promptPromoted);
   }, []);
 
   const handleAddTagConfirm = useCallback(async () => {
@@ -120,6 +123,7 @@ const PromptDetailView = ({
       setTagError("");
       setPromoteToProduction(false);
       onRefetch?.();
+      dispatchTourEvent(TASK_TOUR_EVENTS.promptPromoted);
     } catch (err) {
       setTagError(err instanceof Error ? err.message : "Failed to add tag");
     }
@@ -208,6 +212,7 @@ const PromptDetailView = ({
       // Navigate with prompt params so the playground can also fetch the prompt directly
       const url = `/tasks/${taskId}/playgrounds/prompts?notebookId=${targetNotebookId}&promptName=${encodeURIComponent(promptName)}&version=${version}`;
       navigate(url);
+      dispatchTourEvent(TASK_TOUR_EVENTS.promptOpenedInPlayground);
     } catch (err) {
       console.error("Failed to open in playground:", err);
       enqueueSnackbar("Failed to open in playground", { variant: "error" });
@@ -273,7 +278,7 @@ const PromptDetailView = ({
             </Box>
           )}
           {version !== null && (
-            <IconButton size="small" onClick={handleAddTagClick} aria-label="Add tag">
+            <IconButton size="small" onClick={handleAddTagClick} aria-label="Add tag" data-tour-id={TOUR_IDS.promptAddTag}>
               <LocalOfferIcon fontSize="small" />
             </IconButton>
           )}
@@ -285,6 +290,7 @@ const PromptDetailView = ({
               size="small"
               onClick={handleOpenInPlayground}
               disabled={createNotebookMutation.isPending || setNotebookStateMutation.isPending}
+              data-tour-id={TOUR_IDS.promptOpenInPlayground}
               sx={{ minWidth: 80 }}
             >
               {createNotebookMutation.isPending || setNotebookStateMutation.isPending ? "Opening..." : "Open in Playground"}
@@ -422,6 +428,11 @@ const PromptDetailView = ({
         transformOrigin={{
           vertical: "top",
           horizontal: "left",
+        }}
+        slotProps={{
+          paper: {
+            ...({ "data-tour-id": TOUR_IDS.promptTagsPopover } as HTMLAttributes<HTMLDivElement>),
+          },
         }}
       >
         <Box sx={{ p: 2, minWidth: 300 }}>

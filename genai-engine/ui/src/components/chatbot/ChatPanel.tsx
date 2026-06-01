@@ -2,10 +2,11 @@ import CloseIcon from "@mui/icons-material/Close";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SendIcon from "@mui/icons-material/Send";
 import { Box, Divider, IconButton, Stack, TextField, Tooltip, Typography } from "@mui/material";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ChatMessage, ThinkingIndicator, ToolCallIndicator } from "./ChatMessage";
 
+import { useTaskTourFormPrefill, type TaskTourFormPrefill } from "@/features/task-tour/formPrefill";
 import type { ChatMessage as ChatMessageType, ToolCallPayload } from "@/hooks/useChatbot";
 
 interface ChatPanelProps {
@@ -19,6 +20,8 @@ interface ChatPanelProps {
   placeholder?: string;
   header?: React.ReactNode;
   inputMaxRows?: number;
+  panelTourId?: string;
+  inputTourId?: string;
 }
 
 export function ChatPanel({
@@ -32,9 +35,18 @@ export function ChatPanel({
   placeholder = "Ask something...",
   header,
   inputMaxRows = 4,
+  panelTourId,
+  inputTourId,
 }: ChatPanelProps) {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLElement>(null);
+  const handleTourPrefill = useCallback((prefill: TaskTourFormPrefill) => {
+    if (typeof prefill.value !== "string") return;
+    const value = prefill.value;
+    setInput((current) => (prefill.mode === "empty-only" && current.trim() ? current : value));
+  }, []);
+
+  useTaskTourFormPrefill(inputTourId, handleTourPrefill);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -55,7 +67,7 @@ export function ChatPanel({
   };
 
   return (
-    <Stack sx={{ height: "100%", minHeight: 0 }}>
+    <Stack data-tour-id={panelTourId} sx={{ height: "100%", minHeight: 0 }}>
       {header}
 
       <Box sx={{ flex: 1, overflowY: "auto", px: 2, py: 2 }}>
@@ -80,7 +92,7 @@ export function ChatPanel({
 
       <Divider />
 
-      <Box sx={{ px: 2, py: 1.5, display: "flex", gap: 1, alignItems: "flex-end" }}>
+      <Box data-tour-id={inputTourId} sx={{ px: 2, py: 1.5, display: "flex", gap: 1, alignItems: "flex-end" }}>
         <TextField
           variant="filled"
           fullWidth

@@ -19,10 +19,12 @@ export function createIdColumn<T extends MRT_RowData>(
     emptyValue?: string | null;
     useFullWidth?: boolean;
     includeMonospace?: boolean;
+    /** When true, chip clicks bubble to the table row (e.g. for tour row-open steps). */
+    propagateClick?: boolean;
   }
 ): MRT_ColumnDef<T> {
   const { Chip, onTrack } = deps;
-  const { size, emptyValue = "-", useFullWidth = false, includeMonospace = true } = options ?? {};
+  const { size, emptyValue = "-", useFullWidth = false, includeMonospace = true, propagateClick = false } = options ?? {};
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return columnHelper.accessor(accessor as any, {
@@ -43,6 +45,7 @@ export function createIdColumn<T extends MRT_RowData>(
             <Chip
               label={label}
               {...(includeMonospace && { sx: { fontFamily: "monospace" } })}
+              {...(propagateClick && { propagateClick: true })}
               onCopy={(value) =>
                 onTrack("TRACING_ID_COPIED", {
                   level,

@@ -230,6 +230,19 @@ Parameters:
       - 'disabled'
     Default: 'disabled'
     Description: 'Enable GenAI Engine demo mode'
+  RecaptchaEnterpriseProjectId:
+    Type: String
+    Default: ''
+    Description: 'Google Cloud project id hosting the reCAPTCHA Enterprise key. Leave blank to disable reCAPTCHA on the public tenant signup endpoint.'
+  RecaptchaEnterpriseSiteKey:
+    Type: String
+    Default: ''
+    Description: 'reCAPTCHA Enterprise site key for the backend assessment call. Must match the site key baked into the UI build. Leave blank to disable reCAPTCHA.'
+  RecaptchaEnterpriseApiKey:
+    Type: String
+    NoEcho: true
+    Default: 'none'
+    Description: "reCAPTCHA Enterprise REST API key for creating assessments. Leave as 'none' to disable reCAPTCHA verification."
   GenaiEngineOpenAIProvider:
     Type: String
     AllowedValues:
@@ -552,6 +565,7 @@ Resources:
         ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
         OpenAIEmbeddingModelNamesEndpointsAndKeys: 'none'
         OpenAIGPTModelNamesEndpointsAndKeys: !Ref OpenAIGPTModelNamesEndpointsAndKeys
+        RecaptchaEnterpriseApiKey: !Ref RecaptchaEnterpriseApiKey
       TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/genai-engine/arthur-genai-engine-secrets-manager.yml"
   GenaiEngineIAMStack:
     Type: AWS::CloudFormation::Stack
@@ -570,6 +584,7 @@ Resources:
             - !GetAtt [ CoreSecretsStack, Outputs.ContainerRepositoryCredentialsSecretOutput ]
             - !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineAppKeySecretOutput ]
             - !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineSecretStoreKeySecretOutput ]
+            - !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineRecaptchaEnterpriseApiKeySecretOutput ]
         GenaiEngineUseInternalModelRepository: !Ref GenaiEngineUseInternalModelRepository
       TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/genai-engine/arthur-genai-engine-iam.yml"
   GenaiEngineSecurityGroupStack:
@@ -626,6 +641,7 @@ Resources:
         GenaiEngineSecretAPIKeyARN: !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineAPIKeySecretOutput ]
         GenaiEngineAppSecretKeyARN: !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineAppKeySecretOutput ]
         GenaiEngineSecretStoreKeyARN: !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineSecretStoreKeySecretOutput ]
+        GenaiEngineSecretRecaptchaApiKeyARN: !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineRecaptchaEnterpriseApiKeySecretOutput ]
         GenaiEngineSecretOpenAIGPTModelNamesEndpointsKeysARN: !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineOpenAIGPTModelNamesEndpointsAndKeysSecretOutput ]
         GenaiEngineSecretOpenAIEmbeddingModelNamesEndpointsKeysARN: !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineOpenAIEmbeddingModelNamesEndpointsAndKeysSecretOutput ]
         GenaiEngineSecretPostgresARN: !GetAtt [ CoreSecretsStack, Outputs.PostgresCredentialsSecretOutput ]
@@ -635,6 +651,8 @@ Resources:
         GenaiEngineToxicityCheckMaxTokenLimit: !Ref GenaiEngineToxicityCheckMaxTokenLimit
         GenaiEngineUsePIIModelV2: !Ref GenaiEngineUsePIIModelV2
         GenaiEngineDemoMode: !Ref GenaiEngineDemoMode
+        RecaptchaEnterpriseProjectId: !Ref RecaptchaEnterpriseProjectId
+        RecaptchaEnterpriseSiteKey: !Ref RecaptchaEnterpriseSiteKey
         GenaiEngineFargateTaskCPUValue: !Ref GenaiEngineFargateTaskCPUValue
         GenaiEngineFargateTaskMemoryValue: !Ref GenaiEngineFargateTaskMemoryValue
         GenaiEngineServerWorkerCount: !Ref GenaiEngineServerWorkerCount

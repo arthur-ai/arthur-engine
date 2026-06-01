@@ -457,6 +457,18 @@
             "type": "string",
             "description": "(Optional) Custom URL for the model repository (e.g. a private Hugging Face mirror). If not specified, the default Hugging Face endpoint will be used."
         },
+        "recaptchaEnterpriseProjectId": {
+            "type": "string",
+            "description": "(Optional) Google Cloud project id hosting the reCAPTCHA Enterprise key. Leave unset to disable reCAPTCHA verification on the public tenant signup endpoint."
+        },
+        "recaptchaEnterpriseSiteKey": {
+            "type": "string",
+            "description": "(Optional) reCAPTCHA Enterprise site key used by the backend assessment call. Must match the site key baked into the UI build. Leave unset to disable reCAPTCHA verification."
+        },
+        "genaiEngineSecretRecaptchaApiKeyName": {
+            "type": "string",
+            "description": "(Optional) Name of the secret holding the reCAPTCHA Enterprise REST API key (expecting value for key 'key'). Leave unset to disable reCAPTCHA verification."
+        },
         "gcpDiscoveryConfig": {
             "type": "object",
             "properties": {
