@@ -15,7 +15,16 @@ export function getPromptSaveableFields(prompt: PromptType): string {
     messages: prompt.messages.map((m) => ({
       role: m.role,
       content: m.content,
-      tool_calls: m.tool_calls ?? null,
+      tool_calls: m.tool_calls?.length
+        ? m.tool_calls.map((tc) => ({
+            id: tc.id?.trim() ?? "",
+            type: tc.type ?? "function",
+            function: {
+              name: tc.function?.name?.trim() ?? "",
+              arguments: tc.function?.arguments ?? "",
+            },
+          }))
+        : null,
       tool_call_id: m.tool_call_id ?? null,
     })),
     modelParameters: {
