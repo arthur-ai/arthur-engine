@@ -376,33 +376,18 @@ class SpanRepository:
 
         Returns list of full trace trees with existing metrics (no computation).
         """
-        # Get trace IDs for this session
+        # Get trace IDs for this session. Tenant scoping happens at the SQL
+        # layer inside get_trace_ids_for_session so the count and the page
+        # slice both reflect the org-owned subset; post-filtering here would
+        # break pagination (false 404s on later pages, partially empty pages).
         count, trace_ids = self.span_query_service.get_trace_ids_for_session(
             session_id=session_id,
             pagination_parameters=pagination_parameters,
+            org_scope=org_scope,
         )
 
         if not trace_ids:
             return 0, []
-
-        # Tenant callers: filter the trace_ids down to only those whose owning
-        # task lives in the caller's org. Sessions can span multiple tasks, so
-        # we filter per-trace rather than checking the session wholesale.
-        # Uses the denormalized trace_metadata.org_id column (Migration 4).
-        if org_scope is not None:
-            owned = {
-                row[0]
-                for row in self.db_session.execute(
-                    select(DatabaseTraceMetadata.trace_id).where(
-                        DatabaseTraceMetadata.trace_id.in_(trace_ids),
-                        DatabaseTraceMetadata.org_id == org_scope,
-                    )
-                ).all()
-            }
-            trace_ids = [tid for tid in trace_ids if tid in owned]
-            count = len(trace_ids)
-            if not trace_ids:
-                return 0, []
 
         # Query all spans for these traces
         spans, _ = self.span_query_service.query_spans_from_db(
@@ -443,31 +428,16 @@ class SpanRepository:
 
         Returns list of full trace trees with computed metrics.
         """
-        # Get trace IDs for this session
+        # Get trace IDs for this session. Tenant scoping happens at the SQL
+        # layer (see get_session_traces for rationale).
         count, trace_ids = self.span_query_service.get_trace_ids_for_session(
             session_id=session_id,
             pagination_parameters=pagination_parameters,
+            org_scope=org_scope,
         )
 
         if not trace_ids:
             return 0, []
-
-        # Tenant callers: filter to only traces in the caller's org. Uses the
-        # denormalized trace_metadata.org_id column (Migration 4).
-        if org_scope is not None:
-            owned = {
-                row[0]
-                for row in self.db_session.execute(
-                    select(DatabaseTraceMetadata.trace_id).where(
-                        DatabaseTraceMetadata.trace_id.in_(trace_ids),
-                        DatabaseTraceMetadata.org_id == org_scope,
-                    )
-                ).all()
-            }
-            trace_ids = [tid for tid in trace_ids if tid in owned]
-            count = len(trace_ids)
-            if not trace_ids:
-                return 0, []
 
         # Query all spans for these traces
         spans, _ = self.span_query_service.query_spans_from_db(

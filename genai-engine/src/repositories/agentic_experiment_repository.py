@@ -14,6 +14,7 @@ from db_models.agentic_experiment_models import (
     DatabaseAgenticExperimentTestCaseAgenticResult,
     DatabaseAgenticExperimentTestCaseAgenticResultEvalScore,
 )
+from db_models.agentic_notebook_models import DatabaseAgenticNotebook
 from db_models.dataset_models import (
     DatabaseDataset,
     DatabaseDatasetVersion,
@@ -733,14 +734,32 @@ class AgenticExperimentRepository:
         notebook_id: str,
         org_scope: UUID | None = None,
     ) -> AgenticExperimentSummary:
-        """Attach an agentic notebook to an experiment."""
+        """Attach an agentic notebook to an experiment.
+
+        The notebook must live on the same task as the experiment. Because the
+        experiment is already org-scoped via `_get_db_experiment`, matching on
+        `task_id` transitively pins the notebook to the same org — without
+        that check a tenant could attach a foreign-org notebook UUID.
+        """
         db_experiment = self._get_db_experiment(experiment_id, org_scope=org_scope)
 
-        # Update notebook_id
+        db_notebook = (
+            self.db_session.query(DatabaseAgenticNotebook)
+            .filter(
+                DatabaseAgenticNotebook.id == notebook_id,
+                DatabaseAgenticNotebook.task_id == db_experiment.task_id,
+            )
+            .first()
+        )
+        if db_notebook is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Agentic notebook {notebook_id} not found.",
+            )
+
         db_experiment.notebook_id = notebook_id
         self.db_session.commit()
 
-        # Return updated summary
         return self._db_experiment_to_summary(db_experiment)
 
     def delete_experiment(

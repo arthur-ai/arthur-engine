@@ -1,8 +1,20 @@
+import uuid
+from datetime import datetime, timedelta
 from unittest.mock import patch
 
 import pytest
+from arthur_common.models.common_schemas import PaginationParameters
+from arthur_common.models.enums import PaginationSortMethod
 
-from tests.clients.base_test_client import GenaiEngineTestClientBase
+from db_models import DatabaseSpan, DatabaseTask, DatabaseTraceMetadata
+from db_models.organization_models import DatabaseOrganization
+from repositories.metrics_repository import MetricRepository
+from repositories.span_repository import SpanRepository
+from repositories.tasks_metrics_repository import TasksMetricsRepository
+from tests.clients.base_test_client import (
+    GenaiEngineTestClientBase,
+    override_get_db_session,
+)
 from tests.routes.trace_api.conftest import (
     _create_base_trace_request,
     _create_span,
@@ -492,3 +504,294 @@ def test_experiment_sessions_excluded_from_session_endpoint(
     assert (
         experiment_session_id not in session_ids
     ), "Experiment session should be excluded by default"
+
+
+# ============================================================================
+# CROSS-ORG PAGINATION TESTS (org_scope pushed into SQL layer)
+# ============================================================================
+#
+# These regression tests pin the multi-tenant pagination behavior fixed in
+# PR #1693. Before the fix, SpanRepository.get_session_traces (and the
+# parallel compute_session_metrics) asked span_query_service for an
+# unfiltered (count, page_slice) and then post-filtered that page slice by
+# org_id. That produced three concrete failure modes for tenant callers:
+#   1. count reflected page-size-after-filter, not the total org-owned count
+#   2. later pages returned 0 traces (route handler raises 404) even though
+#      org-owned traces existed further into the result set
+#   3. pages were partially populated (page_size=N, fewer than N returned)
+#
+# The fix pushes the org filter into the SQL WHERE clause shared by both the
+# count query and the paginated SELECT. The tests below seed a single
+# `session_id` populated by two orgs and assert each of those failure modes
+# can no longer recur.
+
+
+@pytest.fixture(scope="function")
+def cross_org_session():
+    """Seed one session_id containing traces from two distinct orgs.
+
+    Layout:
+        org1 ──► task1 ──► 6 traces (O1_t0 .. O1_t5)  shared session
+        org2 ──► task2 ──► 4 traces (O2_t0 .. O2_t3)  shared session
+
+    Traces are interleaved in time so descending-sort by start_time
+    places one O2 trace at the front, then alternates. This guarantees
+    that under page_size=2 DESC sort, page 0 is mixed/O2-heavy and an
+    org-scoped caller has to advance pages to see all of its data.
+
+    The shared session_id ensures both orgs land on the same code path
+    inside SpanRepository.get_session_traces — the exact spot the buggy
+    post-filter used to live.
+    """
+    db = override_get_db_session()
+    suffix = uuid.uuid4().hex[:8]
+    session_id = f"mt-session-{suffix}"
+    org1_id = uuid.uuid4()
+    org2_id = uuid.uuid4()
+    task1_id = f"mt-task1-{suffix}"
+    task2_id = f"mt-task2-{suffix}"
+
+    now = datetime.now()
+    base_time = now - timedelta(hours=1)
+
+    # Orgs
+    db.add(
+        DatabaseOrganization(
+            id=org1_id,
+            name=f"mt-org1-{suffix}",
+            is_system=False,
+            created_at=now,
+        ),
+    )
+    db.add(
+        DatabaseOrganization(
+            id=org2_id,
+            name=f"mt-org2-{suffix}",
+            is_system=False,
+            created_at=now,
+        ),
+    )
+    # Tasks (one per org)
+    db.add(
+        DatabaseTask(
+            id=task1_id,
+            name=f"mt-task1-{suffix}",
+            created_at=now,
+            updated_at=now,
+            org_id=org1_id,
+        ),
+    )
+    db.add(
+        DatabaseTask(
+            id=task2_id,
+            name=f"mt-task2-{suffix}",
+            created_at=now,
+            updated_at=now,
+            org_id=org2_id,
+        ),
+    )
+    db.commit()
+
+    # Build interleaved traces. Index i: even -> org1, odd -> org2.
+    # 10 total slots, but cap org2 at 4 — slots [1, 3, 5, 7] are O2, all
+    # other slots are O1 (6 traces). Earlier index = earlier start_time,
+    # so DESC sort yields slot 9 (O1) first, then 8 (O1), then 7 (O2)...
+    org1_trace_ids: list[str] = []
+    org2_trace_ids: list[str] = []
+    spans: list[DatabaseSpan] = []
+    trace_metas: list[DatabaseTraceMetadata] = []
+    for i in range(10):
+        is_o2 = i in (1, 3, 5, 7)
+        owner_org = org2_id if is_o2 else org1_id
+        owner_task = task2_id if is_o2 else task1_id
+        trace_id = f"mt-trace-{suffix}-{i:02d}"
+        start = base_time + timedelta(seconds=i)
+        end = start + timedelta(milliseconds=500)
+
+        trace_metas.append(
+            DatabaseTraceMetadata(
+                trace_id=trace_id,
+                task_id=owner_task,
+                org_id=owner_org,
+                session_id=session_id,
+                user_id=f"user-{suffix}",
+                span_count=1,
+                start_time=start,
+                end_time=end,
+                created_at=start,
+                updated_at=end,
+            ),
+        )
+        spans.append(
+            DatabaseSpan(
+                id=uuid.uuid4().hex,
+                trace_id=trace_id,
+                span_id=f"mt-span-{suffix}-{i:02d}",
+                parent_span_id=None,
+                span_kind="LLM",
+                start_time=start,
+                end_time=end,
+                task_id=owner_task,
+                org_id=owner_org,
+                session_id=session_id,
+                user_id=f"user-{suffix}",
+                status_code="Ok",
+                raw_data={
+                    "name": "mt-span",
+                    "spanId": f"mt-span-{suffix}-{i:02d}",
+                    "traceId": trace_id,
+                    "attributes": {"openinference.span.kind": "LLM"},
+                    "arthur_span_version": "arthur_span_v1",
+                },
+            ),
+        )
+        if is_o2:
+            org2_trace_ids.append(trace_id)
+        else:
+            org1_trace_ids.append(trace_id)
+
+    db.add_all(trace_metas)
+    db.add_all(spans)
+    db.commit()
+
+    tasks_metrics_repo = TasksMetricsRepository(db)
+    metrics_repo = MetricRepository(db)
+    span_repo = SpanRepository(db, tasks_metrics_repo, metrics_repo)
+
+    yield {
+        "db": db,
+        "session_id": session_id,
+        "org1_id": org1_id,
+        "org2_id": org2_id,
+        "task1_id": task1_id,
+        "task2_id": task2_id,
+        "org1_trace_ids": org1_trace_ids,
+        "org2_trace_ids": org2_trace_ids,
+        "span_repo": span_repo,
+    }
+
+    # Cleanup. Order matters: spans, trace_metadata, tasks, orgs.
+    span_ids = [s.span_id for s in spans]
+    trace_ids = [t.trace_id for t in trace_metas]
+    db.query(DatabaseSpan).filter(DatabaseSpan.span_id.in_(span_ids)).delete(
+        synchronize_session=False,
+    )
+    db.query(DatabaseTraceMetadata).filter(
+        DatabaseTraceMetadata.trace_id.in_(trace_ids),
+    ).delete(synchronize_session=False)
+    db.query(DatabaseTask).filter(
+        DatabaseTask.id.in_([task1_id, task2_id]),
+    ).delete(synchronize_session=False)
+    db.query(DatabaseOrganization).filter(
+        DatabaseOrganization.id.in_([org1_id, org2_id]),
+    ).delete(synchronize_session=False)
+    db.commit()
+
+
+@pytest.mark.unit_tests
+def test_session_traces_tenant_pagination_pushes_org_filter_into_sql(
+    cross_org_session,
+):
+    """Consolidated regression for the PR #1693 multi-tenant pagination fix.
+
+    The fixture seeds one session_id populated by two orgs (6 O1 / 4 O2,
+    interleaved start times) and is intentionally expensive (10 traces +
+    10 spans + 2 orgs + 2 tasks in real DB tables), so all five
+    behavioral guarantees are exercised inside this single test against
+    one shared seed. Each sub-case is labeled via `case` so an assertion
+    failure pinpoints which guarantee regressed.
+
+    Sub-cases:
+      1. tenant count is the org-owned total (independent of page_size)
+      2. tenant reaches later pages — no 404 caused by post-filtering
+      3. tenant page_size is honored — no partial slices
+      4. admin (org_scope=None) sees all orgs
+      5. compute_session_metrics shares the same paginate+filter contract
+    """
+    fx = cross_org_session
+    span_repo: SpanRepository = fx["span_repo"]
+    session_id = fx["session_id"]
+    org1_ids = set(fx["org1_trace_ids"])
+    org2_ids = set(fx["org2_trace_ids"])
+
+    def _paginate(page, page_size, org_scope, fn=span_repo.get_session_traces):
+        return fn(
+            session_id=session_id,
+            pagination_parameters=PaginationParameters(
+                sort=PaginationSortMethod.DESCENDING,
+                page=page,
+                page_size=page_size,
+            ),
+            org_scope=org_scope,
+        )
+
+    # --- Sub-case 1: tenant count is the org-owned total -----------------
+    case = "tenant count is org-owned total"
+    count, traces = _paginate(page=0, page_size=10, org_scope=fx["org1_id"])
+    assert count == len(fx["org1_trace_ids"]) == 6, (
+        f"[{case}] count must be the O1-owned total (6), not the full "
+        f"session size (10) and not a page slice. got count={count}"
+    )
+    returned_ids = {t.trace_id for t in traces}
+    assert returned_ids == org1_ids, f"[{case}] returned ids mismatch"
+    assert returned_ids.isdisjoint(org2_ids), f"[{case}] cross-org leak detected"
+
+    # --- Sub-case 2: tenant reaches later pages (no 404) -----------------
+    case = "tenant reaches later page"
+    page_results = [
+        _paginate(page=p, page_size=2, org_scope=fx["org1_id"]) for p in (0, 1, 2)
+    ]
+    page_counts = [c for c, _ in page_results]
+    page_traces = [t for _, t in page_results]
+
+    assert page_counts == [6, 6, 6], (
+        f"[{case}] count must be stable across pages and equal O1-owned "
+        f"total. got counts={page_counts}"
+    )
+    for idx, traces_on_page in enumerate(page_traces):
+        assert len(traces_on_page) == 2, (
+            f"[{case}] page {idx} must be fully populated (no partial "
+            f"slices from post-filtering); got {len(traces_on_page)}"
+        )
+    seen = set().union(*({t.trace_id for t in pt} for pt in page_traces))
+    assert (
+        seen == org1_ids
+    ), f"[{case}] union of pages must cover all O1 traces with no duplicates"
+    assert seen.isdisjoint(org2_ids), f"[{case}] cross-org leak detected"
+
+    # --- Sub-case 3: tenant page_size honored ----------------------------
+    case = "tenant page_size honored"
+    count, traces = _paginate(page=0, page_size=3, org_scope=fx["org1_id"])
+    assert count == 6, f"[{case}] count must be O1-owned total; got {count}"
+    assert (
+        len(traces) == 3
+    ), f"[{case}] page_size=3 must return exactly 3 items, got {len(traces)}"
+    returned_ids = {t.trace_id for t in traces}
+    assert returned_ids.issubset(
+        org1_ids
+    ), f"[{case}] all returned traces must be O1-owned"
+
+    # --- Sub-case 4: admin sees all orgs ---------------------------------
+    case = "admin sees all orgs"
+    count, traces = _paginate(page=0, page_size=20, org_scope=None)
+    assert count == 10, f"[{case}] admin should see all 10 traces, got {count}"
+    returned_ids = {t.trace_id for t in traces}
+    assert (
+        returned_ids == org1_ids | org2_ids
+    ), f"[{case}] admin must see union of both orgs' trace_ids"
+
+    # --- Sub-case 5: compute_session_metrics pagination parity -----------
+    case = "compute_session_metrics tenant pagination parity"
+    count, traces = _paginate(
+        page=0,
+        page_size=10,
+        org_scope=fx["org1_id"],
+        fn=span_repo.compute_session_metrics,
+    )
+    assert count == 6, (
+        f"[{case}] compute_session_metrics count must be O1-owned total; "
+        f"got {count}"
+    )
+    returned_ids = {t.trace_id for t in traces}
+    assert returned_ids == org1_ids, f"[{case}] returned ids mismatch"
+    assert returned_ids.isdisjoint(org2_ids), f"[{case}] cross-org leak detected"

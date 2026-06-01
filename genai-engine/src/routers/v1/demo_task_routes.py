@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -14,6 +16,8 @@ from schemas.chatbot_schemas import ChatbotRequest
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import ApplicationConfiguration, User
 from utils.users import enforce_org_scope, permission_checker
+
+logger = logging.getLogger(__name__)
 
 demo_task_routes = APIRouter(
     prefix="/api/v1",
@@ -64,14 +68,16 @@ async def stream_demo_chatbot(
             chatbot_request.session_id,
         )
     except ValueError as e:
+        logger.warning("Demo chatbot stream rejected: %s", e)
         raise HTTPException(
             status_code=400,
-            detail=f"Failed to stream demo chatbot response: {e}",
-        )
-    except HTTPException as e:
-        raise e
+            detail="Invalid demo chatbot request.",
+        ) from e
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.exception("Demo chatbot stream failed unexpectedly")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to stream demo chatbot response: {e}",
-        )
+            detail="Failed to stream demo chatbot response.",
+        ) from e

@@ -190,11 +190,16 @@ class LLMClient:
         model: str,
         messages: List[dict[str, Any]],
     ) -> TokenCountResponse:
+        # Route credentials through _add_provider_credentials so Azure
+        # (api_version), Vertex (vertex_project/vertex_credentials), and
+        # Bedrock (AWS creds) get the kwargs LiteLLM needs to resolve the
+        # tokenizer. Without this, summarize_and_emit_replace raises on every
+        # non-OpenAI provider and chatbot summarization silently breaks.
+        kwargs = self._add_provider_credentials({})
         return await litellm.acount_tokens(
             model=model,
             messages=messages,
-            api_key=self.api_key,
-            api_base=self.api_base,
+            **kwargs,
         )
 
     def completion(
