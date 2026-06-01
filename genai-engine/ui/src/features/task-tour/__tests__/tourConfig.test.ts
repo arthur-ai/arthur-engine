@@ -342,7 +342,7 @@ describe("task tour config", () => {
         params: { taskId: "task-id" },
         search: { tab: "prompts-management" },
       },
-      target: { kind: "selector", selector: tourSelector(TOUR_IDS.promptsFirstRow) },
+      target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.demoTaskPromptRow },
       advanceOn: expect.arrayContaining([{ type: "action", name: TASK_TOUR_ACTIONS.promptInspected }]),
     });
     expect(tagProductionStep).toMatchObject({
