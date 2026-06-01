@@ -18,7 +18,7 @@ import {
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { parseAsString, parseAsStringEnum, useQueryState } from "nuqs";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type HTMLAttributes } from "react";
 
 import { createColumns } from "../../data/results-columns";
 import { continuousEvalsResultsQueryOptions } from "../../hooks/useContinuousEvalsResults";
@@ -28,6 +28,8 @@ import { FilterModal } from "./components/FilterModal";
 
 import { useFilterStore } from "@/components/traces/stores/filter.store";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
+import { dispatchTourEvent, refreshTaskTourTarget, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { useApi } from "@/hooks/useApi";
 import { usePagination } from "@/hooks/usePagination";
 import { useTask } from "@/hooks/useTask";
@@ -80,6 +82,17 @@ export const Results = () => {
     getCoreRowModel: getCoreRowModel(),
   });
 
+  useEffect(() => {
+    if (!annotationId) return;
+    const frame = window.requestAnimationFrame(() => refreshTaskTourTarget());
+    return () => window.cancelAnimationFrame(frame);
+  }, [annotationId]);
+
+  const handleCloseDetails = () => {
+    setAnnotationId("");
+    dispatchTourEvent(TASK_TOUR_EVENTS.evaluateResultDetailsReviewed);
+  };
+
   return (
     <>
       <Stack
@@ -131,7 +144,13 @@ export const Results = () => {
               </TableHead>
               <TableBody>
                 {table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id} hover onClick={() => setAnnotationId(row.original.id)} sx={{ cursor: "pointer" }}>
+                  <TableRow
+                    key={row.id}
+                    hover
+                    onClick={() => setAnnotationId(row.original.id)}
+                    data-tour-id={row.index === 0 ? TOUR_IDS.evaluateResultsFirstRow : undefined}
+                    sx={{ cursor: "pointer" }}
+                  >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                     ))}
@@ -154,10 +173,20 @@ export const Results = () => {
         </>
       )}
 
-      <Dialog open={!!annotationId} onClose={() => setAnnotationId("")} maxWidth="xl" fullWidth>
+      <Dialog
+        open={!!annotationId}
+        onClose={handleCloseDetails}
+        maxWidth="xl"
+        fullWidth
+        slotProps={{
+          paper: {
+            ...({ "data-tour-id": TOUR_IDS.evaluateResultsDetailsDialog } as HTMLAttributes<HTMLDivElement>),
+          },
+        }}
+      >
         <Details
           annotationId={annotationId || undefined}
-          onClose={() => setAnnotationId("")}
+          onClose={handleCloseDetails}
           onRerunComplete={() => setAction(null)}
           rerunOnMount={action === "rerun"}
         />

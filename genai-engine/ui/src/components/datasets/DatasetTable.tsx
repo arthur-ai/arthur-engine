@@ -24,6 +24,7 @@ import React, { useState } from "react";
 
 import { DatasetTableRow } from "./DatasetTableRow";
 
+import { TOUR_IDS } from "@/features/task-tour";
 import { DatasetVersionRowResponse } from "@/lib/api-client/api-client";
 
 interface DatasetTableProps {
@@ -119,6 +120,7 @@ export const DatasetTable: React.FC<DatasetTableProps> = ({
 
   return (
     <Box
+      data-tour-id={TOUR_IDS.datasetTable}
       sx={{
         overflow: "auto",
         minHeight: 0,

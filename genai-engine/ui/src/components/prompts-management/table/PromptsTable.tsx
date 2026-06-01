@@ -23,9 +23,12 @@ import React, { useCallback, useMemo, useState } from "react";
 import type { PromptsTableProps } from "../types";
 
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { TOUR_IDS } from "@/features/task-tour";
+import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { formatDateInTimezone } from "@/utils/formatters";
 
 type SortableColumn = "name" | "created_at" | "latest_version_created_at";
+const DEMO_TASK_PROMPT_NAME = "demo_task_prompt";
 
 const PromptsTable = ({ prompts, sortColumn, sortDirection, onSort, onExpandToFullScreen, onDelete }: PromptsTableProps) => {
   const { timezone, use24Hour } = useDisplaySettings();
@@ -42,6 +45,7 @@ const PromptsTable = ({ prompts, sortColumn, sortDirection, onSort, onExpandToFu
 
   const handleRowClick = useCallback(
     (promptName: string) => {
+      dispatchTourEvent(TASK_TOUR_EVENTS.promptInspected);
       onExpandToFullScreen(promptName);
     },
     [onExpandToFullScreen]
@@ -179,6 +183,7 @@ const PromptsTable = ({ prompts, sortColumn, sortDirection, onSort, onExpandToFu
                   key={promptMetadata.name}
                   hover
                   onClick={() => handleRowClick(promptMetadata.name)}
+                  data-tour-id={promptMetadata.name === DEMO_TASK_PROMPT_NAME ? TOUR_IDS.promptsFirstRow : undefined}
                   sx={{
                     cursor: "pointer",
                     "&:hover": {

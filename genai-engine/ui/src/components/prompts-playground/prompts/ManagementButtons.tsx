@@ -14,6 +14,7 @@ import { PromptType } from "../types";
 import ModelParamsDialog from "./ModelParamsDialog";
 import PreviewPromptModal from "./PreviewPromptModal";
 
+import { TOUR_IDS } from "@/features/task-tour/selectors";
 import { PromptVariableMappingOutput } from "@/lib/api-client/api-client";
 import { track, EVENT_NAMES } from "@/services/amplitude";
 
@@ -162,7 +163,7 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
         </span>
       </Tooltip>
       <Tooltip title="Duplicate Prompt" placement="top-start" arrow>
-        <IconButton aria-label="duplicate" onClick={handleDuplicatePrompt}>
+        <IconButton aria-label="duplicate" onClick={handleDuplicatePrompt} data-tour-id={TOUR_IDS.playgroundDuplicatePrompt}>
           <ContentCopyIcon color="secondary" />
         </IconButton>
       </Tooltip>
@@ -182,6 +183,7 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
       <Tooltip title={saveTooltip} placement="top-start" arrow>
         <IconButton
           aria-label="save"
+          data-tour-id={TOUR_IDS.playgroundSavePrompt}
           onClick={handleSavePromptOpen}
           sx={{
             ...(needsSave && {

@@ -10,6 +10,8 @@ import { useSnackbar } from "notistack";
 import { useRef } from "react";
 import z from "zod";
 
+import { TOUR_IDS } from "@/features/task-tour/selectors";
+import { dispatchTourEvent, refreshTaskTourTarget, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { useApi } from "@/hooks/useApi";
 import { AgenticAnnotationResponse, TraceResponse } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
@@ -64,6 +66,7 @@ export const FeedbackPanel = ({ containerRef, annotations, traceId }: Props) => 
     },
     onSuccess: () => {
       enqueueSnackbar("Feedback submitted", { variant: "success" });
+      dispatchTourEvent(TASK_TOUR_EVENTS.feedbackAdded);
       track(EVENT_NAMES.FEEDBACK_SUBMITTED, {
         trace_id: traceId,
         feedback_type: form.state.values.feedback,
@@ -147,6 +150,14 @@ export const FeedbackPanel = ({ containerRef, annotations, traceId }: Props) => 
   const feedback = annotation ? (annotation.annotation_score === 1 ? "positive" : "negative") : null;
   const isMutating = sendFeedbackMutation.isPending || clearFeedbackMutation.isPending;
 
+  const handleOpenFeedback = (feedbackType: Feedback) => {
+    window.requestAnimationFrame(() => refreshTaskTourTarget());
+    track(EVENT_NAMES.FEEDBACK_OPENED, {
+      trace_id: traceId,
+      feedback_type: feedbackType,
+    });
+  };
+
   return (
     <>
       <ButtonGroup ref={anchor} size="small" disableElevation disabled={isMutating}>
@@ -158,12 +169,7 @@ export const FeedbackPanel = ({ containerRef, annotations, traceId }: Props) => 
                 color={feedback === "positive" ? "success" : undefined}
                 variant={feedback === "positive" ? "contained" : "outlined"}
                 startIcon={<ThumbUpOutlinedIcon sx={{ fontSize: 16 }} />}
-                onClick={() =>
-                  track(EVENT_NAMES.FEEDBACK_OPENED, {
-                    trace_id: traceId,
-                    feedback_type: "positive",
-                  })
-                }
+                onClick={() => handleOpenFeedback("positive")}
               />
             }
             payload={{ feedback: "positive" }}
@@ -180,12 +186,7 @@ export const FeedbackPanel = ({ containerRef, annotations, traceId }: Props) => 
                 variant={feedback === "negative" ? "contained" : "outlined"}
                 color={feedback === "negative" ? "error" : undefined}
                 startIcon={<ThumbDownOutlinedIcon sx={{ fontSize: 16 }} />}
-                onClick={() =>
-                  track(EVENT_NAMES.FEEDBACK_OPENED, {
-                    trace_id: traceId,
-                    feedback_type: "negative",
-                  })
-                }
+                onClick={() => handleOpenFeedback("negative")}
               />
             }
             payload={{ feedback: "negative" }}
@@ -205,7 +206,10 @@ export const FeedbackPanel = ({ containerRef, annotations, traceId }: Props) => 
           return (
             <Popover.Portal container={containerRef.current}>
               <Popover.Positioner sideOffset={8} side="bottom" align="end" anchor={anchor.current}>
-                <Popover.Popup render={<Paper />} className="origin-(--transform-origin) p-4 w-80 outline-none">
+                <Popover.Popup
+                  render={<Paper data-tour-id={TOUR_IDS.traceFeedbackPopover} />}
+                  className="origin-(--transform-origin) p-4 w-80 outline-none"
+                >
                   <Stack direction="column" gap={1}>
                     <Stack direction="column" gap={0}>
                       <Popover.Title render={<Typography variant="body2" fontWeight="bold" color="text.primary" />}>

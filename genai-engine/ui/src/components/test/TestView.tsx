@@ -11,6 +11,7 @@ import { Link, useParams } from "react-router-dom";
 
 import { AgentExperiments } from "@/components/agent-experiments";
 import { AgentNotebook } from "@/components/agent-notebook";
+import { TOUR_IDS } from "@/features/task-tour";
 
 type TestTab = "agent-experiments" | "agentic-notebooks";
 
@@ -59,7 +60,13 @@ export const TestView = () => {
             </Button>
           )}
           {activeTab === "agentic-notebooks" && (
-            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => setIsNotebookModalOpen(true)}>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddIcon />}
+              data-tour-id={TOUR_IDS.testNotebookCreate}
+              onClick={() => setIsNotebookModalOpen(true)}
+            >
               Notebook
             </Button>
           )}

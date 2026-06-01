@@ -16,8 +16,8 @@ import {
 } from "@mui/material";
 
 import { BRINGS_OPTIONS, MATURITY_OPTIONS } from "../../../onboarding-options";
+import { withForm } from "../../hooks/form";
 import { fieldErrorMessage, radioCardSx, sectionLabelSx, textFieldSx } from "../../styles";
-import { withForm } from "../hooks/form";
 import { STEP_HEADINGS } from "../options";
 import { aboutSchema, wizardFormOpts } from "../schema";
 
@@ -153,16 +153,21 @@ export const TryItOutFormWizardAboutStep = withForm({
                   Back
                 </Button>
                 <Box sx={{ flex: 1 }} />
-                <Button
-                  type="submit"
-                  variant="contained"
-                  color="primary"
-                  disableElevation
-                  endIcon={<ArrowForwardIcon sx={{ fontSize: 16 }} />}
-                  sx={{ textTransform: "none", fontSize: 14, fontWeight: 600, borderRadius: "8px", px: 2.5 }}
-                >
-                  Continue
-                </Button>
+                <form.Subscribe selector={(s) => aboutSchema.safeParse(s.values.about).success}>
+                  {(isValid) => (
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      color="primary"
+                      disabled={!isValid}
+                      disableElevation
+                      endIcon={<ArrowForwardIcon sx={{ fontSize: 16 }} />}
+                      sx={{ textTransform: "none", fontSize: 14, fontWeight: 600, borderRadius: "8px", px: 2.5 }}
+                    >
+                      Continue
+                    </Button>
+                  )}
+                </form.Subscribe>
               </Stack>
             </Stack>
           </Box>
