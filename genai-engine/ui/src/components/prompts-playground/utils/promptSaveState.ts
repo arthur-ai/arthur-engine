@@ -16,6 +16,7 @@ export function getPromptSaveableFields(prompt: PromptType): string {
       role: m.role,
       content: m.content,
       tool_calls: m.tool_calls ?? null,
+      tool_call_id: m.tool_call_id ?? null,
     })),
     modelParameters: {
       temperature: prompt.modelParameters.temperature ?? null,
