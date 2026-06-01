@@ -1,3 +1,5 @@
+import os
+
 from arthur_common.models.llm_model_providers import (
     JsonPropertySchema,
     JsonSchema,
@@ -13,8 +15,12 @@ from schemas.common_schemas import (
     NewDatasetVersionRowColumnItemRequest,
     NewDatasetVersionRowRequest,
 )
+from arthur_common.models.llm_model_providers import MessageRole, OpenAIMessage, ToolCall, ToolCallFunction
 from schemas.internal_schemas import NewTraceTransformRequest
 from schemas.request_schemas import NewDatasetRequest, NewDatasetVersionRequest
+from utils.file_parsing import parse_csv_rows
+
+DEMO_TASK_DATASET_CSV_PATH = os.path.join(os.path.dirname(__file__), "DemoDataset.csv")
 
 WIKIPEDIA_SEARCH_TOOL = LLMTool(
     function=ToolFunction(
@@ -137,46 +143,66 @@ DEMO_TASK_RESPONSE_EXTRACTION_TRANSFORM = NewTraceTransformRequest(
 
 DEMO_TASK_DATASET_REQUEST = NewDatasetRequest(
     name="Demo Dataset",
-    description="General knowledge query/response pairs.",
+    description="General knowledge query/response pairs and wikipedia search/fetch results.",
 )
 
-DEMO_TASK_DATASET_ROWS = [
-    ("What is the capital of Australia?", "Canberra"),
-    ("How many sides does a hexagon have?", "6 sides"),
-    ("What planet is known as the Red Planet?", "Mars"),
-    ("Who painted the Mona Lisa?", "Leonardo da Vinci"),
-    ("What is the chemical symbol for gold?", "Au"),
-    ("How many bones are in the adult human body?", "206 bones"),
-    ("What is the largest ocean on Earth?", "The Pacific Ocean"),
-    ("In what year did World War II end?", "1945"),
-    ("What is the fastest land animal?", "The cheetah"),
-    ("How many continents are there on Earth?", "7 continents"),
-    (
-        "What is machine learning?",
-        "Empirical risk minimization over a hypothesis space via gradient-based optimization.",
-    ),
-    (
-        "How does the stock market work?",
-        "A continuous double auction where prices emerge from stochastic order flow under the efficient market hypothesis.",
-    ),
-]
+DEMO_TASK_DATASET_ROWS = parse_csv_rows(DEMO_TASK_DATASET_CSV_PATH)
 
 DEMO_TASK_DATASET_VERSION_REQUEST = NewDatasetVersionRequest(
     rows_to_add=[
         NewDatasetVersionRowRequest(
             data=[
                 NewDatasetVersionRowColumnItemRequest(
-                    column_name="query",
-                    column_value=query,
-                ),
-                NewDatasetVersionRowColumnItemRequest(
-                    column_name="response",
-                    column_value=response,
-                ),
+                    column_name=column_name,
+                    column_value=column_value,
+                )
+                for column_name, column_value in row.items()
             ],
         )
-        for query, response in DEMO_TASK_DATASET_ROWS
+        for row in DEMO_TASK_DATASET_ROWS
     ],
     rows_to_delete=[],
     rows_to_update=[],
 )
+
+
+DEMO_TASK_PROMPT_MESSAGES = [
+    OpenAIMessage(
+        role=MessageRole.SYSTEM,
+        content=DEMO_TASK_SYSTEM_PROMPT,
+    ),
+    OpenAIMessage(
+        role=MessageRole.AI,
+        tool_calls=[
+            ToolCall(
+                id="wiki_search",
+                function=ToolCallFunction(
+                    name="wikipedia_search",
+                    arguments="{\"query\":\"{{search_query}}\"}",
+                ),
+            ),
+        ],
+    ),
+    OpenAIMessage(
+        role=MessageRole.TOOL,
+        tool_call_id="wiki_search",
+        content="{{search_results}}",
+    ),
+    OpenAIMessage(
+        role=MessageRole.AI,
+        tool_calls=[
+            ToolCall(
+                id="wiki_fetch",
+                function=ToolCallFunction(
+                    name="wikipedia_fetch",
+                    arguments="{\"title\":\"{{fetch_query}}\"}",
+                ),
+            ),
+        ],
+    ),
+    OpenAIMessage(
+        role=MessageRole.TOOL,
+        tool_call_id="wiki_fetch",
+        content="{{fetch_results}}",
+    ),
+]

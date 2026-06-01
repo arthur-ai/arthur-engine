@@ -51,7 +51,7 @@ from utils.demo_task_fixtures.demo_task_resources import (
     DEMO_TASK_DATASET_VERSION_REQUEST,
     DEMO_TASK_READABILITY_EVAL_PROMPT,
     DEMO_TASK_RESPONSE_EXTRACTION_TRANSFORM,
-    DEMO_TASK_SYSTEM_PROMPT,
+    DEMO_TASK_PROMPT_MESSAGES,
     DEMO_TASK_TOOLS,
 )
 
@@ -204,12 +204,7 @@ class DemoTaskRepository:
             item=CreateAgenticPromptRequest(
                 model_name=model_name,
                 model_provider=model_provider,
-                messages=[
-                    OpenAIMessage(
-                        role=MessageRole.SYSTEM,
-                        content=DEMO_TASK_SYSTEM_PROMPT,
-                    ),
-                ],
+                messages=DEMO_TASK_PROMPT_MESSAGES,
                 tools=DEMO_TASK_TOOLS,
                 config=None,
             ),
@@ -436,6 +431,9 @@ class DemoTaskRepository:
             summarizer_prompt=summarizer_prompt,
             task_id=task_id,
         )
+
+        # Remove the non-system messages from the chatbot prompt to use the real agentic loop
+        chatbot_prompt.messages = [message for message in chatbot_prompt.messages if message.role == MessageRole.SYSTEM.value]
 
         prompt = chatbot_service.build_prompt(
             chatbot_prompt=chatbot_prompt,
