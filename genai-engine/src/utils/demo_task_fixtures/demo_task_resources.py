@@ -4,6 +4,10 @@ from arthur_common.models.llm_model_providers import (
     JsonPropertySchema,
     JsonSchema,
     LLMTool,
+    MessageRole,
+    OpenAIMessage,
+    ToolCall,
+    ToolCallFunction,
     ToolFunction,
 )
 from arthur_common.models.task_eval_schemas import (
@@ -15,7 +19,6 @@ from schemas.common_schemas import (
     NewDatasetVersionRowColumnItemRequest,
     NewDatasetVersionRowRequest,
 )
-from arthur_common.models.llm_model_providers import MessageRole, OpenAIMessage, ToolCall, ToolCallFunction
 from schemas.internal_schemas import NewTraceTransformRequest
 from schemas.request_schemas import NewDatasetRequest, NewDatasetVersionRequest
 from utils.file_parsing import parse_csv_rows
@@ -178,7 +181,7 @@ DEMO_TASK_PROMPT_MESSAGES = [
                 id="wiki_search",
                 function=ToolCallFunction(
                     name="wikipedia_search",
-                    arguments="{\"query\":\"{{search_query}}\"}",
+                    arguments='{"query":"{{search_query}}"}',
                 ),
             ),
         ],
@@ -195,7 +198,7 @@ DEMO_TASK_PROMPT_MESSAGES = [
                 id="wiki_fetch",
                 function=ToolCallFunction(
                     name="wikipedia_fetch",
-                    arguments="{\"title\":\"{{fetch_query}}\"}",
+                    arguments='{"title":"{{fetch_query}}"}',
                 ),
             ),
         ],

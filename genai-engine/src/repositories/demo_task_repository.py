@@ -49,9 +49,9 @@ from utils.demo_task_fixtures.demo_task_resources import (
     DEMO_TASK_CONCISENESS_EVAL_PROMPT,
     DEMO_TASK_DATASET_REQUEST,
     DEMO_TASK_DATASET_VERSION_REQUEST,
+    DEMO_TASK_PROMPT_MESSAGES,
     DEMO_TASK_READABILITY_EVAL_PROMPT,
     DEMO_TASK_RESPONSE_EXTRACTION_TRANSFORM,
-    DEMO_TASK_PROMPT_MESSAGES,
     DEMO_TASK_TOOLS,
 )
 
@@ -433,7 +433,11 @@ class DemoTaskRepository:
         )
 
         # Remove the non-system messages from the chatbot prompt to use the real agentic loop
-        chatbot_prompt.messages = [message for message in chatbot_prompt.messages if message.role == MessageRole.SYSTEM.value]
+        chatbot_prompt.messages = [
+            message
+            for message in chatbot_prompt.messages
+            if message.role == MessageRole.SYSTEM.value  # type: ignore[comparison-overlap]
+        ]
 
         prompt = chatbot_service.build_prompt(
             chatbot_prompt=chatbot_prompt,
