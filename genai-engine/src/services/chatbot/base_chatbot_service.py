@@ -78,8 +78,24 @@ class BaseChatbotService(ABC):
         messages: List[OpenAIMessage],
         llm_client: LLMClient,
     ) -> List[OpenAIMessage]:
-        system_msg = next(m for m in messages if m.role == MessageRole.SYSTEM.value)  # type: ignore[comparison-overlap]
+        # SYSTEM message is optional — subclasses are free to build prompts
+        # without one. `next(...)` with no default would crash inside
+        # asyncio.to_thread and surface as a generic SSE error.
+        system_msg = next(
+            (m for m in messages if m.role == MessageRole.SYSTEM.value),  # type: ignore[comparison-overlap]
+            None,
+        )
         non_system = [m for m in messages if m.role != MessageRole.SYSTEM.value]  # type: ignore[comparison-overlap]
+
+        # Need >=2 non-system messages to split into summarize/keep halves.
+        # At len<=1, keep_count=0 makes non_system[:-0]==[] and non_system[-0:]
+        # the full list, producing a bogus summary plus the original message
+        # duplicated. Caller already proved we're over the context window —
+        # if a single message exceeds it on its own, there is nothing to
+        # compress; return the input unchanged so the emitted HISTORY_REPLACE
+        # is an inert no-op rather than a corruption.
+        if len(non_system) < 2:
+            return messages
 
         keep_count = len(non_system) // 2
         to_summarize = non_system[:-keep_count]
@@ -102,14 +118,13 @@ class BaseChatbotService(ABC):
             ),
         )
 
-        return [
-            system_msg,
-            OpenAIMessage(
-                role=MessageRole.AI,
-                content=f"Summary of previous conversation:\n{response.content}",
-            ),
-            *to_keep,
-        ]
+        summary_msg = OpenAIMessage(
+            role=MessageRole.AI,
+            content=f"Summary of previous conversation:\n{response.content}",
+        )
+        if system_msg is None:
+            return [summary_msg, *to_keep]
+        return [system_msg, summary_msg, *to_keep]
 
     async def summarize_and_emit_replace(
         self,
