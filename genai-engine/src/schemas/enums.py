@@ -72,7 +72,11 @@ class PermissionLevelsEnum(Enum):
         [constants.ORG_ADMIN, constants.ORG_AUDITOR, constants.ADMIN_KEY],
     )
     API_KEY_WRITE = frozenset([constants.ORG_ADMIN, constants.ADMIN_KEY])
-    APP_CONFIG_READ = frozenset([constants.ORG_ADMIN, constants.ORG_AUDITOR])
+    # Tenants may read application/system config but not modify it (write
+    # stays admin-only, see APP_CONFIG_WRITE).
+    APP_CONFIG_READ = frozenset(
+        [constants.ORG_ADMIN, constants.ORG_AUDITOR, constants.TENANT_USER],
+    )
     APP_CONFIG_WRITE = frozenset([constants.ORG_ADMIN])
     CHAT_WRITE = frozenset(
         [
@@ -195,10 +199,10 @@ class PermissionLevelsEnum(Enum):
             constants.TENANT_USER,
         ],
     )
-    # Read of the chatbot system task's model + prompt config. Admin-only:
-    # this is system-wide config, not tenant data.
+    # Read of the chatbot system task's model + prompt config. Tenants may
+    # read the config but not modify it (see CHATBOT_CONFIG_WRITE).
     CHATBOT_CONFIG_READ = frozenset(
-        [constants.ORG_ADMIN, constants.ORG_AUDITOR],
+        [constants.ORG_ADMIN, constants.ORG_AUDITOR, constants.TENANT_USER],
     )
     # Write of the chatbot system task's config + clearing chatbot history.
     # Admin-only: chatbot is a system task; tenants have no business writing
