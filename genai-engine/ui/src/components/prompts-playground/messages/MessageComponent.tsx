@@ -265,7 +265,7 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
         </div>
       </div>
       {role === "assistant" && (
-        <div className="mt-2 flex justify-start">
+        <Box sx={{ mt: 2, display: "flex", justifyContent: "flex-start" }}>
           <ToggleButtonGroup size="small" exclusive value={assistantMode} onChange={handleAssistantModeChange} aria-label="assistant message type">
             <ToggleButton value="message" aria-label="regular message">
               Message
@@ -274,10 +274,10 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
               Tool Call
             </ToggleButton>
           </ToggleButtonGroup>
-        </div>
+        </Box>
       )}
       {role === "tool" && (
-        <div className="mt-2">
+        <Box sx={{ mt: 2 }}>
           <TextField
             label="Tool Call ID"
             placeholder="Must match a tool_call id from the assistant message"
@@ -288,9 +288,9 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
             fullWidth
             sx={{ backgroundColor: "background.paper" }}
           />
-        </div>
+        </Box>
       )}
-      <div className="mt-2">
+      <Box sx={{ mt: 2 }}>
         {isToolCallMode ? (
           <Stack spacing={1.5}>
             {toolCallDrafts.map((draft, index) => (
@@ -304,7 +304,7 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
                   backgroundColor: "background.paper",
                 }}
               >
-                <div className="flex justify-between items-center mb-2">
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
                   <Typography variant="caption" color="text.secondary">
                     Tool Call {index + 1}
                   </Typography>
@@ -313,17 +313,17 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
                       <DeleteIcon fontSize="small" color="error" />
                     </IconButton>
                   </Tooltip>
-                </div>
+                </Box>
                 <Stack spacing={1.5}>
                   <TextField
                     label="Tool Call ID"
-                    placeholder="call_..."
+                    placeholder="tool_call_id"
                     value={draft.id}
                     onChange={(event) => handleToolCallFieldChange(index, "id", event.target.value)}
                     variant="outlined"
                     size="small"
                     fullWidth
-                    sx={{ backgroundColor: "background.paper" }}
+                    sx={{ backgroundColor: "background.paper", "& .MuiInputBase-input": { fontSize: "0.8125rem", fontFamily: "monospace" } }}
                   />
                   <TextField
                     label="Function name"
@@ -333,7 +333,7 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
                     variant="outlined"
                     size="small"
                     fullWidth
-                    sx={{ backgroundColor: "background.paper" }}
+                    sx={{ backgroundColor: "background.paper", "& .MuiInputBase-input": { fontSize: "0.8125rem", fontFamily: "monospace" } }}
                   />
                   <HighlightedInputComponent
                     label="Function arguments"
@@ -344,16 +344,16 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
                 </Stack>
               </Box>
             ))}
-            <div className="flex justify-start">
+            <Box sx={{ display: "flex", justifyContent: "flex-start" }}>
               <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddToolCall}>
                 Add tool call
               </Button>
-            </div>
+            </Box>
           </Stack>
         ) : (
           <HighlightedInputComponent value={inputValue} onChange={handleContentChange} />
         )}
-      </div>
+      </Box>
     </div>
   );
 };
