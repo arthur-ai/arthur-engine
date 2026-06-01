@@ -227,6 +227,7 @@ class BaseChatbotService(ABC):
                     current_prompt.model_provider,
                 )
                 self.tracing.set_llm_input_messages(llm_span, current_prompt.messages)
+                self.tracing.set_llm_tools(llm_span, current_prompt.tools)
 
                 async for event in self.chat_completion_service.stream_chat_completion(
                     current_prompt,
