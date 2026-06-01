@@ -179,165 +179,182 @@ class BaseChatbotService(ABC):
             session_id=session_id,
         )
 
-        self.tracing.set_input_json(
-            agent_span,
-            [
-                {"role": m.role, "content": m.content or ""}
-                for m in current_prompt.messages
-            ],
-        )
-
-        variable_map = self.build_variable_map(current_prompt)
-        if variable_map:
-            template_snapshot = [
-                m.model_copy(deep=True) for m in current_prompt.messages
-            ]
-            prompt_span = self.tracing.start_prompt_span(
+        # Every happy-path terminal branch below calls end_span(agent_span) +
+        # flush(). On any unexpected exception (LLM provider error, tool
+        # failure, malformed final_response, etc.) the agent span would
+        # otherwise stay open and never reach observability — the failed
+        # call becomes invisible to dashboards and the continuous-eval
+        # queue. Close the root span with an error and flush before
+        # re-raising; safe_stream catches the re-raise and renders the SSE
+        # error frame.
+        try:
+            self.tracing.set_input_json(
                 agent_span,
-                prompt_name=current_prompt.name,
-            )
-            self.tracing.set_prompt_template(
-                prompt_span,
-                template_snapshot,
-                variable_map,
-                version=current_prompt.version,
-            )
-            self.chat_completion_service.replace_variables(
-                variable_map,
-                current_prompt.messages,
-            )
-            self.tracing.set_prompt_rendered(prompt_span, current_prompt.messages)
-            self.tracing.end_span(prompt_span)
-
-        for _ in range(MAX_ITERATIONS):
-            final_response: AgenticPromptRunResponse | None = None
-
-            llm_span = self.tracing.start_llm_span(
-                agent_span,
-                current_prompt.model_name,
-                current_prompt.model_provider,
-            )
-            self.tracing.set_llm_input_messages(llm_span, current_prompt.messages)
-
-            async for event in self.chat_completion_service.stream_chat_completion(
-                current_prompt,
-                llm_client,
-                PromptCompletionRequest(stream=True, strict=False),
-            ):
-                if event.startswith(f"event: {SSEEventType.FINAL_RESPONSE.value}"):
-                    data = event.split("data: ", 1)[1].strip()
-                    final_response = AgenticPromptRunResponse.model_validate_json(data)
-                elif event.startswith(f"event: {SSEEventType.ERROR.value}"):
-                    self.tracing.end_span_with_error(llm_span, event)
-                    self.tracing.end_span_with_error(agent_span, event)
-                    self.tracing.flush()
-                    yield event
-                    return
-                else:
-                    yield event
-
-            if final_response is None:
-                self.tracing.end_span(llm_span)
-                self.tracing.end_span(agent_span)
-                self.tracing.flush()
-                return
-
-            tool_calls = (
                 [
-                    ToolCall(
-                        id=tc.id,
-                        type="function",
-                        function=ToolCallFunction(
-                            name=tc.function.name or "",
-                            arguments=tc.function.arguments or "{}",
+                    {"role": m.role, "content": m.content or ""}
+                    for m in current_prompt.messages
+                ],
+            )
+
+            variable_map = self.build_variable_map(current_prompt)
+            if variable_map:
+                template_snapshot = [
+                    m.model_copy(deep=True) for m in current_prompt.messages
+                ]
+                prompt_span = self.tracing.start_prompt_span(
+                    agent_span,
+                    prompt_name=current_prompt.name,
+                )
+                self.tracing.set_prompt_template(
+                    prompt_span,
+                    template_snapshot,
+                    variable_map,
+                    version=current_prompt.version,
+                )
+                self.chat_completion_service.replace_variables(
+                    variable_map,
+                    current_prompt.messages,
+                )
+                self.tracing.set_prompt_rendered(prompt_span, current_prompt.messages)
+                self.tracing.end_span(prompt_span)
+
+            for _ in range(MAX_ITERATIONS):
+                final_response: AgenticPromptRunResponse | None = None
+
+                llm_span = self.tracing.start_llm_span(
+                    agent_span,
+                    current_prompt.model_name,
+                    current_prompt.model_provider,
+                )
+                self.tracing.set_llm_input_messages(llm_span, current_prompt.messages)
+
+                async for event in self.chat_completion_service.stream_chat_completion(
+                    current_prompt,
+                    llm_client,
+                    PromptCompletionRequest(stream=True, strict=False),
+                ):
+                    if event.startswith(f"event: {SSEEventType.FINAL_RESPONSE.value}"):
+                        data = event.split("data: ", 1)[1].strip()
+                        final_response = AgenticPromptRunResponse.model_validate_json(
+                            data
+                        )
+                    elif event.startswith(f"event: {SSEEventType.ERROR.value}"):
+                        self.tracing.end_span_with_error(llm_span, event)
+                        self.tracing.end_span_with_error(agent_span, event)
+                        self.tracing.flush()
+                        yield event
+                        return
+                    else:
+                        yield event
+
+                if final_response is None:
+                    self.tracing.end_span(llm_span)
+                    self.tracing.end_span(agent_span)
+                    self.tracing.flush()
+                    return
+
+                tool_calls = (
+                    [
+                        ToolCall(
+                            id=tc.id,
+                            type="function",
+                            function=ToolCallFunction(
+                                name=tc.function.name or "",
+                                arguments=tc.function.arguments or "{}",
+                            ),
+                        )
+                        for tc in final_response.tool_calls
+                    ]
+                    if final_response.tool_calls
+                    else []
+                )
+
+                self.tracing.set_llm_response(
+                    llm_span,
+                    content=final_response.content,
+                    tool_calls=tool_calls or None,
+                    input_tokens=final_response.input_tokens,
+                    output_tokens=final_response.output_tokens,
+                    total_tokens=final_response.total_tokens,
+                )
+                self.tracing.end_span(llm_span)
+
+                if not tool_calls:
+                    current_prompt.messages.append(
+                        OpenAIMessage(
+                            role=MessageRole.AI, content=final_response.content
                         ),
                     )
-                    for tc in final_response.tool_calls
-                ]
-                if final_response.tool_calls
-                else []
-            )
+                    self.tracing.set_output_json(
+                        agent_span,
+                        {"text": final_response.content or ""},
+                    )
+                    self.tracing.end_span(agent_span)
+                    self.tracing.flush()
+                    yield format_sse(
+                        SSEEventType.FINAL_RESPONSE,
+                        final_response.model_dump_json(),
+                    )
 
-            self.tracing.set_llm_response(
-                llm_span,
-                content=final_response.content,
-                tool_calls=tool_calls or None,
-                input_tokens=final_response.input_tokens,
-                output_tokens=final_response.output_tokens,
-                total_tokens=final_response.total_tokens,
-            )
-            self.tracing.end_span(llm_span)
+                    async for event in self.summarize_and_emit_replace(
+                        current_prompt.messages,
+                        llm_client,
+                        current_prompt.model_name,
+                    ):
+                        yield event
+                    return
 
-            if not tool_calls:
-                current_prompt.messages.append(
-                    OpenAIMessage(role=MessageRole.AI, content=final_response.content),
+                assistant_msg = OpenAIMessage(
+                    role=MessageRole.AI,
+                    content=final_response.content,
+                    tool_calls=tool_calls,
                 )
-                self.tracing.set_output_json(
-                    agent_span,
-                    {"text": final_response.content or ""},
+                new_messages = list(current_prompt.messages) + [assistant_msg]
+
+                for tool_call in tool_calls:
+                    async for sse_event, tool_message in self.execute_tool(
+                        tool_call,
+                        agent_span,
+                    ):
+                        if sse_event is not None:
+                            yield sse_event
+                        if tool_message is not None:
+                            new_messages.append(tool_message)
+
+                current_prompt = AgenticPrompt(
+                    name=current_prompt.name,
+                    messages=new_messages,
+                    model_name=current_prompt.model_name,
+                    model_provider=current_prompt.model_provider,
+                    tools=current_prompt.tools,
+                    config=current_prompt.config,
+                    created_at=current_prompt.created_at,
                 )
-                self.tracing.end_span(agent_span)
-                self.tracing.flush()
-                yield format_sse(
-                    SSEEventType.FINAL_RESPONSE,
-                    final_response.model_dump_json(),
-                )
 
-                async for event in self.summarize_and_emit_replace(
-                    current_prompt.messages,
-                    llm_client,
-                    current_prompt.model_name,
-                ):
-                    yield event
-                return
-
-            assistant_msg = OpenAIMessage(
-                role=MessageRole.AI,
-                content=final_response.content,
-                tool_calls=tool_calls,
+            logger.warning(
+                "Chatbot hit MAX_ITERATIONS (%d) for user=%s",
+                MAX_ITERATIONS,
+                user_id,
             )
-            new_messages = list(current_prompt.messages) + [assistant_msg]
-
-            for tool_call in tool_calls:
-                async for sse_event, tool_message in self.execute_tool(
-                    tool_call,
-                    agent_span,
-                ):
-                    if sse_event is not None:
-                        yield sse_event
-                    if tool_message is not None:
-                        new_messages.append(tool_message)
-
-            current_prompt = AgenticPrompt(
-                name=current_prompt.name,
-                messages=new_messages,
-                model_name=current_prompt.model_name,
-                model_provider=current_prompt.model_provider,
-                tools=current_prompt.tools,
-                config=current_prompt.config,
-                created_at=current_prompt.created_at,
+            error_msg = "I'm sorry, I wasn't able to complete your request within the allowed number of steps. Please try simplifying your question."
+            current_prompt.messages.append(
+                OpenAIMessage(role=MessageRole.AI, content=error_msg),
             )
+            self.tracing.set_output_json(agent_span, {"text": error_msg})
+            self.tracing.end_span(agent_span)
+            self.tracing.flush()
+            yield format_sse_error(error_msg)
 
-        logger.warning(
-            "Chatbot hit MAX_ITERATIONS (%d) for user=%s",
-            MAX_ITERATIONS,
-            user_id,
-        )
-        error_msg = "I'm sorry, I wasn't able to complete your request within the allowed number of steps. Please try simplifying your question."
-        current_prompt.messages.append(
-            OpenAIMessage(role=MessageRole.AI, content=error_msg),
-        )
-        self.tracing.set_output_json(agent_span, {"text": error_msg})
-        self.tracing.end_span(agent_span)
-        self.tracing.flush()
-        yield format_sse_error(error_msg)
-
-        async for event in self.summarize_and_emit_replace(
-            current_prompt.messages,
-            llm_client,
-            current_prompt.model_name,
-        ):
-            yield event
+            async for event in self.summarize_and_emit_replace(
+                current_prompt.messages,
+                llm_client,
+                current_prompt.model_name,
+            ):
+                yield event
+        except Exception as e:
+            self.tracing.end_span_with_error(agent_span, str(e))
+            self.tracing.flush()
+            raise
 
     async def safe_stream(
         self,
