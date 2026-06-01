@@ -46,11 +46,11 @@ from utils import constants
 from utils.demo_task_fixtures.demo_task_resources import (
     DEMO_TASK_ANSWER_RELEVANCE_EVAL_PROMPT,
     DEMO_TASK_ANSWER_RELEVANCE_EVAL_TRANSFORM,
-    DEMO_TASK_CONCISENESS_EVAL_PROMPT,
     DEMO_TASK_DATASET_REQUEST,
     DEMO_TASK_DATASET_VERSION_REQUEST,
     DEMO_TASK_PROMPT_MESSAGES,
-    DEMO_TASK_READABILITY_EVAL_PROMPT,
+    DEMO_TASK_SOURCE_ATTRIBUTION_EVAL_PROMPT,
+    DEMO_CHATBOT_TRACE_TO_DATASET_TRANSFORM,
     DEMO_TASK_RESPONSE_EXTRACTION_TRANSFORM,
     DEMO_TASK_TOOLS,
 )
@@ -366,27 +366,21 @@ class DemoTaskRepository:
             commit=commit,
         )
 
-        _, _, response_extraction_transform, _ = self._create_continuous_eval(
+        self._create_continuous_eval(
             task_id=task_id,
-            eval_name="Conciseness Eval",
-            eval_instructions=DEMO_TASK_CONCISENESS_EVAL_PROMPT,
-            continuous_eval_name="Conciseness Continuous Eval",
-            continuous_eval_description="Evaluates if the response is concise.",
+            eval_name="Source Attribution Eval",
+            eval_instructions=DEMO_TASK_SOURCE_ATTRIBUTION_EVAL_PROMPT,
+            continuous_eval_name="Source Attribution Continuous Eval",
+            continuous_eval_description="Evaluates if the AI cites its sources.",
             model_provider=model_provider,
             model_name=model_name,
             transform_request=DEMO_TASK_RESPONSE_EXTRACTION_TRANSFORM,
             commit=commit,
         )
 
-        self._create_continuous_eval(
+        self.trace_transform_repo.create_transform(
             task_id=task_id,
-            eval_name="Readability Eval",
-            eval_instructions=DEMO_TASK_READABILITY_EVAL_PROMPT,
-            continuous_eval_name="Readability Continuous Eval",
-            continuous_eval_description="Evaluates if the response is readable.",
-            model_provider=model_provider,
-            model_name=model_name,
-            existing_transform_id=response_extraction_transform.id,
+            transform=DEMO_CHATBOT_TRACE_TO_DATASET_TRANSFORM,
             commit=commit,
         )
 
