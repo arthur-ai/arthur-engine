@@ -94,11 +94,23 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onTry, onLogin }) => {
         }}
       >
         By continuing you agree to Arthur&apos;s{" "}
-        <Link href="#" underline="always" sx={{ color: "text.secondary", fontWeight: 500 }}>
+        <Link
+          href="https://www.arthur.ai/terms"
+          target="_blank"
+          rel="noopener noreferrer"
+          underline="always"
+          sx={{ color: "text.secondary", fontWeight: 500 }}
+        >
           Terms
         </Link>{" "}
         and{" "}
-        <Link href="#" underline="always" sx={{ color: "text.secondary", fontWeight: 500 }}>
+        <Link
+          href="https://www.arthur.ai/privacy"
+          target="_blank"
+          rel="noopener noreferrer"
+          underline="always"
+          sx={{ color: "text.secondary", fontWeight: 500 }}
+        >
           Privacy Policy
         </Link>
         .
