@@ -21,7 +21,7 @@ import { EvalFormModalProps } from "./types";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
-import type { CreateEvalRequest, LLMEval, ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";
+import type { CreateEvalRequest, Eval, ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";
 
 const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormModalProps) => {
   const apiClient = useApi();
@@ -231,7 +231,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
           task.id
         );
 
-        const evalData: LLMEval = evalResponse.data;
+        const evalData: Eval = evalResponse.data;
 
         // Populate form with the eval data
         setInstructions(evalData.instructions ?? "");

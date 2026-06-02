@@ -1,7 +1,7 @@
 """v1 LLM eval routes.
 
 These endpoints preserve the v1 URL shape (/llm_evals/…) and response types
-(LLMEval, LLMEvalsVersionListResponse) expected by existing clients.
+(Eval, LLMEvalsVersionListResponse) expected by existing clients.
 """
 
 import logging
@@ -9,7 +9,6 @@ from typing import Annotated
 
 import jinja2
 from arthur_common.models.common_schemas import PaginationParameters
-from arthur_common.models.task_eval_schemas import LLMEval
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Response, status
 from pydantic import AfterValidator
 from sqlalchemy.orm import Session
@@ -27,6 +26,7 @@ from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.enums import LLMMetadataSortField, PermissionLevelsEnum
 from schemas.internal_schemas import Task, User
+from schemas.llm_eval_schemas import Eval
 from schemas.request_schemas import (
     BaseCompletionRequest,
     CreateEvalRequest,
@@ -54,7 +54,7 @@ llm_eval_routes = APIRouter(
     "/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}",
     summary="Get an llm eval",
     description="Get an llm eval by name and version",
-    response_model=LLMEval,
+    response_model=Eval,
     response_model_exclude_none=True,
     tags=["LLMEvals"],
 )
@@ -70,7 +70,7 @@ def get_llm_eval(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-) -> LLMEval:
+) -> Eval:
     try:
         return LLMEvalsRepository(db_session).get_llm_item(
             task.id,
@@ -200,7 +200,7 @@ def run_saved_llm_eval(
     "/tasks/{task_id}/llm_evals/{eval_name}",
     summary="Save an llm eval",
     description="Save an llm eval to the database",
-    response_model=LLMEval,
+    response_model=Eval,
     response_model_exclude_none=True,
     tags=["LLMEvals"],
 )
@@ -212,7 +212,7 @@ def save_llm_eval(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-) -> LLMEval:
+) -> Eval:
     try:
         return LLMEvalsRepository(db_session).save_llm_item(
             task.id,
@@ -310,7 +310,7 @@ def soft_delete_llm_eval_version(
     "/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}",
     summary="Get an llm eval by name and tag",
     description="Get an llm eval by name and tag",
-    response_model=LLMEval,
+    response_model=Eval,
     response_model_exclude_none=True,
     tags=["LLMEvals"],
 )
@@ -322,14 +322,14 @@ def get_llm_eval_by_tag(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-) -> LLMEval:
+) -> Eval:
     try:
         result = LLMEvalsRepository(db_session).get_llm_item_by_tag(
             task.id,
             eval_name,
             tag,
         )
-        assert isinstance(result, LLMEval)
+        assert isinstance(result, Eval)
         return result
     except ValueError as e:
         if "not found" in str(e).lower():
@@ -345,7 +345,7 @@ def get_llm_eval_by_tag(
     "/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags",
     summary="Add a tag to an llm eval version",
     description="Add a tag to an llm eval version",
-    response_model=LLMEval,
+    response_model=Eval,
     response_model_exclude_none=True,
     tags=["LLMEvals"],
 )
@@ -362,7 +362,7 @@ def add_tag_to_llm_eval_version(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-) -> LLMEval:
+) -> Eval:
     try:
         repo = LLMEvalsRepository(db_session)
         repo.add_tag_to_llm_item_version(task.id, eval_name, eval_version, tag)

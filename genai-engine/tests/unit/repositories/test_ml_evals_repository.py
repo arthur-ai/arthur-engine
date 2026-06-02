@@ -10,7 +10,7 @@ from pydantic import ValidationError
 
 from repositories.llm_evals_repository import LLMEvalsRepository
 from repositories.ml_evals_repository import MLEvalsRepository
-from schemas.llm_eval_schemas import LLMEval
+from schemas.llm_eval_schemas import Eval
 from schemas.request_schemas import CreateEvalRequest, CreateMLEvalRequest
 from schemas.response_schemas import (
     LLMEvalsVersionListResponse,
@@ -65,7 +65,7 @@ def test_save_ml_eval_creates_version_1(ml_evals_repo, task_id, pii_create_reque
 
     result = ml_evals_repo.save_ml_eval(task_id, eval_name, pii_create_request)
 
-    assert isinstance(result, LLMEval)
+    assert isinstance(result, Eval)
     assert result.name == eval_name
     assert result.eval_kind == "pii"
     assert result.version == 1

@@ -1,7 +1,7 @@
-from arthur_common.models.task_eval_schemas import LLMEval
+from arthur_common.models.task_eval_schemas import Eval
 from pydantic import BaseModel, Field
 
-__all__ = ["LLMEval", "ReasonedScore"]
+__all__ = ["Eval", "ReasonedScore"]
 
 
 class ReasonedScore(BaseModel):

@@ -9,7 +9,7 @@ from arthur_common.models.enums import (
     ContinuousEvalRunStatus,
     PaginationSortMethod,
 )
-from arthur_common.models.task_eval_schemas import LLMEval, TraceTransformDefinition
+from arthur_common.models.task_eval_schemas import TraceTransformDefinition
 from fastapi import HTTPException
 from sqlalchemy import asc, case, desc, func, select
 from sqlalchemy.exc import IntegrityError
@@ -21,7 +21,8 @@ from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTest
 from db_models.llm_eval_models import DatabaseContinuousEval
 from db_models.task_models import DatabaseTask
 from repositories.organizations_repository import lookup_org_id
-from schemas.internal_schemas import AgenticAnnotation, ContinuousEval, TraceTransform
+from schemas.internal_schemas import AgenticAnnotation, ContinuousEval
+from schemas.llm_eval_schemas import Eval
 from schemas.request_schemas import (
     ContinuousEvalCreateRequest,
     ContinuousEvalListFilterRequest,
@@ -95,7 +96,7 @@ class ContinuousEvalsRepository:
     def validate_transform_variable_mapping(
         self,
         transform_definition: TraceTransformDefinition,
-        eval: LLMEval,
+        eval: Eval,
         transform_variable_mapping: List[ContinuousEvalTransformVariableMappingRequest],
     ) -> None:
         transform_vars = {v.variable_name for v in transform_definition.variables}

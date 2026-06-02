@@ -16,7 +16,7 @@ from repositories.base_llm_repository import BaseLLMRepository
 from repositories.model_provider_repository import ModelProviderRepository
 from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.enums import EvalType
-from schemas.llm_eval_schemas import LLMEval, ReasonedScore
+from schemas.llm_eval_schemas import Eval, ReasonedScore
 from schemas.request_schemas import (
     BaseCompletionRequest,
     CreateEvalRequest,
@@ -51,10 +51,10 @@ class LLMEvalsRepository(
         self.model_provider_repo = ModelProviderRepository(db_session)
         self.chat_completion_service = ChatCompletionService()
 
-    def from_db_model(self, db_eval: DatabaseLLMEval) -> LLMEval:
+    def from_db_model(self, db_eval: DatabaseLLMEval) -> Eval:
         tags = self._get_all_tags_for_item_version(db_eval)
 
-        return LLMEval(
+        return Eval(
             name=db_eval.name,
             eval_kind=db_eval.eval_type or EvalType.LLM_AS_A_JUDGE,
             model_name=db_eval.model_name,
@@ -107,7 +107,7 @@ class LLMEvalsRepository(
 
     def from_llm_eval_to_agentic_prompt(
         self,
-        llm_eval: LLMEval,
+        llm_eval: Eval,
         response_format: Optional[Union[LLMResponseFormat, Type[BaseModel]]] = None,
     ) -> AgenticPrompt:
         if llm_eval.model_name is None:
@@ -160,11 +160,11 @@ class LLMEvalsRepository(
         item_name: str,
         item: CreateEvalRequest,
         commit: bool = True,
-    ) -> LLMEval:
+    ) -> Eval:
         if item.model_name == "":
             raise ValueError("Model name cannot be empty.")
         return cast(
-            LLMEval,
+            Eval,
             super().save_llm_item(task_id, item_name, item, commit=commit),
         )
 
@@ -258,8 +258,8 @@ class LLMEvalsRepository(
         task_id: str,
         item_name: str,
         item_version: str = "latest",
-    ) -> LLMEval:
+    ) -> Eval:
         return cast(
-            LLMEval,
+            Eval,
             super().get_llm_item(task_id, item_name, item_version),
         )

@@ -8,7 +8,7 @@ from repositories.base_evaluator import BaseEvaluator
 from repositories.base_llm_repository import BaseLLMRepository
 from schemas.enums import EvalType
 from schemas.internal_schemas import ContinuousEvalTransformVariableMapping
-from schemas.llm_eval_schemas import LLMEval
+from schemas.llm_eval_schemas import Eval
 from schemas.request_schemas import CreateMLEvalRequest
 from schemas.response_schemas import (
     EvalRunResponse,
@@ -34,9 +34,9 @@ class MLEvalsRepository(
     def __init__(self, db_session: Session):
         super().__init__(db_session)
 
-    def from_db_model(self, db_eval: DatabaseLLMEval) -> LLMEval:
+    def from_db_model(self, db_eval: DatabaseLLMEval) -> Eval:
         tags = self._get_all_tags_for_item_version(db_eval)
-        return LLMEval(
+        return Eval(
             name=db_eval.name,
             eval_kind=db_eval.eval_type,
             variables=db_eval.variables,
@@ -73,21 +73,21 @@ class MLEvalsRepository(
         task_id: str,
         eval_name: str,
         item: CreateMLEvalRequest,
-    ) -> LLMEval:
-        return cast(LLMEval, super().save_llm_item(task_id, eval_name, item))
+    ) -> Eval:
+        return cast(Eval, super().save_llm_item(task_id, eval_name, item))
 
     def get_llm_item(
         self,
         task_id: str,
         item_name: str,
         item_version: str = "latest",
-    ) -> LLMEval:
+    ) -> Eval:
         return cast(
-            LLMEval,
+            Eval,
             super().get_llm_item(task_id, item_name, item_version),
         )
 
-    def delete_version(self, task_id: str, eval_name: str, version: str) -> LLMEval:
+    def delete_version(self, task_id: str, eval_name: str, version: str) -> Eval:
         """Soft-delete a specific version; returns the eval with deleted_at set."""
         base_query = self._build_name_query(task_id, eval_name)
         db_item = self._get_db_item_by_version(
@@ -98,7 +98,7 @@ class MLEvalsRepository(
         actual_version_num = str(db_item.version)
         self.soft_delete_llm_item_version(task_id, eval_name, version)
         return cast(
-            LLMEval,
+            Eval,
             super().get_llm_item(task_id, eval_name, actual_version_num),
         )
 

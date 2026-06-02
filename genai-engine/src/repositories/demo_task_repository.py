@@ -9,7 +9,6 @@ from arthur_common.models.llm_model_providers import (
     ModelProvider,
     OpenAIMessage,
 )
-from arthur_common.models.task_eval_schemas import LLMEval
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 from openinference.semconv.trace import SpanAttributes
@@ -31,6 +30,7 @@ from schemas.internal_schemas import (
     NewTraceTransformRequest,
     TraceTransform,
 )
+from schemas.llm_eval_schemas import Eval
 from schemas.request_schemas import (
     ContinuousEvalCreateRequest,
     ContinuousEvalTransformVariableMappingRequest,
@@ -121,7 +121,7 @@ class DemoTaskRepository:
         transform_request: Optional[NewTraceTransformRequest] = None,
         existing_transform_id: Optional[UUID] = None,
         commit: bool = True,
-    ) -> Tuple[ContinuousEval, LLMEval, TraceTransform, TraceTransformVersionResponse]:
+    ) -> Tuple[ContinuousEval, Eval, TraceTransform, TraceTransformVersionResponse]:
         if transform_request is None and existing_transform_id is None:
             raise ValueError(
                 "Either transform_request or existing_transform_id must be provided",

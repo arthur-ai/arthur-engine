@@ -5,6 +5,44 @@ The intention of this changelog is to document API changes as they happen to eff
 # 06/02/2026
 - **CHANGE** for **URL**: /api/v1/traces/overview  endpoint added
 - **CHANGE** for **URL**: /api/v1/traces/overview/timeseries  endpoint added
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  the 'config/anyOf[subschema #1 -> subschema #2]/' response's property type/format changed from ''/'' to 'object'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  the 'config/anyOf[subschema #1 -> subschema #2]/' response's property type/format changed from ''/'' to 'object'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  the 'config/anyOf[subschema #1 -> subschema #2]/' response's property type/format changed from ''/'' to 'object'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  the 'config/anyOf[subschema #1 -> subschema #2]/' response's property type/format changed from ''/'' to 'object'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v2/tasks/{task_id}/ml_evals/{eval_name}  the 'config/anyOf[subschema #1 -> subschema #2]/' response's property type/format changed from ''/'' to 'object'/'' for status '200'
+- **CHANGE** for Component/Schema:  removed the schema 'LLMEval'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added '#/components/schemas/LLMBaseConfigSettings' to the 'config' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  added '#/components/schemas/LLMBaseConfigSettings' to the 'config' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  added '#/components/schemas/LLMBaseConfigSettings' to the 'config' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  added '#/components/schemas/LLMBaseConfigSettings' to the 'config' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/ml_evals/{eval_name}  added '#/components/schemas/LLMBaseConfigSettings' to the 'config' response property 'anyOf' list for the response status '200'
+
+# 06/02/2026
+- **CHANGE** for Component/Schema:  removed the schema 'schemas__enums__EvalType'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}/results  added '#/components/schemas/arthur_common__models__enums__EvalType' to the 'annotations/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}/results  removed '#/components/schemas/EvalType' from the 'annotations/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added '#/components/schemas/arthur_common__models__enums__EvalType' to the 'annotations/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  removed '#/components/schemas/EvalType' from the 'annotations/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces  added '#/components/schemas/arthur_common__models__enums__EvalType' to the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces  removed '#/components/schemas/EvalType' from the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/annotations/{annotation_id}  added '#/components/schemas/arthur_common__models__enums__EvalType' to the 'eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/annotations/{annotation_id}  removed '#/components/schemas/EvalType' from the 'eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added '#/components/schemas/arthur_common__models__enums__EvalType' to the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  removed '#/components/schemas/EvalType' from the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added '#/components/schemas/arthur_common__models__enums__EvalType' to the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  removed '#/components/schemas/EvalType' from the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added '#/components/schemas/arthur_common__models__enums__EvalType' to the 'annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  removed '#/components/schemas/EvalType' from the 'annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added '#/components/schemas/arthur_common__models__enums__EvalType' to the 'annotations/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  removed '#/components/schemas/EvalType' from the 'annotations/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added '#/components/schemas/arthur_common__models__enums__EvalType' to the 'eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  removed '#/components/schemas/EvalType' from the 'eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added '#/components/schemas/arthur_common__models__enums__EvalType' to the 'annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  removed '#/components/schemas/EvalType' from the 'annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added '#/components/schemas/arthur_common__models__enums__EvalType' to the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/metrics/  removed '#/components/schemas/EvalType' from the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/query  added '#/components/schemas/arthur_common__models__enums__EvalType' to the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/query  removed '#/components/schemas/EvalType' from the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
 
 # 05/29/2026
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/demos/chatbot/stream  deleted the `header` request parameter `x-user-timezone`
