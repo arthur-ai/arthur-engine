@@ -26,7 +26,7 @@ A trace is the timeline of everything the agent did to produce one answer — re
 
 ## scenario
 
-Open Observe, drill into a trace, walk through the spans, read the eval annotations, and leave manual feedback. We'll specifically call out where the readability eval is failing — that's the signal you'll fix later in this tour.
+Open Observe, drill into a trace, walk through the spans, read the eval annotations, and leave manual feedback. We'll specifically call out where the **Source Attribution Eval** is failing — the agent answered without citing where the information came from — that's the signal you'll fix later in this tour.
 
 ## step: open-observe
 
@@ -42,7 +42,7 @@ A **trace** is the full request; each **span** is one step the agent took (retri
 
 ## step: review-annotations
 
-**Continuous Evals** attach automatically to every trace — they measure quality on every request so you catch regressions early. For the evals on this trace, notice the **Readability Eval** is failing — that's the live signal we'll fix in the prompt playground. (Mark complete when done.)
+**Continuous Evals** attach automatically to every trace — they measure quality on every request so you catch regressions early. For the evals on this trace, notice the **Source Attribution Eval** is failing because the answer doesn't cite its source — that's the live signal we'll fix in the prompt playground. (Mark complete when done.)
 
 ## step: add-feedback
 

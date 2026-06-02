@@ -17,4 +17,4 @@ The Arthur's **Agent Development Lifecycle** is how teams ship agents they can t
 
 ## scenario
 
-The agent on this task is consistently responding outside its readability parameters - answers that should be plain-language are coming back too dense for the audience. We'll use the ADLC to find the failure, fix the prompt, and prove the fix held.
+The agent on this task answers general-knowledge questions from Wikipedia, but it never tells users where the information came from - so the **Source Attribution Eval**, which checks that answers cite their source, fails on every response. We'll use the ADLC to find the failure, fix the prompt so the agent cites Wikipedia, and prove the fix held.

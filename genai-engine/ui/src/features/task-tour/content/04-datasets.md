@@ -40,7 +40,7 @@ steps:
 
 ## intro
 
-Datasets are the test cases your agent has to pass before every release. Promote real traces — including the readability failure you just annotated — into a dataset, then enrich it with synthetic examples so future regressions get caught automatically.
+Datasets are the test cases your agent has to pass before every release. Promote real traces — including the citation failure you just annotated — into a dataset, then enrich it with synthetic examples so future regressions get caught automatically.
 
 ## scenario
 
@@ -80,7 +80,7 @@ Head back to Observe so you can capture the real failing trace as a regression c
 
 ## step: open-trace-for-dataset
 
-Open the trace with the failing readability eval. This is the example you want future prompt versions to pass.
+Open the trace with the failing **Source Attribution Eval** (the answer that didn't cite its source). This is the example you want future prompt versions to pass.
 
 ## step: review-trace-actions
 
