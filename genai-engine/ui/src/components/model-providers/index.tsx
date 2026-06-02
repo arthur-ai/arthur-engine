@@ -30,6 +30,7 @@ import { useSaveProvider } from "./hooks/useSaveProvider";
 
 import { getContentHeight } from "@/constants/layout";
 import { ModelProviderResponse, PutModelProviderCredentials } from "@/lib/api-client/api-client";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 
 export const ModelProviders: React.FC = () => {
   const { data: providers, isLoading, error } = useProviders();
@@ -56,6 +57,7 @@ export const ModelProviders: React.FC = () => {
   });
 
   const handleDeleteClick = (provider: ModelProviderResponse) => {
+    track(EVENT_NAMES.MODEL_PROVIDER_DELETE_INTENT, { provider_name: provider.provider });
     setDeleteModal({ isOpen: true, provider });
   };
 
@@ -70,6 +72,7 @@ export const ModelProviders: React.FC = () => {
   };
 
   const handleEditClick = (provider: ModelProviderResponse) => {
+    track(EVENT_NAMES.MODEL_PROVIDER_CONFIGURE_OPENED, { provider_name: provider.provider });
     setEditModal({ isOpen: true, provider });
   };
 
