@@ -1,7 +1,7 @@
 export { useReactRouterNavigator } from "./adapters/reactRouter";
 export { TourEngineContext } from "./context";
 export { PreparationRunner } from "./PreparationRunner";
-export { QueryHookTargetRefresh } from "./QueryHookTargetRefresh";
+export { ActiveTargetRefresh } from "./ActiveTargetRefresh";
 export {
   applyBackdropAction,
   BackdropBlocker,

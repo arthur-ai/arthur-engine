@@ -11,7 +11,7 @@ describe("CtaDialog", () => {
   it("renders the CTO call-to-action with avatar and copy", () => {
     render(<CtaDialog open onDismiss={vi.fn()} />);
 
-    expect(screen.getByRole("dialog", { name: /talk to our cto about agent evals/i })).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: /zach, the cto at arthur/i })).toBeTruthy();
     expect(screen.getByText(/zach fry/i)).toBeTruthy();
 
     const avatar = screen.getByAltText("Zach Fry") as HTMLImageElement;
