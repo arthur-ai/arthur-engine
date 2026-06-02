@@ -147,7 +147,7 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
         advance: "action-only",
         formPrefill: {
           targetId: TOUR_IDS.chatSendPlaceholder,
-          value: "What are AI Agent Evals?",
+          value: "What is an AI Agent?",
         },
       },
     },
@@ -593,7 +593,7 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
         advance: "action-only",
         formPrefill: {
           targetId: TOUR_IDS.chatSendPlaceholder,
-          value: "What are AI Agent Evals?",
+          value: "What is an AI Agent?",
         },
       },
       "review-verification-message": {

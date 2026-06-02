@@ -26,7 +26,7 @@ describe("task tour config", () => {
       },
       formPrefill: {
         targetId: TOUR_IDS.chatSendPlaceholder,
-        value: "What are AI Agent Evals?",
+        value: "What is an AI Agent?",
       },
       advanceOn: [{ type: "action", name: TASK_TOUR_ACTIONS.demoAgentMessageSent }],
     });
@@ -390,7 +390,7 @@ describe("task tour config", () => {
       target: { kind: "selector", selector: tourSelector(TOUR_IDS.chatSendPlaceholder) },
       formPrefill: {
         targetId: TOUR_IDS.chatSendPlaceholder,
-        value: "What are AI Agent Evals?",
+        value: "What is an AI Agent?",
       },
       advanceOn: [{ type: "action", name: TASK_TOUR_ACTIONS.demoAgentMessageSent }],
     });
