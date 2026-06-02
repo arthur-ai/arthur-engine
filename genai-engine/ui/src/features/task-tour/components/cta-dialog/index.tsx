@@ -2,15 +2,14 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CloseIcon from "@mui/icons-material/Close";
 import { Avatar, Box, Button, Dialog, DialogActions, IconButton, Stack, Typography } from "@mui/material";
 
-// Placeholder scheduling link. Swap for the real booking URL (Calendly/cal.com)
-// once it exists — kept as a single constant so there's one spot to change.
-const BOOKING_URL = "https://cal.com/arthur"; // TODO: replace with the real Agent Evals booking link
+// Scheduling link for booking time with Arthur's CTO to talk Agent Evals.
+// Kept as a single constant so there's one spot to change.
+const BOOKING_URL = "https://calendar.app.google/aRT3BnbUabjQRdJE6";
 
 // Photo lives in `public/`, which Vite serves from the site root — referenced by
 // absolute path rather than an `import` so it needs no bundler asset handling.
 const CTO_AVATAR_SRC = "/cto-avatar.jpeg";
 const CTO_NAME = "Zach Fry";
-const CTO_TITLE = "CTO, Arthur";
 
 export interface CtaDialogProps {
   open: boolean;
@@ -52,21 +51,25 @@ export function CtaDialog({ open, onDismiss }: CtaDialogProps) {
           ZF
         </Avatar>
 
-        <Box>
-          <Typography id="task-tour-cta-title" variant="h5" sx={{ fontWeight: 700 }}>
-            Talk to our CTO about Agent Evals
-          </Typography>
-          <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 0.5 }}>
-            {CTO_NAME} · {CTO_TITLE}
-          </Typography>
-        </Box>
-
-        <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 420 }}>
-          Grab 30 minutes to talk through agent evals for your team — from first guardrails to shipping with confidence.
+        <Typography id="task-tour-cta-title" variant="h5" sx={{ fontWeight: 700 }}>
+          Hi, I’m Zach, the CTO at Arthur
         </Typography>
 
-        {/* Placeholder for the future embedded booking calendar. For now it frames
-            the primary "Book a time" action; drop the calendar embed in here later. */}
+        <Stack spacing={1.5} sx={{ maxWidth: 420, textAlign: "left" }}>
+          <Typography variant="body2" color="text.secondary">
+            If you found this exercise useful and have a need to build strongly performant and production-ready agents,
+            book time on my calendar. We’ve helped many teams, from scrappy startups to large Fortune 100 companies, by
+            providing the tools and techniques to ensure trustworthy and reliable AI systems.
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Look forward to chatting.
+          </Typography>
+          <Typography variant="subtitle2" color="text.secondary" sx={{ textAlign: "right", fontStyle: "italic" }}>
+            — {CTO_NAME}
+          </Typography>
+        </Stack>
+
+        {/* Frames the primary "Book a time" action; a calendar embed can drop in here later. */}
         <Box
           sx={{
             width: "100%",
@@ -79,9 +82,6 @@ export function CtaDialog({ open, onDismiss }: CtaDialogProps) {
             py: 3,
           }}
         >
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
-            Booking calendar coming soon
-          </Typography>
           <Button
             variant="contained"
             href={BOOKING_URL}
