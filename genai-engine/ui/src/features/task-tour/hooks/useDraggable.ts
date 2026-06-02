@@ -140,13 +140,16 @@ export function useDraggable<T extends HTMLElement = HTMLElement>({
     [persistPosition]
   );
 
-  // Re-clamp the stored position once the element has measurable dimensions,
-  // and again whenever the surface is re-enabled (e.g. it remounts at a new
-  // size). Keeps a position saved on a larger viewport from spilling off a
-  // smaller one.
+  // Re-clamp the stored position once the element has measurable dimensions so
+  // a position saved on a larger viewport doesn't spill off a smaller one.
+  // This is in-memory only (persist=false): the stored value is shared between
+  // surfaces of different widths (e.g. the FAB vs the wider checklist panel),
+  // so persisting a clamp measured against *this* surface would shift the
+  // anchor the user parked with the other one. Real viewport shrinks are
+  // persisted by the resize handler below.
   useLayoutEffect(() => {
     if (!enabled) return;
-    clampCurrentPosition(readStoredPosition(storageKey, resolveDefault(defaultPosition)), true);
+    clampCurrentPosition(readStoredPosition(storageKey, resolveDefault(defaultPosition)), false);
     // `defaultPosition` is intentionally read fresh rather than tracked as a dep
     // to avoid re-clamping on every render from an inline default factory.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -176,6 +179,10 @@ export function useDraggable<T extends HTMLElement = HTMLElement>({
       if (!enabled || event.button !== 0) {
         return;
       }
+
+      // Defensively clear any stale suppression — e.g. a prior drag ended in
+      // `pointercancel` (no follow-up click ever arrived to clear it).
+      suppressClickRef.current = false;
 
       dragStateRef.current = {
         pointerId: event.pointerId,
@@ -230,9 +237,13 @@ export function useDraggable<T extends HTMLElement = HTMLElement>({
       }
 
       if (dragState.didDrag) {
-        // Swallow the click the browser fires after the drag so it doesn't
-        // trigger the surface's own onClick (e.g. expanding the panel).
-        suppressClickRef.current = true;
+        // Swallow the click the browser fires after a real `pointerup` so the
+        // drag doesn't trigger the surface's own onClick (e.g. expanding the
+        // panel). `pointercancel` produces no follow-up click, so suppressing
+        // there would leave the flag stuck and eat the user's next real click.
+        if (event.type === "pointerup") {
+          suppressClickRef.current = true;
+        }
         setPosition((prev) => {
           const element = elementRef.current;
           const clamped = element ? clampPosition(prev, element.offsetWidth, element.offsetHeight) : prev;
