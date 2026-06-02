@@ -98,15 +98,15 @@ describe("CertificateWidget", () => {
 
     // Certificate is shown first; CTA is not yet visible.
     expect(screen.getByRole("dialog", { name: /certificate of achievement/i })).toBeTruthy();
-    expect(screen.queryByRole("dialog", { name: /talk to our cto about agent evals/i })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: /zach, the cto at arthur/i })).toBeNull();
 
     // Closing the certificate advances to the CTA dialog.
     fireEvent.click(screen.getByRole("button", { name: /dismiss certificate/i }));
     expect(screen.queryByRole("dialog", { name: /certificate of achievement/i })).toBeNull();
-    expect(screen.getByRole("dialog", { name: /talk to our cto about agent evals/i })).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: /zach, the cto at arthur/i })).toBeTruthy();
 
     // Dismissing the CTA ends the sequence (awaiting the exit transition).
     fireEvent.click(screen.getByRole("button", { name: /^dismiss$/i }));
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: /talk to our cto about agent evals/i })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: /zach, the cto at arthur/i })).toBeNull());
   });
 });
