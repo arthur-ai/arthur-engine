@@ -8,22 +8,17 @@ import { useTour, useTourPluginStore, type TourStatePlugin } from "@/features/to
 export interface ResumeFabWidgetProps {
   /** State plugin used to read the persisted status + completed keys. */
   statePlugin: TourStatePlugin;
-  /** Notifies the parent when the FAB rect changes so a docked panel can follow. */
-  onAnchorRectChange?: (rect: DOMRect | null) => void;
-  /** Set by the parent to true once the user has clicked Resume — the FAB stops pulsing then. */
-  panelAnchoredToFab?: boolean;
 }
 
 /**
- * Floating action button shown while the persistence status is `dismissed`,
- * or while the panel has been docked next to the FAB after a manual resume.
- * Resuming routes through `engine.resume()` for paused tours, and
- * `engine.start({ position, resume: true })` for fully-stopped ones — but
- * only when there is an actual incomplete step to resume to. A finished
- * tour ignores the click; restarting an already-completed tour would
+ * Floating action button shown only while the tour is halted (persistence
+ * status `dismissed`). Resuming routes through `engine.resume()` for paused
+ * tours, and `engine.start({ position, resume: true })` for fully-stopped
+ * ones — but only when there is an actual incomplete step to resume to. A
+ * finished tour ignores the click; restarting an already-completed tour would
  * otherwise loop the engine back to section 0.
  */
-export function ResumeFabWidget({ statePlugin, onAnchorRectChange, panelAnchoredToFab = false }: ResumeFabWidgetProps) {
+export function ResumeFabWidget({ statePlugin }: ResumeFabWidgetProps) {
   const { state, actions, config } = useTour();
   const persistedStatus = useTourPluginStore(statePlugin, (s) => s.snapshot.status);
 
@@ -48,14 +43,11 @@ export function ResumeFabWidget({ statePlugin, onAnchorRectChange, panelAnchored
     return resume ? getTaskTourStepLabel(resume.sectionId, resume.stepId) : "Resume tour";
   })();
 
-  // Terminal states never show the FAB, regardless of the dock flag. v0's
-  // bug was that a stale dock flag (set on initial `tour:start`) kept the
-  // FAB visible after completion; a stray click then re-entered the tour at
-  // section 0 because `resumePosition()` returns null when everything is
-  // complete and `actions.start()` defaults to the first section.
-  if (persistedStatus === "completed") return null;
-  const visible = persistedStatus === "dismissed" || panelAnchoredToFab;
-  if (!visible) return null;
+  // The FAB stands in for the tour only while it is halted; a running tour
+  // shows the checklist instead. `completed` is handled by the same check —
+  // a finished tour is not `dismissed`, so the FAB never reappears to loop the
+  // engine back to section 0.
+  if (persistedStatus !== "dismissed") return null;
 
-  return <ResumeFab label={label} attractAttention={persistedStatus === "dismissed"} onClick={handleClick} onAnchorRectChange={onAnchorRectChange} />;
+  return <ResumeFab label={label} attractAttention onClick={handleClick} />;
 }
