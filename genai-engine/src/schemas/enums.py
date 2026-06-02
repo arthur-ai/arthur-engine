@@ -275,3 +275,11 @@ class LLMMetadataSortField(str, Enum):
 
     NAME = "name"
     LATEST_VERSION_CREATED_AT = "latest_version_created_at"
+
+
+class TaskAnalyticsBucketSize(BaseEnum):
+    """Time bucket granularity for task analytics time-series metrics."""
+
+    HOUR = "hour"
+    DAY = "day"
+    WEEK = "week"

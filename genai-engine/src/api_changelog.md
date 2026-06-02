@@ -2,6 +2,10 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 06/02/2026
+- **CHANGE** for **URL**: /api/v1/traces/overview  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/overview/timeseries  endpoint added
+
 # 05/29/2026
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/demos/chatbot/stream  deleted the `header` request parameter `x-user-timezone`
 

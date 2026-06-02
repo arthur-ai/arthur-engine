@@ -1,25 +1,33 @@
 import logging
+import math
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, List, Optional, Tuple
 from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
-from arthur_common.models.enums import PaginationSortMethod, RegisteredAgentProvider
+from arthur_common.models.enums import (
+    AgenticAnnotationType,
+    ContinuousEvalRunStatus,
+    PaginationSortMethod,
+    RegisteredAgentProvider,
+)
 from arthur_common.models.request_schemas import TraceQueryRequest
 from arthur_common.models.response_schemas import TraceResponse
 from google.protobuf.message import DecodeError
 from openinference.semconv.trace import SpanAttributes
 from opentelemetry import trace
-from sqlalchemy import insert, select
+from sqlalchemy import func, insert, select
 from sqlalchemy.orm import Session
 
 from db_models import DatabaseSpan
+from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.task_models import DatabaseTask
 from db_models.telemetry_models import DatabaseTraceMetadata
 from repositories.metrics_repository import MetricRepository
 from repositories.organizations_repository import lookup_org_id
 from repositories.tasks_metrics_repository import TasksMetricsRepository
+from schemas.enums import TaskAnalyticsBucketSize
 from schemas.internal_schemas import (
     AgenticAnnotation,
     SessionMetadata,
@@ -31,6 +39,12 @@ from schemas.internal_schemas import (
 from schemas.request_schemas import (
     AgenticAnnotationListFilterRequest,
     AgenticAnnotationRequest,
+)
+from schemas.response_schemas import (
+    TraceOverviewListResponse,
+    TraceOverviewResponse,
+    TraceTimeSeriesPoint,
+    TraceTimeSeriesResponse,
 )
 from services.trace.gcp_conversion_service import GcpConversionService
 from services.trace.metrics_integration_service import MetricsIntegrationService
@@ -52,6 +66,13 @@ tracer = trace.get_tracer(__name__)
 
 # Constants
 DEFAULT_PAGE_SIZE = 5
+
+# Number of seconds in each bucket size.
+BUCKET_SIZE_SECONDS = {
+    TaskAnalyticsBucketSize.HOUR: 60 * 60,
+    TaskAnalyticsBucketSize.DAY: 24 * 60 * 60,
+    TaskAnalyticsBucketSize.WEEK: 7 * 24 * 60 * 60,
+}
 
 
 class SpanRepository:
@@ -186,7 +207,8 @@ class SpanRepository:
         # belong to the caller's org. Cheaper than threading org_scope through
         # the span/metadata/tree-building service chain.
         if org_scope is not None and not self._trace_belongs_to_org(
-            trace_id, org_scope
+            trace_id,
+            org_scope,
         ):
             return None
 
@@ -228,6 +250,204 @@ class SpanRepository:
             traces[0],
         )
 
+    def get_trace_overview_for_tasks(
+        self,
+        task_ids: list[str],
+        start_time: datetime,
+        end_time: datetime,
+    ) -> TraceOverviewListResponse:
+        """Get the overview of traces for each task."""
+        if not task_ids:
+            return TraceOverviewListResponse(overviews=[], count=0)
+
+        # Trace count and token totals come straight from trace_metadata.
+        trace_rows = (
+            self.db_session.query(
+                DatabaseTraceMetadata.task_id.label("task_id"),
+                func.count().label("trace_count"),
+                func.coalesce(
+                    func.sum(DatabaseTraceMetadata.total_token_count),
+                    0,
+                ).label("trace_token_count"),
+                func.coalesce(
+                    func.sum(DatabaseTraceMetadata.total_token_cost),
+                    0.0,
+                ).label("trace_token_cost"),
+                func.max(DatabaseTraceMetadata.end_time).label("last_active"),
+            )
+            .filter(
+                DatabaseTraceMetadata.task_id.in_(task_ids),
+                DatabaseTraceMetadata.start_time >= start_time,
+                DatabaseTraceMetadata.start_time <= end_time,
+            )
+            .group_by(DatabaseTraceMetadata.task_id)
+            .all()
+        )
+
+        # Success rate is the fraction of continuous-eval annotations that passed,
+        # over the task's traces in the window. Kept as a separate query so the
+        # annotation join doesn't inflate the per-trace token sum above.
+        eval_rows = (
+            self.db_session.query(
+                DatabaseTraceMetadata.task_id.label("task_id"),
+                func.count().label("eval_count"),
+                func.count(DatabaseAgenticAnnotation.id)
+                .filter(
+                    DatabaseAgenticAnnotation.run_status
+                    == ContinuousEvalRunStatus.PASSED.value,
+                )
+                .label("passed_count"),
+            )
+            .join(
+                DatabaseAgenticAnnotation,
+                DatabaseAgenticAnnotation.trace_id == DatabaseTraceMetadata.trace_id,
+            )
+            .filter(
+                DatabaseTraceMetadata.task_id.in_(task_ids),
+                DatabaseTraceMetadata.start_time >= start_time,
+                DatabaseTraceMetadata.start_time <= end_time,
+                DatabaseAgenticAnnotation.annotation_type
+                == AgenticAnnotationType.CONTINUOUS_EVAL.value,
+            )
+            .group_by(DatabaseTraceMetadata.task_id)
+            .all()
+        )
+        eval_by_task = {
+            row.task_id: (row.passed_count, row.eval_count) for row in eval_rows
+        }
+
+        # Default every requested task to zeroed metrics so tasks with no traces
+        # in the window still appear in the response.
+        overviews_by_task = {
+            task_id: TraceOverviewResponse(
+                task_id=task_id,
+                trace_count=0,
+                trace_token_count=0,
+                trace_token_cost=0.0,
+                eval_count=0,
+                continuous_eval_success_rate=1.0,
+            )
+            for task_id in task_ids
+        }
+
+        for row in trace_rows:
+            passed_count, eval_count = eval_by_task.get(row.task_id, (0, 0))
+
+            # No continuous evals run (i.e. nothing failed) will be 100%
+            continuous_eval_success_rate = (
+                passed_count / eval_count if eval_count else 1.0
+            )
+
+            overviews_by_task[row.task_id] = TraceOverviewResponse(
+                task_id=row.task_id,
+                trace_count=row.trace_count,
+                trace_token_count=int(row.trace_token_count),
+                trace_token_cost=float(row.trace_token_cost),
+                eval_count=eval_count,
+                continuous_eval_success_rate=continuous_eval_success_rate,
+                last_active=row.last_active,
+            )
+
+        overviews = list(overviews_by_task.values())
+        return TraceOverviewListResponse(overviews=overviews, count=len(overviews))
+
+    def get_trace_timeseries_for_task(
+        self,
+        task_id: str,
+        start_time: datetime,
+        end_time: datetime,
+        bucket_size: TaskAnalyticsBucketSize,
+    ) -> TraceTimeSeriesResponse:
+        """Get time-bucketed trace metrics for a single task.
+
+        Buckets traces by start_time into fixed-width buckets offset from
+        start_time, matching the frontend Analyze page aggregation. Empty
+        buckets are zero-filled and success rate defaults to 1.0 when a bucket
+        has no continuous-eval annotations.
+        """
+        # DB timestamps are naive; drop tzinfo so subtraction below matches.
+        if start_time.tzinfo is not None:
+            start_time = start_time.replace(tzinfo=None)
+        if end_time.tzinfo is not None:
+            end_time = end_time.replace(tzinfo=None)
+
+        bucket_seconds = BUCKET_SIZE_SECONDS[bucket_size]
+        span_seconds = (end_time - start_time).total_seconds()
+        num_buckets = max(1, math.ceil(span_seconds / bucket_seconds))
+
+        trace_rows = (
+            self.db_session.query(
+                DatabaseTraceMetadata.start_time,
+                DatabaseTraceMetadata.total_token_count,
+                DatabaseTraceMetadata.total_token_cost,
+            )
+            .filter(
+                DatabaseTraceMetadata.task_id == task_id,
+                DatabaseTraceMetadata.start_time >= start_time,
+                DatabaseTraceMetadata.start_time < end_time,
+            )
+            .all()
+        )
+
+        eval_rows = (
+            self.db_session.query(
+                DatabaseTraceMetadata.start_time,
+                DatabaseAgenticAnnotation.run_status,
+            )
+            .join(
+                DatabaseAgenticAnnotation,
+                DatabaseAgenticAnnotation.trace_id == DatabaseTraceMetadata.trace_id,
+            )
+            .filter(
+                DatabaseTraceMetadata.task_id == task_id,
+                DatabaseTraceMetadata.start_time >= start_time,
+                DatabaseTraceMetadata.start_time < end_time,
+                DatabaseAgenticAnnotation.annotation_type
+                == AgenticAnnotationType.CONTINUOUS_EVAL.value,
+            )
+            .all()
+        )
+
+        trace_counts = [0] * num_buckets
+        token_counts = [0] * num_buckets
+        token_costs = [0.0] * num_buckets
+        eval_counts = [0] * num_buckets
+        passed_counts = [0] * num_buckets
+
+        for row in trace_rows:
+            index = int((row.start_time - start_time).total_seconds() // bucket_seconds)
+            if 0 <= index < num_buckets:
+                trace_counts[index] += 1
+                token_counts[index] += row.total_token_count or 0
+                token_costs[index] += row.total_token_cost or 0.0
+
+        for eval_row in eval_rows:
+            index = int(
+                (eval_row.start_time - start_time).total_seconds() // bucket_seconds,
+            )
+            if 0 <= index < num_buckets:
+                eval_counts[index] += 1
+                if eval_row.run_status == ContinuousEvalRunStatus.PASSED.value:
+                    passed_counts[index] += 1
+
+        points = []
+        for index in range(num_buckets):
+            timestamp = start_time + timedelta(seconds=index * bucket_seconds)
+            eval_count = eval_counts[index]
+            success_rate = passed_counts[index] / eval_count if eval_count else 1.0
+
+            points.append(
+                TraceTimeSeriesPoint(
+                    timestamp=timestamp,
+                    trace_count=trace_counts[index],
+                    trace_token_count=token_counts[index],
+                    trace_token_cost=token_costs[index],
+                    continuous_eval_success_rate=success_rate,
+                ),
+            )
+
+        return TraceTimeSeriesResponse(task_id=task_id, points=points)
+
     def compute_trace_metrics(
         self,
         trace_id: str,
@@ -254,7 +474,7 @@ class SpanRepository:
             select(DatabaseTraceMetadata.trace_id).where(
                 DatabaseTraceMetadata.trace_id == trace_id,
                 DatabaseTraceMetadata.org_id == org_scope,
-            )
+            ),
         ).first()
         return row is not None
 
@@ -267,7 +487,7 @@ class SpanRepository:
             select(DatabaseSpan.span_id).where(
                 DatabaseSpan.span_id == span_id,
                 DatabaseSpan.org_id == org_scope,
-            )
+            ),
         ).first()
         return row is not None
 
@@ -612,7 +832,8 @@ class SpanRepository:
 
                 # Extract session_id and user_id if present
                 session_id = trace_utils.get_nested_value(
-                    attributes, SpanAttributes.SESSION_ID
+                    attributes,
+                    SpanAttributes.SESSION_ID,
                 )
                 user_id = None  # GCP doesn't typically have user_id in labels
 
@@ -772,7 +993,9 @@ class SpanRepository:
         return valid_spans, total_count
 
     def query_span_by_span_id_with_metrics(
-        self, span_id: str, org_scope: UUID | None = None
+        self,
+        span_id: str,
+        org_scope: UUID | None = None,
     ) -> Span:
         """Query a single span by span_id and compute metrics for it."""
         if org_scope is not None and not self._span_belongs_to_org(span_id, org_scope):
@@ -896,7 +1119,9 @@ class SpanRepository:
         )
 
     def delete_annotation_from_trace(
-        self, trace_id: str, org_scope: UUID | None = None
+        self,
+        trace_id: str,
+        org_scope: UUID | None = None,
     ) -> None:
         """Delete an annotation from a trace."""
         self.trace_annotation_service.delete_annotation_by_trace_id(
