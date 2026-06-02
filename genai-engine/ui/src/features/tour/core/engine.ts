@@ -114,6 +114,10 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
   let navigator: TourNavigator | null = options.navigator ?? null;
   let destroyed = false;
   let exitedStepKey: string | null = null;
+  // De-dup memo for target broadcasts (see emitTargetResolution). `undefined` =
+  // nothing emitted for the current step yet; `null` = last emitted a loss;
+  // Element = last emitted found.
+  let lastEmittedTarget: Element | null | undefined = undefined;
 
   const totalSteps = config.sections.reduce((acc, s) => acc + s.steps.length, 0);
 
@@ -126,7 +130,27 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     `${state.sectionIndex}:${state.stepIndex}:${state.sectionId}:${state.stepId}`;
   const setState = (next: TourState) => {
     exitedStepKey = null;
+    // Any state transition (step change, dismiss, completion) resets the memo so
+    // the next step's first resolution always broadcasts.
+    lastEmittedTarget = undefined;
     store.getState().setState(next);
+  };
+
+  /**
+   * Broadcast the resolved target, de-duplicated. `refreshTarget` runs on every
+   * DOM mutation while a step is active (via `ActiveTargetRefresh`), so without
+   * this an unchanged target would re-emit `target:found` every frame. We emit
+   * only when the resolved element actually changes; the memo is reset per step
+   * in `setState`, so a freshly-entered step always emits once.
+   */
+  const emitTargetResolution = (element: Element | null, sectionId: string, stepId: string) => {
+    if (lastEmittedTarget !== undefined && lastEmittedTarget === element) return;
+    lastEmittedTarget = element;
+    if (element) {
+      bus.emit("target:found", { tourId: config.id, sectionId, stepId, element });
+    } else {
+      bus.emit("target:lost", { tourId: config.id, sectionId, stepId });
+    }
   };
 
   const stepContextAt = (pos: Position): StepContext => {
@@ -455,11 +479,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     }
     if (signal.aborted) return;
 
-    if (element) {
-      bus.emit("target:found", { tourId: config.id, sectionId: section.id, stepId: step.id, element });
-    } else {
-      bus.emit("target:lost", { tourId: config.id, sectionId: section.id, stepId: step.id });
-    }
+    emitTargetResolution(element, section.id, step.id);
 
     bus.emit("step:enter", { ...ctx, rect: element?.getBoundingClientRect() ?? null });
     attachTriggers(step, ctx, element);
@@ -846,11 +866,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     const current = getState();
     if (current.status !== "step") return;
     const element = resolveCurrentTarget();
-    if (element) {
-      bus.emit("target:found", { tourId: config.id, sectionId: current.sectionId, stepId: current.stepId, element });
-    } else {
-      bus.emit("target:lost", { tourId: config.id, sectionId: current.sectionId, stepId: current.stepId });
-    }
+    emitTargetResolution(element, current.sectionId, current.stepId);
   };
 
   // ---------------------------------------------------------------------------

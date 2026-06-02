@@ -521,6 +521,61 @@ describe("createTourEngine actions", () => {
     expect(found).toEqual([first, second]);
   });
 
+  it("does not re-emit target:found when a refresh resolves the same element", async () => {
+    const el = document.createElement("button");
+    const found: Element[] = [];
+    const engine = createTourEngine({
+      config: {
+        id: "dedup-tour",
+        sections: [{ id: "main", steps: [step("dynamic", { target: { kind: "element", resolve: () => el } })] }],
+      },
+    });
+    engine.on("target:found", (event) => found.push(event.element));
+
+    await engine.start();
+    engine.refreshTarget();
+    engine.refreshTarget();
+
+    // ActiveTargetRefresh fires refreshTarget on every DOM mutation; an
+    // unchanged target must not re-broadcast each frame.
+    expect(found).toEqual([el]);
+  });
+
+  it("re-emits across change/lost transitions but dedups repeated losses", async () => {
+    let target: Element | null = document.createElement("button");
+    const first = target;
+    const second = document.createElement("section");
+    const found: Element[] = [];
+    let lost = 0;
+    const engine = createTourEngine({
+      config: {
+        id: "dedup-transitions",
+        sections: [{ id: "main", steps: [step("dynamic", { target: { kind: "element", resolve: () => target } })] }],
+      },
+    });
+    engine.on("target:found", (event) => found.push(event.element));
+    engine.on("target:lost", () => {
+      lost += 1;
+    });
+
+    await engine.start();
+    expect(found).toEqual([first]);
+
+    target = second;
+    engine.refreshTarget();
+    target = null;
+    engine.refreshTarget();
+    engine.refreshTarget(); // still gone — no second target:lost
+
+    expect(found).toEqual([first, second]);
+    expect(lost).toBe(1);
+
+    target = second;
+    engine.refreshTarget(); // reappears after a loss — emits again
+
+    expect(found).toEqual([first, second, second]);
+  });
+
   it("clears pending fallback auto-complete timers when dismissed", async () => {
     vi.useFakeTimers();
     try {
