@@ -87,11 +87,12 @@ export const TASK_TOUR_SUBTITLE = TASK_TOUR_META.subtitle;
  * engine `SectionConfig`; sections with `items.length === 0` collapse to a
  * stub step.
  *
- * The tour is anchored on a single worked example: an agent that is
- * consistently producing answers outside the readability bar this team set.
- * Every section's copy, scenario, and step instructions reinforce that
- * scenario — the user diagnoses the readability failures with traces +
- * continuous evals, captures them in a dataset, fixes them in the prompt
+ * The tour is anchored on a single worked example: an agent that answers
+ * questions from Wikipedia but never cites its source, so the Source
+ * Attribution Eval fails on every response. Every section's copy, scenario,
+ * and step instructions reinforce that scenario — the user diagnoses the
+ * citation failures with traces + continuous evals, captures them in a
+ * dataset, fixes the prompt so the agent attributes its answers in the prompt
  * playground, and ships the winning version.
  */
 export { TASK_TOUR_SECTIONS } from "./content/loader";
