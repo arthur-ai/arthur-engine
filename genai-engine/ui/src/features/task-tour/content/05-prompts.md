@@ -56,7 +56,7 @@ A prompt is a collection of messages, variables, and a model — change any of t
 
 ## scenario
 
-Inspect the existing prompt, open it in the playground, draft 2–3 variants that fix the readability failure, then run an experiment against the dataset and evals to see which variant wins.
+Inspect the existing prompt, open it in the playground, draft 2–3 variants that fix the citation failure — prompting the agent to tell users its answers come from Wikipedia — then run an experiment against the dataset and evals to see which variant wins.
 
 ## step: open-prompts
 
@@ -80,7 +80,7 @@ Click **Duplicate Prompt** to copy the seeded prompt into a side-by-side variant
 
 ## step: review-playground-prompt
 
-Use this duplicated prompt card to draft a tighter system prompt for readability. Try a different model or edit the messages — anything that might fix the failure.
+Use this duplicated prompt card to edit the system prompt so the agent cites its source — e.g. instruct it to tell the user the answer comes from Wikipedia. Edit the messages or try a different model — anything that makes the agent attribute its answers.
 
 ## step: open-variables
 
