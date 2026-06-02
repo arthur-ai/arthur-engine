@@ -75,6 +75,7 @@ from routers.v2.routers import (
     task_management_routes,
     validate_routes,
 )
+from routers.v2.demo_certificate_routes import demo_certificate_routes
 from routers.v2.tenant_signup_routes import tenant_signup_routes
 from services.continuous_eval import (
     initialize_continuous_eval_queue_service,
@@ -502,6 +503,7 @@ def get_app_with_routes() -> FastAPI:
             continuous_eval_routes,
             agent_polling_routes,
             demo_task_routes,
+            demo_certificate_routes,
             tenant_signup_routes,
         ],
     )
@@ -556,6 +558,7 @@ def get_test_app() -> FastAPI:
             agent_polling_routes,
             chatbot_routes,
             demo_task_routes,
+            demo_certificate_routes,
             tenant_signup_routes,
         ],
     )
@@ -621,7 +624,7 @@ def get_app() -> FastAPI:
     if extra_feature_config.CHATBOT_ENABLED:
         add_routers(app, [chatbot_routes])
     if Config.demo_mode():
-        add_routers(app, [demo_task_routes])
+        add_routers(app, [demo_task_routes, demo_certificate_routes])
     if extra_feature_config.CHAT_ENABLED:
         add_routers(app, [app_chat_routes])
     if extra_feature_config.DEMO_MODE:
