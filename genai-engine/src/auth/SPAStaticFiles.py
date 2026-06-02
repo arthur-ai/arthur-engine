@@ -20,6 +20,7 @@ class SPAStaticFiles(StaticFiles):
                     "login",
                     "logout",
                     "inferences",
+                    "welcome",
                     "admin/inference-deep-dive",
                     "admin/tasks",
                     "admin/index.tsx",
