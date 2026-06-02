@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from db_models import DatabaseInference, DatabaseInferenceFeedback, DatabaseTask
 from dependencies import get_db_session
 from repositories.organizations_repository import lookup_org_id
-from utils.constants import DEFAULT_ORG_ID
+from utils.constants import SYSTEM_ORG_ID
 
 logger = logging.getLogger()
 tracer = trace.get_tracer(__name__)
@@ -45,16 +45,20 @@ class FeedbackRepository:
         # Tenant caller: derived org must match the caller's. Route layer
         # pre-checks this, but re-asserting here defends against future call
         # sites and the task-deleted-mid-call race that previously silently
-        # stamped DEFAULT_ORG_ID.
+        # stamped the fallback org.
         if org_scope is not None and derived_org_id != org_scope:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Inference not found",
             )
-        # Admin task (task.org_id IS NULL by design): materialize the NOT NULL
-        # feedback.org_id column as DEFAULT_ORG_ID. Only reachable for admin
-        # callers because the tenant check above already rejected None here.
-        org_id = derived_org_id if derived_org_id is not None else DEFAULT_ORG_ID
+        # Task-less inference (inference.task_id IS NULL): produced by the
+        # deprecated /api/v2/validate_prompt endpoint. The INNER JOIN above
+        # yields no row, so derived_org_id is None. save_prompt/save_response
+        # stamp SYSTEM_ORG_ID on the rule_results for these same inferences
+        # (inference_repository.save_prompt) — match that so a single
+        # inference's children never split-brain across orgs. Only reachable
+        # for admin callers; the tenant check above already rejected None.
+        org_id = derived_org_id if derived_org_id is not None else SYSTEM_ORG_ID
         db_feedback = DatabaseInferenceFeedback(
             id=str(uuid.uuid4()),
             inference_id=inference_id,

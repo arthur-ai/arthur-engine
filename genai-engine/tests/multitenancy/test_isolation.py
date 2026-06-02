@@ -20,11 +20,18 @@ from unittest.mock import patch
 
 import httpx
 import pytest
-from arthur_common.models.enums import InferenceFeedbackTarget
+from arthur_common.models.enums import InferenceFeedbackTarget, RuleResultEnum
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from db_models import DatabaseInferenceFeedback
+from db_models import (
+    DatabaseInference,
+    DatabaseInferenceFeedback,
+    DatabaseInferencePrompt,
+    DatabaseInferencePromptContent,
+    DatabaseInferenceResponse,
+    DatabaseInferenceResponseContent,
+)
 from db_models.agentic_experiment_models import DatabaseAgenticExperiment
 from db_models.agentic_notebook_models import DatabaseAgenticNotebook
 from db_models.dataset_models import DatabaseDataset, DatabaseDatasetVersion
@@ -39,7 +46,7 @@ from repositories.rag_experiment_repository import RagExperimentRepository
 from schemas.base_experiment_schemas import ExperimentStatus
 from tests.clients.base_test_client import app, override_get_db_session
 from tests.multitenancy.conftest import TenantWorld
-from utils.constants import DEFAULT_ORG_ID
+from utils.constants import DEFAULT_ORG_ID, SYSTEM_ORG_ID
 
 SIGNUP_URL = "/api/v2/tenant/signup"
 ME_URL = "/users/me"
@@ -1389,10 +1396,19 @@ def test_feedback_org_id_derived_from_inference_not_caller(
          (mismatch between derived inference org and caller org).
       2) Admin (org_scope=None) writing on T2a's inference -> row gets T2a's
          org_id (= O2), not the caller's identity and not DEFAULT_ORG_ID.
+      3) Admin writing on a task-less inference (deprecated
+         /api/v2/validate_prompt path, inference.task_id IS NULL) -> the
+         JOIN through tasks returns no row, so the fallback fires. Must be
+         SYSTEM_ORG_ID to match what save_prompt/save_response stamp on the
+         same inference's rule_results — otherwise children of one
+         inference split-brain across system and default orgs.
     """
     db = override_get_db_session()
     repo = FeedbackRepository(db)
-    created_ids: list[str] = []
+    created_feedback_ids: list[str] = []
+    taskless_inference_id = str(uuid.uuid4())
+    taskless_prompt_id = str(uuid.uuid4())
+    taskless_response_id = str(uuid.uuid4())
     try:
         if tenant_world.t2a.inference_id is None:
             pytest.skip("seeded T2a inference missing")
@@ -1419,11 +1435,61 @@ def test_feedback_org_id_derived_from_inference_not_caller(
             user_id=None,
             org_scope=None,
         )
-        created_ids.append(row.id)
+        created_feedback_ids.append(row.id)
         assert row.org_id == tenant_world.o2_id
         assert row.org_id != DEFAULT_ORG_ID
+
+        # Sub-case 3: task-less inference -> SYSTEM_ORG_ID fallback. Hand-seed
+        # the inference because task_id=NULL is only producible through the
+        # deprecated validate_prompt path, which the tenant_world fixture
+        # doesn't exercise.
+        now = datetime.now(timezone.utc)
+        db.add(
+            DatabaseInference(
+                id=taskless_inference_id,
+                result=RuleResultEnum.PASS.value,
+                inference_prompt=DatabaseInferencePrompt(
+                    id=taskless_prompt_id,
+                    inference_id=taskless_inference_id,
+                    result=RuleResultEnum.PASS.value,
+                    content=DatabaseInferencePromptContent(
+                        inference_prompt_id=taskless_prompt_id,
+                        content="taskless-prompt",
+                    ),
+                    prompt_rule_results=[],
+                    created_at=now,
+                    updated_at=now,
+                ),
+                inference_response=DatabaseInferenceResponse(
+                    id=taskless_response_id,
+                    inference_id=taskless_inference_id,
+                    result=RuleResultEnum.PASS.value,
+                    content=DatabaseInferenceResponseContent(
+                        inference_response_id=taskless_response_id,
+                        content="taskless-response",
+                    ),
+                    response_rule_results=[],
+                    created_at=now,
+                    updated_at=now,
+                ),
+                created_at=now,
+                updated_at=now,
+            ),
+        )
+        db.commit()
+        taskless_row = repo.create_feedback(
+            inference_id=taskless_inference_id,
+            target=InferenceFeedbackTarget.RESPONSE_RESULTS,
+            score=1,
+            reason="taskless admin write",
+            user_id=None,
+            org_scope=None,
+        )
+        created_feedback_ids.append(taskless_row.id)
+        assert taskless_row.org_id == SYSTEM_ORG_ID
+        assert taskless_row.org_id != DEFAULT_ORG_ID
     finally:
-        for fid in created_ids:
+        for fid in created_feedback_ids:
             try:
                 stale = (
                     db.query(DatabaseInferenceFeedback)
@@ -1432,6 +1498,18 @@ def test_feedback_org_id_derived_from_inference_not_caller(
                 )
                 if stale is not None:
                     db.delete(stale)
+                db.commit()
+            except Exception:
+                db.rollback()
+        for model, ident in (
+            (DatabaseInferenceResponse, taskless_response_id),
+            (DatabaseInferencePrompt, taskless_prompt_id),
+            (DatabaseInference, taskless_inference_id),
+        ):
+            try:
+                stale_row = db.query(model).filter(model.id == ident).first()
+                if stale_row is not None:
+                    db.delete(stale_row)
                 db.commit()
             except Exception:
                 db.rollback()
