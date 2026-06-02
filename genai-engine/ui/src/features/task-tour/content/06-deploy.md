@@ -26,11 +26,11 @@ steps:
 
 ## intro
 
-Reopen the winning prompt, tag it as production, then re-run the Demo Agent and confirm the readability eval is green on fresh traces. That's the loop closing — the failure you found in Observe is the failure you just shipped a fix for.
+Reopen the winning prompt, tag it as production, then re-run the Demo Agent and confirm the **Source Attribution Eval** is green on fresh traces. That's the loop closing — the failure you found in Observe is the failure you just shipped a fix for.
 
 ## scenario
 
-Return to the prompt detail view, promote the best experiment candidate to production, send another Demo Agent message, then return to Observe and verify the new trace clears the readability eval.
+Return to the prompt detail view, promote the best experiment candidate to production, send another Demo Agent message, then return to Observe and verify the new trace clears the **Source Attribution Eval** — the agent now cites its source.
 
 ## step: open-production-prompt
 
@@ -58,4 +58,4 @@ Open **Observe** from the sidebar to see the traces your verification message pr
 
 ## step: review-latest-trace
 
-This is the latest trace — the one from the message you just sent. Open it to check the evals: the **Readability Eval** should now be green. That passing eval is your proof the fix held, closing the loop you started back in Observe.
+This is the latest trace — the one from the message you just sent. Open it to check the evals: the **Source Attribution Eval** should now be green now that the agent cites its source. That passing eval is your proof the fix held, closing the loop you started back in Observe.
