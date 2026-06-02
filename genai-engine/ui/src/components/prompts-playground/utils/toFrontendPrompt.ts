@@ -22,6 +22,7 @@ export const toFrontendPrompt = (backendPrompt: AgenticPrompt): PromptType => {
       content: msg.content,
       disabled: false,
       tool_calls: msg.tool_calls ?? undefined,
+      tool_call_id: msg.tool_call_id ?? undefined,
     })),
     tools: (backendPrompt.tools || []).map((tool) => ({
       id: generateId("tool"),

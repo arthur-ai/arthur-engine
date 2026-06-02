@@ -30,7 +30,7 @@ describe("TaskTourFormPrefillWidget", () => {
                 content: "Send a message",
                 formPrefill: {
                   targetId: "task-tour-chat-send",
-                  value: "What are AI Agent Evals?",
+                  value: "What is an AI Agent?",
                 },
               },
             ],
@@ -52,7 +52,7 @@ describe("TaskTourFormPrefillWidget", () => {
     expect(received).toEqual([
       {
         targetId: "task-tour-chat-send",
-        value: "What are AI Agent Evals?",
+        value: "What is an AI Agent?",
       },
     ]);
 
