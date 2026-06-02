@@ -6,16 +6,12 @@ import { useCallback } from "react";
 
 import { TASK_TOUR_SECTIONS } from "../data";
 
-import { PopoverAnchor, useTour } from "@/features/tour";
+import { useTour } from "@/features/tour";
 
 const PANEL_WIDTH = 320;
 const PANEL_Z_INDEX = 1450;
 
-export interface SectionCompleteWidgetProps {
-  anchorRect?: DOMRect | null;
-}
-
-export function SectionCompleteWidget({ anchorRect }: SectionCompleteWidgetProps) {
+export function SectionCompleteWidget() {
   const { state, actions } = useTour();
   const handleContinue = useCallback(() => actions.continueFromSectionComplete(), [actions]);
   const handleDismiss = useCallback(() => actions.dismiss(), [actions]);
@@ -26,7 +22,7 @@ export function SectionCompleteWidget({ anchorRect }: SectionCompleteWidgetProps
   const nextSection = state.nextSectionIndex === undefined ? undefined : TASK_TOUR_SECTIONS[state.nextSectionIndex];
   if (!section) return null;
 
-  const panel = (
+  return (
     <Paper
       elevation={8}
       sx={{
@@ -36,13 +32,9 @@ export function SectionCompleteWidget({ anchorRect }: SectionCompleteWidgetProps
         borderColor: "divider",
         overflow: "hidden",
         zIndex: PANEL_Z_INDEX,
-        ...(anchorRect
-          ? {}
-          : {
-              position: "fixed",
-              bottom: 20,
-              right: 20,
-            }),
+        position: "fixed",
+        bottom: 20,
+        right: 20,
       }}
     >
       <Stack direction="row" alignItems="center" spacing={1.25} sx={{ p: 1.75, borderBottom: 1, borderColor: "divider" }}>
@@ -74,14 +66,4 @@ export function SectionCompleteWidget({ anchorRect }: SectionCompleteWidgetProps
       </Stack>
     </Paper>
   );
-
-  if (anchorRect) {
-    return (
-      <PopoverAnchor rect={anchorRect} placement="top-start" offset={12} style={{ zIndex: PANEL_Z_INDEX }}>
-        {panel}
-      </PopoverAnchor>
-    );
-  }
-
-  return panel;
 }

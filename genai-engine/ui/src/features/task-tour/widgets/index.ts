@@ -5,7 +5,7 @@ export { EvaluateTargetWidget } from "./EvaluateTargetWidget";
 export { IntroWidget } from "./IntroWidget";
 export { PromptTargetWidget } from "./PromptTargetWidget";
 export { ResumeFabWidget, type ResumeFabWidgetProps } from "./ResumeFabWidget";
-export { SectionCompleteWidget, type SectionCompleteWidgetProps } from "./SectionCompleteWidget";
+export { SectionCompleteWidget } from "./SectionCompleteWidget";
 export { SpotlightWidget } from "./SpotlightWidget";
 export { TaskTourFormPrefillWidget } from "./TaskTourFormPrefillWidget";
 export { TracesTargetWidget } from "./TracesTargetWidget";
