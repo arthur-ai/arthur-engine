@@ -39,7 +39,9 @@ async def upload_certificate(
     image_bytes = await file.read()
 
     if len(image_bytes) > _MAX_CERT_BYTES:
-        raise HTTPException(status_code=413, detail="Certificate image exceeds 5 MB limit")
+        raise HTTPException(
+            status_code=413, detail="Certificate image exceeds 5 MB limit"
+        )
 
     cert = DemoCertificate(id=uuid.uuid4(), image=image_bytes)
     db_session.add(cert)

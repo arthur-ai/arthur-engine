@@ -1,6 +1,6 @@
 """add demo_certificates table
 
-Revision ID: a1b2c3d4e5f6
+Revision ID: 490cd5586c25
 Revises: 7e1c3a4b5d2f
 Create Date: 2026-06-02 09:00:00.000000
 
@@ -15,7 +15,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "a1b2c3d4e5f6"
+revision = "490cd5586c25"
 down_revision = "7e1c3a4b5d2f"
 branch_labels = None
 depends_on = None
