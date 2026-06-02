@@ -57,9 +57,9 @@ export function CtaDialog({ open, onDismiss }: CtaDialogProps) {
 
         <Stack spacing={1.5} sx={{ maxWidth: 420, textAlign: "left" }}>
           <Typography variant="body2" color="text.secondary">
-            If you found this exercise useful and have a need to build strongly performant and production-ready agents,
-            book time on my calendar. We’ve helped many teams, from scrappy startups to large Fortune 100 companies, by
-            providing the tools and techniques to ensure trustworthy and reliable AI systems.
+            If you found this exercise useful and have a need to build strongly performant and production-ready agents, book time on my calendar.
+            We’ve helped many teams, from scrappy startups to large Fortune 100 companies, by providing the tools and techniques to ensure trustworthy
+            and reliable AI systems.
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Look forward to chatting.
