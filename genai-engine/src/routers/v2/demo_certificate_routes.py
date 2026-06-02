@@ -2,13 +2,13 @@ import uuid
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import Response
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from config.config import Config
 from db_models.demo_certificate_models import DemoCertificate
 from dependencies import get_db_session
-from config.config import Config
 from routers.route_handler import GenaiEngineRoute
+from schemas.response_schemas import CertificateUploadResponse
 from utils.utils import public_endpoint
 
 demo_certificate_routes = APIRouter(
@@ -17,11 +17,6 @@ demo_certificate_routes = APIRouter(
 )
 
 _MAX_CERT_BYTES = 5 * 1024 * 1024  # 5 MB
-
-
-class CertificateUploadResponse(BaseModel):
-    certificate_id: str
-    certificate_url: str
 
 
 @demo_certificate_routes.post(
