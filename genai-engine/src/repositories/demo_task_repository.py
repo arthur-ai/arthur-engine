@@ -44,14 +44,14 @@ from services.prompt.chat_completion_service import ChatCompletionService
 from services.trace.trace_ingestion_service import TraceIngestionService
 from utils import constants
 from utils.demo_task_fixtures.demo_task_resources import (
+    DEMO_CHATBOT_TRACE_TO_DATASET_TRANSFORM,
     DEMO_TASK_ANSWER_RELEVANCE_EVAL_PROMPT,
     DEMO_TASK_ANSWER_RELEVANCE_EVAL_TRANSFORM,
     DEMO_TASK_DATASET_REQUEST,
     DEMO_TASK_DATASET_VERSION_REQUEST,
     DEMO_TASK_PROMPT_MESSAGES,
-    DEMO_TASK_SOURCE_ATTRIBUTION_EVAL_PROMPT,
-    DEMO_CHATBOT_TRACE_TO_DATASET_TRANSFORM,
     DEMO_TASK_RESPONSE_EXTRACTION_TRANSFORM,
+    DEMO_TASK_SOURCE_ATTRIBUTION_EVAL_PROMPT,
     DEMO_TASK_TOOLS,
 )
 
