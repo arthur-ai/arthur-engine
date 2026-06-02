@@ -186,8 +186,21 @@ jobs:
             ui:
               - 'genai-engine/ui/**'
             backend:
-              - 'genai-engine/**'
-              - '!genai-engine/ui/**'
+              - 'genai-engine/src/**'
+              - 'genai-engine/tests/**'
+              - 'genai-engine/alembic/**'
+              - 'genai-engine/scripts/**'
+              - 'genai-engine/models/**'
+              - 'genai-engine/*.toml'
+              - 'genai-engine/*.cfg'
+              - 'genai-engine/*.ini'
+              - 'genai-engine/*.lock'
+              - 'genai-engine/*.txt'
+              - 'genai-engine/version'
+              - 'genai-engine/routes_security_check.py'
+              - 'genai-engine/changelog*'
+              - 'genai-engine/Dockerfile*'
+              - 'genai-engine/docker-compose.yml'
 
   run-genai-engine-ui-lint:
     needs: check-genai-engine-changes

@@ -25,6 +25,35 @@ describe("tour target resolution", () => {
     ).toBe(element);
   });
 
+  it("prefers a connected, rendered match when a selector matches several nodes", () => {
+    const stale = document.createElement("button");
+    stale.dataset.tourId = "twin";
+    const live = document.createElement("button");
+    live.dataset.tourId = "twin";
+    document.body.append(stale, live);
+
+    // jsdom has no layout, so simulate render boxes: the stale node (mid
+    // exit-animation, no box) vs the live node (rendered).
+    stale.getClientRects = (() => [] as unknown as DOMRectList) as Element["getClientRects"];
+    live.getClientRects = (() => [{} as DOMRect] as unknown as DOMRectList) as Element["getClientRects"];
+
+    expect(resolveTargetSync({ kind: "selector", selector: "[data-tour-id='twin']" })).toBe(live);
+  });
+
+  it("falls back to the first match when no selector match is rendered", () => {
+    const first = document.createElement("button");
+    first.dataset.tourId = "twin";
+    const second = document.createElement("button");
+    second.dataset.tourId = "twin";
+    document.body.append(first, second);
+
+    const none = (() => [] as unknown as DOMRectList) as Element["getClientRects"];
+    first.getClientRects = none;
+    second.getClientRects = none;
+
+    expect(resolveTargetSync({ kind: "selector", selector: "[data-tour-id='twin']" })).toBe(first);
+  });
+
   it("waits for selector targets to appear before timing out", async () => {
     const promise = resolveTargetAsync({ kind: "selector", selector: "[data-tour-id='late']" }, { timeoutMs: 100 });
 

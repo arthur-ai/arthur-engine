@@ -147,7 +147,7 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
         advance: "action-only",
         formPrefill: {
           targetId: TOUR_IDS.chatSendPlaceholder,
-          value: "What are AI Agent Evals?",
+          value: "What is an AI Agent?",
         },
       },
     },
@@ -346,6 +346,10 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
             columnDescriptions: {
               query: "A general-purpose question for the Wikipedia search agent to answer.",
               response: "The expected answer from the Wikipedia search agent.",
+              search_query: "The search term the agent passes to the Wikipedia search tool to find relevant articles.",
+              search_results: "The list of matching Wikipedia article titles returned by the search tool.",
+              fetch_query: "The article title the agent passes to the Wikipedia fetch tool to retrieve its summary.",
+              fetch_results: "The article summary returned by the Wikipedia fetch tool.",
             },
             modelName: "gpt-5-nano",
           },
@@ -560,12 +564,11 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
     steps: {
       "open-production-prompt": {
         targetId: TOUR_IDS.promptsFirstRow,
-        // Same row as the prompts-section "inspect-prompt" step. Use the query
-        // hook (not the static selector) so QueryHookTargetRefresh re-resolves
-        // the row on DOM mutations: the deploy section navigates back to
-        // prompts-management and the table re-renders, replacing the <tr> node.
-        // A one-shot selector target would keep measuring the stale, detached
-        // node and strand the highlight above the live row.
+        // Same row as the prompts-section "inspect-prompt" step. The query hook
+        // scopes resolution to the live demo-task row via a registered ref; the
+        // engine's ActiveTargetRefresh re-resolves it on DOM mutations when the
+        // deploy section navigates back to prompts-management and the table
+        // re-renders, replacing the <tr> node.
         targetHookId: TASK_TOUR_QUERY_HOOKS.demoTaskPromptRow,
         route: "prompts",
         search: { tab: "prompts-management" },
@@ -589,7 +592,7 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
         advance: "action-only",
         formPrefill: {
           targetId: TOUR_IDS.chatSendPlaceholder,
-          value: "What are AI Agent Evals?",
+          value: "What is an AI Agent?",
         },
       },
       "review-verification-message": {

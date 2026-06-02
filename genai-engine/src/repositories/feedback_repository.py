@@ -6,7 +6,7 @@ from uuid import UUID
 
 from arthur_common.models.enums import InferenceFeedbackTarget, PaginationSortMethod
 from arthur_common.models.response_schemas import InferenceFeedbackResponse
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
 from opentelemetry import trace
 from sqlalchemy import asc, desc, select
 from sqlalchemy.orm import Session
@@ -31,14 +31,30 @@ class FeedbackRepository:
         score: int,
         reason: str,
         user_id: str | None,
+        org_scope: UUID | None = None,
     ) -> DatabaseInferenceFeedback:
-        org_id = lookup_org_id(
+        # Feedback is a child of the inference, so its org MUST track the
+        # parent's. Derive from the inference's task — never trust the caller's
+        # identity as the source of truth here.
+        derived_org_id = lookup_org_id(
             self.db_session,
             select(DatabaseTask.org_id)
             .join(DatabaseInference, DatabaseInference.task_id == DatabaseTask.id)
             .where(DatabaseInference.id == inference_id),
-            default=DEFAULT_ORG_ID,
         )
+        # Tenant caller: derived org must match the caller's. Route layer
+        # pre-checks this, but re-asserting here defends against future call
+        # sites and the task-deleted-mid-call race that previously silently
+        # stamped DEFAULT_ORG_ID.
+        if org_scope is not None and derived_org_id != org_scope:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Inference not found",
+            )
+        # Admin task (task.org_id IS NULL by design): materialize the NOT NULL
+        # feedback.org_id column as DEFAULT_ORG_ID. Only reachable for admin
+        # callers because the tenant check above already rejected None here.
+        org_id = derived_org_id if derived_org_id is not None else DEFAULT_ORG_ID
         db_feedback = DatabaseInferenceFeedback(
             id=str(uuid.uuid4()),
             inference_id=inference_id,
@@ -141,6 +157,7 @@ def save_feedback(
     reason: str = "",
     user_id: Optional[str] = None,
     db_session: Session = Depends(get_db_session),
+    org_scope: UUID | None = None,
 ) -> InferenceFeedbackResponse:
     """
     Accepts feedback on a particular inference with user information and store it in the db.
@@ -164,6 +181,7 @@ def save_feedback(
             score,
             reason,
             user_id,
+            org_scope=org_scope,
         )
 
         return InferenceFeedbackResponse(

@@ -21,6 +21,7 @@ from db_models.rag_experiment_models import (
     DatabaseRagExperimentTestCaseRagResult,
     DatabaseRagExperimentTestCaseRagResultEvalScore,
 )
+from db_models.rag_notebook_models import DatabaseRagNotebook
 from db_models.rag_provider_models import (
     DatabaseRagProviderConfiguration,
     DatabaseRagSearchSettingConfiguration,
@@ -935,14 +936,32 @@ class RagExperimentRepository:
         notebook_id: str,
         org_scope: UUID | None = None,
     ) -> RagExperimentSummary:
-        """Attach a RAG notebook to an experiment."""
+        """Attach a RAG notebook to an experiment.
+
+        The notebook must live on the same task as the experiment. Because the
+        experiment is already org-scoped via `_get_db_experiment`, matching on
+        `task_id` transitively pins the notebook to the same org — without
+        that check a tenant could attach a foreign-org notebook UUID.
+        """
         db_experiment = self._get_db_experiment(experiment_id, org_scope=org_scope)
 
-        # Update notebook_id
+        db_notebook = (
+            self.db_session.query(DatabaseRagNotebook)
+            .filter(
+                DatabaseRagNotebook.id == notebook_id,
+                DatabaseRagNotebook.task_id == db_experiment.task_id,
+            )
+            .first()
+        )
+        if db_notebook is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"RAG notebook {notebook_id} not found.",
+            )
+
         db_experiment.notebook_id = notebook_id
         self.db_session.commit()
 
-        # Return updated summary
         return self._db_experiment_to_summary(db_experiment)
 
     def delete_experiment(

@@ -22,6 +22,13 @@ export interface TourStateSnapshot {
    * separate plugin; in v1 status and progress share one storage record.
    */
   completed: ReadonlySet<string>;
+  /**
+   * Whether the checklist panel is collapsed to its compact card. Persisted
+   * alongside the rest of the tour state so the user's explicit collapse /
+   * expand choice survives section navigation, remounts, reloads, and cross-
+   * tab sync. Defaults to `true` (collapsed) for a fresh tour.
+   */
+  minimized: boolean;
 }
 
 export interface PersistenceStorage {
@@ -50,14 +57,15 @@ interface SerializedSnapshot {
   status: TourStateStatus;
   position?: { sectionId: string; stepId?: string; boundary?: "sectionComplete" };
   completed: string[];
+  minimized: boolean;
 }
 
 function parseSnapshot(raw: string | null): TourStateSnapshot {
-  if (!raw) return { status: "unseen", completed: new Set() };
+  if (!raw) return { status: "unseen", completed: new Set(), minimized: true };
   try {
     const parsed = JSON.parse(raw) as unknown;
     if (!parsed || typeof parsed !== "object") {
-      return { status: "unseen", completed: new Set() };
+      return { status: "unseen", completed: new Set(), minimized: true };
     }
     const obj = parsed as Partial<SerializedSnapshot>;
     const status: TourStateStatus =
@@ -65,6 +73,7 @@ function parseSnapshot(raw: string | null): TourStateSnapshot {
         ? obj.status
         : "unseen";
     const completed = new Set<string>((obj.completed ?? []).filter((v): v is string => typeof v === "string"));
+    const minimized = typeof obj.minimized === "boolean" ? obj.minimized : true;
     const position =
       obj.position && typeof obj.position === "object" && typeof obj.position.sectionId === "string"
         ? {
@@ -73,9 +82,9 @@ function parseSnapshot(raw: string | null): TourStateSnapshot {
             boundary: obj.position.boundary === "sectionComplete" ? obj.position.boundary : undefined,
           }
         : undefined;
-    return { status, position, completed };
+    return { status, position, completed, minimized };
   } catch {
-    return { status: "unseen", completed: new Set() };
+    return { status: "unseen", completed: new Set(), minimized: true };
   }
 }
 
@@ -83,6 +92,7 @@ function serializeSnapshot(snapshot: TourStateSnapshot): string {
   const payload: SerializedSnapshot = {
     status: snapshot.status,
     completed: Array.from(snapshot.completed),
+    minimized: snapshot.minimized,
     ...(snapshot.position ? { position: snapshot.position } : {}),
   };
   return JSON.stringify(payload);
@@ -93,6 +103,7 @@ function snapshotsEqual(a: TourStateSnapshot, b: TourStateSnapshot): boolean {
   if ((a.position?.sectionId ?? null) !== (b.position?.sectionId ?? null)) return false;
   if ((a.position?.stepId ?? null) !== (b.position?.stepId ?? null)) return false;
   if ((a.position?.boundary ?? null) !== (b.position?.boundary ?? null)) return false;
+  if (a.minimized !== b.minimized) return false;
   if (a.completed.size !== b.completed.size) return false;
   for (const v of a.completed) if (!b.completed.has(v)) return false;
   return true;
@@ -178,6 +189,7 @@ export function createTourStatePlugin(opts: CreateTourStatePluginOptions): TourS
       status: patch.status ?? current.status,
       position: patch.position === undefined ? current.position : patch.position,
       completed: patch.completed ?? current.completed,
+      minimized: patch.minimized ?? current.minimized,
     };
   };
 
@@ -207,7 +219,7 @@ export function createTourStatePlugin(opts: CreateTourStatePluginOptions): TourS
   };
 
   const reset = () => {
-    writeSnapshot({ status: "unseen", completed: new Set() });
+    writeSnapshot({ status: "unseen", completed: new Set(), minimized: true });
   };
 
   const resumePosition: TourStatePlugin["resumePosition"] = (config) => {

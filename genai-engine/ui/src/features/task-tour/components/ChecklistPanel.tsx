@@ -1,4 +1,3 @@
-import type { Placement } from "@floating-ui/react";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import EastIcon from "@mui/icons-material/East";
@@ -8,8 +7,8 @@ import { Box, Button, IconButton, LinearProgress, Paper, Stack, Tooltip, Typogra
 import type { ReactNode } from "react";
 
 import { TASK_TOUR_SECTIONS, TASK_TOUR_TITLE, type TaskTourItem, type TaskTourSection } from "../data";
-
-import { PopoverAnchor } from "@/features/tour";
+import { TASK_TOUR_DOCK_STORAGE_KEY, TASK_TOUR_DOCK_WIDTH, defaultDockPosition } from "../dockPosition";
+import { useDraggable } from "../hooks/useDraggable";
 
 export interface ChecklistPanelProps {
   currentSectionIndex: number;
@@ -36,13 +35,9 @@ export interface ChecklistPanelProps {
   isMinimized?: boolean;
   onMinimize?: () => void;
   onExpand?: () => void;
-  /** When set, the panel is positioned next to this rect via floating-ui. */
-  anchorRect?: DOMRect | null;
-  /** Placement relative to `anchorRect`. Defaults to `top-start`. */
-  anchorPlacement?: Placement;
 }
 
-const PANEL_WIDTH = 320;
+const PANEL_WIDTH = TASK_TOUR_DOCK_WIDTH;
 const PANEL_Z_INDEX = 1450;
 
 function itemKey(section: TaskTourSection, item: TaskTourItem) {
@@ -55,9 +50,10 @@ function isSectionDone(section: TaskTourSection, completed: ReadonlySet<string>)
 }
 
 /**
- * Floating checklist panel with section pips, the current section's title,
- * an interactive checklist of items, and progress controls. Anchored to a
- * reference rect when provided; otherwise fixed to the bottom-right corner.
+ * Floating, draggable checklist panel with section pips, the current section's
+ * title, an interactive checklist of items, and progress controls. Fixed to
+ * the bottom-right corner by default; the user can drag it anywhere and its
+ * position is shared with the resume FAB (see {@link defaultDockPosition}).
  */
 export function ChecklistPanel({
   currentSectionIndex,
@@ -75,10 +71,20 @@ export function ChecklistPanel({
   isMinimized = false,
   onMinimize,
   onExpand,
-  anchorRect,
-  anchorPlacement = "top-start",
 }: ChecklistPanelProps) {
   const theme = useTheme();
+  const {
+    position,
+    isDragging,
+    ref: dragRef,
+    handleProps,
+  } = useDraggable<HTMLDivElement>({
+    storageKey: TASK_TOUR_DOCK_STORAGE_KEY,
+    defaultPosition: defaultDockPosition,
+  });
+
+  const positionSx = { position: "fixed", left: position.left, bottom: position.bottom } as const;
+
   const section = TASK_TOUR_SECTIONS[currentSectionIndex];
   if (!section) return null;
   const items = section.items;
@@ -89,26 +95,16 @@ export function ChecklistPanel({
   const activeItem = currentItemIndex >= 0 ? items[currentItemIndex] : null;
   const activeStepTitle = activeItem?.title ?? section.title;
 
-  const renderAnchored = (node: ReactNode) => {
-    if (anchorRect) {
-      return (
-        <PopoverAnchor rect={anchorRect} placement={anchorPlacement} offset={12} style={{ zIndex: PANEL_Z_INDEX }}>
-          {node}
-        </PopoverAnchor>
-      );
-    }
-
-    return node;
-  };
-
   if (isMinimized) {
-    const compactPanel = (
+    return (
       <Paper
         component="button"
         type="button"
         aria-label="Expand walkthrough"
         elevation={8}
+        ref={dragRef as unknown as React.RefObject<HTMLButtonElement>}
         onClick={onExpand}
+        {...handleProps}
         sx={{
           width: 280,
           p: 0,
@@ -119,14 +115,9 @@ export function ChecklistPanel({
           border: 1,
           borderColor: "divider",
           bgcolor: "background.paper",
-          cursor: "pointer",
-          ...(anchorRect
-            ? {}
-            : {
-                position: "fixed",
-                bottom: 20,
-                right: 20,
-              }),
+          cursor: isDragging ? "grabbing" : "grab",
+          touchAction: "none",
+          ...positionSx,
           "&:hover": { borderColor: "secondary.main" },
           "&:focus-visible": {
             outline: 2,
@@ -175,16 +166,15 @@ export function ChecklistPanel({
         />
       </Paper>
     );
-
-    return renderAnchored(compactPanel);
   }
 
-  const panel = (
+  return (
     <Paper
       elevation={8}
+      ref={dragRef}
       sx={{
         width: PANEL_WIDTH,
-        maxHeight: anchorRect ? "min(480px, calc(100vh - 40px))" : "calc(100vh - 40px)",
+        maxHeight: "calc(100vh - 40px)",
         display: "flex",
         flexDirection: "column",
         borderRadius: 2.5,
@@ -192,16 +182,23 @@ export function ChecklistPanel({
         zIndex: PANEL_Z_INDEX,
         border: 1,
         borderColor: "divider",
-        ...(anchorRect
-          ? {}
-          : {
-              position: "fixed",
-              bottom: 20,
-              right: 20,
-            }),
+        ...positionSx,
       }}
     >
-      <Stack direction="row" alignItems="center" spacing={1.25} sx={{ p: 1.75, borderBottom: 1, borderColor: "divider" }}>
+      <Stack
+        direction="row"
+        alignItems="center"
+        spacing={1.25}
+        {...handleProps}
+        sx={{
+          p: 1.75,
+          borderBottom: 1,
+          borderColor: "divider",
+          cursor: isDragging ? "grabbing" : "grab",
+          touchAction: "none",
+          userSelect: "none",
+        }}
+      >
         <Box
           sx={{
             display: "inline-flex",
@@ -225,12 +222,24 @@ export function ChecklistPanel({
           {TASK_TOUR_TITLE}
         </Typography>
         <Tooltip title="Minimize walkthrough">
-          <IconButton aria-label="Minimize walkthrough" size="small" onClick={onMinimize} sx={{ color: "text.disabled" }}>
+          <IconButton
+            aria-label="Minimize walkthrough"
+            size="small"
+            onClick={onMinimize}
+            onPointerDown={(e) => e.stopPropagation()}
+            sx={{ color: "text.disabled" }}
+          >
             <RemoveIcon sx={{ fontSize: 14 }} />
           </IconButton>
         </Tooltip>
         <Tooltip title="Hide walkthrough">
-          <IconButton aria-label="Hide walkthrough" size="small" onClick={onClose} sx={{ color: "text.disabled" }}>
+          <IconButton
+            aria-label="Hide walkthrough"
+            size="small"
+            onClick={onClose}
+            onPointerDown={(e) => e.stopPropagation()}
+            sx={{ color: "text.disabled" }}
+          >
             <CloseIcon sx={{ fontSize: 14 }} />
           </IconButton>
         </Tooltip>
@@ -410,6 +419,4 @@ export function ChecklistPanel({
       </Stack>
     </Paper>
   );
-
-  return renderAnchored(panel);
 }

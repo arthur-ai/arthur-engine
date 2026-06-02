@@ -26,7 +26,7 @@ describe("task tour config", () => {
       },
       formPrefill: {
         targetId: TOUR_IDS.chatSendPlaceholder,
-        value: "What are AI Agent Evals?",
+        value: "What is an AI Agent?",
       },
       advanceOn: [{ type: "action", name: TASK_TOUR_ACTIONS.demoAgentMessageSent }],
     });
@@ -50,6 +50,10 @@ describe("task tour config", () => {
           columnDescriptions: {
             query: "A general-purpose question for the Wikipedia search agent to answer.",
             response: "The expected answer from the Wikipedia search agent.",
+            search_query: "The search term the agent passes to the Wikipedia search tool to find relevant articles.",
+            search_results: "The list of matching Wikipedia article titles returned by the search tool.",
+            fetch_query: "The article title the agent passes to the Wikipedia fetch tool to retrieve its summary.",
+            fetch_results: "The article summary returned by the Wikipedia fetch tool.",
           },
           modelName: "gpt-5-nano",
         },
@@ -386,7 +390,7 @@ describe("task tour config", () => {
       target: { kind: "selector", selector: tourSelector(TOUR_IDS.chatSendPlaceholder) },
       formPrefill: {
         targetId: TOUR_IDS.chatSendPlaceholder,
-        value: "What are AI Agent Evals?",
+        value: "What is an AI Agent?",
       },
       advanceOn: [{ type: "action", name: TASK_TOUR_ACTIONS.demoAgentMessageSent }],
     });

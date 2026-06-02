@@ -16,11 +16,6 @@ function itemKey(sectionId: string, itemId: string) {
 export interface ChecklistWidgetProps {
   /** The shared state plugin instance owned by `TaskTour`. */
   statePlugin: TourStatePlugin;
-  isMinimized?: boolean;
-  onMinimize?: () => void;
-  onExpand?: () => void;
-  /** Optional anchor rect (used when the panel is parked on the resume FAB). */
-  panelAnchorRect?: DOMRect | null;
 }
 
 /**
@@ -34,11 +29,15 @@ export interface ChecklistWidgetProps {
  * case placeholder steps — intro-only sections are handled by `IntroWidget`
  * and `engine.acknowledgeIntroduction()`.
  */
-export function ChecklistWidget({ statePlugin, isMinimized = false, onMinimize, onExpand, panelAnchorRect }: ChecklistWidgetProps) {
+export function ChecklistWidget({ statePlugin }: ChecklistWidgetProps) {
   const engine = useTourEngine();
   const { state, activeStep, actions } = useTour();
   const completedItemKeys = useTourPluginStore(statePlugin, (s) => s.snapshot.completed);
+  const isMinimized = useTourPluginStore(statePlugin, (s) => s.snapshot.minimized);
   const activeTarget = useActiveTarget();
+
+  const handleMinimize = useCallback(() => statePlugin.setSnapshot({ minimized: true }), [statePlugin]);
+  const handleExpand = useCallback(() => statePlugin.setSnapshot({ minimized: false }), [statePlugin]);
 
   const currentSectionIndex = state.status === "step" ? state.sectionIndex : 0;
   const currentStepIndex = state.status === "step" ? state.stepIndex : -1;
@@ -133,9 +132,8 @@ export function ChecklistWidget({ statePlugin, isMinimized = false, onMinimize, 
       onNextSection={handleNextSection}
       onClose={handleDismiss}
       isMinimized={isMinimized}
-      onMinimize={onMinimize}
-      onExpand={onExpand}
-      anchorRect={panelAnchorRect}
+      onMinimize={handleMinimize}
+      onExpand={handleExpand}
     />
   );
 }

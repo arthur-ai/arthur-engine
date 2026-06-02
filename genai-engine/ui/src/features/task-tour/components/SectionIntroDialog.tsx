@@ -135,9 +135,6 @@ export function SectionIntroDialog({ open, section, sectionIndex, onStart, onDis
       ) : null}
 
       <Stack direction="row" alignItems="center" justifyContent="flex-end" spacing={1.5} sx={{ px: 4, pb: 2.75, pt: 0.5 }}>
-        <Button variant="outlined" color="inherit" onClick={onDismiss} sx={{ whiteSpace: "nowrap" }}>
-          Dismiss tour
-        </Button>
         <Button variant="contained" color="primary" onClick={onStart} endIcon={<EastIcon sx={{ fontSize: 16 }} />} sx={{ whiteSpace: "nowrap" }}>
           {intro.cta}
         </Button>

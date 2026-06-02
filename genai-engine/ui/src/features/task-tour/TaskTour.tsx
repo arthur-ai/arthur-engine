@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 
 import { createTaskTourEmptyStatePredicate } from "./emptyState";
 import { useTracesTourPrep } from "./prep/useTracesTourPrep";
@@ -19,7 +19,7 @@ import {
   TracesTourCleanupWidget,
 } from "./widgets";
 
-import { GuidedStepPopover, TourHost, TourProvider, useReactRouterNavigator, useTourEngine } from "@/features/tour";
+import { GuidedStepPopover, TourHost, TourProvider, useReactRouterNavigator } from "@/features/tour";
 import { useApi } from "@/hooks/useApi";
 
 export interface TaskTourProps {
@@ -45,16 +45,6 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
   const isEmpty = useMemo(() => createTaskTourEmptyStatePredicate(api, taskId), [api, taskId]);
   const { engine, statePlugin } = useTaskTourEngine({ taskId, isEmpty });
 
-  const [fabAnchorRect, setFabAnchorRect] = useState<DOMRect | null>(null);
-  const [panelAnchoredToFab, setPanelAnchoredToFab] = useState(false);
-  // The checklist starts minimized so it stays out of the way; users opt into
-  // the full panel by expanding the compact card.
-  const [checklistMinimized, setChecklistMinimized] = useState(true);
-
-  const handleFabAnchorRectChange = useCallback((rect: DOMRect | null) => {
-    setFabAnchorRect(rect);
-  }, []);
-
   // Wire the legacy `dispatchTourEvent` shim to the active engine. Keeps the
   // 19 product-side call sites compiling against the v0 import names while
   // routing actions through v1's typed engine bus.
@@ -68,18 +58,14 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
     };
   }, [engine]);
 
-  // The dock flag is only meaningful while the tour is actively running.
   // Whenever the persisted status leaves `in-progress` — dismissed, completed,
-  // skipped, or reset back to unseen — clear the flag so the FAB visibility
-  // logic reverts to its default (`dismissed` is the only persisted state
-  // that should show the FAB).
+  // skipped, or reset back to unseen — revert the checklist to its default
+  // minimized state so the next run starts compact.
   useEffect(() => {
     return statePlugin.store.subscribe((state, prev) => {
       if (prev.snapshot.status === state.snapshot.status) return;
       if (state.snapshot.status !== "in-progress") {
-        setPanelAnchoredToFab(false);
-        // Revert to the default minimized state so the next run starts compact.
-        setChecklistMinimized(true);
+        statePlugin.setSnapshot({ minimized: true });
       }
     });
   }, [statePlugin]);
@@ -87,18 +73,7 @@ export function TaskTour({ taskId, workspaceLabel }: TaskTourProps) {
   if (!engine) return null;
   return (
     <TourProvider tour={engine} navigator={navigator}>
-      <TaskTourBody
-        statePlugin={statePlugin}
-        workspaceLabel={workspaceLabel}
-        taskId={taskId}
-        panelAnchoredToFab={panelAnchoredToFab}
-        checklistMinimized={checklistMinimized}
-        fabAnchorRect={fabAnchorRect}
-        onFabAnchorRectChange={handleFabAnchorRectChange}
-        onResume={() => setPanelAnchoredToFab(true)}
-        onChecklistMinimize={() => setChecklistMinimized(true)}
-        onChecklistExpand={() => setChecklistMinimized(false)}
-      />
+      <TaskTourBody statePlugin={statePlugin} workspaceLabel={workspaceLabel} taskId={taskId} />
     </TourProvider>
   );
 }
@@ -107,13 +82,6 @@ interface TaskTourBodyProps {
   statePlugin: ReturnType<typeof useTaskTourEngine>["statePlugin"];
   workspaceLabel?: string;
   taskId: string;
-  panelAnchoredToFab: boolean;
-  checklistMinimized: boolean;
-  fabAnchorRect: DOMRect | null;
-  onFabAnchorRectChange: (rect: DOMRect | null) => void;
-  onResume: () => void;
-  onChecklistMinimize: () => void;
-  onChecklistExpand: () => void;
 }
 
 /**
@@ -122,18 +90,7 @@ interface TaskTourBodyProps {
  * engine context, and so the prep hook (which calls Query Client hooks) sits
  * inside the same provider tree as the rest of the tour subtree.
  */
-function TaskTourBody({
-  statePlugin,
-  workspaceLabel,
-  taskId,
-  panelAnchoredToFab,
-  checklistMinimized,
-  fabAnchorRect,
-  onFabAnchorRectChange,
-  onResume,
-  onChecklistMinimize,
-  onChecklistExpand,
-}: TaskTourBodyProps) {
+function TaskTourBody({ statePlugin, workspaceLabel, taskId }: TaskTourBodyProps) {
   // Register the traces preparation hook (keyed by
   // `TASK_TOUR_PREPARATIONS.traceOpened`). The engine consults this on
   // `prepare: { key }` steps before resolving the spotlight target.
@@ -148,54 +105,12 @@ function TaskTourBody({
       <TracesTourCleanupWidget />
       <TaskTourFormPrefillWidget />
       <IntroWidget />
-      <SectionCompleteWidget anchorRect={panelAnchoredToFab ? fabAnchorRect : null} />
+      <SectionCompleteWidget />
       <SpotlightWidget />
       <GuidedStepPopover />
-      <ChecklistWidget
-        statePlugin={statePlugin}
-        isMinimized={checklistMinimized}
-        onMinimize={onChecklistMinimize}
-        onExpand={onChecklistExpand}
-        panelAnchorRect={panelAnchoredToFab ? fabAnchorRect : null}
-      />
-      <ResumeFabWrapper
-        statePlugin={statePlugin}
-        onAnchorRectChange={onFabAnchorRectChange}
-        panelAnchoredToFab={panelAnchoredToFab}
-        onResume={onResume}
-      />
+      <ChecklistWidget statePlugin={statePlugin} />
+      <ResumeFabWidget statePlugin={statePlugin} />
       <CertificateWidget workspaceLabel={workspaceLabel} />
     </TourHost>
   );
-}
-
-interface ResumeFabWrapperProps {
-  statePlugin: ReturnType<typeof useTaskTourEngine>["statePlugin"];
-  onAnchorRectChange: (rect: DOMRect | null) => void;
-  panelAnchoredToFab: boolean;
-  onResume: () => void;
-}
-
-/**
- * Wraps `ResumeFabWidget` to dock the checklist panel next to the FAB the
- * moment the user resumes from `dismissed`.
- *
- * Listens to `tour:resume` only — NOT `tour:start`. Initial auto-start would
- * otherwise set the dock flag for the whole tour, which would (a) display
- * the FAB during normal running, and (b) keep the FAB visible after
- * completion (since the flag never gets reset), letting a stray click on it
- * loop the engine back to section 0 via `actions.start({ resume: true })`.
- */
-function ResumeFabWrapper({ statePlugin, onAnchorRectChange, panelAnchoredToFab, onResume }: ResumeFabWrapperProps) {
-  const engine = useTourEngine();
-
-  useEffect(() => {
-    const handler = () => onResume();
-    engine.on("tour:resume", handler);
-    return () => {
-      engine.off("tour:resume", handler);
-    };
-  }, [engine, onResume]);
-
-  return <ResumeFabWidget statePlugin={statePlugin} onAnchorRectChange={onAnchorRectChange} panelAnchoredToFab={panelAnchoredToFab} />;
 }

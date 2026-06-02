@@ -293,9 +293,11 @@ export const AllTasks: React.FC = () => {
                         : "Click on any task to open the toolkit"}
                     </Typography>
                   </Box>
-                  <Button variant="contained" onClick={() => setShowCreateForm(true)} startIcon={<AddIcon />}>
-                    Task
-                  </Button>
+                  {!isTenant && (
+                    <Button variant="contained" onClick={() => setShowCreateForm(true)} startIcon={<AddIcon />}>
+                      Task
+                    </Button>
+                  )}
                 </Box>
 
                 {/* Search */}
