@@ -33,11 +33,11 @@ describe("ChatPanel task tour prefill", () => {
     act(() => {
       dispatchTaskTourFormPrefill({
         targetId: "task-tour-chat-send",
-        value: "What are AI Agent Evals?",
+        value: "What is an AI Agent?",
       });
     });
 
-    expect((screen.getByPlaceholderText("Ask the demo agent...") as HTMLTextAreaElement).value).toBe("What are AI Agent Evals?");
+    expect((screen.getByPlaceholderText("Ask the demo agent...") as HTMLTextAreaElement).value).toBe("What is an AI Agent?");
   });
 
   it("does not overwrite user input for empty-only prefills", () => {
@@ -47,7 +47,7 @@ describe("ChatPanel task tour prefill", () => {
     act(() => {
       dispatchTaskTourFormPrefill({
         targetId: "task-tour-chat-send",
-        value: "What are AI Agent Evals?",
+        value: "What is an AI Agent?",
         mode: "empty-only",
       });
     });
