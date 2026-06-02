@@ -30,12 +30,18 @@ export function useElementRect(element: Element | null): DOMRect | null {
     }
 
     const update = () => {
-      // Once the tracked element detaches (navigation unmounts it, a list
-      // re-renders and swaps the node), clear rather than report its frozen /
-      // zeroed rect — reporting it is what strands the spotlight on a stale
-      // position. The engine's target re-resolution then rebinds to the live
-      // node or emits target:lost.
-      if (!element.isConnected) {
+      // Clear (rather than report a frozen / zeroed rect that strands the
+      // spotlight) when the element is gone or no longer renders a box:
+      //   - detached: navigation unmounts it, or a list re-renders and swaps it;
+      //   - collapsed-but-attached: an ancestor sets display:none, or it is
+      //     mid-exit-animation — `getBoundingClientRect` would read (0,0,0,0)
+      //     and slam the spotlight to the top-left corner.
+      // `getClientRects().length` is the "generates a layout box" signal: it is
+      // 0 only for display:none / detached, while a `transform: scale(0)`
+      // entrance (MUI Grow) still has length 1 — so this does not flicker
+      // entrance animations. The engine's target re-resolution then rebinds to
+      // the live node or emits target:lost.
+      if (!element.isConnected || element.getClientRects().length === 0) {
         setRect(null);
         return;
       }

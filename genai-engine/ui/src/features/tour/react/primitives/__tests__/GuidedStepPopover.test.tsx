@@ -15,6 +15,9 @@ class ResizeObserverStub {
 function targetElement() {
   const element = document.createElement("button");
   element.getBoundingClientRect = () => new DOMRect(10, 10, 100, 40);
+  // jsdom reports no client rects for every element; stub a box so the rect
+  // pipeline treats it as rendered (useElementRect clears when length === 0).
+  element.getClientRects = (() => [{} as DOMRect] as unknown as DOMRectList) as Element["getClientRects"];
   document.body.appendChild(element);
   return element;
 }
