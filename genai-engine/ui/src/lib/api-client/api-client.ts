@@ -120,11 +120,8 @@ export interface AgenticAnnotationResponse {
    * Name of the eval the continuous eval used when scoring
    */
   eval_name?: string | null;
-  /**
-   * Eval Type
-   * Type of eval: 'llm_eval' or 'ml_eval'
-   */
-  eval_type?: string | null;
+  /** Type of eval: 'llm_eval' or 'ml_eval' */
+  eval_type?: EvalType | null;
   /**
    * Eval Version
    * Version of the eval the continuous eval used when scoring
@@ -798,10 +795,10 @@ export interface AgenticPromptVersionResponse {
    */
   deleted_at: string | null;
   /**
-   * Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
+   * Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
    * @default "llm_as_a_judge"
    */
-  eval_type?: EvalType;
+  eval_kind?: SchemasEnumsEvalType;
   /**
    * Model Name
    * Model name chosen for this version of the llm eval. None for ML evals.
@@ -1590,11 +1587,10 @@ export interface ContinuousEvalResponse {
    */
   enabled?: boolean;
   /**
-   * Eval Type
    * Type of evaluator: 'llm_eval' or 'ml_eval'.
    * @default "llm_eval"
    */
-  eval_type?: string;
+  eval_type?: EvalType;
   /**
    * Id
    * ID of the transform.
@@ -1904,11 +1900,11 @@ export interface CreateEvalRequest {
 export interface CreateMLEvalRequest {
   /**
    * Config
-   * Optional configuration for the ML eval. Valid fields depend on eval_type.
+   * Configuration for the ML eval. Valid fields depend on eval_type.
    */
-  config?: Record<string, any> | null;
+  config: PIIEvalConfig | ToxicityEvalConfig | PromptInjectionEvalConfig;
   /** Type of ML eval (e.g. 'pii', 'toxicity', 'prompt_injection') */
-  eval_type: EvalType;
+  eval_type: EvalTypeInput;
 }
 
 export type CreateNotebookApiV1TasksTaskIdNotebooksPostData = NotebookDetail;
@@ -2805,11 +2801,33 @@ export interface EvalResultSummary {
   total_count: number;
 }
 
+/** EvalRunResponse */
+export interface EvalRunResponse {
+  /**
+   * Cost
+   * Cost of this llm completion
+   */
+  cost: string;
+  /**
+   * Reason
+   * Explanation for how the llm arrived at this answer.
+   */
+  reason: string;
+  /**
+   * Score
+   * Score for this llm eval
+   */
+  score: number;
+}
+
+/** EvalType */
+export type EvalType = "llm_eval" | "ml_eval";
+
 /**
  * EvalType
  * Discriminator for all eval types stored in the llm_evals table.
  */
-export type EvalType = "llm_as_a_judge" | "pii" | "pii_v1" | "toxicity" | "prompt_injection";
+export type EvalTypeInput = "llm_as_a_judge" | "pii" | "pii_v1" | "toxicity" | "prompt_injection";
 
 /**
  * EvalVariableMapping
@@ -4782,11 +4800,11 @@ export interface LLMEval {
    */
   deleted_at?: string | null;
   /**
-   * Eval Type
-   * Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
+   * Eval Kind
+   * Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
    * @default "llm_as_a_judge"
    */
-  eval_type?: string;
+  eval_kind?: string;
   /**
    * Instructions
    * Instructions for the llm eval. None for ML evals.
@@ -4820,25 +4838,6 @@ export interface LLMEval {
    * @default 1
    */
   version?: number;
-}
-
-/** LLMEvalRunResponse */
-export interface LLMEvalRunResponse {
-  /**
-   * Cost
-   * Cost of this llm completion
-   */
-  cost: string;
-  /**
-   * Reason
-   * Explanation for how the llm arrived at this answer.
-   */
-  reason: string;
-  /**
-   * Score
-   * Score for this llm eval
-   */
-  score: number;
 }
 
 /** LLMEvalsVersionListResponse */
@@ -4883,10 +4882,10 @@ export interface LLMGetAllMetadataResponse {
    */
   deleted_versions: number[];
   /**
-   * Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
+   * Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
    * @default "llm_as_a_judge"
    */
-  eval_type?: EvalType;
+  eval_kind?: SchemasEnumsEvalType;
   /**
    * Latest Version Created At
    * Timestamp when the last version of the llm asset was created
@@ -5182,10 +5181,10 @@ export interface LLMVersionResponse {
    */
   deleted_at: string | null;
   /**
-   * Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
+   * Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
    * @default "llm_as_a_judge"
    */
-  eval_type?: EvalType;
+  eval_kind?: SchemasEnumsEvalType;
   /**
    * Model Name
    * Model name chosen for this version of the llm eval. None for ML evals.
@@ -6611,38 +6610,6 @@ export interface LogitBiasItem {
 }
 
 /**
- * MLEval
- * Internal representation of an ML-type eval (pii, toxicity, prompt_injection, etc.).
- */
-export interface MLEval {
-  /** Config */
-  config?: null;
-  /**
-   * Created At
-   * @format date-time
-   */
-  created_at: string;
-  /** Deleted At */
-  deleted_at?: string | null;
-  /** Discriminator for all eval types stored in the llm_evals table. */
-  eval_type: EvalType;
-  /** Name */
-  name: string;
-  /**
-   * Tags
-   * @default []
-   */
-  tags?: string[];
-  /**
-   * Variables
-   * @default []
-   */
-  variables?: string[];
-  /** Version */
-  version: number;
-}
-
-/**
  * ManualAgentCreationSource
  * Creation source for manually created tasks.
  */
@@ -7596,6 +7563,28 @@ export type PIIEntityTypes =
   | "US_PASSPORT"
   | "US_SSN";
 
+/**
+ * PIIEvalConfig
+ * Configuration for PII detection evals.
+ */
+export interface PIIEvalConfig {
+  /**
+   * Allow List
+   * List of values that should not be flagged as PII
+   */
+  allow_list?: string[] | null;
+  /**
+   * Disabled Pii Entities
+   * List of PII entity types to disable (e.g. ['EMAIL_ADDRESS', 'PHONE_NUMBER'])
+   */
+  disabled_pii_entities?: string[] | null;
+  /**
+   * Pii Confidence Threshold
+   * Minimum confidence score for a PII entity to be flagged
+   */
+  pii_confidence_threshold?: number | null;
+}
+
 /** Page[ConversationBaseResponse] */
 export interface PageConversationBaseResponse {
   /** Items */
@@ -7899,6 +7888,12 @@ export interface PromptExperimentSummary {
    */
   total_rows: number;
 }
+
+/**
+ * PromptInjectionEvalConfig
+ * Configuration for prompt injection detection evals.
+ */
+export type PromptInjectionEvalConfig = object;
 
 /**
  * PromptOutput
@@ -10230,7 +10225,7 @@ export type RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPrompt
 
 export type RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostError = HTTPValidationError;
 
-export type RunSavedLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionCompletionsPostData = LLMEvalRunResponse;
+export type RunSavedLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionCompletionsPostData = EvalRunResponse;
 
 export type RunSavedLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionCompletionsPostError = HTTPValidationError;
 
@@ -10242,7 +10237,7 @@ export type SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostData = LLMEval;
 
 export type SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostError = HTTPValidationError;
 
-export type SaveMlEvalApiV2TasksTaskIdMlEvalsEvalNamePostData = MLEval;
+export type SaveMlEvalApiV2TasksTaskIdMlEvalsEvalNamePostData = LLMEval;
 
 export type SaveMlEvalApiV2TasksTaskIdMlEvalsEvalNamePostError = HTTPValidationError;
 
@@ -10326,6 +10321,12 @@ export interface SavedRagConfigOutput {
    */
   version: number;
 }
+
+/**
+ * EvalType
+ * Discriminator for all eval types stored in the llm_evals table.
+ */
+export type SchemasEnumsEvalType = "llm_as_a_judge" | "pii" | "pii_v1" | "toxicity" | "prompt_injection";
 
 /** SearchDatasetsResponse */
 export interface SearchDatasetsResponse {
@@ -11569,6 +11570,18 @@ export interface ToxicityDetailsResponse {
   /** Toxicity Score */
   toxicity_score?: number | null;
   toxicity_violation_type: ToxicityViolationType;
+}
+
+/**
+ * ToxicityEvalConfig
+ * Configuration for toxicity detection evals.
+ */
+export interface ToxicityEvalConfig {
+  /**
+   * Toxicity Threshold
+   * Minimum toxicity score for text to be flagged
+   */
+  toxicity_threshold?: number | null;
 }
 
 /** ToxicityViolationType */
@@ -13668,7 +13681,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * No description
+     * @description Add a tag to an llm eval version
      *
      * @tags LLMEvals
      * @name AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPut
@@ -14544,7 +14557,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * No description
+     * @description Deletes an entire llm eval
      *
      * @tags LLMEvals
      * @name DeleteLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameDelete
@@ -14726,7 +14739,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * No description
+     * @description Remove a tag from an llm eval version
      *
      * @tags LLMEvals
      * @name DeleteTagFromLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsTagDelete
@@ -15673,7 +15686,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * No description
+     * @description Get an llm eval by name and tag
      *
      * @tags LLMEvals
      * @name GetLlmEvalByTagApiV1TasksTaskIdLlmEvalsEvalNameVersionsTagsTagGet
@@ -17031,7 +17044,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * No description
+     * @description Run a saved llm eval
      *
      * @tags LLMEvals
      * @name RunSavedLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionCompletionsPost
@@ -17282,7 +17295,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * No description
+     * @description Deletes a specific version of an llm eval
      *
      * @tags LLMEvals
      * @name SoftDeleteLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionDelete
@@ -17780,7 +17793,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
   };
   auth = {
     /**
-     * @description Generates a new API key. Up to 1000 active keys can exist at the same time by default. Contact your system administrator if you need more. Allowed roles are: DEFAULT-RULE-ADMIN, TASK-ADMIN, VALIDATION-USER, ORG-AUDITOR, ORG-ADMIN.
+     * @description Generates a new API key. Up to 1000 active keys can exist at the same time by default. Contact your system administrator if you need more. Allowed roles are: DEFAULT-RULE-ADMIN, TASK-ADMIN, VALIDATION-USER, ORG-AUDITOR, ORG-ADMIN, TENANT-USER.
      *
      * @tags API Keys
      * @name CreateApiKeyAuthApiKeysPost

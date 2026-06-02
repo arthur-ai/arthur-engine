@@ -25,6 +25,7 @@ from arthur_common.models.enums import (
     AgenticAnnotationType,
     ComparisonOperatorEnum,
     ContinuousEvalRunStatus,
+    EvalType,
     InferenceFeedbackTarget,
     MetricType,
     PIIEntityTypes,
@@ -852,7 +853,7 @@ class AgenticAnnotation(BaseModel):
                 str(self.continuous_eval_id) if self.continuous_eval_id else None
             ),
             continuous_eval_name=self.continuous_eval_name,
-            eval_type=self.eval_type,
+            eval_type=EvalType(self.eval_type) if self.eval_type else None,
             eval_name=self.eval_name,
             eval_version=self.eval_version,
             annotation_score=self.annotation_score,

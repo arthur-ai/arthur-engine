@@ -7,7 +7,6 @@ from arthur_common.models.llm_model_providers import (
     ModelProvider,
     OpenAIMessage,
 )
-from arthur_common.models.task_eval_schemas import LLMEval
 from litellm import supports_response_schema
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -17,7 +16,7 @@ from repositories.base_llm_repository import BaseLLMRepository
 from repositories.model_provider_repository import ModelProviderRepository
 from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.enums import EvalType
-from schemas.llm_eval_schemas import ReasonedScore
+from schemas.llm_eval_schemas import LLMEval, ReasonedScore
 from schemas.request_schemas import (
     BaseCompletionRequest,
     CreateEvalRequest,
@@ -57,7 +56,7 @@ class LLMEvalsRepository(
 
         return LLMEval(
             name=db_eval.name,
-            eval_type=db_eval.eval_type or EvalType.LLM_AS_A_JUDGE,
+            eval_kind=db_eval.eval_type or EvalType.LLM_AS_A_JUDGE,
             model_name=db_eval.model_name,
             model_provider=(
                 ModelProvider(db_eval.model_provider)
@@ -82,7 +81,7 @@ class LLMEvalsRepository(
 
         return LLMVersionResponse(
             version=db_item.version,
-            eval_type=EvalType(db_item.eval_type),
+            eval_kind=db_item.eval_type,
             created_at=db_item.created_at,
             deleted_at=db_item.deleted_at,
             model_provider=(

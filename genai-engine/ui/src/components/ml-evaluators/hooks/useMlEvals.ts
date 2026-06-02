@@ -27,7 +27,7 @@ export function useMlEvals(taskId: string | undefined) {
   });
 
   const allEvals = (data as LLMGetAllMetadataListResponse | undefined)?.llm_metadata ?? [];
-  const mlEvals = allEvals.filter((e: LLMGetAllMetadataResponse) => e.eval_type !== "llm_as_a_judge");
+  const mlEvals = allEvals.filter((e: LLMGetAllMetadataResponse) => e.eval_kind !== "llm_as_a_judge");
 
   return {
     evals: mlEvals,

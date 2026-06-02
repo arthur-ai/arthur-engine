@@ -706,9 +706,9 @@ class AgenticPromptMetadataResponse(BaseModel):
 
 class LLMGetAllMetadataResponse(BaseModel):
     name: str = Field(description="Name of the llm asset")
-    eval_type: EvalType = Field(
+    eval_kind: EvalType = Field(
         default=EvalType.LLM_AS_A_JUDGE,
-        description="Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')",
+        description="Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')",
     )
     versions: int = Field(description="Number of versions of the llm asset")
     tags: List[str] = Field(
@@ -733,9 +733,9 @@ class LLMGetAllMetadataListResponse(BaseModel):
 
 class LLMVersionResponse(BaseModel):
     version: int = Field(description="Version number of the llm eval")
-    eval_type: EvalType = Field(
+    eval_kind: EvalType = Field(
         default=EvalType.LLM_AS_A_JUDGE,
-        description="Eval type discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')",
+        description="Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')",
     )
     created_at: datetime = Field(
         description="Timestamp when the llm eval version was created",
@@ -774,30 +774,6 @@ class LLMEvalsVersionListResponse(BaseModel):
         description="List of llm eval version metadata",
     )
     count: int = Field(description="Total number of llm evals matching filters")
-
-
-class MLVersionResponse(BaseModel):
-    version: int = Field(description="Version number of the ML eval")
-    eval_type: EvalType = Field(
-        description="Type of the ML eval (e.g. 'pii', 'toxicity')",
-    )
-    created_at: datetime = Field(
-        description="Timestamp when the ML eval version was created",
-    )
-    deleted_at: Optional[datetime] = Field(
-        description="Timestamp when the ML eval version was deleted (None if not deleted)",
-    )
-    tags: List[str] = Field(
-        default_factory=list,
-        description="List of tags for the ML eval",
-    )
-
-
-class MLEvalsVersionListResponse(BaseModel):
-    versions: list[MLVersionResponse] = Field(
-        description="List of ML eval version metadata",
-    )
-    count: int = Field(description="Total number of ML evals matching filters")
 
 
 class EvalRunResponse(BaseModel):

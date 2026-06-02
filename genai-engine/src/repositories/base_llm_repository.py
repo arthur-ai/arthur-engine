@@ -646,7 +646,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
             llm_metadata.append(
                 LLMGetAllMetadataResponse(
                     name=row.name,
-                    eval_type=(
+                    eval_kind=(
                         row.eval_type if _has_eval_type else EvalType.LLM_AS_A_JUDGE
                     ),
                     versions=row.versions,

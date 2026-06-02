@@ -60,7 +60,7 @@ const MLEvaluators: React.FC<MLEvaluatorsProps> = ({ isCreateModalOpen: external
   const handleEdit = useCallback(
     (evalName: string) => {
       const eval_ = evals.find((e) => e.name === evalName);
-      setEditingEval({ name: evalName, type: eval_?.eval_type ?? "pii", config: null });
+      setEditingEval({ name: evalName, type: eval_?.eval_kind ?? "pii", config: null });
     },
     [evals]
   );
@@ -128,7 +128,7 @@ const MLEvalCard = ({ eval_, onEdit }: { eval_: LLMGetAllMetadataResponse; onEdi
             {eval_.name}
           </Typography>
           <Stack direction="row" gap={1} mt={0.5}>
-            <Chip label={ML_EVAL_TYPE_LABELS[eval_.eval_type ?? ""] ?? eval_.eval_type} size="small" variant="outlined" color="secondary" />
+            <Chip label={ML_EVAL_TYPE_LABELS[eval_.eval_kind ?? ""] ?? eval_.eval_kind} size="small" variant="outlined" color="secondary" />
             <Chip
               label={`${eval_.versions} version${eval_.versions !== 1 ? "s" : ""}`}
               size="small"
@@ -136,7 +136,7 @@ const MLEvalCard = ({ eval_, onEdit }: { eval_: LLMGetAllMetadataResponse; onEdi
             />
           </Stack>
         </Box>
-        <MLEvalActions evalName={eval_.name} evalType={eval_.eval_type ?? ""} onEdit={onEdit} />
+        <MLEvalActions evalName={eval_.name} evalType={eval_.eval_kind ?? ""} onEdit={onEdit} />
       </Stack>
     </Paper>
   );

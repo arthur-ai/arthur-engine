@@ -139,7 +139,7 @@ const Evaluators: React.FC<EvaluatorsProps> = ({ embedded = false, isCreateModal
   const handleDelete = useCallback(
     async (evalName: string) => {
       const evalMeta = filteredEvals.find((e) => e.name === evalName);
-      if (evalMeta?.eval_type !== "llm_as_a_judge") {
+      if (evalMeta?.eval_kind !== "llm_as_a_judge") {
         await deleteMLMutation.mutateAsync(evalName);
       } else {
         await deleteLLMMutation.mutateAsync(evalName);

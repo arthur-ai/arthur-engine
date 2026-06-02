@@ -10,11 +10,11 @@ from pydantic import ValidationError
 
 from repositories.llm_evals_repository import LLMEvalsRepository
 from repositories.ml_evals_repository import MLEvalsRepository
-from schemas.llm_eval_schemas import MLEval
+from schemas.llm_eval_schemas import LLMEval
 from schemas.request_schemas import CreateEvalRequest, CreateMLEvalRequest
 from schemas.response_schemas import (
+    LLMEvalsVersionListResponse,
     LLMGetAllMetadataListResponse,
-    MLEvalsVersionListResponse,
 )
 from tests.clients.base_test_client import override_get_db_session
 
@@ -44,7 +44,7 @@ def _list_versions(
     repo: MLEvalsRepository,
     task_id: str,
     eval_name: str,
-) -> MLEvalsVersionListResponse:
+) -> LLMEvalsVersionListResponse:
     """Helper: list all versions of an ML eval using the base class method (ascending order)."""
     pagination = PaginationParameters(
         page=0,
@@ -65,9 +65,9 @@ def test_save_ml_eval_creates_version_1(ml_evals_repo, task_id, pii_create_reque
 
     result = ml_evals_repo.save_ml_eval(task_id, eval_name, pii_create_request)
 
-    assert isinstance(result, MLEval)
+    assert isinstance(result, LLMEval)
     assert result.name == eval_name
-    assert result.eval_type == "pii"
+    assert result.eval_kind == "pii"
     assert result.version == 1
     assert result.deleted_at is None
 
@@ -167,7 +167,7 @@ def test_list_versions_returns_all_in_ascending_order(
 
     result = _list_versions(ml_evals_repo, task_id, eval_name)
 
-    assert isinstance(result, MLEvalsVersionListResponse)
+    assert isinstance(result, LLMEvalsVersionListResponse)
     assert result.count == 2
     version_numbers = [v.version for v in result.versions]
     assert version_numbers == sorted(version_numbers)
@@ -327,7 +327,7 @@ def test_ml_repo_does_not_see_llm_as_a_judge_evals(task_id):
 
     # ML repo should not see the LLM eval (MLEvalsRepository filters to ML types only)
     ml_result = ml_repo.get_llm_item(task_id, ml_eval_name, "latest")
-    assert ml_result.eval_type == "pii"
+    assert ml_result.eval_kind == "pii"
 
     with pytest.raises(ValueError, match="not found"):
         ml_repo.get_llm_item(task_id, llm_eval_name, "latest")
@@ -335,11 +335,11 @@ def test_ml_repo_does_not_see_llm_as_a_judge_evals(task_id):
     # LLM repo surfaces all eval types stored in llm_evals (including ML evals)
     llm_result = llm_repo.get_llm_item(task_id, llm_eval_name, "latest")
     assert llm_result.name == llm_eval_name
-    assert llm_result.eval_type == "llm_as_a_judge"
+    assert llm_result.eval_kind == "llm_as_a_judge"
 
     ml_via_llm_repo = llm_repo.get_llm_item(task_id, ml_eval_name, "latest")
     assert ml_via_llm_repo.name == ml_eval_name
-    assert ml_via_llm_repo.eval_type == "pii"
+    assert ml_via_llm_repo.eval_kind == "pii"
 
     # Cleanup
     llm_repo.delete_llm_item(task_id, llm_eval_name)

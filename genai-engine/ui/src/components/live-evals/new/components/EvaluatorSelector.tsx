@@ -102,7 +102,7 @@ export const EvaluatorSelector = withFieldGroup({
       setOpenCreateMLModal(false);
       group.setFieldValue("name", evalData.name);
       group.setFieldValue("version", "latest");
-      group.setFieldValue("eval_type", evalData.eval_type);
+      group.setFieldValue("eval_type", evalData.eval_kind);
       onSelectionChange?.();
     });
 
@@ -128,9 +128,9 @@ export const EvaluatorSelector = withFieldGroup({
 
     const handleEvalChange = (newEval: LLMGetAllMetadataResponse | null) => {
       group.setFieldValue("name", newEval?.name ?? null);
-      group.setFieldValue("eval_type", newEval?.eval_type ?? null);
+      group.setFieldValue("eval_type", newEval?.eval_kind ?? null);
       // Default to "latest" for ML evals; clear for LLM evals (user must pick)
-      group.setFieldValue("version", newEval?.eval_type !== "llm_as_a_judge" ? "latest" : null);
+      group.setFieldValue("version", newEval?.eval_kind !== "llm_as_a_judge" ? "latest" : null);
       onSelectionChange?.();
     };
 
@@ -176,20 +176,20 @@ export const EvaluatorSelector = withFieldGroup({
               onInputChange={(_, value) => setInputValue(value)}
               getOptionLabel={(option) => option.name}
               isOptionEqualToValue={(option, value) => option.name === value.name}
-              getOptionKey={(option) => `${option.eval_type}:${option.name}`}
+              getOptionKey={(option) => `${option.eval_kind}:${option.name}`}
               renderOption={(props, option) => (
                 <Box component="li" {...props}>
                   <Stack direction="row" alignItems="center" gap={1} width="100%">
                     <Typography variant="body2" sx={{ flex: 1 }}>
                       {option.name}
                     </Typography>
-                    {option.eval_type !== "llm_as_a_judge" ? (
+                    {option.eval_kind !== "llm_as_a_judge" ? (
                       <Chip label="ML" size="small" color="secondary" variant="outlined" sx={{ height: 18, fontSize: "0.65rem" }} />
                     ) : (
                       <Chip label="LLM" size="small" color="primary" variant="outlined" sx={{ height: 18, fontSize: "0.65rem" }} />
                     )}
-                    {option.eval_type !== "llm_as_a_judge" && (
-                      <Chip label={option.eval_type} size="small" variant="outlined" sx={{ height: 18, fontSize: "0.65rem" }} />
+                    {option.eval_kind !== "llm_as_a_judge" && (
+                      <Chip label={option.eval_kind} size="small" variant="outlined" sx={{ height: 18, fontSize: "0.65rem" }} />
                     )}
                   </Stack>
                 </Box>

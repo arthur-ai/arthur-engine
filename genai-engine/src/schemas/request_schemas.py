@@ -870,16 +870,6 @@ class PromptInjectionEvalConfig(BaseModel):
 MLEvalConfig = Union[PIIEvalConfig, ToxicityEvalConfig, PromptInjectionEvalConfig]
 
 
-def _coerce_ml_config(eval_type_val: str, raw: Any) -> MLEvalConfig:
-    if not isinstance(raw, dict):
-        return raw
-    if eval_type_val in (EvalType.PII.value, EvalType.PII_V1.value):
-        return PIIEvalConfig(**raw)
-    if eval_type_val == EvalType.TOXICITY.value:
-        return ToxicityEvalConfig(**raw)
-    return PromptInjectionEvalConfig(**raw)
-
-
 class CreateMLEvalRequest(BaseModel):
     eval_type: EvalType = Field(
         description="Type of ML eval (e.g. 'pii', 'toxicity', 'prompt_injection')",
@@ -893,7 +883,14 @@ class CreateMLEvalRequest(BaseModel):
     def coerce_config(cls, values: Any) -> Any:
         eval_type_val = str(values.get("eval_type", ""))
         raw = values.get("config") or {}
-        values["config"] = _coerce_ml_config(eval_type_val, raw)
+        if not isinstance(raw, dict):
+            return values
+        if eval_type_val in (EvalType.PII.value, EvalType.PII_V1.value):
+            values["config"] = PIIEvalConfig(**raw)
+        elif eval_type_val == EvalType.TOXICITY.value:
+            values["config"] = ToxicityEvalConfig(**raw)
+        else:
+            values["config"] = PromptInjectionEvalConfig(**raw)
         return values
 
     @model_validator(mode="after")
@@ -947,8 +944,12 @@ class CreateAnyEvalRequest(BaseModel):
             return values
         if eval_type_val == EvalType.LLM_AS_A_JUDGE.value:
             values["config"] = LLMRequestConfigSettings(**raw)
-        elif eval_type_val != EvalType.LLM_AS_A_JUDGE.value:
-            values["config"] = _coerce_ml_config(eval_type_val, raw)
+        elif eval_type_val in (EvalType.PII.value, EvalType.PII_V1.value):
+            values["config"] = PIIEvalConfig(**raw)
+        elif eval_type_val == EvalType.TOXICITY.value:
+            values["config"] = ToxicityEvalConfig(**raw)
+        else:
+            values["config"] = PromptInjectionEvalConfig(**raw)
         return values
 
     @model_validator(mode="after")

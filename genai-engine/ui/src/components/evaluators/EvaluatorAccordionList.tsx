@@ -132,7 +132,7 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
       {evals.map((evalMeta, evalIndex) => {
         const pipelines = cesByEval.get(evalMeta.name) ?? [];
         const activePipelines = pipelines.filter((ce) => ce.enabled).length;
-        const isLLM = evalMeta.eval_type === "llm_as_a_judge";
+        const isLLM = evalMeta.eval_kind === "llm_as_a_judge";
         // Stale check only applies to LLM evals (version-controlled)
         const stalePipelines = isLLM ? pipelines.filter((ce) => (ce.llm_eval_version ?? 0) < evalMeta.versions).length : 0;
 
@@ -173,7 +173,7 @@ export const EvaluatorAccordionList = ({ evals, taskId, onExpandToFullScreen, on
                   ) : (
                     <Chip label="ML" size="small" color="secondary" variant="outlined" sx={{ height: 20, fontSize: "0.7rem", fontWeight: 600 }} />
                   )}
-                  {!isLLM && <Chip label={evalMeta.eval_type} size="small" variant="outlined" sx={{ height: 20, fontSize: "0.7rem" }} />}
+                  {!isLLM && <Chip label={evalMeta.eval_kind} size="small" variant="outlined" sx={{ height: 20, fontSize: "0.7rem" }} />}
                   <Chip label={`v${evalMeta.versions}`} size="small" variant="outlined" sx={{ height: 20, fontSize: "0.7rem", fontWeight: 600 }} />
                   {pipelines.length > 0 && (
                     <Chip

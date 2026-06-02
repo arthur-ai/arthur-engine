@@ -103,7 +103,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
         page: 0,
         page_size: 1000, // Fetch all eval names
       });
-      const evalNames = response.data.llm_metadata.map((evalMeta) => evalMeta.name);
+      const evalNames = response.data.llm_metadata.filter((evalMeta) => evalMeta.eval_kind === "llm_as_a_judge").map((evalMeta) => evalMeta.name);
       setExistingEvalNames(evalNames);
     } catch (error) {
       console.error("Failed to fetch existing eval names:", error);

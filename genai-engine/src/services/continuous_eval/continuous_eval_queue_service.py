@@ -242,13 +242,18 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
             eval_name = continuous_eval.llm_eval_name
             eval_version = str(continuous_eval.llm_eval_version)
 
+            if eval_name is None or continuous_eval.llm_eval_version is None:
+                raise ValueError(
+                    f"Continuous eval {continuous_eval.id} has no eval configured.",
+                )
+
             # Look up the eval via the repository to get its eval_type for dispatching.
             llm_eval = LLMEvalsRepository(db_session).get_llm_item(
                 continuous_eval.task_id,
                 eval_name,
                 eval_version,
             )
-            eval_type = EvalType(llm_eval.eval_type)
+            eval_type = EvalType(llm_eval.eval_kind)
             evaluator = get_evaluator(db_session, eval_type)
 
             # Validate that the resolved eval vars match what the evaluator expects

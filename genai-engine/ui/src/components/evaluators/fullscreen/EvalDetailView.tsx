@@ -262,13 +262,13 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
                 </Typography>
               </Box>
             )}
-            {evalData.eval_type && evalData.eval_type !== "llm_as_a_judge" && (
+            {evalData.eval_kind && evalData.eval_kind !== "llm_as_a_judge" && (
               <Box sx={{ display: "flex", gap: 0.5, alignItems: "baseline" }}>
                 <Typography variant="caption" color="text.secondary">
                   Type:
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                  {evalData.eval_type}
+                  {evalData.eval_kind}
                 </Typography>
               </Box>
             )}
@@ -299,12 +299,12 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
         </Box>
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          {!evalData.deleted_at && evalData.eval_type === "llm_as_a_judge" && (
+          {!evalData.deleted_at && evalData.eval_kind === "llm_as_a_judge" && (
             <Button variant="outlined" size="small" startIcon={<EditIcon />} onClick={handleEditClick} sx={{ minWidth: 80 }}>
               Edit
             </Button>
           )}
-          {!evalData.deleted_at && ML_EDITABLE_TYPES.includes(evalData.eval_type ?? "") && (
+          {!evalData.deleted_at && ML_EDITABLE_TYPES.includes(evalData.eval_kind ?? "") && (
             <Button variant="outlined" size="small" startIcon={<EditIcon />} onClick={() => setIsMlEditModalOpen(true)} sx={{ minWidth: 80 }}>
               Edit
             </Button>
@@ -312,7 +312,7 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
         </Box>
       </Box>
 
-      {evalData.eval_type === "llm_as_a_judge" && (
+      {evalData.eval_kind === "llm_as_a_judge" && (
         <Paper data-tour-id={TOUR_IDS.evaluatorDetailInstructions} sx={{ p: 3, display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
           <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
             Instructions
@@ -432,21 +432,27 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
           </Box>
         </DialogTitle>
         <DialogContent>
-          <Box
-            component="pre"
-            sx={{
-              backgroundColor: "action.hover",
-              p: 2,
-              borderRadius: 1,
-              overflow: "auto",
-              fontSize: "0.875rem",
-              fontFamily: "monospace",
-              maxHeight: 500,
-              mt: 1,
-            }}
-          >
-            {evalData.config ? JSON.stringify(evalData.config, null, 2) : "{}"}
-          </Box>
+          {evalData.config && Object.keys(evalData.config).length > 0 ? (
+            <Box
+              component="pre"
+              sx={{
+                backgroundColor: "action.hover",
+                p: 2,
+                borderRadius: 1,
+                overflow: "auto",
+                fontSize: "0.875rem",
+                fontFamily: "monospace",
+                maxHeight: 500,
+                mt: 1,
+              }}
+            >
+              {JSON.stringify(evalData.config, null, 2)}
+            </Box>
+          ) : (
+            <Typography variant="body2" sx={{ color: "text.secondary", mt: 1 }}>
+              No configuration set.
+            </Typography>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -469,7 +475,7 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
         onSubmit={handleMlEditSubmit}
         isLoading={createMlEvalMutation.isPending}
         initialName={evalName}
-        initialType={evalData.eval_type}
+        initialType={evalData.eval_kind}
         initialConfig={evalData.config as unknown as Record<string, unknown>}
       />
 

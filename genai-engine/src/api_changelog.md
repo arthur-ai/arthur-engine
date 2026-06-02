@@ -23,6 +23,153 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for Component/Schema:  removed the schema `OnboardingSubmissionResponse`
 - **BREAKING CHANGE** for **URL**: /api/v2/tenant/signup  added required request body
 - **CHANGE** for **URL**: /api/v2/tenant/signup  added the non-success response with the status `422`
+# 06/01/2026
+- **CHANGE** for Component/Schema:  removed the schema 'arthur_common__models__enums__EvalType'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}/results  added '#/components/schemas/EvalType' to the 'annotations/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}/results  removed '#/components/schemas/arthur_common__models__enums__EvalType' from the 'annotations/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added '#/components/schemas/EvalType' to the 'annotations/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  removed '#/components/schemas/arthur_common__models__enums__EvalType' from the 'annotations/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces  added '#/components/schemas/EvalType' to the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces  removed '#/components/schemas/arthur_common__models__enums__EvalType' from the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/annotations/{annotation_id}  added '#/components/schemas/EvalType' to the 'eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/annotations/{annotation_id}  removed '#/components/schemas/arthur_common__models__enums__EvalType' from the 'eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added '#/components/schemas/EvalType' to the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  removed '#/components/schemas/arthur_common__models__enums__EvalType' from the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added '#/components/schemas/EvalType' to the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  removed '#/components/schemas/arthur_common__models__enums__EvalType' from the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added '#/components/schemas/EvalType' to the 'annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  removed '#/components/schemas/arthur_common__models__enums__EvalType' from the 'annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added '#/components/schemas/EvalType' to the 'annotations/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  removed '#/components/schemas/arthur_common__models__enums__EvalType' from the 'annotations/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added '#/components/schemas/EvalType' to the 'eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  removed '#/components/schemas/arthur_common__models__enums__EvalType' from the 'eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added '#/components/schemas/EvalType' to the 'annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  removed '#/components/schemas/arthur_common__models__enums__EvalType' from the 'annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added '#/components/schemas/EvalType' to the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/metrics/  removed '#/components/schemas/arthur_common__models__enums__EvalType' from the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/query  added '#/components/schemas/EvalType' to the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/query  removed '#/components/schemas/arthur_common__models__enums__EvalType' from the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+
+# 05/27/2026
+- **BREAKING CHANGE** for **URL**: /api/v2/tasks/{task_id}/ml_evals/{eval_name}  removed 'subschema #1, subschema #2' from the 'config' request property 'anyOf' list
+- **BREAKING CHANGE** for **URL**: /api/v2/tasks/{task_id}/ml_evals/{eval_name}  the request property 'config' became required
+- **BREAKING CHANGE** for **URL**: /api/v2/tasks/{task_id}/ml_evals/{eval_name}  removed the required property 'eval_type' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}/results  removed the optional property 'annotations/items/eval_type' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  removed the optional property 'eval_type' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/continuous_evals/{eval_id}  removed the optional property 'eval_type' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  removed the optional property 'evals/items/eval_type' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals  removed the optional property 'eval_type' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  removed the optional property 'annotations/items/eval_type' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals  removed the optional property 'llm_metadata/items/eval_type' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the optional property 'eval_type' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new 'anthropic' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/llm_evals/{eval_name}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new 'gemini' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/llm_evals/{eval_name}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the new 'vertex_ai' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  added the new 'bedrock' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  added the new 'openai' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}
+- **CHANGE**warning [response-optional-property-removed] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  added the new 'azure' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  added the new 'hosted_vllm' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}
+- **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  removed the optional property 'eval_type' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  added the new 'anthropic' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** in API PUT /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags
+- **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  added the new 'gemini' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** in API PUT /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags
+- **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  added the new 'vertex_ai' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/prompts
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions
+- **CHANGE** in API GET /api/v1/traces
+- **CHANGE** in API GET /api/v1/traces/annotations/{annotation_id}
+- **CHANGE** in API GET /api/v1/traces/sessions/{session_id}
+- **CHANGE** in API GET /api/v1/traces/sessions/{session_id}/metrics
+- **CHANGE** in API GET /api/v1/traces/{trace_id}
+- **CHANGE** in API GET /api/v1/traces/{trace_id}/annotations
+- **CHANGE** in API POST /api/v1/traces/{trace_id}/annotations
+- **CHANGE** in API GET /api/v1/traces/{trace_id}/metrics
+- **CHANGE** in API GET /v1/traces/metrics/
+- **CHANGE** in API GET /v1/traces/query
+- **CHANGE** in components/schemas
+- **CHANGE** in API GET /api/v1/continuous_evals/{eval_id}
+- **CHANGE** in API GET /api/v1/continuous_evals/{eval_id}
+- **CHANGE** in API GET /api/v1/continuous_evals/{eval_id}
+- **CHANGE** in API GET /api/v1/continuous_evals/{eval_id}
+- **CHANGE** in API PATCH /api/v1/continuous_evals/{eval_id}
+- **CHANGE** in API PATCH /api/v1/continuous_evals/{eval_id}
+- **CHANGE** in API PATCH /api/v1/continuous_evals/{eval_id}
+- **CHANGE** in API PATCH /api/v1/continuous_evals/{eval_id}
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/continuous_evals
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/continuous_evals
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/continuous_evals
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/continuous_evals
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/continuous_evals
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/continuous_evals
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/continuous_evals
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/continuous_evals
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/llm_evals/{eval_name}
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/llm_evals/{eval_name}
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/llm_evals/{eval_name}
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/llm_evals/{eval_name}
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/llm_evals/{eval_name}
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/llm_evals/{eval_name}
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/llm_evals/{eval_name}
+- **CHANGE** in API POST /api/v1/tasks/{task_id}/llm_evals/{eval_name}
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}
+- **CHANGE** in API PUT /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags
+- **CHANGE** in API PUT /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags
+- **CHANGE** in API PUT /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags
+- **CHANGE** in API PUT /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags
+- **CHANGE** in API PUT /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags
+- **CHANGE** in API PUT /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags
+- **CHANGE** in API PUT /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags
+- **CHANGE** in API PUT /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/prompts
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions
+- **CHANGE** in API POST /api/v2/tasks/{task_id}/ml_evals/{eval_name}
+- **CHANGE** in API POST /api/v2/tasks/{task_id}/ml_evals/{eval_name}
 
 # 05/21/2026
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/traces/transforms  added the required property 'transforms/items/definition' to the response with the '200' status

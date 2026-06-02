@@ -16,7 +16,7 @@ from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Task, User
-from schemas.llm_eval_schemas import MLEval
+from schemas.llm_eval_schemas import LLMEval
 from schemas.request_schemas import CreateMLEvalRequest
 from utils.url_encoding import decode_path_param
 from utils.users import permission_checker
@@ -31,7 +31,7 @@ ml_eval_routes = APIRouter(
     "/tasks/{task_id}/ml_evals/{eval_name}",
     summary="Save an ML eval",
     description="Save an ML eval. If an eval with the same name exists, a new version is created.",
-    response_model=MLEval,
+    response_model=LLMEval,
     response_model_exclude_none=True,
     tags=["ML Evals"],
 )
@@ -42,7 +42,7 @@ def save_ml_eval(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-) -> MLEval:
+) -> LLMEval:
     try:
         repo = MLEvalsRepository(db_session)
         return repo.save_ml_eval(task.id, eval_name, create_request)

@@ -8,12 +8,12 @@ from repositories.base_evaluator import BaseEvaluator
 from repositories.base_llm_repository import BaseLLMRepository
 from schemas.enums import EvalType
 from schemas.internal_schemas import ContinuousEvalTransformVariableMapping
-from schemas.llm_eval_schemas import MLEval
+from schemas.llm_eval_schemas import LLMEval
 from schemas.request_schemas import CreateMLEvalRequest
 from schemas.response_schemas import (
     EvalRunResponse,
-    MLEvalsVersionListResponse,
-    MLVersionResponse,
+    LLMEvalsVersionListResponse,
+    LLMVersionResponse,
 )
 from scorer.ml_scorers import ML_EVAL_INPUT_VARIABLE, run_ml_scorer
 
@@ -23,7 +23,7 @@ class MLEvalsRepository(
 ):
     db_model: Type[DatabaseLLMEval] = DatabaseLLMEval
     tag_db_model: Type[DatabaseLLMEvalVersionTag] = DatabaseLLMEvalVersionTag
-    version_list_response_model: Type[BaseModel] = MLEvalsVersionListResponse
+    version_list_response_model: Type[BaseModel] = LLMEvalsVersionListResponse
     eval_types = [
         EvalType.PII,
         EvalType.PII_V1,
@@ -34,11 +34,11 @@ class MLEvalsRepository(
     def __init__(self, db_session: Session):
         super().__init__(db_session)
 
-    def from_db_model(self, db_eval: DatabaseLLMEval) -> MLEval:
+    def from_db_model(self, db_eval: DatabaseLLMEval) -> LLMEval:
         tags = self._get_all_tags_for_item_version(db_eval)
-        return MLEval(
+        return LLMEval(
             name=db_eval.name,
-            eval_type=EvalType(db_eval.eval_type),
+            eval_kind=db_eval.eval_type,
             variables=db_eval.variables,
             config=db_eval.config,
             created_at=db_eval.created_at,
@@ -51,11 +51,11 @@ class MLEvalsRepository(
         self,
         db_item: DatabaseLLMEval,
         tags: Optional[List[str]] = None,
-    ) -> MLVersionResponse:
+    ) -> LLMVersionResponse:
         tags = self._get_all_tags_for_item_version(db_item)
-        return MLVersionResponse(
+        return LLMVersionResponse(
             version=db_item.version,
-            eval_type=EvalType(db_item.eval_type),
+            eval_kind=db_item.eval_type,
             created_at=db_item.created_at,
             deleted_at=db_item.deleted_at,
             tags=tags,
@@ -73,21 +73,21 @@ class MLEvalsRepository(
         task_id: str,
         eval_name: str,
         item: CreateMLEvalRequest,
-    ) -> MLEval:
-        return cast(MLEval, super().save_llm_item(task_id, eval_name, item))
+    ) -> LLMEval:
+        return cast(LLMEval, super().save_llm_item(task_id, eval_name, item))
 
     def get_llm_item(
         self,
         task_id: str,
         item_name: str,
         item_version: str = "latest",
-    ) -> MLEval:
+    ) -> LLMEval:
         return cast(
-            MLEval,
+            LLMEval,
             super().get_llm_item(task_id, item_name, item_version),
         )
 
-    def delete_version(self, task_id: str, eval_name: str, version: str) -> MLEval:
+    def delete_version(self, task_id: str, eval_name: str, version: str) -> LLMEval:
         """Soft-delete a specific version; returns the eval with deleted_at set."""
         base_query = self._build_name_query(task_id, eval_name)
         db_item = self._get_db_item_by_version(
@@ -98,7 +98,7 @@ class MLEvalsRepository(
         actual_version_num = str(db_item.version)
         self.soft_delete_llm_item_version(task_id, eval_name, version)
         return cast(
-            MLEval,
+            LLMEval,
             super().get_llm_item(task_id, eval_name, actual_version_num),
         )
 
@@ -142,4 +142,4 @@ class MLEvaluator(BaseEvaluator):
 
         text = resolved_variables.get(ML_EVAL_INPUT_VARIABLE, "")
         config: dict[str, Any] = ml_eval.config or {}
-        return run_ml_scorer(str(ml_eval.eval_type), text, config)
+        return run_ml_scorer(str(ml_eval.eval_kind), text, config)
