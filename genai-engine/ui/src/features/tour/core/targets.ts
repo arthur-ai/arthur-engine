@@ -24,7 +24,7 @@ export interface ResolveTargetOptions {
 export function resolveTargetSync(spec: TargetSpec, options: Pick<ResolveTargetOptions, "resolveQueryHook"> = {}): Element | null {
   switch (spec.kind) {
     case "selector":
-      return document.querySelector(spec.selector);
+      return pickSelectorMatch(spec.selector);
     case "element":
       return spec.resolve();
     case "ref":
@@ -34,6 +34,29 @@ export function resolveTargetSync(spec: TargetSpec, options: Pick<ResolveTargetO
       return resolver ? resolver() : null;
     }
   }
+}
+
+/**
+ * Resolve a CSS selector to a single Element. When the selector matches more
+ * than one node — e.g. a stale node mid route-exit-animation alongside the live
+ * one, both carrying the same `data-tour-id` — prefer the first match that is
+ * connected and actually rendered. `document.querySelector` would return
+ * whichever comes first in document order, which can be the stale twin and
+ * strands the spotlight on it. Falls back to the first match when nothing is
+ * rendered (or in layout-less environments like jsdom).
+ */
+function pickSelectorMatch(selector: string): Element | null {
+  const matches = document.querySelectorAll(selector);
+  if (matches.length <= 1) return matches[0] ?? null;
+  for (const el of matches) {
+    if (isRenderedElement(el)) return el;
+  }
+  return matches[0] ?? null;
+}
+
+/** True when the element is attached to the document and generates layout boxes. */
+function isRenderedElement(el: Element): boolean {
+  return el.isConnected && el.getClientRects().length > 0;
 }
 
 export function findElementByExactText(text: string, options: FindElementByExactTextOptions = {}): Element | null {

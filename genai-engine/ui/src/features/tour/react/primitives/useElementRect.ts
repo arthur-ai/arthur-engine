@@ -1,10 +1,5 @@
+import { autoUpdate } from "@floating-ui/react";
 import { useEffect, useState } from "react";
-
-/**
- * How long to keep re-measuring after a change, to let entrance animations
- * settle. Covers MUI's default transition durations (~225-300ms) with margin.
- */
-const SETTLE_DURATION_MS = 500;
 
 function rectsEqual(a: DOMRect | null, b: DOMRect | null): boolean {
   if (a === b) return true;
@@ -13,17 +8,17 @@ function rectsEqual(a: DOMRect | null, b: DOMRect | null): boolean {
 }
 
 /**
- * Tracks an element's bounding client rect across resizes, scrolls, and
- * window size changes. Returns `null` when the element is detached or unset.
+ * Tracks an element's bounding client rect and keeps it current. Returns `null`
+ * when the element is detached or unset.
  *
- * After every change it also runs a short requestAnimationFrame "settle" loop
- * that re-measures until the rect stops moving (or the window elapses). This is
- * what keeps the spotlight/popover glued to elements that enter via a
- * `transform` animation — e.g. MUI's Grow/scale transition on menus and
- * dialogs. `ResizeObserver` ignores transform changes (the layout box never
- * resizes) and a `transitionend` dispatched on an animating ancestor never
- * reaches a child listener, so without polling the rect would be captured
- * mid-animation and never corrected.
+ * Positioning is delegated to floating-ui's `autoUpdate`, the same engine the
+ * step popover uses. With `animationFrame: true` it re-measures on scroll,
+ * ancestor resize, the element's own resize, layout shifts, AND arbitrary
+ * positional moves driven by surrounding layout (content loading above the
+ * target, a sibling expanding) — the last of which `ResizeObserver` alone
+ * misses because the element's own box never changes size. This also covers the
+ * `transform` entrance animations (MUI Grow/scale) that the previous bespoke
+ * settle loop existed to handle.
  */
 export function useElementRect(element: Element | null): DOMRect | null {
   const [rect, setRect] = useState<DOMRect | null>(null);
@@ -33,45 +28,26 @@ export function useElementRect(element: Element | null): DOMRect | null {
       setRect(null);
       return;
     }
-    let frame = 0;
-    let settleFrame = 0;
 
-    const applyRect = (next: DOMRect) => {
+    const update = () => {
+      // Once the tracked element detaches (navigation unmounts it, a list
+      // re-renders and swaps the node), clear rather than report its frozen /
+      // zeroed rect — reporting it is what strands the spotlight on a stale
+      // position. The engine's target re-resolution then rebinds to the live
+      // node or emits target:lost.
+      if (!element.isConnected) {
+        setRect(null);
+        return;
+      }
+      const next = element.getBoundingClientRect();
       setRect((current) => (rectsEqual(current, next) ? current : next));
     };
 
-    const settle = (deadline: number, previous: DOMRect) => {
-      const next = element.getBoundingClientRect();
-      const stable = rectsEqual(previous, next);
-      if (!stable) applyRect(next);
-      if (stable || performance.now() >= deadline) return;
-      settleFrame = requestAnimationFrame(() => settle(deadline, next));
-    };
-
-    const update = () => {
-      cancelAnimationFrame(frame);
-      cancelAnimationFrame(settleFrame);
-      frame = requestAnimationFrame(() => {
-        const initial = element.getBoundingClientRect();
-        applyRect(initial);
-        settle(performance.now() + SETTLE_DURATION_MS, initial);
-      });
-    };
-
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(element);
-    element.addEventListener("transitionend", update);
-    window.addEventListener("scroll", update, true);
-    window.addEventListener("resize", update);
-    return () => {
-      cancelAnimationFrame(frame);
-      cancelAnimationFrame(settleFrame);
-      ro.disconnect();
-      element.removeEventListener("transitionend", update);
-      window.removeEventListener("scroll", update, true);
-      window.removeEventListener("resize", update);
-    };
+    // `autoUpdate` invokes `update` once synchronously on setup, then on every
+    // tracked change. A detached throwaway element satisfies the (reference,
+    // floating) signature; only the reference's rect drives our measurement.
+    const floating = document.createElement("div");
+    return autoUpdate(element, floating, update, { animationFrame: true });
   }, [element]);
 
   return rect;
