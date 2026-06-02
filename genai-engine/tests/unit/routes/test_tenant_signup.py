@@ -268,7 +268,8 @@ def test_signup_creates_demo_items_on_task(client: GenaiEngineTestClientBase):
         assert resp.status_code == 200
         transform_names = {t["name"] for t in resp.json()["transforms"]}
         assert transform_names == {
-            "Answer Relevance Eval",
+            "Answer Relevance Transform",
+            "Chatbot Trace to Dataset Transform",
             "Response Extraction Transform",
         }
 
@@ -281,8 +282,7 @@ def test_signup_creates_demo_items_on_task(client: GenaiEngineTestClientBase):
         eval_names = {e["name"] for e in resp.json()["evals"]}
         assert eval_names == {
             "Answer Relevance Continuous Eval",
-            "Conciseness Continuous Eval",
-            "Readability Continuous Eval",
+            "Source Attribution Continuous Eval",
         }
 
         # 1 dataset

@@ -84,7 +84,7 @@ DEMO_TASK_ANSWER_RELEVANCE_EVAL_PROMPT = (
 )
 
 DEMO_TASK_ANSWER_RELEVANCE_EVAL_TRANSFORM = NewTraceTransformRequest(
-    name="Answer Relevance Eval",
+    name="Answer Relevance Transform",
     description="Evaluates if the assistant's response is relevant to the user's input",
     definition=TraceTransformDefinition(
         variables=[
