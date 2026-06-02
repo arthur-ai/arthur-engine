@@ -124,16 +124,16 @@ Here's the full setup for the run — name, prompt versions, dataset, and evals.
 
 ## step: explain-prompt-mapping
 
-Map each prompt variable to the dataset column that should feed it. Exact name matches are filled in for you — just confirm them, then click **Next**.
+Variable mappings tell each prompt version where to read its inputs. Map every prompt variable to the dataset column that feeds it — exact name matches are pre-filled as a starting point, but check each one and fill any left empty. The run can't start until every variable is mapped, so don't just click through. Click **Next** when they're all set.
 
 ## step: complete-prompt-mapping
 
-That's your prompt-to-data wiring. When the mappings look right, click **Configure Evals** to set up the judges (or **Create Experiment** if you skipped evals).
+That's your prompt-to-data wiring — every variable should now point at a column. Once they're all mapped, click **Configure Evals** to set up the judges (or **Create Experiment** if you skipped evals).
 
 ## step: explain-eval-mapping
 
-For each evaluator, map its variables to a dataset column or to the experiment's output. Wire them up, then click **Next**.
+Evaluators need to know where to read each value they score. For every evaluator variable, set its source — a **Dataset Column** for inputs that live in your test data, or **Experiment Output** for the agent's answer. Map every response variable to **Experiment Output** so the eval judges what the new prompt actually generated, not a stored value. These default to a dataset column, so set each one deliberately rather than accepting the default, then click **Next**.
 
 ## step: create-experiment
 
-This is the final review. Confirm the eval mappings, then click **Create Experiment** to launch the run.
+Final review. Double-check every eval variable has the right source — response variables mapped to **Experiment Output** — then click **Create Experiment** to launch the run.
