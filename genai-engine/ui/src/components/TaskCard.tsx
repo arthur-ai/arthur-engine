@@ -8,6 +8,7 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import UnarchiveOutlinedIcon from "@mui/icons-material/UnarchiveOutlined";
 import { Box, Card, CardContent, Chip, CircularProgress, IconButton, Stack, Tooltip, Typography } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { keyframes } from "@mui/system";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -240,7 +241,11 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, overview, o
                       p: 1.5,
                       textAlign: "center",
                       bgcolor: (theme) =>
-                        metrics.successRate <= 50 ? (theme.palette.mode === "dark" ? "rgba(239, 68, 68, 0.1)" : "error.50") : "transparent",
+                        metrics.successRate <= 50
+                          ? theme.palette.mode === "dark"
+                            ? alpha(theme.palette.error.main, 0.1)
+                            : "error.50"
+                          : "transparent",
                     }}
                   >
                     {metrics.successRate <= 50 ? (

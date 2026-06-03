@@ -235,8 +235,6 @@ def get_traces_overview(
     except Exception as e:
         logger.error(f"Error listing trace metadata: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        db_session.close()
 
 
 @trace_api_routes.post(
@@ -292,9 +290,6 @@ def get_traces_timeseries(
     except Exception as e:
         logger.error(f"Error getting trace time-series: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        db_session.close()
-
 
 # SPAN ENDPOINTS
 
