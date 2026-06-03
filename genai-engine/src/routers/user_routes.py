@@ -9,6 +9,7 @@ from arthur_common.models.enums import (
 from arthur_common.models.request_schemas import CreateUserRequest, PasswordResetRequest
 from arthur_common.models.response_schemas import UserResponse
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
+from sqlalchemy.orm import Session
 from starlette import status
 
 from auth.ApiKeyValidator.APIKeyvalidatorCreator import APIKeyValidatorCreator
@@ -16,10 +17,13 @@ from auth.ApiKeyValidator.enums import APIKeyValidatorType
 from auth.multi_validator import MultiMethodValidator
 from auth.oauth_validator import validate_token
 from clients.auth.abc_keycloak_client import ABCAuthClient
-from dependencies import get_keycloak_client
+from dependencies import get_db_session, get_keycloak_client
+from repositories.organizations_repository import OrganizationsRepository
 from routers.route_handler import GenaiEngineRoute
+from routers.v2 import multi_validator as v2_multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
+from schemas.response_schemas import MeResponse, OrganizationResponse
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters, constants, public_endpoint
 
@@ -30,6 +34,14 @@ multi_validator = MultiMethodValidator(api_key_validator_creators)
 logger = logging.getLogger()
 
 user_management_routes = APIRouter(
+    prefix="/users",
+    route_class=GenaiEngineRoute,
+    tags=["User Management"],
+)
+
+# Separate router for self-identity endpoints so they remain reachable even
+# when API-only mode is enabled (which gates the rest of user_management).
+user_identity_routes = APIRouter(
     prefix="/users",
     route_class=GenaiEngineRoute,
     tags=["User Management"],
@@ -77,6 +89,44 @@ def search_users(
         page_size=pagination_parameters.page_size,
     )
     return [user._to_response_model() for user in users]
+
+
+@user_identity_routes.get(
+    "/me",
+    description=(
+        "Returns the current caller's identity, roles, org_scope, and (when "
+        "scoped) the organization record. Used by the UI on login to decide "
+        "between admin and tenant render branches. Admin callers and JWT "
+        "callers receive org_scope=null and org=null."
+    ),
+    response_model=MeResponse,
+)
+@public_endpoint
+def get_me(
+    current_user: User | None = Depends(v2_multi_validator.validate_api_multi_auth),
+    db_session: Session = Depends(get_db_session),
+) -> MeResponse:
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=constants.ERROR_AUTHENTICATION_REQUIRED,
+            headers={"full_stacktrace": "false"},
+        )
+
+    org: OrganizationResponse | None = None
+    if current_user.org_scope is not None:
+        db_org = OrganizationsRepository(db_session).get_organization_by_id(
+            current_user.org_scope,
+        )
+        if db_org is not None:
+            org = OrganizationResponse(id=db_org.id, name=db_org.name)
+
+    return MeResponse(
+        user_id=current_user.id,
+        roles=[role.name for role in current_user.roles],
+        org_scope=current_user.org_scope,
+        org=org,
+    )
 
 
 @user_management_routes.get(

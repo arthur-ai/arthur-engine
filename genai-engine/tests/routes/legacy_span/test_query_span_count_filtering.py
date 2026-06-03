@@ -3,6 +3,7 @@
 import uuid
 from datetime import datetime, timedelta
 from typing import Generator
+from utils.constants import DEFAULT_ORG_ID
 
 import pytest
 
@@ -93,6 +94,7 @@ def spans_with_varied_counts() -> Generator:
             start_time=s.start_time,
             end_time=s.end_time,
             task_id=s.task_id,
+            org_id=DEFAULT_ORG_ID,
             raw_data=s.raw_data,
             created_at=s.created_at,
             updated_at=s.updated_at,
@@ -112,6 +114,7 @@ def spans_with_varied_counts() -> Generator:
         db_session.add(
             DatabaseTraceMetadata(
                 task_id="task_x",
+                org_id=DEFAULT_ORG_ID,
                 trace_id=trace_id,
                 span_count=cfg["span_count"],
                 total_token_count=cfg["total_token_count"],
@@ -122,7 +125,7 @@ def spans_with_varied_counts() -> Generator:
             ),
         )
 
-    task = DatabaseTask(id="task_x", name="Test Task X", created_at=base_time, updated_at=base_time)
+    task = DatabaseTask(id="task_x", name="Test Task X", created_at=base_time, updated_at=base_time, org_id=DEFAULT_ORG_ID)
     db_session.add(task)
     db_session.commit()
 

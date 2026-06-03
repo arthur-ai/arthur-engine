@@ -9,7 +9,11 @@ from arthur_common.models.llm_model_providers import ModelProvider
 from fastapi import HTTPException
 from litellm import completion_cost, get_model_cost_map, model_cost_map_url
 from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
-from litellm.types.utils import ModelResponse, TextCompletionResponse
+from litellm.types.utils import (
+    ModelResponse,
+    TextCompletionResponse,
+    TokenCountResponse,
+)
 from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
@@ -180,6 +184,23 @@ class LLMClient:
             model_name = getattr(response, "model", "unknown")
             logger.warning(f"Cost calculation not available for model={model_name}")
             return "0.00"
+
+    async def acount_tokens(
+        self,
+        model: str,
+        messages: List[dict[str, Any]],
+    ) -> TokenCountResponse:
+        # Route credentials through _add_provider_credentials so Azure
+        # (api_version), Vertex (vertex_project/vertex_credentials), and
+        # Bedrock (AWS creds) get the kwargs LiteLLM needs to resolve the
+        # tokenizer. Without this, summarize_and_emit_replace raises on every
+        # non-OpenAI provider and chatbot summarization silently breaks.
+        kwargs = self._add_provider_credentials({})
+        return await litellm.acount_tokens(
+            model=model,
+            messages=messages,
+            **kwargs,
+        )
 
     def completion(
         self,

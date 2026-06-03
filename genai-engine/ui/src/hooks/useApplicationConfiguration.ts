@@ -1,4 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 
 import { useApi } from "@/hooks/useApi";
 import { useApiQuery } from "@/hooks/useApiQuery";
@@ -6,13 +7,25 @@ import type { ApplicationConfigurationUpdateRequest } from "@/lib/api-client/api
 
 const QUERY_METHOD = "getConfigurationApiV2ConfigurationGet" as const;
 
-export function useApplicationConfiguration() {
+interface UseApplicationConfigurationOptions {
+  enabled?: boolean;
+}
+
+export function useApplicationConfiguration(options: UseApplicationConfigurationOptions = {}) {
+  const { enabled = true } = options;
   const api = useApi();
   const queryClient = useQueryClient();
 
   const query = useApiQuery({
     method: QUERY_METHOD,
     args: [] as const,
+    enabled,
+    queryOptions: {
+      retry: (failureCount, error) => {
+        if (axios.isAxiosError(error) && error.response?.status === 403) return false;
+        return failureCount < 1;
+      },
+    },
   });
 
   const updateConfiguration = async (body: ApplicationConfigurationUpdateRequest) => {

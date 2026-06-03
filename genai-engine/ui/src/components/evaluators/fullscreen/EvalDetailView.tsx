@@ -30,6 +30,7 @@ import type { EvalDetailViewProps } from "../types";
 import ImpactedCEsDialog from "./ImpactedCEsDialog";
 
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
 import type { ContinuousEvalResponse, CreateEvalRequest } from "@/lib/api-client/api-client";
 import { formatDateInTimezone } from "@/utils/formatters";
 
@@ -224,7 +225,7 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
           </Box>
 
           <Box sx={{ display: "flex", gap: 3, flexWrap: "wrap", alignItems: "center" }}>
-            <Box sx={{ display: "flex", gap: 0.5, alignItems: "baseline" }}>
+            <Box data-tour-id={TOUR_IDS.evaluatorDetailModel} sx={{ display: "flex", gap: 0.5, alignItems: "baseline" }}>
               <Typography variant="caption" color="text.secondary">
                 Model:
               </Typography>
@@ -267,7 +268,7 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
         </Box>
       </Box>
 
-      <Paper sx={{ p: 3, display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+      <Paper data-tour-id={TOUR_IDS.evaluatorDetailInstructions} sx={{ p: 3, display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
         <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
           Instructions
         </Typography>

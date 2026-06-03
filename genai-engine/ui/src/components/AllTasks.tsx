@@ -24,7 +24,7 @@ import {
 } from "@mui/material";
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 
 import { ArthurLogo } from "./common/ArthurLogo";
 import { SearchBar } from "./common/SearchBar";
@@ -32,13 +32,40 @@ import { CreateTaskForm } from "./CreateTaskForm";
 import { TaskCard } from "./TaskCard";
 
 import { SettingsMenuButton } from "@/components/settings/SettingsMenuButton";
+import { useAuth } from "@/contexts/AuthContext";
+import { useDemoMode } from "@/contexts/EngineConfigContext";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useActiveTasksQuery, useArchivedTasksQuery } from "@/hooks/useTasksList";
 import { queryKeys } from "@/lib/queryKeys";
 import { type InactiveDays, type SortBy, useTaskListStore } from "@/stores/task-list.store";
 
+// Records that a single-task demo tenant has already been auto-navigated into
+// their task this browser session. Scoped to sessionStorage so the redirect
+// fires once on entry, then leaves the dashboard reachable; a fresh login or new
+// tab starts a new session and re-enters.
+const DEMO_AUTONAV_SESSION_KEY = "arthur:demo-single-task-autonav";
+
+function hasConsumedDemoAutoNav(): boolean {
+  try {
+    return typeof window !== "undefined" && window.sessionStorage.getItem(DEMO_AUTONAV_SESSION_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markDemoAutoNavConsumed(): void {
+  try {
+    window.sessionStorage.setItem(DEMO_AUTONAV_SESSION_KEY, "1");
+  } catch {
+    // sessionStorage may be unavailable (private mode, tests). Auto-nav is
+    // best-effort, so failing to record it is non-fatal.
+  }
+}
+
 export const AllTasks: React.FC = () => {
   const navigate = useNavigate();
+  const { demoMode } = useDemoMode();
+  const { isTenant } = useAuth();
   const queryClient = useQueryClient();
   const [archivedDialogOpen, setArchivedDialogOpen] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -199,6 +226,25 @@ export const AllTasks: React.FC = () => {
 
   const hasNoResults = !isLoading && tasks.length === 0;
 
+  // Demo experience: a demo tenant is provisioned with a single task, so on their
+  // first arrival this session we skip the dashboard and drop them straight into
+  // it. Guard on a settled, unfiltered list (loaded, no error, not searching) with
+  // exactly one task. Captured once per mount so the value is stable across the
+  // redirect, and recorded in sessionStorage (below) so an explicit "Back to All
+  // Tasks" — or any later visit to "/" — shows the dashboard instead of bouncing
+  // back in. `replace` keeps "/" out of history.
+  const onlyTask = !isLoading && !isError && !isSearching && tasks.length === 1 ? tasks[0] : null;
+  const [autoNavConsumed] = useState(hasConsumedDemoAutoNav);
+  const shouldAutoEnterTask = demoMode && isTenant && onlyTask !== null && !autoNavConsumed;
+
+  useEffect(() => {
+    if (shouldAutoEnterTask) markDemoAutoNavConsumed();
+  }, [shouldAutoEnterTask]);
+
+  if (shouldAutoEnterTask && onlyTask) {
+    return <Navigate to={`/tasks/${onlyTask.id}/traces`} replace />;
+  }
+
   return (
     <>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -247,9 +293,11 @@ export const AllTasks: React.FC = () => {
                         : "Click on any task to open the toolkit"}
                     </Typography>
                   </Box>
-                  <Button variant="contained" onClick={() => setShowCreateForm(true)} startIcon={<AddIcon />}>
-                    Task
-                  </Button>
+                  {!isTenant && (
+                    <Button variant="contained" onClick={() => setShowCreateForm(true)} startIcon={<AddIcon />}>
+                      Task
+                    </Button>
+                  )}
                 </Box>
 
                 {/* Search */}

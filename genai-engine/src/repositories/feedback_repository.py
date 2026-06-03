@@ -2,16 +2,19 @@ import logging
 import uuid
 from datetime import datetime
 from typing import Optional
+from uuid import UUID
 
 from arthur_common.models.enums import InferenceFeedbackTarget, PaginationSortMethod
 from arthur_common.models.response_schemas import InferenceFeedbackResponse
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
 from opentelemetry import trace
-from sqlalchemy import asc, desc
+from sqlalchemy import asc, desc, select
 from sqlalchemy.orm import Session
 
-from db_models import DatabaseInference, DatabaseInferenceFeedback
+from db_models import DatabaseInference, DatabaseInferenceFeedback, DatabaseTask
 from dependencies import get_db_session
+from repositories.organizations_repository import lookup_org_id
+from utils.constants import SYSTEM_ORG_ID
 
 logger = logging.getLogger()
 tracer = trace.get_tracer(__name__)
@@ -28,7 +31,34 @@ class FeedbackRepository:
         score: int,
         reason: str,
         user_id: str | None,
+        org_scope: UUID | None = None,
     ) -> DatabaseInferenceFeedback:
+        # Feedback is a child of the inference, so its org MUST track the
+        # parent's. Derive from the inference's task — never trust the caller's
+        # identity as the source of truth here.
+        derived_org_id = lookup_org_id(
+            self.db_session,
+            select(DatabaseTask.org_id)
+            .join(DatabaseInference, DatabaseInference.task_id == DatabaseTask.id)
+            .where(DatabaseInference.id == inference_id),
+        )
+        # Tenant caller: derived org must match the caller's. Route layer
+        # pre-checks this, but re-asserting here defends against future call
+        # sites and the task-deleted-mid-call race that previously silently
+        # stamped the fallback org.
+        if org_scope is not None and derived_org_id != org_scope:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Inference not found",
+            )
+        # Task-less inference (inference.task_id IS NULL): produced by the
+        # deprecated /api/v2/validate_prompt endpoint. The INNER JOIN above
+        # yields no row, so derived_org_id is None. save_prompt/save_response
+        # stamp SYSTEM_ORG_ID on the rule_results for these same inferences
+        # (inference_repository.save_prompt) — match that so a single
+        # inference's children never split-brain across orgs. Only reachable
+        # for admin callers; the tenant check above already rejected None.
+        org_id = derived_org_id if derived_org_id is not None else SYSTEM_ORG_ID
         db_feedback = DatabaseInferenceFeedback(
             id=str(uuid.uuid4()),
             inference_id=inference_id,
@@ -38,6 +68,7 @@ class FeedbackRepository:
             user_id=user_id,
             created_at=datetime.now(),
             updated_at=datetime.now(),
+            org_id=org_id,
         )
         self.db_session.add(db_feedback)
         self.db_session.commit()
@@ -60,9 +91,15 @@ class FeedbackRepository:
         conversation_id: str | list[str] | None = None,
         task_id: str | list[str] | None = None,
         inference_user_id: str | None = None,
+        org_scope: UUID | None = None,
     ) -> tuple[list[DatabaseInferenceFeedback], int]:
         # query for all columns of the feedback table
         stmt = self.db_session.query(DatabaseInferenceFeedback)
+
+        # apply org-scope filter — inference_feedback has a denormalized org_id
+        # so this is a single-column filter, no join required.
+        if org_scope is not None:
+            stmt = stmt.where(DatabaseInferenceFeedback.org_id == org_scope)
 
         # apply sorting
         if sort == PaginationSortMethod.DESCENDING or sort is None:
@@ -124,6 +161,7 @@ def save_feedback(
     reason: str = "",
     user_id: Optional[str] = None,
     db_session: Session = Depends(get_db_session),
+    org_scope: UUID | None = None,
 ) -> InferenceFeedbackResponse:
     """
     Accepts feedback on a particular inference with user information and store it in the db.
@@ -147,6 +185,7 @@ def save_feedback(
             score,
             reason,
             user_id,
+            org_scope=org_scope,
         )
 
         return InferenceFeedbackResponse(

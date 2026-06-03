@@ -1,8 +1,8 @@
 import json
 from typing import Any, Dict, List, Optional
 
-from arthur_common.models.llm_model_providers import ModelProvider
-from pydantic import BaseModel, ConfigDict, field_validator
+from arthur_common.models.llm_model_providers import ModelProvider, OpenAIMessage
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ChatbotConfigResponse(BaseModel):
@@ -26,6 +26,24 @@ class SearchArthurApiArgs(BaseModel):
     query: str = ""
 
 
+class WikipediaSearchArgs(BaseModel):
+    query: str = ""
+
+
+class WikipediaFetchArgs(BaseModel):
+    title: str = ""
+
+
+class WikipediaSearchResult(BaseModel):
+    titles: List[str] = Field(default_factory=list)
+
+
+class WikipediaArticle(BaseModel):
+    title: str
+    extract: str
+    url: str = ""
+
+
 class CallArthurApiArgs(BaseModel):
     method: str = "GET"
     path: str = "/"
@@ -47,11 +65,10 @@ class ApiCallSummary(BaseModel):
 
 
 class ChatbotRequest(BaseModel):
-    message: str
-    conversation_id: str
+    history: List[OpenAIMessage]
+    session_id: Optional[str] = None
 
 
 class ChatbotResponse(BaseModel):
     message: str
-    conversation_id: str
     api_calls_made: List[ApiCallSummary]

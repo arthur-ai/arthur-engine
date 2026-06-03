@@ -19,23 +19,23 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useForm } from "@tanstack/react-form";
 import { useRef } from "react";
 
 import { ATTRIBUTION_OPTIONS, BRINGS_OPTIONS, COMPETITOR_OPTIONS, MATURITY_OPTIONS } from "../../onboarding-options";
+import { useAppForm } from "../hooks/form";
 import { chipSx, fieldErrorMessage, labelSx, radioCardSx, sectionLabelSx, textFieldSx } from "../styles";
 import type { TryItOutFormProps } from "../types";
 
 import { onboardingSchema } from "./schema";
 
-import { EVENT_NAMES, identify, track } from "@/services/amplitude";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 
 export type { TryItOutSubmission } from "./schema";
 
 export const TryItOutFormLinear: React.FC<TryItOutFormProps> = ({ onBack, onSubmit }) => {
   const formStartedRef = useRef(false);
 
-  const form = useForm({
+  const form = useAppForm({
     defaultValues: {
       firstName: "",
       lastName: "",
@@ -62,26 +62,8 @@ export const TryItOutFormLinear: React.FC<TryItOutFormProps> = ({ onBack, onSubm
         }
       },
     },
-    onSubmit: ({ value }) => {
-      track(EVENT_NAMES.ONBOARDING_FORM_SUBMITTED, {
-        variant: "linear",
-        maturity: value.maturity,
-        brings: value.brings,
-        bringsOther: value.bringsOther,
-        competitors: value.competitors,
-        competitorOther: value.competitorOther,
-        attribution: value.attribution,
-        attributionOther: value.attributionOther,
-        company: value.company,
-      });
-      identify(value.email, {
-        firstName: value.firstName,
-        lastName: value.lastName,
-        email: value.email,
-        jobTitle: value.jobTitle,
-        company: value.company,
-      });
-      onSubmit(value);
+    onSubmit: async ({ value }) => {
+      await onSubmit(value, { formVariant: "linear" });
     },
     onSubmitInvalid: ({ formApi }) => {
       const invalidFields = Object.entries(formApi.state.fieldMeta)
@@ -142,7 +124,7 @@ export const TryItOutFormLinear: React.FC<TryItOutFormProps> = ({ onBack, onSubm
         }}
       >
         <Stack direction="row" spacing={1.5}>
-          <form.Field name="firstName">
+          <form.AppField name="firstName">
             {(field) => (
               <Stack spacing={0.75} sx={{ flex: 1 }}>
                 <FormLabel htmlFor="eo-firstname" sx={labelSx}>
@@ -167,8 +149,8 @@ export const TryItOutFormLinear: React.FC<TryItOutFormProps> = ({ onBack, onSubm
                 />
               </Stack>
             )}
-          </form.Field>
-          <form.Field name="lastName">
+          </form.AppField>
+          <form.AppField name="lastName">
             {(field) => (
               <Stack spacing={0.75} sx={{ flex: 1 }}>
                 <FormLabel htmlFor="eo-lastname" sx={labelSx}>
@@ -188,10 +170,10 @@ export const TryItOutFormLinear: React.FC<TryItOutFormProps> = ({ onBack, onSubm
                 />
               </Stack>
             )}
-          </form.Field>
+          </form.AppField>
         </Stack>
 
-        <form.Field name="email">
+        <form.AppField name="email">
           {(field) => (
             <Stack spacing={0.75}>
               <FormLabel htmlFor="eo-email" sx={labelSx}>
@@ -216,10 +198,10 @@ export const TryItOutFormLinear: React.FC<TryItOutFormProps> = ({ onBack, onSubm
               />
             </Stack>
           )}
-        </form.Field>
+        </form.AppField>
 
         <Stack direction="row" spacing={1.5}>
-          <form.Field name="jobTitle">
+          <form.AppField name="jobTitle">
             {(field) => (
               <Stack spacing={0.75} sx={{ flex: 1 }}>
                 <FormLabel htmlFor="eo-jobtitle" sx={labelSx}>
@@ -239,8 +221,8 @@ export const TryItOutFormLinear: React.FC<TryItOutFormProps> = ({ onBack, onSubm
                 />
               </Stack>
             )}
-          </form.Field>
-          <form.Field name="company">
+          </form.AppField>
+          <form.AppField name="company">
             {(field) => (
               <Stack spacing={0.75} sx={{ flex: 1 }}>
                 <FormLabel htmlFor="eo-company" sx={labelSx}>
@@ -260,10 +242,10 @@ export const TryItOutFormLinear: React.FC<TryItOutFormProps> = ({ onBack, onSubm
                 />
               </Stack>
             )}
-          </form.Field>
+          </form.AppField>
         </Stack>
 
-        <form.Field name="maturity">
+        <form.AppField name="maturity">
           {(field) => {
             const errorMessage = fieldErrorMessage(field);
             return (
@@ -303,9 +285,9 @@ export const TryItOutFormLinear: React.FC<TryItOutFormProps> = ({ onBack, onSubm
               </FormControl>
             );
           }}
-        </form.Field>
+        </form.AppField>
 
-        <form.Field name="brings">
+        <form.AppField name="brings">
           {(field) => {
             const errorMessage = fieldErrorMessage(field);
             return (
@@ -331,12 +313,12 @@ export const TryItOutFormLinear: React.FC<TryItOutFormProps> = ({ onBack, onSubm
               </FormControl>
             );
           }}
-        </form.Field>
+        </form.AppField>
 
         <form.Subscribe selector={(s) => s.values.brings === "other"}>
           {(show) =>
             show ? (
-              <form.Field name="bringsOther">
+              <form.AppField name="bringsOther">
                 {(field) => (
                   <TextField
                     placeholder="Please specify…"
@@ -350,12 +332,12 @@ export const TryItOutFormLinear: React.FC<TryItOutFormProps> = ({ onBack, onSubm
                     sx={{ ...textFieldSx, mt: -1 }}
                   />
                 )}
-              </form.Field>
+              </form.AppField>
             ) : null
           }
         </form.Subscribe>
 
-        <form.Field name="competitors">
+        <form.AppField name="competitors">
           {(field) => {
             const value = field.state.value;
             const errorMessage = fieldErrorMessage(field);
@@ -392,12 +374,12 @@ export const TryItOutFormLinear: React.FC<TryItOutFormProps> = ({ onBack, onSubm
               </FormControl>
             );
           }}
-        </form.Field>
+        </form.AppField>
 
         <form.Subscribe selector={(s) => s.values.competitors.includes("other")}>
           {(show) =>
             show ? (
-              <form.Field name="competitorOther">
+              <form.AppField name="competitorOther">
                 {(field) => (
                   <TextField
                     placeholder="Which other tool(s)?"
@@ -411,12 +393,12 @@ export const TryItOutFormLinear: React.FC<TryItOutFormProps> = ({ onBack, onSubm
                     sx={{ ...textFieldSx, mt: -1 }}
                   />
                 )}
-              </form.Field>
+              </form.AppField>
             ) : null
           }
         </form.Subscribe>
 
-        <form.Field name="attribution">
+        <form.AppField name="attribution">
           {(field) => {
             const errorMessage = fieldErrorMessage(field);
             return (
@@ -436,12 +418,12 @@ export const TryItOutFormLinear: React.FC<TryItOutFormProps> = ({ onBack, onSubm
               </FormControl>
             );
           }}
-        </form.Field>
+        </form.AppField>
 
         <form.Subscribe selector={(s) => s.values.attribution === "other"}>
           {(show) =>
             show ? (
-              <form.Field name="attributionOther">
+              <form.AppField name="attributionOther">
                 {(field) => (
                   <TextField
                     placeholder="Please specify…"
@@ -455,23 +437,28 @@ export const TryItOutFormLinear: React.FC<TryItOutFormProps> = ({ onBack, onSubm
                     sx={{ ...textFieldSx, mt: -1 }}
                   />
                 )}
-              </form.Field>
+              </form.AppField>
             ) : null
           }
         </form.Subscribe>
 
-        <Button
-          type="submit"
-          variant="contained"
-          color="primary"
-          size="large"
-          disableElevation
-          endIcon={<ArrowForwardIcon sx={{ fontSize: 16 }} />}
-          fullWidth
-          sx={{ textTransform: "none", fontSize: 15, fontWeight: 600, borderRadius: "8px", mt: 0.5 }}
-        >
-          Start the demo
-        </Button>
+        <form.Subscribe selector={(s) => onboardingSchema.safeParse(s.values).success}>
+          {(isValid) => (
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              size="large"
+              disabled={!isValid}
+              disableElevation
+              endIcon={<ArrowForwardIcon sx={{ fontSize: 16 }} />}
+              fullWidth
+              sx={{ textTransform: "none", fontSize: 15, fontWeight: 600, borderRadius: "8px", mt: 0.5 }}
+            >
+              Start the demo
+            </Button>
+          )}
+        </form.Subscribe>
 
         <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 0.25 }}>
           <BoltIcon sx={{ fontSize: 14, color: "secondary.main" }} />

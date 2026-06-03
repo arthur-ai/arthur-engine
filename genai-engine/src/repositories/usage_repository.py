@@ -1,6 +1,7 @@
 from datetime import datetime
 from itertools import groupby
 from typing import Any, Optional
+from uuid import UUID
 
 from arthur_common.models.enums import TokenUsageScope
 from arthur_common.models.response_schemas import TokenUsageCount, TokenUsageResponse
@@ -36,8 +37,9 @@ class UsageRepository:
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
         group_by: list[TokenUsageScope] = [TokenUsageScope.RULE_TYPE],
+        org_scope: Optional[UUID] = None,
     ) -> list[TokenUsageResponse]:
-        rows = self.run_tokens_query(start_time, end_time)
+        rows = self.run_tokens_query(start_time, end_time, org_scope=org_scope)
 
         def get_group_key(row: TokenQueryRow) -> int:
             key: list[str] = []
@@ -84,8 +86,9 @@ class UsageRepository:
         self,
         start_time: Optional[datetime],
         end_time: Optional[datetime],
+        org_scope: Optional[UUID] = None,
     ) -> list[TokenQueryRow]:
-        query = get_token_query_statement(start_time, end_time)
+        query = get_token_query_statement(start_time, end_time, org_scope=org_scope)
 
         grouped_prompt_tokens = self.db_session.execute(query).all()
         rows = [
@@ -107,6 +110,7 @@ class UsageRepository:
 def get_token_query_statement(
     start_time: Optional[datetime],
     end_time: Optional[datetime],
+    org_scope: Optional[UUID] = None,
 ) -> CompoundSelect[Any]:
     prompt_subquery = (
         select(
@@ -134,6 +138,17 @@ def get_token_query_statement(
         .join(DatabaseInference)
         .group_by(DatabaseRule.type, DatabaseInference.task_id)
     )
+
+    # Tenant callers: filter both rule_result tables by their denormalized
+    # org_id column (added by UP-4424 Migration 3). Admin (org_scope=None) sees
+    # the whole engine's usage.
+    if org_scope is not None:
+        prompt_subquery = prompt_subquery.where(
+            DatabasePromptRuleResult.org_id == org_scope,
+        )
+        response_subquery = response_subquery.where(
+            DatabaseResponseRuleResult.org_id == org_scope,
+        )
 
     if start_time:
         prompt_subquery = prompt_subquery.where(

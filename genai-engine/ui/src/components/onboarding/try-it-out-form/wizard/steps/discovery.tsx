@@ -4,8 +4,8 @@ import BoltIcon from "@mui/icons-material/Bolt";
 import { Box, Button, Chip, FormControl, FormHelperText, FormLabel, Stack, TextField, Typography } from "@mui/material";
 
 import { ATTRIBUTION_OPTIONS, COMPETITOR_OPTIONS } from "../../../onboarding-options";
+import { withForm } from "../../hooks/form";
 import { chipSx, fieldErrorMessage, sectionLabelSx, textFieldSx } from "../../styles";
-import { withForm } from "../hooks/form";
 import { STEP_HEADINGS } from "../options";
 import { discoverySchema, wizardFormOpts } from "../schema";
 
@@ -162,18 +162,22 @@ export const TryItOutFormWizardDiscoveryStep = withForm({
                   Back
                 </Button>
                 <Box sx={{ flex: 1 }} />
-                <Button
-                  type="submit"
-                  variant="contained"
-                  color="primary"
-                  size="large"
-                  disabled={isSubmitting}
-                  disableElevation
-                  endIcon={<ArrowForwardIcon sx={{ fontSize: 16 }} />}
-                  sx={{ textTransform: "none", fontSize: 15, fontWeight: 600, borderRadius: "8px", px: 3 }}
-                >
-                  Start the demo
-                </Button>
+                <form.Subscribe selector={(s) => discoverySchema.safeParse(s.values.discovery).success}>
+                  {(isValid) => (
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      color="primary"
+                      size="large"
+                      disabled={isSubmitting || !isValid}
+                      disableElevation
+                      endIcon={<ArrowForwardIcon sx={{ fontSize: 16 }} />}
+                      sx={{ textTransform: "none", fontSize: 15, fontWeight: 600, borderRadius: "8px", px: 3 }}
+                    >
+                      Start the demo
+                    </Button>
+                  )}
+                </form.Subscribe>
               </Stack>
 
               <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 0.25 }}>

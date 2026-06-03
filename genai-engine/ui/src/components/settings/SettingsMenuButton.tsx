@@ -4,6 +4,7 @@ import LogoutOutlined from "@mui/icons-material/LogoutOutlined";
 import SettingsIcon from "@mui/icons-material/Settings";
 import { Box, Divider, IconButton, ListItemIcon, ListItemText, Menu, MenuItem } from "@mui/material";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 import { useSnackbar } from "notistack";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -25,11 +26,16 @@ export const SettingsMenuButton: React.FC = () => {
   const navigate = useNavigate();
   const api = useApi();
   const queryClient = useQueryClient();
-  const { logout } = useAuth();
+  const { logout, isTenant } = useAuth();
   const { timezone, use24Hour, setTimezone, setUse24Hour, serverChatbotEnabled, enableChatbot, setEnableChatbot } = useDisplaySettings();
   const { providers: enabledProviders } = useModelProviders();
   const { availableModels: availableModelsMap } = useAvailableModels(enabledProviders);
-  const { data: appConfig, isLoading: isLoadingAppConfig, error: appConfigError, updateConfiguration } = useApplicationConfiguration();
+  const {
+    data: appConfig,
+    isLoading: isLoadingAppConfig,
+    error: appConfigError,
+    updateConfiguration,
+  } = useApplicationConfiguration({ enabled: !isTenant });
   const { enqueueSnackbar } = useSnackbar();
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [userSettingsModalOpen, setUserSettingsModalOpen] = useState(false);
@@ -45,7 +51,11 @@ export const SettingsMenuButton: React.FC = () => {
       const res = await api.api.getChatbotConfigApiV1ChatbotConfigGet();
       return res.data;
     },
-    enabled: !!api && userSettingsModalOpen,
+    enabled: !!api && userSettingsModalOpen && !isTenant,
+    retry: (failureCount, error) => {
+      if (axios.isAxiosError(error) && error.response?.status === 403) return false;
+      return failureCount < 1;
+    },
   });
 
   const chatbotModelProvider: ModelProvider | "" = chatbotConfigQuery.data?.model_provider ?? "";
@@ -137,28 +147,32 @@ export const SettingsMenuButton: React.FC = () => {
           </ListItemIcon>
           <ListItemText>Settings</ListItemText>
         </MenuItem>
-        <MenuItem
-          onClick={() => {
-            handleMenuClose();
-            navigate("/settings/model-providers");
-          }}
-        >
-          <ListItemIcon>
-            <AppsOutlined />
-          </ListItemIcon>
-          <ListItemText>Model Providers</ListItemText>
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            handleMenuClose();
-            navigate("/settings/api-keys");
-          }}
-        >
-          <ListItemIcon>
-            <KeyOutlined />
-          </ListItemIcon>
-          <ListItemText>API Keys</ListItemText>
-        </MenuItem>
+        {!isTenant && (
+          <MenuItem
+            onClick={() => {
+              handleMenuClose();
+              navigate("/settings/model-providers");
+            }}
+          >
+            <ListItemIcon>
+              <AppsOutlined />
+            </ListItemIcon>
+            <ListItemText>Model Providers</ListItemText>
+          </MenuItem>
+        )}
+        {!isTenant && (
+          <MenuItem
+            onClick={() => {
+              handleMenuClose();
+              navigate("/settings/api-keys");
+            }}
+          >
+            <ListItemIcon>
+              <KeyOutlined />
+            </ListItemIcon>
+            <ListItemText>API Keys</ListItemText>
+          </MenuItem>
+        )}
         <Divider />
         <Box sx={{ px: 2, py: 1 }}>
           <ThemeToggle />
@@ -174,6 +188,7 @@ export const SettingsMenuButton: React.FC = () => {
       <UserSettingsModal
         open={userSettingsModalOpen}
         onClose={() => setUserSettingsModalOpen(false)}
+        isTenant={isTenant}
         initialSettings={{
           timezone,
           use24Hour,

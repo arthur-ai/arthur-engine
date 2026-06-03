@@ -17,7 +17,7 @@ from google.protobuf.message import DecodeError
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
-from dependencies import get_application_config, get_db_session
+from dependencies import get_application_config, get_db_session, get_org_scope
 from repositories.continuous_evals_repository import ContinuousEvalsRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
@@ -49,7 +49,7 @@ from utils.currency_display import (
     apply_currency_to_token_cost_item,
     get_display_currency,
 )
-from utils.users import permission_checker
+from utils.users import enforce_query_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
 logger = logging.getLogger(__name__)
@@ -78,7 +78,7 @@ def _get_span_repository(db_session: Session) -> SpanRepository:
     response_model_exclude_none=True,
     tags=["Traces"],
 )
-@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_WRITE.value)
+@permission_checker(permissions=PermissionLevelsEnum.TRACES_WRITE.value)
 def receive_traces(
     body: bytes = Body(...),
     db_session: Session = Depends(get_db_session),
@@ -113,6 +113,7 @@ def receive_traces(
     tags=["Traces"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+@enforce_query_org_scope()
 def list_traces_metadata(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -184,6 +185,7 @@ def list_traces_metadata(
     tags=["Spans"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+@enforce_query_org_scope()
 def list_spans_metadata(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -258,7 +260,7 @@ def list_spans_metadata(
     response_model_exclude_none=True,
     tags=["Spans"],
 )
-@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+@permission_checker(permissions=PermissionLevelsEnum.TELEMETRY_ADMIN_READ.value)
 def get_unregistered_root_spans(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -317,6 +319,7 @@ def get_span_by_id(
     span_id: str,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> SpanWithMetricsResponse:
     """Get single span with existing metrics (no computation)."""
     try:
@@ -325,6 +328,7 @@ def get_span_by_id(
             span_id=span_id,
             include_metrics=True,
             compute_new_metrics=False,
+            org_scope=org_scope,
         )
 
         if not span:
@@ -353,11 +357,12 @@ def compute_span_metrics(
     span_id: str,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> SpanWithMetricsResponse:
     """Compute all missing metrics for a single span on-demand."""
     try:
         span_repo = _get_span_repository(db_session)
-        span = span_repo.compute_span_metrics(span_id)
+        span = span_repo.compute_span_metrics(span_id, org_scope=org_scope)
 
         if not span:
             raise HTTPException(status_code=404, detail=f"Span {span_id} not found")
@@ -387,6 +392,7 @@ def compute_span_metrics(
     tags=["Sessions"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+@enforce_query_org_scope()
 def list_sessions_metadata(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -474,6 +480,7 @@ def get_session_traces(
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> SessionTracesResponse:
     """Get all traces in a session with existing metrics (no computation)."""
     try:
@@ -481,6 +488,7 @@ def get_session_traces(
         count, traces = span_repo.get_session_traces(
             session_id=session_id,
             pagination_parameters=pagination_parameters,
+            org_scope=org_scope,
         )
 
         if count == 0:
@@ -530,6 +538,7 @@ def compute_session_metrics(
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> SessionTracesResponse:
     """Get all traces in a session and compute missing metrics."""
     try:
@@ -537,6 +546,7 @@ def compute_session_metrics(
         count, traces = span_repo.compute_session_metrics(
             session_id=session_id,
             pagination_parameters=pagination_parameters,
+            org_scope=org_scope,
         )
 
         if count == 0:
@@ -580,6 +590,7 @@ def compute_session_metrics(
     tags=["Users"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+@enforce_query_org_scope()
 def list_users_metadata(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -648,6 +659,7 @@ def list_users_metadata(
     tags=["Users"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+@enforce_query_org_scope()
 def get_user_details(
     user_id: str,
     task_ids: list[str] = Query(
@@ -703,6 +715,7 @@ def get_trace_by_id(
     trace_id: str,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> TraceResponse:
     """Get complete trace tree with existing metrics (no computation)."""
     try:
@@ -711,6 +724,7 @@ def get_trace_by_id(
             trace_id=trace_id,
             include_metrics=True,
             compute_new_metrics=False,
+            org_scope=org_scope,
         )
 
         if not trace:
@@ -739,12 +753,14 @@ def compute_trace_metrics(
     trace_id: str,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> TraceResponse:
     """Compute all missing metrics for trace spans on-demand."""
     try:
         span_repo = _get_span_repository(db_session)
         trace = span_repo.compute_trace_metrics(
             trace_id=trace_id,
+            org_scope=org_scope,
         )
 
         if not trace:
@@ -773,12 +789,14 @@ def get_annotation_by_id(
     annotation_id: UUID,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> AgenticAnnotationResponse:
     """Annotate a trace with a score and description (1 = liked, 0 = disliked)."""
     try:
         span_repo = _get_span_repository(db_session)
         annotation = span_repo.get_annotation_by_id(
             annotation_id=annotation_id,
+            org_scope=org_scope,
         )
 
         if not annotation:
@@ -817,6 +835,7 @@ def list_annotations_for_trace(
     ],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> ListAgenticAnnotationsResponse:
     """Annotate a trace with a score and description (1 = liked, 0 = disliked)."""
     try:
@@ -825,6 +844,7 @@ def list_annotations_for_trace(
             trace_id=trace_id,
             pagination_parameters=pagination_parameters,
             filter_request=filter_request,
+            org_scope=org_scope,
         )
         return ListAgenticAnnotationsResponse(
             annotations=[annotation.to_response_model() for annotation in annotations],
@@ -855,6 +875,7 @@ def annotate_trace(
     annotation_request: AgenticAnnotationRequest,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> AgenticAnnotationResponse:
     """Annotate a trace with a score and description (1 = liked, 0 = disliked)."""
     try:
@@ -862,6 +883,7 @@ def annotate_trace(
         return span_repo.annotate_trace(
             trace_id=trace_id,
             annotation_request=annotation_request,
+            org_scope=org_scope,
         ).to_response_model()
     except ValueError as e:
         logger.error(f"Validation error: {e}")
@@ -889,12 +911,14 @@ def delete_annotation_from_trace(
     trace_id: str,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> Response:
     """Delete an annotation from a trace."""
     try:
         span_repo = _get_span_repository(db_session)
         span_repo.delete_annotation_from_trace(
             trace_id=trace_id,
+            org_scope=org_scope,
         )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except ValueError as e:
