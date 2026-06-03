@@ -17,7 +17,7 @@ from arthur_common.models.response_schemas import TraceResponse
 from google.protobuf.message import DecodeError
 from openinference.semconv.trace import SpanAttributes
 from opentelemetry import trace
-from sqlalchemy import func, insert, select
+from sqlalchemy import func, insert, literal, select
 from sqlalchemy.orm import Session
 
 from db_models import DatabaseSpan
@@ -375,24 +375,55 @@ class SpanRepository:
         span_seconds = (end_time - start_time).total_seconds()
         num_buckets = max(1, math.ceil(span_seconds / bucket_seconds))
 
+        # Gets the index of the bucket for each trace
+        bucket_index = func.floor(
+            (
+                func.extract("epoch", DatabaseTraceMetadata.start_time)
+                - func.extract("epoch", literal(start_time))
+            )
+            / bucket_seconds,
+        )
+
         trace_rows = (
             self.db_session.query(
-                DatabaseTraceMetadata.start_time,
-                DatabaseTraceMetadata.total_token_count,
-                DatabaseTraceMetadata.total_token_cost,
+                bucket_index.label("bucket_index"),
+                func.count().label("trace_count"),
+                func.coalesce(
+                    func.sum(DatabaseTraceMetadata.total_token_count),
+                    0,
+                ).label("trace_token_count"),
+                func.coalesce(
+                    func.sum(DatabaseTraceMetadata.total_token_cost),
+                    0.0,
+                ).label("trace_token_cost"),
             )
             .filter(
                 DatabaseTraceMetadata.task_id == task_id,
                 DatabaseTraceMetadata.start_time >= start_time,
                 DatabaseTraceMetadata.start_time < end_time,
             )
+            .group_by(bucket_index)
             .all()
         )
+        trace_by_bucket = {int(row.bucket_index): row for row in trace_rows}
 
+        eval_bucket_index = func.floor(
+            (
+                func.extract("epoch", DatabaseTraceMetadata.start_time)
+                - func.extract("epoch", literal(start_time))
+            )
+            / bucket_seconds,
+        )
         eval_rows = (
             self.db_session.query(
-                DatabaseTraceMetadata.start_time,
-                DatabaseAgenticAnnotation.run_status,
+                eval_bucket_index.label("bucket_index"),
+                func.count().label("eval_count"),
+                func.count(DatabaseAgenticAnnotation.id)
+                .filter(
+                    DatabaseAgenticAnnotation.run_status
+                    == ContinuousEvalRunStatus.PASSED.value,
+                )
+                .label("passed_count"),
             )
             .join(
                 DatabaseAgenticAnnotation,
@@ -405,43 +436,31 @@ class SpanRepository:
                 DatabaseAgenticAnnotation.annotation_type
                 == AgenticAnnotationType.CONTINUOUS_EVAL.value,
             )
+            .group_by(eval_bucket_index)
             .all()
         )
-
-        trace_counts = [0] * num_buckets
-        token_counts = [0] * num_buckets
-        token_costs = [0.0] * num_buckets
-        eval_counts = [0] * num_buckets
-        passed_counts = [0] * num_buckets
-
-        for row in trace_rows:
-            index = int((row.start_time - start_time).total_seconds() // bucket_seconds)
-            if 0 <= index < num_buckets:
-                trace_counts[index] += 1
-                token_counts[index] += row.total_token_count or 0
-                token_costs[index] += row.total_token_cost or 0.0
-
-        for eval_row in eval_rows:
-            index = int(
-                (eval_row.start_time - start_time).total_seconds() // bucket_seconds,
-            )
-            if 0 <= index < num_buckets:
-                eval_counts[index] += 1
-                if eval_row.run_status == ContinuousEvalRunStatus.PASSED.value:
-                    passed_counts[index] += 1
+        eval_by_bucket = {
+            int(row.bucket_index): (row.passed_count, row.eval_count)
+            for row in eval_rows
+        }
 
         points = []
         for index in range(num_buckets):
             timestamp = start_time + timedelta(seconds=index * bucket_seconds)
-            eval_count = eval_counts[index]
-            success_rate = passed_counts[index] / eval_count if eval_count else 1.0
+            trace_row = trace_by_bucket.get(index)
+            passed_count, eval_count = eval_by_bucket.get(index, (0, 0))
+            success_rate = passed_count / eval_count if eval_count else 1.0
 
             points.append(
                 TraceTimeSeriesPoint(
                     timestamp=timestamp,
-                    trace_count=trace_counts[index],
-                    trace_token_count=token_counts[index],
-                    trace_token_cost=token_costs[index],
+                    trace_count=trace_row.trace_count if trace_row else 0,
+                    trace_token_count=(
+                        int(trace_row.trace_token_count) if trace_row else 0
+                    ),
+                    trace_token_cost=(
+                        float(trace_row.trace_token_cost) if trace_row else 0.0
+                    ),
                     continuous_eval_success_rate=success_rate,
                 ),
             )
