@@ -2,11 +2,41 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Registering the inset as a typed <length> lets it be transitioned: when
+   TourSidePanel changes its value, :root interpolates it (below), and every
+   consumer (drawer right/max-width, dialog padding) recomputes each frame —
+   so overlays glide in sync with the panel's own width animation, with no
+   per-component transition needed. */
+@property --app-inset-right {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
   --font-geist-sans: "Geist", sans-serif;
   --font-geist-mono: "Geist Mono", monospace;
+  /* Width currently reserved on the right by the onboarding tour side panel.
+     0 unless the panel is mounted (set by TourSidePanel); read by MUI
+     dialog/drawer overrides so viewport-anchored overlays stay inside the
+     content area. */
+  --app-inset-right: 0px;
+  /* Cap applied to right-anchored MUI drawers while the tour panel reserves
+     space. `none` off-tour so drawers keep their own widths (set to the 90%
+     content-region calc by TourSidePanel only while it is showing). */
+  --app-drawer-max-width: none;
+  /* Matches TourSidePanel's `transition: width 300ms ease`. */
+  transition: --app-inset-right 300ms ease;
+}
+
+/* Respect reduced-motion: overlays snap to the panel width instead of gliding
+   (TourSidePanel drops its own width transition via the same media query). */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    transition: none;
+  }
 }
 
 .dark {

@@ -1,11 +1,13 @@
 from typing import Optional
+from uuid import UUID
 
 from arthur_common.models.enums import PaginationSortMethod, RuleScope, RuleType
 from fastapi import HTTPException
-from sqlalchemy import asc, desc
+from sqlalchemy import asc, desc, exists
 from sqlalchemy.orm import Session
 
 from db_models import DatabaseRule
+from db_models.task_models import DatabaseTask, DatabaseTaskToRules
 from schemas.internal_schemas import Rule
 from utils import constants
 
@@ -34,8 +36,23 @@ class RuleRepository:
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
         page_size: Optional[int] = None,
         page: int = 0,
+        org_scope: Optional[UUID] = None,
     ) -> tuple[list[Rule], int]:
         query = self.db_session.query(DatabaseRule)
+        # Tenant callers see: default-scope rules (visible to everyone by design)
+        # plus any task-scope rule linked to a task in their org. Admin
+        # (org_scope=None) sees everything.
+        if org_scope is not None:
+            org_task_link = (
+                self.db_session.query(DatabaseTaskToRules)
+                .join(DatabaseTask, DatabaseTask.id == DatabaseTaskToRules.task_id)
+                .where(DatabaseTaskToRules.rule_id == DatabaseRule.id)
+                .where(DatabaseTask.org_id == org_scope)
+            )
+            query = query.where(
+                (DatabaseRule.scope == RuleScope.DEFAULT)
+                | exists(org_task_link.subquery().select()),
+            )
         if rule_ids is not None:
             query = query.where(DatabaseRule.id.in_(rule_ids))
         if rule_scopes is not None:

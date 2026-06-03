@@ -74,25 +74,31 @@ class ChatCompletionService:
     ) -> Set[str]:
         missing_vars = set()
         for message in messages:
-            if message.content is None:
-                continue
+            if message.content is not None:
+                if isinstance(message.content, str):
+                    missing_vars.update(
+                        self._find_missing_variables_in_variable_map(
+                            variable_map,
+                            message.content,
+                        ),
+                    )
+                elif isinstance(message.content, list):
+                    for item in message.content:
+                        if item.type == OpenAIMessageType.TEXT.value and item.text:
+                            missing_vars.update(
+                                self._find_missing_variables_in_variable_map(
+                                    variable_map,
+                                    item.text,
+                                ),
+                            )
 
-            if isinstance(message.content, str):
+            for tool_call in message.tool_calls or []:
                 missing_vars.update(
                     self._find_missing_variables_in_variable_map(
                         variable_map,
-                        message.content,
+                        tool_call.function.arguments,
                     ),
                 )
-            elif isinstance(message.content, list):
-                for item in message.content:
-                    if item.type == OpenAIMessageType.TEXT.value and item.text:
-                        missing_vars.update(
-                            self._find_missing_variables_in_variable_map(
-                                variable_map,
-                                item.text,
-                            ),
-                        )
 
         return missing_vars
 
@@ -110,21 +116,25 @@ class ChatCompletionService:
         messages: List[OpenAIMessage],
     ) -> list[OpenAIMessage]:
         for message in messages:
-            if message.content is None:
-                continue
+            if message.content is not None:
+                if isinstance(message.content, str):
+                    message.content = self._replace_variables_in_text(
+                        variable_map,
+                        message.content,
+                    )
+                elif isinstance(message.content, list):
+                    for item in message.content:
+                        if item.type == OpenAIMessageType.TEXT.value and item.text:
+                            item.text = self._replace_variables_in_text(
+                                variable_map,
+                                item.text,
+                            )
 
-            if isinstance(message.content, str):
-                message.content = self._replace_variables_in_text(
+            for tool_call in message.tool_calls or []:
+                tool_call.function.arguments = self._replace_variables_in_text(
                     variable_map,
-                    message.content,
+                    tool_call.function.arguments,
                 )
-            elif isinstance(message.content, list):
-                for item in message.content:
-                    if item.type == OpenAIMessageType.TEXT.value and item.text:
-                        item.text = self._replace_variables_in_text(
-                            variable_map,
-                            item.text,
-                        )
 
         return messages
 

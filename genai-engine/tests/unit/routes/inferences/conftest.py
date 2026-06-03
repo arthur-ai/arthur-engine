@@ -8,6 +8,7 @@ from db_models import DatabaseInference
 from dependencies import get_application_config
 from repositories.inference_repository import InferenceRepository
 from repositories.metrics_repository import MetricRepository
+from utils.constants import DEFAULT_ORG_ID
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
 from schemas.internal_schemas import (
@@ -33,7 +34,7 @@ def create_task() -> Generator[Task, None, None]:
     rules_repo = RuleRepository(db_session)
     metric_repo = MetricRepository(db_session)
     tasks_repo = TaskRepository(db_session, rules_repo, metric_repo, application_config)
-    task = Task._from_request_model(request)
+    task = Task._from_request_model(request, org_id=DEFAULT_ORG_ID)
     task = tasks_repo.create_task(task)
 
     yield task

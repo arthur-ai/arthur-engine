@@ -31,6 +31,7 @@ from services.trace.external_trace_retrieval_service import (
     ExternalTraceRetrievalService,
 )
 from utils import constants
+from utils.constants import DEFAULT_ORG_ID
 from utils.gcp import parse_gcp_resource_path
 from utils.utils import get_env_var
 
@@ -237,6 +238,7 @@ class GlobalAgentPollingService(BaseQueueService[AgentPollingJob]):
                         updated_at=datetime.now(),
                         is_agentic=True,
                         is_autocreated=True,
+                        org_id=DEFAULT_ORG_ID,
                         task_metadata=task_metadata,
                     )
                     created_task = task_repository.create_task(

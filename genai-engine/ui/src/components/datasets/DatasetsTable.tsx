@@ -23,6 +23,8 @@ import {
 import React, { useCallback, useState } from "react";
 
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
+import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import type { DatasetResponse } from "@/lib/api-client/api-client";
 import { EVENT_NAMES, track } from "@/services/amplitude";
 import type { SortOrder } from "@/types/dataset";
@@ -108,11 +110,16 @@ export const DatasetsTable: React.FC<DatasetsTableProps> = ({ datasets, sortOrde
             </TableRow>
           </TableHead>
           <TableBody>
-            {datasets.map((dataset) => (
+            {datasets.map((dataset, rowIndex) => (
               <TableRow
                 key={dataset.id}
                 hover
-                onClick={() => onRowClick(dataset)}
+                onClick={() => {
+                  dispatchTourEvent(TASK_TOUR_EVENTS.datasetOpened);
+                  dispatchTourEvent(TASK_TOUR_EVENTS.datasetRowVerified);
+                  onRowClick(dataset);
+                }}
+                data-tour-id={rowIndex === 0 ? TOUR_IDS.datasetsFirstRow : undefined}
                 sx={{
                   cursor: "pointer",
                   "&:hover": {

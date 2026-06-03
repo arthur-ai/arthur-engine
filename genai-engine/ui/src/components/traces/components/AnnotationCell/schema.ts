@@ -31,7 +31,10 @@ export const ContinuousEvalAnnotation = z.object({
     )
     .optional(),
   cost: z.number().optional(),
-  run_status: z.string<ContinuousEvalRunStatus>(),
+  run_status: z
+    .enum(["pending", "passed", "running", "failed", "skipped", "error"] satisfies ContinuousEvalRunStatus[])
+    .optional()
+    .nullable(),
   created_at: z.string(),
   updated_at: z.string(),
 });

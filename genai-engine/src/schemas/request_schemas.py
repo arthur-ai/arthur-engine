@@ -1387,6 +1387,40 @@ class SyntheticDataGenerationRequest(BaseModel):
     )
 
 
+class OnboardingTryItOutFormData(BaseModel):
+    """Try-it-out onboarding form fields (matches UI TryItOutSubmission)."""
+
+    first_name: str = Field(min_length=1)
+    last_name: str = Field(min_length=1)
+    email: str = Field(min_length=1)
+    job_title: str = Field(min_length=1)
+    company: str = Field(min_length=1)
+    maturity: str = Field(min_length=1)
+    brings: str = Field(min_length=1)
+    brings_other: str = ""
+    competitors: list[str] = Field(min_length=1)
+    competitor_other: Optional[str] = Field(default=None)
+    attribution: str = Field(min_length=1)
+    attribution_other: Optional[str] = Field(default=None)
+
+
+class TenantSignupRequest(BaseModel):
+    """Public tenant signup payload; includes try-it-out onboarding form data."""
+
+    form_variant: Literal["linear", "wizard"] | None = Field(
+        default=None,
+        description="Which onboarding form variant was submitted.",
+    )
+    form_data: OnboardingTryItOutFormData
+    recaptcha_token: Optional[str] = Field(
+        default=None,
+        description=(
+            "reCAPTCHA Enterprise token obtained client-side. Required when "
+            "reCAPTCHA is configured server-side; ignored otherwise."
+        ),
+    )
+
+
 class SyntheticDataConversationRequest(BaseModel):
     """Request for continuing a synthetic data generation conversation."""
 

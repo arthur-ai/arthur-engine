@@ -1,10 +1,11 @@
 from typing import Annotated
+from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
 from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
 from sqlalchemy.orm import Session
 
-from dependencies import get_db_session, get_validated_task
+from dependencies import get_db_session, get_org_scope, get_validated_task
 from repositories.agentic_notebook_repository import AgenticNotebookRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
@@ -21,7 +22,7 @@ from schemas.agentic_notebook_schemas import (
 )
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Task, User
-from utils.users import permission_checker
+from utils.users import enforce_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
 agentic_notebook_routes = APIRouter(
@@ -40,6 +41,7 @@ agentic_notebook_routes = APIRouter(
     tags=["Agentic Notebooks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def create_agentic_notebook(
     notebook_request: CreateAgenticNotebookRequest,
     db_session: Session = Depends(get_db_session),
@@ -76,6 +78,7 @@ def create_agentic_notebook(
     tags=["Agentic Notebooks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def list_agentic_notebooks(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -120,6 +123,7 @@ def get_agentic_notebook(
     notebook_id: str = Path(..., description="Agentic Notebook ID"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> AgenticNotebookDetail:
     """
     Get detailed information about an agentic notebook.
@@ -129,7 +133,7 @@ def get_agentic_notebook(
     """
     try:
         repo = AgenticNotebookRepository(db_session)
-        notebook = repo.get_notebook(notebook_id)
+        notebook = repo.get_notebook(notebook_id, org_scope=org_scope)
         return notebook
     except HTTPException:
         raise
@@ -153,6 +157,7 @@ def update_agentic_notebook(
     notebook_id: str = Path(..., description="Agentic Notebook ID"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> AgenticNotebookDetail:
     """
     Update agentic notebook metadata (name and/or description).
@@ -162,7 +167,9 @@ def update_agentic_notebook(
     """
     try:
         repo = AgenticNotebookRepository(db_session)
-        notebook = repo.update_notebook(notebook_id, update_request)
+        notebook = repo.update_notebook(
+            notebook_id, update_request, org_scope=org_scope
+        )
         return notebook
     except HTTPException:
         raise
@@ -185,6 +192,7 @@ def get_agentic_notebook_state(
     notebook_id: str = Path(..., description="Agentic Notebook ID"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> AgenticNotebookStateResponse:
     """
     Get the current state of an agentic notebook.
@@ -194,7 +202,7 @@ def get_agentic_notebook_state(
     """
     try:
         repo = AgenticNotebookRepository(db_session)
-        state = repo.get_notebook_state(notebook_id)
+        state = repo.get_notebook_state(notebook_id, org_scope=org_scope)
         return state
     except HTTPException:
         raise
@@ -218,6 +226,7 @@ def set_agentic_notebook_state(
     notebook_id: str = Path(..., description="Agentic Notebook ID"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> AgenticNotebookDetail:
     """
     Set the state of an agentic notebook.
@@ -228,7 +237,9 @@ def set_agentic_notebook_state(
     """
     try:
         repo = AgenticNotebookRepository(db_session)
-        notebook = repo.set_notebook_state(notebook_id, state_request)
+        notebook = repo.set_notebook_state(
+            notebook_id, state_request, org_scope=org_scope
+        )
         return notebook
     except HTTPException:
         raise
@@ -250,6 +261,7 @@ def delete_agentic_notebook(
     notebook_id: str = Path(..., description="Agentic Notebook ID"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> Response:
     """
     Delete an agentic notebook.
@@ -259,7 +271,7 @@ def delete_agentic_notebook(
     """
     try:
         repo = AgenticNotebookRepository(db_session)
-        repo.delete_notebook(notebook_id)
+        repo.delete_notebook(notebook_id, org_scope=org_scope)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except HTTPException:
         raise
@@ -286,6 +298,7 @@ def get_agentic_notebook_history(
     notebook_id: str = Path(..., description="Agentic Notebook ID"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> AgenticExperimentListResponse:
     """
     Get the history of experiments run from this agentic notebook.
@@ -298,6 +311,7 @@ def get_agentic_notebook_history(
         response = repo.get_notebook_history(
             notebook_id=notebook_id,
             pagination_params=pagination_parameters,
+            org_scope=org_scope,
         )
         return response
     except HTTPException:

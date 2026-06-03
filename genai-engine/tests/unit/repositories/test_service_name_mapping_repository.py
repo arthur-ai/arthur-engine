@@ -1,5 +1,6 @@
 import logging
 import uuid
+from utils.constants import DEFAULT_ORG_ID
 
 import pytest
 import sqlalchemy as sa
@@ -27,6 +28,7 @@ def test_task():
         updated_at=current_time,
         is_agentic=True,
         archived=False,
+        org_id=DEFAULT_ORG_ID,
     )
     db_session.add(task)
     db_session.commit()
@@ -51,6 +53,7 @@ def test_task_2():
         updated_at=current_time,
         is_agentic=True,
         archived=False,
+        org_id=DEFAULT_ORG_ID,
     )
     db_session.add(task)
     db_session.commit()

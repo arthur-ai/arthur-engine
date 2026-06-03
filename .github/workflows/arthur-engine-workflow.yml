@@ -149,6 +149,9 @@ jobs:
       - name: Generate changelog
         env:
           GENAI_ENGINE_SECRET_STORE_KEY: changeme_secret_store_key
+          # Generate the spec with all feature-flagged routes registered so
+          # the documented API surface matches what demo deployments expose.
+          GENAI_ENGINE_DEMO_MODE: ENABLED
           PYTHONPATH: src
         run: |
           uv run --directory genai-engine generate_changelog
@@ -183,8 +186,21 @@ jobs:
             ui:
               - 'genai-engine/ui/**'
             backend:
-              - 'genai-engine/**'
-              - '!genai-engine/ui/**'
+              - 'genai-engine/src/**'
+              - 'genai-engine/tests/**'
+              - 'genai-engine/alembic/**'
+              - 'genai-engine/scripts/**'
+              - 'genai-engine/models/**'
+              - 'genai-engine/*.toml'
+              - 'genai-engine/*.cfg'
+              - 'genai-engine/*.ini'
+              - 'genai-engine/*.lock'
+              - 'genai-engine/*.txt'
+              - 'genai-engine/version'
+              - 'genai-engine/routes_security_check.py'
+              - 'genai-engine/changelog*'
+              - 'genai-engine/Dockerfile*'
+              - 'genai-engine/docker-compose.yml'
 
   run-genai-engine-ui-lint:
     needs: check-genai-engine-changes
@@ -397,6 +413,9 @@ jobs:
             METICULOUS_RECORDING_TOKEN=${{ secrets.METICULOUS_RECORDING_TOKEN }}
             METICULOUS_API_TOKEN=${{ secrets.METICULOUS_API_TOKEN }}
             GITLAB_UNIFY_FRONTEND_TOKEN=${{ secrets.GITLAB_UNIFY_FRONTEND_TOKEN }}
+            AMPLITUDE_API_KEY=${{ secrets.AMPLITUDE_API_KEY }}
+            VITE_AMPLITUDE_DEPLOYMENT_KEY=${{ secrets.AMPLITUDE_DEPLOYMENT_KEY }}
+            RECAPTCHA_ENTERPRISE_SITE_KEY=${{ secrets.RECAPTCHA_ENTERPRISE_SITE_KEY }}
           tags: |
             arthurplatform/genai-engine-${{ matrix.torch_device }}:${{ env.VERSION }}
             ${{ github.ref == 'refs/heads/main' && format('arthurplatform/genai-engine-{0}:latest', matrix.torch_device) || '' }}

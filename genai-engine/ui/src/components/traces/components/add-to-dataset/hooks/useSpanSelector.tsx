@@ -26,15 +26,17 @@ function resolveNavigationData(rawData: unknown, keys: string[]): { data: unknow
       } else {
         return { data: {}, isArray: false };
       }
-    } else {
-      const idx = Number(key);
-      if (!Number.isNaN(idx) && Array.isArray(current)) {
-        current = current[idx];
-      } else if (typeof current === "object" && current !== null && key in current) {
-        current = (current as Record<string, unknown>)[key];
-      } else {
+    } else if (Array.isArray(current) && /^-?\d+$/.test(key)) {
+      const raw = Number(key);
+      const resolved = raw < 0 ? raw + current.length : raw;
+      if (resolved < 0 || resolved >= current.length) {
         return { data: {}, isArray: false };
       }
+      current = current[resolved];
+    } else if (typeof current === "object" && current !== null && key in current) {
+      current = (current as Record<string, unknown>)[key];
+    } else {
+      return { data: {}, isArray: false };
     }
   }
 

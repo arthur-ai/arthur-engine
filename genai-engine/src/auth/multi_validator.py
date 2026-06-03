@@ -55,6 +55,7 @@ class MultiMethodValidator:
                 db_session,
             ):
                 request.state.user_id = user.id
+                request.state.org_scope = user.org_scope
                 return user
         except Exception as e:
             logger.warning(
@@ -63,10 +64,12 @@ class MultiMethodValidator:
         finally:
             db_session.close()
 
-        # If API key validation fails, try oauth validation
+        # If API key validation fails, try oauth validation. JWT users are always
+        # cross-org admins in v1 — org_scope stays None.
         try:
             if jwk_client and (user := jwk_client.validate(token)):
                 request.state.user_id = user.id
+                request.state.org_scope = user.org_scope
                 return user
         except Exception as oauth_error:
             raise oauth_error
