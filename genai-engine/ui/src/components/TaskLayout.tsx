@@ -96,29 +96,42 @@ export const TaskLayout: React.FC = () => {
       <div className="flex flex-1 overflow-hidden">
         <SidebarNavigation onBackToDashboard={handleBack} onNavigate={handleNavigate} activeSection={activeSection} taskName={task?.name} />
 
-        <main className="flex-1 overflow-auto">
-          {loading && (
-            <div className="py-6 px-6">
-              <TaskLoadingState />
-            </div>
-          )}
-          {error && !loading && (
-            <div className="py-6 px-6">
-              <TaskErrorState error={error} onBackToDashboard={handleBack} />
-            </div>
-          )}
-          {!task && !loading && !error && (
-            <div className="py-6 px-6">
-              <TaskNotFoundState onBackToDashboard={handleBack} />
-            </div>
-          )}
-          {task && (
-            <TaskProvider task={task}>
-              <Outlet />
-              {showTaskTour && <TaskTour taskId={task.id} workspaceLabel={task.name} />}
-            </TaskProvider>
-          )}
-        </main>
+        {task ? (
+          // When the demo tour is active, `TaskTour` wraps the page so its
+          // collapsible side panel renders as a flex sibling of `<main>` and
+          // takes window space from the app (rather than floating over it).
+          <TaskProvider task={task}>
+            {showTaskTour ? (
+              <TaskTour taskId={task.id} workspaceLabel={task.name}>
+                <main className="flex-1 overflow-auto">
+                  <Outlet />
+                </main>
+              </TaskTour>
+            ) : (
+              <main className="flex-1 overflow-auto">
+                <Outlet />
+              </main>
+            )}
+          </TaskProvider>
+        ) : (
+          <main className="flex-1 overflow-auto">
+            {loading && (
+              <div className="py-6 px-6">
+                <TaskLoadingState />
+              </div>
+            )}
+            {error && !loading && (
+              <div className="py-6 px-6">
+                <TaskErrorState error={error} onBackToDashboard={handleBack} />
+              </div>
+            )}
+            {!loading && !error && (
+              <div className="py-6 px-6">
+                <TaskNotFoundState onBackToDashboard={handleBack} />
+              </div>
+            )}
+          </main>
+        )}
       </div>
     </div>
   );

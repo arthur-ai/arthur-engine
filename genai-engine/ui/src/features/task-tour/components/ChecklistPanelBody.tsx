@@ -1,24 +1,19 @@
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import EastIcon from "@mui/icons-material/East";
-import RemoveIcon from "@mui/icons-material/Remove";
 import WestIcon from "@mui/icons-material/West";
-import { Box, Button, IconButton, LinearProgress, Paper, Stack, Tooltip, Typography, useTheme } from "@mui/material";
+import { Box, Button, IconButton, LinearProgress, Stack, Tooltip, Typography, useTheme } from "@mui/material";
 import type { ReactNode } from "react";
 
 import { TASK_TOUR_SECTIONS, TASK_TOUR_TITLE, type TaskTourItem, type TaskTourSection } from "../data";
-import { TASK_TOUR_DOCK_STORAGE_KEY, TASK_TOUR_DOCK_WIDTH, defaultDockPosition } from "../dockPosition";
-import { useDraggable } from "../hooks/useDraggable";
 
-export interface ChecklistPanelProps {
+export interface ChecklistPanelBodyProps {
   currentSectionIndex: number;
   /** -1 = no active item (stub section). */
   currentItemIndex: number;
   /**
    * Resolved content for the currently active step (i.e. the one rendered
-   * under the highlighted row). Comes from the engine's `StepConfig.content`
-   * — a `ReactNode` or the result of the function form already evaluated by
-   * the parent. `null` when the tour isn't on a real step.
+   * under the highlighted row). `null` when the tour isn't on a real step.
    */
   activeStepContent: ReactNode | null;
   /** Shown under the active step when the spotlight target is not in the DOM yet. */
@@ -30,15 +25,9 @@ export interface ChecklistPanelProps {
   onSelectSection: (sectionIndex: number) => void;
   onPrevSection: () => void;
   onNextSection: () => void;
+  /** Dismisses the tour (the panel's "hide" affordance). */
   onClose: () => void;
-  /** Renders a compact active-step card instead of the full checklist. */
-  isMinimized?: boolean;
-  onMinimize?: () => void;
-  onExpand?: () => void;
 }
-
-const PANEL_WIDTH = TASK_TOUR_DOCK_WIDTH;
-const PANEL_Z_INDEX = 1450;
 
 function itemKey(section: TaskTourSection, item: TaskTourItem) {
   return `${section.id}.${item.id}`;
@@ -50,12 +39,13 @@ function isSectionDone(section: TaskTourSection, completed: ReadonlySet<string>)
 }
 
 /**
- * Floating, draggable checklist panel with section pips, the current section's
- * title, an interactive checklist of items, and progress controls. Fixed to
- * the bottom-right corner by default; the user can drag it anywhere and its
- * position is shared with the resume FAB (see {@link defaultDockPosition}).
+ * Presentational checklist: section pips, the current section's title, an
+ * interactive checklist of items, and progress controls. Fills its container
+ * (the {@link TourSidePanel} supplies the surface, border, and width); it is
+ * no longer floating or draggable — collapsing is handled by the panel's
+ * chevron, and dismissing by the header close button.
  */
-export function ChecklistPanel({
+export function ChecklistPanelBody({
   currentSectionIndex,
   currentItemIndex,
   activeStepContent,
@@ -68,22 +58,8 @@ export function ChecklistPanel({
   onPrevSection,
   onNextSection,
   onClose,
-  isMinimized = false,
-  onMinimize,
-  onExpand,
-}: ChecklistPanelProps) {
+}: ChecklistPanelBodyProps) {
   const theme = useTheme();
-  const {
-    position,
-    isDragging,
-    ref: dragRef,
-    handleProps,
-  } = useDraggable<HTMLDivElement>({
-    storageKey: TASK_TOUR_DOCK_STORAGE_KEY,
-    defaultPosition: defaultDockPosition,
-  });
-
-  const positionSx = { position: "fixed", left: position.left, bottom: position.bottom } as const;
 
   const section = TASK_TOUR_SECTIONS[currentSectionIndex];
   if (!section) return null;
@@ -91,114 +67,11 @@ export function ChecklistPanel({
   const stepsInSection = Math.max(1, items.length);
   const sectionStepLabel =
     items.length === 0 ? "Intro" : currentItemIndex >= 0 ? `Step ${currentItemIndex + 1} of ${stepsInSection}` : `Step 1 of ${stepsInSection}`;
-  const progressCaption = `Section ${currentSectionIndex + 1} of ${TASK_TOUR_SECTIONS.length} · ${sectionStepLabel}`;
-  const activeItem = currentItemIndex >= 0 ? items[currentItemIndex] : null;
-  const activeStepTitle = activeItem?.title ?? section.title;
-
-  if (isMinimized) {
-    return (
-      <Paper
-        component="button"
-        type="button"
-        aria-label="Expand walkthrough"
-        elevation={8}
-        ref={dragRef as unknown as React.RefObject<HTMLButtonElement>}
-        onClick={onExpand}
-        {...handleProps}
-        sx={{
-          width: 280,
-          p: 0,
-          textAlign: "left",
-          borderRadius: 2,
-          overflow: "hidden",
-          zIndex: PANEL_Z_INDEX,
-          border: 1,
-          borderColor: "divider",
-          bgcolor: "background.paper",
-          cursor: isDragging ? "grabbing" : "grab",
-          touchAction: "none",
-          ...positionSx,
-          "&:hover": { borderColor: "secondary.main" },
-          "&:focus-visible": {
-            outline: 2,
-            outlineColor: "secondary.main",
-            outlineOffset: 2,
-          },
-        }}
-      >
-        <Stack spacing={0.5} sx={{ px: 1.5, py: 1.25 }}>
-          <Typography
-            variant="body2"
-            sx={{
-              fontWeight: 600,
-              color: "text.primary",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {activeStepTitle}
-          </Typography>
-          {activeStepContent != null ? (
-            <Box
-              sx={{
-                color: "text.secondary",
-                fontSize: 12,
-                lineHeight: 1.45,
-                display: "-webkit-box",
-                WebkitLineClamp: 3,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
-              }}
-            >
-              {activeStepContent}
-            </Box>
-          ) : null}
-        </Stack>
-        <LinearProgress
-          variant="determinate"
-          value={Math.min(100, Math.max(0, totalProgress * 100))}
-          sx={{
-            height: 3,
-            bgcolor: "action.hover",
-            "& .MuiLinearProgress-bar": { bgcolor: "secondary.main" },
-          }}
-        />
-      </Paper>
-    );
-  }
+  const sectionLabel = `Section ${currentSectionIndex + 1} of ${TASK_TOUR_SECTIONS.length}`;
 
   return (
-    <Paper
-      elevation={8}
-      ref={dragRef}
-      sx={{
-        width: PANEL_WIDTH,
-        maxHeight: "calc(100vh - 40px)",
-        display: "flex",
-        flexDirection: "column",
-        borderRadius: 2.5,
-        overflow: "hidden",
-        zIndex: PANEL_Z_INDEX,
-        border: 1,
-        borderColor: "divider",
-        ...positionSx,
-      }}
-    >
-      <Stack
-        direction="row"
-        alignItems="center"
-        spacing={1.25}
-        {...handleProps}
-        sx={{
-          p: 1.75,
-          borderBottom: 1,
-          borderColor: "divider",
-          cursor: isDragging ? "grabbing" : "grab",
-          touchAction: "none",
-          userSelect: "none",
-        }}
-      >
+    <Stack sx={{ height: "100%", minWidth: 0 }}>
+      <Stack direction="row" alignItems="center" spacing={1.25} sx={{ p: 1.75, borderBottom: 1, borderColor: "divider", userSelect: "none" }}>
         <Box
           sx={{
             display: "inline-flex",
@@ -221,25 +94,8 @@ export function ChecklistPanel({
         >
           {TASK_TOUR_TITLE}
         </Typography>
-        <Tooltip title="Minimize walkthrough">
-          <IconButton
-            aria-label="Minimize walkthrough"
-            size="small"
-            onClick={onMinimize}
-            onPointerDown={(e) => e.stopPropagation()}
-            sx={{ color: "text.disabled" }}
-          >
-            <RemoveIcon sx={{ fontSize: 14 }} />
-          </IconButton>
-        </Tooltip>
         <Tooltip title="Hide walkthrough">
-          <IconButton
-            aria-label="Hide walkthrough"
-            size="small"
-            onClick={onClose}
-            onPointerDown={(e) => e.stopPropagation()}
-            sx={{ color: "text.disabled" }}
-          >
+          <IconButton aria-label="Hide walkthrough" size="small" onClick={onClose} sx={{ color: "text.disabled" }}>
             <CloseIcon sx={{ fontSize: 14 }} />
           </IconButton>
         </Tooltip>
@@ -390,9 +246,14 @@ export function ChecklistPanel({
       </Box>
 
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ p: 1.5, borderTop: 1, borderColor: "divider" }}>
-        <Typography variant="caption" sx={{ color: "text.secondary" }}>
-          {progressCaption}
-        </Typography>
+        <Stack spacing={0} sx={{ minWidth: 0 }}>
+          <Typography variant="caption" sx={{ color: "text.secondary", whiteSpace: "nowrap" }}>
+            {sectionStepLabel}
+          </Typography>
+          <Typography variant="caption" sx={{ color: "text.secondary", whiteSpace: "nowrap" }}>
+            {sectionLabel}
+          </Typography>
+        </Stack>
         <Stack direction="row" spacing={0.75}>
           <Button
             size="small"
@@ -417,6 +278,6 @@ export function ChecklistPanel({
           </Button>
         </Stack>
       </Stack>
-    </Paper>
+    </Stack>
   );
 }
