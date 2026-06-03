@@ -291,6 +291,7 @@ def get_traces_timeseries(
         logger.error(f"Error getting trace time-series: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # SPAN ENDPOINTS
 
 
