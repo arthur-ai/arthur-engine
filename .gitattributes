@@ -4,7 +4,10 @@ version                                    -merge
 genai-engine/version                       -merge
 genai-engine/src/version                   -merge
 genai-engine/uv.lock                       -merge
+genai-engine/ui/yarn.lock                  -merge
 ml-engine/uv.lock                          -merge
+arthur-observability-sdk/python/uv.lock    -merge
+deployment/model-upload/uv.lock            -merge
 genai-engine/staging.openapi.json          -merge
 
 # Append-only changelog — union preserves entries from both sides
