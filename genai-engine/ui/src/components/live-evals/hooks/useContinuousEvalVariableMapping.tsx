@@ -21,7 +21,7 @@ export const useContinuousEvalVariableMapping = (
         transformId!,
         evalName!,
         evalVersion!,
-        taskId!,
+        taskId!
       ),
     select: (data) => data.data,
   });

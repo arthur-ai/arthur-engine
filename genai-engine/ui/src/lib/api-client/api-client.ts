@@ -16,7 +16,7 @@ export type AddTagToAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersion
 
 export type AddTagToAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionTagsPutError = HTTPValidationError;
 
-export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPutData = LLMEval;
+export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPutData = Eval;
 
 export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPutError = HTTPValidationError;
 
@@ -1257,7 +1257,6 @@ export interface BuiltinValidationResponse {
   results: ExternalRuleResult[];
 }
 
-
 /** ChatCompletionMessageToolCall */
 export type ChatCompletionMessageToolCall = Record<string, any>;
 
@@ -1394,21 +1393,6 @@ export interface CheckUserPermissionUsersPermissionsCheckGetParams {
   /** Resource to check permissions of. */
   resource?: UserPermissionResource;
 }
-
-export type CheckUserPermissionUsersPermissionsCheckGetData = any;
-
-export type CheckUserPermissionUsersPermissionsCheckGetError = HTTPValidationError;
-
-export interface CheckUserPermissionUsersPermissionsCheckGetParams {
-  /** Action to check permissions of. */
-  action?: UserPermissionAction;
-  /** Resource to check permissions of. */
-  resource?: UserPermissionResource;
-}
-
-export type ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteData = any;
-
-export type ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteError = HTTPValidationError;
 
 /**
  * CompletionRequest
@@ -1899,7 +1883,7 @@ export interface CreateEvalRequest {
 /** CreateMLEvalRequest */
 export interface CreateMLEvalRequest {
   /**
-   * Config
+   * MLEvalConfig
    * Configuration for the ML eval. Valid fields depend on eval_type.
    */
   config: PIIEvalConfig | ToxicityEvalConfig | PromptInjectionEvalConfig;
@@ -2515,7 +2499,6 @@ export type DeleteTransformVersionApiV1TracesTransformsTransformIdVersionsVersio
 
 export type DeleteTransformVersionApiV1TracesTransformsTransformIdVersionsVersionIdDeleteError = HTTPValidationError;
 
-
 export type DeleteUserUsersUserIdDeleteData = any;
 
 export type DeleteUserUsersUserIdDeleteError = HTTPValidationError;
@@ -2534,7 +2517,6 @@ export interface DemoTaskSignupResponse {
   /** Task Name */
   task_name: string;
 }
-
 
 /**
  * DiscoverAndPollResponse
@@ -2682,6 +2664,65 @@ export interface EnrichedTaskResponse {
    * @format date-time
    */
   updated_at: string;
+}
+
+/** Eval */
+export interface Eval {
+  /**
+   * EvalConfig
+   * Eval configuration. LLMBaseConfigSettings for LLM evals; type-specific dict for ML evals.
+   */
+  config?: LLMBaseConfigSettings | Record<string, any> | null;
+  /**
+   * Created At
+   * Timestamp when the llm eval was created.
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Deleted At
+   * Time that this llm eval was deleted
+   */
+  deleted_at?: string | null;
+  /**
+   * Eval Kind
+   * Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
+   * @default "llm_as_a_judge"
+   */
+  eval_kind?: string;
+  /**
+   * Instructions
+   * Instructions for the llm eval. None for ML evals.
+   */
+  instructions?: string | null;
+  /**
+   * Model Name
+   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet'). None for ML evals.
+   */
+  model_name?: string | null;
+  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). None for ML evals. */
+  model_provider?: ModelProvider | null;
+  /**
+   * Name
+   * Name of the llm eval
+   */
+  name: string;
+  /**
+   * Tags
+   * List of tags for this llm eval version
+   */
+  tags?: string[];
+  /**
+   * Variables
+   * List of variable names for the llm eval
+   */
+  variables?: string[];
+  /**
+   * Version
+   * Version of the llm eval
+   * @default 1
+   */
+  version?: number;
 }
 
 /**
@@ -3874,20 +3915,15 @@ export type GetInferenceDocumentContextApiChatContextInferenceIdGetData = ChatDo
 
 export type GetInferenceDocumentContextApiChatContextInferenceIdGetError = HTTPValidationError;
 
-export type GetLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGetData = LLMEval;
+export type GetLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGetData = Eval;
 
 export type GetLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGetError = HTTPValidationError;
 
-export type GetLlmEvalByTagApiV1TasksTaskIdLlmEvalsEvalNameVersionsTagsTagGetData = LLMEval;
+export type GetLlmEvalByTagApiV1TasksTaskIdLlmEvalsEvalNameVersionsTagsTagGetData = Eval;
 
 export type GetLlmEvalByTagApiV1TasksTaskIdLlmEvalsEvalNameVersionsTagsTagGetError = HTTPValidationError;
 
 export type GetMeUsersMeGetData = MeResponse;
-
-export type GetMlEvalApiV2TasksTaskIdMlEvalsEvalNameVersionsEvalVersionGetData = MLEval;
-
-export type GetMlEvalApiV2TasksTaskIdMlEvalsEvalNameVersionsEvalVersionGetError = HTTPValidationError;
-
 
 export type GetModelProvidersApiV1ModelProvidersGetData = ModelProviderList;
 
@@ -4701,6 +4737,7 @@ export interface LLMBaseConfigSettings {
    */
   top_p?: number | null;
 }
+
 /** LLMConfigSettings */
 export interface LLMConfigSettings {
   /**
@@ -4779,65 +4816,6 @@ export interface LLMConfigSettings {
    * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
    */
   top_p?: number | null;
-}
-
-/** LLMEval */
-export interface LLMEval {
-  /**
-   * Config
-   * Eval configuration. LLMBaseConfigSettings for LLM evals; type-specific dict for ML evals.
-   */
-  config?: null;
-  /**
-   * Created At
-   * Timestamp when the llm eval was created.
-   * @format date-time
-   */
-  created_at: string;
-  /**
-   * Deleted At
-   * Time that this llm eval was deleted
-   */
-  deleted_at?: string | null;
-  /**
-   * Eval Kind
-   * Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
-   * @default "llm_as_a_judge"
-   */
-  eval_kind?: string;
-  /**
-   * Instructions
-   * Instructions for the llm eval. None for ML evals.
-   */
-  instructions?: string | null;
-  /**
-   * Model Name
-   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet'). None for ML evals.
-   */
-  model_name?: string | null;
-  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). None for ML evals. */
-  model_provider?: ModelProvider | null;
-  /**
-   * Name
-   * Name of the llm eval
-   */
-  name: string;
-  /**
-   * Tags
-   * List of tags for this llm eval version
-   */
-  tags?: string[];
-  /**
-   * Variables
-   * List of variable names for the llm eval
-   */
-  variables?: string[];
-  /**
-   * Version
-   * Version of the llm eval
-   * @default 1
-   */
-  version?: number;
 }
 
 /** LLMEvalsVersionListResponse */
@@ -6670,11 +6648,6 @@ export interface MetadataQuery {
    * @default false
    */
   last_update_time?: boolean;
-  /**
-   * Query Profile
-   * @default false
-   */
-  query_profile?: boolean;
   /**
    * Score
    * @default false
@@ -10233,11 +10206,11 @@ export type SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostData = Agentic
 
 export type SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostError = HTTPValidationError;
 
-export type SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostData = LLMEval;
+export type SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostData = Eval;
 
 export type SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostError = HTTPValidationError;
 
-export type SaveMlEvalApiV2TasksTaskIdMlEvalsEvalNamePostData = LLMEval;
+export type SaveMlEvalApiV2TasksTaskIdMlEvalsEvalNamePostData = Eval;
 
 export type SaveMlEvalApiV2TasksTaskIdMlEvalsEvalNamePostError = HTTPValidationError;
 
@@ -12807,8 +12780,7 @@ export type WeaviateHybridSearchSettingsConfigurationRequestReturnMetadataEnum =
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  | "is_consistent";
 
 /** WeaviateHybridSearchSettingsConfigurationResponse */
 export interface WeaviateHybridSearchSettingsConfigurationResponse {
@@ -12900,8 +12872,7 @@ export type WeaviateHybridSearchSettingsConfigurationResponseReturnMetadataEnum 
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  | "is_consistent";
 
 /** WeaviateHybridSearchSettingsRequest */
 export interface WeaviateHybridSearchSettingsRequest {
@@ -12993,8 +12964,7 @@ export type WeaviateHybridSearchSettingsRequestReturnMetadataEnum =
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  | "is_consistent";
 
 /** WeaviateKeywordSearchSettingsConfigurationRequest */
 export interface WeaviateKeywordSearchSettingsConfigurationRequest {
@@ -13063,8 +13033,7 @@ export type WeaviateKeywordSearchSettingsConfigurationRequestReturnMetadataEnum 
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  | "is_consistent";
 
 /** WeaviateKeywordSearchSettingsConfigurationResponse */
 export interface WeaviateKeywordSearchSettingsConfigurationResponse {
@@ -13133,8 +13102,7 @@ export type WeaviateKeywordSearchSettingsConfigurationResponseReturnMetadataEnum
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  | "is_consistent";
 
 /** WeaviateKeywordSearchSettingsRequest */
 export interface WeaviateKeywordSearchSettingsRequest {
@@ -13203,8 +13171,7 @@ export type WeaviateKeywordSearchSettingsRequestReturnMetadataEnum =
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  | "is_consistent";
 
 /**
  * WeaviateQueryResult
@@ -13363,8 +13330,7 @@ export type WeaviateVectorSimilarityTextSearchSettingsConfigurationRequestReturn
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  | "is_consistent";
 
 /** WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse */
 export interface WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse {
@@ -13438,8 +13404,7 @@ export type WeaviateVectorSimilarityTextSearchSettingsConfigurationResponseRetur
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  | "is_consistent";
 
 /** WeaviateVectorSimilarityTextSearchSettingsRequest */
 export interface WeaviateVectorSimilarityTextSearchSettingsRequest {
@@ -13513,8 +13478,7 @@ export type WeaviateVectorSimilarityTextSearchSettingsRequestReturnMetadataEnum 
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  | "is_consistent";
 
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, HeadersDefaults, ResponseType } from "axios";
 import axios from "axios";
@@ -13647,7 +13611,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.503
+ * @version 2.1.541
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -13890,24 +13854,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         method: "POST",
         body: data,
         type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @tags Chatbot
-     * @name ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDelete
-     * @summary Clear chatbot conversation history
-     * @request DELETE:/api/v1/chatbot/history/{conversation_id}
-     * @secure
-     */
-    clearChatbotHistoryApiV1ChatbotHistoryConversationIdDelete: (conversationId: string, params: RequestParams = {}) =>
-      this.request<ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteData, ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteError>({
-        path: `/api/v1/chatbot/history/${conversationId}`,
-        method: "DELETE",
-        secure: true,
         format: "json",
         ...params,
       }),
@@ -17793,7 +17739,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
   };
   auth = {
     /**
-     * @description Generates a new API key. Up to 1000 active keys can exist at the same time by default. Contact your system administrator if you need more. Allowed roles are: DEFAULT-RULE-ADMIN, TASK-ADMIN, VALIDATION-USER, ORG-AUDITOR, ORG-ADMIN, TENANT-USER.
+     * @description Generates a new API key. Up to 1000 active keys can exist at the same time by default. Contact your system administrator if you need more. Allowed roles are: DEFAULT-RULE-ADMIN, TASK-ADMIN, VALIDATION-USER, ORG-AUDITOR, ORG-ADMIN.
      *
      * @tags API Keys
      * @name CreateApiKeyAuthApiKeysPost

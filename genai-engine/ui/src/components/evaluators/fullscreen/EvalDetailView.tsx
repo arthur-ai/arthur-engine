@@ -31,7 +31,6 @@ import ImpactedCEsDialog from "./ImpactedCEsDialog";
 
 import { useCreateMlEvalMutation } from "@/components/ml-evaluators/hooks/useCreateMlEvalMutation";
 import MLEvalFormModal from "@/components/ml-evaluators/MLEvalFormModal";
-
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { TOUR_IDS } from "@/features/task-tour/selectors";
 import type { ContinuousEvalResponse, CreateEvalRequest, CreateMLEvalRequest, ModelProvider } from "@/lib/api-client/api-client";
@@ -464,7 +463,7 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
           isLoading={createEvalMutation.isPending}
           evalName={evalName}
           initialInstructions={evalData.instructions ?? ""}
-          initialModelProvider={evalData.model_provider ?? "" as ModelProvider}
+          initialModelProvider={evalData.model_provider ?? ("" as ModelProvider)}
           initialModelName={evalData.model_name ?? ""}
         />
       )}

@@ -14,10 +14,10 @@ import EvalFormModal from "./EvalFormModal";
 import { EvaluatorAccordionList } from "./EvaluatorAccordionList";
 import EvaluatorsHeader from "./EvaluatorsHeader";
 import EvalFullScreenView from "./fullscreen/EvalFullScreenView";
-import { useEvals } from "./hooks/useEvals";
 import { useCreateEvalMutation } from "./hooks/useCreateEvalMutation";
 import { useDeleteEvalMutation } from "./hooks/useDeleteEvalMutation";
 import { useDeleteMLEvalMutation } from "./hooks/useDeleteMLEvalMutation";
+import { useEvals } from "./hooks/useEvals";
 
 import { SearchBar } from "@/components/common/SearchBar";
 import { useCreateMlEvalMutation } from "@/components/ml-evaluators/hooks/useCreateMlEvalMutation";
