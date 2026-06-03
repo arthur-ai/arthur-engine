@@ -19,13 +19,8 @@ on:
 
 jobs:
   run-genai-engine-linter:
-    if: |
-      (
-        github.event_name == 'pull_request' ||
-        (github.event_name == 'push' && github.ref_type == 'branch')
-      ) &&
-      github.ref != 'refs/heads/main' &&
-      github.ref != 'refs/heads/dev'
+    needs: check-genai-engine-changes
+    if: needs.check-genai-engine-changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     container: python:3.12.9-bullseye
     env:
@@ -69,13 +64,8 @@ jobs:
           exit 1
 
   run-ml-engine-linter:
-    if: |
-      (
-        github.event_name == 'pull_request' ||
-        (github.event_name == 'push' && github.ref_type == 'branch')
-      ) &&
-      github.ref != 'refs/heads/main' &&
-      github.ref != 'refs/heads/dev'
+    needs: check-ml-engine-changes
+    if: needs.check-ml-engine-changes.outputs.changed == 'true'
     runs-on: ubuntu-latest
     container: python:3.13-bullseye
     env:
@@ -125,11 +115,8 @@ jobs:
           exit 1
 
   run-genai-engine-changelog-cop:
-    if: |
-      (
-        github.event_name == 'pull_request' ||
-        (github.event_name == 'push' && github.ref_type == 'branch')
-      )
+    needs: check-genai-engine-changes
+    if: needs.check-genai-engine-changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     container: python:3.12.9-bullseye
     steps:
@@ -201,6 +188,29 @@ jobs:
               - 'genai-engine/changelog*'
               - 'genai-engine/Dockerfile*'
               - 'genai-engine/docker-compose.yml'
+              - 'arthur-observability-sdk/**'
+
+  check-ml-engine-changes:
+    if: |
+      (
+        github.event_name == 'pull_request' ||
+        (github.event_name == 'push' && github.ref_type == 'branch')
+      ) &&
+      github.ref != 'refs/heads/main' &&
+      github.ref != 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.changes.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            changed:
+              - 'ml-engine/**'
+              - 'arthur-observability-sdk/**'
+              - 'genai-engine/staging.openapi.json'
 
   run-genai-engine-ui-lint:
     needs: check-genai-engine-changes
@@ -296,11 +306,8 @@ jobs:
             pytest-coverage.txt
 
   run-genai-engine-alembic-migration-check:
-    if: |
-      (
-        github.event_name == 'pull_request' ||
-        (github.event_name == 'push' && github.ref_type == 'branch')
-      )
+    needs: check-genai-engine-changes
+    if: needs.check-genai-engine-changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     container: python:3.12.9-bullseye
     services:
@@ -338,13 +345,8 @@ jobs:
           uv run alembic upgrade head
 
   run-ml-engine-unit-tests:
-    if: |
-      (
-        github.event_name == 'pull_request' ||
-        (github.event_name == 'push' && github.ref_type == 'branch')
-      ) &&
-      github.ref != 'refs/heads/main' &&
-      github.ref != 'refs/heads/dev'
+    needs: check-ml-engine-changes
+    if: needs.check-ml-engine-changes.outputs.changed == 'true'
     runs-on: ubuntu-latest
     container: python:3.13-bullseye
     env:
