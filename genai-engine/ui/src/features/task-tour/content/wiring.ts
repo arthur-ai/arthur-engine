@@ -4,25 +4,13 @@ import { TASK_TOUR_ACTIONS } from "../tourActions";
 import type { StepFormPrefill, StepPopoverConfig } from "@/features/tour";
 
 /**
- * Real-app sub-route under `/tasks/:taskId/`. Mirrors the keys in `App.tsx`
- * — both flat segments (`overview`) and nested ones (`playgrounds/prompts`)
- * are supported. The literal becomes the suffix of the URL pathname
- * verbatim, so add new entries here whenever a step needs to deep-link
- * into a route the existing list doesn't cover. Routes that depend on
- * runtime IDs (e.g. `datasets/:datasetId`) cannot be expressed statically;
- * those steps must rely on the user having reached the page from a prior
- * step's interaction.
+ * Real-app sub-route under `/tasks/:taskId/`. The literal becomes the suffix of
+ * the URL pathname verbatim; add an entry here when a step needs to deep-link
+ * into a route the list doesn't cover. Routes that depend on runtime IDs (e.g.
+ * `datasets/:datasetId`) can't be expressed statically — those steps rely on the
+ * user having reached the page from a prior step's interaction.
  */
-export type TaskSubRoute =
-  | "overview"
-  | "traces"
-  | "test"
-  | "chatbot"
-  | "evaluate"
-  | "datasets"
-  | "prompts"
-  | "prompts-management"
-  | "playgrounds/prompts";
+export type TaskSubRoute = "traces" | "chatbot" | "evaluate" | "datasets" | "prompts";
 
 /**
  * Engineering-only wiring for one tour step. Lives next to the marketing
@@ -100,6 +88,8 @@ export const TASK_TOUR_QUERY_HOOKS = {
   traceActions: "task-tour.traceActions",
   traceAddToDatasetAction: "task-tour.traceAddToDatasetAction",
   traceAddToDatasetDrawer: "task-tour.traceAddToDatasetDrawer",
+  // NOTE: no `traceDrawerAddToDataset` queryHook — that selector is resolved as
+  // a fallback inside the resolvers above, never bound as a step's targetHookId.
   datasetGenerateSynthetic: "task-tour.datasetGenerateSynthetic",
   demoTaskPromptRow: "task-tour.demoTaskPromptRow",
   promptOpenInPlayground: "task-tour.promptOpenInPlayground",
@@ -130,6 +120,23 @@ export const TASK_TOUR_PREPARATIONS = {
 export const TASK_TOUR_SKIP_WHEN = {
   noEvaluators: "task-tour.skip.noEvaluators",
 } as const;
+
+/**
+ * Builder for the Create-Experiment modal beats. They all deep-link to the same
+ * route + tab and must keep the click-blocking backdrop OFF (the user fills
+ * fields and opens portaled dropdowns that live outside the spotlight), so those
+ * three fields are defaulted here instead of repeated on every step. Scoped to
+ * this cluster on purpose — the sibling playground steps in the `prompts`
+ * section must NOT inherit `blockInteraction: false` or the experiments tab.
+ */
+function experimentModalStep(step: Omit<StepWiring, "route" | "search">): StepWiring {
+  return {
+    route: "prompts",
+    search: { tab: "prompt-experiments" },
+    blockInteraction: false,
+    ...step,
+  };
+}
 
 export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
   intro: { steps: {} },
@@ -313,20 +320,42 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
         prepareKey: TASK_TOUR_PREPARATIONS.traceOpened,
         popover: { showNext: true, nextLabel: "Next", placement: "left" },
       },
+      // `Add to Dataset` is a menu item inside the closed Trace Actions
+      // dropdown (a Base UI Menu from `@arthur/shared-components`). The resolver
+      // spotlights the trigger until the user opens the menu, then snaps to the
+      // item. Mirrors `open-create-experiment`:
+      //  - `action-only` so clicking the trigger opens the menu without
+      //    prematurely advancing — only `traceAddToDatasetOpened` (emitted by
+      //    `onAddToDataset` once the item is clicked) advances the step.
+      //  - `blockInteraction: false` so the click-trapping backdrop doesn't
+      //    dismiss the portaled menu or swallow the click on its item; the
+      //    dimming spotlight still draws the eye.
       "open-add-to-dataset": {
         targetId: TOUR_IDS.traceAddToDatasetAction,
         targetHookId: TASK_TOUR_QUERY_HOOKS.traceAddToDatasetAction,
         route: "traces",
         actionName: TASK_TOUR_ACTIONS.traceAddToDatasetOpened,
+        advance: "action-only",
+        blockInteraction: false,
         prepareKey: TASK_TOUR_PREPARATIONS.traceOpened,
+        popover: { placement: "left" },
       },
+      // Spotlights the whole Add-to-Dataset drawer: the cutout covers the entire
+      // drawer, so the form stays bright (only the page behind it dims) while the
+      // popover walks the user through the sequence — pick a dataset, map a
+      // column, then click Add Row. `blockInteraction: false` so the dimming
+      // overlay never traps clicks on the drawer or its portaled sub-dialogs
+      // (Create Dataset / Add Column). Advances on `traceAddedToDataset`, emitted
+      // when the row save succeeds.
       "save-trace-to-dataset": {
         targetId: TOUR_IDS.traceAddToDatasetDrawer,
         targetHookId: TASK_TOUR_QUERY_HOOKS.traceAddToDatasetDrawer,
         route: "traces",
         actionName: TASK_TOUR_ACTIONS.traceAddedToDataset,
         advance: "action-only",
+        blockInteraction: false,
         prepareKey: TASK_TOUR_PREPARATIONS.traceOpened,
+        popover: { placement: "left" },
       },
       "verify-new-row": {
         targetId: TOUR_IDS.datasetsFirstRow,
@@ -457,107 +486,80 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
       // submit button, all of which live outside the spotlighted region. The
       // backdrop would trap those clicks; the dimming spotlight alone guides
       // attention without blocking the form.
-      "experiment-info-name": {
+      "experiment-info-name": experimentModalStep({
         targetId: TOUR_IDS.createExperimentInfoName,
         targetHookId: TASK_TOUR_QUERY_HOOKS.createExperimentInfoName,
-        route: "prompts",
-        search: { tab: "prompt-experiments" },
         actionName: TASK_TOUR_ACTIONS.createExperimentInfoCompleted,
         advance: "manual",
-        blockInteraction: false,
         popover: { showNext: true, nextLabel: "Next", placement: "left" },
-      },
-      "experiment-info-versions": {
+      }),
+      "experiment-info-versions": experimentModalStep({
         targetId: TOUR_IDS.createExperimentInfoVersions,
         targetHookId: TASK_TOUR_QUERY_HOOKS.createExperimentInfoVersions,
-        route: "prompts",
-        search: { tab: "prompt-experiments" },
         actionName: TASK_TOUR_ACTIONS.createExperimentInfoCompleted,
         advance: "manual",
-        blockInteraction: false,
         popover: { showNext: true, nextLabel: "Next", placement: "left" },
-      },
-      "experiment-info-dataset": {
+      }),
+      "experiment-info-dataset": experimentModalStep({
         targetId: TOUR_IDS.createExperimentInfoDataset,
         targetHookId: TASK_TOUR_QUERY_HOOKS.createExperimentInfoDataset,
-        route: "prompts",
-        search: { tab: "prompt-experiments" },
         actionName: TASK_TOUR_ACTIONS.createExperimentInfoCompleted,
         advance: "manual",
-        blockInteraction: false,
         popover: { showNext: true, nextLabel: "Next", placement: "left" },
-      },
-      "experiment-info-evaluators": {
+      }),
+      "experiment-info-evaluators": experimentModalStep({
         targetId: TOUR_IDS.createExperimentInfoEvaluators,
         targetHookId: TASK_TOUR_QUERY_HOOKS.createExperimentInfoEvaluators,
-        route: "prompts",
-        search: { tab: "prompt-experiments" },
         actionName: TASK_TOUR_ACTIONS.createExperimentInfoCompleted,
         advance: "manual",
-        blockInteraction: false,
         popover: { showNext: true, nextLabel: "Next", placement: "left" },
-      },
+      }),
       // Each form step ends with a "review the whole form" beat: it spotlights
       // the entire step surface and advances only on the real submit click
       // (no popover Next — a Next would advance the tour while the modal is
       // still on this step, stranding the next beat's target). The copy nudges
       // the user to click the step's primary button to continue.
-      "review-experiment-info": {
+      "review-experiment-info": experimentModalStep({
         targetId: TOUR_IDS.createExperimentInfoStep,
         targetHookId: TASK_TOUR_QUERY_HOOKS.createExperimentInfo,
-        route: "prompts",
-        search: { tab: "prompt-experiments" },
         actionName: TASK_TOUR_ACTIONS.createExperimentInfoCompleted,
         advance: "action-only",
-        blockInteraction: false,
         popover: { placement: "left" },
-      },
-      "explain-prompt-mapping": {
+      }),
+      "explain-prompt-mapping": experimentModalStep({
         targetId: TOUR_IDS.createExperimentPromptMappingsList,
         targetHookId: TASK_TOUR_QUERY_HOOKS.createExperimentPromptMappingsList,
-        route: "prompts",
-        search: { tab: "prompt-experiments" },
         actionName: TASK_TOUR_ACTIONS.createExperimentPromptMappingsCompleted,
         advance: "manual",
-        blockInteraction: false,
         popover: { showNext: true, nextLabel: "Next", placement: "left" },
-      },
-      "complete-prompt-mapping": {
+      }),
+      "complete-prompt-mapping": experimentModalStep({
         targetId: TOUR_IDS.createExperimentPromptMappingsStep,
         targetHookId: TASK_TOUR_QUERY_HOOKS.createExperimentPromptMappings,
-        route: "prompts",
-        search: { tab: "prompt-experiments" },
         actionName: TASK_TOUR_ACTIONS.createExperimentPromptMappingsCompleted,
         advance: "action-only",
-        blockInteraction: false,
         popover: { placement: "left" },
-      },
+      }),
       // The Configure Evals step only renders when the user selected
       // evaluators; the form creates the run straight from Configure Prompts
       // otherwise. skipWhenEmptyKey auto-skips these two beats when the task
       // has no evals so a manual "Next" never strands on an absent step.
-      "explain-eval-mapping": {
+      "explain-eval-mapping": experimentModalStep({
         targetId: TOUR_IDS.createExperimentEvalMappingsList,
         targetHookId: TASK_TOUR_QUERY_HOOKS.createExperimentEvalMappingsList,
-        route: "prompts",
-        search: { tab: "prompt-experiments" },
         actionName: TASK_TOUR_ACTIONS.createExperimentCreated,
         advance: "manual",
-        blockInteraction: false,
         skipWhenEmptyKey: TASK_TOUR_SKIP_WHEN.noEvaluators,
         popover: { showNext: true, nextLabel: "Next", placement: "left" },
-      },
-      "create-experiment": {
+      }),
+      "create-experiment": experimentModalStep({
         targetId: TOUR_IDS.createExperimentEvalMappingsStep,
         targetHookId: TASK_TOUR_QUERY_HOOKS.createExperimentFinal,
-        route: "prompts",
-        search: { tab: "prompt-experiments" },
         actionName: TASK_TOUR_ACTIONS.createExperimentCreated,
         advance: "action-only",
-        blockInteraction: false,
         skipWhenEmptyKey: TASK_TOUR_SKIP_WHEN.noEvaluators,
         popover: { placement: "left" },
-      },
+      }),
     },
   },
   deploy: {

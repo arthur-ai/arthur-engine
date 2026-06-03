@@ -2,13 +2,11 @@ import { useCallback, useState } from "react";
 
 import { CertificateDialog } from "../components/CertificateDialog";
 import { CtaDialog } from "../components/cta-dialog";
+import { COURSE_NAME } from "../courseName";
 import { getStoredRecipientName } from "../recipientName";
 
 import { useTourEvent } from "@/features/tour";
-
-export interface CertificateWidgetProps {
-  workspaceLabel?: string;
-}
+import { EVENT_NAMES, track } from "@/services/amplitude";
 
 /** Which post-completion dialog is currently showing, if any. */
 type CompletionStage = "none" | "certificate" | "cta";
@@ -21,7 +19,7 @@ type CompletionStage = "none" | "certificate" | "cta";
  * them. The state plugin is what flips the persisted status to `"completed"`;
  * this widget only drives the modals and can be dismissed independently.
  */
-export function CertificateWidget({ workspaceLabel }: CertificateWidgetProps) {
+export function CertificateWidget() {
   const [stage, setStage] = useState<CompletionStage>("none");
   // Captured from localStorage when the tour completes — set by the onboarding
   // form on signup. Left undefined when absent so the dialog's default applies.
@@ -33,22 +31,23 @@ export function CertificateWidget({ workspaceLabel }: CertificateWidgetProps) {
       if (event.reason === "completed") {
         setRecipientName(getStoredRecipientName() ?? undefined);
         setStage("certificate");
+        track(EVENT_NAMES.ONBOARDING_WIZARD_CERTIFICATE_VIEWED, { course: COURSE_NAME });
       }
     }, [])
   );
 
   // Closing the certificate advances to the CTA rather than ending the sequence.
-  const handleCertificateClose = useCallback(() => setStage("cta"), []);
+  // This handler is the moment the CTA is presented, so its view — the booking
+  // funnel's denominator — is tracked here in the handler.
+  const handleCertificateClose = useCallback(() => {
+    setStage("cta");
+    track(EVENT_NAMES.ONBOARDING_WIZARD_CTA_VIEWED, { course: COURSE_NAME });
+  }, []);
   const handleCtaDismiss = useCallback(() => setStage("none"), []);
 
   return (
     <>
-      <CertificateDialog
-        open={stage === "certificate"}
-        recipientName={recipientName}
-        workspaceLabel={workspaceLabel}
-        onClose={handleCertificateClose}
-      />
+      <CertificateDialog open={stage === "certificate"} recipientName={recipientName} onClose={handleCertificateClose} />
       <CtaDialog open={stage === "cta"} onDismiss={handleCtaDismiss} />
     </>
   );

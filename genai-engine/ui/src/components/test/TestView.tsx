@@ -11,7 +11,7 @@ import { Link, useParams } from "react-router-dom";
 
 import { AgentExperiments } from "@/components/agent-experiments";
 import { AgentNotebook } from "@/components/agent-notebook";
-import { TOUR_IDS } from "@/features/task-tour";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
 
 type TestTab = "agent-experiments" | "agentic-notebooks";
 

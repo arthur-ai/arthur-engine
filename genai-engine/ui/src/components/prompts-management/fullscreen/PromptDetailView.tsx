@@ -20,7 +20,7 @@ import Radio from "@mui/material/Radio";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useSnackbar } from "notistack";
-import { useState, useCallback, type HTMLAttributes } from "react";
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAddTagToPromptVersionMutation } from "../hooks/useAddTagToPromptVersionMutation";
@@ -28,7 +28,7 @@ import { useDeleteTagFromPromptVersionMutation } from "../hooks/useDeleteTagFrom
 import type { PromptDetailViewProps } from "../types";
 
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
-import { TOUR_IDS } from "@/features/task-tour/selectors";
+import { TOUR_IDS, tourDataAttr } from "@/features/task-tour/selectors";
 import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { useApi } from "@/hooks/useApi";
 import { useCreateNotebookMutation, useSetNotebookStateMutation } from "@/hooks/useNotebooks";
@@ -431,7 +431,7 @@ const PromptDetailView = ({
         }}
         slotProps={{
           paper: {
-            ...({ "data-tour-id": TOUR_IDS.promptTagsPopover } as HTMLAttributes<HTMLDivElement>),
+            ...tourDataAttr(TOUR_IDS.promptTagsPopover),
           },
         }}
       >

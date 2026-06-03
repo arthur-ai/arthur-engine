@@ -43,7 +43,7 @@ describe("createTourStatePlugin", () => {
       storage: memoryStorage({ tour: "{not-json" }),
     });
 
-    expect(plugin.getSnapshot()).toEqual({ status: "unseen", completed: new Set(), minimized: true });
+    expect(plugin.getSnapshot()).toEqual({ status: "unseen", completed: new Set() });
   });
 
   it("keeps in-memory state when storage writes fail", () => {
@@ -151,8 +151,8 @@ describe("createTourStatePlugin", () => {
 
     plugin.reset();
 
-    expect(plugin.getSnapshot()).toEqual({ status: "unseen", completed: new Set(), minimized: true });
-    expect(JSON.parse(storage.data.tour)).toEqual({ status: "unseen", completed: [], minimized: true });
+    expect(plugin.getSnapshot()).toEqual({ status: "unseen", completed: new Set() });
+    expect(JSON.parse(storage.data.tour)).toEqual({ status: "unseen", completed: [] });
   });
 
   it("resets dismissed snapshots with custom completion keys", () => {
@@ -167,8 +167,8 @@ describe("createTourStatePlugin", () => {
 
     plugin.reset();
 
-    expect(plugin.getSnapshot()).toEqual({ status: "unseen", completed: new Set(), minimized: true });
-    expect(JSON.parse(storage.data.tour)).toEqual({ status: "unseen", completed: [], minimized: true });
+    expect(plugin.getSnapshot()).toEqual({ status: "unseen", completed: new Set() });
+    expect(JSON.parse(storage.data.tour)).toEqual({ status: "unseen", completed: [] });
   });
 
   it("ignores storage events for other persistence keys", () => {
@@ -207,48 +207,5 @@ describe("createTourStatePlugin", () => {
     plugin.setSnapshot({ status: "unseen" });
 
     expect(setItem).not.toHaveBeenCalled();
-  });
-
-  it("defaults the checklist to collapsed (minimized) for a fresh tour", () => {
-    const plugin = createTourStatePlugin({ storageKey: "tour", storage: memoryStorage() });
-
-    expect(plugin.getSnapshot().minimized).toBe(true);
-  });
-
-  it("persists the minimized preference through serialize/parse", () => {
-    const storage = memoryStorage();
-    const plugin = createTourStatePlugin({ storageKey: "tour", storage });
-
-    plugin.setSnapshot({ minimized: false });
-
-    // Written to storage...
-    expect(JSON.parse(storage.data.tour).minimized).toBe(false);
-    // ...and read back by a fresh plugin instance (survives remount / reload).
-    const reloaded = createTourStatePlugin({ storageKey: "tour", storage });
-    expect(reloaded.getSnapshot().minimized).toBe(false);
-  });
-
-  it("changes minimized without disturbing status or progress", () => {
-    const plugin = createTourStatePlugin({ storageKey: "tour", storage: memoryStorage() });
-    plugin.setSnapshot({ status: "in-progress" });
-    plugin.markCompleted("alpha.one");
-
-    plugin.setSnapshot({ minimized: false });
-
-    const snapshot = plugin.getSnapshot();
-    expect(snapshot.minimized).toBe(false);
-    expect(snapshot.status).toBe("in-progress");
-    expect(snapshot.completed.has("alpha.one")).toBe(true);
-  });
-
-  it("honors an explicitly stored expanded preference on load", () => {
-    const plugin = createTourStatePlugin({
-      storageKey: "tour",
-      storage: memoryStorage({
-        tour: JSON.stringify({ status: "in-progress", completed: [], minimized: false }),
-      }),
-    });
-
-    expect(plugin.getSnapshot().minimized).toBe(false);
   });
 });

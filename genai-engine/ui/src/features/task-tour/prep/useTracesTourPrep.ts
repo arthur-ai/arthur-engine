@@ -19,14 +19,29 @@ import { getFilteredTraces } from "@/services/tracing";
 /** Long enough for route mount + lazy drawer chunk + trace suspense query. */
 const TARGET_WAIT_MS = 20_000;
 
-const DRAWER_STEPS = new Set(["review-spans", "review-annotations", "add-feedback", "add-trace-to-dataset"]);
+// Every trace-section step whose target lives inside the trace drawer, so the
+// prep hook must open the first trace before resolving. Includes the
+// dataset-capture beats (review-trace-actions / open-add-to-dataset /
+// save-trace-to-dataset), which all declare `prepareKey: traceOpened` in
+// wiring.ts and depend on the drawer being open on resume / re-entry.
+const DRAWER_STEPS = new Set([
+  "review-spans",
+  "review-annotations",
+  "add-feedback",
+  "review-trace-actions",
+  "open-add-to-dataset",
+  "save-trace-to-dataset",
+]);
 
+// Static `data-tour-id` anchors the prep hook waits for before resolving. Only
+// listed for the selector-targeted steps — the dataset-capture beats above are
+// queryHook-resolved, so a static fallback wait here would block up to
+// TARGET_WAIT_MS before the engine's own awaitTarget even runs. Leave them out.
 const STEP_TARGET_FALLBACK: Record<string, TourId> = {
   "open-trace": TOUR_IDS.tracesFirstRow,
   "review-spans": TOUR_IDS.traceDrawerSpans,
   "review-annotations": TOUR_IDS.traceDrawerEvals,
   "add-feedback": TOUR_IDS.traceDrawerFeedback,
-  "add-trace-to-dataset": TOUR_IDS.traceDrawerAddToDataset,
 };
 
 type TracesListPayload = { traces?: TraceMetadataResponse[] };
@@ -37,7 +52,8 @@ export interface UseTracesTourPrepOptions {
 
 /**
  * Replaces v0's global `prepDeps` singleton with a properly scoped React
- * hook. Mounted by `TracesPrepWidget` inside `<TourHost>`:
+ * hook. Called directly from `TaskTourPortal` (in `TaskTour.tsx`) inside
+ * `<TourHost>`:
  *  - Reads trace-drawer + pagination state through their respective hooks.
  *  - Registers a preparation hook against the engine via
  *    {@link useRegisterPreparation} so trace-section steps run it before

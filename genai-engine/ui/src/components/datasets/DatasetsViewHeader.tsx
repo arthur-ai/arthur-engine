@@ -2,7 +2,7 @@ import AddIcon from "@mui/icons-material/Add";
 import { Box, Button, Typography } from "@mui/material";
 import React from "react";
 
-import { TOUR_IDS } from "@/features/task-tour";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
 
 interface DatasetsViewHeaderProps {
   onCreateDataset: () => void;

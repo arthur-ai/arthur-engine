@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PromptsView } from "./PromptsView";
 
-import { TOUR_IDS } from "@/features/task-tour";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
 import { dispatchTourEvent, refreshTaskTourTarget, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 
 const mocks = vi.hoisted(() => ({
@@ -41,15 +41,9 @@ vi.mock("../prompt-experiments/PromptExperimentsView", () => ({
   },
 }));
 
-vi.mock("@/features/task-tour", () => ({
-  TOUR_IDS: {
-    promptsEntry: "task-tour-prompts-entry",
-    promptsExperimentCreateNew: "task-tour-prompts-experiment-create-new",
-    promptsExperimentButton: "task-tour-prompts-experiment",
-    promptsManagementTab: "task-tour-prompts-management-tab",
-  },
-}));
-
+// TOUR_IDS now resolves from the lightweight `selectors` module (no engine /
+// markdown pulled in), so the barrel no longer needs mocking — only the action
+// bridge is stubbed to spy on dispatch/refresh.
 vi.mock("@/features/task-tour/tourEvents", () => ({
   dispatchTourEvent: vi.fn(),
   refreshTaskTourTarget: vi.fn(),

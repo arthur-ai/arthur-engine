@@ -6,7 +6,7 @@ import type { TaskTourItem, TaskTourSection } from "../data";
 
 import { resolveAssetSrc } from "./assetMap";
 import { MetaFrontmatterSchema, SectionFrontmatterSchema, type MetaFrontmatter, type SectionFrontmatter } from "./schema";
-import { TASK_TOUR_WIRING } from "./wiring";
+import { TASK_TOUR_WIRING, type SectionWiring } from "./wiring";
 
 /**
  * Raw markdown sources for every section file, keyed by Vite-relative path
@@ -94,12 +94,7 @@ function resolveHeroOrThrow(file: string, src: string): string {
  * are all identical (or all empty, for stub sections). Surfaces a precise
  * mismatch message so authors can fix the source of truth, not guess.
  */
-function checkStepConsistency(file: string, sectionId: string, frontmatterStepIds: readonly string[], bodyStepIds: readonly string[]): void {
-  const wiring = TASK_TOUR_WIRING[sectionId];
-  if (!wiring) {
-    fail(file, `section id "${sectionId}" has no entry in content/wiring.ts`);
-  }
-
+function checkStepConsistency(file: string, wiring: SectionWiring, frontmatterStepIds: readonly string[], bodyStepIds: readonly string[]): void {
   const wiringStepIds = Object.keys(wiring.steps);
 
   const sameSet = (a: readonly string[], b: readonly string[]): boolean => a.length === b.length && a.every((id) => b.includes(id));
@@ -119,8 +114,7 @@ function checkStepConsistency(file: string, sectionId: string, frontmatterStepId
  * wiring map (which holds the targetId / route / eventName / advance) and the
  * body's per-step prose (pre-rendered to ReactNode).
  */
-function buildItems(sectionId: string, frontmatter: SectionFrontmatter, bodyStepText: Record<string, string>): TaskTourItem[] {
-  const wiring = TASK_TOUR_WIRING[sectionId];
+function buildItems(wiring: SectionWiring, frontmatter: SectionFrontmatter, bodyStepText: Record<string, string>): TaskTourItem[] {
   return frontmatter.steps.map((step) => {
     const wired = wiring.steps[step.id];
     return {
@@ -185,7 +179,7 @@ function parseSection(file: string, raw: string): TaskTourSection {
 
   checkStepConsistency(
     file,
-    frontmatter.id,
+    wiring,
     frontmatter.steps.map((s) => s.id),
     Object.keys(body.steps)
   );
@@ -220,7 +214,7 @@ function parseSection(file: string, raw: string): TaskTourSection {
             }
           : undefined,
     },
-    items: isIntroOnly ? [] : buildItems(frontmatter.id, frontmatter, body.steps),
+    items: isIntroOnly ? [] : buildItems(wiring, frontmatter, body.steps),
   };
 }
 
@@ -269,7 +263,7 @@ function loadSections(): TaskTourSection[] {
   return entries.map(([file, raw]) => parseSection(file, raw));
 }
 
-/** Top-level tour labels (title, short name, subtitle). */
+/** Top-level tour labels (title, short name). */
 export const TASK_TOUR_META: MetaFrontmatter = loadMeta();
 
 /** Ordered list of tour sections, ready to be consumed by `tour-config.ts`. */

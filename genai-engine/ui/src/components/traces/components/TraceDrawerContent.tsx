@@ -16,7 +16,7 @@ import { AddToDatasetDrawer } from "./add-to-dataset/Drawer";
 import { ContinuousEvalDrawer } from "./continuous-eval/ContinuousEvalDrawer";
 import { TraceDrawerAnnotationBar } from "./TraceDrawerAnnotationBar";
 
-import { TOUR_IDS } from "@/features/task-tour";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
 import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
@@ -134,11 +134,12 @@ export const TraceDrawerContent = ({ id }: Props) => {
 
   // Task-tour anchors. `TraceDrawerBody`'s `slotProps` spreads each entry onto
   // a wrapping `<div>` inside the drawer, so we can attach `data-tour-id`
-  // without resorting to opaque DOM wrappers.
+  // without resorting to opaque DOM wrappers. There is no `actions` slot — the
+  // Trace Actions dropdown is resolved by its button label in
+  // `TracesTargetWidget` instead.
   const tourSlotProps = useMemo<TraceDrawerBodySlotProps>(
     () => ({
       root: { "data-tour-id": TOUR_IDS.traceDrawerAddToDataset },
-      actions: { "data-tour-id": TOUR_IDS.traceActions },
       spans: {
         "data-tour-id": TOUR_IDS.traceDrawerSpans,
         onClick: () => dispatchTourEvent(TASK_TOUR_EVENTS.spansReviewed),

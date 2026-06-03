@@ -3,44 +3,21 @@ import { useId } from "react";
 export interface ArthurSealProps {
   /** Rendered width/height in px. The medallion is square. */
   size?: number;
-  /** Visual treatment. `gold` is the classic-diploma seal; `purple` the brand seal. */
-  variant?: "gold" | "purple";
-  /** Curved label text wrapped around the upper ring. Upper-cased on render. */
-  label?: string;
-  /** Short established/date line set in the lower disc. */
-  establishedText?: string;
 }
 
-interface SealPalette {
-  ringInner: string;
-  ringHi: string;
-  ringLo: string;
-  discHi: string;
-  discLo: string;
-  mark: string;
-  text: string;
-}
-
-const PALETTES: Record<NonNullable<ArthurSealProps["variant"]>, SealPalette> = {
-  gold: {
-    ringInner: "#C9A24C",
-    ringHi: "#F4DE9C",
-    ringLo: "#5E4612",
-    discHi: "#FFF6DD",
-    discLo: "#E9C76A",
-    mark: "#3A2A0A",
-    text: "#3A2A0A",
-  },
-  purple: {
-    ringInner: "#7C3AED",
-    ringHi: "#C4B5FD",
-    ringLo: "#2E1065",
-    discHi: "#A78BFA",
-    discLo: "#5B21B6",
-    mark: "#FFFFFF",
-    text: "#FFFFFF",
-  },
+/** The classic gold-diploma palette — the only treatment the certificate uses. */
+const palette = {
+  ringInner: "#C9A24C",
+  ringHi: "#F4DE9C",
+  ringLo: "#5E4612",
+  discHi: "#FFF6DD",
+  discLo: "#E9C76A",
+  mark: "#3A2A0A",
+  text: "#3A2A0A",
 };
+
+const LABEL = "Arthur AI · Intro to Evals";
+const ESTABLISHED = "EST · MMXXVI";
 
 // Geometry in the 220×220 viewBox.
 const CX = 110;
@@ -64,13 +41,7 @@ function starPoints(cx: number, cy: number, radius: number): string {
  * captures cleanly when the certificate is exported to PNG. Mirrors the
  * `ArthurSeal` from the certificate design exploration (classic gold variant).
  */
-export function ArthurSeal({
-  size = 108,
-  variant = "gold",
-  label = "Arthur AI · Intro to Evals",
-  establishedText = "EST · MMXXVI",
-}: ArthurSealProps) {
-  const palette = PALETTES[variant];
+export function ArthurSeal({ size = 108 }: ArthurSealProps) {
   // Unique gradient/filter/path ids so multiple seals never collide.
   const uid = useId().replace(/:/g, "");
   const bevelId = `seal-bevel-${uid}`;
@@ -118,7 +89,7 @@ export function ArthurSeal({
       {/* Curved label on the outer ring. */}
       <text fill={palette.text} fontFamily="Geist, sans-serif" fontSize="9.5" fontWeight="600" letterSpacing="2.4">
         <textPath href={`#${textPathId}`} startOffset="50%" textAnchor="middle">
-          {label.toUpperCase()}
+          {LABEL.toUpperCase()}
         </textPath>
       </text>
 
@@ -147,7 +118,7 @@ export function ArthurSeal({
         letterSpacing="1.6"
         fontWeight="500"
       >
-        {establishedText}
+        {ESTABLISHED}
       </text>
     </svg>
   );

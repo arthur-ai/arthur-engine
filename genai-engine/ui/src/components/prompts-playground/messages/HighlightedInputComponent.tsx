@@ -7,12 +7,10 @@ export const HighlightedInputComponent = ({
   value,
   onChange,
   placeholder,
-  label,
 }: {
   value: string | OpenAIMessageItem[];
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
-  label?: string;
 }) => {
   // Convert OpenAIMessageItem[] to string
   const stringValue = typeof value === "string" ? value : value.map((item) => item.text || "").join(" ");
@@ -29,7 +27,6 @@ export const HighlightedInputComponent = ({
       value={stringValue}
       onChange={handleChange}
       placeholder={placeholder}
-      label={label}
       multiline
       minRows={2}
       maxRows={20}

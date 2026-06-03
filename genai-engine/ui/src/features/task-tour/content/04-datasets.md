@@ -88,11 +88,15 @@ Trace Actions is where you can promote real production behavior into reusable as
 
 ## step: open-add-to-dataset
 
-Click **Add to Dataset** in Trace Actions to start capturing this trace as a test case.
+Open **Trace Actions**, then choose **Add to Dataset** to start capturing this trace as a test case.
 
 ## step: save-trace-to-dataset
 
-Configure the drawer and save the row. This turns the observed failure into a permanent regression check.
+Fill out the drawer to capture this trace as a permanent regression check:
+
+1. **Select a dataset** to add the row to.
+2. Map columns to the trace — use **Fill from object**, or pick a span and drill into its keys (a transform can do this automatically).
+3. Once at least one column has a value, click **Add Row** to save.
 
 ## step: verify-new-row
 
