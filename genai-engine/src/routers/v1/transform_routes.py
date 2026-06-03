@@ -113,7 +113,9 @@ def get_transform(
                 detail=f"Transform {transform_id} not found",
             )
 
-        definition = trace_transform_repo.get_latest_definition(transform_id)
+        definition = trace_transform_repo.get_latest_definition(
+            transform_id, org_scope=org_scope
+        )
         return trace_transform.to_response_model(definition=definition)
     except HTTPException:
         raise
@@ -141,7 +143,7 @@ def get_transform_dependents(
                 status_code=404,
                 detail=f"Transform {transform_id} not found",
             )
-        return repo.get_transform_dependents(transform_id)
+        return repo.get_transform_dependents(transform_id, org_scope=org_scope)
     except HTTPException:
         raise
     except Exception as e:
@@ -191,7 +193,9 @@ def update_transform(
         trace_transform = trace_transform_repo.update_transform(
             transform_id, request, org_scope=org_scope
         )
-        definition = trace_transform_repo.get_latest_definition(transform_id)
+        definition = trace_transform_repo.get_latest_definition(
+            transform_id, org_scope=org_scope
+        )
         return trace_transform.to_response_model(definition=definition)
     except HTTPException:
         raise
@@ -219,7 +223,7 @@ def list_transform_versions(
                 status_code=404,
                 detail=f"Transform {transform_id} not found",
             )
-        return repo.list_versions(transform_id)
+        return repo.list_versions(transform_id, org_scope=org_scope)
     except HTTPException:
         raise
     except Exception as e:
@@ -247,7 +251,7 @@ def get_transform_version(
                 status_code=404,
                 detail=f"Transform {transform_id} not found",
             )
-        return repo.get_version_by_id(transform_id, version_id)
+        return repo.get_version_by_id(transform_id, version_id, org_scope=org_scope)
     except HTTPException:
         raise
     except Exception as e:
@@ -366,7 +370,9 @@ def execute_trace_transform_extraction(
             )
 
         # Fetch the latest version to get the transform definition
-        versions = trace_transform_repo.list_versions(transform_id).versions
+        versions = trace_transform_repo.list_versions(
+            transform_id, org_scope=org_scope
+        ).versions
         if not versions:
             raise HTTPException(
                 status_code=404,

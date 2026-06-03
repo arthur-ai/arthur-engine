@@ -83,14 +83,31 @@ class TraceTransformRepository:
             ).filter(DatabaseTask.org_id == org_scope)
         return q.one_or_none()
 
-    def _get_latest_definition(self, transform_id: UUID) -> TraceTransformDefinition:
+    def _get_latest_definition(
+        self,
+        transform_id: UUID,
+        org_scope: UUID | None = None,
+    ) -> TraceTransformDefinition:
         """Return the definition from the highest-numbered version of a transform."""
-        version = (
-            self.db_session.query(DatabaseTraceTransformVersion)
-            .filter(DatabaseTraceTransformVersion.transform_id == transform_id)
-            .order_by(desc(DatabaseTraceTransformVersion.version_number))
-            .first()
+        q = self.db_session.query(DatabaseTraceTransformVersion).filter(
+            DatabaseTraceTransformVersion.transform_id == transform_id,
         )
+        if org_scope is not None:
+            q = (
+                q.join(
+                    DatabaseTraceTransform,
+                    DatabaseTraceTransform.id
+                    == DatabaseTraceTransformVersion.transform_id,
+                )
+                .join(
+                    DatabaseTask,
+                    DatabaseTask.id == DatabaseTraceTransform.task_id,
+                )
+                .filter(DatabaseTask.org_id == org_scope)
+            )
+        version = q.order_by(
+            desc(DatabaseTraceTransformVersion.version_number),
+        ).first()
         if version is None:
             raise HTTPException(
                 status_code=404,
@@ -98,9 +115,13 @@ class TraceTransformRepository:
             )
         return TraceTransformDefinition.model_validate(version.definition)
 
-    def get_latest_definition(self, transform_id: UUID) -> TraceTransformDefinition:
+    def get_latest_definition(
+        self,
+        transform_id: UUID,
+        org_scope: UUID | None = None,
+    ) -> TraceTransformDefinition:
         """Public accessor for the latest version's definition."""
-        return self._get_latest_definition(transform_id)
+        return self._get_latest_definition(transform_id, org_scope=org_scope)
 
     def get_latest_definitions_for_transforms(
         self,
@@ -271,14 +292,36 @@ class TraceTransformRepository:
 
         return TraceTransform.from_db_model(db_transform)
 
-    def list_versions(self, transform_id: UUID) -> ListTraceTransformVersionsResponse:
-        """List all versions for a transform ordered by version_number descending."""
-        db_versions = (
-            self.db_session.query(DatabaseTraceTransformVersion)
-            .filter(DatabaseTraceTransformVersion.transform_id == transform_id)
-            .order_by(desc(DatabaseTraceTransformVersion.version_number))
-            .all()
+    def list_versions(
+        self,
+        transform_id: UUID,
+        org_scope: UUID | None = None,
+    ) -> ListTraceTransformVersionsResponse:
+        """List all versions for a transform ordered by version_number descending.
+
+        For a tenant caller (org_scope set) whose org does not own the
+        transform, this returns an empty list rather than a 404 — the versions
+        query simply yields no rows once joined through tasks.org_id.
+        """
+        q = self.db_session.query(DatabaseTraceTransformVersion).filter(
+            DatabaseTraceTransformVersion.transform_id == transform_id,
         )
+        if org_scope is not None:
+            q = (
+                q.join(
+                    DatabaseTraceTransform,
+                    DatabaseTraceTransform.id
+                    == DatabaseTraceTransformVersion.transform_id,
+                )
+                .join(
+                    DatabaseTask,
+                    DatabaseTask.id == DatabaseTraceTransform.task_id,
+                )
+                .filter(DatabaseTask.org_id == org_scope)
+            )
+        db_versions = q.order_by(
+            desc(DatabaseTraceTransformVersion.version_number),
+        ).all()
         versions = [
             TraceTransformVersionResponse(
                 id=v.id,
@@ -298,16 +341,27 @@ class TraceTransformRepository:
         self,
         transform_id: UUID,
         version_id: UUID,
+        org_scope: UUID | None = None,
     ) -> TraceTransformVersionResponse:
         """Get a specific version snapshot by ID."""
-        db_version = (
-            self.db_session.query(DatabaseTraceTransformVersion)
-            .filter(
-                DatabaseTraceTransformVersion.id == version_id,
-                DatabaseTraceTransformVersion.transform_id == transform_id,
-            )
-            .one_or_none()
+        q = self.db_session.query(DatabaseTraceTransformVersion).filter(
+            DatabaseTraceTransformVersion.id == version_id,
+            DatabaseTraceTransformVersion.transform_id == transform_id,
         )
+        if org_scope is not None:
+            q = (
+                q.join(
+                    DatabaseTraceTransform,
+                    DatabaseTraceTransform.id
+                    == DatabaseTraceTransformVersion.transform_id,
+                )
+                .join(
+                    DatabaseTask,
+                    DatabaseTask.id == DatabaseTraceTransform.task_id,
+                )
+                .filter(DatabaseTask.org_id == org_scope)
+            )
+        db_version = q.one_or_none()
         if not db_version:
             raise HTTPException(
                 status_code=404,
@@ -321,7 +375,25 @@ class TraceTransformRepository:
             created_at=db_version.created_at,
         )
 
-    def get_transform_dependents(self, transform_id: UUID) -> TransformDependents:
+    def get_transform_dependents(
+        self,
+        transform_id: UUID,
+        org_scope: UUID | None = None,
+    ) -> TransformDependents:
+        # A transform belongs to a single task/org, and its dependents live on
+        # that same task — so gating on transform ownership transitively scopes
+        # the dependents. A tenant that does not own the transform sees no
+        # dependents rather than another org's resources (Pattern C, design §7).
+        if org_scope is not None and not self._get_db_transform_by_id(
+            transform_id,
+            org_scope=org_scope,
+        ):
+            return TransformDependents(
+                continuous_evals=[],
+                agentic_experiments=[],
+                agentic_notebooks=[],
+            )
+
         continuous_evals = (
             self.db_session.query(
                 DatabaseContinuousEval.id,

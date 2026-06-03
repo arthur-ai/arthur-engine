@@ -16,13 +16,30 @@ class RuleRepository:
     def __init__(self, db_session: Session):
         self.db_session = db_session
 
-    def get_rule_by_id(self, rule_id: str) -> Rule:
+    def get_rule_by_id(self, rule_id: str, org_scope: UUID | None = None) -> Rule:
         rule = self.db_session.get(DatabaseRule, rule_id)
         if not rule:
             raise HTTPException(
                 status_code=404,
                 detail=constants.ERROR_RULE_NOT_FOUND % rule_id,
             )
+        # Tenant callers (org_scope set) may read default-scope rules (visible
+        # to everyone by design) plus any task-scope rule linked to a task in
+        # their org. A rule outside the org reads as 404 (Pattern C, design §7).
+        # Admin (org_scope=None) sees everything.
+        if org_scope is not None and rule.scope != RuleScope.DEFAULT:
+            org_link_exists = (
+                self.db_session.query(DatabaseTaskToRules.rule_id)
+                .join(DatabaseTask, DatabaseTask.id == DatabaseTaskToRules.task_id)
+                .filter(DatabaseTaskToRules.rule_id == rule_id)
+                .filter(DatabaseTask.org_id == org_scope)
+                .first()
+            )
+            if org_link_exists is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=constants.ERROR_RULE_NOT_FOUND % rule_id,
+                )
         return Rule._from_database_model(rule)
 
     def query_rules(

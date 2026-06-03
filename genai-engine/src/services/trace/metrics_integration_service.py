@@ -183,7 +183,12 @@ class MetricsIntegrationService:
         # Convert span to MetricRequest format
         span_request = self._span_to_metric_request(span)
 
-        # Get metrics for this task
+        # Get metrics for this task. This is a system context (the span's task
+        # ownership is already established upstream and metric_ids are derived
+        # from that task), so the org-scoped fetch is unnecessary here and would
+        # only bypass METRICS_CACHE in the hot path — pass None per the Pattern C
+        # "system contexts" carve-out (design §7). get_metrics_by_metric_id still
+        # accepts org_scope for tenant-facing callers.
         metric_ids = self.tasks_metrics_repo.get_task_metrics_ids_cached(span.task_id)
         metrics = self.metrics_repo.get_metrics_by_metric_id(metric_ids)
 

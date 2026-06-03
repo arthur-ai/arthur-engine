@@ -447,9 +447,10 @@ def archive_task_rule(
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> Response:
     rule_repo = RuleRepository(db_session)
-    rule = rule_repo.get_rule_by_id(str(rule_id))
+    rule = rule_repo.get_rule_by_id(str(rule_id), org_scope=org_scope)
 
     if rule.scope == RuleScope.DEFAULT:
         raise HTTPException(

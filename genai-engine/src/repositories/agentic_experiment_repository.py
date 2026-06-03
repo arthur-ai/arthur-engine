@@ -669,6 +669,7 @@ class AgenticExperimentRepository:
         self,
         experiment_id: str,
         status_filter: Optional[TestCaseStatus] = None,
+        org_scope: UUID | None = None,
     ) -> List[DatabaseAgenticExperimentTestCase]:
         query = self.db_session.query(DatabaseAgenticExperimentTestCase).filter(
             DatabaseAgenticExperimentTestCase.experiment_id == experiment_id,
@@ -677,18 +678,44 @@ class AgenticExperimentRepository:
             query = query.filter(
                 DatabaseAgenticExperimentTestCase.status == status_filter,
             )
+        # Org isolation: test_case → experiment → task.org_id (Pattern C, §7).
+        if org_scope is not None:
+            query = (
+                query.join(
+                    DatabaseAgenticExperiment,
+                    DatabaseAgenticExperiment.id
+                    == DatabaseAgenticExperimentTestCase.experiment_id,
+                )
+                .join(
+                    DatabaseTask,
+                    DatabaseTask.id == DatabaseAgenticExperiment.task_id,
+                )
+                .filter(DatabaseTask.org_id == org_scope)
+            )
         return query.all()
 
     def _get_db_test_case(
         self,
         test_case_id: str,
+        org_scope: UUID | None = None,
     ) -> Optional[DatabaseAgenticExperimentTestCase]:
-        test_case = (
-            self.db_session.query(DatabaseAgenticExperimentTestCase)
-            .filter_by(id=test_case_id)
-            .first()
+        query = self.db_session.query(DatabaseAgenticExperimentTestCase).filter(
+            DatabaseAgenticExperimentTestCase.id == test_case_id,
         )
-        return test_case
+        if org_scope is not None:
+            query = (
+                query.join(
+                    DatabaseAgenticExperiment,
+                    DatabaseAgenticExperiment.id
+                    == DatabaseAgenticExperimentTestCase.experiment_id,
+                )
+                .join(
+                    DatabaseTask,
+                    DatabaseTask.id == DatabaseAgenticExperiment.task_id,
+                )
+                .filter(DatabaseTask.org_id == org_scope)
+            )
+        return query.first()
 
     def get_test_cases(
         self,

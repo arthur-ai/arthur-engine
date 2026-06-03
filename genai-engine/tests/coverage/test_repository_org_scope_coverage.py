@@ -28,7 +28,12 @@ from repositories.agentic_notebook_repository import AgenticNotebookRepository
 from repositories.continuous_evals_repository import ContinuousEvalsRepository
 from repositories.datasets_repository import DatasetRepository
 from repositories.inference_repository import InferenceRepository
+from repositories.metrics_repository import MetricRepository
+from repositories.prompt_experiment_repository import PromptExperimentRepository
+from repositories.rag_experiment_repository import RagExperimentRepository
+from repositories.rules_repository import RuleRepository
 from repositories.span_repository import SpanRepository
+from repositories.trace_transform_repository import TraceTransformRepository
 
 # (repository class, method name). Cover the highest-touch resource-id
 # fetch methods. New Pattern C surface should be added here.
@@ -44,6 +49,22 @@ TASK_SCOPED_FETCHERS: list[tuple[type, str]] = [
     (AgenticExperimentRepository, "get_experiment"),
     (AgenticNotebookRepository, "get_notebook"),
     (ContinuousEvalsRepository, "get_continuous_eval_by_id"),
+    # UP-4470: Pattern C coverage gaps closed (metrics, rules, trace
+    # transforms, experiment test cases).
+    (MetricRepository, "get_metric_by_id"),
+    (MetricRepository, "get_metric"),
+    (MetricRepository, "get_metrics_by_metric_id"),
+    (RuleRepository, "get_rule_by_id"),
+    (TraceTransformRepository, "get_latest_definition"),
+    (TraceTransformRepository, "list_versions"),
+    (TraceTransformRepository, "get_version_by_id"),
+    (TraceTransformRepository, "get_transform_dependents"),
+    (AgenticExperimentRepository, "_get_db_test_case"),
+    (AgenticExperimentRepository, "_get_db_test_cases"),
+    (PromptExperimentRepository, "_get_db_test_case"),
+    (PromptExperimentRepository, "_get_db_test_cases"),
+    (RagExperimentRepository, "_get_db_test_case"),
+    (RagExperimentRepository, "_get_db_test_cases"),
 ]
 
 

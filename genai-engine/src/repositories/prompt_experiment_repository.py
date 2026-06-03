@@ -86,23 +86,49 @@ class PromptExperimentRepository:
     def _get_db_test_cases(
         self,
         experiment_id: str,
+        org_scope: UUID | None = None,
     ) -> List[DatabasePromptExperimentTestCase]:
-        return (
-            self.db_session.query(DatabasePromptExperimentTestCase)
-            .filter_by(experiment_id=experiment_id)
-            .all()
+        query = self.db_session.query(DatabasePromptExperimentTestCase).filter(
+            DatabasePromptExperimentTestCase.experiment_id == experiment_id,
         )
+        # Org isolation: test_case → experiment → task.org_id (Pattern C, §7).
+        if org_scope is not None:
+            query = (
+                query.join(
+                    DatabasePromptExperiment,
+                    DatabasePromptExperiment.id
+                    == DatabasePromptExperimentTestCase.experiment_id,
+                )
+                .join(
+                    DatabaseTask,
+                    DatabaseTask.id == DatabasePromptExperiment.task_id,
+                )
+                .filter(DatabaseTask.org_id == org_scope)
+            )
+        return query.all()
 
     def _get_db_test_case(
         self,
         test_case_id: str,
+        org_scope: UUID | None = None,
     ) -> Optional[DatabasePromptExperimentTestCase]:
-        test_case = (
-            self.db_session.query(DatabasePromptExperimentTestCase)
-            .filter_by(id=test_case_id)
-            .first()
+        query = self.db_session.query(DatabasePromptExperimentTestCase).filter(
+            DatabasePromptExperimentTestCase.id == test_case_id,
         )
-        return test_case
+        if org_scope is not None:
+            query = (
+                query.join(
+                    DatabasePromptExperiment,
+                    DatabasePromptExperiment.id
+                    == DatabasePromptExperimentTestCase.experiment_id,
+                )
+                .join(
+                    DatabaseTask,
+                    DatabaseTask.id == DatabasePromptExperiment.task_id,
+                )
+                .filter(DatabaseTask.org_id == org_scope)
+            )
+        return query.first()
 
     def _db_experiment_to_summary(
         self,
