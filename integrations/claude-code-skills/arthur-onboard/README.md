@@ -119,7 +119,17 @@ Run `/arthur-skills-upgrade` at any time to check versions and install updates:
 This reads the `version` field from each installed skill, compares it against the latest
 on GitHub main, and updates only the stale ones after confirmation.
 
-Alternatively, re-run the install script above — it overwrites all files in place.
+**First-time upgrade (installed before versioning was introduced):**
+If you installed skills before version fields were added, run this one-liner to bootstrap
+the upgrade skill, then run `/arthur-skills-upgrade` to bring everything else current:
+
+```bash
+BASE="https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integrations/claude-code-skills/arthur-onboard"
+mkdir -p ~/.claude/skills/arthur-skills-upgrade
+curl -sSLf "$BASE/arthur-skills-upgrade/SKILL.md" > ~/.claude/skills/arthur-skills-upgrade/SKILL.md
+```
+
+Alternatively, re-run the full install script above — it overwrites all files in place.
 
 ---
 
