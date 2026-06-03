@@ -13,7 +13,7 @@ import React from "react";
 import { DatasetSearchBar } from "./DatasetSearchBar";
 
 import { MAX_DATASET_ROWS } from "@/constants/datasetConstants";
-import { TOUR_IDS } from "@/features/task-tour";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
 
 interface DatasetHeaderProps {
   datasetName: string;

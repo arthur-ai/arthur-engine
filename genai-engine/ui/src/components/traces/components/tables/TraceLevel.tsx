@@ -30,7 +30,8 @@ import { TracingFilterModal } from "./components/TracingFilterModal";
 
 import { TestRunDialog } from "@/components/live-evals/components/TestRunDialog";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
-import { dispatchTourEvent, TASK_TOUR_EVENTS, TOUR_IDS } from "@/features/task-tour";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
+import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { useApi } from "@/hooks/useApi";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { useTask } from "@/hooks/useTask";

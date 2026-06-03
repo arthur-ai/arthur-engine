@@ -4,7 +4,7 @@ import { createTourBus } from "./events";
 import { matchesRouteWith, resolveRouteWith, toRouteSpec } from "./routes";
 import { createTourEngineStore } from "./store";
 import { resolveTargetAsync, resolveTargetSync } from "./targets";
-import { createDefaultTriggerRegistry } from "./triggers";
+import { createDefaultTriggers } from "./triggers";
 import type {
   AdvanceTrigger,
   HighlightRenderer,
@@ -27,7 +27,6 @@ import type {
   TourNavigator,
   TourPlugin,
   TourState,
-  TriggerFactory,
 } from "./types";
 
 export interface TourEngineOptions {
@@ -55,8 +54,6 @@ export interface TourEngine extends TourActions {
   setNavigator: (navigator: TourNavigator | null) => void;
   /** Returns the highlight renderer registered for `key`, if any. */
   getHighlight: (key: string) => HighlightRenderer | undefined;
-  /** Returns the queryHook resolver registered for `hookId`, if any. */
-  getQueryHook: (hookId: string) => QueryHookResolver | undefined;
   /** Returns the preparation hook registered for `key`, if any. */
   getPreparation: (key: string) => PreparationHook | undefined;
   /**
@@ -94,15 +91,9 @@ interface SectionPosition {
 
 export function createTourEngine(options: TourEngineOptions): TourEngine {
   const { config } = options;
-  const triggersRegistry = createDefaultTriggerRegistry();
-  const initialTriggers: Record<string, TriggerFactory> = {};
-  for (const key of ["manual", "click", "visible", "action"] as const) {
-    const factory = triggersRegistry.get(key);
-    if (factory) initialTriggers[key] = factory;
-  }
   const store = createTourEngineStore({
     layers: options.layers,
-    initialTriggers,
+    initialTriggers: createDefaultTriggers(),
   });
   const bus = createTourBus();
   const middleware: LifecycleMiddleware[] = [];
@@ -348,6 +339,21 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     return null;
   };
 
+  /**
+   * Run a consumer lifecycle hook (section/step `onEnter`/`onExit`) as
+   * fire-and-forget: await it and swallow + log any throw so a buggy product
+   * hook can't break the engine's transition. Only for void hooks the engine
+   * doesn't branch on — navigation, preparation, `skipWhen`, and middleware keep
+   * their inline handling because they interleave abort / return control flow.
+   */
+  const runHook = async (label: string, run: () => void | Promise<void>): Promise<void> => {
+    try {
+      await run();
+    } catch (err) {
+      console.error(`[tour] ${label} threw`, err);
+    }
+  };
+
   const exitCurrentStep = async (cause: StepLeftCause | undefined): Promise<boolean> => {
     const current = getState();
     if (current.status !== "step") return true;
@@ -363,13 +369,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
       if (completed) bus.emit("step:completed", { ...ctx, cause: completed });
       bus.emit("step:left", { ...ctx, cause });
     }
-    if (step.onExit) {
-      try {
-        await step.onExit(ctx);
-      } catch (err) {
-        console.error("[tour] step.onExit threw", err);
-      }
-    }
+    await runHook("step.onExit", () => step.onExit?.(ctx));
     return true;
   };
 
@@ -385,14 +385,8 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
 
     if (opts.runSectionEnter) {
       bus.emit("section:enter", { tourId: config.id, sectionId: section.id, sectionIndex: pos.sectionIndex });
-      if (section.onEnter) {
-        try {
-          await section.onEnter({ tourId: config.id, sectionId: section.id });
-        } catch (err) {
-          console.error("[tour] section.onEnter threw", err);
-        }
-        if (signal.aborted) return;
-      }
+      await runHook("section.onEnter", () => section.onEnter?.({ tourId: config.id, sectionId: section.id }));
+      if (signal.aborted) return;
     }
 
     setState({
@@ -442,14 +436,8 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
       }
     }
 
-    if (step.onEnter) {
-      try {
-        await step.onEnter(ctx);
-      } catch (err) {
-        console.error("[tour] step.onEnter threw", err);
-      }
-      if (signal.aborted) return;
-    }
+    await runHook("step.onEnter", () => step.onEnter?.(ctx));
+    if (signal.aborted) return;
 
     if (step.skipWhen) {
       try {
@@ -523,13 +511,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
         sectionId: fromSection.id,
         sectionIndex: currentSectionIndex,
       });
-      if (fromSection.onExit) {
-        try {
-          await fromSection.onExit({ tourId: config.id, sectionId: fromSection.id });
-        } catch (err) {
-          console.error("[tour] section.onExit threw", err);
-        }
-      }
+      await runHook("section.onExit", () => fromSection.onExit?.({ tourId: config.id, sectionId: fromSection.id }));
     }
 
     if (section.introduction && !opts.skipIntro) {
@@ -538,13 +520,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
         sectionId: section.id,
         sectionIndex: sectionPos.sectionIndex,
       });
-      if (section.onEnter) {
-        try {
-          await section.onEnter({ tourId: config.id, sectionId: section.id });
-        } catch (err) {
-          console.error("[tour] section.onEnter threw", err);
-        }
-      }
+      await runHook("section.onEnter", () => section.onEnter?.({ tourId: config.id, sectionId: section.id }));
       setState({
         status: "intro",
         sectionId: section.id,
@@ -574,13 +550,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
       if (fromIndex !== null) {
         const fromSection = config.sections[fromIndex];
         bus.emit("section:exit", { tourId: config.id, sectionId: fromSection.id, sectionIndex: fromIndex });
-        if (fromSection.onExit) {
-          try {
-            await fromSection.onExit({ tourId: config.id, sectionId: fromSection.id });
-          } catch (err) {
-            console.error("[tour] section.onExit threw", err);
-          }
-        }
+        await runHook("section.onExit", () => fromSection.onExit?.({ tourId: config.id, sectionId: fromSection.id }));
       }
     }
     await enterStep(pos, { runSectionEnter: sectionChanging });
@@ -651,13 +621,7 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
         sectionId: section.id,
         sectionIndex: current.sectionIndex,
       });
-      if (section.onExit) {
-        try {
-          await section.onExit({ tourId: config.id, sectionId: section.id });
-        } catch (err) {
-          console.error("[tour] section.onExit threw", err);
-        }
-      }
+      await runHook("section.onExit", () => section.onExit?.({ tourId: config.id, sectionId: section.id }));
     }
     setState({ status: "completed" });
     bus.emit("tour:end", { tourId: config.id, reason: "completed" });
@@ -745,8 +709,12 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     if (target.stepId) {
       const pos = findStepPosition(target.sectionId, target.stepId);
       if (!pos) return;
-      const cause: StepLeftCause =
-        s.status === "step" && pos.sectionIndex * 10000 + pos.stepIndex >= s.sectionIndex * 10000 + s.stepIndex ? "goTo-forward" : "goTo-backward";
+      // Forward iff we're on a step and the target is at or past the current
+      // position (compare section first, then step). Re-selecting the current
+      // step counts as forward (`>=`) to match the documented invariant.
+      const isForward =
+        s.status === "step" && (pos.sectionIndex !== s.sectionIndex ? pos.sectionIndex > s.sectionIndex : pos.stepIndex >= s.stepIndex);
+      const cause: StepLeftCause = isForward ? "goTo-forward" : "goTo-backward";
       await goToStep(pos, { cause });
       return;
     }
@@ -915,7 +883,6 @@ export function createTourEngine(options: TourEngineOptions): TourEngine {
     subscribe,
     setNavigator,
     getHighlight: (key) => store.getState().highlights.get(key),
-    getQueryHook: (hookId) => store.getState().queryHooks.get(hookId),
     getPreparation: (key) => store.getState().preparations.get(key),
     onPrepareRequested,
     destroy,

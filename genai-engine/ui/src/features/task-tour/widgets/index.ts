@@ -1,10 +1,8 @@
-export { CertificateWidget, type CertificateWidgetProps } from "./CertificateWidget";
-export { ChecklistWidget, type ChecklistWidgetProps } from "./ChecklistWidget";
+export { CertificateWidget } from "./CertificateWidget";
 export { DatasetTargetWidget } from "./DatasetTargetWidget";
 export { EvaluateTargetWidget } from "./EvaluateTargetWidget";
 export { IntroWidget } from "./IntroWidget";
 export { PromptTargetWidget } from "./PromptTargetWidget";
-export { ResumeFabWidget, type ResumeFabWidgetProps } from "./ResumeFabWidget";
 export { SectionCompleteWidget } from "./SectionCompleteWidget";
 export { SpotlightWidget } from "./SpotlightWidget";
 export { TaskTourFormPrefillWidget } from "./TaskTourFormPrefillWidget";

@@ -7,7 +7,7 @@ export interface PulsingRingProps {
   zIndex?: number;
 }
 
-export function getPulseExpansionGeometry(radius: number, spread: number): { inset: number; radius: number } {
+function getPulseExpansionGeometry(radius: number, spread: number): { inset: number; radius: number } {
   return {
     inset: -spread,
     radius: radius + spread,
