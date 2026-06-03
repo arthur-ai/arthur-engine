@@ -80,13 +80,13 @@ describe("CertificateWidget", () => {
   it("tracks a certificate view when the tour completes", () => {
     const engine = renderWidget();
 
-    expect(track).not.toHaveBeenCalledWith(EVENT_NAMES.CERTIFICATE_VIEWED, expect.anything());
+    expect(track).not.toHaveBeenCalledWith(EVENT_NAMES.ONBOARDING_WIZARD_CERTIFICATE_VIEWED, expect.anything());
 
     act(() => {
       engine.bus.emit("tour:end", { tourId: "task-tour", reason: "completed" });
     });
 
-    expect(track).toHaveBeenCalledWith(EVENT_NAMES.CERTIFICATE_VIEWED, { course: "Intro to Evals" });
+    expect(track).toHaveBeenCalledWith(EVENT_NAMES.ONBOARDING_WIZARD_CERTIFICATE_VIEWED, { course: "Intro to Evals" });
   });
 
   it("does not track a view when the tour ends without completing", () => {
@@ -96,7 +96,7 @@ describe("CertificateWidget", () => {
       engine.bus.emit("tour:end", { tourId: "task-tour", reason: "skipped" });
     });
 
-    expect(track).not.toHaveBeenCalledWith(EVENT_NAMES.CERTIFICATE_VIEWED, expect.anything());
+    expect(track).not.toHaveBeenCalledWith(EVENT_NAMES.ONBOARDING_WIZARD_CERTIFICATE_VIEWED, expect.anything());
   });
 
   it("names the recipient from the stored onboarding name", () => {
@@ -135,6 +135,7 @@ describe("CertificateWidget", () => {
     fireEvent.click(screen.getByRole("button", { name: /dismiss certificate/i }));
     expect(screen.queryByRole("dialog", { name: /certificate of achievement/i })).toBeNull();
     expect(screen.getByRole("dialog", { name: /zach, the cto at arthur/i })).toBeTruthy();
+    expect(track).toHaveBeenCalledWith(EVENT_NAMES.ONBOARDING_WIZARD_CTA_VIEWED, { course: "Intro to Evals" });
 
     // Dismissing the CTA ends the sequence (awaiting the exit transition).
     fireEvent.click(screen.getByRole("button", { name: /^dismiss$/i }));

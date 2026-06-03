@@ -42,17 +42,20 @@ describe("CertificateDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: /download png/i }));
 
     expect(downloadFile).toHaveBeenCalledWith(expect.any(Blob), "certificate.png", "image/png");
-    expect(track).toHaveBeenCalledWith(EVENT_NAMES.CERTIFICATE_DOWNLOAD_CLICKED, { course: "Intro to Evals" });
+    expect(track).toHaveBeenCalledWith(EVENT_NAMES.ONBOARDING_WIZARD_CERTIFICATE_DOWNLOAD_CLICKED, { course: "Intro to Evals" });
   });
 
   it("tracks share clicks by destination", () => {
     render(<CertificateDialog open onClose={vi.fn()} />);
 
     fireEvent.click(screen.getByRole("link", { name: /share to linkedin/i }));
-    expect(track).toHaveBeenCalledWith(EVENT_NAMES.CERTIFICATE_SHARE_CLICKED, { destination: "linkedin", course: "Intro to Evals" });
+    expect(track).toHaveBeenCalledWith(EVENT_NAMES.ONBOARDING_WIZARD_CERTIFICATE_SHARE_CLICKED, {
+      destination: "linkedin",
+      course: "Intro to Evals",
+    });
 
     fireEvent.click(screen.getByRole("link", { name: /share to x/i }));
-    expect(track).toHaveBeenCalledWith(EVENT_NAMES.CERTIFICATE_SHARE_CLICKED, { destination: "x", course: "Intro to Evals" });
+    expect(track).toHaveBeenCalledWith(EVENT_NAMES.ONBOARDING_WIZARD_CERTIFICATE_SHARE_CLICKED, { destination: "x", course: "Intro to Evals" });
   });
 
   it("renders the achievement certificate design and sharing actions", () => {
@@ -69,21 +72,23 @@ describe("CertificateDialog", () => {
     expect(screen.getByRole("link", { name: /share to x/i })).toBeTruthy();
   });
 
-  it("dismisses from the close affordance", () => {
+  it("dismisses from the close affordance and tracks the method", () => {
     const onClose = vi.fn();
 
     render(<CertificateDialog open onClose={onClose} />);
     fireEvent.click(screen.getByRole("button", { name: /dismiss certificate/i }));
 
     expect(onClose).toHaveBeenCalledTimes(1);
+    expect(track).toHaveBeenCalledWith(EVENT_NAMES.ONBOARDING_WIZARD_CERTIFICATE_CLOSED, { method: "dismiss", course: "Intro to Evals" });
   });
 
-  it("advances from a visible primary action button", () => {
+  it("advances from a visible primary action button and tracks the method", () => {
     const onClose = vi.fn();
 
     render(<CertificateDialog open onClose={onClose} />);
     fireEvent.click(screen.getByRole("button", { name: /continue/i }));
 
     expect(onClose).toHaveBeenCalledTimes(1);
+    expect(track).toHaveBeenCalledWith(EVENT_NAMES.ONBOARDING_WIZARD_CERTIFICATE_CLOSED, { method: "continue", course: "Intro to Evals" });
   });
 });

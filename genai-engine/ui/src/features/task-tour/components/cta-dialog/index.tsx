@@ -2,6 +2,10 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CloseIcon from "@mui/icons-material/Close";
 import { Avatar, Box, Button, Dialog, DialogActions, IconButton, Stack, Typography } from "@mui/material";
 
+import { COURSE_NAME } from "../../courseName";
+
+import { EVENT_NAMES, track } from "@/services/amplitude";
+
 // Scheduling link for booking time with Arthur's CTO to talk Agent Evals.
 // Kept as a single constant so there's one spot to change.
 const BOOKING_URL = "https://calendar.app.google/aRT3BnbUabjQRdJE6";
@@ -87,6 +91,8 @@ export function CtaDialog({ open, onDismiss }: CtaDialogProps) {
             href={BOOKING_URL}
             target="_blank"
             rel="noopener noreferrer"
+            // Opens in a new tab, so the page stays alive and the event sends reliably.
+            onClick={() => track(EVENT_NAMES.ONBOARDING_WIZARD_CTA_BOOK_CLICKED, { course: COURSE_NAME })}
             endIcon={<ArrowForwardIcon sx={{ fontSize: 18 }} />}
           >
             Book a time
