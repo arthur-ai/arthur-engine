@@ -80,7 +80,8 @@ for skill in arthur-onboard-oss arthur-onboard-oss-engine arthur-onboard-task ar
     || { echo "FAILED: $skill"; rm -f ~/.claude/skills/$skill/SKILL.md; }
 done
 # Also install the instrumentation examples reference
-curl -sSLf "$BASE/arthur-onboard-instrument/EXAMPLES.md" > ~/.claude/skills/arthur-onboard-instrument/EXAMPLES.md
+curl -sSLf "$BASE/arthur-onboard-instrument/EXAMPLES.md" > ~/.claude/skills/arthur-onboard-instrument/EXAMPLES.md \
+  || { echo "FAILED: arthur-onboard-instrument/EXAMPLES.md"; rm -f ~/.claude/skills/arthur-onboard-instrument/EXAMPLES.md; }
 ```
 
 ### Project install
@@ -97,7 +98,8 @@ for skill in arthur-onboard-oss arthur-onboard-oss-engine arthur-onboard-task ar
     || { echo "FAILED: $skill"; rm -f .claude/skills/$skill/SKILL.md; }
 done
 # Also install the instrumentation examples reference
-curl -sSLf "$BASE/arthur-onboard-instrument/EXAMPLES.md" > .claude/skills/arthur-onboard-instrument/EXAMPLES.md
+curl -sSLf "$BASE/arthur-onboard-instrument/EXAMPLES.md" > .claude/skills/arthur-onboard-instrument/EXAMPLES.md \
+  || { echo "FAILED: arthur-onboard-instrument/EXAMPLES.md"; rm -f .claude/skills/arthur-onboard-instrument/EXAMPLES.md; }
 git add .claude/skills/arthur-onboard*/
 git commit -m "Add Arthur GenAI Engine onboarding skills"
 ```
@@ -232,7 +234,8 @@ for skill in arthur-onboard-platform arthur-onboard-platform-access arthur-onboa
     || { echo "FAILED: $skill"; rm -f ~/.claude/skills/$skill/SKILL.md; }
 done
 # Also install the instrumentation examples reference
-curl -sSLf "$BASE/arthur-onboard-instrument/EXAMPLES.md" > ~/.claude/skills/arthur-onboard-instrument/EXAMPLES.md
+curl -sSLf "$BASE/arthur-onboard-instrument/EXAMPLES.md" > ~/.claude/skills/arthur-onboard-instrument/EXAMPLES.md \
+  || { echo "FAILED: arthur-onboard-instrument/EXAMPLES.md"; rm -f ~/.claude/skills/arthur-onboard-instrument/EXAMPLES.md; }
 ```
 
 ### Project install
@@ -251,7 +254,8 @@ for skill in arthur-onboard-platform arthur-onboard-platform-access arthur-onboa
     || { echo "FAILED: $skill"; rm -f .claude/skills/$skill/SKILL.md; }
 done
 # Also install the instrumentation examples reference
-curl -sSLf "$BASE/arthur-onboard-instrument/EXAMPLES.md" > .claude/skills/arthur-onboard-instrument/EXAMPLES.md
+curl -sSLf "$BASE/arthur-onboard-instrument/EXAMPLES.md" > .claude/skills/arthur-onboard-instrument/EXAMPLES.md \
+  || { echo "FAILED: arthur-onboard-instrument/EXAMPLES.md"; rm -f .claude/skills/arthur-onboard-instrument/EXAMPLES.md; }
 git add .claude/skills/arthur-onboard*/
 git commit -m "Add Arthur Platform onboarding skills"
 ```

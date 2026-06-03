@@ -281,35 +281,35 @@ def call_llm(streamer, prompts: list, thread_ts: str) -> None:
                 if event.item.type == "function_call":
                     tool_calls.append(event.item)
 
-    if tool_calls:
-        for call in tool_calls:
-            # Wrap each tool execution in a TOOL span so it appears in the trace
-            with tracer.start_as_current_span(call.name) as tool_span:
-                tool_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND,
-                                        OpenInferenceSpanKindValues.TOOL.value)
-                tool_span.set_attribute(SpanAttributes.TOOL_NAME, call.name)
-                tool_span.set_attribute("tool.id", call.call_id)  # links to LLM call
-                tool_span.set_attribute(SpanAttributes.INPUT_VALUE, call.arguments)
-                tool_span.set_attribute(SpanAttributes.INPUT_MIME_TYPE, "application/json")
-                try:
-                    result = roll_dice(**json.loads(call.arguments))
-                    tool_span.set_attribute(SpanAttributes.OUTPUT_VALUE, json.dumps(result))
-                except Exception as e:
-                    tool_span.set_status(StatusCode.ERROR, str(e))
-                    raise
-            # Responses API tool-result format (not chat.completions format)
-            prompts.append({
-                "type": "function_call",
-                "call_id": call.call_id,
-                "name": call.name,
-                "arguments": call.arguments,
-            })
-            prompts.append({
-                "type": "function_call_output",
-                "call_id": call.call_id,
-                "output": json.dumps(result),
-            })
-        call_llm(streamer, prompts, thread_ts)  # recursive — gets final text reply
+        if tool_calls:
+            for call in tool_calls:
+                # Wrap each tool execution in a TOOL span so it appears in the trace
+                with tracer.start_as_current_span(call.name) as tool_span:
+                    tool_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND,
+                                            OpenInferenceSpanKindValues.TOOL.value)
+                    tool_span.set_attribute(SpanAttributes.TOOL_NAME, call.name)
+                    tool_span.set_attribute("tool.id", call.call_id)  # links to LLM call
+                    tool_span.set_attribute(SpanAttributes.INPUT_VALUE, call.arguments)
+                    tool_span.set_attribute(SpanAttributes.INPUT_MIME_TYPE, "application/json")
+                    try:
+                        result = roll_dice(**json.loads(call.arguments))
+                        tool_span.set_attribute(SpanAttributes.OUTPUT_VALUE, json.dumps(result))
+                    except Exception as e:
+                        tool_span.set_status(StatusCode.ERROR, str(e))
+                        raise
+                # Responses API tool-result format (not chat.completions format)
+                prompts.append({
+                    "type": "function_call",
+                    "call_id": call.call_id,
+                    "name": call.name,
+                    "arguments": call.arguments,
+                })
+                prompts.append({
+                    "type": "function_call_output",
+                    "call_id": call.call_id,
+                    "output": json.dumps(result),
+                })
+            call_llm(streamer, prompts, thread_ts)  # recursive — gets final text reply
 ```
 
 **`listeners/assistant/message.py` — Bolt message handler:**
