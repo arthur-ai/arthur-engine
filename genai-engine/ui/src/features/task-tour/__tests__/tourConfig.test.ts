@@ -93,13 +93,20 @@ describe("task tour config", () => {
       advanceOn: [{ type: "manual" }],
       popover: { showNext: true },
     });
+    // `Add to Dataset` lives inside the closed Trace Actions dropdown, so this
+    // step is action-only: clicking the trigger opens the menu without
+    // advancing; only the `traceAddToDatasetOpened` action (emitted once the
+    // menu item is clicked) advances the step.
     expect(openAddToDatasetStep).toMatchObject({
       target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.traceAddToDatasetAction },
-      advanceOn: expect.arrayContaining([{ type: "click" }, { type: "action", name: TASK_TOUR_ACTIONS.traceAddToDatasetOpened }]),
+      advanceOn: [{ type: "action", name: TASK_TOUR_ACTIONS.traceAddToDatasetOpened }],
     });
+    // Spotlights the whole drawer; the backdrop doesn't trap clicks so the form
+    // and its portaled sub-dialogs stay usable while the popover instructs.
     expect(saveTraceToDatasetStep).toMatchObject({
       target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.traceAddToDatasetDrawer },
       advanceOn: [{ type: "action", name: TASK_TOUR_ACTIONS.traceAddedToDataset }],
+      overlay: { blockInteraction: false },
     });
   });
 
