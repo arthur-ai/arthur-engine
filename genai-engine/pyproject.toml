@@ -121,7 +121,7 @@ explicit = true
 torch = [
   { index = "pytorch-cpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
 ]
-arthur-common = { path = "../../arthur-common", editable = true }
+
 
 [build-system]
 requires = ["hatchling"]
