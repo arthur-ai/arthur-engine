@@ -875,6 +875,7 @@ class CreateMLEvalRequest(BaseModel):
         description="Type of ML eval (e.g. 'pii', 'toxicity', 'prompt_injection')",
     )
     config: MLEvalConfig = Field(
+        title="MLEvalConfig",
         description="Configuration for the ML eval. Valid fields depend on eval_type.",
     )
 
