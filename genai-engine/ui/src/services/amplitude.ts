@@ -121,6 +121,16 @@ export const EVENT_NAMES = {
   ONBOARDING_WIZARD_STEP_SUBMIT_FAILED: "onboarding/wizard_step_submit_failed",
   ONBOARDING_WIZARD_STEP_BACK: "onboarding/wizard_step_back",
 
+  // Onboarding tour completion — certificate events
+  ONBOARDING_WIZARD_CERTIFICATE_VIEWED: "onboarding/wizard_certificate_viewed",
+  ONBOARDING_WIZARD_CERTIFICATE_SHARE_CLICKED: "onboarding/wizard_certificate_share_clicked",
+  ONBOARDING_WIZARD_CERTIFICATE_DOWNLOAD_CLICKED: "onboarding/wizard_certificate_download_clicked",
+  ONBOARDING_WIZARD_CERTIFICATE_CLOSED: "onboarding/wizard_certificate_closed",
+
+  // Onboarding tour completion — post-completion CTA events
+  ONBOARDING_WIZARD_CTA_VIEWED: "onboarding/wizard_cta_viewed",
+  ONBOARDING_WIZARD_CTA_BOOK_CLICKED: "onboarding/wizard_cta_book_clicked",
+
   // Cross-link events
   PLAYGROUND_OPEN_FROM_SPAN: "playground/open_from_span",
   CONTINUOUS_EVALS_NEW_FROM_TRACE: "continuous_evals/new_from_trace",
