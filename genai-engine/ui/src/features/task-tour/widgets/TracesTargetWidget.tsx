@@ -5,7 +5,7 @@ import { tourSelector, TOUR_IDS } from "../selectors";
 
 import { makePreferredDataTourIdResolver } from "./resolvers";
 
-import { useRegisterQueryHook } from "@/features/tour";
+import { findElementByExactText, useRegisterQueryHook } from "@/features/tour";
 
 /**
  * Lookup chain that resolves the first trace row in the Observe table.
@@ -61,25 +61,63 @@ function resolveTraceDrawerSpans(): Element | null {
   );
 }
 
-function findButtonByText(root: ParentNode, label: RegExp): Element | null {
-  const buttons = Array.from(root.querySelectorAll("button, [role='button']"));
-  return buttons.find((button) => label.test(button.textContent ?? "")) ?? null;
+/**
+ * True when an element is on-screen enough to spotlight. The `Trace Actions`
+ * dropdown ships from `@arthur/shared-components` as a Base UI `Menu` with
+ * `keepMounted`, so its items stay in the DOM but the closed popup is `hidden` —
+ * we must skip those until the user opens the menu. Deliberately avoids
+ * `getClientRects()` (always empty in layout-less jsdom) so the same predicate
+ * works in unit tests; it checks the `hidden` attribute and computed
+ * display/visibility instead.
+ */
+function isSpotlightable(el: Element): boolean {
+  if (!el.isConnected || el.closest("[hidden]")) return false;
+  const style = window.getComputedStyle(el);
+  return style.display !== "none" && style.visibility !== "hidden";
 }
 
+const ACTION_CONTROL_SELECTOR = "button, [role='button'], [role='menuitem']";
+
+/** First visible button / menu item whose text matches `label`. */
+function findVisibleControlByText(root: ParentNode, label: RegExp): Element | null {
+  return Array.from(root.querySelectorAll(ACTION_CONTROL_SELECTOR)).find((el) => label.test(el.textContent ?? "") && isSpotlightable(el)) ?? null;
+}
+
+/**
+ * The `Trace Actions` dropdown trigger lives inside `@arthur/shared-components`,
+ * which exposes no slot to hang a `data-tour-id` on it, so we resolve it by its
+ * button label. Falls back to the coarse drawer-body anchor when the trigger
+ * label can't be matched.
+ */
 export function resolveTraceActionsTarget(): Element | null {
-  return document.querySelector(tourSelector(TOUR_IDS.traceActions)) ?? document.querySelector(tourSelector(TOUR_IDS.traceDrawerAddToDataset));
+  return (
+    document.querySelector(tourSelector(TOUR_IDS.traceActions)) ??
+    findElementByExactText("Trace Actions", { selector: "button", closestSelector: "button" }) ??
+    document.querySelector(tourSelector(TOUR_IDS.traceDrawerAddToDataset))
+  );
 }
 
+/**
+ * `Add to Dataset` is a menu item inside the (closed-by-default) Trace Actions
+ * dropdown. We only match it once the menu is open and the item is visible;
+ * until then we fall back to the trigger so the spotlight sits on the button the
+ * user must click to reveal it. `ActiveTargetRefresh` re-resolves on DOM
+ * mutations, so the spotlight snaps from trigger → item the moment it opens.
+ */
 export function resolveTraceAddToDatasetActionTarget(): Element | null {
   const explicitAction = document.querySelector(tourSelector(TOUR_IDS.traceAddToDatasetAction));
   if (explicitAction) return explicitAction;
-  const traceActions = resolveTraceActionsTarget();
-  const actionByText = findButtonByText(traceActions ?? document, /add\s+to\s+dataset/i);
-  if (actionByText) return actionByText;
-  const traceDrawer = document.querySelector(tourSelector(TOUR_IDS.traceDrawerAddToDataset));
-  return traceDrawer ? (findButtonByText(traceDrawer, /add\s+to\s+dataset/i) ?? traceDrawer) : null;
+  const menuItem = findVisibleControlByText(document, /add\s+to\s+dataset/i);
+  if (menuItem) return menuItem;
+  return resolveTraceActionsTarget();
 }
 
+/**
+ * The save step spotlights the whole Add-to-Dataset drawer surface — the cutout
+ * covers the entire drawer so the form stays bright and fully usable while the
+ * popover walks the user through pick-dataset → map-column → Add Row. Falls back
+ * to the trigger if the drawer hasn't mounted yet.
+ */
 export function resolveTraceAddToDatasetDrawerTarget(): Element | null {
   return document.querySelector(tourSelector(TOUR_IDS.traceAddToDatasetDrawer)) ?? resolveTraceAddToDatasetActionTarget();
 }
