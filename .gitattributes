@@ -2,6 +2,7 @@
 # -merge is a git built-in: takes HEAD (ours) on conflict, no driver config needed
 version                                    -merge
 genai-engine/version                       -merge
+genai-engine/src/version                   -merge
 genai-engine/uv.lock                       -merge
 ml-engine/uv.lock                          -merge
 genai-engine/staging.openapi.json          -merge
