@@ -1,4 +1,4 @@
-export { CertificateWidget, type CertificateWidgetProps } from "./CertificateWidget";
+export { CertificateWidget } from "./CertificateWidget";
 export { DatasetTargetWidget } from "./DatasetTargetWidget";
 export { EvaluateTargetWidget } from "./EvaluateTargetWidget";
 export { IntroWidget } from "./IntroWidget";

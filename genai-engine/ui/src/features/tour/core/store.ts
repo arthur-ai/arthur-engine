@@ -3,17 +3,20 @@ import { createStore, type StoreApi } from "zustand/vanilla";
 import type { HighlightRenderer, PreparationHook, QueryHookResolver, TourEngineStore, TourState, TriggerFactory } from "./types";
 
 /**
- * Default layer ladder — overridable per `createTour({ layers: {...} })`. The
- * values match v0's hardcoded ladder so the cutover is visually transparent,
- * but consumers can now override them in one place instead of editing five
- * different component files.
+ * Default z-index ladder, overridable per `createTour({ layers: {...} })`.
+ *
+ * Tokens read directly via `useTourLayer(name)`: `spotlight`, `blocker`,
+ * `panel`, `popover`. Two are reference points rather than direct readers:
+ * `pulse` documents where the highlight ring sits (the task-tour renderer
+ * derives it as the spotlight z-index + 1), and `certificate` is the ceiling
+ * `tourDropdownTheme` lifts dropdowns above via `Math.max(...layers) + 1` —
+ * keep it the maximum if you add tokens.
  */
 export const DEFAULT_TOUR_LAYERS: Record<string, number> = {
   spotlight: 1399,
   pulse: 1400,
   blocker: 1401,
   panel: 1450,
-  fab: 1450,
   popover: 1500,
   certificate: 1600,
 };

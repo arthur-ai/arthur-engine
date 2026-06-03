@@ -1,15 +1,10 @@
 import { useCallback, useMemo, type ReactNode } from "react";
 
 import { TASK_TOUR_SECTIONS, type TaskTourItem } from "../data";
+import { itemKey, TASK_TOUR_TOTAL_UNITS } from "../progress";
 import { TASK_TOUR_TARGET_LOST_HINTS } from "../tourActions";
 
 import { useActiveTarget, useTour, useTourEngine, useTourPluginStore, type StepRenderContext, type TourStatePlugin } from "@/features/tour";
-
-const TOTAL_ITEM_COUNT = TASK_TOUR_SECTIONS.reduce((sum, s) => sum + Math.max(1, s.items.length), 0);
-
-function itemKey(sectionId: string, itemId: string) {
-  return `${sectionId}.${itemId}`;
-}
 
 export interface ChecklistController {
   /**
@@ -106,8 +101,8 @@ export function useChecklistController(statePlugin: TourStatePlugin): ChecklistC
   }, [actions, currentSectionIndex]);
 
   const totalProgress = useMemo(() => {
-    if (TOTAL_ITEM_COUNT === 0) return 0;
-    return completedItemKeys.size / TOTAL_ITEM_COUNT;
+    if (TASK_TOUR_TOTAL_UNITS === 0) return 0;
+    return completedItemKeys.size / TASK_TOUR_TOTAL_UNITS;
   }, [completedItemKeys]);
 
   const activeStepContent = useMemo<ReactNode | null>(() => {

@@ -1,7 +1,7 @@
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import TourOutlinedIcon from "@mui/icons-material/TourOutlined";
-import { Box, Button, IconButton, Stack, Tooltip, Typography } from "@mui/material";
+import { Box, Button, IconButton, Stack, Tooltip, Typography, useMediaQuery, useTheme } from "@mui/material";
 import { useCallback, useEffect } from "react";
 
 import { TASK_TOUR_SECTIONS, TASK_TOUR_SHORT_NAME } from "../data";
@@ -18,8 +18,19 @@ export interface TourSidePanelProps {
   statePlugin: TourStatePlugin;
 }
 
-const RAIL_WIDTH = 44;
-const CONTENT_WIDTH = 312;
+type TourViewState = ReturnType<typeof useTour>["state"];
+
+/**
+ * Label for the resume card — the step/section the user lands on when they pick
+ * the tour back up. Pulled out of render so the `resumePosition` store lookup
+ * only happens when the resume card is actually shown (not on every step).
+ */
+function getResumeLabel(state: TourViewState, statePlugin: TourStatePlugin, config: ReturnType<typeof useTour>["config"]): string {
+  if (state.status === "step") return getTaskTourStepLabel(state.sectionId, state.stepId);
+  if (state.status === "intro") return getTaskTourStepLabel(state.sectionId, undefined);
+  const resume = statePlugin.resumePosition(config);
+  return resume ? getTaskTourStepLabel(resume.sectionId, resume.stepId) : "Resume tour";
+}
 
 /**
  * In-flow, root-level docked panel that hosts the tour's persistent surfaces —
@@ -32,6 +43,8 @@ const CONTENT_WIDTH = 312;
 export function TourSidePanel({ statePlugin }: TourSidePanelProps) {
   const collapsed = useTourPanelStore((s) => s.collapsed);
   const toggle = useTourPanelStore((s) => s.toggle);
+  const { railWidth, contentWidth } = useTheme().tour;
+  const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 
   const controller = useChecklistController(statePlugin);
   const persistedStatus = useTourPluginStore(statePlugin, (s) => s.snapshot.status);
@@ -52,19 +65,18 @@ export function TourSidePanel({ statePlugin }: TourSidePanelProps) {
   // Publish the width we reserve on the right so viewport-anchored overlays
   // (MUI dialogs/drawers — see `mui-theme.ts`) can subtract it. 0 when the panel
   // isn't showing; reset to 0 on unmount so nothing stays inset after the tour.
-  const reservedWidth = hasContent ? (collapsed ? RAIL_WIDTH : RAIL_WIDTH + CONTENT_WIDTH) : 0;
+  const reservedWidth = hasContent ? (collapsed ? railWidth : railWidth + contentWidth) : 0;
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty("--app-inset-right", `${reservedWidth}px`);
-    return () => root.style.setProperty("--app-inset-right", "0px");
+    // Only cap right-anchored drawers while the panel actually reserves space;
+    // otherwise leave `none` so off-tour drawers keep their own widths.
+    root.style.setProperty("--app-drawer-max-width", reservedWidth > 0 ? "calc((100vw - var(--app-inset-right, 0px)) * 0.9)" : "none");
+    return () => {
+      root.style.setProperty("--app-inset-right", "0px");
+      root.style.setProperty("--app-drawer-max-width", "none");
+    };
   }, [reservedWidth]);
-
-  const resumeLabel = (() => {
-    if (state.status === "step") return getTaskTourStepLabel(state.sectionId, state.stepId);
-    if (state.status === "intro") return getTaskTourStepLabel(state.sectionId, undefined);
-    const resume = statePlugin.resumePosition(config);
-    return resume ? getTaskTourStepLabel(resume.sectionId, resume.stepId) : "Resume tour";
-  })();
 
   const handleResume = useCallback(() => {
     if (state.status === "dismissed") {
@@ -81,8 +93,6 @@ export function TourSidePanel({ statePlugin }: TourSidePanelProps) {
 
   // Nothing to show (idle / completed): the panel claims no layout space.
   if (!hasContent) return null;
-
-  const progressPct = Math.min(100, Math.max(0, controller.totalProgress * 100));
 
   return (
     <Box
@@ -102,14 +112,14 @@ export function TourSidePanel({ statePlugin }: TourSidePanelProps) {
         borderLeft: 1,
         borderColor: "divider",
         bgcolor: "background.paper",
-        transition: "width 300ms ease",
-        width: collapsed ? RAIL_WIDTH : RAIL_WIDTH + CONTENT_WIDTH,
+        transition: reduceMotion ? "none" : "width 300ms ease",
+        width: collapsed ? railWidth : railWidth + contentWidth,
       }}
     >
       <Stack
         alignItems="center"
         sx={{
-          width: RAIL_WIDTH,
+          width: railWidth,
           flexShrink: 0,
           py: 1,
           gap: 1,
@@ -137,29 +147,25 @@ export function TourSidePanel({ statePlugin }: TourSidePanelProps) {
               </Typography>
             ) : null}
             <Box sx={{ flex: 1, width: 4, borderRadius: 2, bgcolor: "action.hover", position: "relative", overflow: "hidden", minHeight: 24 }}>
-              <Box sx={{ position: "absolute", left: 0, right: 0, bottom: 0, height: `${progressPct}%`, bgcolor: "secondary.main" }} />
+              <Box
+                sx={{
+                  position: "absolute",
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  height: `${Math.min(100, Math.max(0, controller.totalProgress * 100))}%`,
+                  bgcolor: "secondary.main",
+                }}
+              />
             </Box>
           </Stack>
         ) : null}
       </Stack>
 
       {!collapsed ? (
-        <Box sx={{ width: CONTENT_WIDTH, flexShrink: 0, height: "100%", overflow: "hidden" }}>
+        <Box sx={{ width: contentWidth, flexShrink: 0, height: "100%", overflow: "hidden" }}>
           {controller.isRunning ? (
-            <ChecklistPanelBody
-              currentSectionIndex={controller.currentSectionIndex}
-              currentItemIndex={controller.currentItemIndex}
-              activeStepContent={controller.activeStepContent}
-              targetLostHint={controller.targetLostHint}
-              completedItemKeys={controller.completedItemKeys}
-              totalProgress={controller.totalProgress}
-              onSelectItem={controller.onSelectItem}
-              onToggleItem={controller.onToggleItem}
-              onSelectSection={controller.onSelectSection}
-              onPrevSection={controller.onPrevSection}
-              onNextSection={controller.onNextSection}
-              onClose={controller.onClose}
-            />
+            <ChecklistPanelBody controller={controller} />
           ) : (
             <Stack spacing={2} sx={{ p: 2.5, height: "100%" }}>
               <Stack direction="row" alignItems="center" spacing={1.25}>
@@ -187,7 +193,7 @@ export function TourSidePanel({ statePlugin }: TourSidePanelProps) {
                 Your walkthrough is paused. Pick up where you left off:
               </Typography>
               <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "text.primary" }}>
-                {resumeLabel}
+                {getResumeLabel(state, statePlugin, config)}
               </Typography>
               <Button variant="contained" color="secondary" onClick={handleResume} sx={{ alignSelf: "flex-start" }}>
                 Resume tour

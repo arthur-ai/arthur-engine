@@ -1,8 +1,14 @@
 import { TASK_TOUR_SKIP_WHEN } from "./content/wiring";
 
+import type { StepContext } from "@/features/tour";
 import type { Api } from "@/lib/api";
 
-export type TaskTourEmptyStatePredicate = (skipWhenEmptyKey: string) => boolean | Promise<boolean>;
+/**
+ * Consulted by the engine's `skipWhen` predicate. `ctx` is passed by the engine
+ * (the step being evaluated) but the only key we branch on today is the
+ * `skipWhenEmptyKey`, so `ctx` is accepted-but-unused.
+ */
+export type TaskTourEmptyStatePredicate = (skipWhenEmptyKey: string, ctx?: StepContext) => boolean | Promise<boolean>;
 
 export function createTaskTourEmptyStatePredicate(api: Api<unknown> | null, taskId: string): TaskTourEmptyStatePredicate {
   return async (skipWhenEmptyKey) => {

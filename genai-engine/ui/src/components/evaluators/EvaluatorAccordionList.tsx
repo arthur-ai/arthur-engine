@@ -30,7 +30,7 @@ import { EvaluatorPipelinesPanel } from "./EvaluatorPipelinesPanel";
 
 import { continuousEvalsQueryOptions } from "@/components/live-evals/hooks/useContinuousEvals";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
-import { TOUR_IDS } from "@/features/task-tour";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
 import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { useApi } from "@/hooks/useApi";
 import type { ContinuousEvalResponse, LLMGetAllMetadataResponse } from "@/lib/api-client/api-client";

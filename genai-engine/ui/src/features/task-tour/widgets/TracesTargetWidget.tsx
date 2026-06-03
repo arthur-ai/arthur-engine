@@ -3,6 +3,8 @@ import { useMemo } from "react";
 import { TASK_TOUR_QUERY_HOOKS } from "../content/wiring";
 import { tourSelector, TOUR_IDS } from "../selectors";
 
+import { makePreferredDataTourIdResolver } from "./resolvers";
+
 import { useRegisterQueryHook } from "@/features/tour";
 
 /**
@@ -59,10 +61,6 @@ function resolveTraceDrawerSpans(): Element | null {
   );
 }
 
-function makePreferredDataTourIdResolver(preferredId: string, fallbackId: string): () => Element | null {
-  return () => document.querySelector(tourSelector(preferredId as never)) ?? document.querySelector(tourSelector(fallbackId as never));
-}
-
 function findButtonByText(root: ParentNode, label: RegExp): Element | null {
   const buttons = Array.from(root.querySelectorAll("button, [role='button']"));
   return buttons.find((button) => label.test(button.textContent ?? "")) ?? null;
@@ -101,7 +99,6 @@ export function TracesTargetWidget() {
   useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.traceDrawerSpans, resolveTraceDrawerSpans);
   useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.traceDrawerEvals, drawerEvals);
   useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.traceDrawerFeedback, drawerFeedback);
-  useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.traceDrawerAddToDataset, resolveTraceAddToDatasetDrawerTarget);
   useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.traceActions, resolveTraceActionsTarget);
   useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.traceAddToDatasetAction, resolveTraceAddToDatasetActionTarget);
   useRegisterQueryHook(TASK_TOUR_QUERY_HOOKS.traceAddToDatasetDrawer, resolveTraceAddToDatasetDrawerTarget);

@@ -23,7 +23,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import type { PromptsTableProps } from "../types";
 
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
-import { TOUR_IDS } from "@/features/task-tour";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
 import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { formatDateInTimezone } from "@/utils/formatters";
 

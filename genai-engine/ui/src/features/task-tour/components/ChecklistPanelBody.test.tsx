@@ -2,16 +2,20 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { TASK_TOUR_SECTIONS } from "../data";
+import type { ChecklistController } from "../hooks/useChecklistController";
 
-import { ChecklistPanelBody, type ChecklistPanelBodyProps } from "./ChecklistPanelBody";
+import { ChecklistPanelBody } from "./ChecklistPanelBody";
 
 const SECTION_WITH_STEPS_INDEX = TASK_TOUR_SECTIONS.findIndex((section) => section.items.length > 0);
 
-function renderPanel(overrides: Partial<ChecklistPanelBodyProps> = {}) {
-  const props: ChecklistPanelBodyProps = {
+function renderPanel(overrides: Partial<ChecklistController> = {}) {
+  const controller: ChecklistController = {
+    isRunning: true,
+    isOnStep: true,
     currentSectionIndex: SECTION_WITH_STEPS_INDEX,
     currentItemIndex: 0,
     activeStepContent: "Full instruction copy",
+    targetLostHint: null,
     completedItemKeys: new Set(),
     totalProgress: 0.25,
     onSelectItem: vi.fn(),
@@ -23,8 +27,8 @@ function renderPanel(overrides: Partial<ChecklistPanelBodyProps> = {}) {
     ...overrides,
   };
 
-  render(<ChecklistPanelBody {...props} />);
-  return props;
+  render(<ChecklistPanelBody controller={controller} />);
+  return controller;
 }
 
 describe("ChecklistPanelBody", () => {

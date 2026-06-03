@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense, lazy } from "react";
 import { useParams, useNavigate, useLocation, Outlet } from "react-router-dom";
 
 import { ChatbotDrawer } from "@/components/chatbot/ChatbotDrawer";
@@ -9,9 +9,14 @@ import { TaskNotFoundState } from "@/components/TaskNotFoundState";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDemoMode } from "@/contexts/EngineConfigContext";
 import { TaskProvider } from "@/contexts/TaskContext";
-import { TaskTour } from "@/features/task-tour";
 import { useApi } from "@/hooks/useApi";
 import { TaskResponse } from "@/lib/api";
+
+// The demo tour (engine + markdown content + sanitizer) only renders for demo
+// tenants, so lazy-load it: non-demo users never download the chunk. The
+// dynamic barrel import is the sanctioned mount point (the no-restricted-imports
+// rule only guards static leaf-component imports).
+const TaskTour = lazy(() => import("@/features/task-tour").then((m) => ({ default: m.TaskTour })));
 
 export const TaskLayout: React.FC = () => {
   const params = useParams();
@@ -97,21 +102,20 @@ export const TaskLayout: React.FC = () => {
         <SidebarNavigation onBackToDashboard={handleBack} onNavigate={handleNavigate} activeSection={activeSection} taskName={task?.name} />
 
         {task ? (
-          // When the demo tour is active, `TaskTour` wraps the page so its
-          // collapsible side panel renders as a flex sibling of `<main>` and
-          // takes window space from the app (rather than floating over it).
+          // The page renders eagerly; when the demo tour is active the lazy
+          // `TaskTour` sidecar mounts as a flex sibling of `<main>` (its docked
+          // side panel takes window space from the app rather than floating over
+          // it). Keeping the page outside the lazy boundary means it never waits
+          // on — or remounts behind — the tour chunk.
           <TaskProvider task={task}>
+            <main className="flex-1 overflow-auto">
+              <Outlet />
+            </main>
             {showTaskTour ? (
-              <TaskTour taskId={task.id} workspaceLabel={task.name}>
-                <main className="flex-1 overflow-auto">
-                  <Outlet />
-                </main>
-              </TaskTour>
-            ) : (
-              <main className="flex-1 overflow-auto">
-                <Outlet />
-              </main>
-            )}
+              <Suspense fallback={null}>
+                <TaskTour taskId={task.id} />
+              </Suspense>
+            ) : null}
           </TaskProvider>
         ) : (
           <main className="flex-1 overflow-auto">

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, type ReactNode } from "react";
+import { useEffect, useMemo } from "react";
 
 import { TourSidePanel } from "./components/TourSidePanel";
 import { createTaskTourEmptyStatePredicate } from "./emptyState";
@@ -24,40 +24,32 @@ import { useApi } from "@/hooks/useApi";
 export interface TaskTourProps {
   /** Required: the task the tour should bind its routes against. */
   taskId: string;
-  /** Optional human-readable name displayed on the completion certificate. */
-  workspaceLabel?: string;
-  /**
-   * The page chrome the tour wraps — typically the route's `<main>`. Rendered
-   * as a flex sibling of {@link TourSidePanel} so the docked panel takes window
-   * space away from the page rather than floating over it.
-   */
-  children: ReactNode;
 }
 
 /**
- * Top-level mount for the Evals 101 / ADLC tour. It owns the engine (via
- * `useTaskTourEngine`) and the React-Router navigator adapter, then provides
- * the tour context to three siblings:
+ * Top-level mount for the Evals 101 / ADLC tour. A **sidecar**: it owns the
+ * engine (via `useTaskTourEngine`) and the React-Router navigator, and renders
+ * only the tour's own surfaces — it does NOT wrap the page. `TaskLayout` renders
+ * the page (`<main>`) as a sibling and lazy-loads this component, so the page
+ * never waits on (or remounts behind) the tour chunk. The product page talks to
+ * the tour through the global `dispatchTourEvent` bridge + `data-tour-id`
+ * attributes, never tour React context, so it doesn't need to be under
+ * `<TourProvider>`.
  *
- *  1. `children` — the page (`<main>`), a flex child of the layout row.
- *  2. `<TourSidePanel>` — the in-flow, collapsible docked panel that hosts the
- *     persistent checklist / resume surfaces (formerly floating widgets).
- *  3. `<TaskTourPortal>` — the element-anchored overlays (spotlight, tooltips,
- *     intro / section-complete / certificate dialogs) that remain portaled to
- *     `document.body`.
- *
- * All persistence, progress, intro / step / spotlight / certificate logic
- * lives in widgets keyed off the engine's state.
+ * Two siblings render under the provider:
+ *  1. `<TourSidePanel>` — the in-flow, collapsible docked panel (checklist /
+ *     resume), a flex sibling of the page `<main>`.
+ *  2. `<TaskTourPortal>` — element-anchored overlays (spotlight, popovers,
+ *     intro / section-complete / certificate dialogs) portaled to `document.body`.
  */
-export function TaskTour({ taskId, workspaceLabel, children }: TaskTourProps) {
+export function TaskTour({ taskId }: TaskTourProps) {
   const navigator = useReactRouterNavigator();
   const api = useApi();
   const isEmpty = useMemo(() => createTaskTourEmptyStatePredicate(api, taskId), [api, taskId]);
   const { engine, statePlugin } = useTaskTourEngine({ taskId, isEmpty });
 
-  // Wire the legacy `dispatchTourEvent` shim to the active engine. Keeps the
-  // product-side call sites compiling against the v0 import names while routing
-  // actions through v1's typed engine bus.
+  // Wire the `dispatchTourEvent` bridge to the active engine. Keeps the
+  // product-side call sites dispatching through the typed engine bus.
   useEffect(() => {
     if (!engine) return;
     const teardownActionBridge = registerTaskTourActionBridge((name) => engine.emitAction(name));
@@ -68,30 +60,27 @@ export function TaskTour({ taskId, workspaceLabel, children }: TaskTourProps) {
     };
   }, [engine]);
 
-  // Engine init can fail / be mid-mount; still render the page so the layout
-  // never blanks out.
-  if (!engine) return <>{children}</>;
+  // Engine init can fail / be mid-mount; render nothing until it's ready. The
+  // page renders independently in TaskLayout, so this never blanks the layout.
+  if (!engine) return null;
   return (
     <TourProvider tour={engine} navigator={navigator}>
-      {children}
       <TourSidePanel statePlugin={statePlugin} />
-      <TaskTourPortal workspaceLabel={workspaceLabel} taskId={taskId} />
+      <TaskTourPortal taskId={taskId} />
     </TourProvider>
   );
 }
 
 interface TaskTourPortalProps {
-  workspaceLabel?: string;
   taskId: string;
 }
 
 /**
  * Element-anchored overlays portaled to `document.body`. Lives under
  * `<TourProvider>` so the widgets (and the traces prep hook, which calls Query
- * Client hooks) share the engine context. The persistent checklist + resume
- * surfaces are NOT here — they render in-flow via {@link TourSidePanel}.
+ * Client hooks) share the engine context.
  */
-function TaskTourPortal({ workspaceLabel, taskId }: TaskTourPortalProps) {
+function TaskTourPortal({ taskId }: TaskTourPortalProps) {
   // Register the traces preparation hook (keyed by
   // `TASK_TOUR_PREPARATIONS.traceOpened`). The engine consults this on
   // `prepare: { key }` steps before resolving the spotlight target.
@@ -109,7 +98,7 @@ function TaskTourPortal({ workspaceLabel, taskId }: TaskTourPortalProps) {
       <SectionCompleteWidget />
       <SpotlightWidget />
       <GuidedStepPopover />
-      <CertificateWidget workspaceLabel={workspaceLabel} />
+      <CertificateWidget />
     </TourHost>
   );
 }

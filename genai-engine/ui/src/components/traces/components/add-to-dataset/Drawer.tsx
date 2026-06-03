@@ -17,7 +17,7 @@ import { useControlled } from "@mui/material/utils";
 import { useStore } from "@tanstack/react-form";
 import { AxiosError } from "axios";
 import { useSnackbar } from "notistack";
-import { useEffect, useMemo, useState, type HTMLAttributes } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { flattenSpans } from "../../utils/spans";
@@ -33,7 +33,7 @@ import { PreviewTable } from "./PreviewTable";
 import { SaveTransformDialog } from "./SaveTransformDialog";
 
 import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
-import { TOUR_IDS } from "@/features/task-tour/selectors";
+import { TOUR_IDS, tourDataAttr } from "@/features/task-tour/selectors";
 import { dispatchTourEvent, refreshTaskTourTarget, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { useCreateDatasetMutation } from "@/hooks/datasets/useCreateDatasetMutation";
 import { useTransforms } from "@/hooks/transforms/useTransforms";
@@ -305,7 +305,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
         onClose={handleClose}
         slotProps={{
           paper: {
-            ...({ "data-tour-id": TOUR_IDS.traceAddToDatasetDrawer } as HTMLAttributes<HTMLDivElement>),
+            ...tourDataAttr(TOUR_IDS.traceAddToDatasetDrawer),
             sx: { width: "80%" },
           },
           transition: {

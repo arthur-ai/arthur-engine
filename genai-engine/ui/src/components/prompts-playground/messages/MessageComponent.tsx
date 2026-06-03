@@ -336,7 +336,6 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
                     sx={{ backgroundColor: "background.paper", "& .MuiInputBase-input": { fontSize: "0.8125rem", fontFamily: "monospace" } }}
                   />
                   <HighlightedInputComponent
-                    label="Function arguments"
                     value={draft.arguments}
                     onChange={(event) => handleToolCallFieldChange(index, "arguments", event.target.value)}
                     placeholder={'{ "argument_name": "argument_value" }'}

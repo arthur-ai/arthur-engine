@@ -2,40 +2,19 @@ import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import EastIcon from "@mui/icons-material/East";
 import WestIcon from "@mui/icons-material/West";
-import { Box, Button, IconButton, LinearProgress, Stack, Tooltip, Typography, useTheme } from "@mui/material";
-import type { ReactNode } from "react";
+import { Box, Button, IconButton, LinearProgress, Stack, Tooltip, Typography } from "@mui/material";
 
-import { TASK_TOUR_SECTIONS, TASK_TOUR_TITLE, type TaskTourItem, type TaskTourSection } from "../data";
+import { TASK_TOUR_SECTIONS, TASK_TOUR_TITLE } from "../data";
+import type { ChecklistController } from "../hooks/useChecklistController";
+import { isSectionComplete, itemKey } from "../progress";
 
 export interface ChecklistPanelBodyProps {
-  currentSectionIndex: number;
-  /** -1 = no active item (stub section). */
-  currentItemIndex: number;
   /**
-   * Resolved content for the currently active step (i.e. the one rendered
-   * under the highlighted row). `null` when the tour isn't on a real step.
+   * Engine-backed data + handlers from {@link useChecklistController}. The
+   * panel is purely presentational; every value and callback it renders comes
+   * from this single controller object.
    */
-  activeStepContent: ReactNode | null;
-  /** Shown under the active step when the spotlight target is not in the DOM yet. */
-  targetLostHint?: string | null;
-  completedItemKeys: ReadonlySet<string>;
-  totalProgress: number;
-  onSelectItem: (item: TaskTourItem, itemIndex: number) => void;
-  onToggleItem: (item: TaskTourItem) => void;
-  onSelectSection: (sectionIndex: number) => void;
-  onPrevSection: () => void;
-  onNextSection: () => void;
-  /** Dismisses the tour (the panel's "hide" affordance). */
-  onClose: () => void;
-}
-
-function itemKey(section: TaskTourSection, item: TaskTourItem) {
-  return `${section.id}.${item.id}`;
-}
-
-function isSectionDone(section: TaskTourSection, completed: ReadonlySet<string>): boolean {
-  if (section.items.length === 0) return completed.has(`${section.id}.__intro`);
-  return section.items.every((it) => completed.has(itemKey(section, it)));
+  controller: ChecklistController;
 }
 
 /**
@@ -45,21 +24,21 @@ function isSectionDone(section: TaskTourSection, completed: ReadonlySet<string>)
  * no longer floating or draggable — collapsing is handled by the panel's
  * chevron, and dismissing by the header close button.
  */
-export function ChecklistPanelBody({
-  currentSectionIndex,
-  currentItemIndex,
-  activeStepContent,
-  targetLostHint,
-  completedItemKeys,
-  totalProgress,
-  onSelectItem,
-  onToggleItem,
-  onSelectSection,
-  onPrevSection,
-  onNextSection,
-  onClose,
-}: ChecklistPanelBodyProps) {
-  const theme = useTheme();
+export function ChecklistPanelBody({ controller }: ChecklistPanelBodyProps) {
+  const {
+    currentSectionIndex,
+    currentItemIndex,
+    activeStepContent,
+    targetLostHint,
+    completedItemKeys,
+    totalProgress,
+    onSelectItem,
+    onToggleItem,
+    onSelectSection,
+    onPrevSection,
+    onNextSection,
+    onClose,
+  } = controller;
 
   const section = TASK_TOUR_SECTIONS[currentSectionIndex];
   if (!section) return null;
@@ -113,7 +92,7 @@ export function ChecklistPanelBody({
 
       <Stack direction="row" spacing={0.5} sx={{ px: 1.5, py: 1, borderBottom: 1, borderColor: "divider", overflowX: "auto" }}>
         {TASK_TOUR_SECTIONS.map((s, i) => {
-          const done = isSectionDone(s, completedItemKeys);
+          const done = isSectionComplete(s, completedItemKeys);
           const active = i === currentSectionIndex;
           return (
             <Box
@@ -169,7 +148,7 @@ export function ChecklistPanelBody({
           </Stack>
         ) : (
           items.map((item, idx) => {
-            const done = completedItemKeys.has(itemKey(section, item));
+            const done = completedItemKeys.has(itemKey(section.id, item.id));
             const active = !done && idx === currentItemIndex;
             return (
               <Stack
@@ -206,8 +185,8 @@ export function ChecklistPanelBody({
                     justifyContent: "center",
                     transition: "background-color 0.15s, border-color 0.15s, color 0.15s",
                     bgcolor: done ? "secondary.main" : "background.paper",
-                    borderColor: done ? "secondary.main" : active ? "secondary.main" : theme.palette.divider,
-                    color: done ? theme.palette.common.white : "transparent",
+                    borderColor: done ? "secondary.main" : active ? "secondary.main" : "divider",
+                    color: done ? "common.white" : "transparent",
                   }}
                 >
                   {done ? <CheckIcon sx={{ fontSize: 12 }} /> : null}

@@ -5,7 +5,7 @@ import Typography from "@mui/material/Typography";
 import { AnnotationCell } from "./AnnotationCell";
 import { FeedbackPanel } from "./feedback/FeedbackPanel";
 
-import { TOUR_IDS } from "@/features/task-tour";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
 import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import type { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
 

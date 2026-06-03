@@ -18,7 +18,7 @@ import {
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { parseAsString, parseAsStringEnum, useQueryState } from "nuqs";
-import { useEffect, useMemo, useState, type HTMLAttributes } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { createColumns } from "../../data/results-columns";
 import { continuousEvalsResultsQueryOptions } from "../../hooks/useContinuousEvalsResults";
@@ -28,7 +28,7 @@ import { FilterModal } from "./components/FilterModal";
 
 import { useFilterStore } from "@/components/traces/stores/filter.store";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
-import { TOUR_IDS } from "@/features/task-tour/selectors";
+import { TOUR_IDS, tourDataAttr } from "@/features/task-tour/selectors";
 import { dispatchTourEvent, refreshTaskTourTarget, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { useApi } from "@/hooks/useApi";
 import { usePagination } from "@/hooks/usePagination";
@@ -180,7 +180,7 @@ export const Results = () => {
         fullWidth
         slotProps={{
           paper: {
-            ...({ "data-tour-id": TOUR_IDS.evaluateResultsDetailsDialog } as HTMLAttributes<HTMLDivElement>),
+            ...tourDataAttr(TOUR_IDS.evaluateResultsDetailsDialog),
           },
         }}
       >

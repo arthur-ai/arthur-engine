@@ -30,7 +30,7 @@ import type { EvalDetailViewProps } from "../types";
 import ImpactedCEsDialog from "./ImpactedCEsDialog";
 
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
-import { TOUR_IDS } from "@/features/task-tour";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
 import type { ContinuousEvalResponse, CreateEvalRequest } from "@/lib/api-client/api-client";
 import { formatDateInTimezone } from "@/utils/formatters";
 

@@ -14,8 +14,6 @@ export const HeroSchema = z.object({
   width: z.number().positive().optional(),
 });
 
-export type HeroFrontmatter = z.infer<typeof HeroSchema>;
-
 /**
  * Frontmatter shape for a single step entry inside a section file. The body
  * matches it via a `## step: <id>` heading; the loader cross-checks both.
@@ -24,8 +22,6 @@ export const StepFrontmatterSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
 });
-
-export type StepFrontmatter = z.infer<typeof StepFrontmatterSchema>;
 
 /**
  * Frontmatter shape for a section file (one of `00-intro.md` ... `06-deploy.md`).
@@ -56,13 +52,12 @@ export const SectionFrontmatterSchema = z.object({
 export type SectionFrontmatter = z.infer<typeof SectionFrontmatterSchema>;
 
 /**
- * Frontmatter shape for `_meta.md` — the top-level tour labels (modal title,
- * short name used in the resume FAB, dialog subtitle).
+ * Frontmatter shape for `_meta.md` — the top-level tour labels (modal title
+ * and the short name shown in the docked side-panel header).
  */
 export const MetaFrontmatterSchema = z.object({
   title: z.string().min(1),
   shortName: z.string().min(1),
-  subtitle: z.string().min(1),
 });
 
 export type MetaFrontmatter = z.infer<typeof MetaFrontmatterSchema>;
