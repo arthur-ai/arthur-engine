@@ -2,6 +2,7 @@
 name: arthur-onboard-platform
 description: Onboard an agentic application to the Arthur SaaS Platform (platform.arthur.ai). Guides through authentication, workspace selection, engine deployment, model creation, code instrumentation, trace verification, and eval configuration.
 allowed-tools: Bash, Read, Write, Edit, Task, Skill
+version: 1.0.0
 ---
 
 # Onboard to Arthur Platform

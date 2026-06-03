@@ -2,6 +2,7 @@
 name: arthur-onboard-oss
 description: Onboard an agentic application to Arthur GenAI Engine. Guides through engine connection, task setup, code instrumentation, trace verification, and eval configuration. Invoke from any agentic application repository.
 allowed-tools: Bash, Read, Write, Edit, Task, Skill
+version: 1.0.0
 ---
 
 # Onboard to Arthur GenAI Engine
