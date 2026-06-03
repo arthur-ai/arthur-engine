@@ -141,5 +141,5 @@ class MLEvaluator(BaseEvaluator):
             )
 
         text = resolved_variables.get(ML_EVAL_INPUT_VARIABLE, "")
-        config: dict[str, Any] = ml_eval.config or {}
+        config: dict[str, Any] = cast(dict[str, Any], ml_eval.config or {})
         return run_ml_scorer(str(ml_eval.eval_kind), text, config)

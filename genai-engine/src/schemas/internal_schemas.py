@@ -3919,7 +3919,7 @@ class ContinuousEval(BaseModel):
             name=self.name,
             description=self.description,
             task_id=self.task_id,
-            eval_type=self.eval_type,
+            eval_type=EvalType(self.eval_type),
             llm_eval_name=self.llm_eval_name,
             llm_eval_version=self.llm_eval_version,
             transform_id=self.transform_id,

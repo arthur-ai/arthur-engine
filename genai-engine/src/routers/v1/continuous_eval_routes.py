@@ -269,6 +269,29 @@ def create_continuous_eval(
     org_scope: UUID | None = Depends(get_org_scope),
 ) -> ContinuousEvalResponse:
     try:
+        # Validate the llm eval exists and hasn't been deleted
+        llm_eval_repo = LLMEvalsRepository(db_session)
+        llm_eval_version = (
+            str(create_request.llm_eval_version)
+            if isinstance(create_request.llm_eval_version, int)
+            else create_request.llm_eval_version
+        )
+        llm_eval = llm_eval_repo.get_llm_item(
+            task.id,
+            create_request.llm_eval_name,
+            llm_eval_version or "latest",
+        )
+
+        if llm_eval.deleted_at is not None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"LLM Eval {llm_eval.name} (version {llm_eval.version}) has been deleted.",
+            )
+
+        # set the version to the integer version of the llm eval
+        create_request.llm_eval_version = llm_eval.version
+
+
         # Validate the transform exists and is in the caller's org
         transform_repo = TraceTransformRepository(db_session)
         _assert_transform_accessible(
@@ -298,7 +321,7 @@ def create_continuous_eval(
         )
         llm_eval = llm_eval_repo.get_llm_item(
             task.id,
-            create_request.llm_eval_name,  # type: ignore[arg-type]
+            create_request.llm_eval_name,
             eval_version,
         )
         if llm_eval.deleted_at is not None:
