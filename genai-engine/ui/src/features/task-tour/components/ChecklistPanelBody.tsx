@@ -43,10 +43,6 @@ export function ChecklistPanelBody({ controller }: ChecklistPanelBodyProps) {
   const section = TASK_TOUR_SECTIONS[currentSectionIndex];
   if (!section) return null;
   const items = section.items;
-  const stepsInSection = Math.max(1, items.length);
-  const sectionStepLabel =
-    items.length === 0 ? "Intro" : currentItemIndex >= 0 ? `Step ${currentItemIndex + 1} of ${stepsInSection}` : `Step 1 of ${stepsInSection}`;
-  const sectionLabel = `Section ${currentSectionIndex + 1} of ${TASK_TOUR_SECTIONS.length}`;
 
   return (
     <Stack sx={{ height: "100%", minWidth: 0 }}>
@@ -224,38 +220,28 @@ export function ChecklistPanelBody({ controller }: ChecklistPanelBodyProps) {
         )}
       </Box>
 
-      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ p: 1.5, borderTop: 1, borderColor: "divider" }}>
-        <Stack spacing={0} sx={{ minWidth: 0 }}>
-          <Typography variant="caption" sx={{ color: "text.secondary", whiteSpace: "nowrap" }}>
-            {sectionStepLabel}
-          </Typography>
-          <Typography variant="caption" sx={{ color: "text.secondary", whiteSpace: "nowrap" }}>
-            {sectionLabel}
-          </Typography>
-        </Stack>
-        <Stack direction="row" spacing={0.75}>
-          <Button
-            size="small"
-            variant="text"
-            color="inherit"
-            startIcon={<WestIcon sx={{ fontSize: 14 }} />}
-            onClick={onPrevSection}
-            disabled={currentSectionIndex === 0}
-            sx={{ minWidth: 0, color: "text.secondary" }}
-          >
-            Prev
-          </Button>
-          <Button
-            size="small"
-            variant="outlined"
-            endIcon={<EastIcon sx={{ fontSize: 14 }} />}
-            onClick={onNextSection}
-            disabled={currentSectionIndex === TASK_TOUR_SECTIONS.length - 1}
-            sx={{ minWidth: 0 }}
-          >
-            Next
-          </Button>
-        </Stack>
+      <Stack direction="row" spacing={1} sx={{ p: 1.5, borderTop: 1, borderColor: "divider" }}>
+        <Button
+          size="small"
+          variant="text"
+          color="inherit"
+          startIcon={<WestIcon sx={{ fontSize: 14 }} />}
+          onClick={onPrevSection}
+          disabled={currentSectionIndex === 0}
+          sx={{ flex: 1, color: "text.secondary" }}
+        >
+          Prev
+        </Button>
+        <Button
+          size="small"
+          variant="outlined"
+          endIcon={<EastIcon sx={{ fontSize: 14 }} />}
+          onClick={onNextSection}
+          disabled={currentSectionIndex === TASK_TOUR_SECTIONS.length - 1}
+          sx={{ flex: 1 }}
+        >
+          Next
+        </Button>
       </Stack>
     </Stack>
   );
