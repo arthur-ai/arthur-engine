@@ -132,7 +132,7 @@ That's your prompt-to-data wiring — every variable should now point at a colum
 
 ## step: explain-eval-mapping
 
-Evaluators need to know where to read each value they score. For every evaluator variable, set its source — a **Dataset Column** for inputs that live in your test data, or **Experiment Output** for the agent's answer. Map every response variable to **Experiment Output** so the eval judges what the new prompt actually generated, not a stored value. These default to a dataset column, so set each one deliberately rather than accepting the default, then click **Next**.
+Each evaluator reads its variables from a source you set. Map the agent's **response** — and any other value the prompt generates — to **Experiment Output** so the eval scores what your new prompt actually produced, not a stored value. Map input variables like the user's question to the **Dataset Column** that holds them; exact name matches are pre-filled. Every variable starts on **Dataset Column**, so switch your response variables to **Experiment Output** before clicking **Next**.
 
 ## step: create-experiment
 
