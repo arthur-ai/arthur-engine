@@ -121,6 +121,11 @@ export const EVENT_NAMES = {
   ONBOARDING_WIZARD_STEP_SUBMIT_FAILED: "onboarding/wizard_step_submit_failed",
   ONBOARDING_WIZARD_STEP_BACK: "onboarding/wizard_step_back",
 
+  // Task tour certificate events
+  CERTIFICATE_VIEWED: "certificate/viewed",
+  CERTIFICATE_SHARE_CLICKED: "certificate/share_clicked",
+  CERTIFICATE_DOWNLOAD_CLICKED: "certificate/download_clicked",
+
   // Cross-link events
   PLAYGROUND_OPEN_FROM_SPAN: "playground/open_from_span",
   CONTINUOUS_EVALS_NEW_FROM_TRACE: "continuous_evals/new_from_trace",

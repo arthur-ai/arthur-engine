@@ -4,9 +4,18 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CertificateDialog } from "./CertificateDialog";
 
+import { EVENT_NAMES, track } from "@/services/amplitude";
+
 vi.mock("@arthur/shared-components", () => ({
   downloadFile: vi.fn(),
 }));
+
+// Stub `track` but keep the real `EVENT_NAMES` so assertions reference the
+// actual event-name constants rather than re-declaring them.
+vi.mock("@/services/amplitude", async (importActual) => {
+  const actual = await importActual<typeof import("@/services/amplitude")>();
+  return { ...actual, track: vi.fn() };
+});
 
 // Mirror the real capture library: `useToBlob`'s `onSuccess` receives a real
 // `Blob` (not the data-URL *string* `toPng` would yield) — the regression this
@@ -33,6 +42,17 @@ describe("CertificateDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: /download png/i }));
 
     expect(downloadFile).toHaveBeenCalledWith(expect.any(Blob), "certificate.png", "image/png");
+    expect(track).toHaveBeenCalledWith(EVENT_NAMES.CERTIFICATE_DOWNLOAD_CLICKED, { course: "Intro to Evals" });
+  });
+
+  it("tracks share clicks by destination", () => {
+    render(<CertificateDialog open onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("link", { name: /share to linkedin/i }));
+    expect(track).toHaveBeenCalledWith(EVENT_NAMES.CERTIFICATE_SHARE_CLICKED, { destination: "linkedin", course: "Intro to Evals" });
+
+    fireEvent.click(screen.getByRole("link", { name: /share to x/i }));
+    expect(track).toHaveBeenCalledWith(EVENT_NAMES.CERTIFICATE_SHARE_CLICKED, { destination: "x", course: "Intro to Evals" });
   });
 
   it("renders the achievement certificate design and sharing actions", () => {

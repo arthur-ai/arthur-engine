@@ -10,6 +10,7 @@ import { Box, Button, Dialog, IconButton, Paper, Stack, Typography } from "@mui/
 import { ArthurSeal } from "./arthur-seal";
 
 import { ArthurLogo } from "@/components/common/ArthurLogo";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 
 // Warm ink + parchment tones from the classic-diploma design. Kept as literals
 // because they're fixed brand-artwork values, not themeable surface colors.
@@ -17,6 +18,8 @@ const INK = "#1A0016";
 const INK_LINE = "rgba(26, 0, 22, 0.55)";
 const EYEBROW = "#3A2A18";
 const CITATION = "#2A1F18";
+
+export const COURSE_NAME = "Intro to Evals";
 
 export interface CertificateDialogProps {
   open: boolean;
@@ -37,7 +40,7 @@ function formatToday(): string {
  * dedicated route so it overlays whichever task page the user finishes on.
  */
 export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedOn = formatToday(), onClose }: CertificateDialogProps) {
-  const shareText = `I completed Arthur AI's Intro to Evals course with the Arthur Evals Engine.`;
+  const shareText = `I completed Arthur AI's ${COURSE_NAME} course with the Arthur Evals Engine.`;
   const shareUrl = "https://www.arthur.ai/";
   const linkedInShareHref = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
   const xShareHref = `https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
@@ -216,7 +219,16 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
       </Paper>
 
       <Stack direction="row" justifyContent="center" spacing={1} sx={{ px: 2, pb: 1.5, flexWrap: "wrap", rowGap: 1 }}>
-        <Button size="small" variant="contained" color="secondary" startIcon={<DownloadIcon sx={{ fontSize: 16 }} />} onClick={downloadPng}>
+        <Button
+          size="small"
+          variant="contained"
+          color="secondary"
+          startIcon={<DownloadIcon sx={{ fontSize: 16 }} />}
+          onClick={() => {
+            track(EVENT_NAMES.CERTIFICATE_DOWNLOAD_CLICKED, { course: COURSE_NAME });
+            downloadPng();
+          }}
+        >
           Download PNG
         </Button>
         <Button
@@ -226,6 +238,8 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
           href={linkedInShareHref}
           target="_blank"
           rel="noopener"
+          // Opens in a new tab, so the current page stays alive and the event sends reliably.
+          onClick={() => track(EVENT_NAMES.CERTIFICATE_SHARE_CLICKED, { destination: "linkedin", course: COURSE_NAME })}
           startIcon={<LinkedInIcon sx={{ fontSize: 16 }} />}
         >
           Share to LinkedIn
@@ -237,6 +251,7 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
           href={xShareHref}
           target="_blank"
           rel="noopener"
+          onClick={() => track(EVENT_NAMES.CERTIFICATE_SHARE_CLICKED, { destination: "x", course: COURSE_NAME })}
           startIcon={<XIcon sx={{ fontSize: 14 }} />}
         >
           Share to X

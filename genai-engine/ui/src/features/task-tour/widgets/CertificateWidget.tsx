@@ -1,10 +1,11 @@
 import { useCallback, useState } from "react";
 
-import { CertificateDialog } from "../components/CertificateDialog";
+import { CertificateDialog, COURSE_NAME } from "../components/CertificateDialog";
 import { CtaDialog } from "../components/cta-dialog";
 import { getStoredRecipientName } from "../recipientName";
 
 import { useTourEvent } from "@/features/tour";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 
 /** Which post-completion dialog is currently showing, if any. */
 type CompletionStage = "none" | "certificate" | "cta";
@@ -29,6 +30,7 @@ export function CertificateWidget() {
       if (event.reason === "completed") {
         setRecipientName(getStoredRecipientName() ?? undefined);
         setStage("certificate");
+        track(EVENT_NAMES.CERTIFICATE_VIEWED, { course: COURSE_NAME });
       }
     }, [])
   );
