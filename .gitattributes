@@ -1,0 +1,9 @@
+# Auto-generated/bumped files — keep ours on merge, regenerate as needed
+version                                    merge=ours
+genai-engine/version                       merge=ours
+genai-engine/uv.lock                       merge=ours
+ml-engine/uv.lock                          merge=ours
+genai-engine/staging.openapi.json          merge=ours
+
+# Append-only changelog — union preserves entries from both sides
+genai-engine/src/api_changelog.md          merge=union
