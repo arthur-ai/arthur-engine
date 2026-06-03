@@ -22,8 +22,6 @@ export interface CertificateDialogProps {
   open: boolean;
   /** Display name shown on the certificate. Falls back to a generic recipient. */
   recipientName?: string;
-  /** Workspace label, e.g. "arthur-engine · prod". */
-  workspaceLabel?: string;
   /** Pre-formatted issue date. Defaults to today, rendered as `MMM D, YYYY`. */
   issuedOn?: string;
   onClose: () => void;
@@ -188,7 +186,7 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
         >
           <Box sx={{ width: 150, textAlign: "center" }}>
             <Box sx={{ mb: 1, display: "flex", justifyContent: "center" }}>
-              <ArthurSeal size={104} variant="gold" />
+              <ArthurSeal size={104} />
             </Box>
             <Box sx={{ borderTop: 1, borderColor: INK_LINE, pt: 0.75 }}>
               <Typography variant="caption" sx={{ fontSize: 10 }}>

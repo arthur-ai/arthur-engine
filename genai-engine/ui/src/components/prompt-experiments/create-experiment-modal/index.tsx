@@ -2,7 +2,7 @@ import { Box, CircularProgress, Dialog, DialogTitle, Step, StepLabel, Stepper } 
 import { ThemeProvider, useTheme } from "@mui/material/styles";
 import { useStore } from "@tanstack/react-form";
 import { useSnackbar } from "notistack";
-import { useCallback, useEffect, useMemo, useState, type HTMLAttributes } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { EvalsStep } from "./components/evals-step";
@@ -14,7 +14,7 @@ import { DeepPartial, deepMerge, formDataToRequest, templateToFormData } from ".
 
 import { ConfirmationModal } from "@/components/common/ConfirmationModal";
 import { useAppForm } from "@/components/traces/components/filtering/hooks/form";
-import { TOUR_IDS } from "@/features/task-tour/selectors";
+import { TOUR_IDS, tourDataAttr } from "@/features/task-tour/selectors";
 import { dispatchTourEvent, refreshTaskTourTarget, TASK_TOUR_EVENTS } from "@/features/task-tour/tourActions";
 import { useCreateExperiment, usePromptExperiment } from "@/hooks/usePromptExperiments";
 import { useTask } from "@/hooks/useTask";
@@ -43,7 +43,7 @@ export const CreateExperimentModal = ({ templateId, initialData, open, onClose }
         maxWidth="md"
         fullWidth
         aria-labelledby="create-experiment-dialog-title"
-        slotProps={{ paper: { ...({ "data-tour-id": TOUR_IDS.createExperimentModal } as HTMLAttributes<HTMLDivElement>) } }}
+        slotProps={{ paper: { ...tourDataAttr(TOUR_IDS.createExperimentModal) } }}
       >
         <DialogTitle id="create-experiment-dialog-title">Create Experiment</DialogTitle>
         {isLoading ? (

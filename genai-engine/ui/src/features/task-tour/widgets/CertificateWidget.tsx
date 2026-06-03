@@ -6,10 +6,6 @@ import { getStoredRecipientName } from "../recipientName";
 
 import { useTourEvent } from "@/features/tour";
 
-export interface CertificateWidgetProps {
-  workspaceLabel?: string;
-}
-
 /** Which post-completion dialog is currently showing, if any. */
 type CompletionStage = "none" | "certificate" | "cta";
 
@@ -21,7 +17,7 @@ type CompletionStage = "none" | "certificate" | "cta";
  * them. The state plugin is what flips the persisted status to `"completed"`;
  * this widget only drives the modals and can be dismissed independently.
  */
-export function CertificateWidget({ workspaceLabel }: CertificateWidgetProps) {
+export function CertificateWidget() {
   const [stage, setStage] = useState<CompletionStage>("none");
   // Captured from localStorage when the tour completes — set by the onboarding
   // form on signup. Left undefined when absent so the dialog's default applies.
@@ -43,12 +39,7 @@ export function CertificateWidget({ workspaceLabel }: CertificateWidgetProps) {
 
   return (
     <>
-      <CertificateDialog
-        open={stage === "certificate"}
-        recipientName={recipientName}
-        workspaceLabel={workspaceLabel}
-        onClose={handleCertificateClose}
-      />
+      <CertificateDialog open={stage === "certificate"} recipientName={recipientName} onClose={handleCertificateClose} />
       <CtaDialog open={stage === "cta"} onDismiss={handleCtaDismiss} />
     </>
   );

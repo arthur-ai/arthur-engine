@@ -1,7 +1,22 @@
-import type { CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 
 import type { HighlightSpec } from "../../core/types";
 import { useTourEngine } from "../useTour";
+
+/** Track `prefers-reduced-motion` so the spotlight pulse can be suppressed. */
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(
+    () => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const onChange = () => setReduced(query.matches);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
+  return reduced;
+}
 
 export interface SpotlightProps {
   rect: DOMRect | null;
@@ -44,6 +59,7 @@ function normalize(spec: HighlightSpec | undefined): NormalizedHighlight {
  */
 export function Spotlight({ rect, highlight, backdropColor = "rgba(0, 0, 0, 0.55)", className, style }: SpotlightProps) {
   const engine = useTourEngine();
+  const reducedMotion = usePrefersReducedMotion();
 
   if (highlight?.shape === "custom") {
     const renderer = engine.getHighlight(highlight.key);
@@ -92,7 +108,7 @@ export function Spotlight({ rect, highlight, backdropColor = "rgba(0, 0, 0, 0.55
         </mask>
       </defs>
       <rect x={0} y={0} width="100%" height="100%" fill={backdropColor} mask={`url(#${MASK_ID})`} />
-      {norm.pulse ? (
+      {norm.pulse && !reducedMotion ? (
         <>
           <style>{`@keyframes ${PULSE_KEYFRAMES} { 0% { opacity: 0.85; } 100% { opacity: 0; } }`}</style>
           {norm.shape === "box" ? (

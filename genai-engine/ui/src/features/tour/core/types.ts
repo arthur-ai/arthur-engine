@@ -331,7 +331,6 @@ export interface SectionEnterEvent {
 
 export type SectionExitEvent = SectionEnterEvent;
 export type SectionSkipEvent = SectionEnterEvent;
-export type StepLifecycleEvent = StepContext;
 
 export interface StepEnterEvent extends StepContext {
   rect: DOMRect | null;

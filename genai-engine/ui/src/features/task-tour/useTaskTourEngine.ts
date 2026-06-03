@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { createTaskTourHighlightsPlugin } from "./highlights";
+import { itemKey } from "./progress";
 import { buildTourConfig } from "./tour-config";
 
 import { createAnalyticsPlugin, createTour, createTourStatePlugin, type StepContext, type TourEngine, type TourStatePlugin } from "@/features/tour";
@@ -35,7 +36,10 @@ export interface UseTaskTourEngineResult {
  *   point rather than stranding the panel).
  */
 export function useTaskTourEngine({ taskId, isEmpty }: UseTaskTourEngineOptions): UseTaskTourEngineResult {
-  const statePlugin = useMemo(() => createTourStatePlugin({ storageKey: TASK_TOUR_STORAGE_KEY }), []);
+  const statePlugin = useMemo(
+    () => createTourStatePlugin({ storageKey: TASK_TOUR_STORAGE_KEY, getKey: (event) => itemKey(event.sectionId, event.stepId) }),
+    []
+  );
   const highlightsPlugin = useMemo(() => createTaskTourHighlightsPlugin(), []);
   const isEmptyRef = useRef(isEmpty);
   isEmptyRef.current = isEmpty;

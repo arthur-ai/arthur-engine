@@ -1,3 +1,5 @@
+import type { HTMLAttributes } from "react";
+
 /**
  * Single source of truth for every `data-tour-id` the task tour points at.
  *
@@ -126,4 +128,15 @@ export type TourId = (typeof TOUR_IDS)[keyof typeof TOUR_IDS];
 /** Build a `[data-tour-id="..."]` selector for use in `TargetSpec`. */
 export function tourSelector(id: TourId) {
   return `[data-tour-id="${id}"]` as const;
+}
+
+/**
+ * `data-tour-id` props for a portaled MUI surface (`slotProps.paper` / `root`).
+ * Centralizes the `as HTMLAttributes<HTMLDivElement>` cast that `data-*` keys
+ * require (they aren't in MUI's typed slot props) — a wrong slot/element
+ * generic otherwise compiles but silently fails to anchor at runtime. Spread
+ * alongside any other paper props: `paper: { ...tourDataAttr(id), sx }`.
+ */
+export function tourDataAttr(id: TourId): HTMLAttributes<HTMLDivElement> {
+  return { "data-tour-id": id } as HTMLAttributes<HTMLDivElement>;
 }

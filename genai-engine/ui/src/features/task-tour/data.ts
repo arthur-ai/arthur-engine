@@ -1,14 +1,9 @@
 import type { ReactNode } from "react";
 
-import { TASK_TOUR_META, TASK_TOUR_SECTIONS } from "./content/loader";
+import { TASK_TOUR_META } from "./content/loader";
 import type { StepWiring, TaskSubRoute } from "./content/wiring";
 
 export type { TaskSubRoute } from "./content/wiring";
-
-export interface TaskTourSearchParams {
-  /** Optional query params appended to the route (`?section=evaluators` etc.). */
-  search?: Record<string, string>;
-}
 
 /**
  * One step inside a section. Engineering wiring (`targetId`, `route`,
@@ -80,7 +75,6 @@ export interface TaskTourSection {
 
 export const TASK_TOUR_TITLE = TASK_TOUR_META.title;
 export const TASK_TOUR_SHORT_NAME = TASK_TOUR_META.shortName;
-export const TASK_TOUR_SUBTITLE = TASK_TOUR_META.subtitle;
 
 /**
  * Author-friendly representation of the tour. Each section maps 1:1 to an
@@ -96,11 +90,3 @@ export const TASK_TOUR_SUBTITLE = TASK_TOUR_META.subtitle;
  * playground, and ships the winning version.
  */
 export { TASK_TOUR_SECTIONS } from "./content/loader";
-
-export function findSection(sectionId: string): TaskTourSection | undefined {
-  return TASK_TOUR_SECTIONS.find((s) => s.id === sectionId);
-}
-
-export function findItem(sectionId: string, itemId: string): TaskTourItem | undefined {
-  return findSection(sectionId)?.items.find((i) => i.id === itemId);
-}
