@@ -7,9 +7,12 @@ import LinkedInIcon from "@mui/icons-material/LinkedIn";
 import XIcon from "@mui/icons-material/X";
 import { Box, Button, Dialog, IconButton, Paper, Stack, Typography } from "@mui/material";
 
+import { COURSE_NAME } from "../courseName";
+
 import { ArthurSeal } from "./arthur-seal";
 
 import { ArthurLogo } from "@/components/common/ArthurLogo";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 
 // Warm ink + parchment tones from the classic-diploma design. Kept as literals
 // because they're fixed brand-artwork values, not themeable surface colors.
@@ -37,7 +40,7 @@ function formatToday(): string {
  * dedicated route so it overlays whichever task page the user finishes on.
  */
 export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedOn = formatToday(), onClose }: CertificateDialogProps) {
-  const shareText = `I completed Arthur AI's Intro to Evals course with the Arthur Evals Engine.`;
+  const shareText = `I completed Arthur AI's ${COURSE_NAME} course with the Arthur Evals Engine.`;
   const shareUrl = "https://www.arthur.ai/";
   const linkedInShareHref = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
   const xShareHref = `https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
@@ -53,10 +56,18 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
     },
   });
 
+  // Both affordances advance to the CTA via `onClose`; the `method` records
+  // which one the user used, surfacing whether the explicit "Continue" button
+  // or the easy-to-miss corner "X" is what people reach for.
+  const handleClose = (method: "continue" | "dismiss") => {
+    track(EVENT_NAMES.ONBOARDING_WIZARD_CERTIFICATE_CLOSED, { method, course: COURSE_NAME });
+    onClose();
+  };
+
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={() => handleClose("dismiss")}
       maxWidth="md"
       fullWidth
       aria-labelledby="task-tour-certificate-title"
@@ -74,7 +85,7 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
     >
       <IconButton
         size="small"
-        onClick={onClose}
+        onClick={() => handleClose("dismiss")}
         aria-label="Dismiss certificate"
         sx={{
           position: "absolute",
@@ -216,7 +227,16 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
       </Paper>
 
       <Stack direction="row" justifyContent="center" spacing={1} sx={{ px: 2, pb: 1.5, flexWrap: "wrap", rowGap: 1 }}>
-        <Button size="small" variant="contained" color="secondary" startIcon={<DownloadIcon sx={{ fontSize: 16 }} />} onClick={downloadPng}>
+        <Button
+          size="small"
+          variant="contained"
+          color="secondary"
+          startIcon={<DownloadIcon sx={{ fontSize: 16 }} />}
+          onClick={() => {
+            track(EVENT_NAMES.ONBOARDING_WIZARD_CERTIFICATE_DOWNLOAD_CLICKED, { course: COURSE_NAME });
+            downloadPng();
+          }}
+        >
           Download PNG
         </Button>
         <Button
@@ -226,6 +246,8 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
           href={linkedInShareHref}
           target="_blank"
           rel="noopener"
+          // Opens in a new tab, so the current page stays alive and the event sends reliably.
+          onClick={() => track(EVENT_NAMES.ONBOARDING_WIZARD_CERTIFICATE_SHARE_CLICKED, { destination: "linkedin", course: COURSE_NAME })}
           startIcon={<LinkedInIcon sx={{ fontSize: 16 }} />}
         >
           Share to LinkedIn
@@ -237,6 +259,7 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
           href={xShareHref}
           target="_blank"
           rel="noopener"
+          onClick={() => track(EVENT_NAMES.ONBOARDING_WIZARD_CERTIFICATE_SHARE_CLICKED, { destination: "x", course: COURSE_NAME })}
           startIcon={<XIcon sx={{ fontSize: 14 }} />}
         >
           Share to X
@@ -244,7 +267,13 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
         {/* Primary forward action. The corner close affordance is easy to miss
             against the parchment artwork, so give the flow an explicit next step;
             `onClose` advances the post-completion sequence to the CTA. */}
-        <Button size="small" variant="contained" color="primary" endIcon={<ArrowForwardIcon sx={{ fontSize: 16 }} />} onClick={onClose}>
+        <Button
+          size="small"
+          variant="contained"
+          color="primary"
+          endIcon={<ArrowForwardIcon sx={{ fontSize: 16 }} />}
+          onClick={() => handleClose("continue")}
+        >
           Continue
         </Button>
       </Stack>

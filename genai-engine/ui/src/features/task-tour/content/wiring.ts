@@ -320,20 +320,42 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
         prepareKey: TASK_TOUR_PREPARATIONS.traceOpened,
         popover: { showNext: true, nextLabel: "Next", placement: "left" },
       },
+      // `Add to Dataset` is a menu item inside the closed Trace Actions
+      // dropdown (a Base UI Menu from `@arthur/shared-components`). The resolver
+      // spotlights the trigger until the user opens the menu, then snaps to the
+      // item. Mirrors `open-create-experiment`:
+      //  - `action-only` so clicking the trigger opens the menu without
+      //    prematurely advancing — only `traceAddToDatasetOpened` (emitted by
+      //    `onAddToDataset` once the item is clicked) advances the step.
+      //  - `blockInteraction: false` so the click-trapping backdrop doesn't
+      //    dismiss the portaled menu or swallow the click on its item; the
+      //    dimming spotlight still draws the eye.
       "open-add-to-dataset": {
         targetId: TOUR_IDS.traceAddToDatasetAction,
         targetHookId: TASK_TOUR_QUERY_HOOKS.traceAddToDatasetAction,
         route: "traces",
         actionName: TASK_TOUR_ACTIONS.traceAddToDatasetOpened,
+        advance: "action-only",
+        blockInteraction: false,
         prepareKey: TASK_TOUR_PREPARATIONS.traceOpened,
+        popover: { placement: "left" },
       },
+      // Spotlights the whole Add-to-Dataset drawer: the cutout covers the entire
+      // drawer, so the form stays bright (only the page behind it dims) while the
+      // popover walks the user through the sequence — pick a dataset, map a
+      // column, then click Add Row. `blockInteraction: false` so the dimming
+      // overlay never traps clicks on the drawer or its portaled sub-dialogs
+      // (Create Dataset / Add Column). Advances on `traceAddedToDataset`, emitted
+      // when the row save succeeds.
       "save-trace-to-dataset": {
         targetId: TOUR_IDS.traceAddToDatasetDrawer,
         targetHookId: TASK_TOUR_QUERY_HOOKS.traceAddToDatasetDrawer,
         route: "traces",
         actionName: TASK_TOUR_ACTIONS.traceAddedToDataset,
         advance: "action-only",
+        blockInteraction: false,
         prepareKey: TASK_TOUR_PREPARATIONS.traceOpened,
+        popover: { placement: "left" },
       },
       "verify-new-row": {
         targetId: TOUR_IDS.datasetsFirstRow,
