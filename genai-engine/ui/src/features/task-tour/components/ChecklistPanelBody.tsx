@@ -209,7 +209,7 @@ export function ChecklistPanelBody({ controller }: ChecklistPanelBodyProps) {
                     )
                   ) : null}
                   {active && targetLostHint ? (
-                    <Typography variant="caption" sx={{ color: "warning.dark", display: "block", mt: 0.5, lineHeight: 1.45 }}>
+                    <Typography variant="caption" sx={(theme) => ({ color: theme.tour.hintColor, display: "block", mt: 0.5, lineHeight: 1.45 })}>
                       {targetLostHint}
                     </Typography>
                   ) : null}
