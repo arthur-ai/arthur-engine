@@ -126,7 +126,7 @@ export const TASK_TOUR_TARGET_LOST_HINTS: Partial<Record<string, string>> = {
   "datasets.verify-new-row": "Return to Datasets and open the dataset to confirm the new row landed.",
   "datasets.generate-synthetic": "Open the dataset detail page, then use Generate or skip this optional step.",
   "prompts.open-prompts-tab": "Open Prompt in the sidebar first, then click the Prompts tab.",
-  "prompts.inspect-prompt": "Open the Prompts tab, then click the first prompt row.",
+  "prompts.inspect-prompt": "Open the Prompts tab, then click the highlighted prompt row.",
   "prompts.open-in-playground": "Open a prompt detail view, then click Open in Playground.",
   "prompts.duplicate-prompt-in-playground": "Use Duplicate Prompt in the playground to copy the seeded prompt first.",
   "prompts.review-playground-prompt": "Duplicate a prompt first — the highlight moves to the newest prompt card once it appears.",
