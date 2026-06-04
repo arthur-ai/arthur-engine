@@ -46,7 +46,7 @@ export const OnboardingPage: React.FC = () => {
 
       const authenticated = await login(signup.api_key);
       if (authenticated) {
-        navigate(`/${signup.task_id}/traces`, { replace: true });
+        navigate(`/tasks/${signup.task_id}/overview`, { replace: true });
         return;
       }
 
