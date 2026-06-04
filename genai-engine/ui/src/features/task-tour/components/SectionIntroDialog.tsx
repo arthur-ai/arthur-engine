@@ -37,7 +37,7 @@ export function SectionIntroDialog({ open, section, sectionIndex, onStart, onDis
       slotProps={{
         paper: {
           elevation: 16,
-          sx: { borderRadius: 3, overflow: "hidden", position: "relative" },
+          sx: { borderRadius: 3, overflow: "hidden", position: "relative", display: "flex", flexDirection: "column" },
         },
       }}
     >
@@ -57,82 +57,84 @@ export function SectionIntroDialog({ open, section, sectionIndex, onStart, onDis
         <CloseIcon sx={{ fontSize: 18 }} />
       </IconButton>
 
-      {isHero ? (
-        <Box
-          sx={{
-            background: `linear-gradient(140deg, ${theme.palette.secondary.light}22 0%, ${theme.palette.secondary.light}44 50%, ${theme.palette.primary.light}33 100%)`,
-            px: 4,
-            pt: 3.5,
-            pb: 0.5,
-          }}
-        >
-          <Typography
-            variant="overline"
+      <Box sx={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
+        {isHero ? (
+          <Box
             sx={{
-              display: "block",
-              color: "secondary.main",
-              letterSpacing: 1,
-              fontWeight: 600,
-              mb: 1,
-              fontSize: 11,
+              background: `linear-gradient(140deg, ${theme.palette.secondary.light}22 0%, ${theme.palette.secondary.light}44 50%, ${theme.palette.primary.light}33 100%)`,
+              px: 4,
+              pt: 3.5,
+              pb: 0.5,
             }}
           >
-            {section.kicker}
-          </Typography>
-          <Typography id="task-tour-section-intro-title" variant="h5" sx={{ fontWeight: 700, letterSpacing: -0.5, mb: 1.5, color: "text.primary" }}>
-            {intro.heading}
-          </Typography>
-          {intro.hero ? <HeroImage hero={intro.hero} /> : null}
-          <Box sx={{ color: "text.secondary", lineHeight: 1.55, mb: 1.5 }}>{intro.body}</Box>
-          {intro.showFlywheel ? (
-            <Box sx={{ display: "flex", justifyContent: "center", pb: 1.5 }}>
-              <ADLCFlywheel />
-            </Box>
-          ) : null}
-        </Box>
-      ) : (
-        <Box sx={{ px: 4, pt: 3.5, pb: 0.5 }}>
-          <Typography variant="overline" sx={{ display: "block", color: "secondary.main", letterSpacing: 1, fontWeight: 600, mb: 1, fontSize: 11 }}>
-            {section.kicker}
-          </Typography>
-          <Typography id="task-tour-section-intro-title" variant="h5" sx={{ fontWeight: 700, letterSpacing: -0.5, mb: 1.5, color: "text.primary" }}>
-            {intro.heading}
-          </Typography>
-          {intro.hero ? <HeroImage hero={intro.hero} /> : null}
-          <Box sx={{ color: "text.secondary", lineHeight: 1.55, mb: 1.5 }}>{intro.body}</Box>
-        </Box>
-      )}
+            <Typography
+              variant="overline"
+              sx={{
+                display: "block",
+                color: "secondary.main",
+                letterSpacing: 1,
+                fontWeight: 600,
+                mb: 1,
+                fontSize: 11,
+              }}
+            >
+              {section.kicker}
+            </Typography>
+            <Typography id="task-tour-section-intro-title" variant="h5" sx={{ fontWeight: 700, letterSpacing: -0.5, mb: 1.5, color: "text.primary" }}>
+              {intro.heading}
+            </Typography>
+            {intro.hero ? <HeroImage hero={intro.hero} /> : null}
+            <Box sx={{ color: "text.secondary", lineHeight: 1.55, mb: 1.5 }}>{intro.body}</Box>
+            {intro.showFlywheel ? (
+              <Box sx={{ display: "flex", justifyContent: "center", pb: 1.5 }}>
+                <ADLCFlywheel />
+              </Box>
+            ) : null}
+          </Box>
+        ) : (
+          <Box sx={{ px: 4, pt: 3.5, pb: 0.5 }}>
+            <Typography variant="overline" sx={{ display: "block", color: "secondary.main", letterSpacing: 1, fontWeight: 600, mb: 1, fontSize: 11 }}>
+              {section.kicker}
+            </Typography>
+            <Typography id="task-tour-section-intro-title" variant="h5" sx={{ fontWeight: 700, letterSpacing: -0.5, mb: 1.5, color: "text.primary" }}>
+              {intro.heading}
+            </Typography>
+            {intro.hero ? <HeroImage hero={intro.hero} /> : null}
+            <Box sx={{ color: "text.secondary", lineHeight: 1.55, mb: 1.5 }}>{intro.body}</Box>
+          </Box>
+        )}
 
-      {intro.scenario ? (
-        <Paper
-          variant="outlined"
-          sx={{
-            mx: 4,
-            my: 0.5,
-            mb: 2.25,
-            p: 1.75,
-            borderStyle: "dashed",
-            borderRadius: 2,
-            bgcolor: "background.default",
-          }}
-        >
-          <Typography
-            variant="caption"
+        {intro.scenario ? (
+          <Paper
+            variant="outlined"
             sx={{
-              display: "block",
-              color: "secondary.main",
-              letterSpacing: 0.5,
-              fontWeight: 600,
-              textTransform: "uppercase",
-              fontSize: 11,
-              mb: 0.5,
+              mx: 4,
+              my: 0.5,
+              mb: 2.25,
+              p: 1.75,
+              borderStyle: "dashed",
+              borderRadius: 2,
+              bgcolor: "background.default",
             }}
           >
-            {intro.scenario.label}
-          </Typography>
-          <Box sx={{ color: "text.secondary", lineHeight: 1.55 }}>{intro.scenario.text}</Box>
-        </Paper>
-      ) : null}
+            <Typography
+              variant="caption"
+              sx={{
+                display: "block",
+                color: "secondary.main",
+                letterSpacing: 0.5,
+                fontWeight: 600,
+                textTransform: "uppercase",
+                fontSize: 11,
+                mb: 0.5,
+              }}
+            >
+              {intro.scenario.label}
+            </Typography>
+            <Box sx={{ color: "text.secondary", lineHeight: 1.55 }}>{intro.scenario.text}</Box>
+          </Paper>
+        ) : null}
+      </Box>
 
       <Stack direction="row" alignItems="center" justifyContent="flex-end" spacing={1.5} sx={{ px: 4, pb: 2.75, pt: 0.5 }}>
         <Button variant="contained" color="primary" onClick={onStart} endIcon={<EastIcon sx={{ fontSize: 16 }} />} sx={{ whiteSpace: "nowrap" }}>

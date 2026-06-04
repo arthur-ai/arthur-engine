@@ -68,7 +68,7 @@ Click the **Prompts** tab to see the prompt library for this task.
 
 ## step: inspect-prompt
 
-Click the top prompt in the list. Each prompt is a bundle of messages, variables, and a model — change any of those and you've got a new version worth comparing.
+Click the highlighted prompt in the list. Each prompt is a bundle of messages, variables, and a model — change any of those and you've got a new version worth comparing.
 
 ## step: open-in-playground
 

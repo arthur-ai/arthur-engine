@@ -76,9 +76,11 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
           elevation: 16,
           sx: {
             borderRadius: 0,
-            overflow: "visible",
+            overflow: "hidden",
             position: "relative",
             bgcolor: "background.paper",
+            display: "flex",
+            flexDirection: "column",
           },
         },
       }}
@@ -99,132 +101,134 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
         <CloseIcon sx={{ fontSize: 18 }} />
       </IconButton>
 
-      <Paper
-        ref={ref}
-        elevation={0}
-        sx={{
-          position: "relative",
-          m: 2,
-          minHeight: { xs: 520, md: 480 },
-          px: { xs: 3, md: 6 },
-          py: { xs: 5, md: 4 },
-          textAlign: "center",
-          border: 2,
-          borderColor: INK,
-          borderRadius: 3,
-          overflow: "hidden",
-          backgroundImage: `linear-gradient(180deg, #FBF2D9 0%, #F7D8B5 100%)`,
-          color: INK,
-        }}
-      >
-        <Typography
-          id="task-tour-certificate-title"
-          variant="h2"
+      <Box sx={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
+        <Paper
+          ref={ref}
+          elevation={0}
           sx={{
-            fontFamily: '"Georgia", "Times New Roman", serif',
-            fontSize: { xs: 36, md: 48 },
-            fontWeight: 700,
-            lineHeight: 1.05,
-            letterSpacing: -1,
+            position: "relative",
+            m: 2,
+            minHeight: { xs: 520, md: 480 },
+            px: { xs: 3, md: 6 },
+            py: { xs: 5, md: 4 },
+            textAlign: "center",
+            border: 2,
+            borderColor: INK,
+            borderRadius: 3,
+            overflow: "hidden",
+            backgroundImage: `linear-gradient(180deg, #FBF2D9 0%, #F7D8B5 100%)`,
+            color: INK,
           }}
         >
-          Certificate of Achievement
-        </Typography>
-        <Typography
-          variant="h6"
-          sx={{
-            fontFamily: '"Georgia", "Times New Roman", serif',
-            fontSize: { xs: 18, md: 22 },
-            fontWeight: 600,
-            mt: 1.25,
-          }}
-        >
-          Arthur AI · Intro to Evals
-        </Typography>
-        <Typography
-          variant="caption"
-          sx={{
-            display: "block",
+          <Typography
+            id="task-tour-certificate-title"
+            variant="h2"
+            sx={{
+              fontFamily: '"Georgia", "Times New Roman", serif',
+              fontSize: { xs: 36, md: 48 },
+              fontWeight: 700,
+              lineHeight: 1.05,
+              letterSpacing: -1,
+            }}
+          >
+            Certificate of Achievement
+          </Typography>
+          <Typography
+            variant="h6"
+            sx={{
+              fontFamily: '"Georgia", "Times New Roman", serif',
+              fontSize: { xs: 18, md: 22 },
+              fontWeight: 600,
+              mt: 1.25,
+            }}
+          >
+            Arthur AI · Intro to Evals
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              display: "block",
 
-            letterSpacing: 6,
-            textTransform: "uppercase",
-            fontWeight: 700,
-            fontSize: 10,
-            color: EYEBROW,
-            mt: { xs: 4, md: 4.5 },
-            mb: 1.75,
-          }}
-        >
-          THIS IS TO CERTIFY THAT
-        </Typography>
-        <Typography
-          variant="h2"
-          sx={{
-            fontFamily: '"Georgia", "Times New Roman", serif',
-            fontWeight: 700,
+              letterSpacing: 6,
+              textTransform: "uppercase",
+              fontWeight: 700,
+              fontSize: 10,
+              color: EYEBROW,
+              mt: { xs: 4, md: 4.5 },
+              mb: 1.75,
+            }}
+          >
+            THIS IS TO CERTIFY THAT
+          </Typography>
+          <Typography
+            variant="h2"
+            sx={{
+              fontFamily: '"Georgia", "Times New Roman", serif',
+              fontWeight: 700,
 
-            fontSize: { xs: 42, md: 52 },
-            lineHeight: 1.05,
-            letterSpacing: -1,
-          }}
-        >
-          {recipientName}
-        </Typography>
-        <Typography variant="body2" sx={{ lineHeight: 1.55, maxWidth: 650, mx: "auto", mt: 3, color: CITATION }}>
-          Has successfully completed the{" "}
-          <Box component="span" sx={{ fontWeight: 700 }}>
-            Intro to Evals
-          </Box>{" "}
-          course and used the{" "}
-          <Box component="span" sx={{ fontWeight: 700 }}>
-            Arthur Evals Engine
-          </Box>{" "}
-          to design, measure, and ship a production-grade AI agent.
-        </Typography>
+              fontSize: { xs: 42, md: 52 },
+              lineHeight: 1.05,
+              letterSpacing: -1,
+            }}
+          >
+            {recipientName}
+          </Typography>
+          <Typography variant="body2" sx={{ lineHeight: 1.55, maxWidth: 650, mx: "auto", mt: 3, color: CITATION }}>
+            Has successfully completed the{" "}
+            <Box component="span" sx={{ fontWeight: 700 }}>
+              Intro to Evals
+            </Box>{" "}
+            course and used the{" "}
+            <Box component="span" sx={{ fontWeight: 700 }}>
+              Arthur Evals Engine
+            </Box>{" "}
+            to design, measure, and ship a production-grade AI agent.
+          </Typography>
 
-        <Stack
-          direction="row"
-          alignItems="flex-end"
-          justifyContent="space-between"
-          sx={{
-            position: { xs: "static", md: "absolute" },
-            left: { md: 54 },
-            right: { md: 54 },
-            bottom: { md: 22 },
-            mt: { xs: 8, md: 0 },
-            gap: 2,
-          }}
-        >
-          <Box sx={{ width: 150, textAlign: "center" }}>
-            <Box sx={{ mb: 1, display: "flex", justifyContent: "center" }}>
-              <ArthurSeal size={104} />
+          <Stack
+            direction="row"
+            alignItems="flex-end"
+            justifyContent="space-between"
+            sx={{
+              position: { xs: "static", md: "absolute" },
+              left: { md: 54 },
+              right: { md: 54 },
+              bottom: { md: 22 },
+              mt: { xs: 8, md: 0 },
+              gap: 2,
+            }}
+          >
+            <Box sx={{ width: 150, textAlign: "center" }}>
+              <Box sx={{ mb: 1, display: "flex", justifyContent: "center" }}>
+                <ArthurSeal size={104} />
+              </Box>
+              <Box sx={{ borderTop: 1, borderColor: INK_LINE, pt: 0.75 }}>
+                <Typography variant="caption" sx={{ fontSize: 10 }}>
+                  Arthur AI Instructors
+                </Typography>
+              </Box>
             </Box>
-            <Box sx={{ borderTop: 1, borderColor: INK_LINE, pt: 0.75 }}>
-              <Typography variant="caption" sx={{ fontSize: 10 }}>
-                Arthur AI Instructors
+
+            <Stack direction="row" alignItems="center" spacing={0.75} sx={{ pb: 3 }}>
+              <ArthurLogo width={26} height={26} aria-hidden="true" />
+              <Typography variant="h6" sx={{ fontWeight: 700, letterSpacing: -0.5, opacity: 0.6 }}>
+                Arthur
               </Typography>
-            </Box>
-          </Box>
+            </Stack>
 
-          <Stack direction="row" alignItems="center" spacing={0.75} sx={{ pb: 3 }}>
-            <ArthurLogo width={26} height={26} aria-hidden="true" />
-            <Typography variant="h6" sx={{ fontWeight: 700, letterSpacing: -0.5, opacity: 0.6 }}>
-              Arthur
-            </Typography>
+            <Box sx={{ width: 150, textAlign: "center", pb: 0.25 }}>
+              <Typography variant="caption" sx={{ display: "block", mb: 0.75, fontFamily: '"Georgia", serif' }}>
+                {issuedOn}
+              </Typography>
+              <Box sx={{ borderTop: 1, borderColor: INK_LINE, pt: 0.75 }}>
+                <Typography variant="caption" sx={{ fontSize: 10 }}>
+                  Date
+                </Typography>
+              </Box>
+            </Box>
           </Stack>
-
-          <Box sx={{ width: 150, textAlign: "center", pb: 0.25 }}>
-            <Typography variant="caption" sx={{ display: "block", mb: 0.75, fontFamily: '"Georgia", serif' }}>
-              {issuedOn}
-            </Typography>
-            <Box sx={{ borderTop: 1, borderColor: INK_LINE, pt: 0.75 }}>
-              <Typography variant="caption" sx={{ fontSize: 10 }}>
-                Date
-              </Typography>
-            </Box>
-          </Box>
-        </Stack>
-      </Paper>
+        </Paper>
+      </Box>
 
       <Stack direction="row" justifyContent="center" spacing={1} sx={{ px: 2, pb: 1.5, flexWrap: "wrap", rowGap: 1 }}>
         <Button
