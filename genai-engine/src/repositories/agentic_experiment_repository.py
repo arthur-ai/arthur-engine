@@ -8,7 +8,6 @@ from fastapi import HTTPException
 from sqlalchemy import asc, desc, or_
 from sqlalchemy.orm import Session, joinedload
 
-from custom_types import QueryT
 from db_models.agentic_experiment_models import (
     DatabaseAgenticExperiment,
     DatabaseAgenticExperimentTestCase,
@@ -666,32 +665,10 @@ class AgenticExperimentRepository:
 
         return summaries, total_count
 
-    def _scope_test_cases_to_org(self, query: QueryT, org_scope: UUID | None) -> QueryT:
-        """Restrict a test-case query to a tenant's org via the two-hop join
-        test_case → experiment → tasks.org_id (Pattern C, design §7).
-
-        Returns the query unchanged for admin/system callers (org_scope=None).
-        """
-        if org_scope is None:
-            return query
-        return (
-            query.join(
-                DatabaseAgenticExperiment,
-                DatabaseAgenticExperiment.id
-                == DatabaseAgenticExperimentTestCase.experiment_id,
-            )
-            .join(
-                DatabaseTask,
-                DatabaseTask.id == DatabaseAgenticExperiment.task_id,
-            )
-            .filter(DatabaseTask.org_id == org_scope)
-        )
-
     def _get_db_test_cases(
         self,
         experiment_id: str,
         status_filter: Optional[TestCaseStatus] = None,
-        org_scope: UUID | None = None,
     ) -> List[DatabaseAgenticExperimentTestCase]:
         query = self.db_session.query(DatabaseAgenticExperimentTestCase).filter(
             DatabaseAgenticExperimentTestCase.experiment_id == experiment_id,
@@ -700,17 +677,18 @@ class AgenticExperimentRepository:
             query = query.filter(
                 DatabaseAgenticExperimentTestCase.status == status_filter,
             )
-        return self._scope_test_cases_to_org(query, org_scope).all()
+        return query.all()
 
     def _get_db_test_case(
         self,
         test_case_id: str,
-        org_scope: UUID | None = None,
     ) -> Optional[DatabaseAgenticExperimentTestCase]:
-        query = self.db_session.query(DatabaseAgenticExperimentTestCase).filter(
-            DatabaseAgenticExperimentTestCase.id == test_case_id,
+        test_case = (
+            self.db_session.query(DatabaseAgenticExperimentTestCase)
+            .filter_by(id=test_case_id)
+            .first()
         )
-        return self._scope_test_cases_to_org(query, org_scope).first()
+        return test_case
 
     def get_test_cases(
         self,

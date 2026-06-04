@@ -113,9 +113,7 @@ def get_transform(
                 detail=f"Transform {transform_id} not found",
             )
 
-        definition = trace_transform_repo.get_latest_definition(
-            transform_id, org_scope=org_scope
-        )
+        definition = trace_transform_repo.get_latest_definition(transform_id)
         return trace_transform.to_response_model(definition=definition)
     except HTTPException:
         raise
@@ -193,9 +191,7 @@ def update_transform(
         trace_transform = trace_transform_repo.update_transform(
             transform_id, request, org_scope=org_scope
         )
-        definition = trace_transform_repo.get_latest_definition(
-            transform_id, org_scope=org_scope
-        )
+        definition = trace_transform_repo.get_latest_definition(transform_id)
         return trace_transform.to_response_model(definition=definition)
     except HTTPException:
         raise
@@ -223,7 +219,7 @@ def list_transform_versions(
                 status_code=404,
                 detail=f"Transform {transform_id} not found",
             )
-        return repo.list_versions(transform_id, org_scope=org_scope)
+        return repo.list_versions(transform_id)
     except HTTPException:
         raise
     except Exception as e:
@@ -251,7 +247,7 @@ def get_transform_version(
                 status_code=404,
                 detail=f"Transform {transform_id} not found",
             )
-        return repo.get_version_by_id(transform_id, version_id, org_scope=org_scope)
+        return repo.get_version_by_id(transform_id, version_id)
     except HTTPException:
         raise
     except Exception as e:
@@ -370,9 +366,7 @@ def execute_trace_transform_extraction(
             )
 
         # Fetch the latest version to get the transform definition
-        versions = trace_transform_repo.list_versions(
-            transform_id, org_scope=org_scope
-        ).versions
+        versions = trace_transform_repo.list_versions(transform_id).versions
         if not versions:
             raise HTTPException(
                 status_code=404,

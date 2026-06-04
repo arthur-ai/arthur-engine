@@ -9,7 +9,6 @@ from pydantic import TypeAdapter
 from sqlalchemy import asc, desc, or_
 from sqlalchemy.orm import Session, joinedload
 
-from custom_types import QueryT
 from db_models.dataset_models import (
     DatabaseDataset,
     DatabaseDatasetVersion,
@@ -734,48 +733,28 @@ class RagExperimentRepository:
 
         return summaries, total_count
 
-    def _scope_test_cases_to_org(self, query: QueryT, org_scope: UUID | None) -> QueryT:
-        """Restrict a test-case query to a tenant's org via the two-hop join
-        test_case → experiment → tasks.org_id (Pattern C, design §7).
-
-        Returns the query unchanged for admin/system callers (org_scope=None).
-        """
-        if org_scope is None:
-            return query
-        return (
-            query.join(
-                DatabaseRagExperiment,
-                DatabaseRagExperiment.id == DatabaseRagExperimentTestCase.experiment_id,
-            )
-            .join(
-                DatabaseTask,
-                DatabaseTask.id == DatabaseRagExperiment.task_id,
-            )
-            .filter(DatabaseTask.org_id == org_scope)
-        )
-
     def _get_db_test_cases(
         self,
         experiment_id: str,
         status_filter: Optional[TestCaseStatus] = None,
-        org_scope: UUID | None = None,
     ) -> List[DatabaseRagExperimentTestCase]:
         query = self.db_session.query(DatabaseRagExperimentTestCase).filter(
             DatabaseRagExperimentTestCase.experiment_id == experiment_id,
         )
         if status_filter:
             query = query.filter(DatabaseRagExperimentTestCase.status == status_filter)
-        return self._scope_test_cases_to_org(query, org_scope).all()
+        return query.all()
 
     def _get_db_test_case(
         self,
         test_case_id: str,
-        org_scope: UUID | None = None,
     ) -> Optional[DatabaseRagExperimentTestCase]:
-        query = self.db_session.query(DatabaseRagExperimentTestCase).filter(
-            DatabaseRagExperimentTestCase.id == test_case_id,
+        test_case = (
+            self.db_session.query(DatabaseRagExperimentTestCase)
+            .filter_by(id=test_case_id)
+            .first()
         )
-        return self._scope_test_cases_to_org(query, org_scope).first()
+        return test_case
 
     def get_test_cases(
         self,
