@@ -1,14 +1,14 @@
 ---
 name: arthur-skills-upgrade
-description: Upgrade locally installed arthur-onboard-* skills to the latest version from GitHub main branch. Checks version fields, reports stale skills, and updates in place after confirmation.
+description: Upgrade locally installed arthur-onboard-* and arthur-skills-upgrade skills to the latest version from GitHub main branch. Checks version fields, reports stale skills, and updates in place after confirmation.
 allowed-tools: Bash
 version: 1.0.0
 ---
 
 # Upgrade Arthur Onboarding Skills
 
-Check locally installed `arthur-onboard-*` skills for updates and upgrade any that are
-behind the latest version on GitHub main.
+Check locally installed `arthur-onboard-*` and `arthur-skills-upgrade` skills for updates
+and upgrade any that are behind the latest version on GitHub main.
 
 ---
 
@@ -16,15 +16,15 @@ behind the latest version on GitHub main.
 
 ```bash
 echo "=== Global install (~/.claude/skills/) ==="
-ls -d ~/.claude/skills/arthur-onboard-* 2>/dev/null || echo "(none)"
+ls -d ~/.claude/skills/arthur-onboard-* ~/.claude/skills/arthur-skills-upgrade 2>/dev/null || echo "(none)"
 
 echo ""
 echo "=== Project install (.claude/skills/) ==="
-ls -d .claude/skills/arthur-onboard-* 2>/dev/null || echo "(none)"
+ls -d .claude/skills/arthur-onboard-* .claude/skills/arthur-skills-upgrade 2>/dev/null || echo "(none)"
 ```
 
 Collect all found paths. If none are found in either location, tell the user no
-`arthur-onboard-*` skills are installed and show the install command from the README.
+`arthur-onboard-*` or `arthur-skills-upgrade` skills are installed and show the install command from the README.
 
 ---
 
@@ -39,7 +39,8 @@ STALE=()
 OK=()
 SKIP=()
 
-for skill_dir in ~/.claude/skills/arthur-onboard-* .claude/skills/arthur-onboard-*; do
+for skill_dir in ~/.claude/skills/arthur-onboard-* ~/.claude/skills/arthur-skills-upgrade \
+                 .claude/skills/arthur-onboard-* .claude/skills/arthur-skills-upgrade; do
   [ -f "$skill_dir/SKILL.md" ] || continue
   skill_name=$(basename "$skill_dir")
 
@@ -64,6 +65,9 @@ for skill_dir in ~/.claude/skills/arthur-onboard-* .claude/skills/arthur-onboard
     echo "UPDATE  $skill_name: $local_version → $remote_version"
   fi
 done
+
+# Persist stale list so Step 3 can read it in a fresh shell
+printf '%s\n' "${STALE[@]}" > /tmp/arthur-stale-skills.txt
 ```
 
 Present the results clearly:
@@ -86,7 +90,8 @@ Once confirmed, download and replace each stale skill:
 ```bash
 BASE="https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integrations/claude-code-skills/arthur-onboard"
 
-for entry in "${STALE[@]}"; do
+while IFS= read -r entry; do
+  [ -n "$entry" ] || continue
   skill_dir=$(echo "$entry" | cut -d'|' -f1)
   skill_name=$(echo "$entry" | cut -d'|' -f2)
   old_ver=$(echo "$entry" | cut -d'|' -f3)
@@ -108,7 +113,8 @@ for entry in "${STALE[@]}"; do
   else
     echo "FAILED:  $skill_name (could not fetch from GitHub)"
   fi
-done
+done < /tmp/arthur-stale-skills.txt
+rm -f /tmp/arthur-stale-skills.txt
 ```
 
 ---

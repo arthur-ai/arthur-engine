@@ -13,6 +13,12 @@ You are guiding the user through the complete Arthur Platform onboarding workflo
 
 ---
 
+## Step 0 — Check for skill updates
+
+Invoke the `arthur-skills-upgrade` skill. It will check all installed `arthur-onboard-*` and `arthur-skills-upgrade` skills against GitHub main and prompt the user only if stale ones are found. If the skill is not installed, skip this step silently.
+
+---
+
 ## State File
 
 Persist all state to `.arthur-engine.env` in the root of the target repository. This file is per-project and should be gitignored.

@@ -128,7 +128,8 @@ the upgrade skill, then run `/arthur-skills-upgrade` to bring everything else cu
 ```bash
 BASE="https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integrations/claude-code-skills/arthur-onboard"
 mkdir -p ~/.claude/skills/arthur-skills-upgrade
-curl -sSLf "$BASE/arthur-skills-upgrade/SKILL.md" > ~/.claude/skills/arthur-skills-upgrade/SKILL.md
+curl -sSLf "$BASE/arthur-skills-upgrade/SKILL.md" > ~/.claude/skills/arthur-skills-upgrade/SKILL.md \
+  || { echo "FAILED: arthur-skills-upgrade"; rm -f ~/.claude/skills/arthur-skills-upgrade/SKILL.md; }
 ```
 
 Alternatively, re-run the full install script above — it overwrites all files in place.

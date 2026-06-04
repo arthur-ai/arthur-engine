@@ -805,8 +805,9 @@ with tracer.start_as_current_span(f"{server_name}.{tool_name}") as mcp_span:
     mcp_span.set_attribute(SpanAttributes.INPUT_MIME_TYPE, "application/json")
     try:
         result = await mcp_client.call_tool(tool_name, arguments=tool_input)
-        mcp_span.set_attribute(SpanAttributes.OUTPUT_VALUE, json.dumps(result))
-        mcp_span.set_attribute(SpanAttributes.OUTPUT_MIME_TYPE, "application/json")
+        # CallToolResult is not JSON-serializable — extract the text content directly
+        output = result.content[0].text if result.content else ""
+        mcp_span.set_attribute(SpanAttributes.OUTPUT_VALUE, output)
     except Exception as e:
         mcp_span.set_status(StatusCode.ERROR, str(e))
         raise
@@ -938,7 +939,10 @@ with tracer.start_as_current_span("embed_query") as emb_span:
     vector = embed(text)
 
     emb_span.set_attribute("embedding.embeddings.0.embedding.text", text)
-    # vector values are large — only log the dimension count, not the full vector
+    # vector values are large — only log the dimension count, not the full vector.
+    # Note: vector_length is a custom attribute; the OpenInference standard attribute
+    # for the vector itself is embedding.embeddings.0.embedding.vector (not used here
+    # to avoid logging large arrays).
     emb_span.set_attribute("embedding.embeddings.0.embedding.vector_length",
                            len(vector))
 ```
