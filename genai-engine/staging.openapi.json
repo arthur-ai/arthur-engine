@@ -5014,6 +5014,100 @@
                 }
             }
         },
+        "/api/v1/traces/overview": {
+            "post": {
+                "tags": [
+                    "Traces"
+                ],
+                "summary": "Get Overview of Traces for each Task",
+                "description": "Get overview of traces for each task including trace count, total tokens, and success rate.",
+                "operationId": "get_traces_overview_api_v1_traces_overview_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TraceOverviewRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TraceOverviewListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/traces/overview/timeseries": {
+            "post": {
+                "tags": [
+                    "Traces"
+                ],
+                "summary": "Get Time-Series Overview Data for a Task",
+                "description": "Get time-bucketed trace metrics (count, tokens, cost, success rate) for a single task.",
+                "operationId": "get_traces_timeseries_api_v1_traces_overview_timeseries_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TraceTimeSeriesRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TraceTimeSeriesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            }
+        },
         "/api/v1/traces/spans": {
             "get": {
                 "tags": [
@@ -31126,6 +31220,16 @@
                 "title": "SyntheticDataRowResponse",
                 "description": "A single generated row with a temporary client-side ID for tracking."
             },
+            "TaskAnalyticsBucketSize": {
+                "type": "string",
+                "enum": [
+                    "hour",
+                    "day",
+                    "week"
+                ],
+                "title": "TaskAnalyticsBucketSize",
+                "description": "Time bucket granularity for task analytics time-series metrics."
+            },
             "TaskResponse": {
                 "properties": {
                     "id": {
@@ -32104,6 +32208,126 @@
                 "title": "TraceMetadataResponse",
                 "description": "Lightweight trace metadata for list operations"
             },
+            "TraceOverviewListResponse": {
+                "properties": {
+                    "overviews": {
+                        "items": {
+                            "$ref": "#/components/schemas/TraceOverviewResponse"
+                        },
+                        "type": "array",
+                        "title": "Overviews",
+                        "description": "List of trace overviews"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "Total number of trace overviews"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "overviews",
+                    "count"
+                ],
+                "title": "TraceOverviewListResponse",
+                "description": "Response for list of trace overviews"
+            },
+            "TraceOverviewRequest": {
+                "properties": {
+                    "task_ids": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Task Ids",
+                        "description": "Optional list of task IDs to get the overview of traces for"
+                    },
+                    "start_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Start Time",
+                        "description": "Start time of the traces to get the overview of"
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "End Time",
+                        "description": "End time of the traces to get the overview of"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "start_time",
+                    "end_time"
+                ],
+                "title": "TraceOverviewRequest",
+                "description": "Request schema for getting the overview of traces for each task"
+            },
+            "TraceOverviewResponse": {
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "Task ID"
+                    },
+                    "trace_count": {
+                        "type": "integer",
+                        "title": "Trace Count",
+                        "description": "Number of traces"
+                    },
+                    "trace_token_count": {
+                        "type": "integer",
+                        "title": "Trace Token Count",
+                        "description": "Total number of tokens in traces"
+                    },
+                    "trace_token_cost": {
+                        "type": "number",
+                        "title": "Trace Token Cost",
+                        "description": "Total token cost across traces"
+                    },
+                    "eval_count": {
+                        "type": "integer",
+                        "title": "Eval Count",
+                        "description": "Number of continuous-eval annotations"
+                    },
+                    "continuous_eval_success_rate": {
+                        "type": "number",
+                        "title": "Continuous Eval Success Rate",
+                        "description": "Fraction of continuous-eval annotations that passed"
+                    },
+                    "last_active": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Last Active",
+                        "description": "Most recent trace end time, or null if no traces in the window"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "task_id",
+                    "trace_count",
+                    "trace_token_count",
+                    "trace_token_cost",
+                    "eval_count",
+                    "continuous_eval_success_rate"
+                ],
+                "title": "TraceOverviewResponse",
+                "description": "Response for trace overview"
+            },
             "TraceResponse": {
                 "properties": {
                     "prompt_token_count": {
@@ -32262,6 +32486,104 @@
                     "span_count"
                 ],
                 "title": "TraceSortBy"
+            },
+            "TraceTimeSeriesPoint": {
+                "properties": {
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Timestamp",
+                        "description": "Inclusive start of the bucket"
+                    },
+                    "trace_count": {
+                        "type": "integer",
+                        "title": "Trace Count",
+                        "description": "Number of traces in the bucket"
+                    },
+                    "trace_token_count": {
+                        "type": "integer",
+                        "title": "Trace Token Count",
+                        "description": "Total tokens in the bucket"
+                    },
+                    "trace_token_cost": {
+                        "type": "number",
+                        "title": "Trace Token Cost",
+                        "description": "Total token cost in the bucket"
+                    },
+                    "continuous_eval_success_rate": {
+                        "type": "number",
+                        "title": "Continuous Eval Success Rate",
+                        "description": "Fraction of continuous-eval annotations that passed in the bucket"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "timestamp",
+                    "trace_count",
+                    "trace_token_count",
+                    "trace_token_cost",
+                    "continuous_eval_success_rate"
+                ],
+                "title": "TraceTimeSeriesPoint",
+                "description": "Metrics for a single time bucket, one per Analyze-page chart series."
+            },
+            "TraceTimeSeriesRequest": {
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "Task ID to get time-series metrics for"
+                    },
+                    "start_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Start Time",
+                        "description": "Inclusive start boundary of the time window"
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "End Time",
+                        "description": "Exclusive end boundary of the time window"
+                    },
+                    "bucket_size": {
+                        "$ref": "#/components/schemas/TaskAnalyticsBucketSize",
+                        "description": "Size of each time bucket"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "task_id",
+                    "start_time",
+                    "end_time",
+                    "bucket_size"
+                ],
+                "title": "TraceTimeSeriesRequest",
+                "description": "Request schema for time-bucketed trace metrics for a single task.\n\nThe caller (frontend) owns interval -> window + bucket-size resolution and\npasses the resolved start_time, end_time, and bucket_size; the backend just\nbuckets and zero-fills, mirroring the Analyze page aggregation."
+            },
+            "TraceTimeSeriesResponse": {
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "Task ID"
+                    },
+                    "points": {
+                        "items": {
+                            "$ref": "#/components/schemas/TraceTimeSeriesPoint"
+                        },
+                        "type": "array",
+                        "title": "Points",
+                        "description": "Time buckets ordered ascending by timestamp"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "task_id",
+                    "points"
+                ],
+                "title": "TraceTimeSeriesResponse",
+                "description": "Response for time-bucketed trace metrics for a single task."
             },
             "TraceTransformDefinition": {
                 "properties": {
