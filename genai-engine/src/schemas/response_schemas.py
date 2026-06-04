@@ -1016,3 +1016,8 @@ class TraceTimeSeriesResponse(BaseModel):
     points: list[TraceTimeSeriesPoint] = Field(
         description="Time buckets ordered ascending by timestamp",
     )
+
+
+class CertificateUploadResponse(BaseModel):
+    certificate_id: str
+    certificate_url: str

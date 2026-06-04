@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.609"
+        "version": "2.1.503"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -16563,6 +16563,89 @@
                 }
             }
         },
+        "/api/v2/demo/certificate": {
+            "post": {
+                "tags": [
+                    "Demo"
+                ],
+                "summary": "Upload Certificate",
+                "description": "Upload a demo completion certificate PNG to persistent storage.",
+                "operationId": "upload_certificate_api_v2_demo_certificate_post",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Body_upload_certificate_api_v2_demo_certificate_post"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CertificateUploadResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/demo/certificate/{cert_id}": {
+            "get": {
+                "tags": [
+                    "Demo"
+                ],
+                "summary": "Get Certificate",
+                "description": "Retrieve a previously stored demo completion certificate PNG.",
+                "operationId": "get_certificate_api_v2_demo_certificate__cert_id__get",
+                "parameters": [
+                    {
+                        "name": "cert_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Cert Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v2/tenant/signup": {
             "post": {
                 "tags": [
@@ -19529,6 +19612,20 @@
                 ],
                 "title": "Body_add_tag_to_llm_eval_version_api_v1_tasks__task_id__llm_evals__eval_name__versions__eval_version__tags_put"
             },
+            "Body_upload_certificate_api_v2_demo_certificate_post": {
+                "properties": {
+                    "file": {
+                        "type": "string",
+                        "format": "binary",
+                        "title": "File"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "file"
+                ],
+                "title": "Body_upload_certificate_api_v2_demo_certificate_post"
+            },
             "Body_upload_embeddings_file_api_chat_files_post": {
                 "properties": {
                     "file": {
@@ -19627,6 +19724,24 @@
                     "results"
                 ],
                 "title": "BuiltinValidationResponse"
+            },
+            "CertificateUploadResponse": {
+                "properties": {
+                    "certificate_id": {
+                        "type": "string",
+                        "title": "Certificate Id"
+                    },
+                    "certificate_url": {
+                        "type": "string",
+                        "title": "Certificate Url"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "certificate_id",
+                    "certificate_url"
+                ],
+                "title": "CertificateUploadResponse"
             },
             "ChatCompletionMessageToolCall": {
                 "properties": {},
