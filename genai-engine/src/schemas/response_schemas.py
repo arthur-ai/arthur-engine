@@ -969,3 +969,50 @@ class TransformDependents(BaseModel):
 
 class EngineConfigResponse(BaseModel):
     demo_mode: bool = Field(description="Whether the engine is running in demo mode.")
+
+
+class TraceOverviewResponse(BaseModel):
+    """Response for trace overview"""
+
+    task_id: str = Field(description="Task ID")
+    trace_count: int = Field(description="Number of traces")
+    trace_token_count: int = Field(description="Total number of tokens in traces")
+    trace_token_cost: float = Field(description="Total token cost across traces")
+    eval_count: int = Field(description="Number of continuous-eval annotations")
+    continuous_eval_success_rate: float = Field(
+        description="Fraction of continuous-eval annotations that passed",
+    )
+    last_active: Optional[datetime] = Field(
+        default=None,
+        description="Most recent trace end time, or null if no traces in the window",
+    )
+
+
+class TraceOverviewListResponse(BaseModel):
+    """Response for list of trace overviews"""
+
+    overviews: list[TraceOverviewResponse] = Field(
+        description="List of trace overviews",
+    )
+    count: int = Field(description="Total number of trace overviews")
+
+
+class TraceTimeSeriesPoint(BaseModel):
+    """Metrics for a single time bucket, one per Analyze-page chart series."""
+
+    timestamp: datetime = Field(description="Inclusive start of the bucket")
+    trace_count: int = Field(description="Number of traces in the bucket")
+    trace_token_count: int = Field(description="Total tokens in the bucket")
+    trace_token_cost: float = Field(description="Total token cost in the bucket")
+    continuous_eval_success_rate: float = Field(
+        description="Fraction of continuous-eval annotations that passed in the bucket",
+    )
+
+
+class TraceTimeSeriesResponse(BaseModel):
+    """Response for time-bucketed trace metrics for a single task."""
+
+    task_id: str = Field(description="Task ID")
+    points: list[TraceTimeSeriesPoint] = Field(
+        description="Time buckets ordered ascending by timestamp",
+    )
