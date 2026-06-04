@@ -20,7 +20,12 @@ from unittest.mock import patch
 
 import httpx
 import pytest
-from arthur_common.models.enums import InferenceFeedbackTarget, RuleResultEnum
+from arthur_common.models.enums import (
+    InferenceFeedbackTarget,
+    RuleResultEnum,
+    RuleScope,
+    RuleType,
+)
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
@@ -39,11 +44,16 @@ from db_models.notebook_models import DatabaseNotebook
 from db_models.prompt_experiment_models import DatabasePromptExperiment
 from db_models.rag_experiment_models import DatabaseRagExperiment
 from db_models.rag_notebook_models import DatabaseRagNotebook
+from db_models.rule_models import DatabaseRule
+from db_models.task_models import DatabaseTaskToRules
 from repositories.agentic_experiment_repository import AgenticExperimentRepository
 from repositories.feedback_repository import FeedbackRepository
 from repositories.prompt_experiment_repository import PromptExperimentRepository
 from repositories.rag_experiment_repository import RagExperimentRepository
+from repositories.rules_repository import RuleRepository
+from repositories.trace_transform_repository import TraceTransformRepository
 from schemas.base_experiment_schemas import ExperimentStatus
+from schemas.enums import RuleScoringMethod
 from tests.clients.base_test_client import app, override_get_db_session
 from tests.multitenancy.conftest import TenantWorld
 from utils.constants import DEFAULT_ORG_ID, SYSTEM_ORG_ID
@@ -1514,3 +1524,133 @@ def test_feedback_org_id_derived_from_inference_not_caller(
             except Exception:
                 db.rollback()
         db.close()
+
+
+# ---------------------------------------------------------------------------
+# Repository-level Pattern C gaps closed in UP-4470 (1-hop org isolation).
+#
+# UP-4470 audited 14 task-scoped fetch methods missing `org_scope`. Only the
+# two whose org isolation is a 1-hop check (parent -> tasks.org_id) are closed
+# in this PR; the other 12 (metrics, trace-transform versions, experiment test
+# cases) need a 2-hop join and are deferred — see the UP-4470 ticket. These
+# tests assert the uniform contract on the closed methods, reusing the shared
+# two-org `tenant_world`:
+#
+#     org_scope=O2 (foreign)  -> hidden (404 / empty)
+#     org_scope=None (admin)  -> visible
+#     org_scope=O1 (owner)    -> visible
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def pattern_c_rule_seed(tenant_world: TenantWorld):
+    """Per-test seed: a TASK-scope rule linked to T1a (org O1) and a
+    DEFAULT-scope rule owned by no task. Used by the get_rule_by_id tests.
+    Cleans up both rules (and the task link) on teardown."""
+    db = override_get_db_session()
+    now = datetime.now(timezone.utc)
+    suffix = uuid.uuid4().hex[:8]
+
+    def _seed(scope: RuleScope, task_id: Optional[str]) -> str:
+        rule_id = str(uuid.uuid4())
+        db.add(
+            DatabaseRule(
+                id=rule_id,
+                name=f"mt-gap-rule-{suffix}-{scope.value}",
+                type=RuleType.KEYWORD.value,
+                created_at=now,
+                updated_at=now,
+                prompt_enabled=True,
+                response_enabled=True,
+                scoring_method=RuleScoringMethod.BINARY.value,
+                scope=scope.value,
+                archived=False,
+            ),
+        )
+        db.flush()
+        if task_id is not None:
+            db.add(
+                DatabaseTaskToRules(task_id=task_id, rule_id=rule_id, enabled=True),
+            )
+            db.flush()
+        return rule_id
+
+    task_rule_id = _seed(RuleScope.TASK, tenant_world.t1a.id)
+    default_rule_id = _seed(RuleScope.DEFAULT, None)
+    db.commit()
+    try:
+        yield task_rule_id, default_rule_id
+    finally:
+        try:
+            db.query(DatabaseTaskToRules).filter(
+                DatabaseTaskToRules.rule_id == task_rule_id,
+            ).delete()
+            db.query(DatabaseRule).filter(
+                DatabaseRule.id.in_([task_rule_id, default_rule_id]),
+            ).delete(synchronize_session=False)
+            db.commit()
+        except Exception:
+            db.rollback()
+        db.close()
+
+
+@pytest.mark.unit_tests
+def test_get_rule_by_id_org_scope(
+    tenant_world: TenantWorld,
+    pattern_c_rule_seed,
+):
+    """RuleRepository.get_rule_by_id: rule PK fetch + 1-hop tasks_to_rules ->
+    tasks existence check. Foreign org 404s; owner and admin see it."""
+    task_rule_id, _ = pattern_c_rule_seed
+    repo = RuleRepository(override_get_db_session())
+
+    assert repo.get_rule_by_id(task_rule_id).id == task_rule_id
+    assert (
+        repo.get_rule_by_id(task_rule_id, org_scope=tenant_world.o1_id).id
+        == task_rule_id
+    )
+    with pytest.raises(HTTPException) as exc:
+        repo.get_rule_by_id(task_rule_id, org_scope=tenant_world.o2_id)
+    assert exc.value.status_code == 404
+
+
+@pytest.mark.unit_tests
+def test_get_rule_by_id_default_rule_passthrough(
+    tenant_world: TenantWorld,
+    pattern_c_rule_seed,
+):
+    """A DEFAULT-scope rule is visible under any org_scope (design §7) —
+    including an org that owns no link to it."""
+    _, default_rule_id = pattern_c_rule_seed
+    repo = RuleRepository(override_get_db_session())
+
+    assert (
+        repo.get_rule_by_id(default_rule_id, org_scope=tenant_world.o1_id).id
+        == default_rule_id
+    )
+    assert (
+        repo.get_rule_by_id(default_rule_id, org_scope=tenant_world.o2_id).id
+        == default_rule_id
+    )
+
+
+@pytest.mark.unit_tests
+def test_get_transform_dependents_org_scope(tenant_world: TenantWorld):
+    """TraceTransformRepository.get_transform_dependents: gates on the parent
+    transform's ownership (transform -> tasks.org_id, 1-hop). T1a's transform
+    has a seeded continuous-eval dependent; a foreign org sees none."""
+    if not (tenant_world.t1a_transform_id and tenant_world.t1a_continuous_eval_id):
+        pytest.skip("t1a transform/continuous-eval seed unavailable")
+    repo = TraceTransformRepository(override_get_db_session())
+    transform_id = uuid.UUID(tenant_world.t1a_transform_id)
+
+    assert repo.get_transform_dependents(transform_id).has_dependents
+    assert repo.get_transform_dependents(
+        transform_id,
+        org_scope=tenant_world.o1_id,
+    ).has_dependents
+    # Cross-org sees no dependents rather than another org's resources.
+    assert not repo.get_transform_dependents(
+        transform_id,
+        org_scope=tenant_world.o2_id,
+    ).has_dependents
