@@ -407,16 +407,9 @@ class SpanRepository:
         )
         trace_by_bucket = {int(row.bucket_index): row for row in trace_rows}
 
-        eval_bucket_index = func.floor(
-            (
-                func.extract("epoch", DatabaseTraceMetadata.start_time)
-                - func.extract("epoch", literal(start_time))
-            )
-            / bucket_seconds,
-        )
         eval_rows = (
             self.db_session.query(
-                eval_bucket_index.label("bucket_index"),
+                bucket_index.label("bucket_index"),
                 func.count().label("eval_count"),
                 func.count(DatabaseAgenticAnnotation.id)
                 .filter(
@@ -436,7 +429,7 @@ class SpanRepository:
                 DatabaseAgenticAnnotation.annotation_type
                 == AgenticAnnotationType.CONTINUOUS_EVAL.value,
             )
-            .group_by(eval_bucket_index)
+            .group_by(bucket_index)
             .all()
         )
         eval_by_bucket = {
