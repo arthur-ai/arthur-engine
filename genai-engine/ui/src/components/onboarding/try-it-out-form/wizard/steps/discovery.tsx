@@ -1,11 +1,12 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import BoltIcon from "@mui/icons-material/Bolt";
-import { Box, Button, Chip, FormControl, FormHelperText, FormLabel, Stack, TextField, Typography } from "@mui/material";
+import { Box, Button, Chip, FormControl, FormHelperText, FormLabel, Stack, Typography } from "@mui/material";
 
 import { ATTRIBUTION_OPTIONS, COMPETITOR_OPTIONS } from "../../../onboarding-options";
 import { withForm } from "../../hooks/form";
-import { chipSx, fieldErrorMessage, sectionLabelSx, textFieldSx } from "../../styles";
+import { OtherSpecifyField } from "../../other-specify-field";
+import { chipSx, fieldErrorMessage, sectionLabelSx } from "../../styles";
 import { STEP_HEADINGS } from "../options";
 import { discoverySchema, wizardFormOpts } from "../schema";
 
@@ -82,19 +83,7 @@ export const TryItOutFormWizardDiscoveryStep = withForm({
                 {(show) =>
                   show ? (
                     <form.AppField name="discovery.competitorOther">
-                      {(field) => (
-                        <TextField
-                          placeholder="Which other tool(s)?"
-                          value={field.state.value}
-                          onBlur={field.handleBlur}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          error={field.state.meta.errors.length > 0}
-                          helperText={fieldErrorMessage(field)}
-                          size="small"
-                          fullWidth
-                          sx={{ ...textFieldSx, mt: -1 }}
-                        />
-                      )}
+                      {(field) => <OtherSpecifyField field={field} placeholder="Which other tool(s)?" />}
                     </form.AppField>
                   ) : null
                 }
@@ -133,19 +122,7 @@ export const TryItOutFormWizardDiscoveryStep = withForm({
                 {(show) =>
                   show ? (
                     <form.AppField name="discovery.attributionOther">
-                      {(field) => (
-                        <TextField
-                          placeholder="Please specify…"
-                          value={field.state.value}
-                          onBlur={field.handleBlur}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          error={field.state.meta.errors.length > 0}
-                          helperText={fieldErrorMessage(field)}
-                          size="small"
-                          fullWidth
-                          sx={{ ...textFieldSx, mt: -1 }}
-                        />
-                      )}
+                      {(field) => <OtherSpecifyField field={field} placeholder="Please specify…" />}
                     </form.AppField>
                   ) : null
                 }
