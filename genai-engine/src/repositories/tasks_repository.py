@@ -78,7 +78,7 @@ class TaskRepository:
         include_archived: bool = False,
         only_archived: bool = False,
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
-        page_size: int = 10,
+        page_size: Optional[int] = 10,
         page: int = 0,
         org_scope: Optional[UUID] = None,
     ) -> tuple[list[DatabaseTask], int]:
@@ -105,14 +105,19 @@ class TaskRepository:
         # Calculate the count prior to applying the offset
         count = stmt.count()
 
-        if page is not None:
-            stmt = stmt.offset(page * page_size)
-        results = stmt.limit(page_size).all()
+        # page_size=None fetches all matching tasks (no offset/limit applied)
+        if page_size is not None:
+            if page is not None:
+                stmt = stmt.offset(page * page_size)
+            stmt = stmt.limit(page_size)
+        results = stmt.all()
 
         return results, count
 
     def get_db_task_by_id(
-        self, id: str, include_archived: bool = False
+        self,
+        id: str,
+        include_archived: bool = False,
     ) -> DatabaseTask:
         db_task = (
             self.db_session.query(DatabaseTask).filter(DatabaseTask.id == id).first()
@@ -239,18 +244,18 @@ class TaskRepository:
             cs = task.task_metadata.creation_source.root
             if isinstance(cs, GCPAgentCreationSource):
                 return AgentCreationSource(
-                    root=cs.model_copy(update={"service_names": service_names})
+                    root=cs.model_copy(update={"service_names": service_names}),
                 )
             elif isinstance(cs, OTELAgentCreationSource):
                 return AgentCreationSource(
-                    root=cs.model_copy(update={"service_names": service_names})
+                    root=cs.model_copy(update={"service_names": service_names}),
                 )
             return AgentCreationSource(root=cs)
 
         # No task_metadata — infer from task properties
         if task.is_autocreated:
             return AgentCreationSource(
-                root=OTELAgentCreationSource(service_names=service_names)
+                root=OTELAgentCreationSource(service_names=service_names),
             )
         elif task.is_agentic:
             return AgentCreationSource(root=ManualAgentCreationSource())
@@ -331,7 +336,8 @@ class TaskRepository:
             raise HTTPException(status_code=404, detail="Task %s not found." % task_id)
         if not db_task.archived:
             raise HTTPException(
-                status_code=400, detail="Task %s is not archived." % task_id
+                status_code=400,
+                detail="Task %s is not archived." % task_id,
             )
         if db_task.is_system_task:
             raise HTTPException(status_code=400, detail="Cannot unarchive system tasks")
