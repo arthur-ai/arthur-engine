@@ -33,7 +33,7 @@ export function CtaDialog({ open, onDismiss }: CtaDialogProps) {
       maxWidth="sm"
       fullWidth
       aria-labelledby="task-tour-cta-title"
-      slotProps={{ paper: { sx: { borderRadius: 3, position: "relative" } } }}
+      slotProps={{ paper: { sx: { borderRadius: 3, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" } } }}
     >
       <IconButton
         size="small"
@@ -50,55 +50,57 @@ export function CtaDialog({ open, onDismiss }: CtaDialogProps) {
         <CloseIcon sx={{ fontSize: 18 }} />
       </IconButton>
 
-      <Stack spacing={2.5} alignItems="center" sx={{ px: { xs: 3, md: 5 }, pt: 5, pb: 3, textAlign: "center" }}>
-        <Avatar src={CTO_AVATAR_SRC} alt={CTO_NAME} sx={{ width: 72, height: 72 }}>
-          ZF
-        </Avatar>
+      <Box sx={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
+        <Stack spacing={2.5} alignItems="center" sx={{ px: { xs: 3, md: 5 }, pt: 5, pb: 3, textAlign: "center" }}>
+          <Avatar src={CTO_AVATAR_SRC} alt={CTO_NAME} sx={{ width: 72, height: 72 }}>
+            ZF
+          </Avatar>
 
-        <Typography id="task-tour-cta-title" variant="h5" sx={{ fontWeight: 700 }}>
-          Hi, I’m Zach, the CTO at Arthur
-        </Typography>
+          <Typography id="task-tour-cta-title" variant="h5" sx={{ fontWeight: 700 }}>
+            Hi, I’m Zach, the CTO at Arthur
+          </Typography>
 
-        <Stack spacing={1.5} sx={{ maxWidth: 420, textAlign: "left" }}>
-          <Typography variant="body2" color="text.secondary">
-            If you found this exercise useful and have a need to build strongly performant and production-ready agents, book time on my calendar.
-            We’ve helped many teams, from scrappy startups to large Fortune 100 companies, by providing the tools and techniques to ensure trustworthy
-            and reliable AI systems.
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Look forward to chatting.
-          </Typography>
-          <Typography variant="subtitle2" color="text.secondary" sx={{ textAlign: "right", fontStyle: "italic" }}>
-            — {CTO_NAME}
-          </Typography>
-        </Stack>
+          <Stack spacing={1.5} sx={{ maxWidth: 420, textAlign: "left" }}>
+            <Typography variant="body2" color="text.secondary">
+              If you found this exercise useful and have a need to build strongly performant and production-ready agents, book time on my calendar.
+              We’ve helped many teams, from scrappy startups to large Fortune 100 companies, by providing the tools and techniques to ensure
+              trustworthy and reliable AI systems.
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Look forward to chatting.
+            </Typography>
+            <Typography variant="subtitle2" color="text.secondary" sx={{ textAlign: "right", fontStyle: "italic" }}>
+              — {CTO_NAME}
+            </Typography>
+          </Stack>
 
-        {/* Frames the primary "Book a time" action; a calendar embed can drop in here later. */}
-        <Box
-          sx={{
-            width: "100%",
-            maxWidth: 420,
-            border: 1,
-            borderColor: "divider",
-            borderRadius: 2,
-            bgcolor: "action.hover",
-            px: 3,
-            py: 3,
-          }}
-        >
-          <Button
-            variant="contained"
-            href={BOOKING_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            // Opens in a new tab, so the page stays alive and the event sends reliably.
-            onClick={() => track(EVENT_NAMES.ONBOARDING_WIZARD_CTA_BOOK_CLICKED, { course: COURSE_NAME })}
-            endIcon={<ArrowForwardIcon sx={{ fontSize: 18 }} />}
+          {/* Frames the primary "Book a time" action; a calendar embed can drop in here later. */}
+          <Box
+            sx={{
+              width: "100%",
+              maxWidth: 420,
+              border: 1,
+              borderColor: "divider",
+              borderRadius: 2,
+              bgcolor: "action.hover",
+              px: 3,
+              py: 3,
+            }}
           >
-            Book a time
-          </Button>
-        </Box>
-      </Stack>
+            <Button
+              variant="contained"
+              href={BOOKING_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              // Opens in a new tab, so the page stays alive and the event sends reliably.
+              onClick={() => track(EVENT_NAMES.ONBOARDING_WIZARD_CTA_BOOK_CLICKED, { course: COURSE_NAME })}
+              endIcon={<ArrowForwardIcon sx={{ fontSize: 18 }} />}
+            >
+              Book a time
+            </Button>
+          </Box>
+        </Stack>
+      </Box>
 
       <DialogActions sx={{ justifyContent: "center", pb: 2.5 }}>
         <Button variant="text" color="inherit" onClick={onDismiss}>
