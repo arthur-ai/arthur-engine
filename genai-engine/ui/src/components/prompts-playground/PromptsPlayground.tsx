@@ -103,6 +103,7 @@ const PromptsPlayground = ({ initialData }: { initialData: PlaygroundInitialData
 
   const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
   const toggleConfigDrawer = () => setConfigDrawerOpen((prev) => !prev);
+  const closeConfigDrawer = () => setConfigDrawerOpen(false);
 
   const handleAddPrompt = () => {
     dispatch({ type: "addPrompt" });
@@ -253,7 +254,7 @@ const PromptsPlayground = ({ initialData }: { initialData: PlaygroundInitialData
         {!config.configModeActive || !config.experimentConfig ? (
           <SetConfigDrawer
             open={configDrawerOpen}
-            onClose={toggleConfigDrawer}
+            onClose={closeConfigDrawer}
             taskId={task?.id}
             onLoadConfig={config.handleLoadConfig}
             onCreateNewConfig={config.handleCreateNewConfig}
@@ -262,7 +263,7 @@ const PromptsPlayground = ({ initialData }: { initialData: PlaygroundInitialData
         ) : (
           <ExperimentConfigDrawer
             open={configDrawerOpen}
-            onClose={toggleConfigDrawer}
+            onClose={closeConfigDrawer}
             experimentConfig={config.experimentConfig}
             notebookId={notebookId}
             runs={drawerRuns}
