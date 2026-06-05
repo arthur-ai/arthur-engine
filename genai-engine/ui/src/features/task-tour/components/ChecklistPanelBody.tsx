@@ -2,11 +2,15 @@ import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import EastIcon from "@mui/icons-material/East";
 import WestIcon from "@mui/icons-material/West";
-import { Box, Button, IconButton, LinearProgress, Stack, Tooltip, Typography } from "@mui/material";
+import { Box, Button, IconButton, LinearProgress, Stack, Tooltip, Typography, useMediaQuery } from "@mui/material";
+import { useLayoutEffect, useRef } from "react";
 
 import { TASK_TOUR_SECTIONS, TASK_TOUR_TITLE } from "../data";
 import type { ChecklistController } from "../hooks/useChecklistController";
 import { isSectionComplete, itemKey } from "../progress";
+
+const ACTIVE_STEP_VALUE = "true";
+const ACTIVE_STEP_SELECTOR = `[data-active-step="${ACTIVE_STEP_VALUE}"]`;
 
 export interface ChecklistPanelBodyProps {
   /**
@@ -41,6 +45,39 @@ export function ChecklistPanelBody({ controller }: ChecklistPanelBodyProps) {
     onNextSection,
     onClose,
   } = controller;
+
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+
+  // Keep the highlighted step with description in view
+  useLayoutEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const item = container.querySelector<HTMLElement>(ACTIVE_STEP_SELECTOR);
+    if (!item) return;
+
+    const PADDING = 12; // breathing room so the row never rests flush against an edge
+    const containerRect = container.getBoundingClientRect();
+    const itemRect = item.getBoundingClientRect();
+    const itemTop = itemRect.top - containerRect.top + container.scrollTop;
+    const itemBottom = itemTop + itemRect.height;
+    const viewTop = container.scrollTop;
+    const viewBottom = viewTop + container.clientHeight;
+
+    let nextTop: number | null = null;
+    if (itemTop < viewTop) {
+      // The row's title is clipped above the fold — pull it down into view.
+      nextTop = itemTop - PADDING;
+    } else if (itemBottom > viewBottom) {
+      // The row's description is clipped below the fold — reveal the whole row.
+      // If the row is taller than the viewport, prefer the title (start edge)
+      // over the tail of the description.
+      nextTop = Math.min(itemBottom - container.clientHeight + PADDING, itemTop - PADDING);
+    }
+    if (nextTop === null) return; // already fully visible — leave the scroll position alone
+
+    container.scrollTo({ top: Math.max(0, nextTop), behavior: reduceMotion ? "auto" : "smooth" });
+  }, [currentSectionIndex, currentItemIndex, activeStepContent, targetLostHint, reduceMotion]);
 
   const section = TASK_TOUR_SECTIONS[currentSectionIndex];
   if (!section) return null;
@@ -127,7 +164,7 @@ export function ChecklistPanelBody({ controller }: ChecklistPanelBodyProps) {
         </Typography>
       </Box>
 
-      <Box sx={{ px: 1, pb: 1.25, overflowY: "auto", flex: 1 }}>
+      <Box ref={scrollContainerRef} sx={{ px: 1, pb: 1.25, overflowY: "auto", flex: 1 }}>
         {items.length === 0 ? (
           <Stack direction="row" spacing={1.25} alignItems="center" sx={{ p: 1.25, borderRadius: 1 }}>
             <Box
@@ -151,6 +188,7 @@ export function ChecklistPanelBody({ controller }: ChecklistPanelBodyProps) {
             return (
               <Stack
                 key={item.id}
+                data-active-step={selected ? ACTIVE_STEP_VALUE : undefined}
                 direction="row"
                 alignItems="flex-start"
                 spacing={1.25}
