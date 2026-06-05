@@ -293,7 +293,8 @@ def get_claim_classifier_embedding_model() -> SentenceTransformer | None:
     if not CLAIM_CLASSIFIER_EMBEDDING_MODEL:
         model_path = get_local_model_path("sentence-transformers/all-MiniLM-L12-v2")
         CLAIM_CLASSIFIER_EMBEDDING_MODEL = SentenceTransformer(
-            model_path, device=get_device()
+            model_path,
+            device=get_device(),
         )
     return CLAIM_CLASSIFIER_EMBEDDING_MODEL
 
@@ -561,12 +562,7 @@ def get_gliner_tokenizer() -> PreTrainedTokenizerBase | None:
 
     global PII_GLINER_TOKENIZER
 
-    # Check if Gliner is enabled
-    if not USE_PII_MODEL_V2:
-        logger.info("Gliner disabled - GENAI_ENGINE_USE_PII_MODEL_V2 is false")
-        return None
-
-    if USE_PII_MODEL_V2 and PII_GLINER_TOKENIZER is None:
+    if PII_GLINER_TOKENIZER is None:
         config = GLiNERConfig.from_json_file(GLINER_CONFIG_PATH)
         # Resolve model_name to local path (e.g., "microsoft/mdeberta-v3-base" -> local path)
         tokenizer_model_path = get_local_model_path(config.model_name)
@@ -588,11 +584,6 @@ def get_gliner_model() -> GLiNER | None:
         return None
 
     global PII_GLINER_MODEL
-
-    # Check if Gliner is enabled
-    if not USE_PII_MODEL_V2:
-        logger.info("Gliner disabled - GENAI_ENGINE_USE_PII_MODEL_V2 is false")
-        return None
 
     if PII_GLINER_MODEL is None:
         model_path = get_local_model_path("urchade/gliner_multi_pii-v1")
