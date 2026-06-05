@@ -1148,6 +1148,8 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v2/tasks/{task_id}/ml_evals/{eval_name}  endpoint added
 - **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' to the response with the '200' status
 - **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/overview  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/overview/timeseries  endpoint added
 
 # 06/02/2026
 - **CHANGE** for **URL**: /api/v1/traces/overview  endpoint added
@@ -1190,6 +1192,8 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /v1/traces/metrics/  removed '#/components/schemas/EvalType' from the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
 - **CHANGE** for **URL**: /v1/traces/query  added '#/components/schemas/arthur_common__models__enums__EvalType' to the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
 - **CHANGE** for **URL**: /v1/traces/query  removed '#/components/schemas/EvalType' from the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v2/demo/certificate  endpoint added (public, demo mode only) — upload a completion certificate PNG and receive a stable URL
+- **CHANGE** for **URL**: /api/v2/demo/certificate/{cert_id}  endpoint added (public, demo mode only) — retrieve a stored certificate PNG by ID
 
 # 05/29/2026
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/demos/chatbot/stream  deleted the `header` request parameter `x-user-timezone`

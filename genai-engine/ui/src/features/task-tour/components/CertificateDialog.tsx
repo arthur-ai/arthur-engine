@@ -6,6 +6,7 @@ import DownloadIcon from "@mui/icons-material/Download";
 import LinkedInIcon from "@mui/icons-material/LinkedIn";
 import XIcon from "@mui/icons-material/X";
 import { Box, Button, Dialog, IconButton, Paper, Stack, Typography } from "@mui/material";
+import { useEffect, useRef, useState } from "react";
 
 import { COURSE_NAME } from "../courseName";
 
@@ -34,27 +35,70 @@ function formatToday(): string {
   return new Date().toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
 }
 
+async function uploadCertificate(blob: Blob): Promise<string | null> {
+  try {
+    const form = new FormData();
+    form.append("file", blob, "certificate.png");
+    const res = await fetch("/api/v2/demo/certificate", { method: "POST", body: form });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { certificate_url: string };
+    const path = data.certificate_url ?? null;
+    if (!path) return null;
+    return `${window.location.origin}${path}`;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Completion dialog shown on `tour:end{reason:"completed"}`. Mirrors the
  * final certificate-screen design but renders as a modal rather than a
  * dedicated route so it overlays whichever task page the user finishes on.
+ *
+ * On open the certificate is captured and silently uploaded to the backend so
+ * a stable public URL is available for social sharing. Download still works
+ * even when the upload fails.
  */
 export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedOn = formatToday(), onClose }: CertificateDialogProps) {
+  const [certificateUrl, setCertificateUrl] = useState<string | null>(null);
+  // Holds the blob for the download button so we don't re-render to get it.
+  const blobRef = useRef<Blob | null>(null);
+  // Prevent triggering a second upload if the dialog is closed and reopened.
+  const uploadedRef = useRef(false);
+
   const shareText = `I completed Arthur AI's ${COURSE_NAME} course with the Arthur Evals Engine.`;
-  const shareUrl = "https://www.arthur.ai/";
+  const shareUrl = certificateUrl ?? "https://www.arthur.ai/";
   const linkedInShareHref = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
   const xShareHref = `https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
 
-  // Capture to a Blob (not a data-URL string): `downloadFile` writes a Blob's
-  // bytes verbatim, but wraps a string as text — feeding it the data URL from
-  // `useToPng` produced a "PNG" file containing the data-URI text, not pixels.
-  const [, downloadPng, ref] = useToBlob<HTMLDivElement>({
-    onSuccess: (blob) => {
-      if (blob) {
-        downloadFile(blob, "certificate.png", "image/png");
+  const [, convertToBlob, ref] = useToBlob<HTMLDivElement>({
+    onSuccess: async (blob) => {
+      if (!blob) return;
+      blobRef.current = blob;
+      if (!uploadedRef.current) {
+        uploadedRef.current = true;
+        const url = await uploadCertificate(blob);
+        if (url) setCertificateUrl(url);
       }
     },
   });
+
+  // Trigger capture shortly after the dialog opens so the DOM is rendered.
+  useEffect(() => {
+    if (!open) return;
+    const timer = setTimeout(convertToBlob, 150);
+    return () => clearTimeout(timer);
+    // convertToBlob is stable across renders; open is the only relevant dep.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const downloadPng = () => {
+    if (blobRef.current) {
+      downloadFile(blobRef.current, "certificate.png", "image/png");
+    } else {
+      void convertToBlob();
+    }
+  };
 
   // Both affordances advance to the CTA via `onClose`; the `method` records
   // which one the user used, surfacing whether the explicit "Continue" button
@@ -250,7 +294,6 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
           href={linkedInShareHref}
           target="_blank"
           rel="noopener"
-          // Opens in a new tab, so the current page stays alive and the event sends reliably.
           onClick={() => track(EVENT_NAMES.ONBOARDING_WIZARD_CERTIFICATE_SHARE_CLICKED, { destination: "linkedin", course: COURSE_NAME })}
           startIcon={<LinkedInIcon sx={{ fontSize: 16 }} />}
         >

@@ -1,6 +1,6 @@
 import { createStore, type StoreApi } from "zustand/vanilla";
 
-import type { HighlightRenderer, PreparationHook, QueryHookResolver, TourEngineStore, TourState, TriggerFactory } from "./types";
+import type { HighlightRenderer, OccluderDescriptor, PreparationHook, QueryHookResolver, TourEngineStore, TourState, TriggerFactory } from "./types";
 
 /**
  * Default z-index ladder, overridable per `createTour({ layers: {...} })`.
@@ -45,6 +45,7 @@ export function createTourEngineStore(options: CreateTourEngineStoreOptions = {}
     highlights: new Map<string, HighlightRenderer>(),
     preparations: new Map<string, PreparationHook>(),
     queryHooks: new Map<string, QueryHookResolver>(),
+    occluders: new Map<string, OccluderDescriptor>(),
 
     setState: (next) => set({ state: next }),
     setLayer: (name, z) => set({ layers: { ...get().layers, [name]: z } }),
@@ -70,6 +71,12 @@ export function createTourEngineStore(options: CreateTourEngineStoreOptions = {}
     },
     unregisterQueryHook: (hookId) => {
       get().queryHooks.delete(hookId);
+    },
+    registerOccluder: (descriptor) => {
+      get().occluders.set(descriptor.id, descriptor);
+    },
+    unregisterOccluder: (id) => {
+      get().occluders.delete(id);
     },
   }));
 }

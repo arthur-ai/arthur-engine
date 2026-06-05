@@ -98,6 +98,7 @@ describe("createTourStatePlugin", () => {
       registerPreparation: () => {},
       registerLayer: () => {},
       registerQueryHook: () => {},
+      registerOccluder: () => {},
       use: () => {},
     });
 
@@ -128,6 +129,7 @@ describe("createTourStatePlugin", () => {
       registerPreparation: () => {},
       registerLayer: () => {},
       registerQueryHook: () => {},
+      registerOccluder: () => {},
       use: () => {},
     });
 
@@ -183,6 +185,7 @@ describe("createTourStatePlugin", () => {
       registerPreparation: () => {},
       registerLayer: () => {},
       registerQueryHook: () => {},
+      registerOccluder: () => {},
       use: () => {},
     });
     plugin.markCompleted("alpha.one");

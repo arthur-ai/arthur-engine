@@ -21,6 +21,7 @@ function setup(opts: Partial<CreateAnalyticsPluginOptions> = {}) {
     registerPreparation: () => {},
     registerLayer: () => {},
     registerQueryHook: () => {},
+    registerOccluder: () => {},
     use: () => {},
   });
   return { track, bus, cleanup };
