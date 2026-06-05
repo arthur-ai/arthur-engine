@@ -73,6 +73,25 @@ describe("ScrollTargetIntoViewWidget", () => {
     expect(scrollIntoView).not.toHaveBeenCalled();
   });
 
+  it("scrolls a card clipped by a narrower scroll container even when its box is inside the viewport", () => {
+    // Real-world case: the docked tour panel narrows <main>, so the overflow-x
+    // card row ends at x=700 while the window is still 1024 wide. The card's box
+    // extends to 1000 (inside the viewport) but past the row's right edge — the
+    // old viewport-only check wrongly treated it as visible.
+    const engine = renderWidget();
+    const container = document.createElement("div");
+    container.style.overflowX = "auto";
+    container.getBoundingClientRect = () => ({ left: 0, top: 0, right: 700, bottom: 768, width: 700, height: 768 }) as DOMRect;
+    document.body.appendChild(container);
+    const { element, scrollIntoView } = makeTarget({ left: 600, right: 1000, top: 100, bottom: 500, width: 400, height: 400 });
+    container.appendChild(element);
+
+    emitTargetFound(engine, element);
+
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    container.remove();
+  });
+
   it("leaves a full-bleed target larger than the viewport alone", () => {
     const engine = renderWidget();
     // Spans the whole viewport (a panel), already intersecting — centering would jump the page.
