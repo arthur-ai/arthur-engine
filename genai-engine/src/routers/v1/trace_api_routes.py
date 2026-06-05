@@ -20,8 +20,10 @@ from sqlalchemy.orm import Session
 from dependencies import get_application_config, get_db_session, get_org_scope
 from repositories.continuous_evals_repository import ContinuousEvalsRepository
 from repositories.metrics_repository import MetricRepository
+from repositories.rules_repository import RuleRepository
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
+from repositories.tasks_repository import TaskRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v1.legacy_span_routes import (
     TraceSortBy,
@@ -34,12 +36,16 @@ from schemas.internal_schemas import ApplicationConfiguration, User
 from schemas.request_schemas import (
     AgenticAnnotationListFilterRequest,
     AgenticAnnotationRequest,
+    TraceOverviewRequest,
+    TraceTimeSeriesRequest,
 )
 from schemas.response_schemas import (
     SessionListResponse,
     SessionTracesResponse,
     SpanListResponse,
     TraceListResponse,
+    TraceOverviewListResponse,
+    TraceTimeSeriesResponse,
     TraceUserListResponse,
     TraceUserMetadataResponse,
     UnregisteredRootSpanGroup,
@@ -149,7 +155,8 @@ def list_traces_metadata(
         requested_currency = get_display_currency(application_config)
         results = [
             apply_currency_to_token_cost_item(
-                trace_metadata._to_metadata_response_model(), requested_currency
+                trace_metadata._to_metadata_response_model(),
+                requested_currency,
             )
             for trace_metadata in trace_metadata_list
         ]
@@ -158,7 +165,9 @@ def list_traces_metadata(
         )
         traces = [item for _, item in results]
         return TraceListResponse(
-            count=count, display_currency=effective_currency, traces=traces
+            count=count,
+            display_currency=effective_currency,
+            traces=traces,
         )
     except ValidationError as e:
         logger.error(f"Validation error: {e}")
@@ -171,6 +180,116 @@ def list_traces_metadata(
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         db_session.close()
+
+
+@trace_api_routes.post(
+    "/traces/overview",
+    summary="Get Overview of Traces for each Task",
+    description="Get overview of traces for each task including trace count, total tokens, and success rate.",
+    response_model=TraceOverviewListResponse,
+    response_model_exclude_none=True,
+    tags=["Traces"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+@enforce_query_org_scope()
+def get_traces_overview(
+    request: TraceOverviewRequest,
+    db_session: Session = Depends(get_db_session),
+    application_config: ApplicationConfiguration = Depends(get_application_config),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
+) -> TraceOverviewListResponse:
+    """Get lightweight trace metadata for browsing/filtering operations."""
+    try:
+        rules_repo = RuleRepository(db_session)
+        metrics_repo = MetricRepository(db_session)
+        tasks_repo = TaskRepository(
+            db_session,
+            rules_repo,
+            metrics_repo,
+            application_config,
+        )
+        span_repo = _get_span_repository(db_session)
+
+        tasks, _ = tasks_repo.query_tasks(
+            ids=request.task_ids,
+            is_agentic=True,
+            include_archived=False,
+            sort=PaginationSortMethod.DESCENDING,
+            page_size=None,
+            org_scope=org_scope,
+        )
+
+        task_ids = [task.id for task in tasks]
+
+        return span_repo.get_trace_overview_for_tasks(
+            task_ids=task_ids,
+            start_time=request.start_time,
+            end_time=request.end_time,
+        )
+    except ValueError as e:
+        logger.error(f"Error getting trace overviews: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error listing trace metadata: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@trace_api_routes.post(
+    "/traces/overview/timeseries",
+    summary="Get Time-Series Overview Data for a Task",
+    description="Get time-bucketed trace metrics (count, tokens, cost, success rate) for a single task.",
+    response_model=TraceTimeSeriesResponse,
+    response_model_exclude_none=True,
+    tags=["Traces"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+@enforce_query_org_scope()
+def get_traces_timeseries(
+    request: TraceTimeSeriesRequest,
+    db_session: Session = Depends(get_db_session),
+    application_config: ApplicationConfiguration = Depends(get_application_config),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
+) -> TraceTimeSeriesResponse:
+    """Get time-bucketed trace metrics for a single task."""
+    try:
+        rules_repo = RuleRepository(db_session)
+        metrics_repo = MetricRepository(db_session)
+        tasks_repo = TaskRepository(
+            db_session,
+            rules_repo,
+            metrics_repo,
+            application_config,
+        )
+        span_repo = _get_span_repository(db_session)
+
+        # Restrict to a task the caller can see; raises 404 if not found/owned.
+        tasks, _ = tasks_repo.query_tasks(
+            ids=[request.task_id],
+            include_archived=False,
+            page_size=None,
+            org_scope=org_scope,
+        )
+        if not tasks:
+            raise HTTPException(status_code=404, detail="Task not found.")
+
+        return span_repo.get_trace_timeseries_for_task(
+            task_id=request.task_id,
+            start_time=request.start_time,
+            end_time=request.end_time,
+            bucket_size=request.bucket_size,
+        )
+    except ValueError as e:
+        logger.error(f"Error getting trace time-series: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting trace time-series: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # SPAN ENDPOINTS
@@ -221,7 +340,8 @@ def list_spans_metadata(
         requested_currency = get_display_currency(application_config)
         results = [
             apply_currency_to_token_cost_item(
-                span._to_metadata_response_model(), requested_currency
+                span._to_metadata_response_model(),
+                requested_currency,
             )
             for span in spans
         ]
@@ -438,7 +558,8 @@ def list_sessions_metadata(
         requested_currency = get_display_currency(application_config)
         results = [
             apply_currency_to_token_cost_item(
-                session_metadata._to_metadata_response_model(), requested_currency
+                session_metadata._to_metadata_response_model(),
+                requested_currency,
             )
             for session_metadata in session_metadata_list
         ]
@@ -447,7 +568,9 @@ def list_sessions_metadata(
         )
         sessions = [item for _, item in results]
         return SessionListResponse(
-            count=count, display_currency=effective_currency, sessions=sessions
+            count=count,
+            display_currency=effective_currency,
+            sessions=sessions,
         )
     except ValidationError as e:
         logger.error(f"Validation error: {e}")
@@ -626,7 +749,8 @@ def list_users_metadata(
         requested_currency = get_display_currency(application_config)
         results = [
             apply_currency_to_token_cost_item(
-                user_metadata._to_metadata_response_model(), requested_currency
+                user_metadata._to_metadata_response_model(),
+                requested_currency,
             )
             for user_metadata in user_metadata_list
         ]
@@ -635,7 +759,9 @@ def list_users_metadata(
         )
         users = [item for _, item in results]
         return TraceUserListResponse(
-            count=count, display_currency=effective_currency, users=users
+            count=count,
+            display_currency=effective_currency,
+            users=users,
         )
     except ValidationError as e:
         logger.error(f"Validation error: {e}")
@@ -687,7 +813,8 @@ def get_user_details(
 
         requested_currency = get_display_currency(application_config)
         _effective_currency, user_item = apply_currency_to_token_cost_item(
-            user_details._to_metadata_response_model(), requested_currency
+            user_details._to_metadata_response_model(),
+            requested_currency,
         )
         return user_item
     except HTTPException:

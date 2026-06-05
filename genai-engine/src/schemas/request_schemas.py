@@ -46,6 +46,7 @@ from schemas.enums import (
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
     RagSearchKind,
+    TaskAnalyticsBucketSize,
 )
 from utils.constants import ALLOWED_TRACE_RETENTION_DAYS
 
@@ -1448,4 +1449,39 @@ class SyntheticDataConversationRequest(BaseModel):
     config: Optional[LLMRequestConfigSettings] = Field(
         default=None,
         description="Optional LLM configuration settings (temperature, max_tokens, etc.).",
+    )
+
+
+class TraceOverviewRequest(BaseModel):
+    """Request schema for getting the overview of traces for each task"""
+
+    task_ids: Optional[List[str]] = Field(
+        default=None,
+        description="Optional list of task IDs to get the overview of traces for",
+    )
+    start_time: datetime = Field(
+        description="Start time of the traces to get the overview of",
+    )
+    end_time: datetime = Field(
+        description="End time of the traces to get the overview of",
+    )
+
+
+class TraceTimeSeriesRequest(BaseModel):
+    """Request schema for time-bucketed trace metrics for a single task.
+
+    The caller (frontend) owns interval -> window + bucket-size resolution and
+    passes the resolved start_time, end_time, and bucket_size; the backend just
+    buckets and zero-fills, mirroring the Analyze page aggregation.
+    """
+
+    task_id: str = Field(description="Task ID to get time-series metrics for")
+    start_time: datetime = Field(
+        description="Inclusive start boundary of the time window",
+    )
+    end_time: datetime = Field(
+        description="Exclusive end boundary of the time window",
+    )
+    bucket_size: TaskAnalyticsBucketSize = Field(
+        description="Size of each time bucket",
     )

@@ -4232,6 +4232,14 @@ export type GetTraceByIdApiV1TracesTraceIdGetData = TraceResponse;
 
 export type GetTraceByIdApiV1TracesTraceIdGetError = HTTPValidationError;
 
+export type GetTracesOverviewApiV1TracesOverviewPostData = TraceOverviewListResponse;
+
+export type GetTracesOverviewApiV1TracesOverviewPostError = HTTPValidationError;
+
+export type GetTracesTimeseriesApiV1TracesOverviewTimeseriesPostData = TraceTimeSeriesResponse;
+
+export type GetTracesTimeseriesApiV1TracesOverviewTimeseriesPostError = HTTPValidationError;
+
 export type GetTransformApiV1TracesTransformsTransformIdGetData = TraceTransformResponse;
 
 export type GetTransformApiV1TracesTransformsTransformIdGetError = HTTPValidationError;
@@ -11037,6 +11045,12 @@ export interface SyntheticDataRowResponse {
   id: string;
 }
 
+/**
+ * TaskAnalyticsBucketSize
+ * Time bucket granularity for task analytics time-series metrics.
+ */
+export type TaskAnalyticsBucketSize = "hour" | "day" | "week";
+
 /** TaskResponse */
 export interface TaskResponse {
   /** Metadata to describe the creation source/provider for registered agents. */
@@ -11577,6 +11591,89 @@ export interface TraceMetadataResponse {
 }
 
 /**
+ * TraceOverviewListResponse
+ * Response for list of trace overviews
+ */
+export interface TraceOverviewListResponse {
+  /**
+   * Count
+   * Total number of trace overviews
+   */
+  count: number;
+  /**
+   * Overviews
+   * List of trace overviews
+   */
+  overviews: TraceOverviewResponse[];
+}
+
+/**
+ * TraceOverviewRequest
+ * Request schema for getting the overview of traces for each task
+ */
+export interface TraceOverviewRequest {
+  /**
+   * End Time
+   * End time of the traces to get the overview of
+   * @format date-time
+   */
+  end_time: string;
+  /**
+   * Start Time
+   * Start time of the traces to get the overview of
+   * @format date-time
+   */
+  start_time: string;
+  /**
+   * Task Ids
+   * Optional list of task IDs to get the overview of traces for
+   */
+  task_ids?: string[] | null;
+}
+
+/**
+ * TraceOverviewResponse
+ * Response for trace overview
+ */
+export interface TraceOverviewResponse {
+  /**
+   * Continuous Eval Success Rate
+   * Fraction of continuous-eval annotations that passed
+   */
+  continuous_eval_success_rate: number;
+  /**
+   * Eval Count
+   * Number of continuous-eval annotations
+   */
+  eval_count: number;
+  /**
+   * Last Active
+   * Most recent trace end time, or null if no traces in the window
+   */
+  last_active?: string | null;
+  /**
+   * Task Id
+   * Task ID
+   */
+  task_id: string;
+  /**
+   * Trace Count
+   * Number of traces
+   */
+  trace_count: number;
+  /**
+   * Trace Token Cost
+   * Total token cost across traces
+   */
+  trace_token_cost: number;
+  /**
+   * Trace Token Count
+   * Total number of tokens in traces
+   */
+  trace_token_count: number;
+}
+
+/**
  * TraceResponse
  * Response model for a single trace containing nested spans
  */
@@ -11653,6 +11750,86 @@ export interface TraceResponse {
 
 /** TraceSortBy */
 export type TraceSortBy = "start_time" | "total_token_count" | "total_token_cost" | "span_count";
+
+/**
+ * TraceTimeSeriesPoint
+ * Metrics for a single time bucket, one per Analyze-page chart series.
+ */
+export interface TraceTimeSeriesPoint {
+  /**
+   * Continuous Eval Success Rate
+   * Fraction of continuous-eval annotations that passed in the bucket
+   */
+  continuous_eval_success_rate: number;
+  /**
+   * Timestamp
+   * Inclusive start of the bucket
+   * @format date-time
+   */
+  timestamp: string;
+  /**
+   * Trace Count
+   * Number of traces in the bucket
+   */
+  trace_count: number;
+  /**
+   * Trace Token Cost
+   * Total token cost in the bucket
+   */
+  trace_token_cost: number;
+  /**
+   * Trace Token Count
+   * Total tokens in the bucket
+   */
+  trace_token_count: number;
+}
+
+/**
+ * TraceTimeSeriesRequest
+ * Request schema for time-bucketed trace metrics for a single task.
+ *
+ * The caller (frontend) owns interval -> window + bucket-size resolution and
+ * passes the resolved start_time, end_time, and bucket_size; the backend just
+ * buckets and zero-fills, mirroring the Analyze page aggregation.
+ */
+export interface TraceTimeSeriesRequest {
+  /** Size of each time bucket */
+  bucket_size: TaskAnalyticsBucketSize;
+  /**
+   * End Time
+   * Exclusive end boundary of the time window
+   * @format date-time
+   */
+  end_time: string;
+  /**
+   * Start Time
+   * Inclusive start boundary of the time window
+   * @format date-time
+   */
+  start_time: string;
+  /**
+   * Task Id
+   * Task ID to get time-series metrics for
+   */
+  task_id: string;
+}
+
+/**
+ * TraceTimeSeriesResponse
+ * Response for time-bucketed trace metrics for a single task.
+ */
+export interface TraceTimeSeriesResponse {
+  /**
+   * Points
+   * Time buckets ordered ascending by timestamp
+   */
+  points: TraceTimeSeriesPoint[];
+  /**
+   * Task Id
+   * Task ID
+   */
+  task_id: string;
+}
 
 /** TraceTransformDefinition */
 export interface TraceTransformDefinition {
@@ -15943,6 +16120,46 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v1/traces/${traceId}`,
         method: "GET",
         secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get overview of traces for each task including trace count, total tokens, and success rate.
+     *
+     * @tags Traces
+     * @name GetTracesOverviewApiV1TracesOverviewPost
+     * @summary Get Overview of Traces for each Task
+     * @request POST:/api/v1/traces/overview
+     * @secure
+     */
+    getTracesOverviewApiV1TracesOverviewPost: (data: TraceOverviewRequest, params: RequestParams = {}) =>
+      this.request<GetTracesOverviewApiV1TracesOverviewPostData, GetTracesOverviewApiV1TracesOverviewPostError>({
+        path: `/api/v1/traces/overview`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get time-bucketed trace metrics (count, tokens, cost, success rate) for a single task.
+     *
+     * @tags Traces
+     * @name GetTracesTimeseriesApiV1TracesOverviewTimeseriesPost
+     * @summary Get Time-Series Overview Data for a Task
+     * @request POST:/api/v1/traces/overview/timeseries
+     * @secure
+     */
+    getTracesTimeseriesApiV1TracesOverviewTimeseriesPost: (data: TraceTimeSeriesRequest, params: RequestParams = {}) =>
+      this.request<GetTracesTimeseriesApiV1TracesOverviewTimeseriesPostData, GetTracesTimeseriesApiV1TracesOverviewTimeseriesPostError>({
+        path: `/api/v1/traces/overview/timeseries`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),

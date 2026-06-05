@@ -2,6 +2,16 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 06/04/2026
+- **CHANGE** for **URL**: /api/v1/traces/overview  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/overview/timeseries  endpoint added
+
+# 06/02/2026
+- **CHANGE** for **URL**: /api/v1/traces/overview  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/overview/timeseries  endpoint added
+- **CHANGE** for **URL**: /api/v2/demo/certificate  endpoint added (public, demo mode only) — upload a completion certificate PNG and receive a stable URL
+- **CHANGE** for **URL**: /api/v2/demo/certificate/{cert_id}  endpoint added (public, demo mode only) — retrieve a stored certificate PNG by ID
+
 # 05/29/2026
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/demos/chatbot/stream  deleted the `header` request parameter `x-user-timezone`
 
