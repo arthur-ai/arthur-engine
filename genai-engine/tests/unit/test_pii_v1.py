@@ -1,8 +1,11 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
 from arthur_common.models.enums import PIIEntityTypes, RuleResultEnum, RuleType
 
 from schemas.scorer_schemas import ScoreRequest
 from scorer.checks.pii.classifier_v1 import BinaryPIIDataClassifierV1
+from scorer.checks.pii.presidio_gliner_map import PresidioGlinerMapper
 
 
 @pytest.mark.unit_tests
@@ -332,3 +335,74 @@ def test_pii_v1_config_trehsold_specified():
 
     # No PII should be flagged since our only PII is less than our treshold
     assert result.result == RuleResultEnum.PASS
+
+
+@pytest.mark.unit_tests
+@patch("scorer.checks.pii.classifier_v1.get_gliner_tokenizer")
+@patch("scorer.checks.pii.classifier_v1.get_gliner_model")
+@patch("scorer.checks.pii.classifier_v1.AnalyzerEngine")
+def test_pii_v1_entity_routing(
+    mock_analyzer_engine,
+    mock_get_gliner,
+    mock_get_tokenizer,
+):
+    """Test that US_PASSPORT only goes through GLiNER and all other entities only go through Presidio"""
+    # Setup analyzer mock
+    mock_analyzer = MagicMock()
+    mock_analyzer.analyze = MagicMock(return_value=[])
+    mock_analyzer_engine.return_value = mock_analyzer
+
+    # Setup gliner mock
+    mock_gliner_model = MagicMock()
+    mock_gliner_model.predict_entities = MagicMock(return_value=[])
+    mock_get_gliner.return_value = mock_gliner_model
+
+    # Mock tokenizer with proper encoding structure
+    mock_encoding = MagicMock()
+    mock_encoding.__getitem__ = lambda self, key: {
+        "input_ids": [1, 2, 3, 4, 5],
+        "offset_mapping": [(0, 4), (5, 9), (10, 14), (15, 19), (20, 27)],
+    }[key]
+    mock_encoding.word_ids = MagicMock(return_value=[0, 1, 2, 3, 4])
+
+    mock_tokenizer = MagicMock()
+    mock_tokenizer.return_value = mock_encoding
+    mock_get_tokenizer.return_value = mock_tokenizer
+
+    classifier = BinaryPIIDataClassifierV1()
+
+    # Verify the mocks are set correctly and we are not using the actual models
+    assert classifier.gliner_model is mock_gliner_model
+    assert classifier.analyzer is mock_analyzer
+
+    test_text = "Test text for entity routing"
+    score_request = ScoreRequest(
+        scoring_text=test_text,
+        rule_type=RuleType.PII_DATA,
+    )
+
+    classifier.score(score_request)
+
+    # Verify Presidio was called with all entities EXCEPT US_PASSPORT
+    assert mock_analyzer.analyze.called
+    presidio_entities = mock_analyzer.analyze.call_args.kwargs["entities"]
+
+    all_entity_values = PIIEntityTypes.values()
+    for entity in all_entity_values:
+        if entity == PIIEntityTypes.US_PASSPORT.value:
+            assert entity not in presidio_entities
+        else:
+            assert entity in presidio_entities
+
+    # Verify GLiNER predict_entities was called
+    assert mock_gliner_model.predict_entities.called
+
+    gliner_labels = []
+    for call_item in mock_gliner_model.predict_entities.call_args_list:
+        gliner_labels.extend(call_item.kwargs.get("labels", []))
+
+    passport_gliner = PresidioGlinerMapper.presidio_to_gliner(
+        PIIEntityTypes.US_PASSPORT.value,
+    )
+    assert passport_gliner in gliner_labels
+    assert len(set(gliner_labels)) == 1
