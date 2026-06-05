@@ -11,4 +11,5 @@ export {
   type ResolveTargetOptions,
 } from "./targets";
 export { createDefaultTriggers } from "./triggers";
+export { describeOccluder, detectOcclusion, type OcclusionOptions, type OcclusionReason, type OcclusionResult } from "./occlusion";
 export type * from "./types";

@@ -423,11 +423,11 @@ const PromptDetailView = ({
         onClose={handleAddTagClose}
         anchorOrigin={{
           vertical: "bottom",
-          horizontal: "left",
+          horizontal: "right",
         }}
         transformOrigin={{
           vertical: "top",
-          horizontal: "left",
+          horizontal: "right",
         }}
         slotProps={{
           paper: {

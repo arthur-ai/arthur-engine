@@ -6,3 +6,4 @@ export { TargetTracker, type TargetTrackerProps, type TargetTrackerRenderArgs } 
 export { TourPortal, type TourPortalProps } from "./TourPortal";
 export { useActiveTarget } from "./useActiveTarget";
 export { useElementRect } from "./useElementRect";
+export { useTargetOcclusion, type OcclusionInfo } from "./useTargetOcclusion";

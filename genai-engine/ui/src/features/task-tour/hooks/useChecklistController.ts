@@ -1,10 +1,19 @@
 import { useCallback, useMemo, type ReactNode } from "react";
 
 import { TASK_TOUR_SECTIONS, type TaskTourItem } from "../data";
+import { dismissOverlay } from "../dismissOverlay";
 import { itemKey, TASK_TOUR_TOTAL_UNITS } from "../progress";
-import { TASK_TOUR_TARGET_LOST_HINTS } from "../tourActions";
+import { DEFAULT_OCCLUSION_HINT, type OcclusionHint, TASK_TOUR_OCCLUSION_HINTS, TASK_TOUR_TARGET_LOST_HINTS } from "../tourActions";
 
-import { useActiveTarget, useTour, useTourEngine, useTourPluginStore, type StepRenderContext, type TourStatePlugin } from "@/features/tour";
+import {
+  useActiveTarget,
+  useTargetOcclusion,
+  useTour,
+  useTourEngine,
+  useTourPluginStore,
+  type StepRenderContext,
+  type TourStatePlugin,
+} from "@/features/tour";
 
 export interface ChecklistController {
   /**
@@ -19,6 +28,10 @@ export interface ChecklistController {
   currentItemIndex: number;
   activeStepContent: ReactNode | null;
   targetLostHint: string | null;
+  /** Set when the active step's target is in the DOM but covered by another surface. */
+  occlusionHint: OcclusionHint | null;
+  /** Close registered occluders, bring the target into view, and re-test occlusion. */
+  onRecoverOcclusion: () => void;
   completedItemKeys: ReadonlySet<string>;
   totalProgress: number;
   onSelectItem: (item: TaskTourItem, itemIndex: number) => void;
@@ -41,6 +54,7 @@ export function useChecklistController(statePlugin: TourStatePlugin): ChecklistC
   const { state, activeStep, actions } = useTour();
   const completedItemKeys = useTourPluginStore(statePlugin, (s) => s.snapshot.completed);
   const activeTarget = useActiveTarget();
+  const occlusion = useTargetOcclusion();
 
   // `intro` and `sectionComplete` both carry the section the tour is on, so the
   // panel can show that section's checklist while the modal is up. Only `step`
@@ -121,6 +135,23 @@ export function useChecklistController(statePlugin: TourStatePlugin): ChecklistC
 
   const activeStepKey = state.status === "step" ? `${state.sectionId}.${state.stepId}` : null;
   const targetLostHint = activeStepKey && !activeTarget ? (TASK_TOUR_TARGET_LOST_HINTS[activeStepKey] ?? null) : null;
+  // Occlusion is mutually exclusive with target-lost at the source (occlusion
+  // only fires when an element resolved; target-lost only when none did).
+  const occlusionHint = activeStepKey && occlusion ? (TASK_TOUR_OCCLUSION_HINTS[activeStepKey] ?? DEFAULT_OCCLUSION_HINT) : null;
+
+  const onRecoverOcclusion = useCallback(() => {
+    // Close any registered occluder, generically dismiss the covering surface
+    // (standard MUI modals/drawers the tour never registered), bring the target
+    // into view, then re-test so the affordance clears if it worked.
+    actions.reconcileActiveSurfaces();
+    dismissOverlay(occlusion?.occluder ?? null);
+    const element = occlusion?.element;
+    if (element && typeof element.scrollIntoView === "function") {
+      const reducedMotion = typeof window !== "undefined" && Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches);
+      element.scrollIntoView({ block: "center", behavior: reducedMotion ? "auto" : "smooth" });
+    }
+    actions.recheckOcclusion();
+  }, [actions, occlusion]);
 
   return {
     isRunning: isRunningStatus && !!currentSection,
@@ -129,6 +160,8 @@ export function useChecklistController(statePlugin: TourStatePlugin): ChecklistC
     currentItemIndex,
     activeStepContent,
     targetLostHint,
+    occlusionHint,
+    onRecoverOcclusion,
     completedItemKeys,
     totalProgress,
     onSelectItem,
