@@ -4,6 +4,7 @@ export { EvaluateTargetWidget } from "./EvaluateTargetWidget";
 export { IntroWidget } from "./IntroWidget";
 export { OcclusionRecoveryWidget } from "./OcclusionRecoveryWidget";
 export { PromptTargetWidget } from "./PromptTargetWidget";
+export { ScrollTargetIntoViewWidget } from "./ScrollTargetIntoViewWidget";
 export { SectionCompleteWidget } from "./SectionCompleteWidget";
 export { SpotlightWidget } from "./SpotlightWidget";
 export { TaskTourFormPrefillWidget } from "./TaskTourFormPrefillWidget";
