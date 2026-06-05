@@ -3,7 +3,7 @@ import { tourSelector, TOUR_IDS, type TourId } from "../selectors";
 
 import { findElementByExactText, useRegisterQueryHook } from "@/features/tour";
 
-const DEMO_TASK_PROMPT_NAME = "demo_task_prompt";
+export const DEMO_TASK_PROMPT_NAME = "demo_task_prompt";
 
 export function resolveDemoTaskPromptRowTarget(): Element | null {
   return findElementByExactText(DEMO_TASK_PROMPT_NAME, {
