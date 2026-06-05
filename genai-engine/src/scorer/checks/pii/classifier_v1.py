@@ -9,6 +9,14 @@ from schemas.scorer_schemas import (
     ScorerPIIEntitySpan,
     ScorerRuleDetails,
 )
+from scorer.checks.pii.classifier import get_gliner_model, get_gliner_tokenizer
+from scorer.checks.pii.pii_utils import (
+    filter_by_allow_list,
+    postprocess_spans,
+    process_gliner,
+    process_presidio,
+)
+from scorer.checks.pii.presidio_gliner_map import PresidioGlinerMapper
 from scorer.checks.pii.validations import is_name
 from scorer.scorer import RuleScorer
 
@@ -20,6 +28,20 @@ class BinaryPIIDataClassifierV1(RuleScorer):
         """Initialized the binary classifier for PII Data"""
         self.analyzer: AnalyzerEngine = AnalyzerEngine()
         self.default_confidence_threshold: float = 0.5
+        self.gliner_model = get_gliner_model()
+        self.gliner_tokenizer = get_gliner_tokenizer()
+
+        # Get all entity values from enum
+        entities = PIIEntityTypes.values()
+
+        self.presidio_entities = [
+            entity
+            for entity in entities
+            if entity not in [PIIEntityTypes.US_PASSPORT.value]
+        ]
+        self.gliner_entity_types = [
+            PresidioGlinerMapper.presidio_to_gliner(PIIEntityTypes.US_PASSPORT.value),
+        ]
 
     def score(self, request: ScoreRequest) -> RuleScore:
         """Scores request for PII"""
@@ -29,14 +51,8 @@ class BinaryPIIDataClassifierV1(RuleScorer):
             confidence_threshold = self.default_confidence_threshold
 
         # Pre PII analyzer - resolve the PII entities to check for using disabled_pii_entities if present
-        entities_to_check = PIIEntityTypes.values()
-        disabled_pii_entities = request.disabled_pii_entities
-        if disabled_pii_entities:
-            entities_to_check = [
-                entity
-                for entity in entities_to_check
-                if entity not in disabled_pii_entities
-            ]
+
+        disabled_pii_entities = set(request.disabled_pii_entities or [])
 
         if not request.scoring_text:
             return RuleScore(
@@ -45,52 +61,77 @@ class BinaryPIIDataClassifierV1(RuleScorer):
                 completion_tokens=0,
             )
 
-        results = self.analyzer.analyze(
-            text=request.scoring_text,
-            entities=entities_to_check,
-            allow_list=request.allow_list,
-            language="en",
+        presidio_spans = process_presidio(
+            request.scoring_text,
+            self.analyzer,
+            self.presidio_entities,
+            disabled_pii_entities,
+            request.allow_list,
         )
 
-        # Post PII analyzer - enforce our threshold on results, if there is one present
-        results = [result for result in results if result.score >= confidence_threshold]
+        # Process with GLiNER (all other entities) and combine with presidio spans
+        gliner_spans = process_gliner(
+            request.scoring_text,
+            self.gliner_entity_types,
+            disabled_pii_entities,
+            self.gliner_model,
+            self.gliner_tokenizer,
+        )
+
+        # Apply allow list filtering
+        gliner_spans = filter_by_allow_list(gliner_spans, request.allow_list)
+
+        # Post-process spans (sanitation and validation) before overlap removal
+        gliner_spans = postprocess_spans(gliner_spans, request.scoring_text)
+
+        # Combine presidio and gliner spans
+        all_spans = presidio_spans + gliner_spans
 
         # Drop PERSON detections that fail name validation (e.g. contain digits) —
         # Presidio's NER tags strings like "Order 7423" or "User 4" as PERSON.
-        results = [
-            result
-            for result in results
-            if result.entity_type != PIIEntityTypes.PERSON.value
-            or is_name(request.scoring_text[result.start : result.end])
+        all_spans = [
+            span
+            for span in all_spans
+            if span["entity"] != PIIEntityTypes.PERSON.value
+            or is_name(request.scoring_text[span["start"] : span["end"]])
         ]
 
-        if len(results) == 0:
+        # Apply confidence threshold
+        final_spans = [
+            result
+            for result in all_spans
+            if result["confidence"] >= confidence_threshold
+        ]
+
+        if not final_spans:
             return RuleScore(
                 result=RuleResultEnum.PASS,
                 prompt_tokens=0,
                 completion_tokens=0,
             )
-        else:
-            found_types: list[PIIEntityTypes] = []
-            entity_spans: list[ScorerPIIEntitySpan] = []
-            for res in results:
-                entity_type = PIIEntityTypes(value=res.entity_type)
-                found_types.append(entity_type)
-                entity_spans.append(
-                    ScorerPIIEntitySpan(
-                        entity=entity_type,
-                        span=request.scoring_text[res.start : res.end],
-                        confidence=res.score,
-                    ),
-                )
-            message_string = f"PII found in data: {','.join(found_types)}"
-            return RuleScore(
-                result=RuleResultEnum.FAIL,
-                details=ScorerRuleDetails(
-                    message=message_string,
-                    pii_results=found_types,
-                    pii_entities=entity_spans,
-                ),
-                prompt_tokens=0,
-                completion_tokens=0,
+
+        # Get unique entity types found
+        entity_types = [span["entity"] for span in final_spans]
+
+        # Convert spans to ScorerPIIEntitySpan objects
+        pii_entity_spans = [
+            ScorerPIIEntitySpan(
+                entity=PIIEntityTypes(span["entity"]),
+                span=span["span"],
+                confidence=span["confidence"],
             )
+            for span in final_spans
+        ]
+
+        return RuleScore(
+            result=RuleResultEnum.FAIL,
+            details=ScorerRuleDetails(
+                message=f"PII found in data: {', '.join(entity_types)}",
+                pii_results=[
+                    PIIEntityTypes(entity_type) for entity_type in entity_types
+                ],
+                pii_entities=pii_entity_spans,
+            ),
+            prompt_tokens=0,
+            completion_tokens=0,
+        )
