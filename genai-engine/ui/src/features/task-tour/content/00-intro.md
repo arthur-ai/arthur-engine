@@ -13,8 +13,8 @@ steps: []
 
 ## intro
 
-Arthur's **Agent Development Lifecycle** is how teams ship agents they can trust. Over the next few minutes, you'll walk through each stage — interact, measure, observe, refine, and deploy — using a real failure mode as your example.
+Arthur's **Agent Development Lifecycle** is a workflow for building agents you can actually trust before shipping them. Over the next few minutes you'll walk through each stage (interact, measure, observe, refine, deploy) using a real failure as your example.
 
 ## scenario
 
-The agent on this task answers general-knowledge questions from Wikipedia, but it never tells users where the information came from - so the **Source Attribution Eval**, which checks that answers cite their source, fails on every response. We'll use the ADLC to find the failure, fix the prompt so the agent cites Wikipedia, and prove the fix worked.
+The agent on this task answers general-knowledge questions from Wikipedia, but it never tells users where the information came from. That means the **Source Attribution Eval**, which checks whether answers cite their source, fails on every response. We'll use the ADLC to track down the failure, fix the prompt, and confirm the fix worked.

@@ -22,28 +22,28 @@ steps:
 
 ## intro
 
-A trace is the timeline of everything the agent did to produce one answer — retrieval calls, model invocations, post-processing, evals. Continuous Evals run on every trace automatically, so you can spot failure patterns the moment they happen.
+A trace is a timeline of everything the agent did to produce one answer: retrieval calls, model invocations, post-processing, evals. Continuous Evals attach to every trace automatically, so you can see failures as soon as they show up.
 
 ## scenario
 
-Open Observe, drill into a trace, walk through the spans, read the eval annotations, and leave manual feedback. We'll specifically call out where the **Source Attribution Eval** is failing — the agent answered without citing where the information came from — that's the signal you'll fix later in this tour.
+Open Observe, drill into a trace, walk through the spans, read the eval annotations, and leave some manual feedback. We'll point out where the **Source Attribution Eval** is failing (the agent answered without citing its source). That's the problem you'll fix later in the tour.
 
 ## step: open-observe
 
-Open the Observe view to see the trail of requests this agent has generated. Click **Observe** in the sidebar.
+Click **Observe** in the sidebar to see the requests this agent has generated.
 
 ## step: open-trace
 
-Open one of the traces to see what's actually inside — any trace works. Click the top row, or mark this step complete and we'll open the first trace for you.
+Open one of the traces to see what's inside. Any trace works. Click the top row, or mark this step complete and we'll open the first trace for you.
 
 ## step: review-spans
 
-A **trace** is the full request; each **span** is one step the agent took (retrieval, model call, post-processing). Look at latency, cost, and tokens to see where time and money are going. (Mark complete when done.)
+A **trace** is the full request; each **span** is one step the agent took (retrieval, model call, post-processing). Check latency, cost, and tokens to see where time and money are going. (Mark complete when done.)
 
 ## step: review-annotations
 
-**Continuous Evals** attach automatically to every trace — they measure quality on every request so you catch regressions early. For the evals on this trace, notice the **Source Attribution Eval** is failing because the answer doesn't cite its source — that's the live signal we'll fix in the prompt playground. (Mark complete when done.)
+**Continuous Evals** run on every trace automatically. Notice the **Source Attribution Eval** is failing here because the answer doesn't cite its source. That's the live signal we'll address in the prompt playground. (Mark complete when done.)
 
 ## step: add-feedback
 
-**Manual feedback** is how humans (or your own app, via the API) tell Arthur something an automated eval can't capture. Leave a quick note about this answer — developers use it to triage, and production apps can post it programmatically. (Mark complete when done.)
+**Manual feedback** is how you (or your app, via the API) flag something an automated eval can't catch. Leave a quick note on this trace. Developers use it to triage, and production apps can post it programmatically. (Mark complete when done.)
