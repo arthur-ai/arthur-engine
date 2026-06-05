@@ -21,7 +21,7 @@ from arthur_common.models.enums import PaginationSortMethod
 from pydantic import BaseModel
 from sqlalchemy import asc, delete, desc, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Query, Session
 from sqlalchemy.sql import exists, or_
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -117,7 +117,7 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
     # Query helpers
     # ------------------------------------------------------------------
 
-    def _build_name_query(self, task_id: str, item_name: str) -> QueryT:
+    def _build_name_query(self, task_id: str, item_name: str) -> Query[DBModelT]:
         """Base query scoped to (task_id, item_name) and optional eval_type filter."""
         query = self.db_session.query(self.db_model).filter(
             self.db_model.task_id == task_id,
@@ -559,11 +559,14 @@ class BaseLLMRepository(ABC, Generic[DBModelT, TagDBModelT, RequestT]):
         """
         # Build the column list — include eval_type only when the model supports it
         _has_eval_type = hasattr(self.db_model, "eval_type")
+        latest_version_created_at_col = sa.func.max(self.db_model.created_at).label(
+            "latest_version_created_at",
+        )
         _select_cols: list[Any] = [
             self.db_model.name.label("name"),
             sa.func.count(self.db_model.version).label("versions"),
             sa.func.min(self.db_model.created_at).label("created_at"),
-            sa.func.max(self.db_model.created_at).label("latest_version_created_at"),
+            latest_version_created_at_col,
         ]
         if _has_eval_type:
             _select_cols.insert(

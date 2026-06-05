@@ -283,12 +283,7 @@ def soft_delete_llm_eval_version(
     try:
         repo = LLMEvalsRepository(db_session)
         # Resolve version (e.g. "latest") to an actual integer before soft-deleting
-        try:
-            actual_version = repo.get_llm_item(task.id, eval_name, eval_version).version
-        except ValueError:
-            raise ValueError(
-                f"No matching version of '{eval_name}' found for task '{task.id}'",
-            )
+        actual_version = repo.get_llm_item(task.id, eval_name, eval_version).version
         repo.soft_delete_llm_item_version(task.id, eval_name, eval_version)
         disabled = ContinuousEvalsRepository(
             db_session,
@@ -299,7 +294,7 @@ def soft_delete_llm_eval_version(
             )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except ValueError as e:
-        if "no matching version" in str(e).lower():
+        if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
