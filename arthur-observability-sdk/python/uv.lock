@@ -7,7 +7,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-04-10T15:23:41.523006Z"
+exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
 exclude-newer-span = "P3D"
 
 [[package]]
@@ -160,7 +160,7 @@ wheels = [
 
 [[package]]
 name = "arthur-observability-sdk"
-version = "2.1.511"
+version = "2.1.596"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
@@ -179,6 +179,9 @@ dependencies = [
 agent-framework = [
     { name = "openinference-instrumentation-agent-framework" },
 ]
+agentminds = [
+    { name = "openinference-instrumentation-agentminds" },
+]
 agentspec = [
     { name = "openinference-instrumentation-agentspec" },
 ]
@@ -187,14 +190,17 @@ agno = [
 ]
 all = [
     { name = "openinference-instrumentation-agent-framework" },
+    { name = "openinference-instrumentation-agentminds" },
     { name = "openinference-instrumentation-agentspec" },
     { name = "openinference-instrumentation-agno" },
     { name = "openinference-instrumentation-anthropic" },
     { name = "openinference-instrumentation-autogen" },
     { name = "openinference-instrumentation-autogen-agentchat" },
+    { name = "openinference-instrumentation-baml" },
     { name = "openinference-instrumentation-bedrock" },
     { name = "openinference-instrumentation-beeai", marker = "python_full_version >= '3.11'" },
     { name = "openinference-instrumentation-claude-agent-sdk" },
+    { name = "openinference-instrumentation-codex" },
     { name = "openinference-instrumentation-crewai" },
     { name = "openinference-instrumentation-dspy" },
     { name = "openinference-instrumentation-google-adk" },
@@ -229,6 +235,9 @@ autogen = [
 autogen-agentchat = [
     { name = "openinference-instrumentation-autogen-agentchat" },
 ]
+baml = [
+    { name = "openinference-instrumentation-baml" },
+]
 bedrock = [
     { name = "openinference-instrumentation-bedrock" },
 ]
@@ -237,6 +246,9 @@ beeai = [
 ]
 claude-agent-sdk = [
     { name = "openinference-instrumentation-claude-agent-sdk" },
+]
+codex = [
+    { name = "openinference-instrumentation-codex" },
 ]
 crewai = [
     { name = "openinference-instrumentation-crewai" },
@@ -330,6 +342,8 @@ requires-dist = [
     { name = "openinference-instrumentation", specifier = ">=0.1,<1" },
     { name = "openinference-instrumentation-agent-framework", marker = "extra == 'agent-framework'" },
     { name = "openinference-instrumentation-agent-framework", marker = "extra == 'all'" },
+    { name = "openinference-instrumentation-agentminds", marker = "extra == 'agentminds'" },
+    { name = "openinference-instrumentation-agentminds", marker = "extra == 'all'" },
     { name = "openinference-instrumentation-agentspec", marker = "extra == 'agentspec'" },
     { name = "openinference-instrumentation-agentspec", marker = "extra == 'all'" },
     { name = "openinference-instrumentation-agno", marker = "extra == 'agno'" },
@@ -340,12 +354,16 @@ requires-dist = [
     { name = "openinference-instrumentation-autogen", marker = "extra == 'autogen'" },
     { name = "openinference-instrumentation-autogen-agentchat", marker = "extra == 'all'" },
     { name = "openinference-instrumentation-autogen-agentchat", marker = "extra == 'autogen-agentchat'" },
+    { name = "openinference-instrumentation-baml", marker = "extra == 'all'" },
+    { name = "openinference-instrumentation-baml", marker = "extra == 'baml'" },
     { name = "openinference-instrumentation-bedrock", marker = "extra == 'all'" },
     { name = "openinference-instrumentation-bedrock", marker = "extra == 'bedrock'" },
     { name = "openinference-instrumentation-beeai", marker = "python_full_version >= '3.11' and extra == 'all'" },
     { name = "openinference-instrumentation-beeai", marker = "python_full_version >= '3.11' and extra == 'beeai'" },
     { name = "openinference-instrumentation-claude-agent-sdk", marker = "extra == 'all'" },
     { name = "openinference-instrumentation-claude-agent-sdk", marker = "extra == 'claude-agent-sdk'" },
+    { name = "openinference-instrumentation-codex", marker = "extra == 'all'" },
+    { name = "openinference-instrumentation-codex", marker = "extra == 'codex'" },
     { name = "openinference-instrumentation-crewai", marker = "extra == 'all'" },
     { name = "openinference-instrumentation-crewai", marker = "extra == 'crewai'" },
     { name = "openinference-instrumentation-dspy", marker = "extra == 'all'" },
@@ -403,7 +421,7 @@ requires-dist = [
     { name = "typing-extensions", specifier = ">=4.7.1" },
     { name = "urllib3", specifier = ">=1.25.3,<3.0.0" },
 ]
-provides-extras = ["agent-framework", "agentspec", "agno", "anthropic", "autogen", "autogen-agentchat", "bedrock", "beeai", "crewai", "dspy", "google-adk", "google-genai", "groq", "guardrails", "haystack", "instructor", "langchain", "litellm", "llama-index", "mcp", "mistralai", "monkai-agent", "openai", "openai-agents", "openlit", "openllmetry", "pipecat", "portkey", "pydantic-ai", "smolagents", "strands-agents", "vertexai", "claude-agent-sdk", "all"]
+provides-extras = ["agent-framework", "agentminds", "agentspec", "agno", "anthropic", "autogen", "autogen-agentchat", "baml", "bedrock", "beeai", "codex", "crewai", "dspy", "google-adk", "google-genai", "groq", "guardrails", "haystack", "instructor", "langchain", "litellm", "llama-index", "mcp", "mistralai", "monkai-agent", "openai", "openai-agents", "openlit", "openllmetry", "pipecat", "portkey", "pydantic-ai", "smolagents", "strands-agents", "vertexai", "claude-agent-sdk", "all"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -1652,6 +1670,20 @@ wheels = [
 ]
 
 [[package]]
+name = "openinference-instrumentation-agentminds"
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-instrumentation" },
+    { name = "wrapt" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/76/0c/33c7087aecb8f81056b551b2fd12ae81b93a8abea6da07e9dc6b4226b0c4/openinference_instrumentation_agentminds-0.1.0.tar.gz", hash = "sha256:d61fc1df01e385e892a4f7bc85acd232c3fb58ee126c2e7dded546decf6866dc", size = 8010, upload-time = "2026-04-27T18:48:53.697Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f7/8a/f1dbbbb06b671aa336f9c32101df4bbcfeb998564df36c97ae1f09c5d4c6/openinference_instrumentation_agentminds-0.1.0-py3-none-any.whl", hash = "sha256:db7b0c274fb4f5a37a926756e897771d6bb3b6d8312110aa73218e2d1dfb6d08", size = 7818, upload-time = "2026-04-27T18:48:52.25Z" },
+]
+
+[[package]]
 name = "openinference-instrumentation-agentspec"
 version = "0.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1740,6 +1772,21 @@ wheels = [
 ]
 
 [[package]]
+name = "openinference-instrumentation-baml"
+version = "0.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "openinference-instrumentation" },
+    { name = "openinference-semantic-conventions" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-instrumentation" },
+    { name = "wrapt" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d0/9d/681fa9ed244a601f56bcc213c00cf6d61ba33d7eefaf3b62a32c919b5e43/openinference_instrumentation_baml-0.2.0-py3-none-any.whl", hash = "sha256:ed7731ee35ae7ef03821bf4cf6f6920de55d730b1e15b3598aa45b385c53fa30", size = 9456, upload-time = "2026-05-20T02:48:47.172Z" },
+]
+
+[[package]]
 name = "openinference-instrumentation-bedrock"
 version = "0.1.33"
 source = { registry = "https://pypi.org/simple" }
@@ -1792,6 +1839,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/d6/c5/7dbbb74749bb1a6aa74abdc0eec97f56ebd0fa1e3091941abebd56c3723b/openinference_instrumentation_claude_agent_sdk-0.1.0.tar.gz", hash = "sha256:468006742000e874031ad834daadbd4d63d814433033728cb82fcccdb191e7b7", size = 14928, upload-time = "2026-03-04T10:13:46.349Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/20/78/b17d02b2238a54d5838cba6cf784a9e2900b5ac1e775285037db5bb78839/openinference_instrumentation_claude_agent_sdk-0.1.0-py3-none-any.whl", hash = "sha256:1338abd5da7ca5cd7bd69d007e10eb3ad18523074603663f628e83bb2b937c85", size = 16492, upload-time = "2026-03-04T10:13:45.331Z" },
+]
+
+[[package]]
+name = "openinference-instrumentation-codex"
+version = "0.3.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "openinference-semantic-conventions" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-instrumentation" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a7/98/7b2a0178811d40df591d133201a44d715d1cab76c1bf87033eda13c1f499/openinference_instrumentation_codex-0.3.1.tar.gz", hash = "sha256:867ed9bb220578632d25e05abea9cf2b4d7ec47953748d4ab453b725da21b6a3", size = 81753, upload-time = "2026-05-13T18:30:19.415Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/39/15/dbbbdd4ebf1493cd8a8399ffc26a5931d7316269815b96acd06d52164136/openinference_instrumentation_codex-0.3.1-py3-none-any.whl", hash = "sha256:9d4979c29066254c926023d0d30af8e1fa1b85f4a56a99273341e7b0499c0dff", size = 39889, upload-time = "2026-05-13T18:30:17.875Z" },
 ]
 
 [[package]]
