@@ -33,6 +33,10 @@ export interface TaskTourItem {
   formPrefill?: StepWiring["formPrefill"];
   /** Overrides the default click-blocking backdrop; defaults to `true`. */
   blockInteraction?: StepWiring["blockInteraction"];
+  /** Occluder ids this step needs open (everything else is reconciled closed). */
+  surfacesOpen?: StepWiring["surfacesOpen"];
+  /** Occluder ids to leave untouched on entry. */
+  surfacesKeep?: StepWiring["surfacesKeep"];
 }
 
 /**

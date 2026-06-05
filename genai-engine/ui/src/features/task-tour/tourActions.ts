@@ -139,3 +139,21 @@ export const TASK_TOUR_TARGET_LOST_HINTS: Partial<Record<string, string>> = {
   "deploy.review-verification-message": "Stay on the Demo Agent until the fresh response finishes, then continue.",
   "deploy.verify-eval-passes": "Open Observe and inspect a fresh trace to confirm the eval passes.",
 };
+
+export interface OcclusionHint {
+  message: string;
+  actionLabel: string;
+}
+
+/**
+ * Optional per-step occlusion copy (keyed `${sectionId}.${stepId}`), shown with
+ * an actionable button under the active checklist row when the spotlight target
+ * is in the DOM but covered by another surface. Falls back to
+ * {@link DEFAULT_OCCLUSION_HINT}.
+ */
+export const TASK_TOUR_OCCLUSION_HINTS: Partial<Record<string, OcclusionHint>> = {};
+
+export const DEFAULT_OCCLUSION_HINT: OcclusionHint = {
+  message: "Something is covering this step. We can bring it back into view.",
+  actionLabel: "Bring this into view",
+};

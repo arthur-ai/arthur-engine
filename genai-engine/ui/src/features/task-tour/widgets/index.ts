@@ -2,6 +2,7 @@ export { CertificateWidget } from "./CertificateWidget";
 export { DatasetTargetWidget } from "./DatasetTargetWidget";
 export { EvaluateTargetWidget } from "./EvaluateTargetWidget";
 export { IntroWidget } from "./IntroWidget";
+export { OcclusionRecoveryWidget } from "./OcclusionRecoveryWidget";
 export { PromptTargetWidget } from "./PromptTargetWidget";
 export { SectionCompleteWidget } from "./SectionCompleteWidget";
 export { SpotlightWidget } from "./SpotlightWidget";

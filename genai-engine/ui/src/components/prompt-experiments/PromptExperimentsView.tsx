@@ -17,6 +17,7 @@ import {
   InputAdornment,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
+import { parseAsStringEnum, useQueryState } from "nuqs";
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -42,6 +43,7 @@ export const PromptExperimentsView: React.FC<PromptExperimentsViewProps> = ({ on
   const navigate = useNavigate();
   const { defaultCurrency } = useDisplaySettings();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [experimentStep, setExperimentStep] = useQueryState("experimentStep", parseAsStringEnum(["info", "prompts", "evals"]));
   const [isSelectExistingModalOpen, setIsSelectExistingModalOpen] = useState(false);
   const [selectedExperimentId, setSelectedExperimentId] = useState<string | null>(null);
   const [page, setPage] = useState(0);
@@ -115,6 +117,8 @@ export const PromptExperimentsView: React.FC<PromptExperimentsViewProps> = ({ on
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedExperimentId(null);
+    // Clear the deep-link param so the modal doesn't immediately reopen.
+    if (experimentStep) void setExperimentStep(null);
   };
 
   const handleCloseSelectExistingModal = () => {
@@ -357,7 +361,12 @@ export const PromptExperimentsView: React.FC<PromptExperimentsViewProps> = ({ on
         </DialogActions>
       </Dialog>
 
-      <CreateExperimentModal templateId={selectedExperimentId ?? undefined} open={isModalOpen} onClose={handleCloseModal} />
+      <CreateExperimentModal
+        templateId={selectedExperimentId ?? undefined}
+        open={isModalOpen || experimentStep !== null}
+        initialData={experimentStep ? { section: experimentStep } : undefined}
+        onClose={handleCloseModal}
+      />
     </>
   );
 };

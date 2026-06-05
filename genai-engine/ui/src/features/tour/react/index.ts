@@ -13,7 +13,9 @@ export {
   TourPortal,
   useActiveTarget,
   useElementRect,
+  useTargetOcclusion,
   type BackdropBlockerProps,
+  type OcclusionInfo,
   type PopoverAnchorProps,
   type SpotlightProps,
   type TargetTrackerProps,
@@ -22,6 +24,7 @@ export {
 } from "./primitives";
 export { TourHost, type TourHostProps } from "./TourHost";
 export { TourProvider, type TourProviderProps } from "./TourProvider";
+export { useRegisterOccluder } from "./useRegisterOccluder";
 export { useRegisterPreparation } from "./useRegisterPreparation";
 export { useRegisterQueryHook } from "./useRegisterQueryHook";
 export { useTour, useTourEngine, useTourStore, type ActiveStep, type UseTourReturn } from "./useTour";

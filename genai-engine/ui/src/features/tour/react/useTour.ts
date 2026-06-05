@@ -65,6 +65,8 @@ function cachedActions(engine: TourEngine): TourActions {
     acknowledgeIntroduction: engine.acknowledgeIntroduction,
     continueFromSectionComplete: engine.continueFromSectionComplete,
     refreshTarget: engine.refreshTarget,
+    recheckOcclusion: engine.recheckOcclusion,
+    reconcileActiveSurfaces: engine.reconcileActiveSurfaces,
     emitAction: engine.emitAction,
   };
   defaultActionsCache.set(engine, cached);

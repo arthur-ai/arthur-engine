@@ -132,6 +132,8 @@ function buildItems(wiring: SectionWiring, frontmatter: SectionFrontmatter, body
       popover: wired.popover,
       formPrefill: wired.formPrefill,
       blockInteraction: wired.blockInteraction,
+      surfacesOpen: wired.surfacesOpen,
+      surfacesKeep: wired.surfacesKeep,
     };
   });
 }

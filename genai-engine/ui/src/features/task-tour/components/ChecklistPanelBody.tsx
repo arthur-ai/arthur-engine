@@ -30,6 +30,8 @@ export function ChecklistPanelBody({ controller }: ChecklistPanelBodyProps) {
     currentItemIndex,
     activeStepContent,
     targetLostHint,
+    occlusionHint,
+    onRecoverOcclusion,
     completedItemKeys,
     totalProgress,
     onSelectItem,
@@ -145,7 +147,7 @@ export function ChecklistPanelBody({ controller }: ChecklistPanelBodyProps) {
         ) : (
           items.map((item, idx) => {
             const done = completedItemKeys.has(itemKey(section.id, item.id));
-            const active = !done && idx === currentItemIndex;
+            const selected = idx === currentItemIndex;
             return (
               <Stack
                 key={item.id}
@@ -157,9 +159,9 @@ export function ChecklistPanelBody({ controller }: ChecklistPanelBodyProps) {
                   p: 1.25,
                   borderRadius: 1,
                   cursor: "pointer",
-                  bgcolor: active ? "secondary.light" : "transparent",
+                  bgcolor: selected ? "secondary.light" : "transparent",
                   transition: "background-color 0.12s",
-                  "&:hover": { bgcolor: active ? "secondary.light" : "action.hover" },
+                  "&:hover": { bgcolor: selected ? "secondary.light" : "action.hover" },
                 }}
               >
                 <Box
@@ -181,7 +183,7 @@ export function ChecklistPanelBody({ controller }: ChecklistPanelBodyProps) {
                     justifyContent: "center",
                     transition: "background-color 0.15s, border-color 0.15s, color 0.15s",
                     bgcolor: done ? "secondary.main" : "background.paper",
-                    borderColor: done ? "secondary.main" : active ? "secondary.main" : "divider",
+                    borderColor: done ? "secondary.main" : selected ? "secondary.main" : "divider",
                     color: done ? "common.white" : "transparent",
                   }}
                 >
@@ -191,15 +193,15 @@ export function ChecklistPanelBody({ controller }: ChecklistPanelBodyProps) {
                   <Typography
                     variant="body2"
                     sx={{
-                      color: active ? "secondary.dark" : "text.primary",
-                      fontWeight: active ? 500 : 400,
+                      color: selected ? "secondary.dark" : "text.primary",
+                      fontWeight: selected ? 500 : 400,
                       textDecoration: done ? "line-through" : "none",
                       lineHeight: 1.4,
                     }}
                   >
                     {item.title}
                   </Typography>
-                  {active && activeStepContent != null ? (
+                  {selected && activeStepContent != null ? (
                     typeof activeStepContent === "string" ? (
                       <Typography variant="caption" sx={{ color: "common.black", display: "block", mt: 0.5, lineHeight: 1.45 }}>
                         {activeStepContent}
@@ -208,10 +210,20 @@ export function ChecklistPanelBody({ controller }: ChecklistPanelBodyProps) {
                       <Box sx={{ color: "common.black", display: "block", mt: 0.5, fontSize: 12, lineHeight: 1.45 }}>{activeStepContent}</Box>
                     )
                   ) : null}
-                  {active && targetLostHint ? (
+                  {selected && targetLostHint ? (
                     <Typography variant="caption" sx={(theme) => ({ color: theme.tour.hintColor, display: "block", mt: 0.5, lineHeight: 1.45 })}>
                       {targetLostHint}
                     </Typography>
+                  ) : null}
+                  {selected && occlusionHint ? (
+                    <Box sx={{ mt: 0.75 }} onClick={(e) => e.stopPropagation()}>
+                      <Typography variant="caption" sx={(theme) => ({ color: theme.tour.hintColor, display: "block", lineHeight: 1.45 })}>
+                        {occlusionHint.message}
+                      </Typography>
+                      <Button size="small" variant="outlined" onClick={onRecoverOcclusion} sx={{ mt: 0.5 }}>
+                        {occlusionHint.actionLabel}
+                      </Button>
+                    </Box>
                   ) : null}
                 </Box>
               </Stack>
