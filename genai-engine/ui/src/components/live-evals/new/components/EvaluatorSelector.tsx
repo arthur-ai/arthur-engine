@@ -102,7 +102,7 @@ export const EvaluatorSelector = withFieldGroup({
       setOpenCreateMLModal(false);
       group.setFieldValue("name", evalData.name);
       group.setFieldValue("version", "latest");
-      group.setFieldValue("eval_type", evalData.eval_kind);
+      group.setFieldValue("eval_type", evalData.eval_kind ?? null);
       onSelectionChange?.();
     });
 

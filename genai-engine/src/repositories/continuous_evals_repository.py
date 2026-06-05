@@ -498,7 +498,6 @@ class ContinuousEvalsRepository:
                 select(DatabaseTask.org_id).where(DatabaseTask.id == task_id),
             )
 
-
             # Create pending annotations and enqueue jobs
             for continuous_eval in continuous_evals:
                 annotation = DatabaseAgenticAnnotation(

@@ -19,7 +19,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "e1f2a3b4c5d6"
-down_revision = "d4e5f6a7b8c9"
+down_revision = "2966018cec1d"
 branch_labels = None
 depends_on = None
 
@@ -108,7 +108,6 @@ def downgrade() -> None:
         ["task_id", "name", "version"],
         ondelete="CASCADE",
     )
-
 
     # --- llm_evals ---
 

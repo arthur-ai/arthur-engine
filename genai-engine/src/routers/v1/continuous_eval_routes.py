@@ -291,7 +291,6 @@ def create_continuous_eval(
         # set the version to the integer version of the llm eval
         create_request.llm_eval_version = llm_eval.version
 
-
         # Validate the transform exists and is in the caller's org
         transform_repo = TraceTransformRepository(db_session)
         _assert_transform_accessible(
@@ -378,7 +377,8 @@ def update_continuous_eval(
         transform_repo = TraceTransformRepository(db_session)
 
         existing_eval = continuous_eval_repo.get_continuous_eval_by_id(
-            eval_id, org_scope=org_scope
+            eval_id,
+            org_scope=org_scope,
         )
         llm_eval = None
         llm_eval_version: str | int | None = None
@@ -529,7 +529,8 @@ def rerun_continuous_eval(
     try:
         continuous_eval_repo = ContinuousEvalsRepository(db_session)
         return continuous_eval_repo.rerun_continuous_eval_by_annotation_id(
-            run_id, org_scope=org_scope
+            run_id,
+            org_scope=org_scope,
         )
     except HTTPException:
         raise
@@ -659,7 +660,8 @@ def create_test_run(
         # Look up the continuous eval (org-scoped for tenant callers) and get its task_id
         continuous_eval_repo = ContinuousEvalsRepository(db_session)
         continuous_eval = continuous_eval_repo.get_continuous_eval_by_id(
-            eval_id, org_scope=org_scope
+            eval_id,
+            org_scope=org_scope,
         )
 
         test_run_repo = ContinuousEvalTestRunRepository(db_session)
@@ -715,7 +717,8 @@ def list_test_runs(
         # Validate ownership of the parent continuous eval before listing test runs.
         if org_scope is not None:
             ContinuousEvalsRepository(db_session).get_continuous_eval_by_id(
-                eval_id, org_scope=org_scope
+                eval_id,
+                org_scope=org_scope,
             )
         test_run_repo = ContinuousEvalTestRunRepository(db_session)
         test_runs = test_run_repo.list_test_runs(

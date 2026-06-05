@@ -172,13 +172,13 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, latestV
     async (_evalName: string, data: CreateMLEvalRequest) => {
       const result = await createMlEvalMutation.mutateAsync({ evalName, data });
       setIsMlEditModalOpen(false);
-      onRefetch?.(result.version);
+      onRefetch?.(result.version ?? 0);
 
       try {
-        const affected = await fetchImpactedCEs(evalName, result.version);
+        const affected = await fetchImpactedCEs(evalName, result.version ?? 0);
         if (affected.length > 0) {
           setImpactedCEs(affected);
-          setImpactedCEsNewVersion(result.version);
+          setImpactedCEsNewVersion(result.version ?? 0);
           setIsImpactedCEsDialogOpen(true);
         }
       } catch {

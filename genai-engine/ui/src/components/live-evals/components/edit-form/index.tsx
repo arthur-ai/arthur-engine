@@ -85,7 +85,6 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
         enabled: value.enabled,
         transform_id: value.transform.transformId,
         transform_version_id: value.transform.transformVersionId ?? undefined,
-        eval_type: isML ? "ml_eval" : "llm_eval",
         ...(isML
           ? { ml_eval_name: value.evaluator.name, ml_eval_version: "latest" }
           : { llm_eval_name: value.evaluator.name, llm_eval_version: value.evaluator.version }),
