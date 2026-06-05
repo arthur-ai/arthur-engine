@@ -16,16 +16,16 @@ steps:
 
 ## intro
 
-Start with the bundled Demo Agent: a Wikipedia-backed chatbot you can use to generate a realistic trace. Open it from the task sidebar, ask a question, and Arthur will record the run for the trace workflow we'll inspect together.
+Start with the bundled Demo Agent: a Wikipedia-backed chatbot you can use to generate a real trace. Open it from the task sidebar, ask a question, and Arthur will record the run so we can look at it in the next section.
 
 ## scenario
 
-First, open the Demo Agent from the sidebar. It answers general-knowledge questions by searching and fetching Wikipedia articles, which makes it a useful sandbox for seeing agent traces in Arthur.
+Open the Demo Agent from the sidebar. It answers general-knowledge questions by searching Wikipedia, which makes it a handy way to see what agent traces look like in Arthur.
 
 ## step: open-demo-agent
 
-Open **Demo Agent** in the sidebar. This takes you to the sandbox chatbot, where you can ask a general-knowledge question and create a trace for the next part of the tour.
+Open **Demo Agent** in the sidebar. This takes you to the sandbox chatbot where you can ask a general-knowledge question and generate a trace for the next part of the tour.
 
 ## step: send-message
 
-Send any general-knowledge question to the Demo Agent. It will search Wikipedia as needed, answer in the chat, and leave behind a trace for us to inspect next.
+Send any general-knowledge question to the Demo Agent. It will search Wikipedia, answer in the chat, and leave a trace we can look at next.
