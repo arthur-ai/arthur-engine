@@ -179,7 +179,7 @@ wheels = [
 
 [[package]]
 name = "arthur-genai-engine"
-version = "2.1.602"
+version = "2.1.610"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
