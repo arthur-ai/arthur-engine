@@ -1,3 +1,4 @@
+import { ThemeProvider } from "@mui/material";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -5,6 +6,8 @@ import { TASK_TOUR_SECTIONS } from "../data";
 import type { ChecklistController } from "../hooks/useChecklistController";
 
 import { ChecklistPanelBody } from "./ChecklistPanelBody";
+
+import { lightTheme } from "@/theme/mui-theme";
 
 const SECTION_WITH_STEPS_INDEX = TASK_TOUR_SECTIONS.findIndex((section) => section.items.length > 0);
 
@@ -16,6 +19,8 @@ function renderPanel(overrides: Partial<ChecklistController> = {}) {
     currentItemIndex: 0,
     activeStepContent: "Full instruction copy",
     targetLostHint: null,
+    occlusionHint: null,
+    onRecoverOcclusion: vi.fn(),
     completedItemKeys: new Set(),
     totalProgress: 0.25,
     onSelectItem: vi.fn(),
@@ -27,7 +32,11 @@ function renderPanel(overrides: Partial<ChecklistController> = {}) {
     ...overrides,
   };
 
-  render(<ChecklistPanelBody controller={controller} />);
+  render(
+    <ThemeProvider theme={lightTheme}>
+      <ChecklistPanelBody controller={controller} />
+    </ThemeProvider>
+  );
   return controller;
 }
 
@@ -65,6 +74,22 @@ describe("ChecklistPanelBody", () => {
 
     expect(onToggleItem).toHaveBeenCalledTimes(1);
     expect(onToggleItem).toHaveBeenCalledWith(section.items[0]);
+    expect(onSelectItem).not.toHaveBeenCalled();
+  });
+
+  it("renders the occlusion affordance and recovers without selecting the step", () => {
+    const onRecoverOcclusion = vi.fn();
+    const onSelectItem = vi.fn();
+    renderPanel({
+      occlusionHint: { message: "Something is covering this step.", actionLabel: "Bring this into view" },
+      onRecoverOcclusion,
+      onSelectItem,
+    });
+
+    expect(screen.getByText("Something is covering this step.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /bring this into view/i }));
+
+    expect(onRecoverOcclusion).toHaveBeenCalledTimes(1);
     expect(onSelectItem).not.toHaveBeenCalled();
   });
 });

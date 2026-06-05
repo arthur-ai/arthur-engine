@@ -15,6 +15,11 @@ import { useTour } from "./useTour";
  * mutation burst, the observer is only attached while a step is active, and
  * re-emitting an identical element is a no-op downstream (so the spotlight's own
  * re-renders cannot drive a feedback loop).
+ *
+ * The same mutation burst also drives an occlusion re-check (after the refresh,
+ * so it tests the freshly-resolved element) — this is how a modal/panel the
+ * user opens *after* the step started gets caught. Both ride the one rAF; the
+ * only added cost is the occlusion hit-test's `elementFromPoint` calls.
  */
 export function ActiveTargetRefresh() {
   const { state, activeStep, actions } = useTour();
@@ -27,7 +32,10 @@ export function ActiveTargetRefresh() {
     const scheduleRefresh = () => {
       if (typeof window === "undefined") return;
       window.cancelAnimationFrame(frame);
-      frame = window.requestAnimationFrame(() => actions.refreshTarget());
+      frame = window.requestAnimationFrame(() => {
+        actions.refreshTarget();
+        actions.recheckOcclusion();
+      });
     };
 
     const observer = new MutationObserver(scheduleRefresh);

@@ -22,6 +22,7 @@ import { z } from "zod";
 
 import { DefaultValueSelector } from "./DefaultValueSelector";
 
+import { TOUR_IDS, tourDataAttr } from "@/features/task-tour/selectors";
 import { columnNameSchema } from "@/schemas/datasetSchemas";
 import { EVENT_NAMES, track } from "@/services/amplitude";
 import type { ColumnDefaultConfig, ColumnDefaults } from "@/types/dataset";
@@ -181,6 +182,7 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
       aria-labelledby="configure-columns-dialog-title"
       slotProps={{
         paper: {
+          ...tourDataAttr(TOUR_IDS.datasetConfigureColumnsModal),
           sx: {
             maxHeight: "90vh",
             display: "flex",

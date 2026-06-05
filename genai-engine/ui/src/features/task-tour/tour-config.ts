@@ -1,5 +1,7 @@
+import { TASK_TOUR_PREPARATIONS } from "./content/wiring";
 import { TASK_TOUR_SECTIONS, type TaskTourItem } from "./data";
 import { TASK_TOUR_PULSE_HIGHLIGHT } from "./highlights";
+import { TASK_TOUR_OCCLUDERS } from "./occluders";
 import { tourSelector } from "./selectors";
 
 import type { AdvanceTrigger, RouteSpec, SectionConfig, StepConfig, StepContext, TargetSpec, TourConfig } from "@/features/tour";
@@ -39,6 +41,24 @@ function targetFor(item: TaskTourItem): TargetSpec {
   return { kind: "selector", selector: tourSelector(item.targetId) };
 }
 
+/**
+ * Declarative occluder reconcile config for a step. Steps that open the trace
+ * drawer (every `prepareKey: traceOpened` beat — the `DRAWER_STEPS` set) keep
+ * it open so reconcile doesn't fight the prep hook; any other surface a step
+ * needs open is listed explicitly via `surfacesOpen`. All unlisted registered
+ * occluders are closed on entry.
+ */
+function surfacesFor(item: TaskTourItem): StepConfig["surfaces"] | undefined {
+  const open: Array<{ id: string; args?: unknown }> = [];
+  if (item.prepareKey === TASK_TOUR_PREPARATIONS.traceOpened) {
+    open.push({ id: TASK_TOUR_OCCLUDERS.traceDrawer });
+  }
+  if (item.surfacesOpen) open.push(...item.surfacesOpen);
+  const keep = item.surfacesKeep;
+  if (open.length === 0 && (!keep || keep.length === 0)) return undefined;
+  return { ...(open.length ? { open } : {}), ...(keep && keep.length ? { keep } : {}) };
+}
+
 export interface BuildTourConfigOptions {
   /** Bound at engine build time; the consumer's `skipWhen` predicate consults this map. */
   isEmpty?: (skipWhenEmptyKey: string, ctx: StepContext) => boolean | Promise<boolean>;
@@ -48,7 +68,15 @@ function buildStep(taskId: string, item: TaskTourItem, opts: BuildTourConfigOpti
   const route = routeFor(taskId, item);
   const isTracesRouteStep = item.route === "traces";
   const isPromptDetailStep = item.targetHookId === "task-tour.promptOpenInPlayground";
+  // Steps whose prep navigates to a dynamic detail route need a longer target
+  // wait — navigation + detail-page data load takes more than the default.
+  const isDetailPrepStep =
+    item.prepareKey === TASK_TOUR_PREPARATIONS.evaluatorDetailOpened ||
+    item.prepareKey === TASK_TOUR_PREPARATIONS.datasetDetailOpened ||
+    item.prepareKey === TASK_TOUR_PREPARATIONS.promptDetailOpened ||
+    item.prepareKey === TASK_TOUR_PREPARATIONS.playgroundOpened;
   const skipWhen = item.skipWhenEmptyKey ? (ctx: StepContext) => Promise.resolve(opts.isEmpty?.(item.skipWhenEmptyKey!, ctx) ?? false) : undefined;
+  const surfaces = surfacesFor(item);
   return {
     id: item.id,
     target: targetFor(item),
@@ -64,8 +92,15 @@ function buildStep(taskId: string, item: TaskTourItem, opts: BuildTourConfigOpti
     ...(item.popover ? { popover: item.popover } : {}),
     ...(item.formPrefill ? { formPrefill: item.formPrefill } : {}),
     ...(item.prepareKey ? { prepare: { key: item.prepareKey } } : {}),
+    ...(surfaces ? { surfaces } : {}),
     ...(skipWhen ? { skipWhen } : {}),
-    awaitTarget: { timeoutMs: isTracesRouteStep ? TRACES_STEP_TIMEOUT_MS : isPromptDetailStep ? PROMPT_DETAIL_STEP_TIMEOUT_MS : STEP_TIMEOUT_MS },
+    awaitTarget: {
+      timeoutMs: isTracesRouteStep
+        ? TRACES_STEP_TIMEOUT_MS
+        : isPromptDetailStep || isDetailPrepStep
+          ? PROMPT_DETAIL_STEP_TIMEOUT_MS
+          : STEP_TIMEOUT_MS,
+    },
     advanceOn: advanceFor(item),
   };
 }

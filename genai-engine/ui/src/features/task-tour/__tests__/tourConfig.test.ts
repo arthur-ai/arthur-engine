@@ -120,9 +120,9 @@ describe("task tour config", () => {
     const versionsStep = datasetsSection?.steps.find((step) => step.id === "review-dataset-versions");
     const experimentsStep = datasetsSection?.steps.find((step) => step.id === "review-dataset-experiments");
 
-    // Every beat is a static-selector spotlight that waits for an explicit
-    // Next click. None carries a `route` — the prior step landed on the dynamic
-    // /datasets/:datasetId URL and a static route would strip it.
+    // Every beat waits for an explicit Next click. None carries a `route` — the
+    // prior step landed on the dynamic /datasets/:datasetId URL and a static
+    // route would strip it.
     expect(rowsStep).toMatchObject({
       target: { kind: "selector", selector: tourSelector(TOUR_IDS.datasetTable) },
       advanceOn: [{ type: "manual" }],
@@ -130,8 +130,11 @@ describe("task tour config", () => {
     });
     expect(rowsStep?.route).toBeUndefined();
 
+    // Columns follows the user into the Configure Columns modal once opened
+    // (preferred-modal queryHook), so it's a queryHook target, not a static
+    // selector — see the resolver in DatasetTargetWidget.
     expect(columnsStep).toMatchObject({
-      target: { kind: "selector", selector: tourSelector(TOUR_IDS.datasetConfigureColumns) },
+      target: { kind: "queryHook", hookId: TASK_TOUR_QUERY_HOOKS.datasetConfigureColumns },
       advanceOn: [{ type: "manual" }],
       popover: { showNext: true },
     });
@@ -339,6 +342,17 @@ describe("task tour config", () => {
       overlay: { blockInteraction: false },
     });
     expect(createExperimentStep?.skipWhen).toBeDefined();
+
+    // Modal beats encode their internal step as the `experimentStep` search
+    // param so PromptExperimentsView opens the modal at the right step on a
+    // jump (open-create-experiment stays param-less — it teaches the button).
+    expect(openCreateStep?.route).not.toHaveProperty("search.experimentStep");
+    expect(infoNameStep?.route).toMatchObject({ search: { tab: "prompt-experiments", experimentStep: "info" } });
+    expect(reviewInfoStep?.route).toMatchObject({ search: { experimentStep: "info" } });
+    expect(explainPromptMappingStep?.route).toMatchObject({ search: { experimentStep: "prompts" } });
+    expect(promptMappingStep?.route).toMatchObject({ search: { experimentStep: "prompts" } });
+    expect(explainEvalMappingStep?.route).toMatchObject({ search: { experimentStep: "evals" } });
+    expect(createExperimentStep?.route).toMatchObject({ search: { experimentStep: "evals" } });
   });
 
   it("routes deploy back to the prompt detail before production tagging", () => {
@@ -402,11 +416,16 @@ describe("task tour config", () => {
       advanceOn: [{ type: "action", name: TASK_TOUR_ACTIONS.demoAgentMessageSent }],
     });
     expect(reviewVerificationMessageStep).toMatchObject({
+      // Carries the chatbot route so it re-establishes the page on out-of-order
+      // entry (its target lives on /chatbot, reached by the prior message step).
+      route: {
+        path: "/tasks/:taskId/chatbot",
+        params: { taskId: "task-id" },
+      },
       target: { kind: "selector", selector: tourSelector(TOUR_IDS.chatWindow) },
       advanceOn: [{ type: "manual" }],
       popover: { showNext: true, nextLabel: "Next" },
     });
-    expect(reviewVerificationMessageStep?.route).toBeUndefined();
     expect(verifyEvalStep).toMatchObject({
       target: { kind: "selector", selector: tourSelector(TOUR_IDS.navObserve) },
       advanceOn: expect.arrayContaining([{ type: "click" }, { type: "action", name: TASK_TOUR_ACTIONS.deployVerified }]),

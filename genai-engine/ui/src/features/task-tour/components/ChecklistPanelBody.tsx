@@ -30,6 +30,8 @@ export function ChecklistPanelBody({ controller }: ChecklistPanelBodyProps) {
     currentItemIndex,
     activeStepContent,
     targetLostHint,
+    occlusionHint,
+    onRecoverOcclusion,
     completedItemKeys,
     totalProgress,
     onSelectItem,
@@ -212,6 +214,16 @@ export function ChecklistPanelBody({ controller }: ChecklistPanelBodyProps) {
                     <Typography variant="caption" sx={(theme) => ({ color: theme.tour.hintColor, display: "block", mt: 0.5, lineHeight: 1.45 })}>
                       {targetLostHint}
                     </Typography>
+                  ) : null}
+                  {active && occlusionHint ? (
+                    <Box sx={{ mt: 0.75 }} onClick={(e) => e.stopPropagation()}>
+                      <Typography variant="caption" sx={(theme) => ({ color: theme.tour.hintColor, display: "block", lineHeight: 1.45 })}>
+                        {occlusionHint.message}
+                      </Typography>
+                      <Button size="small" variant="outlined" onClick={onRecoverOcclusion} sx={{ mt: 0.5 }}>
+                        {occlusionHint.actionLabel}
+                      </Button>
+                    </Box>
                   ) : null}
                 </Box>
               </Stack>

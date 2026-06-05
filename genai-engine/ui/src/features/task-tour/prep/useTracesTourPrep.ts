@@ -1,15 +1,16 @@
 import { TIME_RANGES } from "@arthur/shared-components";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 
 import { TASK_TOUR_PREPARATIONS } from "../content/wiring";
+import { TASK_TOUR_OCCLUDERS } from "../occluders";
 import { tourSelector, TOUR_IDS, type TourId } from "../selectors";
 
 import { useDrawerTarget } from "@/components/traces/hooks/useDrawerTarget";
 import { usePaginationContext } from "@/components/traces/stores/pagination-context";
 import { resolveTargetAsync } from "@/features/tour";
-import { useRegisterPreparation } from "@/features/tour";
-import type { PreparationHook } from "@/features/tour";
+import { useRegisterOccluder, useRegisterPreparation } from "@/features/tour";
+import type { OccluderDescriptor, PreparationHook } from "@/features/tour";
 import { useApi } from "@/hooks/useApi";
 import type { TraceMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
@@ -159,4 +160,22 @@ export function useTracesTourPrep({ taskId }: UseTracesTourPrepOptions): void {
   );
 
   useRegisterPreparation(TASK_TOUR_PREPARATIONS.traceOpened, hook);
+
+  // Register the trace drawer as a close-only occluder. Opening stays owned by
+  // the prep hook (it needs an async-resolved trace id), so `open` is omitted —
+  // drawer steps declare it via `surfaces.open` (auto-derived from
+  // `prepareKey: traceOpened`) so reconcile leaves it alone, while every other
+  // step closes a stranded drawer on entry. Close clears the nuqs params with
+  // `history: "replace"` so it doesn't pollute the back button mid-tour, and
+  // returns the setter promise so reconcile can await the URL clear before the
+  // engine's same-route match check.
+  const occluder = useMemo<OccluderDescriptor>(
+    () => ({
+      id: TASK_TOUR_OCCLUDERS.traceDrawer,
+      isOpen: () => Boolean(drawerTargetRef.current.id),
+      close: () => setDrawerTargetRef.current({ id: null }, { history: "replace" }),
+    }),
+    []
+  );
+  useRegisterOccluder(occluder);
 }

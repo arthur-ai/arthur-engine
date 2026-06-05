@@ -22,6 +22,22 @@ export interface CreateAnalyticsPluginOptions {
  * dwell time: it stamps each `step:enter` and appends `duration_seconds`
  * (elapsed since that enter) to the matching `step:completed` / `step:left`.
  */
+/**
+ * Drop non-serializable DOM nodes from an event payload before forwarding to
+ * analytics. `target:found` / `target:occluded` / `target:revealed` carry live
+ * `element` / `occluder` nodes for React consumers; trackers want primitives
+ * only (occlusion events also carry an analytics-safe `occluderId` string).
+ */
+function serializableProps(props: Record<string, unknown>): Record<string, unknown> {
+  const hasNode = typeof Node !== "undefined";
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(props)) {
+    if (hasNode && value instanceof Node) continue;
+    out[key] = value;
+  }
+  return out;
+}
+
 export function createAnalyticsPlugin(opts: CreateAnalyticsPluginOptions): TourPlugin {
   const prefix = opts.prefix ?? "tour";
   const include = opts.include ? new Set<keyof TourEvents>(opts.include) : null;
@@ -54,12 +70,15 @@ export function createAnalyticsPlugin(opts: CreateAnalyticsPluginOptions): TourP
           const startedAt = enteredAt.get(stepKey(props));
           if (startedAt !== undefined) {
             if (type === "step:left") enteredAt.delete(stepKey(props));
-            opts.track(`${prefix}.${String(type)}`, { ...props, duration_seconds: Math.round((performance.now() - startedAt) / 100) / 10 });
+            opts.track(`${prefix}.${String(type)}`, {
+              ...serializableProps(props),
+              duration_seconds: Math.round((performance.now() - startedAt) / 100) / 10,
+            });
             return;
           }
         }
 
-        opts.track(`${prefix}.${String(type)}`, props);
+        opts.track(`${prefix}.${String(type)}`, serializableProps(props));
       };
       bus.on("*", handler);
       return () => bus.off("*", handler);
