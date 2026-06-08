@@ -263,8 +263,8 @@ class AlertCheckExecutor:
 
     def _crosses_threshold(self, alert_rule: AlertRule, value: float) -> bool:
         if alert_rule.bound == AlertBound.UPPER_BOUND:
-            return value > alert_rule.threshold
-        return value < alert_rule.threshold
+            return bool(value > alert_rule.threshold)
+        return bool(value < alert_rule.threshold)
 
     def _query_model_metrics(
         self,
