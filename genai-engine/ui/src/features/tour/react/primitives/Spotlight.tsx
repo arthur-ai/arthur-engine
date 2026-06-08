@@ -159,7 +159,7 @@ export function Spotlight({ rect, highlight, backdropColor = "rgba(0, 0, 0, 0.55
   return (
     <>
       {norm.pulse && !reducedMotion && (
-        <style>{`@keyframes ${PULSE_KEYFRAMES} { 0% { opacity: 0.85; } 100% { opacity: 0; } }`}</style>
+        <style>{`@keyframes ${PULSE_KEYFRAMES} { 0% { opacity: 0; } 10% { opacity: 0.85; } 100% { opacity: 0; } }`}</style>
       )}
       <div aria-hidden="true" className={className} style={cutoutStyle} />
       {pulseStyle && <div aria-hidden="true" style={pulseStyle} />}

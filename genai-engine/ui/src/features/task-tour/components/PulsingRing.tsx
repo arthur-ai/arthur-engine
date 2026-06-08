@@ -59,9 +59,24 @@ export function PulsingRing({ rect, padding = 6, radius = 12, zIndex = 1499 }: P
           animation: "taskTourPulse 1.6s ease-out infinite",
         },
         "@keyframes taskTourPulse": {
-          "0%": { top: 0, right: 0, bottom: 0, left: 0, borderRadius: "inherit", opacity: 0.85 },
-          "70%": { top: "var(--task-tour-pulse-inset)", right: "var(--task-tour-pulse-inset)", bottom: "var(--task-tour-pulse-inset)", left: "var(--task-tour-pulse-inset)", borderRadius: "var(--task-tour-pulse-radius)", opacity: 0 },
-          "100%": { top: "var(--task-tour-pulse-inset)", right: "var(--task-tour-pulse-inset)", bottom: "var(--task-tour-pulse-inset)", left: "var(--task-tour-pulse-inset)", borderRadius: "var(--task-tour-pulse-radius)", opacity: 0 },
+          "0%": { top: 0, right: 0, bottom: 0, left: 0, borderRadius: "inherit", opacity: 0 },
+          "10%": { top: 0, right: 0, bottom: 0, left: 0, borderRadius: "inherit", opacity: 0.85 },
+          "70%": {
+            top: "var(--task-tour-pulse-inset)",
+            right: "var(--task-tour-pulse-inset)",
+            bottom: "var(--task-tour-pulse-inset)",
+            left: "var(--task-tour-pulse-inset)",
+            borderRadius: "var(--task-tour-pulse-radius)",
+            opacity: 0,
+          },
+          "100%": {
+            top: "var(--task-tour-pulse-inset)",
+            right: "var(--task-tour-pulse-inset)",
+            bottom: "var(--task-tour-pulse-inset)",
+            left: "var(--task-tour-pulse-inset)",
+            borderRadius: "var(--task-tour-pulse-radius)",
+            opacity: 0,
+          },
         },
         "@media (prefers-reduced-motion: reduce)": {
           transition: "none",
