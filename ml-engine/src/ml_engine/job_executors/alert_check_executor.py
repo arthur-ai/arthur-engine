@@ -204,13 +204,13 @@ class AlertCheckExecutor:
         results_by_ts: Dict[datetime, List[Dict[str, Any]]] = defaultdict(list)
         for r in query_response.results:
             ts = r[METRIC_TIMESTAMP_COLUMN_NAME]
-            
+
             if isinstance(ts, str):
                 ts = datetime.fromisoformat(ts)
-            
+
             if ts.tzinfo is None:
                 ts = ts.replace(tzinfo=timezone.utc)
-            
+
             results_by_ts[ts.astimezone(timezone.utc)].append(r)
 
         expected_bucket_timestamps = get_expected_bucket_timestamps(
