@@ -1211,6 +1211,15 @@ export interface BodyAddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersi
   tag: string;
 }
 
+/** Body_upload_certificate_api_v2_demo_certificate_post */
+export interface BodyUploadCertificateApiV2DemoCertificatePost {
+  /**
+   * File
+   * @format binary
+   */
+  file: File;
+}
+
 /** Body_upload_embeddings_file_api_chat_files_post */
 export interface BodyUploadEmbeddingsFileApiChatFilesPost {
   /**
@@ -1255,6 +1264,14 @@ export interface BuiltinValidationResponse {
    * One result per requested check, in the same order as the request.
    */
   results: ExternalRuleResult[];
+}
+
+/** CertificateUploadResponse */
+export interface CertificateUploadResponse {
+  /** Certificate Id */
+  certificate_id: string;
+  /** Certificate Url */
+  certificate_url: string;
 }
 
 /** ChatCompletionMessageToolCall */
@@ -3689,6 +3706,10 @@ export type GetAnnotationByIdApiV1TracesAnnotationsAnnotationIdGetError = HTTPVa
 export type GetApiKeyAuthApiKeysApiKeyIdGetData = ApiKeyResponse;
 
 export type GetApiKeyAuthApiKeysApiKeyIdGetError = HTTPValidationError;
+
+export type GetCertificateApiV2DemoCertificateCertIdGetData = any;
+
+export type GetCertificateApiV2DemoCertificateCertIdGetError = HTTPValidationError;
 
 export type GetChatbotConfigApiV1ChatbotConfigGetData = ChatbotConfigResponse;
 
@@ -12583,6 +12604,10 @@ export type UpdateTransformApiV1TracesTransformsTransformIdPatchData = TraceTran
 
 export type UpdateTransformApiV1TracesTransformsTransformIdPatchError = HTTPValidationError;
 
+export type UploadCertificateApiV2DemoCertificatePostData = CertificateUploadResponse;
+
+export type UploadCertificateApiV2DemoCertificatePostError = HTTPValidationError;
+
 export type UploadEmbeddingsFileApiChatFilesPostData = FileUploadResult;
 
 export type UploadEmbeddingsFileApiChatFilesPostError = HTTPValidationError;
@@ -13611,7 +13636,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.541
+ * @version 2.1.613
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -15243,6 +15268,22 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v1/traces/annotations/${annotationId}`,
         method: "GET",
         secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Retrieve a previously stored demo completion certificate PNG.
+     *
+     * @tags Demo
+     * @name GetCertificateApiV2DemoCertificateCertIdGet
+     * @summary Get Certificate
+     * @request GET:/api/v2/demo/certificate/{cert_id}
+     */
+    getCertificateApiV2DemoCertificateCertIdGet: (certId: string, params: RequestParams = {}) =>
+      this.request<GetCertificateApiV2DemoCertificateCertIdGetData, GetCertificateApiV2DemoCertificateCertIdGetError>({
+        path: `/api/v2/demo/certificate/${certId}`,
+        method: "GET",
         format: "json",
         ...params,
       }),
@@ -17662,6 +17703,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         body: data,
         secure: true,
         type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Upload a demo completion certificate PNG to persistent storage.
+     *
+     * @tags Demo
+     * @name UploadCertificateApiV2DemoCertificatePost
+     * @summary Upload Certificate
+     * @request POST:/api/v2/demo/certificate
+     */
+    uploadCertificateApiV2DemoCertificatePost: (data: BodyUploadCertificateApiV2DemoCertificatePost, params: RequestParams = {}) =>
+      this.request<UploadCertificateApiV2DemoCertificatePostData, UploadCertificateApiV2DemoCertificatePostError>({
+        path: `/api/v2/demo/certificate`,
+        method: "POST",
+        body: data,
+        type: ContentType.FormData,
         format: "json",
         ...params,
       }),
