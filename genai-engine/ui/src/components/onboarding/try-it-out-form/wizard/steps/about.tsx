@@ -1,23 +1,12 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CheckIcon from "@mui/icons-material/Check";
-import {
-  Box,
-  Button,
-  FormControl,
-  FormControlLabel,
-  FormHelperText,
-  FormLabel,
-  Radio,
-  RadioGroup,
-  Stack,
-  TextField,
-  Typography,
-} from "@mui/material";
+import { Box, Button, FormControl, FormControlLabel, FormHelperText, FormLabel, Radio, RadioGroup, Stack, Typography } from "@mui/material";
 
 import { BRINGS_OPTIONS, MATURITY_OPTIONS } from "../../../onboarding-options";
-import { fieldErrorMessage, radioCardSx, sectionLabelSx, textFieldSx } from "../../styles";
-import { withForm } from "../hooks/form";
+import { withForm } from "../../hooks/form";
+import { OtherSpecifyField } from "../../other-specify-field";
+import { fieldErrorMessage, radioCardSx, sectionLabelSx } from "../../styles";
 import { STEP_HEADINGS } from "../options";
 import { aboutSchema, wizardFormOpts } from "../schema";
 
@@ -124,19 +113,7 @@ export const TryItOutFormWizardAboutStep = withForm({
                 {(show) =>
                   show ? (
                     <form.AppField name="about.bringsOther">
-                      {(field) => (
-                        <TextField
-                          placeholder="Please specify…"
-                          value={field.state.value}
-                          onBlur={field.handleBlur}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          error={field.state.meta.errors.length > 0}
-                          helperText={fieldErrorMessage(field)}
-                          size="small"
-                          fullWidth
-                          sx={{ ...textFieldSx, mt: -1 }}
-                        />
-                      )}
+                      {(field) => <OtherSpecifyField field={field} placeholder="Please specify…" />}
                     </form.AppField>
                   ) : null
                 }
@@ -153,16 +130,21 @@ export const TryItOutFormWizardAboutStep = withForm({
                   Back
                 </Button>
                 <Box sx={{ flex: 1 }} />
-                <Button
-                  type="submit"
-                  variant="contained"
-                  color="primary"
-                  disableElevation
-                  endIcon={<ArrowForwardIcon sx={{ fontSize: 16 }} />}
-                  sx={{ textTransform: "none", fontSize: 14, fontWeight: 600, borderRadius: "8px", px: 2.5 }}
-                >
-                  Continue
-                </Button>
+                <form.Subscribe selector={(s) => aboutSchema.safeParse(s.values.about).success}>
+                  {(isValid) => (
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      color="primary"
+                      disabled={!isValid}
+                      disableElevation
+                      endIcon={<ArrowForwardIcon sx={{ fontSize: 16 }} />}
+                      sx={{ textTransform: "none", fontSize: 14, fontWeight: 600, borderRadius: "8px", px: 2.5 }}
+                    >
+                      Continue
+                    </Button>
+                  )}
+                </form.Subscribe>
               </Stack>
             </Stack>
           </Box>

@@ -1,3 +1,4 @@
+import { Popover } from "@base-ui/react/popover";
 import AddIcon from "@mui/icons-material/Add";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CheckIcon from "@mui/icons-material/Check";
@@ -10,15 +11,17 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Container from "@mui/material/Container";
-import Popover from "@mui/material/Popover";
+import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import VariableInputs from "./VariableInputs";
 
 import { EditableTitle } from "@/components/common";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
+import { dispatchTourEvent, TASK_TOUR_ACTIONS } from "@/features/task-tour/tourEvents";
 import { useTask } from "@/hooks/useTask";
 import type { PromptExperimentDetail } from "@/lib/api-client/api-client";
 
@@ -61,11 +64,15 @@ export default function PlaygroundHeader({
 }: PlaygroundHeaderProps) {
   const navigate = useNavigate();
   const { task } = useTask();
-  const variablesButtonRef = useRef<HTMLButtonElement>(null);
   const [variablesDrawerOpen, setVariablesDrawerOpen] = useState(false);
 
-  const toggleVariablesDrawer = () => {
-    setVariablesDrawerOpen((prev) => !prev);
+  const handleVariablesOpenChange = (open: boolean) => {
+    setVariablesDrawerOpen(open);
+    // Closing the panel is the advance gesture for the task tour's
+    // "review variables" beat. No-op when the tour isn't running.
+    if (!open) {
+      dispatchTourEvent(TASK_TOUR_ACTIONS.playgroundVariablesReviewed);
+    }
   };
 
   return (
@@ -142,38 +149,34 @@ export default function PlaygroundHeader({
           <Button variant={configDrawerOpen ? "contained" : "outlined"} size="small" onClick={onToggleConfigDrawer} startIcon={<InfoOutlinedIcon />}>
             {configModeActive && experimentConfig ? "View Config" : "Set Config"}
           </Button>
-          <Box sx={{ position: "relative" }}>
+          <Popover.Root open={variablesDrawerOpen} onOpenChange={handleVariablesOpenChange}>
             <Badge badgeContent={blankVariablesCount} color="error" overlap="rectangular">
-              <Button
-                ref={variablesButtonRef}
-                variant={variablesDrawerOpen ? "contained" : "outlined"}
-                color="primary"
-                size="small"
-                onClick={toggleVariablesDrawer}
-                startIcon={<TuneIcon />}
+              <Popover.Trigger
+                render={
+                  <Button
+                    variant={variablesDrawerOpen ? "contained" : "outlined"}
+                    color="primary"
+                    size="small"
+                    startIcon={<TuneIcon />}
+                    data-tour-id={TOUR_IDS.playgroundVariablesButton}
+                  />
+                }
               >
                 Variables
-              </Button>
-              <Popover
-                open={variablesDrawerOpen}
-                onClose={toggleVariablesDrawer}
-                anchorEl={variablesButtonRef.current}
-                anchorOrigin={{
-                  vertical: "bottom",
-                  horizontal: "left",
-                }}
-                slotProps={{
-                  paper: {
-                    sx: { width: "400px", maxHeight: "500px" },
-                  },
-                }}
-                sx={{ marginTop: "6px" }}
-              >
-                <VariableInputs />
-              </Popover>
+              </Popover.Trigger>
             </Badge>
-          </Box>
-          <Button variant="contained" size="small" onClick={onAddPrompt} startIcon={<AddIcon />}>
+            <Popover.Portal>
+              <Popover.Positioner side="bottom" align="start" sideOffset={6}>
+                <Popover.Popup
+                  data-tour-id={TOUR_IDS.playgroundVariablesPanel}
+                  render={<Paper className="outline-none" sx={{ width: 400, maxHeight: 500, overflow: "auto" }} />}
+                >
+                  <VariableInputs />
+                </Popover.Popup>
+              </Popover.Positioner>
+            </Popover.Portal>
+          </Popover.Root>
+          <Button variant="contained" size="small" onClick={onAddPrompt} startIcon={<AddIcon />} data-tour-id={TOUR_IDS.playgroundAddPrompt}>
             Add Prompt
           </Button>
           <Tooltip title={runAllDisabledReason || "Run All Prompts"} arrow>

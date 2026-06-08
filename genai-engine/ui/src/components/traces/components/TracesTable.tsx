@@ -1,6 +1,8 @@
 import { Box, LinearProgress, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel } from "@mui/material";
 import { flexRender, Row, type Table as TableType } from "@tanstack/react-table";
 
+import { TOUR_IDS } from "@/features/task-tour/selectors";
+
 type Props<TTable> = {
   table: TableType<TTable>;
   ref?: React.RefObject<HTMLDivElement | null>;
@@ -42,8 +44,8 @@ export const TracesTable = <TTable,>({ table, ref, loading, onScroll, onRowClick
           ))}
         </TableHead>
         <TableBody>
-          {table.getRowModel().rows.map((row) => (
-            <TableRow key={row.id} hover onClick={() => onRowClick?.(row)}>
+          {table.getRowModel().rows.map((row, rowIndex) => (
+            <TableRow key={row.id} hover onClick={() => onRowClick?.(row)} data-tour-id={rowIndex === 0 ? TOUR_IDS.tracesFirstRow : undefined}>
               {row.getVisibleCells().map((cell) => (
                 <TableCell
                   key={cell.id}

@@ -13,14 +13,15 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from starlette import status
 
-from dependencies import get_db_session
+from dependencies import get_db_session, get_org_scope
 from repositories.feedback_repository import FeedbackRepository, save_feedback
+from repositories.inference_repository import InferenceRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import InferenceFeedback, User
 from utils import constants
-from utils.users import permission_checker
+from utils.users import enforce_query_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
 feedback_routes = APIRouter(
@@ -43,7 +44,15 @@ def post_feedback(
     inference_id: UUID,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> InferenceFeedbackResponse:
+    # For tenant callers, validate the inference belongs to their org before
+    # writing feedback. Without this, a tenant key could plant feedback on
+    # another org's inference by guessing the UUID.
+    if org_scope is not None:
+        InferenceRepository(db_session).get_inference(
+            str(inference_id), org_scope=org_scope
+        )
     return save_feedback(
         str(inference_id),
         body.target,
@@ -51,6 +60,7 @@ def post_feedback(
         body.reason or "",
         body.user_id,
         db_session,
+        org_scope=org_scope,
     )
 
 
@@ -62,6 +72,7 @@ def post_feedback(
     response_model=QueryFeedbackResponse,
 )
 @permission_checker(permissions=PermissionLevelsEnum.FEEDBACK_READ.value)
+@enforce_query_org_scope(query_param="task_id")
 def query_feedback(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -106,6 +117,7 @@ def query_feedback(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> QueryFeedbackResponse:
     try:
         # Validate the list of inference feedback targets if any exist
@@ -136,6 +148,7 @@ def query_feedback(
             conversation_id=conversation_id,
             task_id=task_id,
             inference_user_id=inference_user_id,
+            org_scope=org_scope,
         )
 
         # convert the feedback query results to response models

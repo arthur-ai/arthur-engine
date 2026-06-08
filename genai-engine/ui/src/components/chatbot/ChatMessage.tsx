@@ -4,7 +4,7 @@ import { Box, Chip, CircularProgress, keyframes, Paper, Table, Tooltip, Typograp
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import { ChatMessage as ChatMessageType, ToolCallEvent } from "@/hooks/useChatbot";
+import { ApiToolCallPayload, ChatMessage as ChatMessageType, ToolCallPayload, WikiToolCallPayload } from "@/hooks/useChatbot";
 
 interface ChatMessageProps {
   message: ChatMessageType;
@@ -16,36 +16,66 @@ function shortenPath(path: string): string {
   return path.replace(/^\/api\/v\d+/, "");
 }
 
+function ApiToolCallChip({ payload }: { payload: ApiToolCallPayload }) {
+  const hasStatus = payload.status_code !== undefined;
+  const success = hasStatus ? (payload.status_code ?? 0) < 400 : true;
+  const fullLabel = `${payload.method} ${payload.path}`;
+  const shortLabel = `${payload.method} ${shortenPath(payload.path)}`;
+  return (
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1, pl: 0.5, minWidth: 0 }}>
+      {success ? (
+        <CheckCircleOutlineIcon sx={{ fontSize: 14, color: "success.main", flexShrink: 0 }} />
+      ) : (
+        <ErrorOutlineIcon sx={{ fontSize: 14, color: "error.main", flexShrink: 0 }} />
+      )}
+      <Tooltip title={fullLabel} placement="top">
+        <Chip
+          label={shortLabel}
+          size="small"
+          variant="outlined"
+          color={success ? "success" : "error"}
+          sx={{
+            fontFamily: "monospace",
+            fontSize: "0.7rem",
+            maxWidth: "100%",
+            "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis" },
+          }}
+        />
+      </Tooltip>
+    </Box>
+  );
+}
+
+function WikiToolCallChip({ payload }: { payload: WikiToolCallPayload }) {
+  const arg = payload.query ?? payload.title ?? "";
+  const label = `${payload.name}(${arg})`;
+  return (
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1, pl: 0.5, minWidth: 0 }}>
+      <CheckCircleOutlineIcon sx={{ fontSize: 14, color: "success.main", flexShrink: 0 }} />
+      <Tooltip title={label} placement="top">
+        <Chip
+          label={label}
+          size="small"
+          variant="outlined"
+          color="success"
+          sx={{
+            fontFamily: "monospace",
+            fontSize: "0.7rem",
+            maxWidth: "100%",
+            "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis" },
+          }}
+        />
+      </Tooltip>
+    </Box>
+  );
+}
+
 export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === "user";
 
-  if (message.role === "tool_call") {
-    const success = message.status_code !== undefined && message.status_code < 400;
-    const fullLabel = `${message.method} ${message.path}`;
-    const shortLabel = `${message.method} ${shortenPath(message.path ?? "")}`;
-    return (
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1, pl: 0.5, minWidth: 0 }}>
-        {success ? (
-          <CheckCircleOutlineIcon sx={{ fontSize: 14, color: "success.main", flexShrink: 0 }} />
-        ) : (
-          <ErrorOutlineIcon sx={{ fontSize: 14, color: "error.main", flexShrink: 0 }} />
-        )}
-        <Tooltip title={fullLabel} placement="top">
-          <Chip
-            label={shortLabel}
-            size="small"
-            variant="outlined"
-            color={success ? "success" : "error"}
-            sx={{
-              fontFamily: "monospace",
-              fontSize: "0.7rem",
-              maxWidth: "100%",
-              "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis" },
-            }}
-          />
-        </Tooltip>
-      </Box>
-    );
+  if (message.role === "tool_call" && message.toolCall) {
+    if (message.toolCall.kind === "api") return <ApiToolCallChip payload={message.toolCall} />;
+    return <WikiToolCallChip payload={message.toolCall} />;
   }
 
   return (
@@ -106,14 +136,15 @@ export function ChatMessage({ message }: ChatMessageProps) {
 }
 
 interface ToolCallIndicatorProps {
-  toolCall: ToolCallEvent;
+  toolCall: ToolCallPayload;
 }
 
 export function ToolCallIndicator({ toolCall }: ToolCallIndicatorProps) {
+  const label = toolCall.kind === "api" ? `${toolCall.method} ${toolCall.path}` : `${toolCall.name}(${toolCall.query ?? toolCall.title ?? ""})`;
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5, pl: 0.5 }}>
       <CircularProgress size={14} />
-      <Chip label={`${toolCall.method} ${toolCall.path}`} size="small" variant="outlined" sx={{ fontFamily: "monospace", fontSize: "0.7rem" }} />
+      <Chip label={label} size="small" variant="outlined" sx={{ fontFamily: "monospace", fontSize: "0.7rem" }} />
     </Box>
   );
 }

@@ -24,6 +24,7 @@ import { useEvalVersions } from "../hooks/useEvalVersions";
 import type { EvalVersionDrawerProps } from "../types";
 
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
 import { formatDateInTimezone } from "@/utils/formatters";
 
 const EvalVersionDrawer = ({
@@ -120,7 +121,7 @@ const EvalVersionDrawer = ({
         },
       }}
     >
-      <Box sx={{ p: 2, display: "flex", flexDirection: "column", height: "100%" }}>
+      <Box data-tour-id={TOUR_IDS.evaluatorDetailVersions} sx={{ p: 2, display: "flex", flexDirection: "column", height: "100%" }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
           <Tooltip title="Go back">
             <IconButton onClick={onClose} size="small" aria-label="Go back">

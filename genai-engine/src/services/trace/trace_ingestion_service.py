@@ -9,7 +9,7 @@ from openinference.semconv.trace import SpanAttributes
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest,
 )
-from sqlalchemy import ColumnElement, func
+from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.dialects.postgresql import Insert as PGInsertType
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import Insert as SQLiteInsertType
@@ -18,9 +18,10 @@ from sqlalchemy.dialects.sqlite import (
 )
 from sqlalchemy.orm import InstrumentedAttribute, Session
 
-from db_models import DatabaseSpan, DatabaseTraceMetadata
+from db_models import DatabaseSpan, DatabaseTask, DatabaseTraceMetadata
 from dependencies import get_task_repository
 from repositories.configuration_repository import ConfigurationRepository
+from repositories.organizations_repository import lookup_org_id
 from repositories.resource_metadata_repository import ResourceMetadataRepository
 from repositories.service_name_mapping_repository import (
     ServiceNameMappingRepository,
@@ -28,6 +29,7 @@ from repositories.service_name_mapping_repository import (
 from services.trace.span_normalization_service import SpanNormalizationService
 from utils import trace as trace_utils
 from utils.constants import (
+    DEFAULT_ORG_ID,
     EXPECTED_SPAN_VERSION,
     SERVICE_NAME_KEY,
     SPAN_KIND_KEY,
@@ -47,6 +49,7 @@ class TraceUpdateDBBase(TypedDict):
 
     trace_id: str
     task_id: str
+    org_id: uuid.UUID
     root_span_resource_id: str | None
     session_id: str | None
     user_id: str | None
@@ -85,6 +88,7 @@ class TraceIngestionService:
     def process_trace_data(
         self,
         trace_data: bytes,
+        commit: bool = True,
     ) -> tuple[list[DatabaseSpan], tuple[int, int, int, list[str]]]:
         """Process trace data from protobuf format and return statistics."""
         json_traces = self._grpc_trace_to_dict(trace_data)
@@ -92,7 +96,7 @@ class TraceIngestionService:
         spans_data, stats = self._extract_and_process_spans(json_traces)
 
         if spans_data:
-            self._store_spans(spans_data, commit=True)
+            self._store_spans(spans_data, commit=commit)
             logger.debug(f"Stored {len(spans_data)} spans successfully")
 
         return spans_data, stats
@@ -132,11 +136,13 @@ class TraceIngestionService:
             if resource_attributes:
                 try:
                     resource_id = self._create_or_get_resource_metadata(
-                        resource_attributes, service_name
+                        resource_attributes,
+                        service_name,
                     )
                 except Exception as e:
                     logger.error(
-                        f"Failed to create resource metadata: {e}", exc_info=True
+                        f"Failed to create resource metadata: {e}",
+                        exc_info=True,
                     )
 
             # Resolve task_id using priority hierarchy
@@ -149,6 +155,18 @@ class TraceIngestionService:
 
             logger.debug(f"Resolved task_id: {resolved_task_id}")
 
+            # Resolve the org_id for this batch from the owning task. Cheaper
+            # than threading the task-org join through every read, but the
+            # task→org binding can't change without a re-ingest so caching
+            # per resource_span is safe. Fall back to DEFAULT_ORG_ID if the
+            # task disappeared between resolve and lookup (shouldn't happen
+            # since `_resolve_task_id` guarantees the row exists or auto-creates).
+            resolved_org_id = lookup_org_id(
+                self.db_session,
+                select(DatabaseTask.org_id).where(DatabaseTask.id == resolved_task_id),
+                default=DEFAULT_ORG_ID,
+            )
+
             for scope_span in resource_span.get("scopeSpans", []):
                 for span_data in scope_span.get("spans", []):
                     total_spans += 1
@@ -159,6 +177,7 @@ class TraceIngestionService:
                             span_data,
                             resolved_task_id,
                             resource_id,
+                            resolved_org_id,
                         )
                         spans_data.append(processed_span)
                         accepted_spans += 1
@@ -255,17 +274,18 @@ class TraceIngestionService:
             logger.debug(f"Using explicit task_id: {explicit_task_id}")
             try:
                 task = self.task_repo.get_db_task_by_id(
-                    explicit_task_id, include_archived=True
+                    explicit_task_id,
+                    include_archived=True,
                 )
                 if task.archived:
                     logger.warning(
                         f"Trace received with explicit task ID '{explicit_task_id}' which is archived. "
                         "Traces are still being written to this task. "
-                        "Unarchive the task to resume normal operation."
+                        "Unarchive the task to resume normal operation.",
                     )
             except Exception as e:
                 logger.debug(
-                    f"Could not check archived status for task '{explicit_task_id}': {e}"
+                    f"Could not check archived status for task '{explicit_task_id}': {e}",
                 )
             return explicit_task_id
 
@@ -277,22 +297,23 @@ class TraceIngestionService:
             # Step 3: If lookup finds mapping → return mapped task_id
             if existing_task_id:
                 logger.debug(
-                    f"Found existing mapping: {service_name} → {existing_task_id}"
+                    f"Found existing mapping: {service_name} → {existing_task_id}",
                 )
                 # Check if the mapped task is archived — warn but still route to it
                 try:
                     mapped_task = self.task_repo.get_db_task_by_id(
-                        existing_task_id, include_archived=True
+                        existing_task_id,
+                        include_archived=True,
                     )
                     if mapped_task.archived:
                         logger.warning(
                             f"Service name '{service_name}' is mapped to archived task "
                             f"{existing_task_id}. Traces are still being written to this task. "
-                            "Unarchive the task to resume normal operation."
+                            "Unarchive the task to resume normal operation.",
                         )
                 except Exception as e:
                     logger.debug(
-                        f"Could not check archived status for task '{existing_task_id}': {e}"
+                        f"Could not check archived status for task '{existing_task_id}': {e}",
                     )
                 return existing_task_id
 
@@ -304,7 +325,7 @@ class TraceIngestionService:
                         _, _, engine_id = parse_gcp_resource_path(cloud_resource_id)
                         if engine_id:
                             existing_task = self.task_repo.find_by_gcp_engine_id(
-                                engine_id
+                                engine_id,
                             )
                             if existing_task:
                                 if existing_task.archived:
@@ -312,20 +333,21 @@ class TraceIngestionService:
                                         f"Service name '{service_name}' matched GCP task "
                                         f"'{existing_task.name}' ({existing_task.id}) which is archived. "
                                         "Traces are still being written to this task. "
-                                        "Unarchive the task to resume normal operation."
+                                        "Unarchive the task to resume normal operation.",
                                     )
                                 # Step 5: Create service_name mapping for future speed
                                 mapping_repo.create_mapping(
-                                    service_name, existing_task.id
+                                    service_name,
+                                    existing_task.id,
                                 )
                                 logger.info(
                                     f"Matched service.name='{service_name}' to existing GCP task "
-                                    f"'{existing_task.name}' (id={existing_task.id}) via cloud.resource_id"
+                                    f"'{existing_task.name}' (id={existing_task.id}) via cloud.resource_id",
                                 )
                                 return existing_task.id
                     except Exception as e:
                         logger.warning(
-                            f"Failed to match cloud.resource_id '{cloud_resource_id}': {e}"
+                            f"Failed to match cloud.resource_id '{cloud_resource_id}': {e}",
                         )
 
             # Step 6: If no mapping and no GCP match → auto-create task and mapping
@@ -358,6 +380,7 @@ class TraceIngestionService:
         span_data: dict[str, Any],
         resource_task_id: str,
         resource_id: str | None = None,
+        resource_org_id: uuid.UUID = DEFAULT_ORG_ID,
     ) -> DatabaseSpan:
         """Process and clean span data, returning None if the span data is invalid."""
         span_data = self._normalize_span_attributes(span_data)
@@ -401,6 +424,7 @@ class TraceIngestionService:
             start_time=start_time,
             end_time=end_time,
             task_id=resource_task_id,
+            org_id=resource_org_id,
             resource_id=resource_id,
             session_id=self._get_attribute_value(span_data, SpanAttributes.SESSION_ID),
             user_id=self._get_attribute_value(span_data, USER_ID_KEY),
@@ -551,6 +575,7 @@ class TraceIngestionService:
                 trace_updates[trace_id] = TraceUpdateDict(
                     trace_id=trace_id,
                     task_id=span.task_id,
+                    org_id=span.org_id,
                     root_span_resource_id=None,  # Will be populated from earliest root span
                     session_id=span.session_id,
                     user_id=span.user_id,

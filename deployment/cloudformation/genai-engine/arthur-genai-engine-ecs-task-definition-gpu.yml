@@ -108,6 +108,19 @@ Parameters:
     Type: String
     Description: 'GenAI Engine secret store key ARN'
     NoEcho: true
+  RecaptchaEnterpriseProjectId:
+    Type: String
+    Description: 'Google Cloud project id hosting the reCAPTCHA Enterprise key. Leave blank to disable reCAPTCHA verification on the public tenant signup endpoint.'
+    Default: ''
+  RecaptchaEnterpriseSiteKey:
+    Type: String
+    Description: 'reCAPTCHA Enterprise site key used by the backend assessment call. Must match the site key baked into the UI build. Leave blank to disable reCAPTCHA verification.'
+    Default: ''
+  GenaiEngineSecretRecaptchaApiKeyARN:
+    Type: String
+    Description: 'ARN of the secret holding the reCAPTCHA Enterprise REST API key. Leave blank to disable reCAPTCHA verification.'
+    NoEcho: true
+    Default: ''
   GenaiEngineAPIOnlyModeEnabled:
     Type: String
     Description: 'Enable GenAI Engine API-only mode without the UI components'
@@ -115,6 +128,13 @@ Parameters:
       - 'enabled'
       - 'disabled'
     Default: 'enabled'
+  GenaiEngineDemoMode:
+    Type: String
+    Description: 'Enable GenAI Engine demo mode'
+    AllowedValues:
+      - 'enabled'
+      - 'disabled'
+    Default: 'disabled'
   TransferEncodingMiddlewareEnabled:
     Type: String
     Description: 'Set to enabled to add Transfer-Encoding: chunked header and strip Content-Length from all responses'
@@ -222,6 +242,7 @@ Conditions:
   IsContainerRepositoryCredentialRequired: !Equals [ !Ref ContainerRepositoryCredentialRequired, 'true' ]
   ImportAuthServiceCertificate: !Not [ !Equals [ !Ref AuthLoadBalancerCertificateURL, '' ] ]
   ImportGenaiEngineSecretOpenAIEmbeddingModelNamesEndpointsKeysARN: !Not [ !Equals [ !Ref GenaiEngineSecretOpenAIEmbeddingModelNamesEndpointsKeysARN, '' ] ]
+  ImportGenaiEngineSecretRecaptchaApiKeyARN: !Not [ !Equals [ !Ref GenaiEngineSecretRecaptchaApiKeyARN, '' ] ]
   UseInternalModelRepository: !Not [ !Equals [ !Ref GenaiEngineModelRepositoryURL, '' ] ]
   IsAuditLogEnabled: !Equals [ !Ref AuditLogEnabled, 'true' ]
 
@@ -306,6 +327,12 @@ Resources:
               Value: !Ref GenaiEnginePostgresSSLCertDownloadURL
             - Name: 'GENAI_ENGINE_API_ONLY_MODE_ENABLED'
               Value: !Ref GenaiEngineAPIOnlyModeEnabled
+            - Name: 'GENAI_ENGINE_DEMO_MODE'
+              Value: !Ref GenaiEngineDemoMode
+            - Name: 'RECAPTCHA_ENTERPRISE_PROJECT_ID'
+              Value: !Ref RecaptchaEnterpriseProjectId
+            - Name: 'RECAPTCHA_ENTERPRISE_SITE_KEY'
+              Value: !Ref RecaptchaEnterpriseSiteKey
             - Name: 'TRANSFER_ENCODING_MIDDLEWARE_ENABLED'
               Value: !Ref TransferEncodingMiddlewareEnabled
             - Name: 'GENAI_ENGINE_SENSITIVE_DATA_CHECK_MAX_TOKEN_LIMIT'
@@ -404,6 +431,11 @@ Resources:
               ValueFrom: !Ref GenaiEngineAppSecretKeyARN
             - Name: 'GENAI_ENGINE_SECRET_STORE_KEY'
               ValueFrom: !Ref GenaiEngineSecretStoreKeyARN
+            - !If
+              - ImportGenaiEngineSecretRecaptchaApiKeyARN
+              - Name: 'RECAPTCHA_ENTERPRISE_API_KEY'
+                ValueFrom: !Ref GenaiEngineSecretRecaptchaApiKeyARN
+              - !Ref AWS::NoValue
             - !If
               - EnableAuthService
               - Name: 'AUTH_ADMIN_CONSOLE_PASSWORD'

@@ -8,6 +8,7 @@ from arthur_common.models.response_schemas import TraceResponse
 
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.llm_eval_models import DatabaseContinuousEval
+from utils.constants import DEFAULT_ORG_ID
 from schemas.internal_schemas import AgenticAnnotation
 from schemas.request_schemas import AgenticAnnotationRequest
 from schemas.response_schemas import SessionTracesResponse
@@ -75,6 +76,7 @@ def create_mock_annotation(
         run_status=run_status.value if run_status else None,
         created_at=datetime.now(),
         updated_at=datetime.now(),
+        org_id=DEFAULT_ORG_ID,
     )
     db_session.add(db_annotation)
     db_session.commit()

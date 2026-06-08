@@ -10,6 +10,7 @@ The GenAI Engine (formerly known as Arthur Shield) is **a tool for evaluating an
     - [Quickstart](#quickstart)
     - [Usage Examples](#usage-examples)
   - [Documentation](#documentation)
+  - [Multi-tenancy](#multi-tenancy)
   - [⚠️ Important Note for Intel Users](#️-important-note-for-intel-users)
   - [Developer Setup (for Mac)](#developer-setup-for-mac)
     - [Install the Python dependencies with uv](#install-the-python-dependencies-with-uv)
@@ -65,6 +66,14 @@ For more information, refer to the [User Guide](https://shield.docs.arthur.ai).
 
 - [User Guide](https://shield.docs.arthur.ai)
 - API Documentation - (`/docs` on your GenAI Engine instance)
+
+## Multi-tenancy
+
+The engine supports multi-tenant organizations: tasks belong to exactly one org, and tenant API keys are scoped to a single org and reach all tasks within it. Admin API keys keep cross-org access. Existing single-tenant deployments are unaffected — all pre-existing tasks migrate into a `default` org automatically and existing admin keys continue to see everything.
+
+Tenant provisioning is opt-in via the `GENAI_ENGINE_DEMO_MODE` environment variable (default off). When enabled, the public signup endpoint `POST /api/v2/tenant/signup` returns a fresh `(org, task, api_key)` bundle on each call; when disabled, it returns 404. **Customer production deployments should leave this flag off.**
+
+See [`docs/MULTI_TENANCY_DESIGN.md`](docs/MULTI_TENANCY_DESIGN.md) for the full spec, schema changes, and the four enforcement patterns used across the endpoint surface.
 
 ## ⚠️ Important Note for Intel Users
 

@@ -16,7 +16,7 @@ from clients.telemetry.telemetry_client import (
     send_telemetry_event,
     send_telemetry_event_for_default_rule_create_completed,
 )
-from dependencies import get_application_config, get_db_session
+from dependencies import get_application_config, get_db_session, get_org_scope
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
@@ -143,6 +143,7 @@ def search_rules(
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> SearchRulesResponse:
     try:
         rules_repo = RuleRepository(db_session)
@@ -155,6 +156,7 @@ def search_rules(
             sort=pagination_parameters.sort or PaginationSortMethod.DESCENDING,
             page_size=pagination_parameters.page_size,
             page=pagination_parameters.page,
+            org_scope=org_scope,
         )
 
         return SearchRulesResponse(

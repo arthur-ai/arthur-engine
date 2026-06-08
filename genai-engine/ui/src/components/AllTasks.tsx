@@ -32,6 +32,8 @@ import { CreateTaskForm } from "./CreateTaskForm";
 import { TaskCard } from "./TaskCard";
 
 import { SettingsMenuButton } from "@/components/settings/SettingsMenuButton";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTasksOverview } from "@/hooks/tasks/useTasksOverview";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useActiveTasksQuery, useArchivedTasksQuery } from "@/hooks/useTasksList";
 import { queryKeys } from "@/lib/queryKeys";
@@ -39,6 +41,7 @@ import { type InactiveDays, type SortBy, useTaskListStore } from "@/stores/task-
 
 export const AllTasks: React.FC = () => {
   const navigate = useNavigate();
+  const { isTenant } = useAuth();
   const queryClient = useQueryClient();
   const [archivedDialogOpen, setArchivedDialogOpen] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -99,6 +102,9 @@ export const AllTasks: React.FC = () => {
 
     return result;
   }, [archivedTasks, hideSystemTasks, sortBy]);
+
+  const visibleTaskIds = useMemo(() => [...filteredTasks, ...filteredArchivedTasks].map((t) => t.id), [filteredTasks, filteredArchivedTasks]);
+  const { data: overviewByTask = {} } = useTasksOverview(visibleTaskIds);
 
   const invalidateTaskQueries = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all() });
@@ -247,9 +253,11 @@ export const AllTasks: React.FC = () => {
                         : "Click on any task to open the toolkit"}
                     </Typography>
                   </Box>
-                  <Button variant="contained" onClick={() => setShowCreateForm(true)} startIcon={<AddIcon />}>
-                    Task
-                  </Button>
+                  {!isTenant && (
+                    <Button variant="contained" onClick={() => setShowCreateForm(true)} startIcon={<AddIcon />}>
+                      Task
+                    </Button>
+                  )}
                 </Box>
 
                 {/* Search */}
@@ -309,7 +317,7 @@ export const AllTasks: React.FC = () => {
                     }}
                   >
                     {filteredTasks.map((task) => (
-                      <TaskCard key={task.id} task={task} onArchiveToggle={invalidateTaskQueries} />
+                      <TaskCard key={task.id} task={task} overview={overviewByTask[task.id]} onArchiveToggle={invalidateTaskQueries} />
                     ))}
                   </Box>
                 )}
@@ -385,7 +393,7 @@ export const AllTasks: React.FC = () => {
               <>
                 <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" }, pb: 1 }}>
                   {filteredArchivedTasks.map((task) => (
-                    <TaskCard key={task.id} task={task} onArchiveToggle={invalidateTaskQueries} />
+                    <TaskCard key={task.id} task={task} overview={overviewByTask[task.id]} onArchiveToggle={invalidateTaskQueries} />
                   ))}
                 </Box>
                 <Box ref={archivedSentinelRef} sx={{ height: 1 }} />

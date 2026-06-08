@@ -16,6 +16,7 @@ from db_models.rag_provider_models import (
     DatabaseRagSearchSettingConfigurationVersion,
     DatabaseRagSearchVersionTag,
 )
+from db_models.task_models import DatabaseTask
 from schemas.enums import (
     RagAPIKeyAuthenticationProviderEnum,
     RagProviderAuthenticationMethodEnum,
@@ -53,12 +54,17 @@ class RagProvidersRepository:
     def _get_db_rag_provider_config(
         self,
         config_id: UUID,
+        org_scope: UUID | None = None,
     ) -> DatabaseRagProviderConfiguration | DatabaseApiKeyRagProviderConfiguration:
-        db_config = (
-            self.db_session.query(DatabaseRagProviderConfiguration)
-            .filter(DatabaseRagProviderConfiguration.id == config_id)
-            .first()
+        q = self.db_session.query(DatabaseRagProviderConfiguration).filter(
+            DatabaseRagProviderConfiguration.id == config_id,
         )
+        if org_scope is not None:
+            q = q.join(
+                DatabaseTask,
+                DatabaseTask.id == DatabaseRagProviderConfiguration.task_id,
+            ).filter(DatabaseTask.org_id == org_scope)
+        db_config = q.first()
 
         if not db_config:
             raise HTTPException(
@@ -70,9 +76,10 @@ class RagProvidersRepository:
     def get_rag_provider_configuration(
         self,
         config_id: UUID,
+        org_scope: UUID | None = None,
     ) -> RagProviderConfiguration:
         """Get a RAG provider configuration by ID with polymorphic loading"""
-        db_config = self._get_db_rag_provider_config(config_id)
+        db_config = self._get_db_rag_provider_config(config_id, org_scope=org_scope)
         return RagProviderConfiguration._from_database_model(db_config)
 
     def get_rag_provider_configurations_by_task(
@@ -126,9 +133,10 @@ class RagProvidersRepository:
         self,
         config_id: UUID,
         update_config: RagProviderConfigurationUpdateRequest,
+        org_scope: UUID | None = None,
     ) -> None:
         """Update a RAG provider configuration"""
-        db_provider = self._get_db_rag_provider_config(config_id)
+        db_provider = self._get_db_rag_provider_config(config_id, org_scope=org_scope)
 
         if update_config.name:
             db_provider.name = update_config.name
@@ -174,9 +182,11 @@ class RagProvidersRepository:
 
         self.db_session.commit()
 
-    def delete_rag_provider_configuration(self, config_id: UUID) -> None:
+    def delete_rag_provider_configuration(
+        self, config_id: UUID, org_scope: UUID | None = None
+    ) -> None:
         """Delete a RAG provider configuration"""
-        db_config = self._get_db_rag_provider_config(config_id)
+        db_config = self._get_db_rag_provider_config(config_id, org_scope=org_scope)
         self.db_session.delete(db_config)
         self.db_session.commit()
 
@@ -192,12 +202,17 @@ class RagProvidersRepository:
     def _get_db_rag_setting_config(
         self,
         setting_config_id: UUID,
+        org_scope: UUID | None = None,
     ) -> DatabaseRagSearchSettingConfiguration:
-        db_config = (
-            self.db_session.query(DatabaseRagSearchSettingConfiguration)
-            .filter(DatabaseRagSearchSettingConfiguration.id == setting_config_id)
-            .first()
+        q = self.db_session.query(DatabaseRagSearchSettingConfiguration).filter(
+            DatabaseRagSearchSettingConfiguration.id == setting_config_id,
         )
+        if org_scope is not None:
+            q = q.join(
+                DatabaseTask,
+                DatabaseTask.id == DatabaseRagSearchSettingConfiguration.task_id,
+            ).filter(DatabaseTask.org_id == org_scope)
+        db_config = q.first()
 
         if not db_config:
             raise HTTPException(
@@ -209,14 +224,17 @@ class RagProvidersRepository:
     def get_rag_setting_configuration(
         self,
         config_id: UUID,
+        org_scope: UUID | None = None,
     ) -> RagSearchSettingConfiguration:
         """Get a RAG provider configuration by ID with polymorphic loading"""
-        db_config = self._get_db_rag_setting_config(config_id)
+        db_config = self._get_db_rag_setting_config(config_id, org_scope=org_scope)
         return RagSearchSettingConfiguration._from_database_model(db_config)
 
-    def delete_rag_setting_configuration(self, config_id: UUID) -> None:
+    def delete_rag_setting_configuration(
+        self, config_id: UUID, org_scope: UUID | None = None
+    ) -> None:
         """Delete a RAG setting configuration"""
-        db_config = self._get_db_rag_setting_config(config_id)
+        db_config = self._get_db_rag_setting_config(config_id, org_scope=org_scope)
         self.db_session.delete(db_config)
         self.db_session.commit()
 
@@ -224,17 +242,22 @@ class RagProvidersRepository:
         self,
         config_id: UUID,
         update_config: RagSearchSettingConfigurationUpdateRequest,
+        org_scope: UUID | None = None,
     ) -> None:
         """Update a RAG provider setting configuration"""
-        db_setting_config = self._get_db_rag_setting_config(config_id)
+        db_setting_config = self._get_db_rag_setting_config(
+            config_id, org_scope=org_scope
+        )
 
         if update_config.name:
             db_setting_config.name = update_config.name
         if update_config.description is not None:
             db_setting_config.description = update_config.description
         if update_config.rag_provider_id:
-            # check rag provider exists - will raise 404 otherwise
-            self._get_db_rag_provider_config(update_config.rag_provider_id)
+            # check rag provider exists & lives in caller's org - will raise 404 otherwise
+            self._get_db_rag_provider_config(
+                update_config.rag_provider_id, org_scope=org_scope
+            )
             # set new field
             db_setting_config.rag_provider_id = update_config.rag_provider_id
 
@@ -291,14 +314,16 @@ class RagProvidersRepository:
     def create_rag_setting_configuration_version(
         self,
         rag_setting_version: RagSearchSettingConfigurationVersion,
+        org_scope: UUID | None = None,
     ) -> None:
         """Create a new RAG setting configuration version. Updates parent model metadata as needed."""
         # create new version
         db_version = rag_setting_version._to_database_model()
 
-        # update parent model
+        # update parent model — also validates ownership for tenant callers
         db_parent_config = self._get_db_rag_setting_config(
             rag_setting_version.setting_configuration_id,
+            org_scope=org_scope,
         )
         db_parent_config.updated_at = db_version.created_at
         db_parent_config.latest_version_number = db_version.version_number
@@ -326,7 +351,11 @@ class RagProvidersRepository:
         setting_config_id: UUID,
         version_number: int,
         include_deleted_versions: bool = False,
+        org_scope: UUID | None = None,
     ) -> DatabaseRagSearchSettingConfigurationVersion:
+        # Validate ownership via the parent config; raises 404 if cross-org.
+        if org_scope is not None:
+            self._get_db_rag_setting_config(setting_config_id, org_scope=org_scope)
         query = (
             self.db_session.query(DatabaseRagSearchSettingConfigurationVersion)
             .filter(
@@ -357,6 +386,7 @@ class RagProvidersRepository:
         config_id: UUID | None,
         version_number: int | None,
         include_deleted_versions: bool = False,
+        org_scope: UUID | None = None,
     ) -> RagSearchSettingConfigurationVersion:
         """Get a RAG provider configuration version by ID and version number"""
         if config_id is None or version_number is None:
@@ -368,6 +398,7 @@ class RagProvidersRepository:
             config_id,
             version_number,
             include_deleted_versions=include_deleted_versions,
+            org_scope=org_scope,
         )
         return RagSearchSettingConfigurationVersion._from_database_model(db_config)
 
@@ -377,8 +408,12 @@ class RagProvidersRepository:
         pagination_params: PaginationParameters,
         tags: Optional[list[str]] = None,
         version_numbers: Optional[list[int]] = None,
+        org_scope: UUID | None = None,
     ) -> Tuple[list[DatabaseRagSearchSettingConfigurationVersion], int]:
         """Gets list of DB RAG search configuration versions by ID"""
+        # Validate ownership via the parent config; raises 404 if cross-org.
+        if org_scope is not None:
+            self._get_db_rag_setting_config(setting_config_id, org_scope=org_scope)
         # filters out soft-deleted versions
         base_query = self.db_session.query(
             DatabaseRagSearchSettingConfigurationVersion,
@@ -430,12 +465,14 @@ class RagProvidersRepository:
         pagination_params: PaginationParameters,
         tags: Optional[list[str]] = None,
         version_numbers: Optional[list[int]] = None,
+        org_scope: UUID | None = None,
     ) -> Tuple[list[RagSearchSettingConfigurationVersion], int]:
         db_configs, count = self._get_db_rag_setting_configuration_versions(
             setting_config_id,
             pagination_params,
             tags=tags,
             version_numbers=version_numbers,
+            org_scope=org_scope,
         )
         return [
             RagSearchSettingConfigurationVersion._from_database_model(db_config)
@@ -446,12 +483,16 @@ class RagProvidersRepository:
         self,
         config_id: UUID,
         version_number: int,
+        org_scope: UUID | None = None,
     ) -> None:
         db_version_config = self._get_db_rag_setting_config_version(
             config_id,
             version_number,
+            org_scope=org_scope,
         )
-        db_parent_config = self._get_db_rag_setting_config(config_id)
+        db_parent_config = self._get_db_rag_setting_config(
+            config_id, org_scope=org_scope
+        )
         db_version_config.deleted_at = datetime.now()
 
         # empty out all other fields in the version except for the PK fields and the created/updated fields
@@ -470,7 +511,11 @@ class RagProvidersRepository:
         self,
         setting_config_id: UUID,
         tag: str,
+        org_scope: UUID | None = None,
     ) -> DatabaseRagSearchSettingConfigurationVersion:
+        # Validate ownership via the parent config; raises 404 if cross-org.
+        if org_scope is not None:
+            self._get_db_rag_setting_config(setting_config_id, org_scope=org_scope)
         db_config = (
             self.db_session.query(DatabaseRagSearchSettingConfigurationVersion)
             .join(DatabaseRagSearchSettingConfigurationVersion.tags)
@@ -496,9 +541,12 @@ class RagProvidersRepository:
         self,
         config_id: UUID,
         tag: str,
+        org_scope: UUID | None = None,
     ) -> RagSearchSettingConfigurationVersion:
         """Get a RAG provider configuration version by ID and version number"""
-        db_config = self._get_db_rag_setting_config_version_by_tag(config_id, tag)
+        db_config = self._get_db_rag_setting_config_version_by_tag(
+            config_id, tag, org_scope=org_scope
+        )
         return RagSearchSettingConfigurationVersion._from_database_model(db_config)
 
     def update_rag_provider_setting_configuration_version(
@@ -506,11 +554,13 @@ class RagProvidersRepository:
         config_id: UUID,
         version_number: int,
         update_config: RagSearchSettingConfigurationVersionUpdateRequest,
+        org_scope: UUID | None = None,
     ) -> None:
         """Update a RAG provider setting configuration version metadata"""
         db_setting_version = self._get_db_rag_setting_config_version(
             config_id,
             version_number,
+            org_scope=org_scope,
         )
         curr_time = datetime.now()
 

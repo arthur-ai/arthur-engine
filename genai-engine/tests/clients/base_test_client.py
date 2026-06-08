@@ -113,6 +113,7 @@ from schemas.response_schemas import (
     DatasetResponse,
     DatasetVersionResponse,
     DatasetVersionRowResponse,
+    DemoTaskSignupResponse,
     ListContinuousEvalTestRunsResponse,
     ListDatasetVersionsResponse,
     ListRagSearchSettingConfigurationsResponse,
@@ -129,6 +130,8 @@ from schemas.response_schemas import (
     SessionTracesResponse,
     SpanListResponse,
     TraceListResponse,
+    TraceOverviewListResponse,
+    TraceTimeSeriesResponse,
     TraceTransformVersionResponse,
     TraceUserListResponse,
     TraceUserMetadataResponse,
@@ -523,6 +526,57 @@ class GenaiEngineTestClientBase(httpx.Client):
                 else None
             ),
         )
+
+    def signup_tenant(self) -> tuple[int, DemoTaskSignupResponse | None]:
+        resp = self.base_client.post(
+            "/api/v2/tenant/signup",
+            json={
+                "form_variant": "linear",
+                "form_data": {
+                    "first_name": "Test",
+                    "last_name": "Tenant",
+                    "email": "test@example.com",
+                    "job_title": "Engineer",
+                    "company": "TestCo",
+                    "maturity": "exploring",
+                    "brings": "evals",
+                    "competitors": ["langsmith"],
+                    "attribution": "search",
+                },
+            },
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                DemoTaskSignupResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def stream_demo_chatbot(
+        self,
+        task_id: str,
+        history: list[dict] | None = None,
+        api_key: str | None = None,
+    ) -> tuple[int, str]:
+        headers = (
+            {"Authorization": f"Bearer {api_key}"}
+            if api_key is not None
+            else self.authorized_user_api_key_headers
+        )
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/demos/chatbot/stream",
+            json={"history": history or []},
+            headers=headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code, resp.text
 
     def create_task_metric(
         self,
@@ -2286,6 +2340,62 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             (
                 TraceListResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_get_traces_overview(
+        self,
+        start_time: datetime,
+        end_time: datetime,
+        task_ids: list[str] | None = None,
+    ) -> tuple[int, TraceOverviewListResponse | str]:
+        """Get per-task trace overview metrics."""
+        body = {
+            "task_ids": task_ids,
+            "start_time": str(start_time),
+            "end_time": str(end_time),
+        }
+        resp = self.base_client.post(
+            "/api/v1/traces/overview",
+            json=body,
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+        return (
+            resp.status_code,
+            (
+                TraceOverviewListResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_get_traces_timeseries(
+        self,
+        task_id: str,
+        start_time: datetime,
+        end_time: datetime,
+        bucket_size: str,
+    ) -> tuple[int, TraceTimeSeriesResponse | str]:
+        """Get time-bucketed trace metrics for a single task."""
+        body = {
+            "task_id": task_id,
+            "start_time": str(start_time),
+            "end_time": str(end_time),
+            "bucket_size": bucket_size,
+        }
+        resp = self.base_client.post(
+            "/api/v1/traces/overview/timeseries",
+            json=body,
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+        return (
+            resp.status_code,
+            (
+                TraceTimeSeriesResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.text
             ),

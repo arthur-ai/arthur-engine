@@ -71,6 +71,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   initialTraceRetentionDays,
   allowedTraceRetentionDays = [],
   isLoadingTraceRetention = false,
+  isTenant = false,
   title = "Settings",
   saveLabel = "Save",
   savingLabel = "Saving...",
@@ -183,7 +184,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
           </Select>
         </FormControl>
 
-        {traceRetentionEnabled && (
+        {!isTenant && traceRetentionEnabled && (
           <>
             <Divider sx={{ my: 2 }} />
             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
@@ -210,7 +211,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
           </>
         )}
 
-        {chatbotEnabled && (
+        {!isTenant && chatbotEnabled && (
           <>
             <Divider sx={{ my: 2 }} />
             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>

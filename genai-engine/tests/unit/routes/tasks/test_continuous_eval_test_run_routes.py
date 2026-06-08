@@ -19,6 +19,7 @@ from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
 )
+from utils.constants import DEFAULT_ORG_ID
 
 MOCK_QUEUE_PATH = "repositories.continuous_eval_test_run_repository.get_continuous_eval_queue_service"
 
@@ -119,6 +120,7 @@ def setup_traces(task_id, count=3):
             span_id=span.span_id,
             span_name="test_span",
             task_id=task_id,
+            org_id=DEFAULT_ORG_ID,
             parent_span_id=None,
             span_kind="LLM",
             start_time=base_time,
@@ -132,6 +134,7 @@ def setup_traces(task_id, count=3):
 
         trace_metadata = DatabaseTraceMetadata(
             task_id=task_id,
+            org_id=DEFAULT_ORG_ID,
             trace_id=trace_id,
             span_count=1,
             start_time=base_time,

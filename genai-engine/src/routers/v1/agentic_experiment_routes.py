@@ -5,7 +5,7 @@ from arthur_common.models.common_schemas import PaginationParameters
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 from sqlalchemy.orm import Session
 
-from dependencies import get_db_session, get_validated_task
+from dependencies import get_db_session, get_org_scope, get_validated_task
 from repositories.agentic_experiment_repository import AgenticExperimentRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
@@ -19,7 +19,7 @@ from schemas.agentic_experiment_schemas import (
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Task, User
 from services.agentic_experiment_executor import AgenticExperimentExecutor
-from utils.users import permission_checker
+from utils.users import enforce_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
 agentic_experiment_routes = APIRouter(
@@ -37,6 +37,7 @@ agentic_experiment_routes = APIRouter(
     tags=["Agentic Experiments"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def list_agentic_experiments(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -93,6 +94,7 @@ def list_agentic_experiments(
     tags=["Agentic Experiments"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def create_agentic_experiment(
     experiment_request: CreateAgenticExperimentRequest,
     db_session: Session = Depends(get_db_session),
@@ -160,6 +162,7 @@ def get_agentic_experiment(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> AgenticExperimentDetail:
     """
     Get detailed information about an agentic experiment.
@@ -168,7 +171,7 @@ def get_agentic_experiment(
     """
     try:
         repo = AgenticExperimentRepository(db_session)
-        return repo.get_experiment(experiment_id)
+        return repo.get_experiment(experiment_id, org_scope=org_scope)
     except HTTPException:
         raise
     except ValueError as e:
@@ -203,6 +206,7 @@ def get_agentic_experiment_test_cases(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> AgenticTestCaseListResponse:
     """
     Get detailed test case results for an agentic experiment.
@@ -215,6 +219,7 @@ def get_agentic_experiment_test_cases(
         test_cases, total_count = repo.get_test_cases(
             experiment_id=experiment_id,
             pagination_parameters=pagination_parameters,
+            org_scope=org_scope,
         )
 
         page = pagination_parameters.page
@@ -257,6 +262,7 @@ def delete_agentic_experiment(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> Response:
     """
     Delete an agentic experiment.
@@ -266,7 +272,7 @@ def delete_agentic_experiment(
     """
     try:
         repo = AgenticExperimentRepository(db_session)
-        repo.delete_experiment(experiment_id)
+        repo.delete_experiment(experiment_id, org_scope=org_scope)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except HTTPException:
         raise
@@ -290,11 +296,14 @@ def attach_notebook_to_agentic_experiment(
     notebook_id: str = Query(..., description="ID of the notebook to attach"),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> AgenticExperimentSummary:
     """Attach an agentic notebook to an existing experiment."""
     try:
         repo = AgenticExperimentRepository(db_session)
-        return repo.attach_notebook_to_experiment(experiment_id, notebook_id)
+        return repo.attach_notebook_to_experiment(
+            experiment_id, notebook_id, org_scope=org_scope
+        )
     except HTTPException:
         raise
     except Exception as e:

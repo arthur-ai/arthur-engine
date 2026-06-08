@@ -129,8 +129,8 @@ export const queryKeys = {
     all: () => ["getModelProvidersApiV1ModelProvidersGet"] as const,
     availableModels: (providers: string[]) => ["availableModels", ...providers] as const,
   },
-  taskMetrics: {
-    all: (taskId: string) => ["taskMetrics", "all", taskId] as const,
+  tasksOverview: {
+    all: (taskIds: string[]) => ["tasksOverview", [...taskIds].sort().join(",")] as const,
   },
   tasks: {
     all: () => ["searchTasksApiV2TasksSearchPost"] as const,

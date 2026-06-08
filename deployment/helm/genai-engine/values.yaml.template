@@ -92,7 +92,7 @@ ingress:
 ## Advanced - GenAI Engine
 ###################################
 # GenAI Engine version
-genaiEngineVersion: '2.1.579'
+genaiEngineVersion: '2.1.612'
 # Max number of tokens GenAI Engine can process against LLM for hallucination data checks
 genaiEngineHallucinationCheckMaxTokenLimit: 3000
 # Max number of tokens GenAI Engine can process against LLM for sensitive data checks
@@ -129,6 +129,10 @@ arthurGenaiEngineService:
 genaiEngineAllowAdminKeyGeneralAccess: "enabled"
 # (Optional) Custom URL for the model repository (e.g. a private Hugging Face mirror). If not specified, the default Hugging Face endpoint will be used.
 # modelRepositoryURL: ""
+# (Optional) reCAPTCHA Enterprise — gates the public tenant signup endpoint. All three of project id, site key, and the API-key secret
+# must be set for verification to run; otherwise the signup endpoint fails open. The site key must match the one baked into the UI build.
+# recaptchaEnterpriseProjectId: ""
+# recaptchaEnterpriseSiteKey: ""
 
 ###################################
 ## Advanced - Secrets name customization
@@ -145,6 +149,8 @@ genaiEngineSecretAdminKeyName: "genai-engine-secret-admin-key"
 genaiEngineSecretOpenAIGPTModelNamesEndpointsKeysName: "genai-engine-secret-open-ai-gpt-model-names-endpoints-keys"
 # GenAI Engine secret store key name (expecting value for key 'key' - should be a base64-encoded 32-byte Fernet key)
 genaiEngineSecretStoreKeyName: "genai-engine-secret-store-key"
+# (Optional) Name of the secret holding the reCAPTCHA Enterprise REST API key (expecting value for key 'key'). Leave unset to disable reCAPTCHA verification.
+# genaiEngineSecretRecaptchaApiKeyName: "genai-engine-secret-recaptcha-api-key"
 
 ###################################
 ## Advanced - GCP Service Account
