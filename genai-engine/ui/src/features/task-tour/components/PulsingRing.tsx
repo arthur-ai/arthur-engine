@@ -7,28 +7,18 @@ export interface PulsingRingProps {
   zIndex?: number;
 }
 
-function getPulseExpansionGeometry(radius: number, spread: number): { inset: number; radius: number } {
-  return {
-    inset: -spread,
-    radius: radius + spread,
-  };
-}
-
-/**
- * A fixed-position purple ring drawn around `rect` with an outward pulsing
- * shadow. Sits above the spotlight backdrop and below the popover. Pointer
- * events disabled so clicks fall through to the underlying target.
- */
 export function PulsingRing({ rect, padding = 6, radius = 12, zIndex = 1499 }: PulsingRingProps) {
   const theme = useTheme();
   if (!rect) return null;
 
-  const pulseSpread = 16;
   const top = rect.top - padding;
   const left = rect.left - padding;
   const width = rect.width + padding * 2;
   const height = rect.height + padding * 2;
-  const pulseGeometry = getPulseExpansionGeometry(radius, pulseSpread);
+
+  const spread = 14;
+  const scaleX = ((width + spread * 2) / width).toFixed(4);
+  const scaleY = ((height + spread * 2) / height).toFixed(4);
 
   return (
     <Box
@@ -39,8 +29,6 @@ export function PulsingRing({ rect, padding = 6, radius = 12, zIndex = 1499 }: P
         left,
         width,
         height,
-        "--task-tour-pulse-inset": `${pulseGeometry.inset}px`,
-        "--task-tour-pulse-radius": `${pulseGeometry.radius}px`,
         borderRadius: `${radius}px`,
         pointerEvents: "none",
         zIndex,
@@ -49,34 +37,17 @@ export function PulsingRing({ rect, padding = 6, radius = 12, zIndex = 1499 }: P
         "&::after": {
           content: '""',
           position: "absolute",
-          top: 0,
-          right: 0,
-          bottom: 0,
-          left: 0,
+          inset: 0,
           borderRadius: "inherit",
           border: `2px solid ${theme.palette.secondary.main}`,
-          willChange: "top, right, bottom, left, border-radius, opacity",
+          transformOrigin: "center",
+          willChange: "transform, opacity",
           animation: "taskTourPulse 1.6s ease-out infinite",
         },
         "@keyframes taskTourPulse": {
-          "0%": { top: 0, right: 0, bottom: 0, left: 0, borderRadius: "inherit", opacity: 0 },
-          "10%": { top: 0, right: 0, bottom: 0, left: 0, borderRadius: "inherit", opacity: 0.85 },
-          "70%": {
-            top: "var(--task-tour-pulse-inset)",
-            right: "var(--task-tour-pulse-inset)",
-            bottom: "var(--task-tour-pulse-inset)",
-            left: "var(--task-tour-pulse-inset)",
-            borderRadius: "var(--task-tour-pulse-radius)",
-            opacity: 0,
-          },
-          "100%": {
-            top: "var(--task-tour-pulse-inset)",
-            right: "var(--task-tour-pulse-inset)",
-            bottom: "var(--task-tour-pulse-inset)",
-            left: "var(--task-tour-pulse-inset)",
-            borderRadius: "var(--task-tour-pulse-radius)",
-            opacity: 0,
-          },
+          "0%": { transform: "scale(1)", opacity: 0.8 },
+          "70%": { transform: `scale(${scaleX}, ${scaleY})`, opacity: 0 },
+          "100%": { transform: `scale(${scaleX}, ${scaleY})`, opacity: 0 },
         },
         "@media (prefers-reduced-motion: reduce)": {
           transition: "none",
