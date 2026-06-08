@@ -15,7 +15,18 @@ You are guiding the user through the complete Arthur GenAI Engine onboarding wor
 
 ## Step 0 — Check for skill updates
 
-Invoke the `arthur-skills-upgrade` skill. It will check all installed `arthur-onboard-*` and `arthur-skills-upgrade` skills against GitHub main and prompt the user only if stale ones are found. If the skill is not installed, skip this step silently.
+Invoke the `arthur-skills-upgrade` skill. It will check all installed `arthur-onboard-*` and `arthur-skills-upgrade` skills against GitHub main. If stale skills are found, the user is given three choices:
+
+- **Yes** — upgrade now
+- **Not now** — skip this time (will prompt again on the next run)
+- **Skip version** — don't prompt again for these specific versions; prompts resume when a newer version is released
+
+If the skill is not installed, skip this step silently.
+
+When upgrades are applied, report the version transition for each updated skill:
+> "Updated `<skill-name>`: `<old-version>` → `<new-version>`"
+
+If multiple skills were updated, list each one. If everything was already up to date, a brief "All skills up to date" is sufficient.
 
 ---
 

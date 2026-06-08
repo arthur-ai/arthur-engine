@@ -31,13 +31,17 @@ Collect all found paths. If none are found in either location, tell the user no
 ## Step 2 — Check versions
 
 For each installed skill directory, extract the local version and compare against GitHub main.
+Also load `~/.claude/arthur-skills-skip-versions.txt` (format: one `skill_name=version` per line)
+to suppress prompts for versions the user has previously chosen to skip.
 
 ```bash
 BASE="https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integrations/claude-code-skills/arthur-onboard"
+SKIP_FILE="$HOME/.claude/arthur-skills-skip-versions.txt"
 
 STALE=()
 OK=()
 SKIP=()
+USER_SKIPPED=()
 
 for skill_dir in ~/.claude/skills/arthur-onboard-* ~/.claude/skills/arthur-skills-upgrade \
                  .claude/skills/arthur-onboard-* .claude/skills/arthur-skills-upgrade; do
@@ -61,8 +65,15 @@ for skill_dir in ~/.claude/skills/arthur-onboard-* ~/.claude/skills/arthur-skill
     OK+=("$skill_name ($local_version)")
     echo "OK      $skill_name ($local_version)"
   else
-    STALE+=("$skill_dir|$skill_name|$local_version|$remote_version")
-    echo "UPDATE  $skill_name: $local_version → $remote_version"
+    # Check if the user previously chose to skip this exact remote version
+    skipped_ver=$(grep "^$skill_name=" "$SKIP_FILE" 2>/dev/null | cut -d'=' -f2)
+    if [ "$skipped_ver" = "$remote_version" ]; then
+      USER_SKIPPED+=("$skill_name ($local_version → $remote_version, skipped)")
+      echo "SKIPPED $skill_name ($local_version → $remote_version, user-skipped this version)"
+    else
+      STALE+=("$skill_dir|$skill_name|$local_version|$remote_version")
+      echo "UPDATE  $skill_name: $local_version → $remote_version"
+    fi
   fi
 done
 
@@ -72,20 +83,28 @@ printf '%s\n' "${STALE[@]}" > /tmp/arthur-stale-skills.txt
 
 Present the results clearly:
 - `OK` — already up to date
-- `UPDATE` — stale, will be upgraded
+- `UPDATE` — stale, update available
+- `SKIPPED` — user previously chose to skip this version
 - `SKIP` — not found on main (installed manually or removed upstream)
 
-If all skills are `OK`, tell the user everything is up to date and exit.
+If all skills are `OK` or `SKIPPED`, tell the user everything is up to date and exit.
 
 ---
 
-## Step 3 — Confirm and upgrade
+## Step 3 — Prompt and upgrade
 
-Show the user the list of skills that have updates. Ask:
+Show the user the list of skills that have updates (from the `UPDATE` entries). Then ask:
 
-> "Found N skill(s) with updates. Upgrade now?"
+> "Found N skill(s) with updates:
+>   - `<skill-name>`: `<old>` → `<new>`
+>   ...
+>
+> How would you like to proceed?
+>   1. **Yes** — upgrade now
+>   2. **Not now** — skip this time (you'll be asked again next run)
+>   3. **Skip version** — don't ask about these versions again until a newer release"
 
-Once confirmed, download and replace each stale skill:
+**If the user chooses "Yes"** — download and replace each stale skill:
 
 ```bash
 BASE="https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integrations/claude-code-skills/arthur-onboard"
@@ -113,6 +132,30 @@ while IFS= read -r entry; do
   else
     echo "FAILED:  $skill_name (could not fetch from GitHub)"
   fi
+done < /tmp/arthur-stale-skills.txt
+rm -f /tmp/arthur-stale-skills.txt
+```
+
+**If the user chooses "Not now"** — exit without upgrading. No file changes. The user will be prompted again on the next run.
+
+```bash
+rm -f /tmp/arthur-stale-skills.txt
+```
+
+**If the user chooses "Skip version"** — record the current remote version for each stale skill in the skip file so they are not prompted again until a newer version is released:
+
+```bash
+SKIP_FILE="$HOME/.claude/arthur-skills-skip-versions.txt"
+
+while IFS= read -r entry; do
+  [ -n "$entry" ] || continue
+  skill_name=$(echo "$entry" | cut -d'|' -f2)
+  new_ver=$(echo "$entry" | cut -d'|' -f4)
+
+  # Remove any existing entry for this skill, then append the new skipped version
+  grep -v "^$skill_name=" "$SKIP_FILE" 2>/dev/null > /tmp/arthur-skip-tmp && mv /tmp/arthur-skip-tmp "$SKIP_FILE" || true
+  echo "$skill_name=$new_ver" >> "$SKIP_FILE"
+  echo "Skipping: $skill_name (will not prompt again until a version newer than $new_ver is released)"
 done < /tmp/arthur-stale-skills.txt
 rm -f /tmp/arthur-stale-skills.txt
 ```
