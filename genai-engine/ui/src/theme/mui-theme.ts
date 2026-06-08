@@ -87,6 +87,17 @@ const createAppTheme = (mode: "light" | "dark") =>
           }),
         },
       },
+      MuiButton: {
+        styleOverrides: {
+          root: ({ theme }) => ({
+            ...(theme.palette.mode === "dark" && {
+              "&.Mui-disabled": {
+                color: theme.palette.text.disabled,
+              },
+            }),
+          }),
+        },
+      },
     },
   });
 
