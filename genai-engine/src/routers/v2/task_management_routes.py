@@ -29,7 +29,7 @@ from clients.telemetry.telemetry_client import (
     send_telemetry_event_for_task_rule_create_completed,
 )
 from config.cache_config import cache_config
-from dependencies import get_application_config, get_db_session
+from dependencies import get_application_config, get_db_session, get_org_scope
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.task_polling_state_repository import TaskPollingStateRepository
@@ -47,7 +47,8 @@ from schemas.internal_schemas import (
     User,
 )
 from utils import constants
-from utils.users import permission_checker
+from utils.constants import DEFAULT_ORG_ID
+from utils.users import enforce_org_scope, enforce_query_org_scope, permission_checker
 from utils.utils import common_pagination_parameters, public_endpoint
 
 task_management_routes = APIRouter(
@@ -89,7 +90,16 @@ def create_task(
         MetricRepository(db_session),
         application_config,
     )
-    task = Task._from_request_model(request)
+
+    # Determine the owning org from the caller's identity:
+    #   admin/JWT  (org_scope is None) -> default org
+    #   tenant key (org_scope is set)  -> caller's org
+    if current_user is not None and current_user.org_scope is not None:
+        org_id = current_user.org_scope
+    else:
+        org_id = DEFAULT_ORG_ID
+
+    task = Task._from_request_model(request, org_id=org_id)
     task = tasks_repo.create_task(task)
 
     send_telemetry_event(TelemetryEventTypes.TASK_CREATE_COMPLETED)
@@ -108,6 +118,7 @@ def get_all_tasks(
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> list[TaskResponse]:
     rules_repo = RuleRepository(db_session)
     tasks_repo = TaskRepository(
@@ -116,7 +127,8 @@ def get_all_tasks(
         MetricRepository(db_session),
         application_config,
     )
-    tasks = tasks_repo.get_all_tasks()
+    # Tenant callers see only tasks in their org; admin sees everything.
+    tasks = tasks_repo.get_all_tasks(org_scope=org_scope)
     return [task._to_response_model() for task in tasks]
 
 
@@ -126,6 +138,7 @@ def get_all_tasks(
     tags=["Tasks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def archive_task(
     task_id: UUID,
     db_session: Session = Depends(get_db_session),
@@ -149,6 +162,7 @@ def archive_task(
     tags=["Tasks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def unarchive_task(
     task_id: UUID,
     db_session: Session = Depends(get_db_session),
@@ -173,6 +187,7 @@ def unarchive_task(
     tags=["Tasks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def get_task(
     task_id: UUID,
     db_session: Session = Depends(get_db_session),
@@ -201,6 +216,7 @@ def get_agent_tasks(
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> list[EnrichedTaskResponse]:
     """Get agentic tasks with enriched agent metadata.
 
@@ -229,12 +245,13 @@ def get_agent_tasks(
         application_config,
     )
 
-    # Query only agentic tasks
+    # Query only agentic tasks — tenant callers see only their own org's.
     db_tasks, _ = tasks_repo.query_tasks(
         is_agentic=True,
         include_archived=False,
         page_size=1000,  # Large page size for now, add pagination later if needed
         page=0,
+        org_scope=org_scope,
     )
 
     # Convert to Task objects and enrich with service names
@@ -306,6 +323,7 @@ def redirect_to_tasks() -> RedirectResponse:
     tags=["Tasks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_query_org_scope()
 def search_tasks(
     request: SearchTasksRequest,
     pagination_parameters: Annotated[
@@ -357,6 +375,7 @@ def search_tasks(
     tags=["Tasks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def create_task_rule(
     task_id: UUID,
     request: NewRuleRequest = Body(
@@ -395,6 +414,7 @@ def create_task_rule(
     tags=["Tasks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def update_task_rules(
     task_id: UUID,
     rule_id: UUID,
@@ -420,6 +440,7 @@ def update_task_rules(
     tags=["Tasks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def archive_task_rule(
     task_id: UUID,
     rule_id: UUID,
@@ -476,6 +497,7 @@ def archive_task_rule(
     tags=["Tasks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def create_task_metric(
     task_id: UUID,
     request: NewMetricRequest = Body(
@@ -506,6 +528,7 @@ def create_task_metric(
     tags=["Tasks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def update_task_metric(
     task_id: UUID,
     metric_id: UUID,
@@ -531,6 +554,7 @@ def update_task_metric(
     tags=["Tasks"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def archive_task_metric(
     task_id: UUID,
     metric_id: UUID,

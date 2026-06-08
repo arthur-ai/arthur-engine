@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
+from config.config import Config
 from dependencies import get_db_session
 from repositories.model_provider_repository import ModelProviderRepository
 from routers.route_handler import GenaiEngineRoute
@@ -157,9 +158,14 @@ def get_model_providers_available_models(
     """Set the configuration for a model provider"""
     try:
         repo = ModelProviderRepository(db_session)
+        available_models = repo.list_models_for_provider(provider=provider)
+        # UP-4461: tenant callers (org-scoped) see only whitelisted models.
+        if current_user is not None and current_user.org_scope is not None:
+            whitelist = set(Config.tenant_model_whitelist())
+            available_models = [m for m in available_models if m in whitelist]
         return ModelProviderModelList(
             provider=provider,
-            available_models=repo.list_models_for_provider(provider=provider),
+            available_models=available_models,
         )
     finally:
         db_session.close()

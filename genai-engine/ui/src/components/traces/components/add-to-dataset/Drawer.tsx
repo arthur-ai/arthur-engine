@@ -33,6 +33,8 @@ import { PreviewTable } from "./PreviewTable";
 import { SaveTransformDialog } from "./SaveTransformDialog";
 
 import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
+import { TOUR_IDS, tourDataAttr } from "@/features/task-tour/selectors";
+import { dispatchTourEvent, refreshTaskTourTarget, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { useCreateDatasetMutation } from "@/hooks/datasets/useCreateDatasetMutation";
 import { useTransforms } from "@/hooks/transforms/useTransforms";
 import { useApi } from "@/hooks/useApi";
@@ -108,6 +110,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
     },
     onSuccess: (_data, variables) => {
       enqueueSnackbar("Row added", { variant: "success" });
+      dispatchTourEvent(TASK_TOUR_EVENTS.traceAddedToDataset);
       // Clear pending columns for this dataset
       setPendingColumns((prev) => {
         const updated = { ...prev };
@@ -141,6 +144,12 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
       enqueueSnackbar("Failed to fetch datasets", { variant: "error" });
     }
   }, [traceQuery.error, datasetsQuery.error, enqueueSnackbar]);
+
+  useEffect(() => {
+    if (!open) return;
+    const frame = window.requestAnimationFrame(() => refreshTaskTourTarget());
+    return () => window.cancelAnimationFrame(frame);
+  }, [open]);
 
   const selectedDataset = datasetsQuery.datasets.find((dataset) => datasetId === dataset.id);
   const flatSpans = useMemo(() => flattenSpans(traceQuery.data?.root_spans ?? []), [traceQuery.data]);
@@ -291,7 +300,20 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
 
   return (
     <>
-      <Drawer open={open} onClose={handleClose} slotProps={{ paper: { sx: { width: "80%" } } }} anchor="right">
+      <Drawer
+        open={open}
+        onClose={handleClose}
+        slotProps={{
+          paper: {
+            ...tourDataAttr(TOUR_IDS.traceAddToDatasetDrawer),
+            sx: { width: "80%" },
+          },
+          transition: {
+            onEntered: () => refreshTaskTourTarget(),
+          },
+        }}
+        anchor="right"
+      >
         <form
           className="contents"
           onSubmit={(e) => {

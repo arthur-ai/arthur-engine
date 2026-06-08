@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from dependencies import (
     get_db_session,
+    get_org_scope,
     get_validated_task,
 )
 from repositories.continuous_eval_test_run_repository import (
@@ -41,13 +42,32 @@ from schemas.response_schemas import (
     ListContinuousEvalTestRunsResponse,
 )
 from utils.url_encoding import decode_path_param
-from utils.users import permission_checker
+from utils.users import enforce_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
 continuous_eval_routes = APIRouter(
     prefix="/api/v1",
     route_class=GenaiEngineRoute,
 )
+
+
+def _assert_transform_accessible(
+    transform_repo: TraceTransformRepository,
+    transform_id: UUID,
+    org_scope: UUID | None,
+) -> None:
+    """404 if the transform doesn't exist or is outside the caller's org.
+
+    Used by handlers that take a `transform_id` from path or body where the
+    route-level decorator only scopes a sibling `task_id` (or no task_id at
+    all). Without this guard a tenant could read or pin a cross-org
+    transform by guessing its UUID.
+    """
+    if transform_repo.get_transform_by_id(transform_id, org_scope=org_scope) is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Transform {transform_id} not found.",
+        )
 
 
 @continuous_eval_routes.get(
@@ -67,11 +87,13 @@ def get_continuous_eval_by_id(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> ContinuousEvalResponse:
     try:
         continuous_eval_repo = ContinuousEvalsRepository(db_session)
         continuous_eval = continuous_eval_repo.get_continuous_eval_by_id(
             eval_id=eval_id,
+            org_scope=org_scope,
         )
         return continuous_eval.to_response_model()
     except HTTPException:
@@ -89,6 +111,7 @@ def get_continuous_eval_by_id(
     tags=["Continuous Evals"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def list_continuous_evals(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -129,6 +152,7 @@ def list_continuous_evals(
     tags=["Continuous Evals"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def list_continuous_eval_run_results(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -170,6 +194,7 @@ def list_continuous_eval_run_results(
     tags=["Continuous Evals"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def get_continuous_eval_variables_and_mappings(
     transform_id: Annotated[
         UUID,
@@ -189,6 +214,7 @@ def get_continuous_eval_variables_and_mappings(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> ContinuousEvalVariableMappingResponse:
     try:
         # Validate the llm eval exists and hasn't been deleted
@@ -204,14 +230,9 @@ def get_continuous_eval_variables_and_mappings(
                 detail=f"LLM Eval {llm_eval.name} (version {llm_eval.version}) has been deleted.",
             )
 
-        # Validate the transform exists and hasn't been deleted
+        # Validate the transform exists and is in the caller's org
         transform_repo = TraceTransformRepository(db_session)
-        transform = transform_repo.get_transform_by_id(transform_id)
-        if not transform:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Transform {transform_id} not found.",
-            )
+        _assert_transform_accessible(transform_repo, transform_id, org_scope)
 
         transform_definition = transform_repo.get_latest_definition(transform_id)
         eval_vars = set(llm_eval.variables)
@@ -244,11 +265,13 @@ def get_continuous_eval_variables_and_mappings(
     tags=["Continuous Evals"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+@enforce_org_scope()
 def create_continuous_eval(
     create_request: ContinuousEvalCreateRequest,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> ContinuousEvalResponse:
     try:
         # Validate the llm eval exists and hasn't been deleted
@@ -273,14 +296,13 @@ def create_continuous_eval(
         # set the version to the integer version of the llm eval
         create_request.llm_eval_version = llm_eval.version
 
-        # Validate the transform variable mapping
+        # Validate the transform exists and is in the caller's org
         transform_repo = TraceTransformRepository(db_session)
-        transform = transform_repo.get_transform_by_id(create_request.transform_id)
-        if not transform:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Transform {create_request.transform_id} not found.",
-            )
+        _assert_transform_accessible(
+            transform_repo,
+            create_request.transform_id,
+            org_scope,
+        )
 
         if create_request.transform_version_id is not None:
             # Validate version belongs to this transform (raises 404 if not found)
@@ -335,13 +357,16 @@ def update_continuous_eval(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> ContinuousEvalResponse:
     try:
         continuous_eval_repo = ContinuousEvalsRepository(db_session)
         llm_eval_repo = LLMEvalsRepository(db_session)
         transform_repo = TraceTransformRepository(db_session)
 
-        existing_eval = continuous_eval_repo.get_continuous_eval_by_id(eval_id)
+        existing_eval = continuous_eval_repo.get_continuous_eval_by_id(
+            eval_id, org_scope=org_scope
+        )
         llm_eval = None
         llm_eval_version: str | int | None = None
 
@@ -382,6 +407,7 @@ def update_continuous_eval(
                 if update_request.transform_id is not None
                 else existing_eval.transform_id
             )
+            _assert_transform_accessible(transform_repo, transform_id, org_scope)
             transform_repo.get_version_by_id(
                 transform_id,
                 update_request.transform_version_id,
@@ -394,12 +420,7 @@ def update_continuous_eval(
                 if update_request.transform_id is not None
                 else existing_eval.transform_id
             )
-            transform = transform_repo.get_transform_by_id(transform_id)
-            if not transform:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"Transform {transform_id} not found.",
-                )
+            _assert_transform_accessible(transform_repo, transform_id, org_scope)
 
             # If a version is being pinned (new or existing), validate and use its snapshot
             effective_version_id = (
@@ -479,10 +500,13 @@ def rerun_continuous_eval(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> ContinuousEvalRerunResponse:
     try:
         continuous_eval_repo = ContinuousEvalsRepository(db_session)
-        return continuous_eval_repo.rerun_continuous_eval_by_annotation_id(run_id)
+        return continuous_eval_repo.rerun_continuous_eval_by_annotation_id(
+            run_id, org_scope=org_scope
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -508,9 +532,13 @@ def delete_continuous_eval(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> None:
     try:
         continuous_eval_repo = ContinuousEvalsRepository(db_session)
+        # Validate ownership via the lookup first (raises 404 for tenants on cross-org IDs).
+        if org_scope is not None:
+            continuous_eval_repo.get_continuous_eval_by_id(eval_id, org_scope=org_scope)
         continuous_eval_repo.delete_continuous_eval(eval_id)
     except ValueError as e:
         if "not found" in str(e).lower():
@@ -532,6 +560,7 @@ def delete_continuous_eval(
     tags=["Continuous Evals"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+@enforce_org_scope()
 def get_daily_annotation_analytics(
     start_time: Annotated[
         Optional[datetime],
@@ -600,11 +629,14 @@ def create_test_run(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> ContinuousEvalTestRunResponse:
     try:
-        # Look up the continuous eval to get its task_id
+        # Look up the continuous eval (org-scoped for tenant callers) and get its task_id
         continuous_eval_repo = ContinuousEvalsRepository(db_session)
-        continuous_eval = continuous_eval_repo.get_continuous_eval_by_id(eval_id)
+        continuous_eval = continuous_eval_repo.get_continuous_eval_by_id(
+            eval_id, org_scope=org_scope
+        )
 
         test_run_repo = ContinuousEvalTestRunRepository(db_session)
         test_run = test_run_repo.create_test_run(
@@ -653,12 +685,19 @@ def list_test_runs(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> ListContinuousEvalTestRunsResponse:
     try:
+        # Validate ownership of the parent continuous eval before listing test runs.
+        if org_scope is not None:
+            ContinuousEvalsRepository(db_session).get_continuous_eval_by_id(
+                eval_id, org_scope=org_scope
+            )
         test_run_repo = ContinuousEvalTestRunRepository(db_session)
         test_runs = test_run_repo.list_test_runs(
             continuous_eval_id=eval_id,
             pagination_parameters=pagination_parameters,
+            org_scope=org_scope,
         )
         count = test_run_repo.count_test_runs(eval_id)
         return ListContinuousEvalTestRunsResponse(
@@ -704,10 +743,11 @@ def get_test_run(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> ContinuousEvalTestRunResponse:
     try:
         test_run_repo = ContinuousEvalTestRunRepository(db_session)
-        test_run = test_run_repo.get_test_run(test_run_id)
+        test_run = test_run_repo.get_test_run(test_run_id, org_scope=org_scope)
         return ContinuousEvalTestRunResponse(
             id=test_run.id,
             continuous_eval_id=test_run.continuous_eval_id,
@@ -749,12 +789,18 @@ def get_test_run_results(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> ListAgenticAnnotationsResponse:
     try:
         test_run_repo = ContinuousEvalTestRunRepository(db_session)
+        # Ownership validated up-front via the test run lookup; raises 404 if
+        # the test run is in a different org.
+        if org_scope is not None:
+            test_run_repo.get_test_run(test_run_id, org_scope=org_scope)
         annotations = test_run_repo.get_test_run_results(
             test_run_id=test_run_id,
             pagination_parameters=pagination_parameters,
+            org_scope=org_scope,
         )
         count = test_run_repo.count_test_run_results(test_run_id)
         return ListAgenticAnnotationsResponse(
@@ -786,10 +832,11 @@ def delete_test_run(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> None:
     try:
         test_run_repo = ContinuousEvalTestRunRepository(db_session)
-        test_run_repo.delete_test_run(test_run_id)
+        test_run_repo.delete_test_run(test_run_id, org_scope=org_scope)
     except HTTPException:
         raise
     except Exception as e:

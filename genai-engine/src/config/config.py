@@ -52,6 +52,23 @@ class Config:
             return False
         return True
 
+    # Default whitelist used when the env var is unset. Per UP-4461: tenant
+    # callers see at most these two models across enabled providers.
+    DEFAULT_TENANT_MODEL_WHITELIST: tuple[str, ...] = (
+        "gpt-5.4-nano",
+        "claude-haiku-4-5",
+    )
+
+    @classmethod
+    def tenant_model_whitelist(cls) -> list[str]:
+        raw = get_env_var(
+            constants.GENAI_ENGINE_TENANT_MODEL_WHITELIST_ENV_VAR,
+            none_on_missing=True,
+        )
+        if not raw:
+            return list(cls.DEFAULT_TENANT_MODEL_WHITELIST)
+        return [name.strip() for name in raw.split(",") if name.strip()]
+
     @classmethod
     def get_log_level(cls) -> str:
         log_level: str | None = get_env_var(

@@ -14,6 +14,7 @@ import { PromptType } from "../types";
 import ModelParamsDialog from "./ModelParamsDialog";
 import PreviewPromptModal from "./PreviewPromptModal";
 
+import { TOUR_IDS } from "@/features/task-tour/selectors";
 import { PromptVariableMappingOutput } from "@/lib/api-client/api-client";
 import { track, EVENT_NAMES } from "@/services/amplitude";
 
@@ -107,8 +108,19 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
   // Check if model configuration is complete
   const hasModelConfig = prompt.modelProvider !== "" && prompt.modelName !== "";
 
+  // Every assistant tool_call must be answered by a `tool` message whose
+  // tool_call_id matches the call's id. The LLM provider rejects requests
+  // with dangling tool_calls, so block the run before we get there.
+  const hasUnansweredToolCalls = React.useMemo(() => {
+    const answeredCallIds = new Set(
+      prompt.messages.filter((message) => message.role === "tool" && message.tool_call_id).map((message) => message.tool_call_id)
+    );
+
+    return prompt.messages.some((message) => (message.tool_calls ?? []).some((toolCall) => !answeredCallIds.has(toolCall.id)));
+  }, [prompt.messages]);
+
   // In config mode, disable if experiment is running. In normal mode, disable if prompt is running
-  const runDisabled = !hasModelConfig || hasUnsetVariables || (experimentConfig ? isRunningExperiment : prompt.running);
+  const runDisabled = !hasModelConfig || hasUnsetVariables || hasUnansweredToolCalls || (experimentConfig ? isRunningExperiment : prompt.running);
   const previewDisabled = !hasModelConfig || hasUnsetVariables;
   const needsSave = prompt.needsSave;
   const saveTooltip = needsSave ? (prompt.version ? "Save changes as new version" : "Save as new prompt") : "Save Prompt";
@@ -125,6 +137,8 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
     }
   } else if (hasUnsetVariables) {
     runTooltip = "Please fill in all variable values before running";
+  } else if (hasUnansweredToolCalls) {
+    runTooltip = "Each assistant tool call needs a matching tool message (same tool_call_id) before running";
   } else if (experimentConfig && isRunningExperiment) {
     runTooltip = "An experiment is currently running";
   } else if (prompt.running) {
@@ -162,7 +176,7 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
         </span>
       </Tooltip>
       <Tooltip title="Duplicate Prompt" placement="top-start" arrow>
-        <IconButton aria-label="duplicate" onClick={handleDuplicatePrompt}>
+        <IconButton aria-label="duplicate" onClick={handleDuplicatePrompt} data-tour-id={TOUR_IDS.playgroundDuplicatePrompt}>
           <ContentCopyIcon color="secondary" />
         </IconButton>
       </Tooltip>
@@ -182,6 +196,7 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
       <Tooltip title={saveTooltip} placement="top-start" arrow>
         <IconButton
           aria-label="save"
+          data-tour-id={TOUR_IDS.playgroundSavePrompt}
           onClick={handleSavePromptOpen}
           sx={{
             ...(needsSave && {

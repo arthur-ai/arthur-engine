@@ -6,7 +6,7 @@ import re
 import traceback
 import urllib
 from concurrent.futures import Future, ThreadPoolExecutor
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Callable, Literal, overload
 
 from arthur_common.models.common_schemas import (
@@ -20,10 +20,12 @@ from langchain_community.callbacks import OpenAICallbackHandler
 from opentelemetry import context as otel_context
 from opentelemetry import trace
 from opentelemetry.trace import Tracer
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 import utils.constants as constants
 from custom_types import P, PadTextT, T
+from utils.constants import DEFAULT_ORG_ID, SYSTEM_ORG_ID
 
 _root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _genai_engine_version = None
@@ -179,9 +181,30 @@ def get_auth_logout_uri(redirect_uri: str, id_token: str) -> str:
 
 
 def seed_database(db_session: Session) -> None:
-    rows: list[Any] = []
-
-    db_session.add_all(rows)
+    # In production, Alembic seeds the well-known orgs via the
+    # `create_organizations_table` migration. The in-memory test DB
+    # uses Base.metadata.create_all() and doesn't run migrations, so
+    # we seed the same two rows here to keep ORM construction sites
+    # (system task creation, default-org backfill on POST /tasks) honest.
+    # created_at is passed explicitly because SQLite doesn't recognize
+    # the Postgres `now()` server default. We INSERT via raw SQL so SQLite
+    # stores the UUIDs as CHAR text (matching the as_uuid=True read path)
+    # rather than dialect-dependent integer/binary encodings.
+    now = datetime.now(timezone.utc).isoformat()
+    db_session.execute(
+        text(
+            "INSERT INTO organizations (id, name, is_system, created_at) "
+            "VALUES (:default_id, 'default', :is_system_false, :now), "
+            "       (:system_id,  'system',  :is_system_true,  :now)",
+        ),
+        {
+            "default_id": str(DEFAULT_ORG_ID),
+            "system_id": str(SYSTEM_ORG_ID),
+            "is_system_false": False,
+            "is_system_true": True,
+            "now": now,
+        },
+    )
     db_session.commit()
 
 

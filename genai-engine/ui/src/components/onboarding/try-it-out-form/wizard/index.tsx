@@ -3,16 +3,16 @@ import { Box, Button, Paper, Slide, Step, StepLabel, Stepper, Typography } from 
 import { revalidateLogic, useStore } from "@tanstack/react-form";
 import { useEffect, useRef, useState } from "react";
 
+import { useAppForm } from "../hooks/form";
 import type { TryItOutFormProps } from "../types";
 
-import { useAppForm } from "./hooks/form";
 import { STEP_COUNT, STEP_LABELS, STEP_NAMES, type StepIndex, type StepName } from "./options";
 import { flattenWizardValues, getInvalidGroupFields, wizardFormOpts, wizardSchema, type WizardValues } from "./schema";
 import { TryItOutFormWizardAboutStep } from "./steps/about";
 import { TryItOutFormWizardDiscoveryStep } from "./steps/discovery";
 import { TryItOutFormWizardIdentityStep } from "./steps/identity";
 
-import { EVENT_NAMES, identify, track } from "@/services/amplitude";
+import { EVENT_NAMES, track } from "@/services/amplitude";
 
 const VARIANT = "wizard" as const;
 
@@ -38,27 +38,9 @@ export const TryItOutFormWizard: React.FC<TryItOutFormProps> = ({ onBack, onSubm
         }
       },
     },
-    onSubmit: ({ value }) => {
+    onSubmit: async ({ value }) => {
       const flat = flattenWizardValues(value);
-      track(EVENT_NAMES.ONBOARDING_FORM_SUBMITTED, {
-        variant: VARIANT,
-        maturity: flat.maturity,
-        brings: flat.brings,
-        bringsOther: flat.bringsOther,
-        competitors: flat.competitors,
-        competitorOther: flat.competitorOther,
-        attribution: flat.attribution,
-        attributionOther: flat.attributionOther,
-        company: flat.company,
-      });
-      identify(flat.email, {
-        firstName: flat.firstName,
-        lastName: flat.lastName,
-        email: flat.email,
-        jobTitle: flat.jobTitle,
-        company: flat.company,
-      });
-      onSubmit(flat);
+      await onSubmit(flat, { formVariant: VARIANT });
     },
     onSubmitInvalid: ({ formApi }) => {
       const invalidFields = Object.entries(formApi.state.fieldMeta)

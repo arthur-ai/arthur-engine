@@ -1,17 +1,21 @@
 import { Box, CircularProgress, Dialog, DialogTitle, Step, StepLabel, Stepper } from "@mui/material";
+import { ThemeProvider, useTheme } from "@mui/material/styles";
 import { useStore } from "@tanstack/react-form";
 import { useSnackbar } from "notistack";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { EvalsStep } from "./components/evals-step";
 import { InfoStep } from "./components/info-step";
 import { PromptStep } from "./components/prompt-step";
 import { createExperimentModalFormOpts, CreateExperimentModalFormValues } from "./form";
+import { createExperimentDropdownTheme } from "./tourDropdownTheme";
 import { DeepPartial, deepMerge, formDataToRequest, templateToFormData } from "./utils";
 
 import { ConfirmationModal } from "@/components/common/ConfirmationModal";
 import { useAppForm } from "@/components/traces/components/filtering/hooks/form";
+import { TOUR_IDS, tourDataAttr } from "@/features/task-tour/selectors";
+import { dispatchTourEvent, refreshTaskTourTarget, TASK_TOUR_EVENTS } from "@/features/task-tour/tourActions";
 import { useCreateExperiment, usePromptExperiment } from "@/hooks/usePromptExperiments";
 import { useTask } from "@/hooks/useTask";
 import { PromptExperimentDetail } from "@/lib/api-client/api-client";
@@ -26,17 +30,31 @@ type Props = {
 export const CreateExperimentModal = ({ templateId, initialData, open, onClose }: Props) => {
   const { experiment, isLoading } = usePromptExperiment(templateId);
 
+  // Lift this modal's dropdown popups above the task tour overlay so the guided
+  // "Create Experiment" step can open them without the tour backdrop/blocker
+  // clipping them (UP-4482). See createExperimentDropdownTheme for details.
+  const parentTheme = useTheme();
+  const dropdownTheme = useMemo(() => createExperimentDropdownTheme(parentTheme), [parentTheme]);
+
   return (
-    <Dialog open={open} maxWidth="md" fullWidth aria-labelledby="create-experiment-dialog-title">
-      <DialogTitle id="create-experiment-dialog-title">Create Experiment</DialogTitle>
-      {isLoading ? (
-        <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%", pb: 4 }}>
-          <CircularProgress />
-        </Box>
-      ) : (
-        <CreateExperimentModalInner template={experiment} initialData={initialData} onClose={onClose} />
-      )}
-    </Dialog>
+    <ThemeProvider theme={dropdownTheme}>
+      <Dialog
+        open={open}
+        maxWidth="md"
+        fullWidth
+        aria-labelledby="create-experiment-dialog-title"
+        slotProps={{ paper: { ...tourDataAttr(TOUR_IDS.createExperimentModal) } }}
+      >
+        <DialogTitle id="create-experiment-dialog-title">Create Experiment</DialogTitle>
+        {isLoading ? (
+          <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%", pb: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <CreateExperimentModalInner template={experiment} initialData={initialData} onClose={onClose} />
+        )}
+      </Dialog>
+    </ThemeProvider>
   );
 };
 
@@ -57,6 +75,7 @@ const CreateExperimentModalInner = ({
 
   const createExperiment = useCreateExperiment(task!.id, {
     onSuccess: (data) => {
+      dispatchTourEvent(TASK_TOUR_EVENTS.createExperimentCreated);
       enqueueSnackbar(`Experiment "${data.name}" created successfully!`, { variant: "success" });
       navigate(`/tasks/${task!.id}/prompt-experiments/${data.id}`);
       onClose();
@@ -73,9 +92,11 @@ const CreateExperimentModalInner = ({
     defaultValues,
     onSubmit: async ({ value, formApi }) => {
       if (value.section === "info") {
+        dispatchTourEvent(TASK_TOUR_EVENTS.createExperimentInfoCompleted);
         return formApi.setFieldValue("section", "prompts");
       }
       if (value.section === "prompts") {
+        dispatchTourEvent(TASK_TOUR_EVENTS.createExperimentPromptMappingsCompleted);
         // Skip the evals step entirely when no evaluators were selected — there
         // would be nothing to configure on that screen.
         if (value.info.evaluators.length === 0) {
@@ -106,6 +127,11 @@ const CreateExperimentModalInner = ({
   const section = useStore(form.store, (state) => state.values.section);
   const hasEvaluators = useStore(form.store, (state) => state.values.info.evaluators.length > 0);
 
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => refreshTaskTourTarget());
+    return () => window.cancelAnimationFrame(frame);
+  }, [section]);
+
   const step = {
     info: 0,
     prompts: 1,
@@ -135,9 +161,21 @@ const CreateExperimentModalInner = ({
             </Step>
           )}
         </Stepper>
-        {section === "info" && <InfoStep form={form} onCancel={handleCancel} />}
-        {section === "prompts" && <PromptStep form={form} onCancel={handleCancel} />}
-        {section === "evals" && <EvalsStep form={form} onCancel={handleCancel} />}
+        {section === "info" && (
+          <Box data-tour-id={TOUR_IDS.createExperimentInfoStep}>
+            <InfoStep form={form} onCancel={handleCancel} />
+          </Box>
+        )}
+        {section === "prompts" && (
+          <Box data-tour-id={TOUR_IDS.createExperimentPromptMappingsStep}>
+            <PromptStep form={form} onCancel={handleCancel} />
+          </Box>
+        )}
+        {section === "evals" && (
+          <Box data-tour-id={TOUR_IDS.createExperimentEvalMappingsStep}>
+            <EvalsStep form={form} onCancel={handleCancel} />
+          </Box>
+        )}
       </form>
       <ConfirmationModal
         open={showDiscardConfirm}

@@ -11,7 +11,7 @@ from arthur_common.models.enums import (
 )
 from arthur_common.models.task_eval_schemas import LLMEval, TraceTransformDefinition
 from fastapi import HTTPException
-from sqlalchemy import asc, case, desc, func
+from sqlalchemy import asc, case, desc, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Query, Session
 
@@ -19,6 +19,8 @@ from db_models import DatabaseSpan
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTestRun
 from db_models.llm_eval_models import DatabaseContinuousEval
+from db_models.task_models import DatabaseTask
+from repositories.organizations_repository import lookup_org_id
 from schemas.internal_schemas import AgenticAnnotation, ContinuousEval
 from schemas.request_schemas import (
     ContinuousEvalCreateRequest,
@@ -78,14 +80,17 @@ class ContinuousEvalsRepository:
     def _get_db_continuous_eval_by_id(
         self,
         eval_id: uuid.UUID,
+        org_scope: uuid.UUID | None = None,
     ) -> DatabaseContinuousEval | None:
-        db_eval_transform = (
-            self.db_session.query(DatabaseContinuousEval)
-            .filter(DatabaseContinuousEval.id == eval_id)
-            .first()
+        q = self.db_session.query(DatabaseContinuousEval).filter(
+            DatabaseContinuousEval.id == eval_id,
         )
-
-        return db_eval_transform
+        if org_scope is not None:
+            q = q.join(
+                DatabaseTask,
+                DatabaseTask.id == DatabaseContinuousEval.task_id,
+            ).filter(DatabaseTask.org_id == org_scope)
+        return q.first()
 
     def validate_transform_variable_mapping(
         self,
@@ -132,6 +137,7 @@ class ContinuousEvalsRepository:
         self,
         task_id: str,
         continuous_eval_request: ContinuousEvalCreateRequest,
+        commit: bool = True,
     ) -> ContinuousEval:
         # Convert Pydantic models to dicts for JSON serialization
         transform_variable_mapping_dicts = [
@@ -156,7 +162,10 @@ class ContinuousEvalsRepository:
 
         try:
             self.db_session.add(db_continuous_eval)
-            self.db_session.commit()
+            if commit:
+                self.db_session.commit()
+            else:
+                self.db_session.flush()
         except IntegrityError as e:
             self.db_session.rollback()
             if "unique constraint" in str(e).lower():
@@ -231,8 +240,12 @@ class ContinuousEvalsRepository:
     def get_continuous_eval_by_id(
         self,
         eval_id: uuid.UUID,
+        org_scope: uuid.UUID | None = None,
     ) -> ContinuousEval:
-        db_continuous_eval = self._get_db_continuous_eval_by_id(eval_id)
+        db_continuous_eval = self._get_db_continuous_eval_by_id(
+            eval_id,
+            org_scope=org_scope,
+        )
 
         if not db_continuous_eval:
             raise HTTPException(
@@ -431,6 +444,7 @@ class ContinuousEvalsRepository:
         trace_id: str,
         task_id: str,
         delay_seconds: int = 10,
+        commit: bool = True,
     ) -> None:
         """Enqueue continuous eval jobs for a specific trace."""
         try:
@@ -450,6 +464,11 @@ class ContinuousEvalsRepository:
             if not continuous_evals:
                 return
 
+            task_org_id = lookup_org_id(
+                self.db_session,
+                select(DatabaseTask.org_id).where(DatabaseTask.id == task_id),
+            )
+
             # Create pending annotations and enqueue jobs
             for continuous_eval in continuous_evals:
                 annotation = DatabaseAgenticAnnotation(
@@ -460,10 +479,14 @@ class ContinuousEvalsRepository:
                     run_status=ContinuousEvalRunStatus.PENDING,
                     created_at=datetime.now(),
                     updated_at=datetime.now(),
+                    org_id=task_org_id,
                 )
                 self.db_session.add(annotation)
-                self.db_session.commit()
-                self.db_session.refresh(annotation)
+                if commit:
+                    self.db_session.commit()
+                    self.db_session.refresh(annotation)
+                else:
+                    self.db_session.flush()
 
                 # Enqueue job with 10s delay
                 job = ContinuousEvalJob(
@@ -488,6 +511,7 @@ class ContinuousEvalsRepository:
         self,
         root_spans: list[DatabaseSpan],
         delay_seconds: int = 10,
+        commit: bool = True,
     ) -> None:
         """Find root spans and enqueue continuous eval jobs for them."""
 
@@ -509,20 +533,25 @@ class ContinuousEvalsRepository:
                     root_span.trace_id,
                     root_span.task_id,
                     delay_seconds=delay_seconds,
+                    commit=commit,
                 )
 
     def rerun_continuous_eval_by_annotation_id(
         self,
         run_id: uuid.UUID,
         delay_seconds: int = 10,
+        org_scope: uuid.UUID | None = None,
     ) -> ContinuousEvalRerunResponse:
         """Rerun a failed continuous eval by annotation id."""
-        annotation = (
+        q = (
             self.db_session.query(DatabaseAgenticAnnotation)
             .filter(DatabaseAgenticAnnotation.id == run_id)
             .with_for_update()
-            .first()
         )
+        # agentic_annotations carries a denormalized org_id (UP-4424) — filter directly.
+        if org_scope is not None:
+            q = q.filter(DatabaseAgenticAnnotation.org_id == org_scope)
+        annotation = q.first()
 
         if not annotation:
             raise HTTPException(status_code=404, detail=f"Run {run_id} not found.")

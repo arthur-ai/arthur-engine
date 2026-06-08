@@ -6,10 +6,11 @@ import { useDemoMode } from "../contexts/EngineConfigContext";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  adminOnly?: boolean;
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, adminOnly = false }) => {
+  const { isAuthenticated, isLoading, isTenant } = useAuth();
   const { demoMode } = useDemoMode();
 
   if (isLoading) {
@@ -22,6 +23,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
   if (!isAuthenticated) {
     return <Navigate to={demoMode ? "/welcome" : "/login"} replace />;
+  }
+
+  if (adminOnly && isTenant) {
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;

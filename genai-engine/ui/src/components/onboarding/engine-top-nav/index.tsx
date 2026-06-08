@@ -22,20 +22,13 @@ export const EngineTopNav: React.FC = () => (
     </MuiLink>
     <Stack direction="row" spacing={2.5}>
       <MuiLink
-        to="#"
+        href="https://docs.arthur.ai/"
+        target="_blank"
+        rel="noopener noreferrer"
         underline="hover"
-        component={Link}
         sx={{ fontSize: 13, color: "text.secondary", fontWeight: 500, "&:hover": { color: "text.primary" } }}
       >
         Docs
-      </MuiLink>
-      <MuiLink
-        to="#"
-        underline="hover"
-        component={Link}
-        sx={{ fontSize: 13, color: "text.secondary", fontWeight: 500, "&:hover": { color: "text.primary" } }}
-      >
-        Status
       </MuiLink>
     </Stack>
   </Box>

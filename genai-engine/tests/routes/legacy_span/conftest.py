@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timedelta
 from typing import Generator, List
+from utils.constants import DEFAULT_ORG_ID
 
 import pytest
 from arthur_common.models.enums import MetricType
@@ -109,6 +110,7 @@ def _create_database_span(
         start_time=start_time,
         end_time=end_time,
         task_id=task_id,
+        org_id=DEFAULT_ORG_ID,
         session_id=session_id,
         raw_data={
             "name": f"Test Span {span_id}",
@@ -478,6 +480,7 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
             start_time=span.start_time,
             end_time=span.end_time,
             task_id=span.task_id,
+            org_id=DEFAULT_ORG_ID,
             session_id=span.session_id,
             raw_data=span.raw_data,
             created_at=span.created_at,
@@ -525,6 +528,7 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
 
         trace_metadata = DatabaseTraceMetadata(
             task_id=trace_spans[0].task_id,
+            org_id=DEFAULT_ORG_ID,
             trace_id=trace_id,
             session_id=trace_spans[0].session_id,
             span_count=len(trace_spans),
@@ -547,12 +551,14 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
         name="Test Task 1",
         created_at=base_time,
         updated_at=base_time,
+        org_id=DEFAULT_ORG_ID,
     )
     task2 = DatabaseTask(
         id="task2",
         name="Test Task 2",
         created_at=base_time,
         updated_at=base_time,
+        org_id=DEFAULT_ORG_ID,
     )
     db_session.add(task1)
     db_session.add(task2)

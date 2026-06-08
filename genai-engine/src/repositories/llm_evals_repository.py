@@ -130,8 +130,12 @@ class LLMEvalsRepository(
         task_id: str,
         item_name: str,
         item: CreateEvalRequest,
+        commit: bool = True,
     ) -> LLMEval:
-        return cast(LLMEval, super().save_llm_item(task_id, item_name, item))
+        return cast(
+            LLMEval,
+            super().save_llm_item(task_id, item_name, item, commit=commit),
+        )
 
     def run_llm_eval(
         self,
