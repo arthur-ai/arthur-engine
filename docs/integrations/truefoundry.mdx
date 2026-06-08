@@ -1,21 +1,21 @@
 ---
-title: TrueFoundry Integration
-description: Deploy Arthur GenAI Engine stateless validation on TrueFoundry AI Gateway via a FastAPI custom guardrail wrapper.
+title: Truefoundry
+description: Use Arthur AI as a custom guardrail on TrueFoundry AI Gateway to validate LLM prompts and completions before they reach or leave the model.
 ---
 
-# TrueFoundry Integration
+# Truefoundry
 
 ## Overview
 
 [**TrueFoundry AI Gateway**](https://www.truefoundry.com/ai-gateway) is the proxy layer that sits between your applications and the LLM providers and MCP Servers. It is an enterprise-grade platform that enables users to access 1000+ LLMs using a unified interface while taking care of observability and governance.
 
-Use this integration to run [Arthur GenAI Engine](https://platform.arthur.ai) validation as a **Custom Guardrail** on TrueFoundry AI Gateway. Deploy the [`integrations/arthur-ai`](https://github.com/truefoundry/integrations-custom-guardrails/tree/main/integrations/arthur-ai) **FastAPI wrapper** on any **public HTTPS** host. The gateway calls it at `llm_input` / `llm_output` via the [Custom Guardrail](https://www.truefoundry.com/docs/ai-gateway/custom-guardrails) contract; the wrapper forwards traffic to Arthur and returns `verdict` JSON on HTTP 200.
+Arthur AI integrates with TrueFoundry as a **Custom Guardrail**. When LLM traffic flows through the gateway, Arthur validates prompts on the way in and completions on the way out — reporting pass/block verdicts without redacting or rewriting text. Deploy the [`integrations/arthur-ai`](https://github.com/truefoundry/integrations-custom-guardrails/tree/main/integrations/arthur-ai) **FastAPI wrapper** on any **public HTTPS** host; TrueFoundry calls it at `llm_input` / `llm_output` via the [Custom Guardrail](https://www.truefoundry.com/docs/ai-gateway/custom-guardrails) contract, and the wrapper forwards traffic to [Arthur GenAI Engine](https://platform.arthur.ai) and returns `verdict` JSON on HTTP 200.
 
-## What is Arthur AI?
+## Arthur AI guardrail behavior
 
-[Arthur GenAI Engine](https://platform.arthur.ai) is a SaaS platform for validating LLM prompts and completions. The wrapper calls `POST /api/v2/validate` and maps rule results to pass/block — it does not embed policy logic beyond the checks you configure.
+[Arthur GenAI Engine](https://platform.arthur.ai) validates LLM prompts and completions. The wrapper calls `POST /api/v2/validate` and maps rule results to pass/block — it does not embed policy logic beyond the checks you configure in Arthur.
 
-Arthur is **validate-only**. Use **Operation: Validate** for both input and output rails. It reports failures but does not redact or rewrite text.
+Arthur is **validate-only**. On TrueFoundry, use **Operation: Validate** for both input and output rails.
 
 Default checks when `config` is `{}`:
 
@@ -24,12 +24,12 @@ Default checks when `config` is `{}`:
 
 ## How it works
 
-1. The gateway POSTs an OpenAI-shaped `requestBody` (input) or `requestBody` + `responseBody` (output) to your wrapper URL.
+1. TrueFoundry AI Gateway POSTs an OpenAI-shaped `requestBody` (input) or `requestBody` + `responseBody` (output) to your wrapper URL.
 2. The wrapper extracts user/assistant text and calls Arthur with your `ARTHUR_API_KEY`.
 3. The wrapper returns **HTTP 200** with a policy outcome in the body. Infrastructure failures return **HTTP 5xx**.
 
 ```
-TF customer's app ─► TF gateway ─► this wrapper ─► engine.platform.arthur.ai/api/v2/validate
+Your app ─► TrueFoundry gateway ─► Arthur AI wrapper ─► engine.platform.arthur.ai/api/v2/validate
 ```
 
 ## Response contract
@@ -57,7 +57,7 @@ All POST routes expect `Authorization: Bearer <WRAPPER_API_KEY>`.
 
 * **Arthur API key** from the [Arthur platform](https://platform.arthur.ai).
 * **Public HTTPS URL** for the deployed wrapper.
-* **`WRAPPER_API_KEY`** — shared secret the gateway sends as `Authorization: Bearer …`.
+* **`WRAPPER_API_KEY`** — shared secret TrueFoundry sends as `Authorization: Bearer …`.
 
 ## Setup
 
@@ -95,7 +95,7 @@ All POST routes expect `Authorization: Bearer <WRAPPER_API_KEY>`.
     ```
   </Step>
 
-  <Step title="Register Custom Guardrail configs">
+  <Step title="Register Arthur AI guardrail configs in TrueFoundry">
     **AI Gateway → Guardrails → + Add New Guardrails Group** → type **Custom**.
 
     * **Group name**: `arthur-ai`
@@ -113,7 +113,7 @@ All POST routes expect `Authorization: Bearer <WRAPPER_API_KEY>`.
     | **Headers**            | `Authorization` → `Bearer <WRAPPER_API_KEY>`; `Content-Type` → `application/json` |
     | **Config**             | `{}`                                                                              |
 
-    <Frame caption="Arthur AI Custom Guardrail configuration (input validate)">
+    <Frame caption="Arthur AI guardrail configuration in TrueFoundry (input validate)">
       <img
         src="../images/truefoundry-testing.avif"
         alt="TrueFoundry custom guardrail form: Validate, Request target, /validate-input URL, Authorization Bearer header"
@@ -134,7 +134,7 @@ All POST routes expect `Authorization: Bearer <WRAPPER_API_KEY>`.
     **Auth Data → Custom Bearer Auth** works the same as **Headers** if you prefer not to set headers manually.
   </Step>
 
-  <Step title="Attach to traffic">
+  <Step title="Attach Arthur AI guardrails to traffic">
     **Model pin**: **AI Gateway → Models → \<model> → Guardrails** → attach group `arthur-ai`.
 
     **Per request** — `X-TFY-GUARDRAILS` header, selector format `<group>/<config-name>`:
@@ -150,7 +150,7 @@ All POST routes expect `Authorization: Bearer <WRAPPER_API_KEY>`.
 
 ## Custom config (optional)
 
-Override defaults by setting `config.checks` in the dashboard:
+Override default Arthur checks by setting `config.checks` in the TrueFoundry dashboard:
 
 ```json
 {
