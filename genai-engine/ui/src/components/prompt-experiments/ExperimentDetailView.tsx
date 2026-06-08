@@ -30,6 +30,7 @@ import { PromptVersionDrawer } from "./PromptVersionDrawer";
 
 import { getContentHeight } from "@/constants/layout";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
 import { useCreateNotebookMutation, useAttachExperimentToNotebookMutation, useSetNotebookStateMutation } from "@/hooks/useNotebooks";
 import { usePromptExperiment, useDeleteExperiment } from "@/hooks/usePromptExperiments";
 import { formatDateInTimezone, formatTimestampDuration, formatCurrency } from "@/utils/formatters";
@@ -213,7 +214,7 @@ export const ExperimentDetailView: React.FC = () => {
   }
 
   return (
-    <Box className="w-full overflow-auto" style={{ height: getContentHeight() }}>
+    <Box className="w-full overflow-auto" style={{ height: getContentHeight() }} data-tour-id={TOUR_IDS.promptExperimentDetail}>
       <Box className="p-6">
         {/* Breadcrumb / Back Button */}
         <Box className="mb-4">

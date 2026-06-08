@@ -108,6 +108,9 @@ export function refreshTaskTourTarget(): void {
 
 /** Keys are `${sectionId}.${stepId}` — shown under the active checklist row when the spotlight target is missing. */
 export const TASK_TOUR_TARGET_LOST_HINTS: Partial<Record<string, string>> = {
+  "agent.review-agent-response": "Stay on the Demo Agent until the response finishes streaming, then continue.",
+  "prompts.review-experiment": "Open your experiment's results page to watch the run finish, then continue.",
+  "deploy.review-eval-result": "Open the latest trace and scroll to the eval annotations to confirm the Source Attribution Eval passes.",
   "traces.open-trace": "Click a trace row, or mark this step complete to open the top trace automatically.",
   "traces.review-spans": "Open a trace first — the highlight appears once the drawer is visible.",
   "traces.review-annotations": "Open a trace and scroll to the eval annotations to continue.",
