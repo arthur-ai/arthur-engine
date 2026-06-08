@@ -64,6 +64,8 @@ export const TOUR_IDS = {
   datasetTable: "task-tour-dataset-table",
   /** Configure-columns button on the dataset detail header. */
   datasetConfigureColumns: "task-tour-dataset-configure-columns",
+  /** Configure-columns modal surface after the header trigger opens it. */
+  datasetConfigureColumnsModal: "task-tour-dataset-configure-columns-modal",
   /** Import / Generate / Add Row button group on the dataset detail header. */
   datasetDataActions: "task-tour-dataset-data-actions",
   /** Versions button on the dataset detail header. */

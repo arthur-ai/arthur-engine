@@ -26,36 +26,36 @@ steps:
 
 ## intro
 
-Reopen the winning prompt, tag it as production, then re-run the Demo Agent and confirm the **Source Attribution Eval** is green on fresh traces. That's the loop closing — the failure you found in Observe is the failure you just shipped a fix for.
+Take the winning prompt from your experiment, tag it as production, then send another Demo Agent message and check that the **Source Attribution Eval** passes on the new trace. That's the point of the whole workflow: the failure you found in Observe gets a fix you can verify before it ships.
 
 ## scenario
 
-Return to the prompt detail view, promote the best experiment candidate to production, send another Demo Agent message, then return to Observe and verify the new trace clears the **Source Attribution Eval** — the agent now cites its source.
+Go back to the prompt detail view, promote the best experiment candidate to production, send another Demo Agent message, then check the new trace in Observe. The **Source Attribution Eval** should be green now that the agent cites its source.
 
 ## step: open-production-prompt
 
-Open the prompt you want to ship. The production tag is applied from the prompt detail view, so this brings you back to the version metadata before you promote it.
+Open the prompt you want to ship. You tag it as production from the prompt detail view, so this takes you back to the version metadata before you promote it.
 
 ## step: tag-production
 
-Open the prompt detail view, click the tag icon next to the version chips, and mark this version as production. Whichever version you tag becomes the one production traffic uses. (Mark complete when done.)
+In the prompt detail view, click the tag icon next to the version chips and mark this version as production. Whichever version you tag is the one production traffic will use. (Mark complete when done.)
 
 ## step: reopen-demo-agent
 
-Open **Demo Agent** again from the sidebar. Now that the winning prompt is tagged as production, the next chat run will use that promoted version.
+Open **Demo Agent** again from the sidebar. The next chat run will use the production version you just tagged.
 
 ## step: send-verification-message
 
-Send another general-knowledge question to create a fresh trace with the production prompt. Use the same question as before if you want an easy before-and-after comparison.
+Send another general-knowledge question to generate a fresh trace with the production prompt. Using the same question as before makes for an easy before-and-after comparison.
 
 ## step: review-verification-message
 
-Wait for the Demo Agent to finish responding. When the reply is complete, click **Next** so you can check the evals on the new trace.
+Wait for the Demo Agent to finish responding, then click **Next** to check the evals on the new trace.
 
 ## step: verify-eval-passes
 
-Open **Observe** from the sidebar to see the traces your verification message produced.
+Open **Observe** from the sidebar to see the traces from your verification message.
 
 ## step: review-latest-trace
 
-This is the latest trace — the one from the message you just sent. Open it to check the evals: the **Source Attribution Eval** should now be green now that the agent cites its source. That passing eval is your proof the fix held, closing the loop you started back in Observe.
+Open the latest trace (the one from the message you just sent) and check the evals. The **Source Attribution Eval** should be green now that the agent cites its source. That passing eval is your confirmation the fix worked.

@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 
 import { TourSidePanel } from "./components/TourSidePanel";
 import { createTaskTourEmptyStatePredicate } from "./emptyState";
+import { useDetailRouteTourPrep } from "./prep/useDetailRouteTourPrep";
 import { useTracesTourPrep } from "./prep/useTracesTourPrep";
 import { registerTaskTourActionBridge, registerTaskTourTargetRefreshBridge } from "./tourActions";
 import { useTaskTourEngine } from "./useTaskTourEngine";
@@ -10,7 +11,9 @@ import {
   DatasetTargetWidget,
   EvaluateTargetWidget,
   IntroWidget,
+  OcclusionRecoveryWidget,
   PromptTargetWidget,
+  ScrollTargetIntoViewWidget,
   SectionCompleteWidget,
   SpotlightWidget,
   TaskTourFormPrefillWidget,
@@ -85,6 +88,10 @@ function TaskTourPortal({ taskId }: TaskTourPortalProps) {
   // `TASK_TOUR_PREPARATIONS.traceOpened`). The engine consults this on
   // `prepare: { key }` steps before resolving the spotlight target.
   useTracesTourPrep({ taskId });
+  // Register the dynamic detail-route prep hooks (evaluator / dataset / prompt
+  // detail), so those steps navigate to their data-dependent URL when entered
+  // out of order instead of stranding on the wrong page.
+  useDetailRouteTourPrep({ taskId });
 
   return (
     <TourHost>
@@ -93,6 +100,8 @@ function TaskTourPortal({ taskId }: TaskTourPortalProps) {
       <PromptTargetWidget />
       <TracesTargetWidget />
       <TracesTourCleanupWidget />
+      <OcclusionRecoveryWidget />
+      <ScrollTargetIntoViewWidget />
       <TaskTourFormPrefillWidget />
       <IntroWidget />
       <SectionCompleteWidget />

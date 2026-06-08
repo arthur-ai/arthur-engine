@@ -2,11 +2,15 @@ import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import EastIcon from "@mui/icons-material/East";
 import WestIcon from "@mui/icons-material/West";
-import { Box, Button, IconButton, LinearProgress, Stack, Tooltip, Typography } from "@mui/material";
+import { Box, Button, IconButton, LinearProgress, Stack, Tooltip, Typography, useMediaQuery } from "@mui/material";
+import { useLayoutEffect, useRef } from "react";
 
 import { TASK_TOUR_SECTIONS, TASK_TOUR_TITLE } from "../data";
 import type { ChecklistController } from "../hooks/useChecklistController";
 import { isSectionComplete, itemKey } from "../progress";
+
+const ACTIVE_STEP_VALUE = "true";
+const ACTIVE_STEP_SELECTOR = `[data-active-step="${ACTIVE_STEP_VALUE}"]`;
 
 export interface ChecklistPanelBodyProps {
   /**
@@ -30,6 +34,8 @@ export function ChecklistPanelBody({ controller }: ChecklistPanelBodyProps) {
     currentItemIndex,
     activeStepContent,
     targetLostHint,
+    occlusionHint,
+    onRecoverOcclusion,
     completedItemKeys,
     totalProgress,
     onSelectItem,
@@ -39,6 +45,39 @@ export function ChecklistPanelBody({ controller }: ChecklistPanelBodyProps) {
     onNextSection,
     onClose,
   } = controller;
+
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+
+  // Keep the highlighted step with description in view
+  useLayoutEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const item = container.querySelector<HTMLElement>(ACTIVE_STEP_SELECTOR);
+    if (!item) return;
+
+    const PADDING = 12; // breathing room so the row never rests flush against an edge
+    const containerRect = container.getBoundingClientRect();
+    const itemRect = item.getBoundingClientRect();
+    const itemTop = itemRect.top - containerRect.top + container.scrollTop;
+    const itemBottom = itemTop + itemRect.height;
+    const viewTop = container.scrollTop;
+    const viewBottom = viewTop + container.clientHeight;
+
+    let nextTop: number | null = null;
+    if (itemTop < viewTop) {
+      // The row's title is clipped above the fold — pull it down into view.
+      nextTop = itemTop - PADDING;
+    } else if (itemBottom > viewBottom) {
+      // The row's description is clipped below the fold — reveal the whole row.
+      // If the row is taller than the viewport, prefer the title (start edge)
+      // over the tail of the description.
+      nextTop = Math.min(itemBottom - container.clientHeight + PADDING, itemTop - PADDING);
+    }
+    if (nextTop === null) return; // already fully visible — leave the scroll position alone
+
+    container.scrollTo({ top: Math.max(0, nextTop), behavior: reduceMotion ? "auto" : "smooth" });
+  }, [currentSectionIndex, currentItemIndex, activeStepContent, targetLostHint, reduceMotion]);
 
   const section = TASK_TOUR_SECTIONS[currentSectionIndex];
   if (!section) return null;
@@ -125,7 +164,7 @@ export function ChecklistPanelBody({ controller }: ChecklistPanelBodyProps) {
         </Typography>
       </Box>
 
-      <Box sx={{ px: 1, pb: 1.25, overflowY: "auto", flex: 1 }}>
+      <Box ref={scrollContainerRef} sx={{ px: 1, pb: 1.25, overflowY: "auto", flex: 1 }}>
         {items.length === 0 ? (
           <Stack direction="row" spacing={1.25} alignItems="center" sx={{ p: 1.25, borderRadius: 1 }}>
             <Box
@@ -145,10 +184,11 @@ export function ChecklistPanelBody({ controller }: ChecklistPanelBodyProps) {
         ) : (
           items.map((item, idx) => {
             const done = completedItemKeys.has(itemKey(section.id, item.id));
-            const active = !done && idx === currentItemIndex;
+            const selected = idx === currentItemIndex;
             return (
               <Stack
                 key={item.id}
+                data-active-step={selected ? ACTIVE_STEP_VALUE : undefined}
                 direction="row"
                 alignItems="flex-start"
                 spacing={1.25}
@@ -157,9 +197,9 @@ export function ChecklistPanelBody({ controller }: ChecklistPanelBodyProps) {
                   p: 1.25,
                   borderRadius: 1,
                   cursor: "pointer",
-                  bgcolor: active ? "secondary.light" : "transparent",
+                  bgcolor: selected ? "secondary.light" : "transparent",
                   transition: "background-color 0.12s",
-                  "&:hover": { bgcolor: active ? "secondary.light" : "action.hover" },
+                  "&:hover": { bgcolor: selected ? "secondary.light" : "action.hover" },
                 }}
               >
                 <Box
@@ -181,7 +221,7 @@ export function ChecklistPanelBody({ controller }: ChecklistPanelBodyProps) {
                     justifyContent: "center",
                     transition: "background-color 0.15s, border-color 0.15s, color 0.15s",
                     bgcolor: done ? "secondary.main" : "background.paper",
-                    borderColor: done ? "secondary.main" : active ? "secondary.main" : "divider",
+                    borderColor: done ? "secondary.main" : selected ? "secondary.main" : "divider",
                     color: done ? "common.white" : "transparent",
                   }}
                 >
@@ -191,15 +231,15 @@ export function ChecklistPanelBody({ controller }: ChecklistPanelBodyProps) {
                   <Typography
                     variant="body2"
                     sx={{
-                      color: active ? "secondary.dark" : "text.primary",
-                      fontWeight: active ? 500 : 400,
+                      color: selected ? "secondary.dark" : "text.primary",
+                      fontWeight: selected ? 500 : 400,
                       textDecoration: done ? "line-through" : "none",
                       lineHeight: 1.4,
                     }}
                   >
                     {item.title}
                   </Typography>
-                  {active && activeStepContent != null ? (
+                  {selected && activeStepContent != null ? (
                     typeof activeStepContent === "string" ? (
                       <Typography variant="caption" sx={{ color: "common.black", display: "block", mt: 0.5, lineHeight: 1.45 }}>
                         {activeStepContent}
@@ -208,10 +248,20 @@ export function ChecklistPanelBody({ controller }: ChecklistPanelBodyProps) {
                       <Box sx={{ color: "common.black", display: "block", mt: 0.5, fontSize: 12, lineHeight: 1.45 }}>{activeStepContent}</Box>
                     )
                   ) : null}
-                  {active && targetLostHint ? (
+                  {selected && targetLostHint ? (
                     <Typography variant="caption" sx={(theme) => ({ color: theme.tour.hintColor, display: "block", mt: 0.5, lineHeight: 1.45 })}>
                       {targetLostHint}
                     </Typography>
+                  ) : null}
+                  {selected && occlusionHint ? (
+                    <Box sx={{ mt: 0.75 }} onClick={(e) => e.stopPropagation()}>
+                      <Typography variant="caption" sx={(theme) => ({ color: theme.tour.hintColor, display: "block", lineHeight: 1.45 })}>
+                        {occlusionHint.message}
+                      </Typography>
+                      <Button size="small" variant="outlined" onClick={onRecoverOcclusion} sx={{ mt: 0.5 }}>
+                        {occlusionHint.actionLabel}
+                      </Button>
+                    </Box>
                   ) : null}
                 </Box>
               </Stack>
