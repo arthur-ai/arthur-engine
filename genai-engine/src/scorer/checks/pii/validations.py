@@ -29,6 +29,8 @@ from typing import Callable, Optional, Set
 # Global cache for generic name exclusions
 _generic_name_exclusions: Set[str] | None = None
 
+US_PASSPORT_REGEX_PATTERN = r"\b(?:[0-9]{9}|[A-Z][0-9]{8})\b"
+
 
 def get_generic_name_exclusions() -> Set[str]:
     """Load generic name exclusions from text file."""
@@ -930,3 +932,9 @@ def is_ip(value: str) -> bool:
         return True
     except ValueError:
         return False
+
+
+def is_us_passport(value: str) -> bool:
+    """Validate US passport format."""
+    matches = re.findall(US_PASSPORT_REGEX_PATTERN, value)
+    return len(matches) > 0

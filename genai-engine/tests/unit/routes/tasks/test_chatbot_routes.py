@@ -1,38 +1,20 @@
+import json
 from unittest.mock import patch
 
 import pytest
+from arthur_common.models.llm_model_providers import MessageRole, OpenAIMessage
 from fastapi import HTTPException
-from litellm.types.utils import ChatCompletionMessageToolCall, Function
 
 from schemas.response_schemas import AgenticPromptRunResponse
 from services.chatbot.api_call_service import ApiCallResult
-from services.chatbot.chatbot_service import get_conversation_history
-from tests.clients.base_test_client import (
-    MASTER_KEY_AUTHORIZED_HEADERS,
-    GenaiEngineTestClientBase,
+from tests.clients.base_test_client import GenaiEngineTestClientBase
+from tests.unit.routes.tasks.helpers import (
+    final_response_events,
+    make_stream,
+    make_token_count_response,
+    make_tool_call,
+    parse_sse_event,
 )
-
-
-async def make_stream(events: list[str]):
-    for event in events:
-        yield event
-
-
-def make_tool_call(id: str, name: str, arguments: str) -> ChatCompletionMessageToolCall:
-    return ChatCompletionMessageToolCall(
-        id=id,
-        type="function",
-        function=Function(name=name, arguments=arguments),
-    )
-
-
-def final_response_events(content: str) -> list[str]:
-    payload = AgenticPromptRunResponse(
-        content=content,
-        tool_calls=None,
-        cost="0.0",
-    ).model_dump_json()
-    return [f"event: final_response\ndata: {payload}\n\n"]
 
 
 @pytest.mark.unit_tests
@@ -49,7 +31,7 @@ def test_chatbot_no_provider_configured(_, client: GenaiEngineTestClientBase):
 
     response = client.base_client.post(
         f"/api/v1/tasks/{task.id}/chatbot/stream",
-        json={"message": "hello", "conversation_id": "test-conv-1"},
+        json={"history": [{"role": "user", "content": "hello"}]},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 400
@@ -75,7 +57,7 @@ def test_chatbot_simple_response(mock_stream, client: GenaiEngineTestClientBase)
 
     response = client.base_client.post(
         f"/api/v1/tasks/{task.id}/chatbot/stream",
-        json={"message": "list my tasks", "conversation_id": "test-conv-2"},
+        json={"history": [{"role": "user", "content": "list my tasks"}]},
         headers=client.authorized_user_api_key_headers,
     )
 
@@ -116,7 +98,7 @@ def test_chatbot_search_tool_emits_search_complete(
 
     response = client.base_client.post(
         f"/api/v1/tasks/{task.id}/chatbot/stream",
-        json={"message": "find my evals", "conversation_id": "test-conv-3"},
+        json={"history": [{"role": "user", "content": "find my evals"}]},
         headers=client.authorized_user_api_key_headers,
     )
 
@@ -169,7 +151,7 @@ def test_chatbot_api_tool_emits_tool_call_and_result(
 
     response = client.base_client.post(
         f"/api/v1/tasks/{task.id}/chatbot/stream",
-        json={"message": "list my tasks", "conversation_id": "test-conv-api-tool"},
+        json={"history": [{"role": "user", "content": "list my tasks"}]},
         headers=client.authorized_user_api_key_headers,
     )
 
@@ -179,16 +161,36 @@ def test_chatbot_api_tool_emits_tool_call_and_result(
     assert "You have no tasks." in response.text
     mock_api_call.assert_called_once()
 
+    # Verify the enriched fields are present in the SSE events so the FE can rebuild
+    # OpenAI-shaped history without re-fetching.
+    tool_call_event = parse_sse_event(response.text, "tool_call")
+    assert tool_call_event["tool_call_id"] == "tc2"
+    assert tool_call_event["name"] == "call_arthur_api"
+    assert json.loads(tool_call_event["arguments"]) == {
+        "method": "GET",
+        "path": "/api/v2/tasks",
+    }
+
+    tool_result_event = parse_sse_event(response.text, "tool_result")
+    assert tool_result_event["tool_call_id"] == "tc2"
+    assert tool_result_event["content"] == 'HTTP 200\n{"items": []}'
+
 
 @pytest.mark.unit_tests
+@patch("clients.llm.llm_client.LLMClient.acount_tokens")
+@patch("services.chatbot.base_chatbot_service.litellm.get_max_tokens")
+@patch("services.chatbot.base_chatbot_service.BaseChatbotService.summarize_history")
 @patch(
     "services.prompt.chat_completion_service.ChatCompletionService.stream_chat_completion",
 )
-def test_chatbot_conversation_history_persisted(
+def test_chatbot_emits_history_replace_when_over_token_limit(
     mock_stream,
+    mock_summarize_history,
+    mock_get_max_tokens,
+    mock_acount_tokens,
     client: GenaiEngineTestClientBase,
 ):
-    task_name = "chatbot_task_history_persisted"
+    task_name = "chatbot_task_history_replace_over"
     _, task = client.create_task(task_name, is_agentic=True)
 
     client.base_client.put(
@@ -197,48 +199,33 @@ def test_chatbot_conversation_history_persisted(
         headers=client.authorized_user_api_key_headers,
     )
 
-    conversation_id = "test-conv-history-persisted"
-    mock_stream.return_value = make_stream(final_response_events("First response."))
+    mock_stream.return_value = make_stream(final_response_events("Done."))
+    mock_get_max_tokens.return_value = 10
+    mock_acount_tokens.return_value = make_token_count_response(1000)
+    mock_summarize_history.return_value = [
+        OpenAIMessage(role=MessageRole.SYSTEM, content="sys"),
+        OpenAIMessage(
+            role=MessageRole.AI,
+            content="Summary of previous conversation:\nabc",
+        ),
+        OpenAIMessage(role=MessageRole.USER, content="kept user"),
+        OpenAIMessage(role=MessageRole.AI, content="kept assistant"),
+    ]
 
-    client.base_client.post(
+    response = client.base_client.post(
         f"/api/v1/tasks/{task.id}/chatbot/stream",
-        json={"message": "first message", "conversation_id": conversation_id},
-        headers=MASTER_KEY_AUTHORIZED_HEADERS,
-    )
-
-    history = get_conversation_history("master-key", conversation_id)
-    assert len(history) > 0
-
-
-@pytest.mark.unit_tests
-@patch(
-    "services.prompt.chat_completion_service.ChatCompletionService.stream_chat_completion",
-)
-def test_clear_chatbot_history(mock_stream, client: GenaiEngineTestClientBase):
-    task_name = "chatbot_task_clear_history"
-    _, task = client.create_task(task_name, is_agentic=True)
-
-    client.base_client.put(
-        "/api/v1/model_providers/anthropic",
-        json={"api_key": "test-key"},
+        json={"history": [{"role": "user", "content": "hi"}]},
         headers=client.authorized_user_api_key_headers,
-    )
-
-    conversation_id = "test-conv-clear-history"
-    mock_stream.return_value = make_stream(final_response_events("Hello."))
-
-    client.base_client.post(
-        f"/api/v1/tasks/{task.id}/chatbot/stream",
-        json={"message": "hello", "conversation_id": conversation_id},
-        headers=MASTER_KEY_AUTHORIZED_HEADERS,
-    )
-
-    assert len(get_conversation_history("master-key", conversation_id)) > 0
-
-    response = client.base_client.delete(
-        f"/api/v1/chatbot/history/{conversation_id}",
-        headers=MASTER_KEY_AUTHORIZED_HEADERS,
     )
 
     assert response.status_code == 200
-    assert len(get_conversation_history("master-key", conversation_id)) == 0
+    assert "event: history_replace" in response.text
+
+    replace_event = parse_sse_event(response.text, "history_replace")
+    # System message must be stripped from the FE-bound history.
+    assert all(m["role"] != "system" for m in replace_event["history"])
+    assert replace_event["history"][0]["content"].startswith(
+        "Summary of previous conversation:",
+    )
+    assert replace_event["history"][-1]["content"] == "kept assistant"
+    mock_summarize_history.assert_called_once()

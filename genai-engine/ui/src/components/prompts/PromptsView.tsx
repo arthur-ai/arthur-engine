@@ -1,14 +1,17 @@
+import { Menu } from "@base-ui/react/menu";
 import AddIcon from "@mui/icons-material/Add";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
-import { Box, Button, Menu, MenuItem, Stack, Tab, Tabs, Typography } from "@mui/material";
+import { Box, Button, List, ListItemButton, ListItemText, Paper, Stack, Tab, Tabs, Typography } from "@mui/material";
 import { parseAsStringEnum, useQueryState } from "nuqs";
-import { useRef, useState } from "react";
+import { useRef, type SyntheticEvent } from "react";
 
 import Notebooks from "../notebooks/Notebooks";
 import { PromptExperimentsView } from "../prompt-experiments/PromptExperimentsView";
 import PromptsManagement from "../prompts-management/PromptsManagement";
 
 import { getContentHeight } from "@/constants/layout";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
+import { dispatchTourEvent, refreshTaskTourTarget, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 
 const TAB_TITLES: Record<string, string> = {
   notebooks: "Prompt Notebooks",
@@ -27,8 +30,6 @@ export const PromptsView = () => {
     "tab",
     parseAsStringEnum(["notebooks", "prompts-management", "prompt-experiments"]).withDefault("notebooks")
   );
-
-  const [experimentsMenuAnchor, setExperimentsMenuAnchor] = useState<null | HTMLElement>(null);
 
   // Stable create handler refs — children register their handlers on mount
   const notebooksCreateFn = useRef<() => void>(() => {});
@@ -50,12 +51,20 @@ export const PromptsView = () => {
     experimentsCreateFromExistingFn.current = fn;
   }).current;
 
+  const handleTabChange = (_: SyntheticEvent, value: typeof activeTab) => {
+    void setActiveTab(value);
+    if (value === "prompts-management") {
+      dispatchTourEvent(TASK_TOUR_EVENTS.promptsManagementTabOpened);
+    }
+  };
+
   return (
     <Stack sx={{ height: getContentHeight() }}>
       <Stack
         direction="row"
         alignItems="center"
         justifyContent="space-between"
+        data-tour-id={TOUR_IDS.promptsEntry}
         sx={{
           px: 3,
           pt: 3,
@@ -87,53 +96,62 @@ export const PromptsView = () => {
         )}
 
         {activeTab === "prompt-experiments" && (
-          <>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<AddIcon />}
-              endIcon={<ArrowDropDownIcon />}
-              onClick={(e) => setExperimentsMenuAnchor(e.currentTarget)}
+          // Base UI menu (vs MUI's Menu) positions the popup at its final rect
+          // immediately instead of growing into place via a transform animation,
+          // so the task-tour spotlight/popover anchored to "Create New" resolves
+          // against a stable rect rather than the mid-animation one.
+          <Menu.Root
+            onOpenChange={(open) => {
+              if (open) window.requestAnimationFrame(() => refreshTaskTourTarget());
+            }}
+          >
+            <Menu.Trigger
+              render={
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<AddIcon />}
+                  endIcon={<ArrowDropDownIcon />}
+                  data-tour-id={TOUR_IDS.promptsExperimentButton}
+                />
+              }
             >
               Experiment
-            </Button>
-            <Menu
-              anchorEl={experimentsMenuAnchor}
-              open={Boolean(experimentsMenuAnchor)}
-              onClose={() => setExperimentsMenuAnchor(null)}
-              anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-              transformOrigin={{ vertical: "top", horizontal: "right" }}
-              slotProps={{ paper: { sx: { minWidth: experimentsMenuAnchor?.offsetWidth } } }}
-            >
-              <MenuItem
-                onClick={() => {
-                  setExperimentsMenuAnchor(null);
-                  experimentsCreateFn.current();
-                }}
-              >
-                Create New
-              </MenuItem>
-              <MenuItem
-                onClick={() => {
-                  setExperimentsMenuAnchor(null);
-                  experimentsCreateFromExistingFn.current();
-                }}
-              >
-                Create from Existing
-              </MenuItem>
-            </Menu>
-          </>
+            </Menu.Trigger>
+            <Menu.Portal>
+              <Menu.Positioner side="bottom" align="end" sideOffset={4}>
+                <Menu.Popup render={<List component={Paper} dense className="outline-none min-w-(--anchor-width)" />}>
+                  <Menu.Item
+                    render={
+                      <ListItemButton
+                        data-tour-id={TOUR_IDS.promptsExperimentCreateNew}
+                        onClick={() => {
+                          dispatchTourEvent(TASK_TOUR_EVENTS.createExperimentModalOpened);
+                          experimentsCreateFn.current();
+                        }}
+                      />
+                    }
+                  >
+                    <ListItemText primary="Create New" />
+                  </Menu.Item>
+                  <Menu.Item render={<ListItemButton onClick={() => experimentsCreateFromExistingFn.current()} />}>
+                    <ListItemText primary="Create from Existing" />
+                  </Menu.Item>
+                </Menu.Popup>
+              </Menu.Positioner>
+            </Menu.Portal>
+          </Menu.Root>
         )}
       </Stack>
 
       <Tabs
         variant="fullWidth"
         value={activeTab}
-        onChange={(_, value) => setActiveTab(value)}
+        onChange={handleTabChange}
         sx={{ backgroundColor: "background.paper", borderBottom: 1, borderColor: "divider" }}
       >
         <Tab label="Notebooks" value="notebooks" />
-        <Tab label="Prompts" value="prompts-management" />
+        <Tab label="Prompts" value="prompts-management" data-tour-id={TOUR_IDS.promptsManagementTab} />
         <Tab label="Runs" value="prompt-experiments" />
       </Tabs>
 

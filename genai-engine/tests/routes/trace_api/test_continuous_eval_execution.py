@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 from unittest.mock import MagicMock, patch
+from utils.constants import DEFAULT_ORG_ID
 
 import pytest
 from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
@@ -50,6 +51,7 @@ def create_mock_annotation(
         run_status=run_status.value if run_status else None,
         created_at=datetime.now() if created_at is None else created_at,
         updated_at=datetime.now() if updated_at is None else updated_at,
+        org_id=DEFAULT_ORG_ID,
     )
     db_session.add(db_annotation)
     db_session.commit()
@@ -93,6 +95,7 @@ def setup_test_data():
         created_at=datetime.now(),
         updated_at=datetime.now(),
         is_agentic=True,
+        org_id=DEFAULT_ORG_ID,
     )
     db_session.add(task)
     db_session.commit()
@@ -215,6 +218,7 @@ def setup_test_data():
             start_time=span.start_time,
             end_time=span.end_time,
             task_id=span.task_id,
+            org_id=DEFAULT_ORG_ID,
             session_id=span.session_id,
             user_id=span.user_id,
             status_code="Ok",
@@ -230,6 +234,7 @@ def setup_test_data():
     # Create trace metadata
     trace_metadata = DatabaseTraceMetadata(
         task_id=task_id,
+        org_id=DEFAULT_ORG_ID,
         trace_id=trace_id,
         session_id=None,
         user_id=None,

@@ -377,12 +377,16 @@ class PromptExperimentExecutor(BaseExperimentExecutor):
                 completion_request=completion_request,
             )
 
-            # Save output to separate columns
+            # Save output to separate columns. Tool calls come back as
+            # ChatCompletionMessageToolCall Pydantic objects from the openai SDK;
+            # dump to plain dicts so SQLAlchemy's JSON column can serialize them.
             prompt_result.output_content = (
                 response.content if response.content else None
             )
             prompt_result.output_tool_calls = (
-                response.tool_calls if response.tool_calls else None
+                [tc.model_dump(mode="json") for tc in response.tool_calls]
+                if response.tool_calls
+                else None
             )
             prompt_result.output_cost = response.cost or ""
             db_session.commit()

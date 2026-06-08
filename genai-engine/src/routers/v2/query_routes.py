@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from typing import Annotated
 
@@ -7,14 +8,14 @@ from arthur_common.models.response_schemas import QueryInferencesResponse
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from dependencies import get_db_session
+from dependencies import get_db_session, get_org_scope
 from repositories.inference_repository import InferenceRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Inference, User
 from utils import constants as constants
-from utils.users import permission_checker
+from utils.users import enforce_query_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
 
 query_routes = APIRouter(
@@ -30,6 +31,7 @@ query_routes = APIRouter(
     response_model=QueryInferencesResponse,
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+@enforce_query_org_scope()
 def query_inferences(
     pagination_parameters: Annotated[
         PaginationParameters,
@@ -73,6 +75,7 @@ def query_inferences(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    org_scope: uuid.UUID | None = Depends(get_org_scope),
 ) -> QueryInferencesResponse:
     try:
         valid_stage_results = {RuleResultEnum.PASS, RuleResultEnum.FAIL}
@@ -93,13 +96,20 @@ def query_inferences(
         inference_repo = InferenceRepository(db_session)
         if inference_id:
             try:
-                results = [
-                    Inference._from_database_model(
-                        inference_repo.get_inference(inference_id=inference_id),
-                    ),
-                ]
+                # Pattern C: the repository filters by org_scope when set.
+                # For tenant callers cross-org or missing => 404; we catch and
+                # turn into an empty result set rather than surfacing the 404
+                # (matches the existing shape of this query endpoint).
+                db_inference = inference_repo.get_inference(
+                    inference_id=inference_id, org_scope=org_scope
+                )
             except HTTPException:
-                results = []
+                db_inference = None
+            results = (
+                [Inference._from_database_model(db_inference)]
+                if db_inference is not None
+                else []
+            )
             count = len(results)
         else:
             results, count = inference_repo.query_inferences(
@@ -108,6 +118,7 @@ def query_inferences(
                 task_ids=task_ids,
                 task_name=task_name,
                 conversation_id=conversation_id,
+                org_scope=org_scope,
                 page_size=pagination_parameters.page_size,
                 start_time=start_time,
                 end_time=end_time,

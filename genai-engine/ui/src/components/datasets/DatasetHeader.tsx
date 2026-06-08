@@ -13,6 +13,7 @@ import React from "react";
 import { DatasetSearchBar } from "./DatasetSearchBar";
 
 import { MAX_DATASET_ROWS } from "@/constants/datasetConstants";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
 
 interface DatasetHeaderProps {
   datasetName: string;
@@ -113,10 +114,17 @@ export const DatasetHeader: React.FC<DatasetHeaderProps> = ({
         >
           {isExporting ? "Exporting..." : "Export"}
         </Button>
-        <Button variant="outlined" size="small" startIcon={<HistoryIcon />} onClick={onOpenVersions}>
+        <Button variant="outlined" size="small" startIcon={<HistoryIcon />} onClick={onOpenVersions} data-tour-id={TOUR_IDS.datasetVersions}>
           Versions
         </Button>
-        <Button variant="outlined" size="small" startIcon={<ScienceIcon />} onClick={onViewExperiments} title="View experiments using this dataset">
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<ScienceIcon />}
+          onClick={onViewExperiments}
+          title="View experiments using this dataset"
+          data-tour-id={TOUR_IDS.datasetExperiments}
+        >
           Experiments
         </Button>
       </Box>
@@ -133,32 +141,41 @@ export const DatasetHeader: React.FC<DatasetHeaderProps> = ({
         <Box sx={{ flexGrow: 1 }}>
           <DatasetSearchBar value={searchValue} onChange={onSearchChange} onClear={onSearchClear} />
         </Box>
-        <Button variant="outlined" size="small" startIcon={<ViewColumnIcon />} onClick={onConfigureColumns}>
-          Configure Columns
-        </Button>
-        <Button variant="outlined" size="small" startIcon={<UploadIcon />} onClick={onImport} title="Import data from CSV">
-          Import
-        </Button>
         <Button
           variant="outlined"
           size="small"
-          startIcon={<AutoAwesomeIcon />}
-          onClick={onGenerateSynthetic}
-          disabled={rowCount === 0}
-          title={rowCount === 0 ? "Add at least one row first to generate synthetic data" : "Generate synthetic data using AI"}
+          startIcon={<ViewColumnIcon />}
+          onClick={onConfigureColumns}
+          data-tour-id={TOUR_IDS.datasetConfigureColumns}
         >
-          Generate
+          Configure Columns
         </Button>
-        <Button
-          variant="contained"
-          size="small"
-          startIcon={<AddIcon />}
-          onClick={onAddRow}
-          disabled={!canAddRow || isAtRowLimit}
-          title={getAddRowTooltip()}
-        >
-          Add Row
-        </Button>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }} data-tour-id={TOUR_IDS.datasetDataActions}>
+          <Button variant="outlined" size="small" startIcon={<UploadIcon />} onClick={onImport} title="Import data from CSV">
+            Import
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<AutoAwesomeIcon />}
+            onClick={onGenerateSynthetic}
+            disabled={rowCount === 0}
+            data-tour-id={TOUR_IDS.datasetGenerateSynthetic}
+            title={rowCount === 0 ? "Add at least one row first to generate synthetic data" : "Generate synthetic data using AI"}
+          >
+            Generate
+          </Button>
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<AddIcon />}
+            onClick={onAddRow}
+            disabled={!canAddRow || isAtRowLimit}
+            title={getAddRowTooltip()}
+          >
+            Add Row
+          </Button>
+        </Box>
       </Box>
     </Box>
   );

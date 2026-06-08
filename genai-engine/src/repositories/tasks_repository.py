@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timedelta
 from typing import Optional
+from uuid import UUID
 
 from arthur_common.models.agent_governance_schemas import (
     AgentCreationSource,
@@ -42,6 +43,7 @@ from schemas.internal_schemas import (
     Task,
 )
 from utils import constants
+from utils.constants import DEFAULT_ORG_ID
 from utils.trace import get_nested_value
 
 tracer = trace.get_tracer(__name__)
@@ -76,10 +78,15 @@ class TaskRepository:
         include_archived: bool = False,
         only_archived: bool = False,
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
-        page_size: int = 10,
+        page_size: Optional[int] = 10,
         page: int = 0,
+        org_scope: Optional[UUID] = None,
     ) -> tuple[list[DatabaseTask], int]:
         stmt = self.db_session.query(DatabaseTask)
+        # Tenant callers see only their own org's tasks. Admin (org_scope=None)
+        # passes through and sees everything.
+        if org_scope is not None:
+            stmt = stmt.where(DatabaseTask.org_id == org_scope)
         if ids:
             stmt = stmt.where(DatabaseTask.id.in_(ids))
         if task_name:
@@ -98,14 +105,19 @@ class TaskRepository:
         # Calculate the count prior to applying the offset
         count = stmt.count()
 
-        if page is not None:
-            stmt = stmt.offset(page * page_size)
-        results = stmt.limit(page_size).all()
+        # page_size=None fetches all matching tasks (no offset/limit applied)
+        if page_size is not None:
+            if page is not None:
+                stmt = stmt.offset(page * page_size)
+            stmt = stmt.limit(page_size)
+        results = stmt.all()
 
         return results, count
 
     def get_db_task_by_id(
-        self, id: str, include_archived: bool = False
+        self,
+        id: str,
+        include_archived: bool = False,
     ) -> DatabaseTask:
         db_task = (
             self.db_session.query(DatabaseTask).filter(DatabaseTask.id == id).first()
@@ -232,18 +244,18 @@ class TaskRepository:
             cs = task.task_metadata.creation_source.root
             if isinstance(cs, GCPAgentCreationSource):
                 return AgentCreationSource(
-                    root=cs.model_copy(update={"service_names": service_names})
+                    root=cs.model_copy(update={"service_names": service_names}),
                 )
             elif isinstance(cs, OTELAgentCreationSource):
                 return AgentCreationSource(
-                    root=cs.model_copy(update={"service_names": service_names})
+                    root=cs.model_copy(update={"service_names": service_names}),
                 )
             return AgentCreationSource(root=cs)
 
         # No task_metadata — infer from task properties
         if task.is_autocreated:
             return AgentCreationSource(
-                root=OTELAgentCreationSource(service_names=service_names)
+                root=OTELAgentCreationSource(service_names=service_names),
             )
         elif task.is_agentic:
             return AgentCreationSource(root=ManualAgentCreationSource())
@@ -271,7 +283,7 @@ class TaskRepository:
 
         return tasks
 
-    def get_all_tasks(self) -> list[Task]:
+    def get_all_tasks(self, org_scope: Optional[UUID] = None) -> list[Task]:
         # Continuously grab tasks until there are no more, DEFAULT_PAGE_SIZE at a time
         all_tasks: list[DatabaseTask] = []
         page = 0
@@ -279,6 +291,7 @@ class TaskRepository:
             db_tasks, _ = self.query_tasks(
                 page=page,
                 page_size=constants.DEFAULT_PAGE_SIZE,
+                org_scope=org_scope,
             )
             if not db_tasks:
                 break
@@ -323,7 +336,8 @@ class TaskRepository:
             raise HTTPException(status_code=404, detail="Task %s not found." % task_id)
         if not db_task.archived:
             raise HTTPException(
-                status_code=400, detail="Task %s is not archived." % task_id
+                status_code=400,
+                detail="Task %s is not archived." % task_id,
             )
         if db_task.is_system_task:
             raise HTTPException(status_code=400, detail="Cannot unarchive system tasks")
@@ -338,7 +352,12 @@ class TaskRepository:
         db_task.archived = False
         self.db_session.commit()
 
-    def create_task(self, task: Task, with_default_rules: bool = True) -> Task:
+    def create_task(
+        self,
+        task: Task,
+        with_default_rules: bool = True,
+        commit: bool = True,
+    ) -> Task:
         db_task = task._to_database_model()
 
         if with_default_rules:
@@ -350,7 +369,10 @@ class TaskRepository:
                 for r in db_default_rules
             ]
         self.db_session.add(db_task)
-        self.db_session.commit()
+        if commit:
+            self.db_session.commit()
+        else:
+            self.db_session.flush()
 
         result = Task._from_database_model(db_task)
         return result
@@ -364,6 +386,7 @@ class TaskRepository:
         - Are agentic (is_agentic=True)
         - Do NOT get default rules (with_default_rules=False)
         - Have no task_metadata (not a registered agent)
+        - Are owned by the `default` org (OTEL auto-discovery is an admin path)
 
         Args:
             service_name: The service name to create a task for
@@ -380,6 +403,7 @@ class TaskRepository:
             updated_at=datetime.now(),
             is_agentic=True,
             is_autocreated=True,
+            org_id=DEFAULT_ORG_ID,
         )
 
         return self.create_task(task, with_default_rules=False)

@@ -12,6 +12,7 @@ import { NewAgentExperiment } from "./components/agent-experiments/new";
 import { AgentNotebookDetail } from "./components/agent-notebook/[notebookId]";
 import { AllTasks } from "./components/AllTasks";
 import { ApiKeysManagement } from "./components/ApiKeysManagement";
+import { ChatbotPage } from "./components/chatbot/ChatbotPage";
 import { EngineConfigGate } from "./components/common/engine-config-gate";
 import { DatasetDetailView } from "./components/datasets/DatasetDetailView";
 import { DatasetExperimentsView } from "./components/datasets/DatasetExperimentsView";
@@ -69,7 +70,7 @@ function AppRoutes() {
       <Route
         path="/settings/model-providers"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute adminOnly>
             <SettingsPage>
               <ModelProviders />
             </SettingsPage>
@@ -79,7 +80,7 @@ function AppRoutes() {
       <Route
         path="/settings/api-keys"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute adminOnly>
             <SettingsPage>
               <ApiKeysManagement />
             </SettingsPage>
@@ -106,6 +107,7 @@ function AppRoutes() {
         <Route path="rag-configurations/:configId/versions/:version" element={<RagConfigurationsPage />} />
 
         <Route path="test" element={<TestView />} />
+        <Route path="chatbot" element={<ChatbotPage />} />
 
         {/* Legacy redirects: old agent routes → /test */}
         <Route path="agent-experiments" element={<Navigate to="../test?section=agent-experiments" replace />} />

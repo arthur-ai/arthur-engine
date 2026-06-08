@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
@@ -12,6 +12,7 @@ from db_models.agentic_experiment_models import DatabaseAgenticExperiment
 from db_models.agentic_notebook_models import DatabaseAgenticNotebook
 from db_models.dataset_models import DatabaseDataset, DatabaseDatasetVersion
 from db_models.llm_eval_models import DatabaseLLMEval
+from db_models.task_models import DatabaseTask
 from db_models.transform_models import DatabaseTraceTransform
 from repositories.agentic_experiment_repository import AgenticExperimentRepository
 from schemas.agentic_experiment_schemas import AgenticExperimentListResponse
@@ -34,13 +35,18 @@ class AgenticNotebookRepository:
         self.db_session = db_session
         self.experiment_repo = AgenticExperimentRepository(db_session)
 
-    def _get_db_notebook(self, notebook_id: str) -> DatabaseAgenticNotebook:
+    def _get_db_notebook(
+        self, notebook_id: str, org_scope: UUID | None = None
+    ) -> DatabaseAgenticNotebook:
         """Get database agentic notebook by ID or raise 404"""
-        db_notebook = (
-            self.db_session.query(DatabaseAgenticNotebook)
-            .filter(DatabaseAgenticNotebook.id == notebook_id)
-            .first()
+        q = self.db_session.query(DatabaseAgenticNotebook).filter(
+            DatabaseAgenticNotebook.id == notebook_id,
         )
+        if org_scope is not None:
+            q = q.join(
+                DatabaseTask, DatabaseTask.id == DatabaseAgenticNotebook.task_id
+            ).filter(DatabaseTask.org_id == org_scope)
+        db_notebook = q.first()
         if not db_notebook:
             raise HTTPException(
                 status_code=404,
@@ -61,11 +67,16 @@ class AgenticNotebookRepository:
         if state is None:
             return
 
-        # Validate dataset exists if provided
+        # Validate dataset exists within the caller's task scope.
+        # Filtering on task_id prevents a tenant from pinning a notebook to a
+        # cross-org dataset by guessing its UUID.
         if state.dataset_ref is not None:
             dataset = (
                 self.db_session.query(DatabaseDataset)
-                .filter(DatabaseDataset.id == state.dataset_ref.id)
+                .filter(
+                    DatabaseDataset.id == state.dataset_ref.id,
+                    DatabaseDataset.task_id == task_id,
+                )
                 .first()
             )
             if not dataset:
@@ -154,9 +165,11 @@ class AgenticNotebookRepository:
         )
         return notebook_with_experiments._to_detail_response()
 
-    def get_notebook(self, notebook_id: str) -> AgenticNotebookDetail:
+    def get_notebook(
+        self, notebook_id: str, org_scope: UUID | None = None
+    ) -> AgenticNotebookDetail:
         """Get agentic notebook by ID"""
-        db_notebook = self._get_db_notebook(notebook_id)
+        db_notebook = self._get_db_notebook(notebook_id, org_scope=org_scope)
 
         # Get experiments and convert to summaries
         experiments = [
@@ -251,9 +264,10 @@ class AgenticNotebookRepository:
         self,
         notebook_id: str,
         request: UpdateAgenticNotebookRequest,
+        org_scope: UUID | None = None,
     ) -> AgenticNotebookDetail:
         """Update agentic notebook name or description"""
-        db_notebook = self._get_db_notebook(notebook_id)
+        db_notebook = self._get_db_notebook(notebook_id, org_scope=org_scope)
 
         if request.name is not None:
             db_notebook.name = request.name
@@ -285,9 +299,10 @@ class AgenticNotebookRepository:
         self,
         notebook_id: str,
         request: SetAgenticNotebookStateRequest,
+        org_scope: UUID | None = None,
     ) -> AgenticNotebookDetail:
         """Set the agentic notebook state"""
-        db_notebook = self._get_db_notebook(notebook_id)
+        db_notebook = self._get_db_notebook(notebook_id, org_scope=org_scope)
 
         # Validate state resources exist
         self._validate_notebook_state(db_notebook.task_id, request.state)
@@ -338,7 +353,7 @@ class AgenticNotebookRepository:
         logger.info(f"Set state for agentic notebook {notebook_id}")
 
         # Re-fetch with joinedload for updated dataset relationship
-        db_notebook = self._get_db_notebook(notebook_id)
+        db_notebook = self._get_db_notebook(notebook_id, org_scope=org_scope)
         experiments = [
             self.experiment_repo._db_experiment_to_summary(exp)
             for exp in db_notebook.experiments
@@ -351,18 +366,20 @@ class AgenticNotebookRepository:
         )
         return notebook._to_detail_response()
 
-    def get_notebook_state(self, notebook_id: str) -> AgenticNotebookStateResponse:
+    def get_notebook_state(
+        self, notebook_id: str, org_scope: UUID | None = None
+    ) -> AgenticNotebookStateResponse:
         """Get the current state of an agentic notebook"""
-        db_notebook = self._get_db_notebook(notebook_id)
+        db_notebook = self._get_db_notebook(notebook_id, org_scope=org_scope)
 
         # Convert to internal model and return state response
         dataset_name = db_notebook.dataset.name if db_notebook.dataset else None
         notebook = AgenticNotebook._from_database_model(db_notebook, [], dataset_name)
         return notebook._to_state_response()
 
-    def delete_notebook(self, notebook_id: str) -> None:
+    def delete_notebook(self, notebook_id: str, org_scope: UUID | None = None) -> None:
         """Delete an agentic notebook (experiments are kept with notebook_id=NULL)"""
-        db_notebook = self._get_db_notebook(notebook_id)
+        db_notebook = self._get_db_notebook(notebook_id, org_scope=org_scope)
 
         self.db_session.delete(db_notebook)
         self.db_session.commit()
@@ -373,9 +390,10 @@ class AgenticNotebookRepository:
         self,
         notebook_id: str,
         pagination_params: PaginationParameters,
+        org_scope: UUID | None = None,
     ) -> AgenticExperimentListResponse:
         """Get paginated history of experiments run from this agentic notebook"""
-        db_notebook = self._get_db_notebook(notebook_id)
+        db_notebook = self._get_db_notebook(notebook_id, org_scope=org_scope)
 
         # Base query for experiments linked to this notebook
         query = self.db_session.query(DatabaseAgenticExperiment).filter(

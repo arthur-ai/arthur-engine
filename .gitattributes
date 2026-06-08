@@ -1,0 +1,10 @@
+# Lock files — auto-generated, always regenerate on conflict rather than merging
+# -merge is a git built-in: takes HEAD (ours) on conflict, no driver config needed
+genai-engine/uv.lock                       -merge
+genai-engine/ui/yarn.lock                  -merge
+ml-engine/uv.lock                          -merge
+arthur-observability-sdk/python/uv.lock    -merge
+deployment/model-upload/uv.lock            -merge
+
+# Append-only changelog — union preserves entries from both sides
+genai-engine/src/api_changelog.md          merge=union

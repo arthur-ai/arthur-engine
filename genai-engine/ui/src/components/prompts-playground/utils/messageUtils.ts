@@ -67,5 +67,14 @@ export const hasTemplateVariables = (messages: MessageType[]): boolean => {
     }
   }
 
+  // Also check tool_calls — templates can live in a tool call's arguments.
+  for (const message of messages) {
+    for (const toolCall of message.tool_calls ?? []) {
+      if (hasTemplatePatterns(toolCall.function.arguments)) {
+        return true;
+      }
+    }
+  }
+
   return false;
 };

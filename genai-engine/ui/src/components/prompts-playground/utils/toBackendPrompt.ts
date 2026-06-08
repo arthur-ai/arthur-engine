@@ -11,8 +11,17 @@ const toBackendPrompt = (prompt: PromptType): CreateAgenticPromptRequest => ({
   messages: prompt.messages.map((msg) => ({
     role: msg.role,
     content: msg.content,
-    tool_call_id: null,
-    tool_calls: null,
+    tool_call_id: msg.tool_call_id ?? null,
+    tool_calls: msg.tool_calls
+      ? msg.tool_calls.map((tc) => ({
+          id: tc.id,
+          type: tc.type ?? "function",
+          function: {
+            name: tc.function.name,
+            arguments: tc.function.arguments || "",
+          },
+        }))
+      : null,
   })),
   tools: prompt.tools.map((tool) => ({
     function: {

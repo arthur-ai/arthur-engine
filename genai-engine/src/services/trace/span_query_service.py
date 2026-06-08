@@ -11,6 +11,7 @@ from typing import (
     Tuple,
 )
 from typing import cast as typing_cast
+from uuid import UUID
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
@@ -1241,14 +1242,23 @@ class SpanQueryService:
         self,
         session_id: str,
         pagination_parameters: PaginationParameters,
+        org_scope: UUID | None = None,
     ) -> tuple[int, list[str]]:
-        """Get paginated trace IDs for a specific session."""
-        # Build query for traces in this session
-        query = select(DatabaseTraceMetadata.trace_id).where(
-            DatabaseTraceMetadata.session_id == session_id,
-        )
+        """Get paginated trace IDs for a specific session, optionally scoped to an org.
 
-        # Apply pagination with bite-sized functions
+        When `org_scope` is provided, the filter runs at the SQL layer before
+        LIMIT/OFFSET so the count and the page slice both reflect the org-owned
+        subset. Post-filtering in the caller breaks pagination (count becomes
+        page-size-after-filter, later pages can 404 spuriously).
+        """
+        where_clause = DatabaseTraceMetadata.session_id == session_id
+        if org_scope is not None:
+            where_clause = and_(
+                where_clause,
+                DatabaseTraceMetadata.org_id == org_scope,
+            )
+
+        query = select(DatabaseTraceMetadata.trace_id).where(where_clause)
         query = self._apply_sorting(
             query,
             pagination_parameters,
@@ -1256,13 +1266,11 @@ class SpanQueryService:
         )
         total_count = self._get_count_with_where(
             DatabaseTraceMetadata.trace_id,
-            DatabaseTraceMetadata.session_id == session_id,
+            where_clause,
         )
         query = self._apply_pagination(query, pagination_parameters)
         results = self.db_session.execute(query).scalars().all()
-        trace_ids = [trace_id for trace_id in results]
-
-        return total_count, trace_ids
+        return total_count, [trace_id for trace_id in results]
 
     def get_users_aggregated(
         self,

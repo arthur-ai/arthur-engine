@@ -45,13 +45,14 @@ from routers.api_key_routes import api_keys_routes
 from routers.auth_routes import auth_routes
 from routers.chat_routes import app_chat_routes
 from routers.health_routes import health_router
-from routers.user_routes import user_management_routes
+from routers.user_routes import user_identity_routes, user_management_routes
 from routers.v1.agent_polling_routes import agent_polling_routes
 from routers.v1.agentic_experiment_routes import agentic_experiment_routes
 from routers.v1.agentic_notebook_routes import agentic_notebook_routes
 from routers.v1.agentic_prompt_routes import agentic_prompt_routes
 from routers.v1.chatbot_routes import chatbot_routes
 from routers.v1.continuous_eval_routes import continuous_eval_routes
+from routers.v1.demo_task_routes import demo_task_routes
 from routers.v1.legacy_span_routes import span_routes
 from routers.v1.llm_eval_routes import llm_eval_routes
 from routers.v1.model_provider_routes import model_provider_routes
@@ -64,6 +65,7 @@ from routers.v1.rag_setting_routes import rag_setting_routes
 from routers.v1.secrets_routes import secrets_routes
 from routers.v1.trace_api_routes import trace_api_routes
 from routers.v1.transform_routes import transform_routes
+from routers.v2.demo_certificate_routes import demo_certificate_routes
 from routers.v2.routers import (
     dataset_management_routes,
     engine_config_routes,
@@ -74,6 +76,7 @@ from routers.v2.routers import (
     task_management_routes,
     validate_routes,
 )
+from routers.v2.tenant_signup_routes import tenant_signup_routes
 from services.continuous_eval import (
     initialize_continuous_eval_queue_service,
     shutdown_continuous_eval_queue_service,
@@ -499,11 +502,14 @@ def get_app_with_routes() -> FastAPI:
             transform_routes,
             continuous_eval_routes,
             agent_polling_routes,
+            demo_task_routes,
+            demo_certificate_routes,
+            tenant_signup_routes,
         ],
     )
     if extra_feature_config.CHATBOT_ENABLED:
         add_routers(app, [chatbot_routes])
-    add_routers(app, [auth_routes, user_management_routes])
+    add_routers(app, [auth_routes, user_management_routes, user_identity_routes])
     add_routers(app, [app_chat_routes])
     return app
 
@@ -551,9 +557,12 @@ def get_test_app() -> FastAPI:
             continuous_eval_routes,
             agent_polling_routes,
             chatbot_routes,
+            demo_task_routes,
+            demo_certificate_routes,
+            tenant_signup_routes,
         ],
     )
-    add_routers(app, [auth_routes, user_management_routes])
+    add_routers(app, [auth_routes, user_management_routes, user_identity_routes])
     add_routers(app, [app_chat_routes])
 
     if is_api_only_mode_enabled():
@@ -614,8 +623,13 @@ def get_app() -> FastAPI:
     )
     if extra_feature_config.CHATBOT_ENABLED:
         add_routers(app, [chatbot_routes])
+    if Config.demo_mode():
+        add_routers(app, [demo_task_routes, demo_certificate_routes])
     if extra_feature_config.CHAT_ENABLED:
         add_routers(app, [app_chat_routes])
+    if extra_feature_config.DEMO_MODE:
+        add_routers(app, [tenant_signup_routes])
+    add_routers(app, [user_identity_routes])
     if not is_api_only_mode_enabled():
         add_routers(app, [auth_routes, user_management_routes])
 
