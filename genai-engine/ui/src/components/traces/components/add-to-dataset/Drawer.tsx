@@ -33,6 +33,8 @@ import { PreviewTable } from "./PreviewTable";
 import { SaveTransformDialog } from "./SaveTransformDialog";
 
 import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
+import { TOUR_IDS, tourDataAttr } from "@/features/task-tour/selectors";
+import { dispatchTourEvent, refreshTaskTourTarget, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEvents";
 import { useCreateDatasetMutation } from "@/hooks/datasets/useCreateDatasetMutation";
 import { useTransforms } from "@/hooks/transforms/useTransforms";
 import { useApi } from "@/hooks/useApi";
@@ -108,6 +110,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
     },
     onSuccess: (_data, variables) => {
       enqueueSnackbar("Row added", { variant: "success" });
+      dispatchTourEvent(TASK_TOUR_EVENTS.traceAddedToDataset);
       // Clear pending columns for this dataset
       setPendingColumns((prev) => {
         const updated = { ...prev };
@@ -142,27 +145,33 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
     }
   }, [traceQuery.error, datasetsQuery.error, enqueueSnackbar]);
 
+  useEffect(() => {
+    if (!open) return;
+    const frame = window.requestAnimationFrame(() => refreshTaskTourTarget());
+    return () => window.cancelAnimationFrame(frame);
+  }, [open]);
+
   const selectedDataset = datasetsQuery.datasets.find((dataset) => datasetId === dataset.id);
   const flatSpans = useMemo(() => flattenSpans(traceQuery.data?.root_spans ?? []), [traceQuery.data]);
 
   const { latestVersion } = useDatasetLatestVersion(selectedDataset?.id);
   const transformsQuery = useTransforms();
 
-  // Get the selected transform ID from form state
   const selectedTransformId = useStore(form.store, (state) => state.values.transform);
-
-  // Get columns from the selected transform's latest version
   const selectedTransform = transformsQuery.data?.transforms?.find((t) => t.id === selectedTransformId);
   const { data: selectedTransformVersions = [] } = useTransformVersions(selectedTransform?.id);
   const selectedTransformDefinition = selectedTransformVersions[0]?.definition;
-  const transformColumns = selectedTransformDefinition?.variables.map((varDef) => varDef.variable_name) || [];
 
-  // Merge dataset columns with transform columns to get union of all columns
-  const datasetOnlyColumns = selectedDataset?.id ? pendingColumns[selectedDataset.id] || latestVersion?.column_names || [] : [];
+  // Dataset columns are the canonical schema. Pending columns (from
+  // AddColumnDialog) extend the schema once set. Transform variables that
+  // don't match a dataset column are intentionally NOT included here: per
+  // product spec, the schema reflects the dataset, and the transform only
+  // fills values into matching dataset columns.
+  const datasetColumns = selectedDataset?.id ? pendingColumns[selectedDataset.id] || latestVersion?.column_names || [] : [];
 
-  // Create union of dataset columns and transform columns
-  const allColumnNames = new Set([...datasetOnlyColumns, ...transformColumns]);
-  const datasetColumns = Array.from(allColumnNames);
+  const datasetColumnsSet = new Set(datasetColumns);
+  const ignoredTransformVariables =
+    selectedTransformDefinition?.variables.filter((v) => !datasetColumnsSet.has(v.variable_name)).map((v) => v.variable_name) ?? [];
 
   const createDatasetMutation = useCreateDatasetMutation(task?.id, (newDataset) => {
     datasetsQuery.refetch();
@@ -291,7 +300,20 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
 
   return (
     <>
-      <Drawer open={open} onClose={handleClose} slotProps={{ paper: { sx: { width: "80%" } } }} anchor="right">
+      <Drawer
+        open={open}
+        onClose={handleClose}
+        slotProps={{
+          paper: {
+            ...tourDataAttr(TOUR_IDS.traceAddToDatasetDrawer),
+            sx: { width: "80%" },
+          },
+          transition: {
+            onEntered: () => refreshTaskTourTarget(),
+          },
+        }}
+        anchor="right"
+      >
         <form
           className="contents"
           onSubmit={(e) => {
@@ -342,7 +364,10 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
                           setShowCreateDatasetDialog(true);
                         } else {
                           field.handleChange(value?.id ?? "");
-                          // Reset transform when dataset changes
+                          // Reset transform when dataset changes. Empty string is the
+                          // "no transform" sentinel recognized by hasSelectedTransform();
+                          // we use it here (rather than MANUAL_TRANSFORM_ID) so the
+                          // Autocomplete renders as cleared on the next render.
                           form.setFieldValue("transform", "");
                           form.setFieldValue("columns", []);
                         }
@@ -370,6 +395,7 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
                 }}
                 traceId={traceId}
                 flatSpans={flatSpans}
+                datasetSchemaColumns={datasetColumns}
               />
             </Stack>
 
@@ -384,7 +410,14 @@ export const AddToDatasetDrawer = ({ traceId, open: openProp, defaultOpen = fals
             {selectedDataset && (
               <>
                 {datasetColumns.length > 0 && (
-                  <Configurator form={form} dataset={selectedDataset} spans={flatSpans} onAddColumn={() => setShowAddColumnDialog(true)} />
+                  <Configurator
+                    form={form}
+                    dataset={selectedDataset}
+                    datasetSchemaColumns={datasetColumns}
+                    spans={flatSpans}
+                    onAddColumn={() => setShowAddColumnDialog(true)}
+                    ignoredTransformVariables={ignoredTransformVariables}
+                  />
                 )}
 
                 {datasetColumns.length === 0 && (

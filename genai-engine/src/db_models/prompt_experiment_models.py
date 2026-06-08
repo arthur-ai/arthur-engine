@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from litellm import ChatCompletionMessageToolCall
 from sqlalchemy import (
     TIMESTAMP,
     ForeignKey,
@@ -142,8 +141,12 @@ class DatabasePromptExperimentTestCasePromptResult(Base):
 
     # Output from the prompt (broken into separate columns)
     output_content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    output_tool_calls: Mapped[Optional[List[ChatCompletionMessageToolCall]]] = (
-        mapped_column(JSON, nullable=True)
+    # Stored as a list of dicts (ChatCompletionMessageToolCall.model_dump(mode="json"))
+    # so SQLAlchemy's JSON column can serialize them; callers reconstruct typed
+    # objects via PromptOutput(tool_calls=...).
+    output_tool_calls: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(
+        JSON,
+        nullable=True,
     )
     output_cost: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 

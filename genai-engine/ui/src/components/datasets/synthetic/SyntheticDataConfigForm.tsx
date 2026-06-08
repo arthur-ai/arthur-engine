@@ -19,6 +19,13 @@ import React, { useCallback, useState } from "react";
 
 import type { GenerationConfig } from "./types";
 
+import {
+  getTaskTourFormPrefillValue,
+  shouldApplyTaskTourFormPrefill,
+  useTaskTourFormPrefill,
+  type TaskTourFormPrefill,
+} from "@/features/task-tour/formPrefill";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import type { DatasetVersionRowResponse, ModelProvider } from "@/lib/api-client/api-client";
 
@@ -33,6 +40,10 @@ interface SyntheticDataConfigFormProps {
 interface ColumnDescription {
   columnName: string;
   description: string;
+}
+
+function isPrefillValuesMap(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = ({
@@ -94,6 +105,37 @@ export const SyntheticDataConfigForm: React.FC<SyntheticDataConfigFormProps> = (
   const handleColumnDescriptionChange = useCallback((columnName: string, description: string) => {
     setColumnDescriptions((prev) => prev.map((col) => (col.columnName === columnName ? { ...col, description } : col)));
   }, []);
+
+  const handleTourPrefill = useCallback((prefill: TaskTourFormPrefill) => {
+    const nextDatasetPurpose = getTaskTourFormPrefillValue(prefill, "datasetPurpose");
+    const nextColumnDescriptions = getTaskTourFormPrefillValue(prefill, "columnDescriptions");
+    const nextModelName = getTaskTourFormPrefillValue(prefill, "modelName");
+
+    if (typeof nextDatasetPurpose === "string") {
+      setDatasetPurpose((current) => (shouldApplyTaskTourFormPrefill(prefill, Boolean(current.trim())) ? nextDatasetPurpose : current));
+    }
+
+    if (isPrefillValuesMap(nextColumnDescriptions)) {
+      setColumnDescriptions((current) =>
+        current.map((column) => {
+          const nextDescription = nextColumnDescriptions[column.columnName];
+          if (typeof nextDescription !== "string") return column;
+          if (!shouldApplyTaskTourFormPrefill(prefill, Boolean(column.description.trim()))) return column;
+          return { ...column, description: nextDescription };
+        })
+      );
+    }
+
+    // The chosen model only resolves once the provider's available-models list
+    // loads (see `activeModelName`); storing the raw selection now lets the
+    // derivation pick it up. Skipped entirely when the stored prompt already
+    // pins a real model — the selection UI is hidden in that case.
+    if (typeof nextModelName === "string") {
+      setSelectedModelName((current) => (shouldApplyTaskTourFormPrefill(prefill, Boolean(current)) ? nextModelName : current));
+    }
+  }, []);
+
+  useTaskTourFormPrefill(TOUR_IDS.datasetGenerateSyntheticModal, handleTourPrefill);
 
   // Effective values used for submission: stored prompt values when non-placeholder,
   // otherwise the in-form user selection (falling back to auto-select for provider).

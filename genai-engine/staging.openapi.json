@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.579"
+        "version": "2.1.613"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -2325,7 +2325,7 @@
                     "API Keys"
                 ],
                 "summary": "Create Api Key",
-                "description": "Generates a new API key. Up to 1000 active keys can exist at the same time by default. Contact your system administrator if you need more. Allowed roles are: DEFAULT-RULE-ADMIN, TASK-ADMIN, VALIDATION-USER, ORG-AUDITOR, ORG-ADMIN, TENANT-USER.",
+                "description": "Generates a new API key. Up to 1000 active keys can exist at the same time by default. Contact your system administrator if you need more. Allowed roles are: DEFAULT-RULE-ADMIN, TASK-ADMIN, VALIDATION-USER, ORG-AUDITOR, ORG-ADMIN.",
                 "operationId": "create_api_key_auth_api_keys__post",
                 "requestBody": {
                     "content": {
@@ -5012,6 +5012,100 @@
                         }
                     }
                 }
+            }
+        },
+        "/api/v1/traces/overview": {
+            "post": {
+                "tags": [
+                    "Traces"
+                ],
+                "summary": "Get Overview of Traces for each Task",
+                "description": "Get overview of traces for each task including trace count, total tokens, and success rate.",
+                "operationId": "get_traces_overview_api_v1_traces_overview_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TraceOverviewRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TraceOverviewListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/traces/overview/timeseries": {
+            "post": {
+                "tags": [
+                    "Traces"
+                ],
+                "summary": "Get Time-Series Overview Data for a Task",
+                "description": "Get time-bucketed trace metrics (count, tokens, cost, success rate) for a single task.",
+                "operationId": "get_traces_timeseries_api_v1_traces_overview_timeseries_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TraceTimeSeriesRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TraceTimeSeriesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
             }
         },
         "/api/v1/traces/spans": {
@@ -16413,6 +16507,187 @@
                 }
             }
         },
+        "/api/v1/tasks/{task_id}/demos/chatbot/stream": {
+            "post": {
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Stream Demo Chatbot",
+                "description": "Stream a demo chatbot response.",
+                "operationId": "stream_demo_chatbot_api_v1_tasks__task_id__demos_chatbot_stream_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChatbotRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/demo/certificate": {
+            "post": {
+                "tags": [
+                    "Demo"
+                ],
+                "summary": "Upload Certificate",
+                "description": "Upload a demo completion certificate PNG to persistent storage.",
+                "operationId": "upload_certificate_api_v2_demo_certificate_post",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Body_upload_certificate_api_v2_demo_certificate_post"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CertificateUploadResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/demo/certificate/{cert_id}": {
+            "get": {
+                "tags": [
+                    "Demo"
+                ],
+                "summary": "Get Certificate",
+                "description": "Retrieve a previously stored demo completion certificate PNG.",
+                "operationId": "get_certificate_api_v2_demo_certificate__cert_id__get",
+                "parameters": [
+                    {
+                        "name": "cert_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Cert Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/tenant/signup": {
+            "post": {
+                "tags": [
+                    "Tenant Signup"
+                ],
+                "summary": "Create Tenant Signup",
+                "description": "Public tenant signup. Accepts try-it-out onboarding form data, persists an onboarding submission, and creates a new organization, a default demo task scoped to that org, and a TENANT-USER API key with `org_scope` set to the new org. Returns the four identifiers; the raw `api_key` value appears only in this response (the DB stores only its hash). Gated by GENAI_ENGINE_DEMO_MODE \u2014 returns 404 when disabled.",
+                "operationId": "create_tenant_signup_api_v2_tenant_signup_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TenantSignupRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DemoTaskSignupResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tasks/{task_id}/chatbot/stream": {
             "post": {
                 "tags": [
@@ -16540,51 +16815,6 @@
                         "API Key": []
                     }
                 ]
-            }
-        },
-        "/api/v1/chatbot/history/{conversation_id}": {
-            "delete": {
-                "tags": [
-                    "Chatbot"
-                ],
-                "summary": "Clear chatbot conversation history",
-                "operationId": "clear_chatbot_history_api_v1_chatbot_history__conversation_id__delete",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "conversation_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "Conversation Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {}
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
             }
         },
         "/users": {
@@ -16880,6 +17110,33 @@
                         }
                     }
                 }
+            }
+        },
+        "/users/me": {
+            "get": {
+                "tags": [
+                    "User Management"
+                ],
+                "summary": "Get Me",
+                "description": "Returns the current caller's identity, roles, org_scope, and (when scoped) the organization record. Used by the UI on login to decide between admin and tenant render branches. Admin callers and JWT callers receive org_scope=null and org=null.",
+                "operationId": "get_me_users_me_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MeResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
             }
         },
         "/api/chat/files": {
@@ -19355,6 +19612,20 @@
                 ],
                 "title": "Body_add_tag_to_llm_eval_version_api_v1_tasks__task_id__llm_evals__eval_name__versions__eval_version__tags_put"
             },
+            "Body_upload_certificate_api_v2_demo_certificate_post": {
+                "properties": {
+                    "file": {
+                        "type": "string",
+                        "format": "binary",
+                        "title": "File"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "file"
+                ],
+                "title": "Body_upload_certificate_api_v2_demo_certificate_post"
+            },
             "Body_upload_embeddings_file_api_chat_files_post": {
                 "properties": {
                     "file": {
@@ -19453,6 +19724,24 @@
                     "results"
                 ],
                 "title": "BuiltinValidationResponse"
+            },
+            "CertificateUploadResponse": {
+                "properties": {
+                    "certificate_id": {
+                        "type": "string",
+                        "title": "Certificate Id"
+                    },
+                    "certificate_url": {
+                        "type": "string",
+                        "title": "Certificate Url"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "certificate_id",
+                    "certificate_url"
+                ],
+                "title": "CertificateUploadResponse"
             },
             "ChatCompletionMessageToolCall": {
                 "properties": {},
@@ -19685,19 +19974,28 @@
             },
             "ChatbotRequest": {
                 "properties": {
-                    "message": {
-                        "type": "string",
-                        "title": "Message"
+                    "history": {
+                        "items": {
+                            "$ref": "#/components/schemas/OpenAIMessage-Input"
+                        },
+                        "type": "array",
+                        "title": "History"
                     },
-                    "conversation_id": {
-                        "type": "string",
-                        "title": "Conversation Id"
+                    "session_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Session Id"
                     }
                 },
                 "type": "object",
                 "required": [
-                    "message",
-                    "conversation_id"
+                    "history"
                 ],
                 "title": "ChatbotRequest"
             },
@@ -21133,6 +21431,35 @@
                     "created_at"
                 ],
                 "title": "DatasetVersionRowResponse"
+            },
+            "DemoTaskSignupResponse": {
+                "properties": {
+                    "org_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Org Id"
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id"
+                    },
+                    "task_name": {
+                        "type": "string",
+                        "title": "Task Name"
+                    },
+                    "api_key": {
+                        "type": "string",
+                        "title": "Api Key"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "org_id",
+                    "task_id",
+                    "task_name",
+                    "api_key"
+                ],
+                "title": "DemoTaskSignupResponse"
             },
             "DiscoverAndPollResponse": {
                 "properties": {
@@ -24415,6 +24742,49 @@
                 "title": "ManualAgentCreationSource",
                 "description": "Creation source for manually created tasks."
             },
+            "MeResponse": {
+                "properties": {
+                    "user_id": {
+                        "type": "string",
+                        "title": "User Id"
+                    },
+                    "roles": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Roles"
+                    },
+                    "org_scope": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Org Scope"
+                    },
+                    "org": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/OrganizationResponse"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "user_id",
+                    "roles"
+                ],
+                "title": "MeResponse"
+            },
             "MessageRole": {
                 "type": "string",
                 "enum": [
@@ -25856,6 +26226,99 @@
                 "title": "OTELAgentCreationSource",
                 "description": "Creation source for OTEL-discovered agents (auto-created from traces)."
             },
+            "OnboardingTryItOutFormData": {
+                "properties": {
+                    "first_name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "First Name"
+                    },
+                    "last_name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Last Name"
+                    },
+                    "email": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Email"
+                    },
+                    "job_title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Job Title"
+                    },
+                    "company": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Company"
+                    },
+                    "maturity": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Maturity"
+                    },
+                    "brings": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Brings"
+                    },
+                    "brings_other": {
+                        "type": "string",
+                        "title": "Brings Other",
+                        "default": ""
+                    },
+                    "competitors": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "minItems": 1,
+                        "title": "Competitors"
+                    },
+                    "competitor_other": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Competitor Other"
+                    },
+                    "attribution": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Attribution"
+                    },
+                    "attribution_other": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Attribution Other"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "first_name",
+                    "last_name",
+                    "email",
+                    "job_title",
+                    "company",
+                    "maturity",
+                    "brings",
+                    "competitors",
+                    "attribution"
+                ],
+                "title": "OnboardingTryItOutFormData",
+                "description": "Try-it-out onboarding form fields (matches UI TryItOutSubmission)."
+            },
             "OpenAIMessage-Input": {
                 "properties": {
                     "role": {
@@ -26053,6 +26516,25 @@
                     "input_audio"
                 ],
                 "title": "OpenAIMessageType"
+            },
+            "OrganizationResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name"
+                ],
+                "title": "OrganizationResponse"
             },
             "PIIConfig": {
                 "properties": {
@@ -30738,6 +31220,16 @@
                 "title": "SyntheticDataRowResponse",
                 "description": "A single generated row with a temporary client-side ID for tracking."
             },
+            "TaskAnalyticsBucketSize": {
+                "type": "string",
+                "enum": [
+                    "hour",
+                    "day",
+                    "week"
+                ],
+                "title": "TaskAnalyticsBucketSize",
+                "description": "Time bucket granularity for task analytics time-series metrics."
+            },
             "TaskResponse": {
                 "properties": {
                     "id": {
@@ -30933,6 +31425,47 @@
                 ],
                 "title": "TemplateVariableMapping",
                 "description": "Mapping of a template variable to its source"
+            },
+            "TenantSignupRequest": {
+                "properties": {
+                    "form_variant": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "linear",
+                                    "wizard"
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Form Variant",
+                        "description": "Which onboarding form variant was submitted."
+                    },
+                    "form_data": {
+                        "$ref": "#/components/schemas/OnboardingTryItOutFormData"
+                    },
+                    "recaptcha_token": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Recaptcha Token",
+                        "description": "reCAPTCHA Enterprise token obtained client-side. Required when reCAPTCHA is configured server-side; ignored otherwise."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "form_data"
+                ],
+                "title": "TenantSignupRequest",
+                "description": "Public tenant signup payload; includes try-it-out onboarding form data."
             },
             "TestCase": {
                 "properties": {
@@ -31675,6 +32208,126 @@
                 "title": "TraceMetadataResponse",
                 "description": "Lightweight trace metadata for list operations"
             },
+            "TraceOverviewListResponse": {
+                "properties": {
+                    "overviews": {
+                        "items": {
+                            "$ref": "#/components/schemas/TraceOverviewResponse"
+                        },
+                        "type": "array",
+                        "title": "Overviews",
+                        "description": "List of trace overviews"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "Total number of trace overviews"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "overviews",
+                    "count"
+                ],
+                "title": "TraceOverviewListResponse",
+                "description": "Response for list of trace overviews"
+            },
+            "TraceOverviewRequest": {
+                "properties": {
+                    "task_ids": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Task Ids",
+                        "description": "Optional list of task IDs to get the overview of traces for"
+                    },
+                    "start_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Start Time",
+                        "description": "Start time of the traces to get the overview of"
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "End Time",
+                        "description": "End time of the traces to get the overview of"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "start_time",
+                    "end_time"
+                ],
+                "title": "TraceOverviewRequest",
+                "description": "Request schema for getting the overview of traces for each task"
+            },
+            "TraceOverviewResponse": {
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "Task ID"
+                    },
+                    "trace_count": {
+                        "type": "integer",
+                        "title": "Trace Count",
+                        "description": "Number of traces"
+                    },
+                    "trace_token_count": {
+                        "type": "integer",
+                        "title": "Trace Token Count",
+                        "description": "Total number of tokens in traces"
+                    },
+                    "trace_token_cost": {
+                        "type": "number",
+                        "title": "Trace Token Cost",
+                        "description": "Total token cost across traces"
+                    },
+                    "eval_count": {
+                        "type": "integer",
+                        "title": "Eval Count",
+                        "description": "Number of continuous-eval annotations"
+                    },
+                    "continuous_eval_success_rate": {
+                        "type": "number",
+                        "title": "Continuous Eval Success Rate",
+                        "description": "Fraction of continuous-eval annotations that passed"
+                    },
+                    "last_active": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Last Active",
+                        "description": "Most recent trace end time, or null if no traces in the window"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "task_id",
+                    "trace_count",
+                    "trace_token_count",
+                    "trace_token_cost",
+                    "eval_count",
+                    "continuous_eval_success_rate"
+                ],
+                "title": "TraceOverviewResponse",
+                "description": "Response for trace overview"
+            },
             "TraceResponse": {
                 "properties": {
                     "prompt_token_count": {
@@ -31833,6 +32486,104 @@
                     "span_count"
                 ],
                 "title": "TraceSortBy"
+            },
+            "TraceTimeSeriesPoint": {
+                "properties": {
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Timestamp",
+                        "description": "Inclusive start of the bucket"
+                    },
+                    "trace_count": {
+                        "type": "integer",
+                        "title": "Trace Count",
+                        "description": "Number of traces in the bucket"
+                    },
+                    "trace_token_count": {
+                        "type": "integer",
+                        "title": "Trace Token Count",
+                        "description": "Total tokens in the bucket"
+                    },
+                    "trace_token_cost": {
+                        "type": "number",
+                        "title": "Trace Token Cost",
+                        "description": "Total token cost in the bucket"
+                    },
+                    "continuous_eval_success_rate": {
+                        "type": "number",
+                        "title": "Continuous Eval Success Rate",
+                        "description": "Fraction of continuous-eval annotations that passed in the bucket"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "timestamp",
+                    "trace_count",
+                    "trace_token_count",
+                    "trace_token_cost",
+                    "continuous_eval_success_rate"
+                ],
+                "title": "TraceTimeSeriesPoint",
+                "description": "Metrics for a single time bucket, one per Analyze-page chart series."
+            },
+            "TraceTimeSeriesRequest": {
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "Task ID to get time-series metrics for"
+                    },
+                    "start_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Start Time",
+                        "description": "Inclusive start boundary of the time window"
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "End Time",
+                        "description": "Exclusive end boundary of the time window"
+                    },
+                    "bucket_size": {
+                        "$ref": "#/components/schemas/TaskAnalyticsBucketSize",
+                        "description": "Size of each time bucket"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "task_id",
+                    "start_time",
+                    "end_time",
+                    "bucket_size"
+                ],
+                "title": "TraceTimeSeriesRequest",
+                "description": "Request schema for time-bucketed trace metrics for a single task.\n\nThe caller (frontend) owns interval -> window + bucket-size resolution and\npasses the resolved start_time, end_time, and bucket_size; the backend just\nbuckets and zero-fills, mirroring the Analyze page aggregation."
+            },
+            "TraceTimeSeriesResponse": {
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "Task ID"
+                    },
+                    "points": {
+                        "items": {
+                            "$ref": "#/components/schemas/TraceTimeSeriesPoint"
+                        },
+                        "type": "array",
+                        "title": "Points",
+                        "description": "Time buckets ordered ascending by timestamp"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "task_id",
+                    "points"
+                ],
+                "title": "TraceTimeSeriesResponse",
+                "description": "Response for time-bucketed trace metrics for a single task."
             },
             "TraceTransformDefinition": {
                 "properties": {

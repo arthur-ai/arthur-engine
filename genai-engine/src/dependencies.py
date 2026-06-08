@@ -14,7 +14,7 @@ from arthur_common.models.enums import MetricType, RuleType
 from authlib.integrations.starlette_client import OAuth
 from cachetools import TTLCache
 from dotenv import load_dotenv
-from fastapi import Depends, HTTPException, Query
+from fastapi import Depends, HTTPException, Query, Request
 from psycopg2 import OperationalError as Psycopg2OperationalError
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
@@ -328,14 +328,58 @@ def get_task_repository(
     )
 
 
+def get_org_scope(request: Request) -> Optional[UUID]:
+    """Return the caller's org scope when authenticated, else None.
+
+    None has two meanings and callers must distinguish them by pairing this
+    dependency with the auth dependency:
+
+    1. Authenticated admin / JWT user (cross-org access). org_scope was
+       explicitly set to None by MultiMethodValidator from api_key.org_id.
+    2. Unauthenticated request. MultiMethodValidator never ran, so
+       request.state.org_scope was never set.
+
+    To distinguish case 2 from case 1, always combine this dependency with
+    `Depends(multi_validator.validate_api_multi_auth)` on the same handler.
+    Do NOT use this on a public route without an auth gate — None will be
+    indistinguishable from "admin" and may grant cross-org access.
+    """
+    return getattr(request.state, "org_scope", None)
+
+
 def get_validated_task(
     task_id: UUID,
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
+    org_scope: UUID | None = Depends(get_org_scope),
 ) -> Task:
-    """Dependency that validates task exists"""
+    """Dependency that validates the task exists and (for tenant callers) belongs to caller's org.
+
+    Admin callers (org_scope is None) pass through and can resolve any task.
+    Tenant callers receive a 404 if the task does not exist or belongs to a
+    different org — 404 rather than 403 to prevent cross-org enumeration.
+    """
     task_repo = get_task_repository(db_session, application_config)
-    task = task_repo.get_task_by_id(str(task_id))
+    try:
+        task = task_repo.get_task_by_id(str(task_id))
+    except HTTPException as exc:
+        # For tenant callers, normalize the "task does not exist" 404 body to
+        # match the "task in another org" 404 below — otherwise the response
+        # body differs between the two cases and acts as an enumeration oracle.
+        if exc.status_code == 404 and org_scope is not None:
+            raise HTTPException(
+                status_code=404,
+                detail="Task not found",
+                headers={"full_stacktrace": "false"},
+            )
+        raise
+
+    if org_scope is not None and str(task.org_id) != str(org_scope):
+        raise HTTPException(
+            status_code=404,
+            detail="Task not found",
+            headers={"full_stacktrace": "false"},
+        )
 
     return task
 

@@ -97,6 +97,14 @@ uv sync --group performance
 - Put all imports at the top of Python files
 - Make sure any unit tests are deterministic. They shouldn't rely on database ordering of results and should clean up any state they create
 
+### Multi-tenancy
+
+The engine supports multi-tenant organizations. Tasks belong to exactly one org; tenant API keys are scoped to a single org via `api_keys.org_id` and reach all tasks within it. Admin keys (`org_id = NULL`) keep cross-org access. Existing tasks migrate into the `default` org; system tasks (`is_system_task=True`) migrate into the `system` org.
+
+Tenant provisioning is gated by `GENAI_ENGINE_DEMO_MODE` (default off). When enabled, `POST /api/v2/tenant/signup` creates `(org, task, api_key)` in one transaction and returns the raw key once. When disabled, the endpoint returns 404. Keep this flag **off** for customer production deployments.
+
+When adding endpoints or repository methods that touch task-scoped data, see [`docs/MULTI_TENANCY_DESIGN.md`](docs/MULTI_TENANCY_DESIGN.md) for the four enforcement patterns (path / resource-id / query-param / admin-only), the `TENANT-USER` role rules, and the 404-vs-403 convention. A fuzz test enforces that decorators are applied to new routes.
+
 ### Coding Conventions
 
 - **DB sessions are auto-closed**: Do NOT wrap route handlers in `try/finally: db_session.close()`. The database session obtained via `Depends(get_db_session)` is automatically closed by FastAPI's dependency lifecycle. Adding manual `finally` blocks is unnecessary.

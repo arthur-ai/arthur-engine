@@ -8,6 +8,7 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import UnarchiveOutlinedIcon from "@mui/icons-material/UnarchiveOutlined";
 import { Box, Card, CardContent, Chip, CircularProgress, IconButton, Stack, Tooltip, Typography } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { keyframes } from "@mui/system";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -15,24 +16,30 @@ import { useNavigate } from "react-router-dom";
 import { CopyableChip } from "./common";
 
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
-import { useTaskMetrics } from "@/hooks/tasks/useTaskMetrics";
 import { useApi } from "@/hooks/useApi";
 import { TaskResponse } from "@/lib/api";
+import type { TraceOverviewResponse } from "@/lib/api-client/api-client";
 import { formatDateInTimezone } from "@/utils/formatters";
 
 interface TaskCardProps {
   task: TaskResponse;
+  overview?: TraceOverviewResponse;
   onArchiveToggle?: () => void;
 }
 
-export const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, onArchiveToggle }) => {
+export const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, overview, onArchiveToggle }) => {
   const navigate = useNavigate();
   const api = useApi();
   const { timezone, use24Hour } = useDisplaySettings();
   const [copiedTaskId, setCopiedTaskId] = useState<string | null>(null);
   const [isArchiving, setIsArchiving] = useState(false);
 
-  const { data: metrics = { traceCount: 0, totalTokens: 0, successRate: 0, lastActive: null } } = useTaskMetrics(task.id);
+  const metrics = {
+    traceCount: overview?.trace_count ?? 0,
+    totalTokens: overview?.trace_token_count ?? 0,
+    successRate: Math.round((overview?.continuous_eval_success_rate ?? 1) * 100),
+    lastActive: overview?.last_active ?? null,
+  };
 
   const formatNumber = (num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
@@ -221,9 +228,9 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, onArchiveTo
                 </Tooltip>
                 <Tooltip
                   title={
-                    metrics.successRate >= 1 && metrics.successRate < 50
-                      ? "Warning: Low success rate in the last 7 days. This task needs attention."
-                      : "Successful completion rate over the last 7 days"
+                    metrics.successRate <= 50
+                      ? "Warning: Low continuous-eval pass rate in the last 7 days. This task needs attention."
+                      : "Continuous-eval pass rate over the last 7 days"
                   }
                   arrow
                   placement="top"
@@ -234,14 +241,14 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, onArchiveTo
                       p: 1.5,
                       textAlign: "center",
                       bgcolor: (theme) =>
-                        metrics.successRate >= 1 && metrics.successRate < 50
+                        metrics.successRate <= 50
                           ? theme.palette.mode === "dark"
-                            ? "rgba(239, 68, 68, 0.1)"
+                            ? alpha(theme.palette.error.main, 0.1)
                             : "error.50"
                           : "transparent",
                     }}
                   >
-                    {metrics.successRate >= 1 && metrics.successRate < 50 ? (
+                    {metrics.successRate <= 50 ? (
                       <ErrorOutlineIcon sx={{ fontSize: 20, color: "error.main", mb: 0.5 }} />
                     ) : (
                       <CheckCircleIcon sx={{ fontSize: 20, color: "success.main", mb: 0.5 }} />
@@ -250,7 +257,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, onArchiveTo
                       variant="h6"
                       sx={{
                         fontWeight: 600,
-                        color: metrics.successRate >= 1 && metrics.successRate < 50 ? "error.main" : "text.primary",
+                        color: metrics.successRate <= 50 ? "error.main" : "text.primary",
                       }}
                     >
                       {metrics.successRate}%
@@ -259,7 +266,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, onArchiveTo
                       variant="caption"
                       sx={{
                         mt: 0.5,
-                        color: metrics.successRate >= 1 && metrics.successRate < 50 ? "error.main" : "text.secondary",
+                        color: metrics.successRate <= 50 ? "error.main" : "text.secondary",
                       }}
                     >
                       Success

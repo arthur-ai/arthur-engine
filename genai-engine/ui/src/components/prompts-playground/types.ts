@@ -66,6 +66,10 @@ type PromptAction =
       payload: { parentId: string; id: string; toolCalls: ToolCall[] | null };
     }
   | {
+      type: "editMessageToolCallId";
+      payload: { parentId: string; id: string; toolCallId: string | null };
+    }
+  | {
       type: "changeMessageRole";
       payload: { parentId: string; id: string; role: string };
     }
@@ -174,6 +178,7 @@ interface MessageComponentProps {
   defaultContent?: string | OpenAIMessageItem[];
   content: string | OpenAIMessageItem[] | "";
   toolCalls?: ToolCall[] | null;
+  toolCallId?: string | null;
   dragHandleProps?: Record<string, unknown>;
 }
 

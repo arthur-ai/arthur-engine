@@ -3,6 +3,7 @@ import random
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
+from utils.constants import DEFAULT_ORG_ID
 
 import pytest
 from openinference.semconv.trace import OpenInferenceSpanKindValues
@@ -107,6 +108,7 @@ def test_get_agent_tasks_gcp_task(client: GenaiEngineTestClientBase):
             is_autocreated=False,
             task_metadata=task_metadata.model_dump(mode="json"),
             archived=False,
+            org_id=DEFAULT_ORG_ID,
         )
         db_session.add(db_task)
         db_session.commit()
@@ -156,6 +158,7 @@ def test_get_agent_tasks_with_spans(client: GenaiEngineTestClientBase):
             start_time=datetime.now() - timedelta(minutes=5),
             end_time=datetime.now(),
             task_id=task.id,
+            org_id=DEFAULT_ORG_ID,
             raw_data={"attributes": {}},
             created_at=datetime.now(),
         )
@@ -171,6 +174,7 @@ def test_get_agent_tasks_with_spans(client: GenaiEngineTestClientBase):
             start_time=datetime.now() - timedelta(minutes=4),
             end_time=datetime.now(),
             task_id=task.id,
+            org_id=DEFAULT_ORG_ID,
             raw_data={"attributes": {}},
             created_at=datetime.now(),
         )
@@ -186,6 +190,7 @@ def test_get_agent_tasks_with_spans(client: GenaiEngineTestClientBase):
             start_time=datetime.now() - timedelta(minutes=3),
             end_time=datetime.now(),
             task_id=task.id,
+            org_id=DEFAULT_ORG_ID,
             raw_data={"attributes": {"llm": {"model_name": "gpt-4"}}},
             created_at=datetime.now(),
         )
@@ -240,6 +245,7 @@ def test_get_agent_tasks_30_day_lookback(client: GenaiEngineTestClientBase):
             start_time=datetime.now() - timedelta(days=10),
             end_time=datetime.now() - timedelta(days=10),
             task_id=task.id,
+            org_id=DEFAULT_ORG_ID,
             raw_data={"attributes": {}},
             created_at=datetime.now() - timedelta(days=10),
         )
@@ -255,6 +261,7 @@ def test_get_agent_tasks_30_day_lookback(client: GenaiEngineTestClientBase):
             start_time=datetime.now() - timedelta(days=35),
             end_time=datetime.now() - timedelta(days=35),
             task_id=task.id,
+            org_id=DEFAULT_ORG_ID,
             raw_data={"attributes": {}},
             created_at=datetime.now() - timedelta(days=35),
         )
@@ -307,6 +314,7 @@ def test_get_agent_tasks_with_last_fetched(client: GenaiEngineTestClientBase):
             is_autocreated=False,
             task_metadata=task_metadata.model_dump(mode="json"),
             archived=False,
+            org_id=DEFAULT_ORG_ID,
         )
         db_session.add(db_task)
 
@@ -381,6 +389,7 @@ def test_get_agent_tasks_autocreated_otel_task(client: GenaiEngineTestClientBase
             is_autocreated=True,  # Key: auto-created from traces
             task_metadata=None,  # No provider metadata
             archived=False,
+            org_id=DEFAULT_ORG_ID,
         )
         db_session.add(db_task)
         db_session.commit()

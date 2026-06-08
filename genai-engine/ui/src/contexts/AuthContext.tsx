@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 
-import { AuthService, AuthState } from "@/lib/auth";
+import { AuthService, AuthState, deriveIsTenant, MeResponse } from "@/lib/auth";
 import { track, clearUser, EVENT_NAMES } from "@/services/amplitude";
 
 interface AuthContextType extends AuthState {
@@ -9,6 +9,24 @@ interface AuthContextType extends AuthState {
   logout: () => void;
   validateToken: () => Promise<boolean>;
 }
+
+const buildAuthenticatedState = (token: string, me: MeResponse): AuthState => ({
+  isAuthenticated: true,
+  token,
+  me,
+  isTenant: deriveIsTenant(me),
+  isLoading: false,
+  error: null,
+});
+
+const unauthenticatedState = (error: string | null = null): AuthState => ({
+  isAuthenticated: false,
+  token: null,
+  me: null,
+  isTenant: false,
+  isLoading: false,
+  error,
+});
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -28,6 +46,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [authState, setAuthState] = useState<AuthState>({
     isAuthenticated: false,
     token: null,
+    me: null,
+    isTenant: false,
     isLoading: true,
     error: null,
   });
@@ -42,48 +62,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         const token = authService.getToken();
         if (token) {
-          // Validate the existing token
           const isValid = await authService.validateToken();
-          if (isValid) {
-            setAuthState({
-              isAuthenticated: true,
-              token,
-              isLoading: false,
-              error: null,
-            });
-            // Track successful token validation on app load
+          const me = authService.getMe();
+          if (isValid && me) {
+            setAuthState(buildAuthenticatedState(token, me));
             track(EVENT_NAMES.SESSION_RESTORED, {
               authentication_method: "api_key",
+              is_tenant: deriveIsTenant(me),
             });
           } else {
-            setAuthState({
-              isAuthenticated: false,
-              token: null,
-              isLoading: false,
-              error: "Token is invalid or expired",
-            });
-            // Track token validation failure
+            setAuthState(unauthenticatedState("Token is invalid or expired"));
             track(EVENT_NAMES.TOKEN_VALIDATION_FAILED, {
               authentication_method: "api_key",
               error: "Token is invalid or expired",
             });
           }
         } else {
-          setAuthState({
-            isAuthenticated: false,
-            token: null,
-            isLoading: false,
-            error: null,
-          });
+          setAuthState(unauthenticatedState());
         }
       } catch {
-        setAuthState({
-          isAuthenticated: false,
-          token: null,
-          isLoading: false,
-          error: "Failed to initialize authentication",
-        });
-        // Track initialization error
+        setAuthState(unauthenticatedState("Failed to initialize authentication"));
         track(EVENT_NAMES.AUTH_INITIALIZATION_FAILED, {
           authentication_method: "api_key",
           error: "Failed to initialize authentication",
@@ -99,16 +97,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
 
       const success = await authService.login(token);
-      if (success) {
-        setAuthState({
-          isAuthenticated: true,
-          token,
-          isLoading: false,
-          error: null,
-        });
-        // Track successful login with API key authentication
+      const me = authService.getMe();
+      if (success && me) {
+        setAuthState(buildAuthenticatedState(token, me));
         track(EVENT_NAMES.LOGIN, {
           authentication_method: "api_key",
+          is_tenant: deriveIsTenant(me),
         });
         return true;
       } else {
@@ -151,50 +145,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Clear user identification in Amplitude
     clearUser();
 
-    setAuthState({
-      isAuthenticated: false,
-      token: null,
-      isLoading: false,
-      error: null,
-    });
+    setAuthState(unauthenticatedState());
   };
 
   const validateToken = async (): Promise<boolean> => {
     try {
       const isValid = await authService.validateToken();
-      if (!isValid) {
-        queryClient.clear();
-
-        setAuthState((prev) => ({
-          ...prev,
-          isAuthenticated: false,
-          token: null,
-          error: "Token validation failed",
-        }));
-        // Track token validation failure
-        track(EVENT_NAMES.TOKEN_VALIDATION_FAILED, {
-          authentication_method: "api_key",
-          error: "Token validation failed",
-        });
-        // Clear user identification when token is invalid
-        clearUser();
+      if (isValid) {
+        const token = authService.getToken();
+        const me = authService.getMe();
+        if (token && me) {
+          setAuthState(buildAuthenticatedState(token, me));
+        }
+        return true;
       }
-      return isValid;
-    } catch {
       queryClient.clear();
-
-      setAuthState((prev) => ({
-        ...prev,
-        isAuthenticated: false,
-        token: null,
-        error: "Token validation failed",
-      }));
-      // Track token validation error
+      setAuthState(unauthenticatedState("Token validation failed"));
       track(EVENT_NAMES.TOKEN_VALIDATION_FAILED, {
         authentication_method: "api_key",
         error: "Token validation failed",
       });
-      // Clear user identification when token validation errors
+      clearUser();
+      return false;
+    } catch {
+      queryClient.clear();
+      setAuthState(unauthenticatedState("Token validation failed"));
+      track(EVENT_NAMES.TOKEN_VALIDATION_FAILED, {
+        authentication_method: "api_key",
+        error: "Token validation failed",
+      });
       clearUser();
       return false;
     }

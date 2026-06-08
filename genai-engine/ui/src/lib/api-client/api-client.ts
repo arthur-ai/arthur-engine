@@ -1373,10 +1373,10 @@ export interface ChatbotConfigUpdateRequest {
 
 /** ChatbotRequest */
 export interface ChatbotRequest {
-  /** Conversation Id */
-  conversation_id: string;
-  /** Message */
-  message: string;
+  /** History */
+  history: OpenAIMessageInput[];
+  /** Session Id */
+  session_id?: string | null;
 }
 
 export type CheckUserPermissionUsersPermissionsCheckGetData = any;
@@ -1389,10 +1389,6 @@ export interface CheckUserPermissionUsersPermissionsCheckGetParams {
   /** Resource to check permissions of. */
   resource?: UserPermissionResource;
 }
-
-export type ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteData = any;
-
-export type ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteError = HTTPValidationError;
 
 /**
  * CompletionRequest
@@ -2027,6 +2023,10 @@ export type CreateTaskRuleApiV2TasksTaskIdRulesPostData = RuleResponse;
 
 export type CreateTaskRuleApiV2TasksTaskIdRulesPostError = HTTPValidationError;
 
+export type CreateTenantSignupApiV2TenantSignupPostData = DemoTaskSignupResponse;
+
+export type CreateTenantSignupApiV2TenantSignupPostError = HTTPValidationError;
+
 export type CreateTestRunApiV1ContinuousEvalsEvalIdTestRunsPostData = ContinuousEvalTestRunResponse;
 
 export type CreateTestRunApiV1ContinuousEvalsEvalIdTestRunsPostError = HTTPValidationError;
@@ -2469,6 +2469,21 @@ export type DeleteTransformVersionApiV1TracesTransformsTransformIdVersionsVersio
 export type DeleteUserUsersUserIdDeleteData = any;
 
 export type DeleteUserUsersUserIdDeleteError = HTTPValidationError;
+
+/** DemoTaskSignupResponse */
+export interface DemoTaskSignupResponse {
+  /** Api Key */
+  api_key: string;
+  /**
+   * Org Id
+   * @format uuid
+   */
+  org_id: string;
+  /** Task Id */
+  task_id: string;
+  /** Task Name */
+  task_name: string;
+}
 
 /**
  * DiscoverAndPollResponse
@@ -3788,6 +3803,8 @@ export type GetLlmEvalByTagApiV1TasksTaskIdLlmEvalsEvalNameVersionsTagsTagGetDat
 
 export type GetLlmEvalByTagApiV1TasksTaskIdLlmEvalsEvalNameVersionsTagsTagGetError = HTTPValidationError;
 
+export type GetMeUsersMeGetData = MeResponse;
+
 export type GetModelProvidersApiV1ModelProvidersGetData = ModelProviderList;
 
 export type GetModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailableModelsGetData = ModelProviderModelList;
@@ -4214,6 +4231,14 @@ export interface GetTokenUsageApiV2UsageTokensGetParams {
 export type GetTraceByIdApiV1TracesTraceIdGetData = TraceResponse;
 
 export type GetTraceByIdApiV1TracesTraceIdGetError = HTTPValidationError;
+
+export type GetTracesOverviewApiV1TracesOverviewPostData = TraceOverviewListResponse;
+
+export type GetTracesOverviewApiV1TracesOverviewPostError = HTTPValidationError;
+
+export type GetTracesTimeseriesApiV1TracesOverviewTimeseriesPostData = TraceTimeSeriesResponse;
+
+export type GetTracesTimeseriesApiV1TracesOverviewTimeseriesPostError = HTTPValidationError;
 
 export type GetTransformApiV1TracesTransformsTransformIdGetData = TraceTransformResponse;
 
@@ -6516,6 +6541,17 @@ export interface ManualAgentCreationSource {
   type?: "MANUAL";
 }
 
+/** MeResponse */
+export interface MeResponse {
+  org?: OrganizationResponse | null;
+  /** Org Scope */
+  org_scope?: string | null;
+  /** Roles */
+  roles: string[];
+  /** User Id */
+  user_id: string;
+}
+
 /** MessageRole */
 export type MessageRole = "developer" | "system" | "user" | "assistant" | "tool";
 
@@ -7229,6 +7265,67 @@ export interface OTELAgentCreationSource {
 }
 
 /**
+ * OnboardingTryItOutFormData
+ * Try-it-out onboarding form fields (matches UI TryItOutSubmission).
+ */
+export interface OnboardingTryItOutFormData {
+  /**
+   * Attribution
+   * @minLength 1
+   */
+  attribution: string;
+  /** Attribution Other */
+  attribution_other?: string | null;
+  /**
+   * Brings
+   * @minLength 1
+   */
+  brings: string;
+  /**
+   * Brings Other
+   * @default ""
+   */
+  brings_other?: string;
+  /**
+   * Company
+   * @minLength 1
+   */
+  company: string;
+  /** Competitor Other */
+  competitor_other?: string | null;
+  /**
+   * Competitors
+   * @minItems 1
+   */
+  competitors: string[];
+  /**
+   * Email
+   * @minLength 1
+   */
+  email: string;
+  /**
+   * First Name
+   * @minLength 1
+   */
+  first_name: string;
+  /**
+   * Job Title
+   * @minLength 1
+   */
+  job_title: string;
+  /**
+   * Last Name
+   * @minLength 1
+   */
+  last_name: string;
+  /**
+   * Maturity
+   * @minLength 1
+   */
+  maturity: string;
+}
+
+/**
  * OpenAIMessage
  * The message schema class for the prompts playground.
  * This class adheres to OpenAI's message schema.
@@ -7305,6 +7402,17 @@ export interface OpenAIMessageOutput {
 
 /** OpenAIMessageType */
 export type OpenAIMessageType = "text" | "image_url" | "input_audio";
+
+/** OrganizationResponse */
+export interface OrganizationResponse {
+  /**
+   * Id
+   * @format uuid
+   */
+  id: string;
+  /** Name */
+  name: string;
+}
 
 /**
  * PIIConfig
@@ -10743,6 +10851,10 @@ export type StreamChatbotApiV1TasksTaskIdChatbotStreamPostData = any;
 
 export type StreamChatbotApiV1TasksTaskIdChatbotStreamPostError = HTTPValidationError;
 
+export type StreamDemoChatbotApiV1TasksTaskIdDemosChatbotStreamPostData = any;
+
+export type StreamDemoChatbotApiV1TasksTaskIdDemosChatbotStreamPostError = HTTPValidationError;
+
 /** StreamOptions */
 export interface StreamOptions {
   /**
@@ -10933,6 +11045,12 @@ export interface SyntheticDataRowResponse {
   id: string;
 }
 
+/**
+ * TaskAnalyticsBucketSize
+ * Time bucket granularity for task analytics time-series metrics.
+ */
+export type TaskAnalyticsBucketSize = "hour" | "day" | "week";
+
 /** TaskResponse */
 export interface TaskResponse {
   /** Metadata to describe the creation source/provider for registered agents. */
@@ -11043,6 +11161,27 @@ export interface TemplateVariableMappingOutput {
    */
   variable_name: string;
 }
+
+/**
+ * TenantSignupRequest
+ * Public tenant signup payload; includes try-it-out onboarding form data.
+ */
+export interface TenantSignupRequest {
+  /** Try-it-out onboarding form fields (matches UI TryItOutSubmission). */
+  form_data: OnboardingTryItOutFormData;
+  /**
+   * Form Variant
+   * Which onboarding form variant was submitted.
+   */
+  form_variant?: TenantSignupRequestFormVariantEnum | null;
+  /**
+   * Recaptcha Token
+   * reCAPTCHA Enterprise token obtained client-side. Required when reCAPTCHA is configured server-side; ignored otherwise.
+   */
+  recaptcha_token?: string | null;
+}
+
+export type TenantSignupRequestFormVariantEnum = "linear" | "wizard";
 
 /**
  * TestCase
@@ -11452,6 +11591,89 @@ export interface TraceMetadataResponse {
 }
 
 /**
+ * TraceOverviewListResponse
+ * Response for list of trace overviews
+ */
+export interface TraceOverviewListResponse {
+  /**
+   * Count
+   * Total number of trace overviews
+   */
+  count: number;
+  /**
+   * Overviews
+   * List of trace overviews
+   */
+  overviews: TraceOverviewResponse[];
+}
+
+/**
+ * TraceOverviewRequest
+ * Request schema for getting the overview of traces for each task
+ */
+export interface TraceOverviewRequest {
+  /**
+   * End Time
+   * End time of the traces to get the overview of
+   * @format date-time
+   */
+  end_time: string;
+  /**
+   * Start Time
+   * Start time of the traces to get the overview of
+   * @format date-time
+   */
+  start_time: string;
+  /**
+   * Task Ids
+   * Optional list of task IDs to get the overview of traces for
+   */
+  task_ids?: string[] | null;
+}
+
+/**
+ * TraceOverviewResponse
+ * Response for trace overview
+ */
+export interface TraceOverviewResponse {
+  /**
+   * Continuous Eval Success Rate
+   * Fraction of continuous-eval annotations that passed
+   */
+  continuous_eval_success_rate: number;
+  /**
+   * Eval Count
+   * Number of continuous-eval annotations
+   */
+  eval_count: number;
+  /**
+   * Last Active
+   * Most recent trace end time, or null if no traces in the window
+   */
+  last_active?: string | null;
+  /**
+   * Task Id
+   * Task ID
+   */
+  task_id: string;
+  /**
+   * Trace Count
+   * Number of traces
+   */
+  trace_count: number;
+  /**
+   * Trace Token Cost
+   * Total token cost across traces
+   */
+  trace_token_cost: number;
+  /**
+   * Trace Token Count
+   * Total number of tokens in traces
+   */
+  trace_token_count: number;
+}
+
+/**
  * TraceResponse
  * Response model for a single trace containing nested spans
  */
@@ -11528,6 +11750,86 @@ export interface TraceResponse {
 
 /** TraceSortBy */
 export type TraceSortBy = "start_time" | "total_token_count" | "total_token_cost" | "span_count";
+
+/**
+ * TraceTimeSeriesPoint
+ * Metrics for a single time bucket, one per Analyze-page chart series.
+ */
+export interface TraceTimeSeriesPoint {
+  /**
+   * Continuous Eval Success Rate
+   * Fraction of continuous-eval annotations that passed in the bucket
+   */
+  continuous_eval_success_rate: number;
+  /**
+   * Timestamp
+   * Inclusive start of the bucket
+   * @format date-time
+   */
+  timestamp: string;
+  /**
+   * Trace Count
+   * Number of traces in the bucket
+   */
+  trace_count: number;
+  /**
+   * Trace Token Cost
+   * Total token cost in the bucket
+   */
+  trace_token_cost: number;
+  /**
+   * Trace Token Count
+   * Total tokens in the bucket
+   */
+  trace_token_count: number;
+}
+
+/**
+ * TraceTimeSeriesRequest
+ * Request schema for time-bucketed trace metrics for a single task.
+ *
+ * The caller (frontend) owns interval -> window + bucket-size resolution and
+ * passes the resolved start_time, end_time, and bucket_size; the backend just
+ * buckets and zero-fills, mirroring the Analyze page aggregation.
+ */
+export interface TraceTimeSeriesRequest {
+  /** Size of each time bucket */
+  bucket_size: TaskAnalyticsBucketSize;
+  /**
+   * End Time
+   * Exclusive end boundary of the time window
+   * @format date-time
+   */
+  end_time: string;
+  /**
+   * Start Time
+   * Inclusive start boundary of the time window
+   * @format date-time
+   */
+  start_time: string;
+  /**
+   * Task Id
+   * Task ID to get time-series metrics for
+   */
+  task_id: string;
+}
+
+/**
+ * TraceTimeSeriesResponse
+ * Response for time-bucketed trace metrics for a single task.
+ */
+export interface TraceTimeSeriesResponse {
+  /**
+   * Points
+   * Time buckets ordered ascending by timestamp
+   */
+  points: TraceTimeSeriesPoint[];
+  /**
+   * Task Id
+   * Task ID
+   */
+  task_id: string;
+}
 
 /** TraceTransformDefinition */
 export interface TraceTransformDefinition {
@@ -13215,7 +13517,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.579
+ * @version 2.1.503
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -13458,24 +13760,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         method: "POST",
         body: data,
         type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @tags Chatbot
-     * @name ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDelete
-     * @summary Clear chatbot conversation history
-     * @request DELETE:/api/v1/chatbot/history/{conversation_id}
-     * @secure
-     */
-    clearChatbotHistoryApiV1ChatbotHistoryConversationIdDelete: (conversationId: string, params: RequestParams = {}) =>
-      this.request<ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteData, ClearChatbotHistoryApiV1ChatbotHistoryConversationIdDeleteError>({
-        path: `/api/v1/chatbot/history/${conversationId}`,
-        method: "DELETE",
-        secure: true,
         format: "json",
         ...params,
       }),
@@ -13868,6 +14152,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         method: "POST",
         body: data,
         secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Public tenant signup. Accepts try-it-out onboarding form data, persists an onboarding submission, and creates a new organization, a default demo task scoped to that org, and a TENANT-USER API key with `org_scope` set to the new org. Returns the four identifiers; the raw `api_key` value appears only in this response (the DB stores only its hash). Gated by GENAI_ENGINE_DEMO_MODE — returns 404 when disabled.
+     *
+     * @tags Tenant Signup
+     * @name CreateTenantSignupApiV2TenantSignupPost
+     * @summary Create Tenant Signup
+     * @request POST:/api/v2/tenant/signup
+     */
+    createTenantSignupApiV2TenantSignupPost: (data: TenantSignupRequest, params: RequestParams = {}) =>
+      this.request<CreateTenantSignupApiV2TenantSignupPostData, CreateTenantSignupApiV2TenantSignupPostError>({
+        path: `/api/v2/tenant/signup`,
+        method: "POST",
+        body: data,
         type: ContentType.Json,
         format: "json",
         ...params,
@@ -15823,6 +16125,46 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Get overview of traces for each task including trace count, total tokens, and success rate.
+     *
+     * @tags Traces
+     * @name GetTracesOverviewApiV1TracesOverviewPost
+     * @summary Get Overview of Traces for each Task
+     * @request POST:/api/v1/traces/overview
+     * @secure
+     */
+    getTracesOverviewApiV1TracesOverviewPost: (data: TraceOverviewRequest, params: RequestParams = {}) =>
+      this.request<GetTracesOverviewApiV1TracesOverviewPostData, GetTracesOverviewApiV1TracesOverviewPostError>({
+        path: `/api/v1/traces/overview`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get time-bucketed trace metrics (count, tokens, cost, success rate) for a single task.
+     *
+     * @tags Traces
+     * @name GetTracesTimeseriesApiV1TracesOverviewTimeseriesPost
+     * @summary Get Time-Series Overview Data for a Task
+     * @request POST:/api/v1/traces/overview/timeseries
+     * @secure
+     */
+    getTracesTimeseriesApiV1TracesOverviewTimeseriesPost: (data: TraceTimeSeriesRequest, params: RequestParams = {}) =>
+      this.request<GetTracesTimeseriesApiV1TracesOverviewTimeseriesPostData, GetTracesTimeseriesApiV1TracesOverviewTimeseriesPostError>({
+        path: `/api/v1/traces/overview/timeseries`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get a specific transform.
      *
      * @tags Transforms
@@ -16850,6 +17192,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Stream a demo chatbot response.
+     *
+     * @tags Tasks
+     * @name StreamDemoChatbotApiV1TasksTaskIdDemosChatbotStreamPost
+     * @summary Stream Demo Chatbot
+     * @request POST:/api/v1/tasks/{task_id}/demos/chatbot/stream
+     * @secure
+     */
+    streamDemoChatbotApiV1TasksTaskIdDemosChatbotStreamPost: (taskId: string, data: ChatbotRequest, params: RequestParams = {}) =>
+      this.request<StreamDemoChatbotApiV1TasksTaskIdDemosChatbotStreamPostData, StreamDemoChatbotApiV1TasksTaskIdDemosChatbotStreamPostError>({
+        path: `/api/v1/tasks/${taskId}/demos/chatbot/stream`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Test a new RAG provider connection configuration.
      *
      * @tags RAG Providers
@@ -17490,6 +17852,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       this.request<DeleteUserUsersUserIdDeleteData, DeleteUserUsersUserIdDeleteError>({
         path: `/users/${userId}`,
         method: "DELETE",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Returns the current caller's identity, roles, org_scope, and (when scoped) the organization record. Used by the UI on login to decide between admin and tenant render branches. Admin callers and JWT callers receive org_scope=null and org=null.
+     *
+     * @tags User Management
+     * @name GetMeUsersMeGet
+     * @summary Get Me
+     * @request GET:/users/me
+     * @secure
+     */
+    getMeUsersMeGet: (params: RequestParams = {}) =>
+      this.request<GetMeUsersMeGetData, any>({
+        path: `/users/me`,
+        method: "GET",
         secure: true,
         format: "json",
         ...params,

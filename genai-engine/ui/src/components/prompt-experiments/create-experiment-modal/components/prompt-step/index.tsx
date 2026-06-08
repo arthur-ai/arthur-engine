@@ -4,6 +4,7 @@ import { useStore } from "@tanstack/react-form";
 import { createExperimentModalFormOpts } from "../../form";
 
 import { withForm } from "@/components/traces/components/filtering/hooks/form";
+import { TOUR_IDS } from "@/features/task-tour/selectors";
 import { useDatasetVersionData } from "@/hooks/useDatasetVersionData";
 
 export const PromptStep = withForm({
@@ -20,7 +21,7 @@ export const PromptStep = withForm({
     return (
       <>
         <DialogContent>
-          <Box sx={{ py: 1 }}>
+          <Box sx={{ py: 1 }} data-tour-id={TOUR_IDS.createExperimentPromptMappingsList}>
             <form.AppField name="promptVariableMappings" mode="array">
               {(field) =>
                 field.state.value.map((mapping, index) => (
@@ -53,7 +54,12 @@ export const PromptStep = withForm({
           <Button onClick={() => form.setFieldValue("section", "info")}>Back</Button>
           <form.Subscribe selector={(state) => [state.isSubmitting]}>
             {([isSubmitting]) => (
-              <Button type="submit" variant="contained" loading={!hasEvaluators && isSubmitting}>
+              <Button
+                type="submit"
+                variant="contained"
+                loading={!hasEvaluators && isSubmitting}
+                {...(!hasEvaluators ? { "data-tour-id": TOUR_IDS.createExperimentSubmit } : {})}
+              >
                 {hasEvaluators ? "Configure Evals" : "Create Experiment"}
               </Button>
             )}
