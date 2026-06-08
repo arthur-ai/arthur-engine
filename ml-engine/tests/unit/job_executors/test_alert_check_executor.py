@@ -8,9 +8,9 @@ from arthur_client.api_bindings import (
     Alert,
     AlertBound,
     AlertCheckJobSpec,
+    AlertLogStatus,
     AlertRule,
     AlertRuleInterval,
-    AlertRuleLogStatus,
     CreatedAlerts,
     IntervalUnit,
     Job,
@@ -21,12 +21,23 @@ from arthur_client.api_bindings import (
     JobState,
     JobTrigger,
     MetricsQueryResult,
-    PostAlertRuleLog,
-    PostAlertRuleLogs,
     PostJobKind,
 )
 
-from job_executors.alert_check_executor import AlertCheckExecutor
+from job_executors._interval_utils import alert_interval_to_timedelta
+from job_executors.alert_check_executor import (
+    AlertCheckExecutor,
+    get_expected_bucket_timestamps,
+)
+
+
+def expected_buckets(job_spec, alert_rule):
+    td = alert_interval_to_timedelta(alert_rule.interval)
+    return get_expected_bucket_timestamps(
+        job_spec.check_range_start_timestamp - td,
+        job_spec.check_range_end_timestamp - td,
+        td,
+    )
 
 
 def make_alert_rule(model_id: str, now: datetime) -> AlertRule:
@@ -466,8 +477,11 @@ def test_alert_rule_log_fired():
     alert_rules_response.records = [alert_rule]
     alert_rules_client.get_model_alert_rules.return_value = alert_rules_response
 
+    job, job_spec = make_job_and_spec(model_id, now)
+    buckets = expected_buckets(job_spec, alert_rule)
+
     metrics_client.post_model_metrics_query.return_value = MetricsQueryResult(
-        results=[{"metric_timestamp": now - timedelta(hours=1), "metric_value": 150}],
+        results=[{"metric_timestamp": buckets[0], "metric_value": 150}],
     )
     alerts_client.post_model_alerts.return_value = CreatedAlerts(
         alerts=[
@@ -493,18 +507,16 @@ def test_alert_rule_log_fired():
         webhooks_called=[],
     )
 
-    job, job_spec = make_job_and_spec(model_id, now)
     executor = make_executor(alerts_client, alert_rules_client, metrics_client)
     executor.execute(job, job_spec)
 
-    alerts_client.post_model_alert_rule_logs.assert_called_once()
-    posted = alerts_client.post_model_alert_rule_logs.call_args.kwargs["post_alert_rule_logs"]
-    assert len(posted.logs) == 1
-    assert posted.logs[0].alert_rule_id == alert_rule.id
-    assert posted.logs[0].status == AlertRuleLogStatus.FIRED
-    assert posted.logs[0].job_id == job.id
-    assert posted.logs[0].check_range_start == job_spec.check_range_start_timestamp
-    assert posted.logs[0].check_range_end == job_spec.check_range_end_timestamp
+    alerts_client.post_model_alert_logs.assert_called_once()
+    posted = alerts_client.post_model_alert_logs.call_args.kwargs["post_alert_logs"]
+    fired = [log for log in posted.logs if log.status == AlertLogStatus.FIRED]
+    assert len(fired) == 1
+    assert fired[0].alert_rule_id == alert_rule.id
+    assert fired[0].job_id == job.id
+    assert fired[0].timestamp == buckets[0]
 
 
 def test_alert_rule_log_okay():
@@ -520,20 +532,22 @@ def test_alert_rule_log_okay():
     alert_rules_response.records = [alert_rule]
     alert_rules_client.get_model_alert_rules.return_value = alert_rules_response
 
-    # return one result row so it's not NO_DATA, but patch _create_alerts to return no alerts
+    job, job_spec = make_job_and_spec(model_id, now)
+    buckets = expected_buckets(job_spec, alert_rule)
+
+    # value below the threshold => data exists but no breach => OKAY
     metrics_client.post_model_metrics_query.return_value = MetricsQueryResult(
-        results=[{"metric_timestamp": now - timedelta(hours=1), "metric_value": 50}],
+        results=[{"metric_timestamp": buckets[0], "metric_value": 50}],
     )
 
-    job, job_spec = make_job_and_spec(model_id, now)
     executor = make_executor(alerts_client, alert_rules_client, metrics_client)
-    executor._create_alerts = lambda ar, job_id, results: []
-
     executor.execute(job, job_spec)
 
-    alerts_client.post_model_alert_rule_logs.assert_called_once()
-    posted = alerts_client.post_model_alert_rule_logs.call_args.kwargs["post_alert_rule_logs"]
-    assert posted.logs[0].status == AlertRuleLogStatus.OKAY
+    alerts_client.post_model_alert_logs.assert_called_once()
+    posted = alerts_client.post_model_alert_logs.call_args.kwargs["post_alert_logs"]
+    statuses = {log.timestamp: log.status for log in posted.logs}
+    assert statuses[buckets[0]] == AlertLogStatus.OKAY
+    alerts_client.post_model_alerts.assert_not_called()
 
 
 def test_alert_rule_log_no_data():
@@ -557,9 +571,9 @@ def test_alert_rule_log_no_data():
     executor = make_executor(alerts_client, alert_rules_client, metrics_client)
     executor.execute(job, job_spec)
 
-    alerts_client.post_model_alert_rule_logs.assert_called_once()
-    posted = alerts_client.post_model_alert_rule_logs.call_args.kwargs["post_alert_rule_logs"]
-    assert posted.logs[0].status == AlertRuleLogStatus.NO_DATA
+    alerts_client.post_model_alert_logs.assert_called_once()
+    posted = alerts_client.post_model_alert_logs.call_args.kwargs["post_alert_logs"]
+    assert all(log.status == AlertLogStatus.NO_DATA for log in posted.logs)
     alerts_client.post_model_alerts.assert_not_called()
 
 
@@ -579,7 +593,7 @@ def test_alert_rule_log_failure_does_not_raise():
     metrics_client.post_model_metrics_query.return_value = MetricsQueryResult(
         results=[],
     )
-    alerts_client.post_model_alert_rule_logs.side_effect = Exception("log endpoint down")
+    alerts_client.post_model_alert_logs.side_effect = Exception("log endpoint down")
 
     job, job_spec = make_job_and_spec(model_id, now)
     executor = make_executor(alerts_client, alert_rules_client, metrics_client)

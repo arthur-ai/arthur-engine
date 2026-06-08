@@ -1,13 +1,14 @@
 import logging
-from datetime import datetime
+from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Union
 from uuid import UUID
 
 from arthur_client.api_bindings import (
     AlertBound,
     AlertCheckJobSpec,
+    AlertLogStatus,
     AlertRule,
-    AlertRuleLogStatus,
     AlertRulesV1Api,
     AlertsV1Api,
     CompliancePolicyCheckJobSpec,
@@ -19,8 +20,8 @@ from arthur_client.api_bindings import (
     PoliciesV1Api,
     PolicyAssignmentJobChainPatch,
     PostAlert,
-    PostAlertRuleLog,
-    PostAlertRuleLogs,
+    PostAlertLog,
+    PostAlertLogs,
     PostAlerts,
     PostJob,
     PostJobBatch,
@@ -50,6 +51,23 @@ ALERT_RULES_NON_ADDITIONAL_DIMENSION_FIELDS = [
     "dimensions",
 ]
 ALERT_RULES_SCALAR_TYPES = (str, int, float, bool, datetime, UUID)
+TIME_BUCKET_ORIGIN = datetime(2000, 1, 3, tzinfo=timezone.utc)
+
+
+def get_expected_bucket_timestamps(
+    adjusted_start_time: datetime,
+    adjusted_end_time: datetime,
+    td: timedelta,
+) -> List[datetime]:
+    bucket_ts = adjusted_start_time - ((adjusted_start_time - TIME_BUCKET_ORIGIN) % td)
+    if bucket_ts < adjusted_start_time:
+        bucket_ts += td
+
+    buckets = []
+    while bucket_ts <= adjusted_end_time:
+        buckets.append(bucket_ts)
+        bucket_ts += td
+    return buckets
 
 
 class AlertCheckExecutor:
@@ -157,8 +175,17 @@ class AlertCheckExecutor:
         job_spec: AlertCheckJobSpec,
     ) -> None:
         self.logger.info(f"Checking alert rule {alert_rule.id}")
+        td = alert_interval_to_timedelta(alert_rule.interval)
+        adjusted_start_time = job_spec.check_range_start_timestamp - td
+        adjusted_end_time = job_spec.check_range_end_timestamp - td
+
         try:
-            query_response = self._query_model_metrics(job_spec, alert_rule)
+            query_response = self._query_model_metrics(
+                job_spec,
+                alert_rule,
+                adjusted_start_time,
+                adjusted_end_time,
+            )
             self.logger.info(
                 f"Query for alert rule {alert_rule.id} returned {len(query_response.results)} results",
             )
@@ -174,63 +201,84 @@ class AlertCheckExecutor:
                 f"Query for alert rule {alert_rule.id} returned more than {ALERT_RULES_QUERY_LIMIT} results.",
             )
 
-        alerts = self._create_alerts(alert_rule, job.id, query_response.results)
+        results_by_ts: Dict[datetime, List[Dict[str, Any]]] = defaultdict(list)
+        for r in query_response.results:
+            ts = r[METRIC_TIMESTAMP_COLUMN_NAME]
+            
+            if isinstance(ts, str):
+                ts = datetime.fromisoformat(ts)
+            
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+            
+            results_by_ts[ts.astimezone(timezone.utc)].append(r)
 
+        expected_bucket_timestamps = get_expected_bucket_timestamps(
+            adjusted_start_time,
+            adjusted_end_time,
+            td,
+        )
+
+        logs: List[PostAlertLog] = []
+        fired_rows: List[Dict[str, Any]] = []
+        for bucket_ts in expected_bucket_timestamps:
+            rows = results_by_ts.get(bucket_ts.astimezone(timezone.utc), [])
+            crossed = [
+                r
+                for r in rows
+                if self._crosses_threshold(alert_rule, r[METRIC_VALUE_COLUMN_NAME])
+            ]
+            if not rows:
+                status = AlertLogStatus.NO_DATA
+            elif crossed:
+                status = AlertLogStatus.FIRED
+                fired_rows.extend(crossed)
+            else:
+                status = AlertLogStatus.OKAY
+            logs.append(
+                PostAlertLog(
+                    alert_rule_id=alert_rule.id,
+                    job_id=job.id,
+                    policy_model_assignment_id=alert_rule.policy_model_assignment_id,
+                    status=status,
+                    timestamp=bucket_ts,
+                )
+            )
+
+        alerts = self._create_alerts(alert_rule, job.id, fired_rows)
         if alerts:
             self._post_alerts(job_spec.scope_model_id, alert_rule.id, alerts)
         else:
             self.logger.info("No alerts found!")
 
-        if len(alerts) > 0:
-            status = AlertRuleLogStatus.FIRED
-        elif self._has_data(job_spec, alert_rule):
-            status = AlertRuleLogStatus.OKAY
-        else:
-            status = AlertRuleLogStatus.NO_DATA
-
         try:
-            self.alerts_client.post_model_alert_rule_logs(
+            self.alerts_client.post_model_alert_logs(
                 model_id=job_spec.scope_model_id,
-                post_alert_rule_logs=PostAlertRuleLogs(
-                    logs=[
-                        PostAlertRuleLog(
-                            alert_rule_id=alert_rule.id,
-                            job_id=job.id,
-                            policy_model_assignment_id=alert_rule.policy_model_assignment_id,
-                            status=status,
-                            check_range_start=job_spec.check_range_start_timestamp,
-                            check_range_end=job_spec.check_range_end_timestamp,
-                        )
-                    ]
-                ),
+                post_alert_logs=PostAlertLogs(logs=logs),
             )
         except Exception as e:
             self.logger.warning(
-                f"Failed to post alert rule log for alert rule {alert_rule.id}: {e}"
+                f"Failed to post alert logs for alert rule {alert_rule.id}: {e}"
             )
+
+    def _crosses_threshold(self, alert_rule: AlertRule, value: float) -> bool:
+        if alert_rule.bound == AlertBound.UPPER_BOUND:
+            return value > alert_rule.threshold
+        return value < alert_rule.threshold
 
     def _query_model_metrics(
         self,
         job_spec: AlertCheckJobSpec,
         alert_rule: AlertRule,
+        adjusted_start_time: datetime,
+        adjusted_end_time: datetime,
     ) -> MetricsQueryResult:
         # in order to prevent alerting on partial alert buckets, this function
-        # queries the time range (start_time - interval, end_time)
+        # queries the time range (start_time - interval, end_time) and post-filters
+        # results to (start_time - interval, end_time - interval) so only buckets
+        # that had the entire interval in the query are reported.
         # see more info here:
         # https://gitlab.com/ArthurAI/arthur-scope/blob/f03cc26e11ea74f019be5b94a04f280b03d027ff/documentation/technical-documentation/implementations/Alert-Rule-Implementation.md#L291-291
-
-        td = alert_interval_to_timedelta(alert_rule.interval)
-        adjusted_start_time = job_spec.check_range_start_timestamp - td
-
-        # similarly, to prevent alerting on partial alert buckets,
-        # this function post-filters the results to be in the range
-        # (start_time - interval, end_time - interval) so only the
-        # buckets that had the entire interval in the query are reported.
-        # This needs to be a post-filter so that all the data for the interval is
-        # included in the original time_bucket aggregation, then we filter
-        # on the post-aggregated results
-        adjusted_end_time = job_spec.check_range_end_timestamp - td
-
         return self.metrics_client.post_model_metrics_query(
             model_id=job_spec.scope_model_id,
             post_metrics_query=PostMetricsQuery(
@@ -246,17 +294,6 @@ class AlertCheckExecutor:
                         var_and=[
                             PostMetricsQueryResultFilterAndGroupAndInner(
                                 PostMetricsQueryResultFilter(
-                                    column=METRIC_VALUE_COLUMN_NAME,
-                                    op=(
-                                        MetricsResultFilterOp.GREATER_THAN
-                                        if alert_rule.bound == AlertBound.UPPER_BOUND
-                                        else MetricsResultFilterOp.LESS_THAN
-                                    ),
-                                    value=alert_rule.threshold,
-                                ),
-                            ),
-                            PostMetricsQueryResultFilterAndGroupAndInner(
-                                PostMetricsQueryResultFilter(
                                     column=METRIC_TIMESTAMP_COLUMN_NAME,
                                     op=MetricsResultFilterOp.GREATER_THAN_OR_EQUAL,
                                     value=adjusted_start_time,
@@ -274,55 +311,6 @@ class AlertCheckExecutor:
                 ),
             ),
         )
-
-    def _has_data(
-        self,
-        job_spec: AlertCheckJobSpec,
-        alert_rule: AlertRule,
-    ) -> bool:
-        """
-        Check if any metric data exists for the alert rule's time window, ignoring the threshold filter.
-
-        Used to distinguish NO_DATA (no metrics at all) from OKAY (metrics exist but none breached
-        the threshold), since the main query filters to threshold violations only.
-        """
-        td = alert_interval_to_timedelta(alert_rule.interval)
-        adjusted_start_time = job_spec.check_range_start_timestamp - td
-        adjusted_end_time = job_spec.check_range_end_timestamp - td
-
-        result = self.metrics_client.post_model_metrics_query(
-            model_id=job_spec.scope_model_id,
-            post_metrics_query=PostMetricsQuery(
-                query=alert_rule.query,
-                time_range=PostMetricsQueryTimeRange(
-                    start=adjusted_start_time,
-                    end=job_spec.check_range_end_timestamp,
-                ),
-                interval=alert_rule.interval,
-                limit=1,
-                result_filter=ResultFilter(
-                    PostMetricsQueryResultFilterAndGroup(
-                        var_and=[
-                            PostMetricsQueryResultFilterAndGroupAndInner(
-                                PostMetricsQueryResultFilter(
-                                    column=METRIC_TIMESTAMP_COLUMN_NAME,
-                                    op=MetricsResultFilterOp.GREATER_THAN_OR_EQUAL,
-                                    value=adjusted_start_time,
-                                ),
-                            ),
-                            PostMetricsQueryResultFilterAndGroupAndInner(
-                                PostMetricsQueryResultFilter(
-                                    column=METRIC_TIMESTAMP_COLUMN_NAME,
-                                    op=MetricsResultFilterOp.LESS_THAN_OR_EQUAL,
-                                    value=adjusted_end_time,
-                                ),
-                            ),
-                        ],
-                    ),
-                ),
-            ),
-        )
-        return len(result.results) > 0
 
     def _create_alerts(
         self,
