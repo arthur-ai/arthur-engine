@@ -52,7 +52,7 @@ The skill is modularized into a main orchestrator + 8 step sub-skills. The main 
 Paste this prompt directly into Claude Code — no installation needed:
 
 ```
-For each skill name in this list — arthur-onboard-oss, arthur-onboard-oss-engine, arthur-onboard-task, arthur-onboard-analyze, arthur-onboard-instrument, arthur-onboard-prompts, arthur-onboard-verify, arthur-onboard-eval-provider, arthur-onboard-evals — fetch https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/integrations/claude-code-skills/arthur-onboard/<skill-name>/SKILL.md and save it to ~/.claude/skills/<skill-name>/SKILL.md (create the directory if it doesn't exist). Once all skills are saved, read ~/.claude/skills/arthur-onboard-oss/SKILL.md and follow its instructions.
+For each skill name in this list — arthur-onboard-oss, arthur-onboard-oss-engine, arthur-onboard-task, arthur-onboard-analyze, arthur-onboard-instrument, arthur-onboard-prompts, arthur-onboard-verify, arthur-onboard-eval-provider, arthur-onboard-evals, arthur-skills-upgrade — fetch https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/integrations/claude-code-skills/arthur-onboard/<skill-name>/SKILL.md and save it to ~/.claude/skills/<skill-name>/SKILL.md (create the directory if it doesn't exist). Also fetch https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/integrations/claude-code-skills/arthur-onboard/arthur-onboard-instrument/EXAMPLES.md and save it to ~/.claude/skills/arthur-onboard-instrument/EXAMPLES.md. Once all files are saved, read ~/.claude/skills/arthur-onboard-oss/SKILL.md and follow its instructions.
 ```
 
 ---
@@ -74,10 +74,14 @@ Install all skills with one script:
 BASE="https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integrations/claude-code-skills/arthur-onboard"
 for skill in arthur-onboard-oss arthur-onboard-oss-engine arthur-onboard-task arthur-onboard-analyze \
              arthur-onboard-instrument arthur-onboard-prompts arthur-onboard-verify \
-             arthur-onboard-eval-provider arthur-onboard-evals; do
+             arthur-onboard-eval-provider arthur-onboard-evals arthur-skills-upgrade; do
   mkdir -p ~/.claude/skills/$skill
-  curl -sSLf "$BASE/$skill/SKILL.md" > ~/.claude/skills/$skill/SKILL.md
+  curl -sSLf "$BASE/$skill/SKILL.md" > ~/.claude/skills/$skill/SKILL.md \
+    || { echo "FAILED: $skill"; rm -f ~/.claude/skills/$skill/SKILL.md; }
 done
+# Also install the instrumentation examples reference
+curl -sSLf "$BASE/arthur-onboard-instrument/EXAMPLES.md" > ~/.claude/skills/arthur-onboard-instrument/EXAMPLES.md \
+  || { echo "FAILED: arthur-onboard-instrument/EXAMPLES.md"; rm -f ~/.claude/skills/arthur-onboard-instrument/EXAMPLES.md; }
 ```
 
 ### Project install
@@ -88,10 +92,14 @@ Add to a specific repository so your team gets it automatically when they open C
 BASE="https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integrations/claude-code-skills/arthur-onboard"
 for skill in arthur-onboard-oss arthur-onboard-oss-engine arthur-onboard-task arthur-onboard-analyze \
              arthur-onboard-instrument arthur-onboard-prompts arthur-onboard-verify \
-             arthur-onboard-eval-provider arthur-onboard-evals; do
+             arthur-onboard-eval-provider arthur-onboard-evals arthur-skills-upgrade; do
   mkdir -p .claude/skills/$skill
-  curl -sSLf "$BASE/$skill/SKILL.md" > .claude/skills/$skill/SKILL.md
+  curl -sSLf "$BASE/$skill/SKILL.md" > .claude/skills/$skill/SKILL.md \
+    || { echo "FAILED: $skill"; rm -f .claude/skills/$skill/SKILL.md; }
 done
+# Also install the instrumentation examples reference
+curl -sSLf "$BASE/arthur-onboard-instrument/EXAMPLES.md" > .claude/skills/arthur-onboard-instrument/EXAMPLES.md \
+  || { echo "FAILED: arthur-onboard-instrument/EXAMPLES.md"; rm -f .claude/skills/arthur-onboard-instrument/EXAMPLES.md; }
 git add .claude/skills/arthur-onboard*/
 git commit -m "Add Arthur GenAI Engine onboarding skills"
 ```
@@ -102,9 +110,29 @@ Download the `SKILL.md` from each sub-directory in this repo and place each at:
 - `~/.claude/skills/<skill-name>/SKILL.md` (global), or
 - `.claude/skills/<skill-name>/SKILL.md` in your project root
 
-### Update to latest
+### Keeping skills up to date
 
-Re-run the same install script — it overwrites files in place.
+Run `/arthur-skills-upgrade` at any time to check versions and install updates:
+
+```
+/arthur-skills-upgrade
+```
+
+This reads the `version` field from each installed skill, compares it against the latest
+on GitHub main, and updates only the stale ones after confirmation.
+
+**First-time upgrade (installed before versioning was introduced):**
+If you installed skills before version fields were added, run this one-liner to bootstrap
+the upgrade skill, then run `/arthur-skills-upgrade` to bring everything else current:
+
+```bash
+BASE="https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integrations/claude-code-skills/arthur-onboard"
+mkdir -p ~/.claude/skills/arthur-skills-upgrade
+curl -sSLf "$BASE/arthur-skills-upgrade/SKILL.md" > ~/.claude/skills/arthur-skills-upgrade/SKILL.md \
+  || { echo "FAILED: arthur-skills-upgrade"; rm -f ~/.claude/skills/arthur-skills-upgrade/SKILL.md; }
+```
+
+Alternatively, re-run the full install script above — it overwrites all files in place.
 
 ---
 
@@ -184,7 +212,7 @@ The platform skill uses the same modular design as the OSS skill. Four new platf
 Paste this prompt directly into Claude Code — no installation needed:
 
 ```
-For each skill name in this list — arthur-onboard-platform, arthur-onboard-platform-access, arthur-onboard-platform-workspace, arthur-onboard-platform-engine, arthur-onboard-platform-model, arthur-onboard-platform-token, arthur-onboard-analyze, arthur-onboard-instrument, arthur-onboard-prompts, arthur-onboard-verify, arthur-onboard-eval-provider, arthur-onboard-evals — fetch https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/integrations/claude-code-skills/arthur-onboard/<skill-name>/SKILL.md and save it to ~/.claude/skills/<skill-name>/SKILL.md (create the directory if it doesn't exist). Once all skills are saved, read ~/.claude/skills/arthur-onboard-platform/SKILL.md and follow its instructions.
+For each skill name in this list — arthur-onboard-platform, arthur-onboard-platform-access, arthur-onboard-platform-workspace, arthur-onboard-platform-engine, arthur-onboard-platform-model, arthur-onboard-platform-token, arthur-onboard-analyze, arthur-onboard-instrument, arthur-onboard-prompts, arthur-onboard-verify, arthur-onboard-eval-provider, arthur-onboard-evals, arthur-skills-upgrade — fetch https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/integrations/claude-code-skills/arthur-onboard/<skill-name>/SKILL.md and save it to ~/.claude/skills/<skill-name>/SKILL.md (create the directory if it doesn't exist). Also fetch https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/integrations/claude-code-skills/arthur-onboard/arthur-onboard-instrument/EXAMPLES.md and save it to ~/.claude/skills/arthur-onboard-instrument/EXAMPLES.md. Once all files are saved, read ~/.claude/skills/arthur-onboard-platform/SKILL.md and follow its instructions.
 ```
 
 ---
@@ -200,10 +228,15 @@ BASE="https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integration
 for skill in arthur-onboard-platform arthur-onboard-platform-access arthur-onboard-platform-workspace \
              arthur-onboard-platform-engine arthur-onboard-platform-model arthur-onboard-platform-token \
              arthur-onboard-analyze arthur-onboard-instrument arthur-onboard-prompts \
-             arthur-onboard-verify arthur-onboard-eval-provider arthur-onboard-evals; do
+             arthur-onboard-verify arthur-onboard-eval-provider arthur-onboard-evals \
+             arthur-skills-upgrade; do
   mkdir -p ~/.claude/skills/$skill
-  curl -sSLf "$BASE/$skill/SKILL.md" > ~/.claude/skills/$skill/SKILL.md
+  curl -sSLf "$BASE/$skill/SKILL.md" > ~/.claude/skills/$skill/SKILL.md \
+    || { echo "FAILED: $skill"; rm -f ~/.claude/skills/$skill/SKILL.md; }
 done
+# Also install the instrumentation examples reference
+curl -sSLf "$BASE/arthur-onboard-instrument/EXAMPLES.md" > ~/.claude/skills/arthur-onboard-instrument/EXAMPLES.md \
+  || { echo "FAILED: arthur-onboard-instrument/EXAMPLES.md"; rm -f ~/.claude/skills/arthur-onboard-instrument/EXAMPLES.md; }
 ```
 
 ### Project install
@@ -215,10 +248,15 @@ BASE="https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integration
 for skill in arthur-onboard-platform arthur-onboard-platform-access arthur-onboard-platform-workspace \
              arthur-onboard-platform-engine arthur-onboard-platform-model arthur-onboard-platform-token \
              arthur-onboard-analyze arthur-onboard-instrument arthur-onboard-prompts \
-             arthur-onboard-verify arthur-onboard-eval-provider arthur-onboard-evals; do
+             arthur-onboard-verify arthur-onboard-eval-provider arthur-onboard-evals \
+             arthur-skills-upgrade; do
   mkdir -p .claude/skills/$skill
-  curl -sSLf "$BASE/$skill/SKILL.md" > .claude/skills/$skill/SKILL.md
+  curl -sSLf "$BASE/$skill/SKILL.md" > .claude/skills/$skill/SKILL.md \
+    || { echo "FAILED: $skill"; rm -f .claude/skills/$skill/SKILL.md; }
 done
+# Also install the instrumentation examples reference
+curl -sSLf "$BASE/arthur-onboard-instrument/EXAMPLES.md" > .claude/skills/arthur-onboard-instrument/EXAMPLES.md \
+  || { echo "FAILED: arthur-onboard-instrument/EXAMPLES.md"; rm -f .claude/skills/arthur-onboard-instrument/EXAMPLES.md; }
 git add .claude/skills/arthur-onboard*/
 git commit -m "Add Arthur Platform onboarding skills"
 ```

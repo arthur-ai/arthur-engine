@@ -1,6 +1,6 @@
 [project]
 name = "arthur-genai-engine"
-version = "2.1.615"
+version = "2.1.617"
 description = ""
 authors = [{ name = "Arthur", email = "engineering@arthur.ai" }]
 readme = "README.md"
@@ -19,7 +19,7 @@ dependencies = [
   "psycopg2-binary==2.9.11",
   "sqlalchemy==2.0.48",
   "pgvector==0.4.2",
-  "python-multipart==0.0.22",
+  "python-multipart==0.0.27",
   "pypdf==6.8.0",
   "httpx==0.28.1",
   "transformers==4.56.2",
@@ -55,7 +55,7 @@ dependencies = [
   "spacy>=3.8.3",
   "date-spacy>=0.0.1,<0.1",
   "bert-score==0.3.13",
-  "langchain==0.3.28",
+  "langchain==0.3.30",
   "langchain-community==0.3.31",
   "langchain-openai==0.3.35",
   "cloudpickle==3.1.2",

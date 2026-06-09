@@ -2,6 +2,7 @@
 name: arthur-onboard-oss-engine
 description: Arthur onboarding sub-skill — Step 2: Ensure Arthur GenAI Engine is available (local install or remote). Reads/writes .arthur-engine.env.
 allowed-tools: Bash, Read, Write, Edit, Task
+version: 1.0.0
 ---
 
 # Arthur Onboard — Step 2: Ensure Arthur GenAI Engine Is Available
