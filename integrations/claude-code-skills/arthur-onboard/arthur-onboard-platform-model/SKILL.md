@@ -2,6 +2,7 @@
 name: arthur-onboard-platform-model
 description: Arthur onboarding sub-skill — Platform Step 5: Gate on application type, create an Agentic Model on Arthur Platform, and retrieve GenAI Engine task connection info. Reads/writes .arthur-engine.env.
 allowed-tools: Bash, Read, Write
+version: 1.0.0
 ---
 
 # Arthur Onboard — Platform Step 5: Create Agentic Model

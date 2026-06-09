@@ -160,7 +160,7 @@ wheels = [
 
 [[package]]
 name = "arthur-observability-sdk"
-version = "2.1.596"
+version = "2.1.617"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
@@ -1843,16 +1843,15 @@ wheels = [
 
 [[package]]
 name = "openinference-instrumentation-codex"
-version = "0.3.1"
+version = "0.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "openinference-semantic-conventions" },
     { name = "opentelemetry-api" },
-    { name = "opentelemetry-instrumentation" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a7/98/7b2a0178811d40df591d133201a44d715d1cab76c1bf87033eda13c1f499/openinference_instrumentation_codex-0.3.1.tar.gz", hash = "sha256:867ed9bb220578632d25e05abea9cf2b4d7ec47953748d4ab453b725da21b6a3", size = 81753, upload-time = "2026-05-13T18:30:19.415Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/23/ac/7a32fc99e662d3f597a97fbfa1d44ae06577a0214b19dc16e5666164ac46/openinference_instrumentation_codex-0.4.0.tar.gz", hash = "sha256:5ea3cd712e0dfe90e8c908c8c9983685db4c789f465b5db59ab88836ca972c6e", size = 117142, upload-time = "2026-06-03T18:34:57.659Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/39/15/dbbbdd4ebf1493cd8a8399ffc26a5931d7316269815b96acd06d52164136/openinference_instrumentation_codex-0.3.1-py3-none-any.whl", hash = "sha256:9d4979c29066254c926023d0d30af8e1fa1b85f4a56a99273341e7b0499c0dff", size = 39889, upload-time = "2026-05-13T18:30:17.875Z" },
+    { url = "https://files.pythonhosted.org/packages/49/f8/2dbad36c0e7035004793976231c4088ffec4402a2495a84fbcecf9f42a2e/openinference_instrumentation_codex-0.4.0-py3-none-any.whl", hash = "sha256:fa3c4bfbf3ad61f1a8da8e6754258c36ba27001f1b94bbd62b9f0d91a8a166f8", size = 38246, upload-time = "2026-06-03T18:34:56.466Z" },
 ]
 
 [[package]]
@@ -3399,11 +3398,11 @@ wheels = [
 
 [[package]]
 name = "urllib3"
-version = "2.6.3"
+version = "2.7.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/c7/24/5f1b3bdffd70275f6661c76461e25f024d5a38a46f04aaca912426a2b1d3/urllib3-2.6.3.tar.gz", hash = "sha256:1b62b6884944a57dbe321509ab94fd4d3b307075e0c2eae991ac71ee15ad38ed", size = 435556, upload-time = "2026-01-07T16:24:43.925Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/53/0c/06f8b233b8fd13b9e5ee11424ef85419ba0d8ba0b3138bf360be2ff56953/urllib3-2.7.0.tar.gz", hash = "sha256:231e0ec3b63ceb14667c67be60f2f2c40a518cb38b03af60abc813da26505f4c", size = 433602, upload-time = "2026-05-07T16:13:18.596Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/39/08/aaaad47bc4e9dc8c725e68f9d04865dbcb2052843ff09c97b08904852d84/urllib3-2.6.3-py3-none-any.whl", hash = "sha256:bf272323e553dfb2e87d9bfd225ca7b0f467b919d7bbd355436d3fd37cb0acd4", size = 131584, upload-time = "2026-01-07T16:24:42.685Z" },
+    { url = "https://files.pythonhosted.org/packages/7f/3e/5db95bcf282c52709639744ca2a8b149baccf648e39c8cc87553df9eae0c/urllib3-2.7.0-py3-none-any.whl", hash = "sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897", size = 131087, upload-time = "2026-05-07T16:13:17.151Z" },
 ]
 
 [[package]]

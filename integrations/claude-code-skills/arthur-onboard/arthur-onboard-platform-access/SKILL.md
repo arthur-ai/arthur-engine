@@ -2,6 +2,7 @@
 name: arthur-onboard-platform-access
 description: Arthur onboarding sub-skill — Platform Step 2: Authenticate to Arthur Platform using service account credentials (OAuth2 client credentials). Reads/writes .arthur-engine.env.
 allowed-tools: Bash, Read, Write
+version: 1.0.0
 ---
 
 # Arthur Onboard — Platform Step 2: Authenticate to Arthur Platform

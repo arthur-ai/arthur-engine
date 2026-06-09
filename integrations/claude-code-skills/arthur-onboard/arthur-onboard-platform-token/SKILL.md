@@ -2,6 +2,7 @@
 name: arthur-onboard-platform-token
 description: Arthur onboarding helper — Refresh Arthur Platform OAuth2 token using arthur_client. Reads CLIENT_ID/SECRET from .arthur-engine.env, writes ARTHUR_PLATFORM_TOKEN back to state.
 allowed-tools: Bash
+version: 1.0.0
 ---
 
 # Arthur Onboard — Platform Token Refresh

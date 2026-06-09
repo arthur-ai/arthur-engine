@@ -80,6 +80,10 @@ Install these skill folders into ${CODEX_HOME:-~/.codex}/skills:
 Fetch each SKILL.md from:
 https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integrations/claude-code-skills/arthur-onboard/<skill-name>/SKILL.md
 
+Also fetch the instrumentation examples reference:
+https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integrations/claude-code-skills/arthur-onboard/arthur-onboard-instrument/EXAMPLES.md
+Save it to ${CODEX_HOME:-~/.codex}/skills/arthur-onboard-instrument/EXAMPLES.md.
+
 Create each directory as needed. After installation, remind me to restart Codex.
 ```
 
@@ -106,6 +110,10 @@ Install these skill folders into ${CODEX_HOME:-~/.codex}/skills:
 
 Fetch each SKILL.md from:
 https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integrations/claude-code-skills/arthur-onboard/<skill-name>/SKILL.md
+
+Also fetch the instrumentation examples reference:
+https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integrations/claude-code-skills/arthur-onboard/arthur-onboard-instrument/EXAMPLES.md
+Save it to ${CODEX_HOME:-~/.codex}/skills/arthur-onboard-instrument/EXAMPLES.md.
 
 Create each directory as needed. After installation, remind me to restart Codex.
 ```
@@ -136,6 +144,9 @@ for skill in $SKILLS; do
   rm -rf "$SKILL_DEST/$skill"
   cp -R "claude-code-skills/arthur-onboard/$skill" "$SKILL_DEST/$skill"
 done
+# Also install the instrumentation examples reference
+cp "claude-code-skills/arthur-onboard/arthur-onboard-instrument/EXAMPLES.md" \
+   "$SKILL_DEST/arthur-onboard-instrument/EXAMPLES.md"
 ```
 
 ## Install From GitHub
@@ -156,8 +167,12 @@ SKILL_DEST="${CODEX_HOME:-$HOME/.codex}/skills"
 
 for skill in $SKILLS; do
   mkdir -p "$SKILL_DEST/$skill"
-  curl -sSLf "$BASE/$skill/SKILL.md" > "$SKILL_DEST/$skill/SKILL.md"
+  curl -sSLf "$BASE/$skill/SKILL.md" > "$SKILL_DEST/$skill/SKILL.md" \
+    || { echo "FAILED: $skill"; rm -f "$SKILL_DEST/$skill/SKILL.md"; }
 done
+# Also install the instrumentation examples reference
+curl -sSLf "$BASE/arthur-onboard-instrument/EXAMPLES.md" > "$SKILL_DEST/arthur-onboard-instrument/EXAMPLES.md" \
+  || { echo "FAILED: arthur-onboard-instrument/EXAMPLES.md"; rm -f "$SKILL_DEST/arthur-onboard-instrument/EXAMPLES.md"; }
 ```
 
 To install from a branch or tag instead of `main`, set `ARTHUR_ENGINE_REF`
