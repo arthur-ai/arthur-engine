@@ -2,6 +2,7 @@
 name: arthur-onboard-verify
 description: Arthur onboarding sub-skill — Step 7: Verify that traces are flowing from the instrumented application to Arthur Engine. Reads credentials from .arthur-engine.env.
 allowed-tools: Bash, Read
+version: 1.0.0
 ---
 
 # Arthur Onboard — Step 7: Verify Instrumentation

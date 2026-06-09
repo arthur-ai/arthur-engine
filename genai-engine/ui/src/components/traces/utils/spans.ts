@@ -1,5 +1,7 @@
 import { getNestedValue } from "@arthur/shared-components";
 
+import { NestedSpanWithMetricsResponse, StatusCodeEnum } from "@/lib/api";
+
 export {
   getNestedValue,
   getSpanInput,
@@ -12,6 +14,62 @@ export {
   getSpanIcon,
   isSpanOfType,
 } from "@arthur/shared-components";
+
+export type SpanErrorInfo = {
+  code: string;
+  message: string;
+  type?: string;
+  stacktrace?: string;
+};
+
+type SpanStatus = { code?: unknown; message?: unknown };
+type SpanEvent = { name?: unknown; attributes?: Record<string, unknown> };
+
+const OTEL_KEYS = {
+  status: "status",
+  events: "events",
+  exceptionEventName: "exception",
+  exceptionMessage: "exception.message",
+  exceptionType: "exception.type",
+  exceptionStacktrace: "exception.stacktrace",
+  defaultStatusCode: "STATUS_CODE_ERROR",
+} as const;
+
+const getStringAttr = (attrs: Record<string, unknown>, key: string): string | undefined => {
+  const value = attrs[key];
+  return typeof value === "string" ? value : undefined;
+};
+
+/**
+ * Extracts a parsed error from a span when its status indicates an error.
+ *
+ * Primary source: the OpenTelemetry span status (`status.message` paired with
+ * `status.code`). Falls back to the first OTel `exception` event's attributes
+ * (`exception.message`, `exception.type`, `exception.stacktrace`) when the
+ * status carries no message.
+ *
+ * Returns `null` when the span is not an error, or no extractable message is
+ * present anywhere on the span.
+ */
+export function getSpanErrorInfo(span: NestedSpanWithMetricsResponse): SpanErrorInfo | null {
+  if ((span.status_code as StatusCodeEnum) !== "Error") return null;
+
+  const status = getNestedValue<SpanStatus>(span.raw_data, OTEL_KEYS.status);
+  const statusMessage = typeof status?.message === "string" ? status.message : undefined;
+  const statusCode = typeof status?.code === "string" ? status.code : OTEL_KEYS.defaultStatusCode;
+
+  const events = getNestedValue<SpanEvent[]>(span.raw_data, OTEL_KEYS.events);
+  const exceptionEvent = Array.isArray(events) ? events.find((e) => e.name === OTEL_KEYS.exceptionEventName) : undefined;
+  const excAttrs = exceptionEvent?.attributes ?? {};
+  const excMessage = getStringAttr(excAttrs, OTEL_KEYS.exceptionMessage);
+  const excType = getStringAttr(excAttrs, OTEL_KEYS.exceptionType);
+  const excStack = getStringAttr(excAttrs, OTEL_KEYS.exceptionStacktrace);
+
+  const message = statusMessage ?? excMessage;
+  if (!message) return null;
+
+  return { code: statusCode, message, type: excType, stacktrace: excStack };
+}
 
 /**
  * Like getNestedValue but supports '*' as a wildcard segment.

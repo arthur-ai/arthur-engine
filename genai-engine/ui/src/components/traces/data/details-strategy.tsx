@@ -6,7 +6,8 @@ import Typography from "@mui/material/Typography";
 import { DurationCellWithBucket } from "../components/DurationCell";
 import { isSpanWithLlmAttrs, ToolsTab } from "../components/llm/ToolsTab";
 import { LLMMetricsPanel } from "../components/LLMMetricsPanel";
-import { getSpanDuration, getSpanInput, getSpanInputMimeType, getSpanModel, getSpanOutput } from "../utils/spans";
+import { SpanErrorPanel } from "../components/SpanErrorPanel";
+import { getSpanDuration, getSpanErrorInfo, getSpanInput, getSpanInputMimeType, getSpanModel, getSpanOutput } from "../utils/spans";
 
 import { TokenCostTooltip, TokenCountTooltip } from "./common";
 
@@ -37,6 +38,7 @@ const PANELS = {
   OUTPUT: {
     label: "Output",
     render: (span: NestedSpanWithMetricsResponse) => {
+      if (getSpanErrorInfo(span)) return <SpanErrorPanel span={span} />;
       const { type } = getHighlightType(span);
       return <Highlight code={tryFormatJson(getSpanOutput(span))} language={type} />;
     },
@@ -116,6 +118,7 @@ const spanDetailsStrategy = [
 
           return (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              <SpanErrorPanel span={span} />
               {messages.map((message, index) => (
                 <MessageRenderer message={message.message} key={index} />
               ))}

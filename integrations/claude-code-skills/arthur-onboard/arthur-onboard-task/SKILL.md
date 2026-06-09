@@ -2,6 +2,7 @@
 name: arthur-onboard-task
 description: Arthur onboarding sub-skill — Step 3: Set up an Arthur Task (create or select). Reads/writes .arthur-engine.env.
 allowed-tools: Bash, Read, Write, Edit
+version: 1.0.0
 ---
 
 # Arthur Onboard — Step 3: Set Up Arthur Task
