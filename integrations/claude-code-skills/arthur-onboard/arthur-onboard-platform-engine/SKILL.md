@@ -2,6 +2,7 @@
 name: arthur-onboard-platform-engine
 description: Arthur onboarding sub-skill — Platform Step 4: Ensure an Arthur Engine (data plane) is registered and active in the selected workspace. Reads/writes .arthur-engine.env.
 allowed-tools: Bash, Read, Write, Task
+version: 1.0.0
 ---
 
 # Arthur Onboard — Platform Step 4: Ensure Arthur Engine Is Registered

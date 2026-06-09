@@ -2,6 +2,7 @@
 name: arthur-onboard-eval-provider
 description: Arthur onboarding sub-skill — Step 8: Configure an LLM provider for continuous evals (OpenAI, Anthropic, Gemini, Bedrock, or Vertex AI). Reads/writes .arthur-engine.env.
 allowed-tools: Bash, Read, Write
+version: 1.0.0
 ---
 
 # Arthur Onboard — Step 8: Configure Eval Model Provider

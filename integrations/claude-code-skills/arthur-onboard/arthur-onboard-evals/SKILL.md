@@ -2,6 +2,7 @@
 name: arthur-onboard-evals
 description: Arthur onboarding sub-skill — Step 9: Recommend and configure continuous LLM evals for the Arthur task. Reads credentials and eval provider from .arthur-engine.env.
 allowed-tools: Bash, Read
+version: 1.0.0
 ---
 
 # Arthur Onboard — Step 9: Recommend & Configure Continuous Evals

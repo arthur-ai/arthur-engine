@@ -17,7 +17,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import z from "zod";
 
@@ -75,6 +75,8 @@ const LiveEvalsNewForm = () => {
   const initialEvalVersion = searchParams.get("evalVersion");
 
   const navigate = useNavigate();
+
+  const createContinuousEval = useCreateContinuousEval();
 
   const form = useAppForm({
     defaultValues: {
@@ -146,8 +148,6 @@ const LiveEvalsNewForm = () => {
       navigate(`/tasks/${task?.id}/continuous-evals/${id}`);
     },
   });
-
-  const createContinuousEval = useCreateContinuousEval();
 
   const evaluator = useStore(form.store, (state) => state.values.evaluator);
   const transform = useStore(form.store, (state) => state.values.transform);
@@ -301,13 +301,21 @@ export const DetailsFieldGroup = withFieldGroup({
     description: "",
   },
   render: function Render({ group }) {
+    const nameInputRef = useRef<HTMLInputElement | null>(null);
+
+    useEffect(() => {
+      const raf = requestAnimationFrame(() => {
+        nameInputRef.current?.focus();
+      });
+      return () => cancelAnimationFrame(raf);
+    }, []);
+
     return (
       <Stack gap={2}>
-        <group.AppField
-          name="name"
-          children={(field) => (
+        <group.AppField name="name">
+          {(field) => (
             <TextField
-              autoFocus
+              inputRef={nameInputRef}
               label="Eval Name"
               type="text"
               fullWidth
@@ -316,14 +324,13 @@ export const DetailsFieldGroup = withFieldGroup({
               value={field.state.value}
               onChange={(e) => field.handleChange(e.target.value)}
               onBlur={field.handleBlur}
-              error={field.state.meta.errors.length > 0}
+              error={field.state.meta.isTouched && field.state.meta.errors.length > 0}
             />
           )}
-        />
+        </group.AppField>
 
-        <group.AppField
-          name="description"
-          children={(field) => (
+        <group.AppField name="description">
+          {(field) => (
             <TextField
               multiline
               rows={3}
@@ -334,10 +341,10 @@ export const DetailsFieldGroup = withFieldGroup({
               value={field.state.value}
               onChange={(e) => field.handleChange(e.target.value)}
               onBlur={field.handleBlur}
-              error={field.state.meta.errors.length > 0}
+              error={field.state.meta.isTouched && field.state.meta.errors.length > 0}
             />
           )}
-        />
+        </group.AppField>
       </Stack>
     );
   },
@@ -403,7 +410,8 @@ export const TransformSelector = withFieldGroup({
                   onSelectionChange?.();
                 },
               }}
-              children={(field) => {
+            >
+              {(field) => {
                 const selected = transforms.data?.find((transform) => transform.id === field.state.value);
 
                 return (
@@ -423,11 +431,10 @@ export const TransformSelector = withFieldGroup({
                   />
                 );
               }}
-            />
+            </group.AppField>
             {transformId && (
-              <group.AppField
-                name="transformVersionId"
-                children={(field) => (
+              <group.AppField name="transformVersionId">
+                {(field) => (
                   <Autocomplete
                     sx={{ width: 200 }}
                     loading={versionsLoading}
@@ -441,7 +448,7 @@ export const TransformSelector = withFieldGroup({
                     renderInput={(params) => <TextField {...params} label="Version" />}
                   />
                 )}
-              />
+              </group.AppField>
             )}
           </Stack>
         </Stack>

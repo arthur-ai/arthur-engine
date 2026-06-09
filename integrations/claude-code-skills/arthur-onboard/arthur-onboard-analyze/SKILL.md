@@ -2,6 +2,7 @@
 name: arthur-onboard-analyze
 description: Arthur onboarding sub-skill — Step 4: Analyze the target repository (language, framework, existing instrumentation). Writes detection results to .arthur-engine.env.
 allowed-tools: Bash, Read
+version: 1.0.0
 ---
 
 # Arthur Onboard — Step 4: Analyze Repository
