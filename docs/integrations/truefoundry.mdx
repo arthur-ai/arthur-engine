@@ -34,19 +34,19 @@ Your app ─► TrueFoundry gateway ─► Arthur AI wrapper ─► engine.platf
 
 ## Response contract
 
-| HTTP  | Body                                   | Meaning                   |
-| ----- | -------------------------------------- | ------------------------- |
-| `200` | `{"verdict": true}`                    | Allow                     |
-| `200` | `{"verdict": false, "message": "..."}` | Block (policy)            |
-| `5xx` | error JSON                             | Wrapper or Arthur failure |
+| HTTP | Body | Meaning |
+| ---- | ---- | ------- |
+| `200` | `{"verdict": true}` | Allow |
+| `200` | `{"verdict": false, "message": "..."}` | Block (policy) |
+| `5xx` | error JSON | Wrapper or Arthur failure |
 
 Policy blocks use **2xx + `verdict: false`**, not HTTP 4xx. See [Custom guardrail response contract](https://www.truefoundry.com/docs/ai-gateway/custom-guardrails#custom-guardrail-response-contract).
 
 ## Wrapper endpoints
 
-| Path               | Target            |
-| ------------------ | ----------------- |
-| `/validate-input`  | Request (input)   |
+| Path | Target |
+| ---- | ------ |
+| `/validate-input` | Request (input) |
 | `/validate-output` | Response (output) |
 
 `GET /health` — health check. `GET /debug/loaded-config` — bearer-gated diagnostics.
@@ -103,15 +103,15 @@ All POST routes expect `Authorization: Bearer <WRAPPER_API_KEY>`.
 
     **Input validate** example:
 
-    | Field                  | Value                                                                             |
-    | ---------------------- | --------------------------------------------------------------------------------- |
-    | **Name**               | `arthur-input-validate`                                                           |
-    | **Operation**          | Validate                                                                          |
-    | **Target**             | Request                                                                           |
-    | **Enforcing Strategy** | Enforce But Ignore On Error                                                       |
-    | **URL**                | `https://<host>/validate-input`                                                   |
-    | **Headers**            | `Authorization` → `Bearer <WRAPPER_API_KEY>`; `Content-Type` → `application/json` |
-    | **Config**             | `{}`                                                                              |
+    | Field | Value |
+    | ----- | ----- |
+    | **Name** | `arthur-input-validate` |
+    | **Operation** | Validate |
+    | **Target** | Request |
+    | **Enforcing Strategy** | Enforce But Ignore On Error |
+    | **URL** | `https://<host>/validate-input` |
+    | **Headers** | `Authorization` → `Bearer <WRAPPER_API_KEY>`; `Content-Type` → `application/json` |
+    | **Config** | `{}` |
 
     <Frame caption="Arthur AI guardrail configuration in TrueFoundry (input validate)">
       <img
@@ -124,18 +124,18 @@ All POST routes expect `Authorization: Bearer <WRAPPER_API_KEY>`.
 
     **Output validate:**
 
-    | Field         | Value                            |
-    | ------------- | -------------------------------- |
-    | **Name**      | `arthur-output-validate`         |
-    | **Operation** | Validate                         |
-    | **Target**    | Response                         |
-    | **URL**       | `https://<host>/validate-output` |
+    | Field | Value |
+    | ----- | ----- |
+    | **Name** | `arthur-output-validate` |
+    | **Operation** | Validate |
+    | **Target** | Response |
+    | **URL** | `https://<host>/validate-output` |
 
     **Auth Data → Custom Bearer Auth** works the same as **Headers** if you prefer not to set headers manually.
   </Step>
 
   <Step title="Attach Arthur AI guardrails to traffic">
-    **Model pin**: **AI Gateway → Models → \<model> → Guardrails** → attach group `arthur-ai`.
+    **Model pin**: **AI Gateway → Models → `<model>` → Guardrails** → attach group `arthur-ai`.
 
     **Per request** — `X-TFY-GUARDRAILS` header, selector format `<group>/<config-name>`:
 
@@ -162,30 +162,30 @@ Override default Arthur checks by setting `config.checks` in the TrueFoundry das
 }
 ```
 
-| Key                             | Purpose                                                                |
-| ------------------------------- | ---------------------------------------------------------------------- |
-| `credentials.apiKey`            | Override `ARTHUR_API_KEY` env var                                      |
-| `api_base`                      | Override Arthur API host (default `https://engine.platform.arthur.ai`) |
-| `timeout`                       | Request timeout in seconds (default 30)                                |
-| `context` / `grounding_context` | Grounding text for hallucination checks                                |
-| `fail_closed_on_unavailable`    | Block when Arthur returns Skipped/Unavailable (default `false`)        |
+| Key | Purpose |
+| --- | ------- |
+| `credentials.apiKey` | Override `ARTHUR_API_KEY` env var |
+| `api_base` | Override Arthur API host (default `https://engine.platform.arthur.ai`) |
+| `timeout` | Request timeout in seconds (default 30) |
+| `context` / `grounding_context` | Grounding text for hallucination checks |
+| `fail_closed_on_unavailable` | Block when Arthur returns Skipped/Unavailable (default `false`) |
 
 ## Troubleshooting
 
-| Symptom                                        | Likely cause                                                                   |
-| ---------------------------------------------- | ------------------------------------------------------------------------------ |
-| `401` from wrapper                             | `WRAPPER_API_KEY` on the service does not match the dashboard Bearer token     |
-| Gateway allows despite `verdict: false`        | Tenant gateway not honoring verdict-on-200; set **Enforce** or upgrade gateway |
-| Arthur Skipped/Unavailable but traffic allowed | Default behavior; set `fail_closed_on_unavailable: true` in config             |
-| Wrong checks running                           | Curl `/debug/loaded-config` with Bearer auth to inspect loaded config          |
+| Symptom | Likely cause |
+| ------- | ------------ |
+| `401` from wrapper | `WRAPPER_API_KEY` on the service does not match the dashboard Bearer token |
+| Gateway allows despite `verdict: false` | Tenant gateway not honoring verdict-on-200; set **Enforce** or upgrade gateway |
+| Arthur Skipped/Unavailable but traffic allowed | Default behavior; set `fail_closed_on_unavailable: true` in config |
+| Wrong checks running | Curl `/debug/loaded-config` with Bearer auth to inspect loaded config |
 
 ## Reference
 
-| Item            | Value                                                                                                                                                                 |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Source repo     | [`truefoundry/integrations-custom-guardrails/integrations/arthur-ai`](https://github.com/truefoundry/integrations-custom-guardrails/tree/main/integrations/arthur-ai) |
-| Arthur Engine   | [engine.platform.arthur.ai](https://engine.platform.arthur.ai)                                                                                                                      |
-| Arthur API      | `POST https://engine.platform.arthur.ai/api/v2/validate`                                                                                                              |
-| Selector        | `arthur-ai/<config-name>`                                                                                                                                             |
-| TrueFoundry docs | [Custom Guardrails](https://www.truefoundry.com/docs/ai-gateway/custom-guardrails)                                                                                   |
-| Documentation index | [truefoundry.com/llms.txt](https://www.truefoundry.com/llms.txt)                                                                                                 |
+| Item | Value |
+| ---- | ----- |
+| Source repo | [`truefoundry/integrations-custom-guardrails/integrations/arthur-ai`](https://github.com/truefoundry/integrations-custom-guardrails/tree/main/integrations/arthur-ai) |
+| Arthur Engine | [engine.platform.arthur.ai](https://engine.platform.arthur.ai) |
+| Arthur API | `POST https://engine.platform.arthur.ai/api/v2/validate` |
+| Selector | `arthur-ai/<config-name>` |
+| TrueFoundry docs | [Custom Guardrails](https://www.truefoundry.com/docs/ai-gateway/custom-guardrails) |
+| Documentation index | [truefoundry.com/llms.txt](https://www.truefoundry.com/llms.txt) |
