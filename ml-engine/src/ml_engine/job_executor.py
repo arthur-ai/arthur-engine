@@ -110,7 +110,7 @@ class JobSpecRawParser:
 
 class JobExecutor:
     def __init__(self) -> None:
-        ssl_verify = Config.get_bool("KEYCLOAK_SSL_VERIFY", True)
+        ssl_verify = Config.get_bool("ARTHUR_API_HOST_SSL_VERIFY", True)
         sess = ArthurClientCredentialsAPISession(
             client_id=Config.settings.ARTHUR_CLIENT_ID,
             client_secret=Config.settings.ARTHUR_CLIENT_SECRET,
@@ -376,7 +376,7 @@ class JobExecutor:
                         if not genai_engine_url or not genai_engine_api_key:
                             self.logger.error(
                                 "GenAI Engine configuration missing. "
-                                "GENAI_ENGINE_INTERNAL_HOST and GENAI_ENGINE_INTERNAL_API_KEY must be set."
+                                "GENAI_ENGINE_INTERNAL_HOST and GENAI_ENGINE_INTERNAL_API_KEY must be set.",
                             )
                             raise ValueError("GenAI Engine configuration missing")
 

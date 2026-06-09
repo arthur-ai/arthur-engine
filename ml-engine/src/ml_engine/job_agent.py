@@ -45,7 +45,7 @@ class RunningJob:
 
 class JobAgent:
     def __init__(self, shutdown_grace_period_seconds: int = 15) -> None:
-        ssl_verify = Config.get_bool("KEYCLOAK_SSL_VERIFY", True)
+        ssl_verify = Config.get_bool("ARTHUR_API_HOST_SSL_VERIFY", True)
         sess = ArthurClientCredentialsAPISession(
             client_id=Config.settings.ARTHUR_CLIENT_ID,
             client_secret=Config.settings.ARTHUR_CLIENT_SECRET,
