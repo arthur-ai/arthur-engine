@@ -56,7 +56,7 @@ const getTimeRangeLabel = (button: TimeRangeButton): string => {
 
 export const TaskOverview: React.FC = () => {
   const { task } = useTask();
-  const { defaultCurrency, timezone, use24Hour } = useDisplaySettings();
+  const { defaultCurrency, timezone, use24Hour, scopeUrl } = useDisplaySettings();
   const [selectedTimeRangeButton, setSelectedTimeRangeButton] = useState<TimeRangeButton>("Last 7 Days");
   const [taskDetailsOpen, setTaskDetailsOpen] = useState(false);
 
@@ -406,27 +406,29 @@ export const TaskOverview: React.FC = () => {
         </Box>
 
         {/* Bottom CTA Banner */}
-        <Paper variant="outlined" sx={{ p: 3, borderStyle: "dashed", borderWidth: 2, borderColor: "divider" }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
-            <Box>
-              <Typography variant="subtitle1" fontWeight={500} color="text.secondary">
-                Need deeper analysis?
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                Create custom dashboards with advanced filters, breakdowns, and export options in the Arthur platform.
-              </Typography>
-            </Box>
-            <Button
-              variant="outlined"
-              color="inherit"
-              endIcon={<OpenInNewOutlined />}
-              onClick={() => window.open("https://platform.arthur.ai/signup", "_blank", "noopener,noreferrer")}
-              sx={{ whiteSpace: "nowrap" }}
-            >
-              Open in Arthur Platform
-            </Button>
-          </Stack>
-        </Paper>
+        {scopeUrl && (
+          <Paper variant="outlined" sx={{ p: 3, borderStyle: "dashed", borderWidth: 2, borderColor: "divider" }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Box>
+                <Typography variant="subtitle1" fontWeight={500} color="text.secondary">
+                  Need deeper analysis?
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  Create custom dashboards with advanced filters, breakdowns, and export options in the Arthur platform.
+                </Typography>
+              </Box>
+              <Button
+                variant="outlined"
+                color="inherit"
+                endIcon={<OpenInNewOutlined />}
+                onClick={() => window.open(scopeUrl, "_blank", "noopener,noreferrer")}
+                sx={{ whiteSpace: "nowrap" }}
+              >
+                Open in Arthur Platform
+              </Button>
+            </Stack>
+          </Paper>
+        )}
       </Stack>
     </Box>
   );
