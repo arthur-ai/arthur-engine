@@ -9,11 +9,11 @@ description: Use Arthur AI as a custom guardrail on TrueFoundry AI Gateway to va
 
 [**TrueFoundry AI Gateway**](https://www.truefoundry.com/ai-gateway) is the proxy layer that sits between your applications and the LLM providers and MCP Servers. It is an enterprise-grade platform that enables users to access 1000+ LLMs using a unified interface while taking care of observability and governance.
 
-Arthur AI integrates with TrueFoundry as a **Custom Guardrail**. When LLM traffic flows through the gateway, Arthur validates prompts on the way in and completions on the way out — reporting pass/block verdicts without redacting or rewriting text. Deploy the [`integrations/arthur-ai`](https://github.com/truefoundry/integrations-custom-guardrails/tree/main/integrations/arthur-ai) **FastAPI wrapper** on any **public HTTPS** host; TrueFoundry calls it at `llm_input` / `llm_output` via the [Custom Guardrail](https://www.truefoundry.com/docs/ai-gateway/custom-guardrails) contract, and the wrapper forwards traffic to [Arthur GenAI Engine](https://platform.arthur.ai) and returns `verdict` JSON on HTTP 200.
+Arthur AI integrates with TrueFoundry as a **Custom Guardrail**. When LLM traffic flows through the gateway, Arthur validates prompts on the way in and completions on the way out — reporting pass/block verdicts without redacting or rewriting text. Deploy the [`integrations/arthur-ai`](https://github.com/truefoundry/integrations-custom-guardrails/tree/main/integrations/arthur-ai) **FastAPI wrapper** on any **public HTTPS** host; TrueFoundry calls it at `llm_input` / `llm_output` via the [Custom Guardrail](https://www.truefoundry.com/docs/ai-gateway/custom-guardrails) contract, and the wrapper forwards traffic to [Arthur GenAI Engine](https://engine.platform.arthur.ai) and returns `verdict` JSON on HTTP 200.
 
 ## Arthur AI guardrail behavior
 
-[Arthur GenAI Engine](https://platform.arthur.ai) validates LLM prompts and completions. The wrapper calls `POST /api/v2/validate` and maps rule results to pass/block — it does not embed policy logic beyond the checks you configure in Arthur.
+[Arthur GenAI Engine](https://engine.platform.arthur.ai) validates LLM prompts and completions. The wrapper calls `POST /api/v2/validate` and maps rule results to pass/block — it does not embed policy logic beyond the checks you configure in Arthur.
 
 Arthur is **validate-only**. On TrueFoundry, use **Operation: Validate** for both input and output rails.
 
@@ -55,7 +55,7 @@ All POST routes expect `Authorization: Bearer <WRAPPER_API_KEY>`.
 
 ## Prerequisites
 
-* **Arthur API key** from the [Arthur platform](https://platform.arthur.ai).
+* **Arthur API key** from the [Arthur platform](https://engine.platform.arthur.ai).
 * **Public HTTPS URL** for the deployed wrapper.
 * **`WRAPPER_API_KEY`** — shared secret TrueFoundry sends as `Authorization: Bearer …`.
 
@@ -70,7 +70,7 @@ All POST routes expect `Authorization: Bearer <WRAPPER_API_KEY>`.
     ```
 
     ```bash .env
-    ARTHUR_API_KEY=<from https://platform.arthur.ai>
+    ARTHUR_API_KEY=<from https://engine.platform.arthur.ai>
     WRAPPER_API_KEY=<generate: python -c "import secrets; print(secrets.token_urlsafe(32))">
     ```
   </Step>
@@ -184,7 +184,7 @@ Override default Arthur checks by setting `config.checks` in the TrueFoundry das
 | Item            | Value                                                                                                                                                                 |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Source repo     | [`truefoundry/integrations-custom-guardrails/integrations/arthur-ai`](https://github.com/truefoundry/integrations-custom-guardrails/tree/main/integrations/arthur-ai) |
-| Arthur platform | [platform.arthur.ai](https://platform.arthur.ai)                                                                                                                      |
+| Arthur Engine   | [engine.platform.arthur.ai](https://engine.platform.arthur.ai)                                                                                                                      |
 | Arthur API      | `POST https://engine.platform.arthur.ai/api/v2/validate`                                                                                                              |
 | Selector        | `arthur-ai/<config-name>`                                                                                                                                             |
 | TrueFoundry docs | [Custom Guardrails](https://www.truefoundry.com/docs/ai-gateway/custom-guardrails)                                                                                   |
