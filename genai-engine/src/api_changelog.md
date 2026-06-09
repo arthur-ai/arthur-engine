@@ -3,6 +3,34 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 06/09/2026
+- **CHANGE** for Component/Schema:  removed the schema 'EvalType-Input'
+- **CHANGE** for Component/Schema:  removed the schema 'arthur_common__models__enums__EvalType'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}/results  added '#/components/schemas/EvalType' to the 'annotations/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/continuous_evals/test_runs/{test_run_id}/results  removed '#/components/schemas/arthur_common__models__enums__EvalType' from the 'annotations/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  added '#/components/schemas/EvalType' to the 'annotations/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/continuous_evals/results  removed '#/components/schemas/arthur_common__models__enums__EvalType' from the 'annotations/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces  added '#/components/schemas/EvalType' to the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces  removed '#/components/schemas/arthur_common__models__enums__EvalType' from the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/annotations/{annotation_id}  added '#/components/schemas/EvalType' to the 'eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/annotations/{annotation_id}  removed '#/components/schemas/arthur_common__models__enums__EvalType' from the 'eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  added '#/components/schemas/EvalType' to the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  removed '#/components/schemas/arthur_common__models__enums__EvalType' from the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  added '#/components/schemas/EvalType' to the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  removed '#/components/schemas/arthur_common__models__enums__EvalType' from the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  added '#/components/schemas/EvalType' to the 'annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  removed '#/components/schemas/arthur_common__models__enums__EvalType' from the 'annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added '#/components/schemas/EvalType' to the 'annotations/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  removed '#/components/schemas/arthur_common__models__enums__EvalType' from the 'annotations/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  added '#/components/schemas/EvalType' to the 'eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/annotations  removed '#/components/schemas/arthur_common__models__enums__EvalType' from the 'eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  added '#/components/schemas/EvalType' to the 'annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  removed '#/components/schemas/arthur_common__models__enums__EvalType' from the 'annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added '#/components/schemas/EvalType' to the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/metrics/  removed '#/components/schemas/arthur_common__models__enums__EvalType' from the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/query  added '#/components/schemas/EvalType' to the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /v1/traces/query  removed '#/components/schemas/arthur_common__models__enums__EvalType' from the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+
+# 06/09/2026
 - **CHANGE** for **URL**: /api/v1/rag_experiments/{experiment_id}  added the new 'query_profile' enum value to the 'rag_configs/items/oneOf[subschema #2: UnsavedRagConfigResponse]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationResponse]/return_metadata/anyOf[subschema #1]/items/' response property for the response status '200'
 - **CHANGE** in API GET /api/v1/rag_experiments/{experiment_id}
 - **CHANGE**warning [response-property-enum-value-added] at /Users/ibrahim/Documents/GitLab/arthur-engine/genai-engine/new.openapi.json

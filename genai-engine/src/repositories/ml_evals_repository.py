@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
 from repositories.base_evaluator import BaseEvaluator
 from repositories.base_llm_repository import BaseLLMRepository
-from schemas.enums import EvalType
+from schemas.enums import EvalKind
 from schemas.internal_schemas import ContinuousEvalTransformVariableMapping
 from schemas.llm_eval_schemas import Eval
 from schemas.request_schemas import CreateMLEvalRequest
@@ -25,10 +25,10 @@ class MLEvalsRepository(
     tag_db_model: Type[DatabaseLLMEvalVersionTag] = DatabaseLLMEvalVersionTag
     version_list_response_model: Type[BaseModel] = LLMEvalsVersionListResponse
     eval_types = [
-        EvalType.PII,
-        EvalType.PII_V1,
-        EvalType.TOXICITY,
-        EvalType.PROMPT_INJECTION,
+        EvalKind.PII,
+        EvalKind.PII_V1,
+        EvalKind.TOXICITY,
+        EvalKind.PROMPT_INJECTION,
     ]
 
     def __init__(self, db_session: Session):

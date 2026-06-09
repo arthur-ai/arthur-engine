@@ -42,7 +42,7 @@ from schemas.common_schemas import (
 )
 from schemas.enums import (
     DocumentStorageEnvironment,
-    EvalType,
+    EvalKind,
     RagAPIKeyAuthenticationProviderEnum,
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
@@ -871,7 +871,7 @@ MLEvalConfig = Union[PIIEvalConfig, ToxicityEvalConfig, PromptInjectionEvalConfi
 
 
 class CreateMLEvalRequest(BaseModel):
-    eval_type: EvalType = Field(
+    eval_type: EvalKind = Field(
         description="Type of ML eval (e.g. 'pii', 'toxicity', 'prompt_injection')",
     )
     config: MLEvalConfig = Field(
@@ -886,9 +886,9 @@ class CreateMLEvalRequest(BaseModel):
         raw = values.get("config") or {}
         if not isinstance(raw, dict):
             return values
-        if eval_type_val in (EvalType.PII.value, EvalType.PII_V1.value):
+        if eval_type_val in (EvalKind.PII.value, EvalKind.PII_V1.value):
             values["config"] = PIIEvalConfig(**raw)
-        elif eval_type_val == EvalType.TOXICITY.value:
+        elif eval_type_val == EvalKind.TOXICITY.value:
             values["config"] = ToxicityEvalConfig(**raw)
         else:
             values["config"] = PromptInjectionEvalConfig(**raw)
@@ -896,9 +896,9 @@ class CreateMLEvalRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_ml_eval_type(self) -> "CreateMLEvalRequest":
-        if self.eval_type == EvalType.LLM_AS_A_JUDGE:
+        if self.eval_type == EvalKind.LLM_AS_A_JUDGE:
             raise ValueError(
-                f"eval_type '{EvalType.LLM_AS_A_JUDGE.value}' is not valid here. "
+                f"eval_type '{EvalKind.LLM_AS_A_JUDGE.value}' is not valid here. "
                 "Use 'pii', 'pii_v1', 'toxicity', or 'prompt_injection'.",
             )
         return self
@@ -913,7 +913,7 @@ class CreateAnyEvalRequest(BaseModel):
     ToxicityEvalConfig, and PromptInjectionEvalConfig.
     """
 
-    eval_type: EvalType = Field(
+    eval_type: EvalKind = Field(
         description="Type of eval: 'llm_as_a_judge', 'pii', 'pii_v1', 'toxicity', 'prompt_injection'",
     )
     model_name: Optional[str] = Field(
@@ -943,11 +943,11 @@ class CreateAnyEvalRequest(BaseModel):
         raw = values.get("config")
         if not isinstance(raw, dict):
             return values
-        if eval_type_val == EvalType.LLM_AS_A_JUDGE.value:
+        if eval_type_val == EvalKind.LLM_AS_A_JUDGE.value:
             values["config"] = LLMRequestConfigSettings(**raw)
-        elif eval_type_val in (EvalType.PII.value, EvalType.PII_V1.value):
+        elif eval_type_val in (EvalKind.PII.value, EvalKind.PII_V1.value):
             values["config"] = PIIEvalConfig(**raw)
-        elif eval_type_val == EvalType.TOXICITY.value:
+        elif eval_type_val == EvalKind.TOXICITY.value:
             values["config"] = ToxicityEvalConfig(**raw)
         else:
             values["config"] = PromptInjectionEvalConfig(**raw)
@@ -955,7 +955,7 @@ class CreateAnyEvalRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_for_type(self) -> "CreateAnyEvalRequest":
-        if self.eval_type == EvalType.LLM_AS_A_JUDGE:
+        if self.eval_type == EvalKind.LLM_AS_A_JUDGE:
             if not self.model_name:
                 raise ValueError("model_name is required for llm_as_a_judge evals")
             if not self.model_provider:

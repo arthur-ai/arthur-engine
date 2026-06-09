@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 
 from arthur_common.models.enums import RuleResultEnum, RuleType
 
-from schemas.enums import EvalType
+from schemas.enums import EvalKind
 from schemas.response_schemas import EvalRunResponse
 from schemas.scorer_schemas import ScoreRequest
 from scorer.base_ml_scorer import BaseMLScorer
@@ -91,11 +91,11 @@ def get_ml_scorer(eval_type: str) -> Optional[BaseMLScorer]:
 
     Underlying models are cached by model_load.py; scorer wrappers are lightweight.
     """
-    if eval_type == EvalType.PII.value:
+    if eval_type == EvalKind.PII.value:
         return PIIScorerV2(BinaryPIIDataClassifier())
-    elif eval_type == EvalType.PII_V1.value:
+    elif eval_type == EvalKind.PII_V1.value:
         return PIIScorerV1(BinaryPIIDataClassifierV1())
-    elif eval_type == EvalType.TOXICITY.value:
+    elif eval_type == EvalKind.TOXICITY.value:
         return ToxicityMLScorer(
             ToxicityScorer(
                 toxicity_model=TOXICITY_MODEL,
@@ -104,7 +104,7 @@ def get_ml_scorer(eval_type: str) -> Optional[BaseMLScorer]:
                 harmful_request_tokenizer=None,
             ),
         )
-    elif eval_type == EvalType.PROMPT_INJECTION.value:
+    elif eval_type == EvalKind.PROMPT_INJECTION.value:
         return PromptInjectionMLScorer(
             BinaryPromptInjectionClassifier(
                 model=PROMPT_INJECTION_MODEL,

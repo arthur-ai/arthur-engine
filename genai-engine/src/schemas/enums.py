@@ -285,7 +285,7 @@ class TaskAnalyticsBucketSize(BaseEnum):
     WEEK = "week"
 
 
-class EvalType(str, Enum):
+class EvalKind(str, Enum):
     """Discriminator for all eval types stored in the llm_evals table."""
 
     LLM_AS_A_JUDGE = "llm_as_a_judge"

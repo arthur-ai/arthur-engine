@@ -18,7 +18,7 @@ from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base
-from schemas.enums import EvalType
+from schemas.enums import EvalKind
 
 if TYPE_CHECKING:
     from db_models.task_models import DatabaseTask
@@ -38,9 +38,9 @@ class DatabaseLLMEval(Base):
     )
     name: Mapped[str] = mapped_column(String, primary_key=True)
 
-    eval_type: Mapped[EvalType] = mapped_column(
+    eval_type: Mapped[EvalKind] = mapped_column(
         Enum(
-            EvalType,
+            EvalKind,
             values_callable=lambda e: [x.value for x in e],
             native_enum=False,
             create_constraint=False,

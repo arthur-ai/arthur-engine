@@ -17,7 +17,7 @@ from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from repositories.trace_transform_repository import TraceTransformRepository
-from schemas.enums import EvalType, TestRunStatus
+from schemas.enums import EvalKind, TestRunStatus
 from schemas.internal_schemas import ContinuousEval
 from services.base_queue_service import BaseQueueJob, BaseQueueService
 from utils.transform_executor import execute_transform
@@ -253,7 +253,7 @@ class ContinuousEvalQueueService(BaseQueueService[ContinuousEvalJob]):
                 eval_name,
                 eval_version,
             )
-            eval_type = EvalType(llm_eval.eval_kind)
+            eval_type = EvalKind(llm_eval.eval_kind)
             evaluator = get_evaluator(db_session, eval_type)
 
             # Validate that the resolved eval vars match what the evaluator expects
