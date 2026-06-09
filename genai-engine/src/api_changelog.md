@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 06/09/2026
+- **CHANGE** for **URL**: /api/v2/display-settings  added the optional property 'scope_url' to the response with the '200' status
+
 # 06/04/2026
 - **CHANGE** for **URL**: /api/v1/traces/overview  endpoint added
 - **CHANGE** for **URL**: /api/v1/traces/overview/timeseries  endpoint added
