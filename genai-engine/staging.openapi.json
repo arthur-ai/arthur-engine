@@ -17777,7 +17777,7 @@
                     "eval_type": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/EvalType"
+                                "$ref": "#/components/schemas/arthur_common__models__enums__EvalType"
                             },
                             {
                                 "type": "null"
@@ -18998,7 +18998,7 @@
                         "description": "Version number of the llm eval"
                     },
                     "eval_kind": {
-                        "$ref": "#/components/schemas/schemas__enums__EvalType",
+                        "$ref": "#/components/schemas/EvalType",
                         "description": "Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')",
                         "default": "llm_as_a_judge"
                     },
@@ -20323,7 +20323,7 @@
                         "description": "ID of the parent task."
                     },
                     "eval_type": {
-                        "$ref": "#/components/schemas/EvalType",
+                        "$ref": "#/components/schemas/arthur_common__models__enums__EvalType",
                         "description": "Type of evaluator: 'llm_eval' or 'ml_eval'.",
                         "default": "llm_eval"
                     },
@@ -22226,10 +22226,14 @@
             "EvalType": {
                 "type": "string",
                 "enum": [
-                    "llm_eval",
-                    "ml_eval"
+                    "llm_as_a_judge",
+                    "pii",
+                    "pii_v1",
+                    "toxicity",
+                    "prompt_injection"
                 ],
-                "title": "EvalType"
+                "title": "EvalType",
+                "description": "Discriminator for all eval types stored in the llm_evals table."
             },
             "EvalType-Input": {
                 "type": "string",
@@ -23969,7 +23973,7 @@
                         "description": "Name of the llm asset"
                     },
                     "eval_kind": {
-                        "$ref": "#/components/schemas/schemas__enums__EvalType",
+                        "$ref": "#/components/schemas/EvalType",
                         "description": "Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')",
                         "default": "llm_as_a_judge"
                     },
@@ -24649,7 +24653,7 @@
                         "description": "Version number of the llm eval"
                     },
                     "eval_kind": {
-                        "$ref": "#/components/schemas/schemas__enums__EvalType",
+                        "$ref": "#/components/schemas/EvalType",
                         "description": "Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')",
                         "default": "llm_as_a_judge"
                     },
@@ -25038,6 +25042,11 @@
                     "is_consistent": {
                         "type": "boolean",
                         "title": "Is Consistent",
+                        "default": false
+                    },
+                    "query_profile": {
+                        "type": "boolean",
+                        "title": "Query Profile",
                         "default": false
                     }
                 },
@@ -34186,7 +34195,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -34401,7 +34411,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -34616,7 +34627,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -34831,7 +34843,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -34981,7 +34994,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -35131,7 +35145,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -35463,7 +35478,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -35636,7 +35652,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -35809,7 +35826,8 @@
                                         "certainty",
                                         "score",
                                         "explain_score",
-                                        "is_consistent"
+                                        "is_consistent",
+                                        "query_profile"
                                     ]
                                 },
                                 "type": "array"
@@ -35971,17 +35989,13 @@
                 "title": "_MultiTargetVectorJoinEnum",
                 "description": "Define how multi target vector searches should be combined."
             },
-            "schemas__enums__EvalType": {
+            "arthur_common__models__enums__EvalType": {
                 "type": "string",
                 "enum": [
-                    "llm_as_a_judge",
-                    "pii",
-                    "pii_v1",
-                    "toxicity",
-                    "prompt_injection"
+                    "llm_eval",
+                    "ml_eval"
                 ],
-                "title": "EvalType",
-                "description": "Discriminator for all eval types stored in the llm_evals table."
+                "title": "EvalType"
             }
         },
         "securitySchemes": {
