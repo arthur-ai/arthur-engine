@@ -59,7 +59,23 @@ def get_expected_bucket_timestamps(
     adjusted_end_time: datetime,
     td: timedelta,
 ) -> List[datetime]:
+    """
+    This function gets every time bucket interval within thes specified window.
+    We can then compare which buckets the query actually returned to determine
+    which ones had no data.
+
+    The origin adjustment exists because TimescaleDB's time_bucket buckets relative
+    to a fixed reference date (TIME_BUCKET_ORIGIN), not to our window's start. So, to
+    account for this, we snap adjusted_start_time to that same grid so our generated
+    timestamps match the ones the query returns, then create a bucket for each td
+    until our end time.
+
+    Timescale's docs on time_bucket:
+    https://www.tigerdata.com/docs/reference/timescaledb/hyperfunctions/time-series-utilities/time_bucket
+    """
     bucket_ts = adjusted_start_time - ((adjusted_start_time - TIME_BUCKET_ORIGIN) % td)
+
+    # if the first bucket is before the start time, start at the next bucket
     if bucket_ts < adjusted_start_time:
         bucket_ts += td
 
@@ -175,8 +191,22 @@ class AlertCheckExecutor:
         job_spec: AlertCheckJobSpec,
     ) -> None:
         self.logger.info(f"Checking alert rule {alert_rule.id}")
+
+        # in order to prevent alerting on partial alert buckets, this function
+        # queries the time range (start_time - interval, end_time)
+        # see more info here:
+        # https://gitlab.com/ArthurAI/arthur-scope/blob/f03cc26e11ea74f019be5b94a04f280b03d027ff/documentation/technical-documentation/implementations/Alert-Rule-Implementation.md#L291-291
+
         td = alert_interval_to_timedelta(alert_rule.interval)
         adjusted_start_time = job_spec.check_range_start_timestamp - td
+
+        # similarly, to prevent alerting on partial alert buckets,
+        # this function post-filters the results to be in the range
+        # (start_time - interval, end_time - interval) so only the
+        # buckets that had the entire interval in the query are reported.
+        # This needs to be a post-filter so that all the data for the interval is
+        # included in the original time_bucket aggregation, then we filter
+        # on the post-aggregated results
         adjusted_end_time = job_spec.check_range_end_timestamp - td
 
         try:
