@@ -50,6 +50,7 @@ const PromptDetailView = ({
   const [tagError, setTagError] = useState("");
   const [promoteToProduction, setPromoteToProduction] = useState(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const [isOpening, setIsOpening] = useState(false);
 
   const addTagMutation = useAddTagToPromptVersionMutation();
   const deleteTagMutation = useDeleteTagFromPromptVersionMutation();
@@ -153,6 +154,7 @@ const PromptDetailView = ({
   const handleOpenInPlayground = useCallback(async () => {
     if (!taskId || version === null || !apiClient) return;
 
+    setIsOpening(true);
     try {
       const notebookName = `${promptName} v${version}`;
 
@@ -216,6 +218,7 @@ const PromptDetailView = ({
     } catch (err) {
       console.error("Failed to open in playground:", err);
       enqueueSnackbar("Failed to open in playground", { variant: "error" });
+      setIsOpening(false);
     }
   }, [taskId, promptName, version, apiClient, createNotebookMutation, setNotebookStateMutation, navigate, enqueueSnackbar]);
 
@@ -289,11 +292,11 @@ const PromptDetailView = ({
               variant="outlined"
               size="small"
               onClick={handleOpenInPlayground}
-              disabled={createNotebookMutation.isPending || setNotebookStateMutation.isPending}
+              disabled={isOpening}
               data-tour-id={TOUR_IDS.promptOpenInPlayground}
               sx={{ minWidth: 80 }}
             >
-              {createNotebookMutation.isPending || setNotebookStateMutation.isPending ? "Opening..." : "Open in Playground"}
+              {isOpening ? "Opening..." : "Open in Playground"}
             </Button>
           )}
           {onClose && (
