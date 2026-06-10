@@ -2,7 +2,6 @@ import AddIcon from "@mui/icons-material/Add";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Skeleton from "@mui/material/Skeleton";
-import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import Typography from "@mui/material/Typography";
@@ -18,7 +17,7 @@ import { dispatchTourEvent, TASK_TOUR_EVENTS } from "@/features/task-tour/tourEv
 type EvaluateTab = "evaluators" | "results";
 
 export const EvaluateView = () => {
-  const [isEvalsModalOpen, setIsEvalsModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useQueryState("section", parseAsStringEnum<EvaluateTab>(["evaluators", "results"]).withDefault("evaluators"));
 
@@ -50,7 +49,7 @@ export const EvaluateView = () => {
           backgroundColor: "background.paper",
         }}
       >
-        <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
+        <Box sx={{ display: "flex", flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
           <Box>
             <Typography variant="h5" fontWeight={600} color="text.primary">
               Evaluate
@@ -60,11 +59,11 @@ export const EvaluateView = () => {
             </Typography>
           </Box>
           {activeTab === "evaluators" && (
-            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => setIsEvalsModalOpen(true)}>
+            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => setIsCreateModalOpen(true)}>
               Evaluator
             </Button>
           )}
-        </Stack>
+        </Box>
       </Box>
 
       <Tabs
@@ -81,9 +80,9 @@ export const EvaluateView = () => {
         {activeTab === "evaluators" && (
           <Evaluators
             embedded
-            isCreateModalOpen={isEvalsModalOpen}
-            onCreateModalOpen={() => setIsEvalsModalOpen(true)}
-            onCreateModalClose={() => setIsEvalsModalOpen(false)}
+            isCreateModalOpen={isCreateModalOpen}
+            onCreateModalOpen={() => setIsCreateModalOpen(true)}
+            onCreateModalClose={() => setIsCreateModalOpen(false)}
           />
         )}
         {activeTab === "results" && (

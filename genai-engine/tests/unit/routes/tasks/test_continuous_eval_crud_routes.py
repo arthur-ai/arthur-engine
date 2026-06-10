@@ -2,17 +2,16 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Optional
 from unittest.mock import MagicMock, patch
-from utils.constants import DEFAULT_ORG_ID
 
 import pytest
 from arthur_common.models.enums import AgenticAnnotationType, ContinuousEvalRunStatus
-from arthur_common.models.task_eval_schemas import LLMEval
 
 from db_models.agentic_annotation_models import DatabaseAgenticAnnotation
 from db_models.task_models import DatabaseTask
 from db_models.telemetry_models import DatabaseSpan, DatabaseTraceMetadata
 from schemas.internal_schemas import Span as InternalSpan
 from schemas.internal_schemas import TraceTransform
+from schemas.llm_eval_schemas import Eval
 from services.continuous_eval.continuous_eval_queue_service import (
     ContinuousEvalQueueService,
 )
@@ -21,6 +20,7 @@ from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
 )
+from utils.constants import DEFAULT_ORG_ID
 
 
 def create_test_transform(
@@ -48,7 +48,7 @@ def create_test_llm_eval(
     client: GenaiEngineTestClientBase,
     task_id: str,
     llm_eval_name: str = "test_llm_eval",
-) -> tuple[int, LLMEval]:
+) -> tuple[int, Eval]:
     llm_eval_data = {
         "model_name": "gpt-4o",
         "model_provider": "openai",
@@ -1054,18 +1054,24 @@ def test_list_continuous_evals_filtering_exact_name_and_version(
     try:
         # Create two evals with names where one is a substring of the other
         status_code, llm_eval_short = create_test_llm_eval(
-            client, agentic_task.id, "test_eval"
+            client,
+            agentic_task.id,
+            "test_eval",
         )
         assert status_code == 200
 
         status_code, llm_eval_long = create_test_llm_eval(
-            client, agentic_task.id, "test_eval_extended"
+            client,
+            agentic_task.id,
+            "test_eval_extended",
         )
         assert status_code == 200
 
         # Create a second version of the short eval
         status_code, llm_eval_short_v2 = create_test_llm_eval(
-            client, agentic_task.id, "test_eval"
+            client,
+            agentic_task.id,
+            "test_eval",
         )
         assert status_code == 200
         assert llm_eval_short_v2.version == 2
@@ -1086,7 +1092,10 @@ def test_list_continuous_evals_filtering_exact_name_and_version(
                 "llm_eval_version": llm_eval_short.version,
                 "transform_id": str(transforms[0].id),
                 "transform_variable_mapping": [
-                    {"transform_variable": "test_variable", "eval_variable": "test_variable"},
+                    {
+                        "transform_variable": "test_variable",
+                        "eval_variable": "test_variable",
+                    },
                 ],
             },
         )
@@ -1101,7 +1110,10 @@ def test_list_continuous_evals_filtering_exact_name_and_version(
                 "llm_eval_version": llm_eval_short_v2.version,
                 "transform_id": str(transforms[1].id),
                 "transform_variable_mapping": [
-                    {"transform_variable": "test_variable", "eval_variable": "test_variable"},
+                    {
+                        "transform_variable": "test_variable",
+                        "eval_variable": "test_variable",
+                    },
                 ],
             },
         )
@@ -1116,7 +1128,10 @@ def test_list_continuous_evals_filtering_exact_name_and_version(
                 "llm_eval_version": llm_eval_long.version,
                 "transform_id": str(transforms[2].id),
                 "transform_variable_mapping": [
-                    {"transform_variable": "test_variable", "eval_variable": "test_variable"},
+                    {
+                        "transform_variable": "test_variable",
+                        "eval_variable": "test_variable",
+                    },
                 ],
             },
         )

@@ -28,7 +28,7 @@ import { useCreateContinuousEval } from "../hooks/useCreateContinuousEval";
 import { EvaluatorSelector } from "./components/EvaluatorSelector";
 import { ContinuousEvalWithTracePage } from "./ContinuousEvalWithTracePage";
 
-import { useEval } from "@/components/evaluators/hooks/useEval";
+import { useEval, useMLEval } from "@/components/evaluators/hooks/useEval";
 import { useCreateTransformMutation } from "@/components/transforms/hooks/useCreateTransformMutation";
 import { useTransforms } from "@/components/transforms/hooks/useTransforms";
 import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
@@ -40,6 +40,7 @@ import type { ContinuousEvalTransformVariableMappingRequest } from "@/lib/api-cl
 type EvaluatorFormState = {
   name: string | null;
   version: string | null;
+  eval_type: string | null;
 };
 
 type TransformFormState = {
@@ -71,8 +72,11 @@ export const LiveEvalsNew = () => {
 const LiveEvalsNewForm = () => {
   const { task } = useTask();
   const [searchParams] = useSearchParams();
-  const initialEvalName = searchParams.get("evalName");
-  const initialEvalVersion = searchParams.get("evalVersion");
+  // Support both `evalName` (LLM) and `mlEvalName` (ML) params
+  const mlEvalNameParam = searchParams.get("mlEvalName");
+  const initialEvalName = mlEvalNameParam ?? searchParams.get("evalName");
+  const initialEvalType = mlEvalNameParam ? "ml" : null;
+  const initialEvalVersion = mlEvalNameParam ? "latest" : searchParams.get("evalVersion");
 
   const navigate = useNavigate();
 
@@ -86,6 +90,7 @@ const LiveEvalsNewForm = () => {
       evaluator: {
         name: initialEvalName ?? null,
         version: initialEvalVersion ?? null,
+        eval_type: initialEvalType,
       } as EvaluatorFormState,
       transform: {
         transformId: null,
@@ -101,6 +106,7 @@ const LiveEvalsNewForm = () => {
         evaluator: z.object({
           name: z.string().min(1, "Evaluator name is required"),
           version: z.string().min(1, "Evaluator version is required"),
+          eval_type: z.string().min(1, "Evaluator type is required"),
         }),
         transform: z.object({
           transformId: z.string().min(1, "Transform ID is required"),
@@ -120,6 +126,7 @@ const LiveEvalsNewForm = () => {
         evaluator: z.object({
           name: z.string().min(1, "Evaluator name is required"),
           version: z.string().min(1, "Evaluator version is required"),
+          eval_type: z.string().min(1, "Evaluator type is required"),
         }),
         transform: z.object({
           transformId: z.string().min(1, "Transform ID is required"),
@@ -134,12 +141,14 @@ const LiveEvalsNewForm = () => {
       }),
     },
     onSubmit: async ({ value }) => {
+      const isML = value.evaluator.eval_type === "ml";
       const { id } = await createContinuousEval.mutateAsync({
         name: value.name,
         description: value.description?.trim() || undefined,
         enabled: value.enabled,
+        eval_type: isML ? "ml_eval" : "llm_eval",
         llm_eval_name: value.evaluator.name!,
-        llm_eval_version: value.evaluator.version!,
+        llm_eval_version: value.evaluator.version ?? "latest",
         transform_id: value.transform.transformId!,
         transform_version_id: value.transform.transformVersionId ?? undefined,
         transform_variable_mapping: value.variableMappings,
@@ -152,28 +161,35 @@ const LiveEvalsNewForm = () => {
   const evaluator = useStore(form.store, (state) => state.values.evaluator);
   const transform = useStore(form.store, (state) => state.values.transform);
 
-  const { eval: evaluatorData } = useEval(task?.id, evaluator.name ?? undefined, evaluator.version ?? undefined);
+  const isMLEval = evaluator.eval_type === "ml";
 
-  const { data: versions = [] } = useTransformVersions(transform.transformId);
-  const selectedVersion = transform.transformVersionId ? versions.find((v) => v.id === transform.transformVersionId) : null;
-
-  const { data: apiVariableMappingData, isLoading: isLoadingVariableMapping } = useContinuousEvalVariableMapping(
+  const { eval: evaluatorData } = useEval(
     task?.id,
-    transform.transformId ?? undefined,
-    evaluator.name ?? undefined,
-    evaluator.version ?? undefined
+    isMLEval ? undefined : (evaluator.name ?? undefined),
+    isMLEval ? undefined : (evaluator.version ?? undefined)
   );
 
-  const variableMappingData = useMemo(() => {
-    if (!selectedVersion || !apiVariableMappingData) return apiVariableMappingData;
-    const snapshot = selectedVersion.definition as { variables?: { variable_name: string }[] };
-    const transformVars = snapshot?.variables?.map((v) => v.variable_name) ?? [];
-    return {
-      ...apiVariableMappingData,
-      transform_variables: transformVars,
-      matching_variables: apiVariableMappingData.eval_variables.filter((v) => transformVars.includes(v)),
-    };
-  }, [selectedVersion, apiVariableMappingData]);
+  const { eval: mlEvaluatorData } = useMLEval(task?.id, isMLEval ? (evaluator.name ?? undefined) : undefined, "latest");
+
+  const { data: llmVariableMappingData, isLoading: isLoadingVariableMapping } = useContinuousEvalVariableMapping(
+    task?.id,
+    transform.transformId ?? undefined,
+    isMLEval ? undefined : (evaluator.name ?? undefined),
+    isMLEval ? undefined : (evaluator.version ?? undefined)
+  );
+
+  // For ML evals, compute variable mapping locally from transform variables + eval variables
+  const { data: allTransforms } = useTransforms(task?.id ?? undefined);
+  const selectedTransform = allTransforms?.find((t) => t.id === transform.transformId);
+  const mlVariableMappingData = useMemo(() => {
+    if (!isMLEval || !selectedTransform || !mlEvaluatorData?.variables?.length) return undefined;
+    const evalVars = mlEvaluatorData.variables as string[];
+    const transformVars = (selectedTransform.definition.variables as { variable_name: string }[]).map((v) => v.variable_name);
+    const matching = evalVars.filter((v) => transformVars.includes(v));
+    return { eval_variables: evalVars, transform_variables: transformVars, matching_variables: matching };
+  }, [isMLEval, selectedTransform, mlEvaluatorData]);
+
+  const variableMappingData = isMLEval ? mlVariableMappingData : llmVariableMappingData;
 
   const variableMappings = useStore(form.store, (state) => state.values.variableMappings);
 
@@ -268,7 +284,7 @@ const LiveEvalsNewForm = () => {
               eval_variables={variableMappingData?.eval_variables ?? []}
               transform_variables={variableMappingData?.transform_variables ?? []}
               matching_variables={variableMappingData?.matching_variables ?? []}
-              isLoading={isLoadingVariableMapping}
+              isLoading={isMLEval ? false : isLoadingVariableMapping}
             />
           </>
         )}

@@ -61,7 +61,7 @@ ENDPOINT_OVERRIDES: dict[str, tuple[str | None, str | None]] = {
     "LLMGetAllMetadataListResponse": ("llm_metadata", "name"),
     "AgenticPrompt": (None, "name"),
     "AgenticPromptVersionListResponse": ("versions", "version"),
-    "LLMEval": (None, "name"),
+    "Eval": (None, "name"),
     "LLMEvalsVersionListResponse": ("versions", "version"),
     "PromptVersionResultListResponse": ("data", "dataset_row_id"),
     "PromptExperimentListResponse": ("data", None),

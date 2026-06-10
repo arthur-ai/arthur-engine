@@ -374,7 +374,7 @@ class SyntheticDataService:
                             {
                                 "column_name": item.column_name,
                                 "column_value": item.column_value,
-                            }
+                            },
                         )
             current_rows_internal.append({"id": row_id, "data": row_data})
             current_row_ids.add(row_id)
