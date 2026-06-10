@@ -9,9 +9,11 @@ from arthur_client.api_bindings import (
     AlertCheckJobSpec,
     AlertLogStatus,
     AlertRule,
+    AlertRuleInterval,
     AlertRulesV1Api,
     AlertsV1Api,
     CompliancePolicyCheckJobSpec,
+    IntervalUnit,
     Job,
     JobsV1Api,
     MetricsQueryResult,
@@ -34,6 +36,7 @@ from arthur_client.api_bindings import (
     PostMetricsQueryTimeRange,
     ResultFilter,
 )
+from dateutil.relativedelta import relativedelta
 
 from job_executors._chain_utils import stamp_chain_job_id
 from job_executors._interval_utils import alert_interval_to_timedelta
@@ -55,15 +58,15 @@ ALERT_RULES_SCALAR_TYPES = (str, int, float, bool, datetime, UUID)
 # TimescaleDB's time_bucket anchors buckets to a fixed origin that depends on
 # the bucket width. Midnight Jan 3, 2000 for buckets using seconds/minutes/
 # hours/days and midnight Jan 1, 2000 for buckets using month/year/century.
-# AlertRuleInterval only supports seconds/minutes/hours/days, so it will
-# always be anchored against Jan 3, 2000.
-TIME_BUCKET_ORIGIN = datetime(2000, 1, 3, tzinfo=timezone.utc)
+JAN_3_TIME_BUCKET_ORIGIN = datetime(2000, 1, 3, tzinfo=timezone.utc)
+JAN_1_TIME_BUCKET_ORIGIN = datetime(2000, 1, 1, tzinfo=timezone.utc)
 
 
 def get_expected_bucket_timestamps(
     adjusted_start_time: datetime,
     adjusted_end_time: datetime,
     td: timedelta,
+    interval: AlertRuleInterval,
 ) -> List[datetime]:
     """
     This function gets every time bucket interval within thes specified window.
@@ -79,16 +82,35 @@ def get_expected_bucket_timestamps(
     Timescale's docs on time_bucket:
     https://www.tigerdata.com/docs/reference/timescaledb/hyperfunctions/time-series-utilities/time_bucket
     """
-    bucket_ts = adjusted_start_time - ((adjusted_start_time - TIME_BUCKET_ORIGIN) % td)
+    bucket_step: Union[timedelta, relativedelta] = td
+
+    if interval.unit in {
+        IntervalUnit.SECONDS,
+        IntervalUnit.MINUTES,
+        IntervalUnit.HOURS,
+        IntervalUnit.DAYS,
+    }:
+        bucket_ts = adjusted_start_time - (
+            (adjusted_start_time - JAN_3_TIME_BUCKET_ORIGIN) % td
+        )
+    else:
+        if interval.unit.value == "century":
+            bucket_step = relativedelta(years=100 * interval.count)
+        else:
+            bucket_step = relativedelta(**{interval.unit.value: interval.count})
+
+        bucket_ts = JAN_1_TIME_BUCKET_ORIGIN
+        while bucket_ts + bucket_step <= adjusted_start_time:
+            bucket_ts += bucket_step
 
     # if the first bucket is before the start time, start at the next bucket
     if bucket_ts < adjusted_start_time:
-        bucket_ts += td
+        bucket_ts += bucket_step
 
     buckets = []
     while bucket_ts <= adjusted_end_time:
         buckets.append(bucket_ts)
-        bucket_ts += td
+        bucket_ts += bucket_step
     return buckets
 
 
@@ -253,6 +275,7 @@ class AlertCheckExecutor:
             adjusted_start_time,
             adjusted_end_time,
             td,
+            alert_rule.interval,
         )
 
         logs: List[PostAlertLog] = []
