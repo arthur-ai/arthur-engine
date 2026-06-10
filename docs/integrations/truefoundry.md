@@ -1,6 +1,6 @@
 ---
 title: Truefoundry
-description: Use Arthur AI as a custom guardrail on TrueFoundry AI Gateway to validate LLM prompts and completions before they reach or leave the model.
+excerpt: Use Arthur AI as a custom guardrail on TrueFoundry AI Gateway to validate LLM prompts and completions before they reach or leave the model.
 ---
 
 # Truefoundry
@@ -61,92 +61,85 @@ All POST routes expect `Authorization: Bearer <WRAPPER_API_KEY>`.
 
 ## Setup
 
-<Steps>
-  <Step title="Clone and configure">
-    ```bash
-    git clone https://github.com/truefoundry/integrations-custom-guardrails
-    cd integrations-custom-guardrails/integrations/arthur-ai
-    cp .env.example .env
-    ```
+### Clone and configure
 
-    ```bash .env
-    ARTHUR_API_KEY=<from https://engine.platform.arthur.ai>
-    WRAPPER_API_KEY=<generate: python -c "import secrets; print(secrets.token_urlsafe(32))">
-    ```
-  </Step>
+```bash
+git clone https://github.com/truefoundry/integrations-custom-guardrails
+cd integrations-custom-guardrails/integrations/arthur-ai
+cp .env.example .env
+```
 
-  <Step title="Deploy the wrapper">
-    **TrueFoundry:**
+```env
+ARTHUR_API_KEY=<from https://engine.platform.arthur.ai>
+WRAPPER_API_KEY=<generate: python -c "import secrets; print(secrets.token_urlsafe(32))">
+```
 
-    ```bash
-    pip install -U truefoundry
-    tfy login
-    python deploy.py --wait
-    ```
+### Deploy the wrapper
 
-    Set `TFY_WORKSPACE_FQN`, `TFY_PUBLIC_HOST`, `TFY_PUBLIC_PATH`, and secret FQNs in `.env`. Create secrets `arthur-api-key` and `wrapper-api-key` under group `arthur-guardrails-tfy` in **Platform → Secrets**.
+**TrueFoundry:**
 
-    **Local:**
+```bash
+pip install -U truefoundry
+tfy login
+python deploy.py --wait
+```
 
-    ```bash
-    python3 -m venv .venv
-    .venv/bin/pip install -r requirements-dev.txt
-    .venv/bin/uvicorn main:app --reload --port 8000
-    ```
-  </Step>
+Set `TFY_WORKSPACE_FQN`, `TFY_PUBLIC_HOST`, `TFY_PUBLIC_PATH`, and secret FQNs in `.env`. Create secrets `arthur-api-key` and `wrapper-api-key` under group `arthur-guardrails-tfy` in **Platform → Secrets**.
 
-  <Step title="Register Arthur AI guardrail configs in TrueFoundry">
-    **AI Gateway → Guardrails → + Add New Guardrails Group** → type **Custom**.
+**Local:**
 
-    * **Group name**: `arthur-ai`
-    * Add two configs — input and output.
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/uvicorn main:app --reload --port 8000
+```
 
-    **Input validate** example:
+### Register Arthur AI guardrail configs in TrueFoundry
 
-    | Field | Value |
-    | ----- | ----- |
-    | **Name** | `arthur-input-validate` |
-    | **Operation** | Validate |
-    | **Target** | Request |
-    | **Enforcing Strategy** | Enforce But Ignore On Error |
-    | **URL** | `https://<host>/validate-input` |
-    | **Headers** | `Authorization` → `Bearer <WRAPPER_API_KEY>`; `Content-Type` → `application/json` |
-    | **Config** | `{}` |
+**AI Gateway → Guardrails → + Add New Guardrails Group** → type **Custom**.
 
-    <Frame caption="Arthur AI guardrail configuration in TrueFoundry (input validate)">
-      <img
-        src="../images/truefoundry-testing.avif"
-        alt="TrueFoundry custom guardrail form: Validate, Request target, /validate-input URL, Authorization Bearer header"
-        width="1305"
-        height="873"
-      />
-    </Frame>
+* **Group name**: `arthur-ai`
+* Add two configs — input and output.
 
-    **Output validate:**
+**Input validate** example:
 
-    | Field | Value |
-    | ----- | ----- |
-    | **Name** | `arthur-output-validate` |
-    | **Operation** | Validate |
-    | **Target** | Response |
-    | **URL** | `https://<host>/validate-output` |
+| Field | Value |
+| ----- | ----- |
+| **Name** | `arthur-input-validate` |
+| **Operation** | Validate |
+| **Target** | Request |
+| **Enforcing Strategy** | Enforce But Ignore On Error |
+| **URL** | `https://<host>/validate-input` |
+| **Headers** | `Authorization` → `Bearer <WRAPPER_API_KEY>`; `Content-Type` → `application/json` |
+| **Config** | `{}` |
 
-    **Auth Data → Custom Bearer Auth** works the same as **Headers** if you prefer not to set headers manually.
-  </Step>
+![TrueFoundry custom guardrail form: Validate, Request target, /validate-input URL, Authorization Bearer header](../images/truefoundry-testing.avif)
 
-  <Step title="Attach Arthur AI guardrails to traffic">
-    **Model pin**: **AI Gateway → Models → `<model>` → Guardrails** → attach group `arthur-ai`.
+*Arthur AI guardrail configuration in TrueFoundry (input validate)*
 
-    **Per request** — `X-TFY-GUARDRAILS` header, selector format `<group>/<config-name>`:
+**Output validate:**
 
-    ```json
-    {
-      "llm_input_guardrails": ["arthur-ai/arthur-input-validate"],
-      "llm_output_guardrails": ["arthur-ai/arthur-output-validate"]
-    }
-    ```
-  </Step>
-</Steps>
+| Field | Value |
+| ----- | ----- |
+| **Name** | `arthur-output-validate` |
+| **Operation** | Validate |
+| **Target** | Response |
+| **URL** | `https://<host>/validate-output` |
+
+**Auth Data → Custom Bearer Auth** works the same as **Headers** if you prefer not to set headers manually.
+
+### Attach Arthur AI guardrails to traffic
+
+**Model pin**: **AI Gateway → Models → `<model>` → Guardrails** → attach group `arthur-ai`.
+
+**Per request** — `X-TFY-GUARDRAILS` header, selector format `<group>/<config-name>`:
+
+```json
+{
+  "llm_input_guardrails": ["arthur-ai/arthur-input-validate"],
+  "llm_output_guardrails": ["arthur-ai/arthur-output-validate"]
+}
+```
 
 ## Custom config (optional)
 
