@@ -1,11 +1,12 @@
 # Arthur Onboarding Skills for Claude Code
 
-Two Claude Code skills for onboarding agentic applications to Arthur — one for the open-source engine, one for the Arthur SaaS Platform.
+Claude Code skills for onboarding agentic applications to Arthur — one for the open-source engine, one for the Arthur SaaS Platform — plus a post-onboarding insights skill.
 
 | Skill | Target | Jump to |
 |---|---|---|
 | `/arthur-onboard-oss` | Self-hosted Arthur GenAI Engine (local Docker or remote) | [OSS skill →](#arthur-onboard-oss--arthur-oss-genai-engine-onboarding-skill-for-claude-code) |
 | `/arthur-onboard-platform` | Arthur SaaS Platform (platform.arthur.ai) | [Platform skill →](#arthur-onboard-platform--arthur-platform-saas-onboarding-skill) |
+| `/arthur-insights` | Any onboarded app — simulate traces, run evals, generate improvement insights | [Insights skill →](#arthur-insights--simulated-trace--insights-skill) |
 
 ---
 
@@ -280,3 +281,95 @@ Open Claude Code CLI in your agentic application's repository and run:
 - Git repository (recommended)
 - **For Docker Compose engine deployment:** Docker Desktop running on your machine
 - **For an existing engine:** the engine must have been deployed with platform-issued data plane credentials (not OSS credentials)
+
+---
+
+---
+
+# `/arthur-insights` — Simulated-Trace & Insights Skill
+
+A Claude Code skill that runs **after onboarding** to pressure-test your agent before (or alongside) production traffic. It treats your agent as a black box and, without running it, predicts the traces it would emit, scores them with your onboarding-generated evals, and tells you what to improve.
+
+**What it does (5-step workflow):**
+1. Pre-flight — verify onboarding state (`.arthur-engine.env`), engine reachability, registered prompts & evals
+2. **Scan** — black-box analysis of your agent's code: prompts, tools, business logic, models, risk surface
+3. **Simulate** — design 6–10 realistic scenarios (happy path, edge cases, ambiguous input, tool failure, adversarial, off-topic) and send them as fake OpenInference traces to Arthur Engine via OTLP, tagged `simulated`
+4. **Evaluate** — run every onboarding-generated LLM eval over every fake trace via the eval completions API and build a score matrix
+5. **Report** — synthesize exactly **5 evidence-backed insights** from the static code, the prompts + evals, the fake traces, and the eval results — each with citations, severity, effort, and a concrete recommendation
+
+All artifacts are written to `.arthur/insights/` in your repo (gitignored): `scan.json`, `scenarios.json`, `eval_results.json`, and the final `INSIGHTS.md`.
+
+---
+
+## Architecture
+
+Same modular design as the onboarding skills: a main orchestrator + 4 step sub-skills, each runnable standalone (e.g. re-run `arthur-insights-simulate` + `arthur-insights-evals` after a fix to compare scores).
+
+| Skill | Step | Purpose |
+|---|---|---|
+| `arthur-insights` | Orchestrator | Pre-flight, sequences the rest, final summary |
+| `arthur-insights-scan` | Step 2 | Black-box code scan (prompts, tools, business logic) |
+| `arthur-insights-simulate` | Step 3 | Generate fake traces, send via OTLP |
+| `arthur-insights-evals` | Step 4 | Run evals over the fake traces |
+| `arthur-insights-report` | Step 5 | Generate the 5 improvement insights |
+
+---
+
+## Quick start (no install)
+
+Paste this prompt directly into Claude Code — no installation needed:
+
+```
+For each skill name in this list — arthur-insights, arthur-insights-scan, arthur-insights-simulate, arthur-insights-evals, arthur-insights-report, arthur-skills-upgrade — fetch https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/integrations/claude-code-skills/arthur-onboard/<skill-name>/SKILL.md and save it to ~/.claude/skills/<skill-name>/SKILL.md (create the directory if it doesn't exist). Once all files are saved, read ~/.claude/skills/arthur-insights/SKILL.md and follow its instructions.
+```
+
+---
+
+## Installation
+
+### Global install (recommended)
+
+```bash
+BASE="https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integrations/claude-code-skills/arthur-onboard"
+for skill in arthur-insights arthur-insights-scan arthur-insights-simulate \
+             arthur-insights-evals arthur-insights-report arthur-skills-upgrade; do
+  mkdir -p ~/.claude/skills/$skill
+  curl -sSLf "$BASE/$skill/SKILL.md" > ~/.claude/skills/$skill/SKILL.md \
+    || { echo "FAILED: $skill"; rm -f ~/.claude/skills/$skill/SKILL.md; }
+done
+```
+
+### Project install
+
+```bash
+BASE="https://raw.githubusercontent.com/arthur-ai/arthur-engine/main/integrations/claude-code-skills/arthur-onboard"
+for skill in arthur-insights arthur-insights-scan arthur-insights-simulate \
+             arthur-insights-evals arthur-insights-report arthur-skills-upgrade; do
+  mkdir -p .claude/skills/$skill
+  curl -sSLf "$BASE/$skill/SKILL.md" > .claude/skills/$skill/SKILL.md \
+    || { echo "FAILED: $skill"; rm -f .claude/skills/$skill/SKILL.md; }
+done
+git add .claude/skills/arthur-insights*/ .claude/skills/arthur-skills-upgrade/
+git commit -m "Add Arthur insights skills"
+```
+
+---
+
+## Usage
+
+Open Claude Code CLI in a repository that has already been onboarded (via `/arthur-onboard-oss` or `/arthur-onboard-platform`) and run:
+
+```
+/arthur-insights
+```
+
+Claude asks for approval before sending simulated traces to the engine and before making the eval LLM calls (each eval run is one LLM call, so an E-eval × S-scenario matrix makes E×S calls).
+
+---
+
+## Prerequisites
+
+- [Claude Code CLI](https://github.com/anthropics/claude-code) installed and authenticated
+- The repository already onboarded — `.arthur-engine.env` present with `ARTHUR_ENGINE_URL`, `ARTHUR_API_KEY`, `ARTHUR_TASK_ID`
+- An eval model provider configured during onboarding (`ARTHUR_EVAL_PROVIDER`) — without it, the eval step is skipped and insights are generated from qualitative evidence only
+- `python3` available locally (used to send OTLP traces from a throwaway virtualenv)

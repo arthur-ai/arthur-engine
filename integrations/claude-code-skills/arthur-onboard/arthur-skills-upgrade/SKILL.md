@@ -1,14 +1,14 @@
 ---
 name: arthur-skills-upgrade
-description: Upgrade locally installed arthur-onboard-* and arthur-skills-upgrade skills to the latest version from GitHub main branch. Checks version fields, reports stale skills, and updates in place after confirmation.
+description: Upgrade locally installed arthur-onboard-*, arthur-insights*, and arthur-skills-upgrade skills to the latest version from GitHub main branch. Checks version fields, reports stale skills, and updates in place after confirmation.
 allowed-tools: Bash
-version: 1.0.0
+version: 1.1.0
 ---
 
-# Upgrade Arthur Onboarding Skills
+# Upgrade Arthur Skills
 
-Check locally installed `arthur-onboard-*` and `arthur-skills-upgrade` skills for updates
-and upgrade any that are behind the latest version on GitHub main.
+Check locally installed `arthur-onboard-*`, `arthur-insights*`, and `arthur-skills-upgrade`
+skills for updates and upgrade any that are behind the latest version on GitHub main.
 
 ---
 
@@ -16,15 +16,15 @@ and upgrade any that are behind the latest version on GitHub main.
 
 ```bash
 echo "=== Global install (~/.claude/skills/) ==="
-ls -d ~/.claude/skills/arthur-onboard-* ~/.claude/skills/arthur-skills-upgrade 2>/dev/null || echo "(none)"
+ls -d ~/.claude/skills/arthur-onboard-* ~/.claude/skills/arthur-insights* ~/.claude/skills/arthur-skills-upgrade 2>/dev/null || echo "(none)"
 
 echo ""
 echo "=== Project install (.claude/skills/) ==="
-ls -d .claude/skills/arthur-onboard-* .claude/skills/arthur-skills-upgrade 2>/dev/null || echo "(none)"
+ls -d .claude/skills/arthur-onboard-* .claude/skills/arthur-insights* .claude/skills/arthur-skills-upgrade 2>/dev/null || echo "(none)"
 ```
 
 Collect all found paths. If none are found in either location, tell the user no
-`arthur-onboard-*` or `arthur-skills-upgrade` skills are installed and show the install command from the README.
+`arthur-onboard-*`, `arthur-insights*`, or `arthur-skills-upgrade` skills are installed and show the install command from the README.
 
 ---
 
@@ -43,8 +43,8 @@ OK=()
 SKIP=()
 USER_SKIPPED=()
 
-for skill_dir in ~/.claude/skills/arthur-onboard-* ~/.claude/skills/arthur-skills-upgrade \
-                 .claude/skills/arthur-onboard-* .claude/skills/arthur-skills-upgrade; do
+for skill_dir in ~/.claude/skills/arthur-onboard-* ~/.claude/skills/arthur-insights* ~/.claude/skills/arthur-skills-upgrade \
+                 .claude/skills/arthur-onboard-* .claude/skills/arthur-insights* .claude/skills/arthur-skills-upgrade; do
   [ -f "$skill_dir/SKILL.md" ] || continue
   skill_name=$(basename "$skill_dir")
 
@@ -169,5 +169,5 @@ Report:
 - How many were already up to date
 - Any that failed or were skipped
 
-Remind the user to re-run `/arthur-onboard-oss` or `/arthur-onboard-platform` to pick
-up any new behaviour or steps from updated skills.
+Remind the user to re-run `/arthur-onboard-oss`, `/arthur-onboard-platform`, or
+`/arthur-insights` to pick up any new behaviour or steps from updated skills.
