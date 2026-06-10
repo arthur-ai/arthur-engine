@@ -120,7 +120,7 @@ Container components in this directory depend on:
 - `nuqs` - URL state management
 - `react-router-dom` - Routing
 - `@/lib/api-client` - API client
-- `@/services/amplitude` - Analytics
+- `@/services/analytics` - Analytics
 - `@arthur/shared-components` - Presentational components (future)
 
 ## Migration Notes

@@ -22,7 +22,7 @@ import { useTask } from "@/hooks/useTask";
 import { TraceUserMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track, trackDynamic } from "@/services/analytics";
 import { getUsers } from "@/services/tracing";
 import { formatDateInTimezone } from "@/utils/formatters";
 
@@ -67,7 +67,7 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
 
   const handleRowClick = useCallback(
     (row: { user_id: string }) => {
-      track(EVENT_NAMES.TRACING_DRAWER_OPENED, {
+      track("tracing/drawer_opened", {
         task_id: task?.id ?? "",
         level: "user",
         user_id: row.user_id,
@@ -82,7 +82,7 @@ export const UserLevel = ({ welcomeDismissed }: UserLevelProps) => {
     const deps: SharedColumnDependencies = {
       formatDate: (v) => formatDateInTimezone(v, timezone, { hour12: !use24Hour }),
       formatCurrency: () => "",
-      onTrack: track,
+      onTrack: trackDynamic,
       Chip: SharedCopyableChip,
       DurationCell: () => null,
       TraceContentCell: () => null,

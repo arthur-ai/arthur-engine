@@ -14,7 +14,7 @@ import React, { useEffect, useState } from "react";
 import { usePromptContext } from "../PromptsPlaygroundContext";
 import { ModelParametersType } from "../types";
 
-import { track, EVENT_NAMES } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 const EFFORT_OPTIONS = ["none", "minimal", "low", "medium", "high", "default"];
 
@@ -99,7 +99,7 @@ const ModelParamsDialog = ({
     const paramCount = Object.keys(processedParams).filter(
       (key) => processedParams[key as keyof ModelParametersType] !== null && processedParams[key as keyof ModelParametersType] !== undefined
     ).length;
-    track(EVENT_NAMES.MODEL_PARAMS_CHANGED, {
+    track("Model Params Changed", {
       model_provider: name ? name.split(":")[0] : undefined,
       model_name: name ? name.split(":")[1] : undefined,
       param_count: paramCount,

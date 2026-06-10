@@ -15,7 +15,6 @@ import { usePagination } from "@/hooks/usePagination";
 import { useTask } from "@/hooks/useTask";
 import { useTrackOnMount } from "@/hooks/useTrackOnMount";
 import { AgenticExperimentSummary } from "@/lib/api-client/api-client";
-import { EVENT_NAMES } from "@/services/amplitude";
 import { formatCurrency } from "@/utils/formatters";
 
 const DRAWER_WIDTH = 400;
@@ -63,7 +62,7 @@ const HistoryContent = ({ notebookId }: { notebookId: string }) => {
 
   const { data } = useSuspensePollAgenticNotebookHistory(notebookId, { page, page_size: rowsPerPage });
 
-  useTrackOnMount({ eventName: EVENT_NAMES.AGENT_NOTEBOOK_HISTORY_VIEW, eventProperties: { notebook_id: notebookId } });
+  useTrackOnMount({ eventName: "agent_notebook/history_view", eventProperties: { notebook_id: notebookId } });
 
   return (
     <>

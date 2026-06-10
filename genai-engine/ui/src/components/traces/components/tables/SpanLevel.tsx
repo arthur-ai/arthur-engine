@@ -35,7 +35,7 @@ import { useTask } from "@/hooks/useTask";
 import type { SpanMetadataResponse, TraceSortBy } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track, trackDynamic } from "@/services/analytics";
 import { getFilteredSpans } from "@/services/tracing";
 import { formatDateInTimezone } from "@/utils/formatters";
 
@@ -94,7 +94,7 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
 
   const handleRowClick = useCallback(
     (row: SpanMetadataResponse) => {
-      track(EVENT_NAMES.TRACING_DRAWER_OPENED, {
+      track("tracing/drawer_opened", {
         task_id: task?.id ?? "",
         level: "span",
         span_id: row.span_id,
@@ -115,7 +115,7 @@ export const SpanLevel = memo(({ welcomeDismissed }: SpanLevelProps) => {
     const deps: SharedColumnDependencies = {
       formatDate: (v) => formatDateInTimezone(v, timezone, { hour12: !use24Hour }),
       formatCurrency: () => "",
-      onTrack: track,
+      onTrack: trackDynamic,
       Chip: SharedCopyableChip,
       DurationCell: DurationCellWithBucket,
       TraceContentCell,
