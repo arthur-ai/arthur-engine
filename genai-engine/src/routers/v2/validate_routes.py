@@ -6,7 +6,7 @@ from arthur_common.models.request_schemas import (
     ResponseValidationRequest,
 )
 from arthur_common.models.response_schemas import HTTPError, ValidationResult
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from config.cache_config import cache_config
@@ -131,6 +131,16 @@ def default_validate_response(
 def validate_prompt_endpoint(
     body: PromptValidationRequest,
     task_id: UUID,
+    trace_id: str | None = Query(
+        default=None,
+        description="Optional trace ID (32-hex) to attach the emitted guardrail span "
+        "to an existing trace. If omitted, a trace is derived from the inference ID.",
+    ),
+    parent_span_id: str | None = Query(
+        default=None,
+        description="Optional parent span ID (16-hex) to nest the guardrail span "
+        "under within the trace. Ignored when trace_id is absent.",
+    ),
     db_session: Session = Depends(get_db_session),
     scorer_client: ScorerClient = Depends(get_scorer_client),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
@@ -149,6 +159,8 @@ def validate_prompt_endpoint(
             db_session=db_session,
             scorer_client=scorer_client,
             rules=rules,
+            trace_id=trace_id,
+            parent_span_id=parent_span_id,
         )
     finally:
         db_session.close()
@@ -172,6 +184,17 @@ def validate_response_endpoint(
     inference_id: UUID,
     body: ResponseValidationRequest,
     task_id: UUID,
+    trace_id: str | None = Query(
+        default=None,
+        description="Optional trace ID (32-hex) to attach the emitted guardrail span "
+        "to an existing trace. If omitted, the trace derived from the inference ID is "
+        "reused so the response span joins its prompt span.",
+    ),
+    parent_span_id: str | None = Query(
+        default=None,
+        description="Optional parent span ID (16-hex) to nest the guardrail span "
+        "under within the trace. Ignored when trace_id is absent.",
+    ),
     db_session: Session = Depends(get_db_session),
     scorer_client: ScorerClient = Depends(get_scorer_client),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
@@ -198,6 +221,9 @@ def validate_response_endpoint(
             db_session=db_session,
             scorer_client=scorer_client,
             rules=rules,
+            task_id=str(task_id),
+            trace_id=trace_id,
+            parent_span_id=parent_span_id,
         )
     finally:
         db_session.close()
