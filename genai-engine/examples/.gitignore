@@ -1,5 +1,0 @@
-*.sh
-*.py
-
-.next/
-node_modules/
