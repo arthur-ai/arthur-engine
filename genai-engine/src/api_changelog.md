@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 06/09/2026
+- **CHANGE** for **URL**: /api/v2/display-settings  added the optional property 'scope_url' to the response with the '200' status
+
 # 06/04/2026
 - **CHANGE** for **URL**: /api/v1/traces/overview  endpoint added
 - **CHANGE** for **URL**: /api/v1/traces/overview/timeseries  endpoint added
@@ -436,8 +439,7 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  added the new optional 'query' request parameter 'tags'
 
 # 03/26/2026
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals  added the new optional 'query' request parameter 'tags'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  added the new optional 'query' request parameter 'tags'
+- **CHANGE** for **URL**: /api/v2/display-settings  added the optional property 'scope_url' to the response with the '200' status
 
 # 03/19/2026
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/chatbot/stream  endpoint added

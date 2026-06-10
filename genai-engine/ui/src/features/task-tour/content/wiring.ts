@@ -137,6 +137,7 @@ export const TASK_TOUR_PREPARATIONS = {
   datasetDetailOpened: "task-tour.prep.datasetDetailOpened",
   promptDetailOpened: "task-tour.prep.promptDetailOpened",
   playgroundOpened: "task-tour.prep.playgroundOpened",
+  experimentDetailOpened: "task-tour.prep.experimentDetailOpened",
 } as const;
 
 /**
@@ -187,6 +188,19 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
           targetId: TOUR_IDS.chatSendPlaceholder,
           value: "What is an AI Agent?",
         },
+      },
+      // `demoAgentMessageSent` fires the instant the message is sent, while the
+      // response is still streaming — without this beat the section-complete
+      // dialog popped before any answer appeared. Spotlight the chat window and
+      // wait for an explicit Next so the user can read the streamed reply.
+      // Mirrors `deploy.review-verification-message`. `actionName` is required
+      // but inert under manual advance, so it reuses `demoAgentMessageSent`.
+      "review-agent-response": {
+        targetId: TOUR_IDS.chatWindow,
+        actionName: TASK_TOUR_ACTIONS.demoAgentMessageSent,
+        route: "chatbot",
+        advance: "manual",
+        popover: { showNext: true, nextLabel: "Next", placement: "top" },
       },
     },
   },
@@ -620,6 +634,22 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
         skipWhenEmptyKey: TASK_TOUR_SKIP_WHEN.noEvaluators,
         popover: { placement: "left" },
       }),
+      // `createExperimentCreated` fires the moment the run is created, while it
+      // is still queued/running — without this beat the section-complete dialog
+      // popped before any results existed. Creating an experiment redirects to
+      // its detail view (`/prompt-experiments/:id`, see create-experiment-modal),
+      // which auto-refreshes while the run is in flight, so spotlight that page
+      // and wait for an explicit Next. Route-less so the redirect's dynamic URL
+      // isn't stripped back to the list; `experimentDetailOpened` re-navigates to
+      // the latest experiment on an out-of-order jump (mirrors the evaluator /
+      // dataset / prompt detail beats). `actionName` is inert under manual.
+      "review-experiment": {
+        targetId: TOUR_IDS.promptExperimentDetail,
+        actionName: TASK_TOUR_ACTIONS.createExperimentCreated,
+        advance: "manual",
+        prepareKey: TASK_TOUR_PREPARATIONS.experimentDetailOpened,
+        popover: { showNext: true, nextLabel: "Next", placement: "top" },
+      },
     },
   },
   deploy: {
@@ -678,6 +708,21 @@ export const TASK_TOUR_WIRING: Record<string, SectionWiring> = {
         targetHookId: TASK_TOUR_QUERY_HOOKS.tracesFirstRow,
         route: "traces",
         actionName: TASK_TOUR_ACTIONS.traceOpened,
+      },
+      // `traceOpened` fires when the drawer opens, but the Source Attribution
+      // eval may still be running on the fresh trace — without this beat the
+      // tour-complete dialog popped before the eval turned green. Keep the
+      // drawer open (`traceOpened` prep) and spotlight the eval annotations,
+      // waiting for an explicit Next. Mirrors `traces.review-annotations`;
+      // `actionName` is inert under manual advance.
+      "review-eval-result": {
+        targetId: TOUR_IDS.traceDrawerEvals,
+        targetHookId: TASK_TOUR_QUERY_HOOKS.traceDrawerEvals,
+        route: "traces",
+        actionName: TASK_TOUR_ACTIONS.traceOpened,
+        advance: "manual",
+        prepareKey: TASK_TOUR_PREPARATIONS.traceOpened,
+        popover: { showNext: true, nextLabel: "Next", placement: "left" },
       },
     },
   },
