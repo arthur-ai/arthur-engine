@@ -1,24 +1,10 @@
 import * as amplitude from "@amplitude/analytics-browser";
 
+import { devLog, isAmplitudeDebugEnabled } from "./dev-log";
 import type { AnalyticsEvents } from "./events";
 import { createSessionReplayPlugin } from "./session-replay";
 
 let isInitialized = false;
-
-/** Dev-only console logger for analytics diagnostics. */
-function devLog(category: string, message = "", data?: unknown, warn = false): void {
-  if (import.meta.env.DEV) {
-    const prefix = category ? `[${category}] ` : "";
-    const formattedMessage = `${prefix}${message}`;
-    const showData = data !== undefined;
-
-    if (warn) {
-      console.warn(formattedMessage, showData ? data : undefined);
-    } else {
-      console.log(formattedMessage, showData ? data : undefined);
-    }
-  }
-}
 
 /**
  * Initialize Amplitude analytics (and, when configured, Session Replay).
@@ -26,6 +12,14 @@ function devLog(category: string, message = "", data?: unknown, warn = false): v
  * app: missing config disables tracking with a console warning.
  */
 export function initAnalytics(): void {
+  // Idempotent: re-initializing the Browser SDK reassigns the device ID after
+  // Session Replay has already locked onto the first one, which Amplitude
+  // documents as the cause of event<->replay device ID mismatches. Guard
+  // against repeat calls (HMR, remounts, accidental second call sites).
+  if (isInitialized) {
+    return;
+  }
+
   const apiKey = import.meta.env.VITE_AMPLITUDE_TOKEN;
 
   if (!apiKey) {
@@ -36,14 +30,17 @@ export function initAnalytics(): void {
   try {
     const replayPlugin = createSessionReplayPlugin();
     if (replayPlugin) {
-      // Plugins must be added before init so replay attaches to the session
-      // from its first event.
+      // Register the plugin before init so Session Replay and the analytics
+      // SDK share the same device ID (per Amplitude's documented setup order).
       amplitude.add(replayPlugin);
     }
 
     amplitude.init(apiKey, {
       defaultTracking: false,
       serverZone: "US",
+      // Verbose SDK logging (incl. session-replay internals) only when
+      // explicitly enabled via VITE_AMPLITUDE_DEBUG; otherwise warn-level.
+      logLevel: isAmplitudeDebugEnabled() ? amplitude.Types.LogLevel.Debug : amplitude.Types.LogLevel.Warn,
     });
     isInitialized = true;
   } catch (error) {

@@ -7,7 +7,11 @@ const amplitudeMock = vi.hoisted(() => ({
   setUserId: vi.fn(),
   identify: vi.fn(),
   Identify: vi.fn(() => ({ set: vi.fn() })),
+  Types: { LogLevel: { None: 0, Error: 1, Warn: 2, Verbose: 3, Debug: 4 } },
 }));
+
+// Debug logging is off unless VITE_AMPLITUDE_DEBUG is set, so the default is Warn.
+const expectedLogLevel = amplitudeMock.Types.LogLevel.Warn;
 
 const sessionReplayPluginMock = vi.hoisted(() => vi.fn(() => ({ name: "session-replay-mock" })));
 
@@ -43,7 +47,17 @@ describe("initAnalytics", () => {
     expect(amplitudeMock.init).toHaveBeenCalledWith("test-key", {
       defaultTracking: false,
       serverZone: "US",
+      logLevel: expectedLogLevel,
     });
+  });
+
+  it("uses debug logLevel when VITE_AMPLITUDE_DEBUG is set", async () => {
+    vi.stubEnv("VITE_AMPLITUDE_TOKEN", "test-key");
+    vi.stubEnv("VITE_AMPLITUDE_REPLAY_SAMPLE_RATE", "");
+    vi.stubEnv("VITE_AMPLITUDE_DEBUG", "true");
+    const { initAnalytics } = await importClient();
+    initAnalytics();
+    expect(amplitudeMock.init).toHaveBeenCalledWith("test-key", expect.objectContaining({ logLevel: amplitudeMock.Types.LogLevel.Debug }));
   });
 
   it("registers the replay plugin before init when a sample rate is set", async () => {
@@ -55,6 +69,20 @@ describe("initAnalytics", () => {
     const addOrder = amplitudeMock.add.mock.invocationCallOrder[0];
     const initOrder = amplitudeMock.init.mock.invocationCallOrder[0];
     expect(addOrder).toBeLessThan(initOrder);
+  });
+
+  it("initializes the SDK at most once across repeated calls", async () => {
+    // Re-initializing the Browser SDK reassigns the device ID after Session
+    // Replay has locked onto the first one, which Amplitude documents as the
+    // cause of event<->replay device ID mismatches. initAnalytics must be
+    // idempotent.
+    vi.stubEnv("VITE_AMPLITUDE_TOKEN", "test-key");
+    vi.stubEnv("VITE_AMPLITUDE_REPLAY_SAMPLE_RATE", "0.5");
+    const { initAnalytics } = await importClient();
+    initAnalytics();
+    initAnalytics();
+    expect(amplitudeMock.init).toHaveBeenCalledTimes(1);
+    expect(amplitudeMock.add).toHaveBeenCalledTimes(1);
   });
 });
 
