@@ -568,6 +568,7 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /v1/traces/metrics/  removed '#/components/schemas/arthur_common__models__enums__EvalType' from the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
 - **CHANGE** for **URL**: /v1/traces/query  added '#/components/schemas/EvalType' to the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
 - **CHANGE** for **URL**: /v1/traces/query  removed '#/components/schemas/arthur_common__models__enums__EvalType' from the 'traces/items/annotations/anyOf[subschema #1]/items/eval_type' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v2/display-settings  added the optional property 'scope_url' to the response with the '200' status
 
 # 06/04/2026
 - **BREAKING CHANGE** for **URL**: /api/v1/rag_notebooks/{notebook_id}/state  removed the enum value 'query_profile' of the request property 'state/rag_configs/anyOf[subschema #1]/items/oneOf[subschema #2: UnsavedRagConfig]/settings/anyOf[subschema #1: WeaviateHybridSearchSettingsConfigurationRequest]/return_metadata/anyOf[subschema #1]/items/'
@@ -2714,8 +2715,7 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  added the new optional 'query' request parameter 'tags'
 
 # 03/26/2026
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals  added the new optional 'query' request parameter 'tags'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  added the new optional 'query' request parameter 'tags'
+- **CHANGE** for **URL**: /api/v2/display-settings  added the optional property 'scope_url' to the response with the '200' status
 
 # 03/19/2026
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/chatbot/stream  endpoint added

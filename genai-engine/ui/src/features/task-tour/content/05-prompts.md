@@ -48,6 +48,8 @@ steps:
     title: Map evaluator variables
   - id: create-experiment
     title: Create the experiment
+  - id: review-experiment
+    title: Watch the experiment run
 ---
 
 ## intro
@@ -137,3 +139,7 @@ Each evaluator reads its variables from a source you choose. Map the agent's **r
 ## step: create-experiment
 
 Final check. Make sure every eval variable has the right source, with response variables mapped to **Experiment Output**. Then click **Create Experiment** to start the run.
+
+## step: review-experiment
+
+You're now on the experiment's results page. It's running against the dataset and evals, and the page updates as each row finishes — give it a moment to complete, then compare how your prompt versions scored. Click **Next** when you're ready to move on.
