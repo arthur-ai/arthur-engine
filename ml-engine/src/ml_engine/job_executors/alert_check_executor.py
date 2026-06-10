@@ -51,6 +51,12 @@ ALERT_RULES_NON_ADDITIONAL_DIMENSION_FIELDS = [
     "dimensions",
 ]
 ALERT_RULES_SCALAR_TYPES = (str, int, float, bool, datetime, UUID)
+
+# TimescaleDB's time_bucket anchors buckets to a fixed origin that depends on
+# the bucket width. Midnight Jan 3, 2000 for buckets using seconds/minutes/
+# hours/days and midnight Jan 1, 2000 for buckets using month/year/century.
+# AlertRuleInterval only supports seconds/minutes/hours/days, so it will
+# always be anchored against Jan 3, 2000.
 TIME_BUCKET_ORIGIN = datetime(2000, 1, 3, tzinfo=timezone.utc)
 
 
