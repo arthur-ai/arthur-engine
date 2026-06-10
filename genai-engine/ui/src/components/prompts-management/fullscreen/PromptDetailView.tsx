@@ -421,6 +421,12 @@ const PromptDetailView = ({
         open={tagPopoverOpen}
         anchorEl={tagAnchorEl}
         onClose={handleAddTagClose}
+        sx={{
+          // Stay above the tour side panel (which lifts to z-index 1450 during a
+          // step) so the Save button isn't covered. Inert off-tour: the variable is
+          // 0 then, so this resolves to MUI's default modal z-index (1300).
+          zIndex: "max(1300, calc(var(--app-tour-panel-layer, 0) + 1))",
+        }}
         anchorOrigin={{
           vertical: "bottom",
           horizontal: "right",

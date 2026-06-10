@@ -78,6 +78,18 @@ export function TourSidePanel({ statePlugin }: TourSidePanelProps) {
     };
   }, [reservedWidth]);
 
+  // Publish the panel's active z-index (only elevated during a step — see the
+  // `zIndex` on the <aside> below) so body-portaled overlays that anchor to the
+  // page (e.g. the prompt tag Popover) can render above the panel instead of
+  // being covered by it. 0 whenever the panel isn't elevated; reset on unmount.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--app-tour-panel-layer", String(controller.isOnStep ? panelLayer : 0));
+    return () => {
+      root.style.setProperty("--app-tour-panel-layer", "0");
+    };
+  }, [controller.isOnStep, panelLayer]);
+
   const handleResume = useCallback(() => {
     if (state.status === "dismissed") {
       actions.resume();
