@@ -1,4 +1,5 @@
 import AddIcon from "@mui/icons-material/Add";
+import SaveIcon from "@mui/icons-material/Save";
 import { Alert, Box, Button, CircularProgress, Stack, Typography } from "@mui/material";
 import React from "react";
 
@@ -14,18 +15,58 @@ interface RulesListProps {
   onToggleRule: (rule: RuleResponse, enabled: boolean) => void;
   onDeleteRule: (rule: RuleResponse) => void;
   pendingRuleId: string | null;
+  modifiedRuleIds: Set<string>;
+  hasUnsavedChanges: boolean;
+  isSaving: boolean;
+  onSave: () => void;
+  onDiscard: () => void;
 }
 
-export const RulesList: React.FC<RulesListProps> = ({ rules, isLoading, error, onAddRule, onToggleRule, onDeleteRule, pendingRuleId }) => {
+export const RulesList: React.FC<RulesListProps> = ({
+  rules,
+  isLoading,
+  error,
+  onAddRule,
+  onToggleRule,
+  onDeleteRule,
+  pendingRuleId,
+  modifiedRuleIds,
+  hasUnsavedChanges,
+  isSaving,
+  onSave,
+  onDiscard,
+}) => {
   return (
     <Stack spacing={2} sx={{ height: "100%" }}>
-      <Stack direction="row" alignItems="center" justifyContent="space-between">
-        <Typography variant="h6" sx={{ fontWeight: 600 }}>
-          Rules
-        </Typography>
-        <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={onAddRule}>
-          Add rule
-        </Button>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+        <Stack direction="row" alignItems="baseline" spacing={1} sx={{ minWidth: 0 }}>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            Rules
+          </Typography>
+          {hasUnsavedChanges && (
+            <Typography variant="caption" sx={{ color: "warning.main", fontWeight: 500 }} noWrap>
+              • Unsaved changes
+            </Typography>
+          )}
+        </Stack>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <Button variant="text" size="small" color="inherit" onClick={onDiscard} disabled={!hasUnsavedChanges || isSaving}>
+            Discard
+          </Button>
+          <Button
+            variant="contained"
+            size="small"
+            color="success"
+            startIcon={isSaving ? <CircularProgress size={14} color="inherit" /> : <SaveIcon />}
+            onClick={onSave}
+            disabled={!hasUnsavedChanges || isSaving}
+          >
+            {isSaving ? "Saving…" : "Save"}
+          </Button>
+          <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={onAddRule}>
+            Add rule
+          </Button>
+        </Stack>
       </Stack>
 
       {isLoading && (
@@ -54,7 +95,14 @@ export const RulesList: React.FC<RulesListProps> = ({ rules, isLoading, error, o
 
       <Stack spacing={1.5} sx={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
         {rules.map((rule) => (
-          <RuleCard key={rule.id} rule={rule} onToggle={onToggleRule} onDelete={onDeleteRule} isUpdating={pendingRuleId === rule.id} />
+          <RuleCard
+            key={rule.id}
+            rule={rule}
+            onToggle={onToggleRule}
+            onDelete={onDeleteRule}
+            isUpdating={pendingRuleId === rule.id}
+            isModified={modifiedRuleIds.has(rule.id)}
+          />
         ))}
       </Stack>
     </Stack>

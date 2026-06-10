@@ -11,6 +11,7 @@ interface RuleCardProps {
   onToggle: (rule: RuleResponse, enabled: boolean) => void;
   onDelete: (rule: RuleResponse) => void;
   isUpdating?: boolean;
+  isModified?: boolean;
 }
 
 interface ConfigSummary {
@@ -61,7 +62,7 @@ const summarizeConfig = (rule: RuleResponse): ConfigSummary | null => {
   return null;
 };
 
-export const RuleCard: React.FC<RuleCardProps> = ({ rule, onToggle, onDelete, isUpdating }) => {
+export const RuleCard: React.FC<RuleCardProps> = ({ rule, onToggle, onDelete, isUpdating, isModified }) => {
   const meta = RULE_TYPE_META[rule.type];
   const isDefault = rule.scope === "default";
   const enabled = rule.enabled ?? true;
@@ -89,6 +90,11 @@ export const RuleCard: React.FC<RuleCardProps> = ({ rule, onToggle, onDelete, is
                   sx={{ height: 20, fontSize: 11 }}
                 />
               </Tooltip>
+              {isModified && (
+                <Tooltip title="Unsaved change">
+                  <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "warning.main", flexShrink: 0 }} />
+                </Tooltip>
+              )}
             </Stack>
             <Stack direction="row" alignItems="center" spacing={1}>
               <Typography variant="caption" sx={{ color: "text.secondary" }}>
@@ -122,7 +128,6 @@ export const RuleCard: React.FC<RuleCardProps> = ({ rule, onToggle, onDelete, is
           </Box>
 
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <CircularProgress size={14} sx={{ visibility: isUpdating ? "visible" : "hidden" }} />
             <Tooltip title={isDefault ? "Default rules cannot be toggled per task here" : enabled ? "Disable rule" : "Enable rule"}>
               <span>
                 <Switch size="small" checked={enabled} disabled={isDefault || isUpdating} onChange={(e) => onToggle(rule, e.target.checked)} />
@@ -134,7 +139,7 @@ export const RuleCard: React.FC<RuleCardProps> = ({ rule, onToggle, onDelete, is
             <Tooltip title="Delete rule">
               <span>
                 <IconButton size="small" onClick={() => onDelete(rule)} disabled={isUpdating}>
-                  <DeleteOutlineIcon fontSize="small" />
+                  {isUpdating ? <CircularProgress size={16} /> : <DeleteOutlineIcon fontSize="small" />}
                 </IconButton>
               </span>
             </Tooltip>
