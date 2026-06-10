@@ -73,6 +73,19 @@
             ],
             "description": "GenAI Engine application ingress DNS URL, can be empty"
         },
+        "scopeFeIngressURI": {
+            "oneOf": [
+                {
+                    "type": "string",
+                    "format": "uri"
+                },
+                {
+                    "type": "string",
+                    "maxLength": 0
+                }
+            ],
+            "description": "Arthur Platform (Scope) frontend URL for this deployment, can be empty"
+        },
         "postgresClientConnectionPoolSize": {
             "type": "integer",
             "minimum": 1,

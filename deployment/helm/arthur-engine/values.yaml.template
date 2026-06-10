@@ -12,6 +12,8 @@ arthur-genai-engine:
   postgresBYOEndpoint: ""
   # GenAI Engine application ingress DNS URL (e.g. arthur-genai-engine.mydomain.com)
   genaiEngineIngressURL: ""
+  # Arthur Platform (Scope) frontend URL for this deployment (e.g. https://app.mydomain.arthur.ai)
+  scopeFeIngressURI: ""
   # Provider of OpenAI LLMs (must be set to 'Azure' or 'OpenAI')
   genaiEngineOpenAIProvider: "Azure"
 
@@ -96,7 +98,7 @@ arthur-genai-engine:
   ## Advanced - GenAI Engine
   ###################################
   # GenAI Engine version
-  genaiEngineVersion: 2.1.617
+  genaiEngineVersion: 2.1.625
   # Max number of tokens GenAI Engine can process against LLM for hallucination data checks
   genaiEngineHallucinationCheckMaxTokenLimit: 3000
   # Max number of tokens GenAI Engine can process against LLM for sensitive data checks

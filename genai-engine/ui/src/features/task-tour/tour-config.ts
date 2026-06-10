@@ -74,7 +74,8 @@ function buildStep(taskId: string, item: TaskTourItem, opts: BuildTourConfigOpti
     item.prepareKey === TASK_TOUR_PREPARATIONS.evaluatorDetailOpened ||
     item.prepareKey === TASK_TOUR_PREPARATIONS.datasetDetailOpened ||
     item.prepareKey === TASK_TOUR_PREPARATIONS.promptDetailOpened ||
-    item.prepareKey === TASK_TOUR_PREPARATIONS.playgroundOpened;
+    item.prepareKey === TASK_TOUR_PREPARATIONS.playgroundOpened ||
+    item.prepareKey === TASK_TOUR_PREPARATIONS.experimentDetailOpened;
   const skipWhen = item.skipWhenEmptyKey ? (ctx: StepContext) => Promise.resolve(opts.isEmpty?.(item.skipWhenEmptyKey!, ctx) ?? false) : undefined;
   const surfaces = surfacesFor(item);
   return {

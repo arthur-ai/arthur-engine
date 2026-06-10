@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.617"
+        "version": "2.1.625"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -21499,6 +21499,17 @@
                         "type": "boolean",
                         "title": "Chatbot Enabled",
                         "default": true
+                    },
+                    "scope_url": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Scope Url"
                     }
                 },
                 "type": "object",
