@@ -123,6 +123,12 @@ export const TOUR_IDS = {
   createExperimentEvalMappingsList: "task-tour-create-experiment-eval-mappings-list",
   /** Final Create Experiment action in the dialog. */
   createExperimentSubmit: "task-tour-create-experiment-submit",
+  /**
+   * Root of the experiment detail view (`/prompt-experiments/:id`). Creating an
+   * experiment redirects here, so it's spotlighted as the closing beat — the
+   * user watches the run finish before the section-complete dialog appears.
+   */
+  promptExperimentDetail: "task-tour-prompt-experiment-detail",
 } as const;
 
 export type TourId = (typeof TOUR_IDS)[keyof typeof TOUR_IDS];
