@@ -12,6 +12,8 @@ steps:
     title: Open the Demo Agent
   - id: send-message
     title: Send a message
+  - id: review-agent-response
+    title: Review the response
 ---
 
 ## intro
@@ -29,3 +31,7 @@ Open **Demo Agent** in the sidebar. This takes you to the sandbox chatbot where 
 ## step: send-message
 
 Send any general-knowledge question to the Demo Agent. It will search Wikipedia, answer in the chat, and leave a trace we can look at next.
+
+## step: review-agent-response
+
+Wait for the Demo Agent to finish responding — it searches Wikipedia before it answers, so give it a moment. Once you've read the reply, click **Next** to continue.
