@@ -37,6 +37,7 @@ def expected_buckets(job_spec, alert_rule):
         job_spec.check_range_start_timestamp - td,
         job_spec.check_range_end_timestamp - td,
         td,
+        alert_rule.interval,
     )
 
 
