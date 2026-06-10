@@ -1,11 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 
+import { useDemoMode } from "@/contexts/EngineConfigContext";
 import { AuthService, AuthState, deriveIsTenant, MeResponse } from "@/lib/auth";
 import { clearDemoSessionState, isDemoUser } from "@/lib/clearDemoSessionState";
 import { track, clearUser } from "@/services/analytics";
-
-import { useDemoMode } from "@/contexts/EngineConfigContext";
 
 interface AuthContextType extends AuthState {
   login: (token: string) => Promise<boolean>;

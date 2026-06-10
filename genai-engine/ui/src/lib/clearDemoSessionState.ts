@@ -1,14 +1,6 @@
-const PERSISTED_STORE_KEYS = [
-  "arthur-user-settings",
-  "arthur-theme",
-  "arthur-task-list",
-  "arthur-tour-panel",
-] as const;
+const PERSISTED_STORE_KEYS = ["arthur-user-settings", "arthur-theme", "arthur-task-list", "arthur-tour-panel"] as const;
 
-const STANDALONE_KEYS = [
-  "arthur:task-tour:status",
-  "task-tour:recipient-name",
-] as const;
+const STANDALONE_KEYS = ["arthur:task-tour:status", "task-tour:recipient-name"] as const;
 
 const DYNAMIC_KEY_PREFIXES = ["traces-welcome-"] as const;
 
