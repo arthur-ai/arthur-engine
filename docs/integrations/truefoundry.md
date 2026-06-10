@@ -1,7 +1,3 @@
-> ## Documentation Index
-> Fetch the complete documentation index at: https://docs.arthur.ai/llms.txt
-> Use this file to discover all available pages before exploring further.
-
 # Arthur + TrueFoundry
 
 How do you run Arthur AI as a custom guardrail on TrueFoundry AI Gateway? Deploy the [`integrations/arthur-ai`](https://github.com/truefoundry/integrations-custom-guardrails/tree/main/integrations/arthur-ai) **FastAPI wrapper** on any **public HTTPS** host, register it as a **Custom Guardrail** in TrueFoundry, and attach the guardrail group to your models or requests. TrueFoundry calls the wrapper at `llm_input` / `llm_output`; the wrapper forwards traffic to [Arthur GenAI Engine](https://engine.platform.arthur.ai) and returns `verdict` JSON on HTTP 200 — validating prompts on the way in and completions on the way out without redacting or rewriting text.
