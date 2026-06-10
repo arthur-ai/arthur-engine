@@ -3,7 +3,7 @@ revision = 3
 requires-python = "==3.13.*"
 
 [options]
-exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
+exclude-newer = "2026-06-07T20:11:57.166106Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -141,7 +141,7 @@ wheels = [
 
 [[package]]
 name = "arthur-client"
-version = "1.4.2158"
+version = "1.4.2192"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "authlib" },
@@ -153,9 +153,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/70/b9/c9d0a15bfded73cc420d7000bb926864db8a2a67088a150bf4c6a762cf9d/arthur_client-1.4.2158.tar.gz", hash = "sha256:e5eec89d6070f3c8aee2a03ff65add01461476ad327e59f0847914b26427d936", size = 395091, upload-time = "2026-05-21T23:17:26.434Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ee/f3/692eff90fb78f29d31437bd43e9dc44d51ac4cabb06967f21a0d3beac4ca/arthur_client-1.4.2192.tar.gz", hash = "sha256:5ad64347779888fc5b4b5058f0ba5e2085bbdae27921e300a4bed4de9088d288", size = 401184, upload-time = "2026-06-10T15:19:45.688Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/19/5c/9a8f2eafa32af58f7ceb438110fbbe25d09499186f80faa011079355dafc/arthur_client-1.4.2158-py3-none-any.whl", hash = "sha256:e25f598272c129efc095a94942ac7d212a2e6350707306274b8b396a808f68fd", size = 1457288, upload-time = "2026-05-21T23:17:27.942Z" },
+    { url = "https://files.pythonhosted.org/packages/b7/73/423dc7d4d9e96dfd8b538807d69f53a1e32cec41e5c7b9f86267ec98a26c/arthur_client-1.4.2192-py3-none-any.whl", hash = "sha256:999a93cdee8fcce689458f078c311272433349fe616ad69eb9ee897dc474e8f2", size = 1475341, upload-time = "2026-06-10T15:19:43.435Z" },
 ]
 
 [[package]]
@@ -1399,7 +1399,7 @@ wheels = [
 
 [[package]]
 name = "ml-engine"
-version = "2.1.617"
+version = "2.1.627"
 source = { editable = "." }
 dependencies = [
     { name = "adlfs" },
@@ -1458,7 +1458,7 @@ linters = [
 [package.metadata]
 requires-dist = [
     { name = "adlfs", specifier = "==2025.8.0" },
-    { name = "arthur-client", specifier = "==1.4.2158" },
+    { name = "arthur-client", specifier = "==1.4.2192" },
     { name = "arthur-common", specifier = "==2.4.64" },
     { name = "croniter", specifier = "==6.0.0" },
     { name = "databricks-sdk", specifier = ">=0.84.0,<1" },
