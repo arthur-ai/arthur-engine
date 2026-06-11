@@ -7,10 +7,13 @@ from sqlalchemy.orm import Session
 from starlette.responses import Response
 from starlette.status import HTTP_204_NO_CONTENT
 
+from db_models.dataset_models import DatabaseDataset
+from db_models.task_models import DatabaseTask
 from dependencies import get_db_session, get_org_scope, get_validated_task
 from repositories.agentic_prompts_repository import AgenticPromptRepository
 from repositories.datasets_repository import DatasetRepository
 from repositories.model_provider_repository import ModelProviderRepository
+from repositories.organizations_repository import enforce_token_quota
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.agentic_prompt_schemas import AgenticPrompt
@@ -54,6 +57,27 @@ datasets_router_tag = "Datasets"
 ###################################
 #### Dataset Management Routes ####
 ###################################
+
+
+def _dataset_org_id(db_session: Session, dataset_id: UUID) -> UUID:
+    """Resolve the org that owns this dataset (via its parent task).
+
+    Synthetic-data billing (UP-4390) must land on the dataset's org rather
+    than the caller's scope so admin-driven runs still bill the right
+    tenant.
+    """
+    org_id: Optional[UUID] = (
+        db_session.query(DatabaseTask.org_id)
+        .join(DatabaseDataset, DatabaseDataset.task_id == DatabaseTask.id)
+        .filter(DatabaseDataset.id == dataset_id)
+        .scalar()
+    )
+    if org_id is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Dataset {dataset_id} not found.",
+        )
+    return org_id
 
 
 @dataset_management_routes.post(
@@ -435,11 +459,14 @@ def generate_synthetic_data(
 
     # Create the synthetic data service and generate data
     synthetic_service = SyntheticDataService(model_provider_repo, db_session)
+    org_id = _dataset_org_id(db_session, dataset_id)
+    enforce_token_quota(db_session, org_id)
     return synthetic_service.generate_initial(
         request=request,
         existing_rows=existing_rows,
         column_names=column_names,
         session_id=f"dataset:{dataset_id}:v{version_number}",
+        org_id=org_id,
     )
 
 
@@ -494,9 +521,12 @@ def send_synthetic_data_message(
 
     # Create the synthetic data service and continue conversation
     synthetic_service = SyntheticDataService(model_provider_repo, db_session)
+    org_id = _dataset_org_id(db_session, dataset_id)
+    enforce_token_quota(db_session, org_id)
     return synthetic_service.continue_conversation(
         request=request,
         existing_rows=existing_rows,
         column_names=column_names,
         session_id=f"dataset:{dataset_id}:v{version_number}",
+        org_id=org_id,
     )

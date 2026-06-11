@@ -26,6 +26,7 @@ from db_models.prompt_experiment_models import (
 from db_models.rag_experiment_models import (
     DatabaseRagExperimentTestCaseRagResult,
 )
+from db_models.task_models import DatabaseTask
 from dependencies import db_session_context
 from repositories.evaluator_factory import get_evaluator
 from repositories.llm_evals_repository import LLMEvalsRepository
@@ -713,6 +714,19 @@ class BaseExperimentExecutor(ABC):
 
             evaluator = get_evaluator(db_session, eval_type)
 
+            # Background experiment thread: org_id isn't on the experiment
+            # row, so derive it from the owning task. One SELECT per eval is
+            # negligible alongside the LLM call this billing context wraps.
+            task_org_id = (
+                db_session.query(DatabaseTask.org_id)
+                .filter(DatabaseTask.id == experiment.task_id)
+                .scalar()
+            )
+            if task_org_id is None:
+                raise ValueError(
+                    f"Cannot determine org for experiment task {experiment.task_id}.",
+                )
+
             try:
                 if isinstance(evaluator, MLEvaluator):
                     eval_response = evaluator.run(
@@ -732,6 +746,7 @@ class BaseExperimentExecutor(ABC):
                     eval_response = LLMEvalsRepository(db_session).run_llm_eval(
                         task_id=experiment.task_id,
                         eval_name=eval_score.eval_name,
+                        org_id=task_org_id,
                         version=str(eval_score.eval_version),
                         completion_request=completion_request,
                     )

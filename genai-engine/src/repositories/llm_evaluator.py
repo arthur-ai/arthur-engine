@@ -1,5 +1,6 @@
 """LLM Evaluator — wraps LLMEvalsRepository for the BaseEvaluator interface."""
 
+import uuid
 from typing import List
 
 from arthur_common.models.common_schemas import VariableTemplateValue
@@ -34,13 +35,14 @@ class LLMEvaluator(BaseEvaluator):
         llm_eval = self._repo.get_llm_item(task_id, eval_name, eval_version)
         return llm_eval.variables
 
-    def run(
+    def run(  # type: ignore[override]
         self,
         task_id: str,
         eval_name: str,
         eval_version: str,
         variable_mapping: List[ContinuousEvalTransformVariableMapping],
         resolved_variables: dict[str, str],
+        org_id: uuid.UUID,
     ) -> EvalRunResponse:
         variables = [
             VariableTemplateValue(name=k, value=v)
@@ -50,6 +52,7 @@ class LLMEvaluator(BaseEvaluator):
         llm_result = self._repo.run_llm_eval(
             task_id=task_id,
             eval_name=eval_name,
+            org_id=org_id,
             version=eval_version,
             completion_request=completion_request,
         )

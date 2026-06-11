@@ -22,6 +22,7 @@ from dependencies import (
 )
 from repositories.continuous_evals_repository import ContinuousEvalsRepository
 from repositories.llm_evals_repository import LLMEvalsRepository
+from repositories.organizations_repository import enforce_token_quota
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.enums import LLMMetadataSortField, PermissionLevelsEnum
@@ -184,11 +185,13 @@ def run_saved_llm_eval(
     task: Task = Depends(get_validated_task),
 ) -> EvalRunResponse:
     try:
+        enforce_token_quota(db_session, task.org_id)
         return LLMEvalsRepository(db_session).run_llm_eval(
-            task.id,
-            eval_name,
-            eval_version,
-            completion_request,
+            task_id=task.id,
+            eval_name=eval_name,
+            org_id=task.org_id,
+            version=eval_version,
+            completion_request=completion_request,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

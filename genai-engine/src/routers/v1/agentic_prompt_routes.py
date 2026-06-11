@@ -17,6 +17,7 @@ from dependencies import (
     llm_get_versions_filter_parameters,
 )
 from repositories.agentic_prompts_repository import AgenticPromptRepository
+from repositories.organizations_repository import enforce_token_quota
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.agentic_prompt_schemas import (
@@ -42,6 +43,7 @@ from schemas.response_schemas import (
     UnsavedPromptVariablesListResponse,
 )
 from services.prompt.chat_completion_service import ChatCompletionService
+from utils import constants
 from utils.url_encoding import decode_path_param
 from utils.users import enforce_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
@@ -244,7 +246,18 @@ async def run_agentic_prompt(
     """
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
-        return await agentic_prompt_service.run_unsaved_prompt(unsaved_prompt)
+        # No resource context for unsaved prompts — bill the caller's org,
+        # or the default org for admin/JWT callers without a scope.
+        org_id = (
+            current_user.org_scope
+            if current_user and current_user.org_scope is not None
+            else constants.DEFAULT_ORG_ID
+        )
+        enforce_token_quota(db_session, org_id)
+        return await agentic_prompt_service.run_unsaved_prompt(
+            unsaved_prompt,
+            org_id=org_id,
+        )
     except HTTPException:
         # propagate HTTP exceptions
         raise
@@ -465,12 +478,14 @@ async def run_saved_agentic_prompt(
         AgenticPromptRunResponse or StreamingResponse
     """
     try:
+        enforce_token_quota(db_session, task.org_id)
         agentic_prompt_service = AgenticPromptRepository(db_session)
         return await agentic_prompt_service.run_saved_prompt(
             task.id,
             prompt_name,
             prompt_version,
             completion_request,
+            org_id=task.org_id,
         )
     except HTTPException:
         # propagate HTTP exceptions

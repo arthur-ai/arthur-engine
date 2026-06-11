@@ -4,10 +4,13 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from fastapi import HTTPException
+
 from arthur_common.models.common_schemas import (
     PaginationParameters,
     VariableTemplateValue,
 )
+from utils.constants import DEFAULT_ORG_ID
 from arthur_common.models.enums import PaginationSortMethod
 from arthur_common.models.llm_model_providers import (
     JsonSchema,
@@ -191,7 +194,10 @@ async def test_run_prompt(
     mock_get_client.return_value = mock_llm_client
     mock_llm_client.completion = mock_completion
 
-    result = await agentic_prompt_repo.run_unsaved_prompt(sample_unsaved_run_config)
+    result = await agentic_prompt_repo.run_unsaved_prompt(
+        sample_unsaved_run_config,
+        org_id=DEFAULT_ORG_ID,
+    )
 
     assert isinstance(result, AgenticPromptRunResponse)
     assert result.content == "Test response"
@@ -435,6 +441,7 @@ async def test_run_saved_prompt(
         prompt_name,
         "1",
         PromptCompletionRequest(variables=[]),
+        org_id=DEFAULT_ORG_ID,
     )
 
     assert isinstance(result, AgenticPromptRunResponse)
@@ -521,6 +528,7 @@ def test_chat_completion_service_run_chat_completion(
         full_prompt,
         mock_llm_client,
         PromptCompletionRequest(variables=[]),
+        org_id=DEFAULT_ORG_ID,
     )
 
     assert result.content == "Direct completion response"
@@ -1018,6 +1026,7 @@ def test_agentic_prompt_tool_call_message_serialization(
         prompt,
         mock_llm_client,
         request,
+        org_id=DEFAULT_ORG_ID,
     )
     call_args = mock_completion.call_args[1]
 
@@ -1092,14 +1101,19 @@ def test_chat_completion_service_run_chat_completion_strict_additional_propertie
             prompt,
             mock_llm_client,
             completion_request,
+            org_id=DEFAULT_ORG_ID,
         )
         assert result.content == "ok"
     else:
-        with pytest.raises(ValueError, match="additionalProperties"):
+        # LLMClient catches the underlying ValueError from litellm's schema
+        # validator and re-raises as HTTPException(500). Match on the wrapped
+        # form rather than the raw ValueError.
+        with pytest.raises(HTTPException, match="additionalProperties"):
             chat_completion_service.run_chat_completion(
                 prompt,
                 mock_llm_client,
                 completion_request,
+                org_id=DEFAULT_ORG_ID,
             )
 
 
@@ -1115,6 +1129,7 @@ def test_run_deleted_prompt_spawns_error(sample_deleted_prompt, mock_llm_client)
             sample_deleted_prompt,
             mock_llm_client,
             PromptCompletionRequest(),
+            org_id=DEFAULT_ORG_ID,
         )
 
 
@@ -1130,6 +1145,7 @@ async def test_stream_deleted_prompt_spawns_error(
         sample_deleted_prompt,
         mock_llm_client,
         PromptCompletionRequest(),
+        org_id=DEFAULT_ORG_ID,
     )
     events = [event async for event in stream]
     assert len(events) == 1
@@ -1587,6 +1603,7 @@ def test_run_saved_agentic_prompt_with_pydantic_response_format(
         prompt,
         mock_llm_client,
         completion_request,
+        org_id=DEFAULT_ORG_ID,
     )
 
     assert isinstance(result, AgenticPromptRunResponse)

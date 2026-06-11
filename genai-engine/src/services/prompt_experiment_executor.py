@@ -17,6 +17,7 @@ from arthur_common.models.llm_model_providers import ModelProvider
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from db_models.task_models import DatabaseTask
 from db_models.prompt_experiment_models import (
     DatabasePromptExperiment,
     DatabasePromptExperimentTestCase,
@@ -371,10 +372,22 @@ class PromptExperimentExecutor(BaseExperimentExecutor):
                 ],
             )
 
+            # Background experiment thread: derive org from the owning task.
+            task_org_id = (
+                db_session.query(DatabaseTask.org_id)
+                .filter(DatabaseTask.id == experiment.task_id)
+                .scalar()
+            )
+            if task_org_id is None:
+                raise ValueError(
+                    f"Cannot determine org for experiment task {experiment.task_id}.",
+                )
+
             response = self.chat_completion_service.run_chat_completion(
                 prompt=prompt,
                 llm_client=llm_client,
                 completion_request=completion_request,
+                org_id=task_org_id,
             )
 
             # Save output to separate columns. Tool calls come back as

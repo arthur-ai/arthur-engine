@@ -1,6 +1,7 @@
 import logging
 import threading
 import time
+import uuid
 from typing import Any, List, Optional, Union
 
 import httpx
@@ -15,6 +16,8 @@ from litellm.types.utils import (
     TokenCountResponse,
 )
 from pydantic import BaseModel, ConfigDict, Field
+
+from repositories.organizations_repository import record_org_token_usage
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +103,29 @@ class LLMClient:
         self.api_base = api_base
         self.vertex_credentials = vertex_credentials
         self.aws_bedrock_credentials = aws_bedrock_credentials
+
+    def record_token_usage(
+        self,
+        org_id: uuid.UUID,
+        response: Optional[Union[ModelResponse, TextCompletionResponse]],
+    ) -> None:
+        """Bill `org_id` for the tokens consumed by an LLM response (UP-4390).
+
+        For streaming async calls, the caller invokes this on the response
+        built via litellm.stream_chunk_builder after the stream completes —
+        acompletion doesn't know usage at return-time when streaming.
+        Records via a fresh DB session so the write lands independently
+        of the caller's transaction.
+        """
+        if response is None:
+            return
+        usage = getattr(response, "usage", None)
+        if usage is None:
+            return
+        total = getattr(usage, "total_tokens", None)
+        if total is None:
+            return
+        record_org_token_usage(org_id, int(total))
 
     def _add_provider_credentials(self, kwargs: dict[str, Any]) -> dict[str, Any]:
         if self.api_key:
@@ -205,9 +231,13 @@ class LLMClient:
     def completion(
         self,
         *args: Any,
+        org_id: uuid.UUID,
         **kwargs: Any,
     ) -> LLMModelResponse:
-        # Delegate to the top-level function
+        # `org_id` is required (kw-only): every LLM call bills the org that
+        # owns the resource being acted on (the task, dataset, annotation,
+        # etc.). Unmetered orgs (default/system) are handled via
+        # `tokens_limit IS NULL` — not by passing a sentinel here. UP-4390.
         kwargs = self._add_provider_credentials(kwargs)
 
         try:
@@ -272,6 +302,8 @@ class LLMClient:
 
         cost = self.calculate_cost(response)
 
+        self.record_token_usage(org_id, response)
+
         llm_model_response = LLMModelResponse(
             response=response,
             cost=cost,
@@ -302,9 +334,15 @@ class LLMClient:
     async def acompletion(
         self,
         *args: Any,
+        org_id: uuid.UUID,
         **kwargs: Any,
     ) -> ModelResponse | CustomStreamWrapper:
-        # Delegate to the top-level function
+        # `org_id` is required (kw-only): every LLM call bills the org that
+        # owns the resource being acted on. For non-streaming responses,
+        # billing happens here. For streaming (CustomStreamWrapper), the
+        # consumer must call `record_token_usage` after
+        # `litellm.stream_chunk_builder` produces the final response —
+        # token usage isn't known at return-time. UP-4390.
         kwargs = self._add_provider_credentials(kwargs)
 
         try:
@@ -312,6 +350,8 @@ class LLMClient:
                 *args,
                 **kwargs,
             )
+            if isinstance(response, ModelResponse):
+                self.record_token_usage(org_id, response)
             return response
         except litellm.BadRequestError as e:
             if "requires at least one non-system message" in str(e):
