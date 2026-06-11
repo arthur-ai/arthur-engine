@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
+exclude-newer = "2026-06-08T20:17:49.468813Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -156,7 +156,7 @@ wheels = [
 
 [[package]]
 name = "arthur-common"
-version = "2.4.64"
+version = "2.4.66"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datasketches" },
@@ -172,14 +172,14 @@ dependencies = [
     { name = "types-requests" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8d/cd/eb0a32715efb6922a8f3fc51fbd230f5da46a624748fdcd9ffaff4055308/arthur_common-2.4.64.tar.gz", hash = "sha256:47f96d3b521483b0628f9619084795029192b57d2c6d1a14cb2a9d1e4fd3760f", size = 14636826, upload-time = "2026-06-03T14:59:49.8Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/78/58/e32c83b9d2e5c4178687e5223ffedc28080d0c78e354884d74c424d8b635/arthur_common-2.4.66.tar.gz", hash = "sha256:af36bbeeaffebc22def331eaca90212f5e43c4a61069a58fa8db58b928f0ddde", size = 14636823, upload-time = "2026-06-11T19:46:24.136Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/25/6f/53e209ab57bc756665abfb89671ffe62e65146021dbfcf96061a8a99d962/arthur_common-2.4.64-py3-none-any.whl", hash = "sha256:dd3ece3a6b60546c73298539d5325ab924958c074e8f6c31d8012cee5c130e1b", size = 86320, upload-time = "2026-06-03T14:59:48.443Z" },
+    { url = "https://files.pythonhosted.org/packages/bf/0c/8fd91c7a6ad776659b4ccd694e902daff1f008fbe13ca2e4e6790d0e602f/arthur_common-2.4.66-py3-none-any.whl", hash = "sha256:54d40e11df62dc5e2ebfb282fb45bd0d9aa4d6acb24f725266754cf49e24d801", size = 86316, upload-time = "2026-06-11T19:46:22.646Z" },
 ]
 
 [[package]]
 name = "arthur-genai-engine"
-version = "2.1.626"
+version = "2.1.630"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
@@ -273,7 +273,7 @@ requires-dist = [
     { name = "alembic", specifier = "==1.17.2" },
     { name = "amplitude-analytics", specifier = ">=1.1.5,<2" },
     { name = "arthur-client", specifier = "==1.4.2158" },
-    { name = "arthur-common", specifier = "==2.4.64" },
+    { name = "arthur-common", specifier = "==2.4.66" },
     { name = "authlib", specifier = "==1.6.9" },
     { name = "azure-storage-blob", specifier = "==12.27.1" },
     { name = "bcrypt", specifier = "==4.3.0" },
@@ -299,7 +299,7 @@ requires-dist = [
     { name = "langchain", specifier = "==0.3.30" },
     { name = "langchain-community", specifier = "==0.3.31" },
     { name = "langchain-openai", specifier = "==0.3.35" },
-    { name = "litellm", specifier = "==1.83.4" },
+    { name = "litellm", specifier = "==1.88.0" },
     { name = "more-itertools", specifier = "==10.8.0" },
     { name = "newrelic", specifier = "==10.17.0" },
     { name = "nltk", specifier = "==3.9.4" },
@@ -1917,7 +1917,7 @@ wheels = [
 
 [[package]]
 name = "litellm"
-version = "1.83.4"
+version = "1.88.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -1933,9 +1933,9 @@ dependencies = [
     { name = "tiktoken" },
     { name = "tokenizers" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/03/c4/30469c06ae7437a4406bc11e3c433cfd380a6771068cca15ea918dcd158f/litellm-1.83.4.tar.gz", hash = "sha256:6458d2030a41229460b321adee00517a91dbd8e63213cc953d355cb41d16f2d4", size = 17733899, upload-time = "2026-04-07T04:33:47.445Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9b/8c/6cfce5d15554e076b8438a955436e9e6e2a2bd39c76539656c1c3861c369/litellm-1.88.0.tar.gz", hash = "sha256:4ff794493e40bd86c6f13e91dcb3e1aad697403fd46a96902196d93356ba48f4", size = 13886026, upload-time = "2026-06-06T23:25:17.93Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b8/bd/df19d3f8f6654535ee343a341fd921f81c411abf601a53e3eaef58129b02/litellm-1.83.4-py3-none-any.whl", hash = "sha256:17d7b4d48d47aca988ea4f762ddda5e7bd72cda3270192b22813d0330869d7b4", size = 16015555, upload-time = "2026-04-07T04:33:44.268Z" },
+    { url = "https://files.pythonhosted.org/packages/da/71/deb6637475253b83eb4577c058863eec4b4ddaef2d08dcd93981b1aa4209/litellm-1.88.0-py3-none-any.whl", hash = "sha256:abd3037e0bf5703f833f5565c87bdfd93578d3de46cbcb36dfa108c3ef58021c", size = 15276203, upload-time = "2026-06-06T23:25:07.257Z" },
 ]
 
 [[package]]
