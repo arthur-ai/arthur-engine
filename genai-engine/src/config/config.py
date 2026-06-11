@@ -70,6 +70,22 @@ class Config:
         return [name.strip() for name in raw.split(",") if name.strip()]
 
     @classmethod
+    def default_tenant_token_limit(cls) -> int:
+        # Lifetime token cap stamped onto new tenant orgs at signup time
+        # (UP-4390). Existing orgs and the default/system orgs keep
+        # tokens_limit = NULL (unlimited) unless updated explicitly.
+        raw = get_env_var(
+            constants.GENAI_ENGINE_DEFAULT_TENANT_TOKEN_LIMIT_ENV_VAR,
+            none_on_missing=True,
+        )
+        if not raw:
+            return constants.DEFAULT_TENANT_TOKEN_LIMIT
+        try:
+            return int(raw)
+        except ValueError:
+            return constants.DEFAULT_TENANT_TOKEN_LIMIT
+
+    @classmethod
     def get_log_level(cls) -> str:
         log_level: str | None = get_env_var(
             constants.GENAI_ENGINE_LOG_LEVEL_ENV_VAR,
