@@ -22,6 +22,8 @@ arthurGenaiEngineDeployment:
   genaiEnginePodNodeSelector: {}
   genaiEnginePodAffinity: {}
   genaiEnginePodTolerations: []
+  auditLog:
+    mountPath: "/home/nonroot/app/audit_logs"
 
 # CPU deployment - Comment out the below 4 lines
 gpuEnabled: false

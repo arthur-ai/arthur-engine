@@ -172,3 +172,29 @@ Logs are rotated daily using Python's `TimedRotatingFileHandler`:
 - **Rotated files**: `audit.log.2026-05-17`, `audit.log.2026-05-16`, etc.
 - **Retention**: Controlled by `AUDIT_LOG_RETENTION_DAYS` (default 365 days)
 - **Timestamps**: UTC
+
+## Kubernetes Deployment
+
+When running GenAI Engine via the `arthur-genai-engine` Helm chart, audit logs are persisted to a `PersistentVolumeClaim` so that rotated files survive pod restarts and rescheduling.
+
+### Persistent Volume Claim
+
+The chart provisions a PVC named `arthur-genai-engine-audit-logs` (suffixed with `arthurResourceNameSuffix` when set) from [arthur-genai-engine-audit-logs-pvc.yaml](../../deployment/helm/genai-engine/templates/arthur-genai-engine-audit-logs-pvc.yaml):
+
+- **Access mode**: `ReadWriteMany` — multiple GenAI Engine replicas can mount the same volume
+- **Storage size**: `arthurGenaiEngineDeployment.auditLog.storageSize` (default `10Gi`)
+- **Storage class**: `arthurGenaiEngineDeployment.auditLog.storageClassName` — must be set to a `ReadWriteMany`-capable class (e.g. NFS, EFS, Azure Files) for your cluster
+
+### Volume Mount
+
+The PVC is mounted into each GenAI Engine pod by [arthur-genai-engine-deployment.yaml](../../deployment/helm/genai-engine/templates/arthur-genai-engine-deployment.yaml) (and the GPU [arthur-genai-engine-daemonset.yaml](../../deployment/helm/genai-engine/templates/arthur-genai-engine-daemonset.yaml)) at the path defined by `arthurGenaiEngineDeployment.auditLog.mountPath` (default `/home/nonroot/app/audit_logs`). This path lines up with the GenAI Engine's default audit log directory, so no override of `AUDIT_LOG_OVERRIDE_PATH` is required out of the box.
+
+### Helm Values
+
+| Value | Default | Description |
+|---|---|---|
+| `arthurGenaiEngineDeployment.auditLog.mountPath` | `/home/nonroot/app/audit_logs` | Path inside the container where audit logs are written |
+| `arthurGenaiEngineDeployment.auditLog.storageSize` | `10Gi` | Size requested for the audit log PVC |
+| `arthurGenaiEngineDeployment.auditLog.storageClassName` | _(unset)_ | `ReadWriteMany` storage class to back the PVC |
+
+If `AUDIT_LOG_OVERRIDE_PATH` is set on the GenAI Engine container, make sure it matches `auditLog.mountPath` so the rotating file handler writes to the persistent volume.
