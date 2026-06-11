@@ -45,11 +45,11 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-  "pytest==8.4.2",
+  "pytest==9.0.1",
   "responses==0.25.8",
   "pytest-httpserver==1.1.5",
-  "pytest-asyncio==1.2.0",
-  "pytest-httpx==0.35.0",
+  "pytest-asyncio==1.4.0",
+  "pytest-httpx==0.36.2",
   "pre-commit==4.5.1",
   "types-pytz>=2025.2.0.20250516",
   "lazy-imports==1.2.0",
