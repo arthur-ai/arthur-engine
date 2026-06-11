@@ -42,9 +42,11 @@ import { TaskOverview } from "./components/TaskOverview";
 import { TestView } from "./components/test/TestView";
 import { TracesView } from "./components/TracesView";
 import TransformsManagement from "./components/transforms/TransformsManagement";
+import { OutOfCreditsDialog } from "./components/common/OutOfCreditsDialog";
 import { AuthProvider } from "./contexts/AuthContext";
 import { DisplaySettingsProvider } from "./contexts/DisplaySettingsContext";
 import { EngineConfigProvider, useDemoMode } from "./contexts/EngineConfigContext";
+import { OutOfCreditsProvider } from "./contexts/OutOfCreditsContext";
 import { queryClient } from "./lib/queryClient";
 import { AppThemeProvider } from "./theme/ThemeProvider";
 
@@ -184,13 +186,16 @@ function App() {
                 <EngineConfigProvider>
                   <AuthProvider>
                     <DisplaySettingsProvider>
-                      <Router>
-                        <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-                          <EngineConfigGate>
-                            <AppRoutes />
-                          </EngineConfigGate>
-                        </div>
-                      </Router>
+                      <OutOfCreditsProvider>
+                        <Router>
+                          <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+                            <EngineConfigGate>
+                              <AppRoutes />
+                            </EngineConfigGate>
+                          </div>
+                        </Router>
+                        <OutOfCreditsDialog />
+                      </OutOfCreditsProvider>
                     </DisplaySettingsProvider>
                   </AuthProvider>
                 </EngineConfigProvider>

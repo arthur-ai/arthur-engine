@@ -29,7 +29,10 @@ interface StreamChunk {
 interface StreamCallbacks {
   onChunk: (content: string) => void;
   onFinalResponse: (response: AgenticPromptRunResponse) => void;
-  onError: (error: string) => void;
+  // `cause` carries the underlying error object so callers can detect
+  // structured payloads (e.g. 402 TOKEN_LIMIT_EXCEEDED) before falling
+  // back to the string `error` for display.
+  onError: (error: string, cause?: unknown) => void;
 }
 
 /**
@@ -105,7 +108,22 @@ export function streamCompletions(
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: response.statusText }));
-        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+        // UP-4390: preserve the structured 402 body so the caller can route
+        // it to the global out-of-credits dialog instead of an inline error.
+        if (response.status === 402) {
+          const tokenLimitErr = new Error(
+            typeof errorData?.detail?.message === "string"
+              ? errorData.detail.message
+              : "Out of LLM credits",
+          ) as Error & { detail?: unknown };
+          tokenLimitErr.detail = errorData.detail;
+          throw tokenLimitErr;
+        }
+        throw new Error(
+          typeof errorData.detail === "string"
+            ? errorData.detail
+            : `HTTP error! status: ${response.status}`,
+        );
       }
 
       if (!response.body) {
@@ -190,7 +208,7 @@ export function streamCompletions(
         return;
       }
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-      callbacks.onError(errorMessage);
+      callbacks.onError(errorMessage, error);
     }
   })();
 

@@ -5,8 +5,13 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 
 import { annotationQueryOptions } from "./useAnnotation";
 
+import { useOutOfCreditsDialog } from "@/contexts/OutOfCreditsContext";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
+import {
+  getTokenLimitDetail,
+  isTokenLimitExceededError,
+} from "@/lib/api-errors";
 import { pollWhileInProgress, POLL_INTERVAL } from "@/lib/polling";
 import { queryKeys } from "@/lib/queryKeys";
 
@@ -22,6 +27,7 @@ export const useRerunContinuousEval = ({ onSuccess, annotationId, rerunOnMount =
   const { task } = useTask();
 
   const queryClient = useQueryClient();
+  const { show: showOutOfCredits } = useOutOfCreditsDialog();
 
   const [running, setRunning] = useState(false);
 
@@ -60,6 +66,11 @@ export const useRerunContinuousEval = ({ onSuccess, annotationId, rerunOnMount =
       setRunning(true);
     },
     onError: (error) => {
+      // UP-4390: route 402 quota errors to the global dialog.
+      if (isTokenLimitExceededError(error)) {
+        showOutOfCredits(getTokenLimitDetail(error));
+        return;
+      }
       let message = "Failed to rerun continuous eval";
 
       if (isAxiosError(error)) {

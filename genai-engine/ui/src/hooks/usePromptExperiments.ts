@@ -2,6 +2,11 @@ import { useApi } from "./useApi";
 import { useApiMutation } from "./useApiMutation";
 import { useApiQuery } from "./useApiQuery";
 
+import { useOutOfCreditsDialog } from "@/contexts/OutOfCreditsContext";
+import {
+  getTokenLimitDetail,
+  isTokenLimitExceededError,
+} from "@/lib/api-errors";
 import type { PromptExperimentDetail, CreatePromptExperimentRequest, PromptExperimentSummary } from "@/lib/api-client/api-client";
 
 /**
@@ -110,6 +115,7 @@ export function usePromptVersionResults(experimentId: string | undefined, prompt
  */
 export function useCreateExperiment(taskId: string | undefined, { onSuccess }: { onSuccess?: (data: PromptExperimentSummary) => void } = {}) {
   const api = useApi();
+  const { show: showOutOfCredits } = useOutOfCreditsDialog();
 
   return useApiMutation<PromptExperimentSummary, CreatePromptExperimentRequest>({
     mutationFn: async (request: CreatePromptExperimentRequest) => {
@@ -120,6 +126,11 @@ export function useCreateExperiment(taskId: string | undefined, { onSuccess }: {
     },
     invalidateQueries: [{ queryKey: ["listPromptExperimentsApiV1TasksTaskIdPromptExperimentsGet"] }],
     onSuccess,
+    onError: (error) => {
+      if (isTokenLimitExceededError(error)) {
+        showOutOfCredits(getTokenLimitDetail(error));
+      }
+    },
   });
 }
 

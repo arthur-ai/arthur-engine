@@ -2,8 +2,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
 import { useSnackbar } from "notistack";
 
+import { useOutOfCreditsDialog } from "@/contexts/OutOfCreditsContext";
 import { useApi } from "@/hooks/useApi";
 import type { Api } from "@/lib/api";
+import {
+  getTokenLimitDetail,
+  isTokenLimitExceededError,
+} from "@/lib/api-errors";
 import type { ContinuousEvalTestRunResponse } from "@/lib/api-client/api-client";
 import { pollWhileAnyInProgress, pollWhileInProgress, POLL_INTERVAL } from "@/lib/polling";
 import { queryKeys } from "@/lib/queryKeys";
@@ -113,6 +118,7 @@ export function useCreateTestRun(evalId: string) {
   const api = useApi()!;
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
+  const { show: showOutOfCredits } = useOutOfCreditsDialog();
 
   return useMutation({
     mutationFn: async (traceIds: string[]) => {
@@ -125,6 +131,11 @@ export function useCreateTestRun(evalId: string) {
       queryClient.invalidateQueries({ queryKey: queryKeys.continuousEvals.testRuns.byEval(evalId) });
     },
     onError: (error) => {
+      // UP-4390: route 402 quota errors to the global dialog.
+      if (isTokenLimitExceededError(error)) {
+        showOutOfCredits(getTokenLimitDetail(error));
+        return;
+      }
       let message = "Failed to create test run";
       if (isAxiosError(error)) {
         message = error.response?.data.detail ?? message;

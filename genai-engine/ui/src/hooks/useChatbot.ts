@@ -1,7 +1,12 @@
 import { useCallback, useRef, useState } from "react";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useOutOfCreditsDialog } from "@/contexts/OutOfCreditsContext";
 import { API_BASE_URL } from "@/lib/api";
+import {
+  getTokenLimitDetail,
+  isTokenLimitExceededError,
+} from "@/lib/api-errors";
 import type { OpenAIMessageInput } from "@/lib/api-client/api-client";
 import { queryClient } from "@/lib/queryClient";
 import { useChatbotStore } from "@/stores/chatbot.store";
@@ -101,6 +106,7 @@ export function useChatbot(taskId: string, options: UseChatbotOptions = {}): Use
   const [activeToolCall, setActiveToolCall] = useState<ToolCallPayload | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const { token } = useAuth();
+  const { show: showOutOfCredits } = useOutOfCreditsDialog();
 
   const updateMessages = useCallback(
     (updater: (prev: ChatMessage[]) => ChatMessage[]) => {
@@ -189,7 +195,17 @@ export function useChatbot(taskId: string, options: UseChatbotOptions = {}): Use
 
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({ detail: response.statusText }));
-            throw new Error(errorData.detail || `HTTP ${response.status}`);
+            // UP-4390: surface the 402 out-of-credits dialog instead of an
+            // inline chat error so the user knows to contact Arthur.
+            if (response.status === 402 && isTokenLimitExceededError(errorData)) {
+              showOutOfCredits(getTokenLimitDetail(errorData));
+              return;
+            }
+            throw new Error(
+              typeof errorData.detail === "string"
+                ? errorData.detail
+                : `HTTP ${response.status}`,
+            );
           }
 
           if (!response.body) throw new Error("Response body is null");
