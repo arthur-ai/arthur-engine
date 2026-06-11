@@ -25,6 +25,7 @@ from arthur_common.models.enums import (
     AgenticAnnotationType,
     ComparisonOperatorEnum,
     ContinuousEvalRunStatus,
+    EvalType,
     InferenceFeedbackTarget,
     MetricType,
     PIIEntityTypes,
@@ -748,6 +749,10 @@ class AgenticAnnotation(BaseModel):
         default=None,
         description="Name of the continuous eval this annotation belongs to",
     )
+    eval_type: Optional[str] = Field(
+        default=None,
+        description="Type of eval",
+    )
     eval_name: Optional[str] = Field(
         default=None,
         description="Name of the eval the continuous eval used when scoring",
@@ -810,8 +815,9 @@ class AgenticAnnotation(BaseModel):
 
         if db_annotation.continuous_eval_id and db_annotation.continuous_eval:
             continuous_eval_name = db_annotation.continuous_eval.name
-            eval_name = db_annotation.continuous_eval.llm_eval_name
-            eval_version = db_annotation.continuous_eval.llm_eval_version
+            ce = db_annotation.continuous_eval
+            eval_name = ce.llm_eval_name
+            eval_version = ce.llm_eval_version
 
         return AgenticAnnotation(
             id=db_annotation.id,
@@ -819,6 +825,7 @@ class AgenticAnnotation(BaseModel):
             trace_id=db_annotation.trace_id or "",
             continuous_eval_id=db_annotation.continuous_eval_id,
             continuous_eval_name=continuous_eval_name,
+            eval_type=None,
             eval_name=eval_name,
             eval_version=eval_version,
             annotation_score=db_annotation.annotation_score,
@@ -846,6 +853,7 @@ class AgenticAnnotation(BaseModel):
                 str(self.continuous_eval_id) if self.continuous_eval_id else None
             ),
             continuous_eval_name=self.continuous_eval_name,
+            eval_type=EvalType(self.eval_type) if self.eval_type else None,
             eval_name=self.eval_name,
             eval_version=self.eval_version,
             annotation_score=self.annotation_score,
@@ -3855,8 +3863,9 @@ class ContinuousEval(BaseModel):
     name: str
     description: Optional[str]
     task_id: str
-    llm_eval_name: str
-    llm_eval_version: int
+    eval_type: str = "llm_eval"
+    llm_eval_name: Optional[str] = None
+    llm_eval_version: Optional[int] = None
     transform_id: uuid.UUID
     transform_version_id: Optional[uuid.UUID] = None
     created_at: datetime
@@ -3869,27 +3878,6 @@ class ContinuousEval(BaseModel):
         default=True,
         description="Whether the continuous eval is enabled.",
     )
-
-    def to_db_model(self) -> DatabaseContinuousEval:
-        # Convert Pydantic models to dicts for JSON serialization
-        transform_variable_mapping_dicts = [
-            mapping.model_dump() for mapping in self.transform_variable_mapping
-        ]
-
-        return DatabaseContinuousEval(
-            id=self.id,
-            name=self.name,
-            description=self.description,
-            task_id=self.task_id,
-            llm_eval_name=self.llm_eval_name,
-            llm_eval_version=self.llm_eval_version,
-            transform_id=self.transform_id,
-            transform_version_id=self.transform_version_id,
-            created_at=self.created_at,
-            updated_at=self.updated_at,
-            transform_variable_mapping=transform_variable_mapping_dicts,
-            enabled=self.enabled,
-        )
 
     @staticmethod
     def from_db_model(
@@ -3906,6 +3894,7 @@ class ContinuousEval(BaseModel):
             name=db_eval.name,
             description=db_eval.description,
             task_id=db_eval.task_id,
+            eval_type=db_eval.eval_type,
             llm_eval_name=db_eval.llm_eval_name,
             llm_eval_version=db_eval.llm_eval_version,
             transform_id=db_eval.transform_id,
@@ -3930,6 +3919,7 @@ class ContinuousEval(BaseModel):
             name=self.name,
             description=self.description,
             task_id=self.task_id,
+            eval_type=EvalType(self.eval_type),
             llm_eval_name=self.llm_eval_name,
             llm_eval_version=self.llm_eval_version,
             transform_id=self.transform_id,

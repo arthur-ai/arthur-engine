@@ -23,7 +23,8 @@ import { DetailsFieldGroup, EvaluatorSelector, TransformSelector } from "../../n
 import { VariableMappingSection } from "../variable-mapping";
 
 import { CopyableChip } from "@/components/common";
-import { useTransformVersions } from "@/components/transforms/hooks/useTransformVersions";
+import { useMLEval } from "@/components/evaluators/hooks/useEval";
+import { useTransforms } from "@/components/transforms/hooks/useTransforms";
 import type { ContinuousEvalResponse, ContinuousEvalTransformVariableMappingRequest } from "@/lib/api-client/api-client";
 
 type Props = {
@@ -68,7 +69,8 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
       },
       evaluator: {
         name: data.llm_eval_name ?? null,
-        version: (data.llm_eval_version ?? 1).toString(),
+        version: data.llm_eval_version?.toString() ?? "latest",
+        eval_type: data.eval_type === "ml_eval" ? "ml" : "llm",
       },
       variableMappings: initialMappings,
     },
@@ -76,14 +78,16 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
       isDirty: true,
     },
     onSubmit: async ({ value }) => {
+      const isML = value.evaluator.eval_type === "ml";
       await updateContinuousEval.mutateAsync({
         name: value.name,
         description: value.description?.trim() || undefined,
         enabled: value.enabled,
         transform_id: value.transform.transformId,
         transform_version_id: value.transform.transformVersionId ?? undefined,
-        llm_eval_name: value.evaluator.name,
-        llm_eval_version: value.evaluator.version,
+        ...(isML
+          ? { ml_eval_name: value.evaluator.name, ml_eval_version: "latest" }
+          : { llm_eval_name: value.evaluator.name, llm_eval_version: value.evaluator.version }),
         transform_variable_mapping: value.variableMappings,
       });
 
@@ -94,26 +98,29 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
   const evaluator = useStore(form.store, (state) => state.values.evaluator);
   const transform = useStore(form.store, (state) => state.values.transform);
 
-  const { data: versions = [] } = useTransformVersions(transform.transformId);
-  const selectedVersion = transform.transformVersionId ? versions.find((v) => v.id === transform.transformVersionId) : null;
+  const isMLEval = evaluator.eval_type === "ml";
 
-  const { data: apiVariableMappingData, isLoading: isLoadingVariableMapping } = useContinuousEvalVariableMapping(
+  const { data: llmVariableMappingData, isLoading: isLoadingVariableMapping } = useContinuousEvalVariableMapping(
     data.task_id,
     transform.transformId ?? undefined,
     evaluator.name ?? undefined,
-    evaluator.version ?? undefined
+    evaluator.version ?? undefined,
+    evaluator.eval_type
   );
 
-  const variableMappingData = useMemo(() => {
-    if (!selectedVersion || !apiVariableMappingData) return apiVariableMappingData;
-    const snapshot = selectedVersion.definition as { variables?: { variable_name: string }[] };
-    const transformVars = snapshot?.variables?.map((v) => v.variable_name) ?? [];
-    return {
-      ...apiVariableMappingData,
-      transform_variables: transformVars,
-      matching_variables: apiVariableMappingData.eval_variables.filter((v) => transformVars.includes(v)),
-    };
-  }, [selectedVersion, apiVariableMappingData]);
+  const { eval: mlEvaluatorData } = useMLEval(data.task_id, isMLEval ? (evaluator.name ?? undefined) : undefined, "latest");
+  const { data: allTransforms } = useTransforms(data.task_id ?? undefined);
+  const selectedTransform = allTransforms?.find((t) => t.id === transform.transformId);
+
+  const mlVariableMappingData = useMemo(() => {
+    if (!isMLEval || !selectedTransform || !mlEvaluatorData?.variables?.length) return undefined;
+    const evalVars = mlEvaluatorData.variables as string[];
+    const transformVars = (selectedTransform.definition.variables as { variable_name: string }[]).map((v) => v.variable_name);
+    const matching = evalVars.filter((v) => transformVars.includes(v));
+    return { eval_variables: evalVars, transform_variables: transformVars, matching_variables: matching };
+  }, [isMLEval, selectedTransform, mlEvaluatorData]);
+
+  const variableMappingData = isMLEval ? mlVariableMappingData : llmVariableMappingData;
 
   const variableMappings = useStore(form.store, (state) => state.values.variableMappings);
 
@@ -197,7 +204,7 @@ const EditForm = ({ data, onClose }: { data: ContinuousEvalResponse; onClose: ()
                 eval_variables={variableMappingData?.eval_variables ?? []}
                 transform_variables={variableMappingData?.transform_variables ?? []}
                 matching_variables={variableMappingData?.matching_variables ?? []}
-                isLoading={isLoadingVariableMapping}
+                isLoading={isMLEval ? false : isLoadingVariableMapping}
               />
             </>
           )}

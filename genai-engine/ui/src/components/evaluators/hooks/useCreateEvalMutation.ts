@@ -1,12 +1,12 @@
 import { useApi } from "@/hooks/useApi";
 import { useApiMutation } from "@/hooks/useApiMutation";
-import type { CreateEvalRequest, LLMEval } from "@/lib/api-client/api-client";
+import type { CreateEvalRequest, Eval } from "@/lib/api-client/api-client";
 import { encodePathParam } from "@/utils/url";
 
-export const useCreateEvalMutation = (taskId: string | undefined, onSuccess?: (evalData: LLMEval) => void) => {
+export const useCreateEvalMutation = (taskId: string | undefined, onSuccess?: (evalData: Eval) => void) => {
   const api = useApi();
 
-  return useApiMutation<LLMEval, { evalName: string; data: CreateEvalRequest }>({
+  return useApiMutation<Eval, { evalName: string; data: CreateEvalRequest }>({
     mutationFn: async ({ evalName, data }) => {
       if (!api || !taskId) throw new Error("API or task not available");
 

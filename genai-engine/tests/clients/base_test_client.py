@@ -57,9 +57,9 @@ from arthur_common.models.response_schemas import (
 from arthur_common.models.task_eval_schemas import (
     ContinuousEvalResponse,
     ContinuousEvalVariableMappingResponse,
+    Eval,
     ListContinuousEvalsResponse,
     ListTraceTransformsResponse,
-    LLMEval,
     TraceTransformResponse,
 )
 from pydantic import TypeAdapter
@@ -3974,7 +3974,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         task_id: str,
         llm_eval_name: str,
         llm_eval_data: dict,
-    ) -> tuple[int, LLMEval]:
+    ) -> tuple[int, Eval]:
         """Save an llm eval."""
         resp = self.base_client.post(
             f"/api/v1/tasks/{task_id}/llm_evals/{llm_eval_name}",
@@ -3987,7 +3987,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                LLMEval.model_validate(resp.json())
+                Eval.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.json()
             ),

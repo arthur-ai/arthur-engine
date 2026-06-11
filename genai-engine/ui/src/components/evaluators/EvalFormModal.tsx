@@ -21,7 +21,7 @@ import { EvalFormModalProps } from "./types";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
-import type { CreateEvalRequest, LLMEval, ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";
+import type { CreateEvalRequest, Eval, ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";
 
 const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormModalProps) => {
   const apiClient = useApi();
@@ -103,7 +103,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
         page: 0,
         page_size: 1000, // Fetch all eval names
       });
-      const evalNames = response.data.llm_metadata.map((evalMeta) => evalMeta.name);
+      const evalNames = response.data.llm_metadata.filter((evalMeta) => evalMeta.eval_kind === "llm_as_a_judge").map((evalMeta) => evalMeta.name);
       setExistingEvalNames(evalNames);
     } catch (error) {
       console.error("Failed to fetch existing eval names:", error);
@@ -231,12 +231,12 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
           task.id
         );
 
-        const evalData: LLMEval = evalResponse.data;
+        const evalData: Eval = evalResponse.data;
 
         // Populate form with the eval data
-        setInstructions(evalData.instructions);
-        setModelProvider(evalData.model_provider);
-        setModelName(evalData.model_name);
+        setInstructions(evalData.instructions ?? "");
+        setModelProvider(evalData.model_provider ?? "");
+        setModelName(evalData.model_name ?? "");
       } catch (error) {
         console.error("Failed to fetch latest eval version:", error);
         // Don't show error to user, just fail silently
