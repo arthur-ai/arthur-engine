@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-06-08T20:17:49.468813Z"
+exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -179,7 +179,7 @@ wheels = [
 
 [[package]]
 name = "arthur-genai-engine"
-version = "2.1.630"
+version = "2.1.631"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
@@ -287,7 +287,7 @@ requires-dist = [
     { name = "fastapi", specifier = "==0.128.0" },
     { name = "fastapi-pagination", specifier = "==0.15.11" },
     { name = "fastapi-sqlalchemy", specifier = "==0.2.1" },
-    { name = "gliner", specifier = "==0.2.21" },
+    { name = "gliner", specifier = "==0.2.26" },
     { name = "google-auth", specifier = ">=2.48.0,<3" },
     { name = "google-cloud-aiplatform", specifier = ">=1.38" },
     { name = "google-cloud-trace", specifier = ">=1.11.0,<2" },
@@ -1195,7 +1195,7 @@ wheels = [
 
 [[package]]
 name = "gliner"
-version = "0.2.21"
+version = "0.2.26"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "huggingface-hub" },
@@ -1206,9 +1206,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "transformers" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6d/50/3667f92bb0ae72e2ba538ee57ecce4836770eb3b0b6c0405fbc66b1e01f2/gliner-0.2.21.tar.gz", hash = "sha256:44bc73b3e8b1a2804b333912fca729eb1fb0065f8f7b34f601bc95aa39abc749", size = 55609, upload-time = "2025-06-16T17:25:23.53Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/49/18/e199cb97147c4a9260c75e4caf51e17be6ff969b0604a029c9c62810cbe0/gliner-0.2.26.tar.gz", hash = "sha256:6783be92b4b81caa878dcc4269ba37800207c37118d8ff9be028b93bddd6813d", size = 181224, upload-time = "2026-03-19T15:07:22.707Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/64/a0/120af9e76e2548d232c8e2e7eea5eb243956988cd8566422e1fc07498dc8/gliner-0.2.21-py3-none-any.whl", hash = "sha256:05f9b8f31bccd310e8d02796badb853e5c61e313af2afa252f791512d265311e", size = 65010, upload-time = "2025-06-16T17:25:22.298Z" },
+    { url = "https://files.pythonhosted.org/packages/7c/6e/d54d3d2867e29b68a22b144f570c8204209647fccc7879cec5218d6ed5fb/gliner-0.2.26-py3-none-any.whl", hash = "sha256:b9baa47641efb90b9d069add0528ed2464d137991ff097f42b0cab37a91ba991", size = 170429, upload-time = "2026-03-19T15:07:19.914Z" },
 ]
 
 [[package]]
