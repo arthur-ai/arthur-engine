@@ -13,6 +13,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { storeRecipientName } from "@/features/task-tour/recipientName";
 import { EVENT_NAMES, identify, track } from "@/services/amplitude";
 
+/**
+ * Extracts the lowercased domain portion of an email address (the part after
+ * the last "@"), used as an Amplitude user property for cohort analysis.
+ * Returns an empty string when no domain can be derived.
+ */
+const getEmailDomain = (email: string): string => email.split("@").pop()?.trim().toLowerCase() ?? "";
+
 export const OnboardingPage: React.FC = () => {
   const [screen, setScreen] = useQueryState("screen", parseAsStringEnum(["landing", "form"]).withDefault("landing").withOptions({ history: "push" }));
   const navigate = useNavigate();
@@ -36,6 +43,7 @@ export const OnboardingPage: React.FC = () => {
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,
+        email_domain: getEmailDomain(data.email),
         jobTitle: data.jobTitle,
         company: data.company,
       });

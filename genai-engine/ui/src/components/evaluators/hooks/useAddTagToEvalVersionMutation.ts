@@ -1,6 +1,6 @@
 import { useApi } from "@/hooks/useApi";
 import { useApiMutation } from "@/hooks/useApiMutation";
-import type { LLMEval } from "@/lib/api-client/api-client";
+import type { Eval } from "@/lib/api-client/api-client";
 import { encodePathParam } from "@/utils/url";
 
 interface AddTagVariables {
@@ -13,7 +13,7 @@ interface AddTagVariables {
 export function useAddTagToEvalVersionMutation() {
   const api = useApi();
 
-  return useApiMutation<LLMEval, AddTagVariables>({
+  return useApiMutation<Eval, AddTagVariables>({
     mutationFn: async ({ evalName, evalVersion, taskId, data }: AddTagVariables) => {
       if (!api) throw new Error("API not available");
 

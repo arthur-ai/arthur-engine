@@ -7,6 +7,7 @@ from sqlalchemy import (
     TIMESTAMP,
     UUID,
     Boolean,
+    Enum,
     ForeignKey,
     ForeignKeyConstraint,
     Integer,
@@ -17,6 +18,7 @@ from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base
+from schemas.enums import EvalKind
 
 if TYPE_CHECKING:
     from db_models.task_models import DatabaseTask
@@ -36,12 +38,23 @@ class DatabaseLLMEval(Base):
     )
     name: Mapped[str] = mapped_column(String, primary_key=True)
 
-    # LLM Configuration
-    model_name: Mapped[str] = mapped_column(String, nullable=False)
-    model_provider: Mapped[str] = mapped_column(String, nullable=False)
+    eval_type: Mapped[EvalKind] = mapped_column(
+        Enum(
+            EvalKind,
+            values_callable=lambda e: [x.value for x in e],
+            native_enum=False,
+            create_constraint=False,
+        ),
+        nullable=False,
+        server_default="llm_as_a_judge",
+        default="llm_as_a_judge",
+    )
 
-    # Prompt Content - stored as JSON for flexibility
-    instructions: Mapped[str] = mapped_column(String, nullable=False)
+    # LLM-only fields (None for ML eval types)
+    model_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    model_provider: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    instructions: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+
     variables: Mapped[List[str]] = mapped_column(
         JSON,
         nullable=False,
@@ -120,8 +133,18 @@ class DatabaseContinuousEval(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
-    # llm eval composite primary key
     task_id: Mapped[str] = mapped_column(String, nullable=False)
+
+    # Discriminator — "llm_eval" or "ml_eval"
+    eval_type: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        server_default="llm_eval",
+        default="llm_eval",
+    )
+
+    # Points to the eval (LLM or ML) in the llm_evals table. ML evals live in the
+    # same table, so these are always populated regardless of eval_type.
     llm_eval_name: Mapped[str] = mapped_column(String, nullable=False)
     llm_eval_version: Mapped[int] = mapped_column(Integer, nullable=False)
 

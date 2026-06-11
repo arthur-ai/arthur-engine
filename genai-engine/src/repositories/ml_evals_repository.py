@@ -1,0 +1,145 @@
+from typing import Any, List, Optional, Type, cast
+
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
+from repositories.base_evaluator import BaseEvaluator
+from repositories.base_llm_repository import BaseLLMRepository
+from schemas.enums import EvalKind
+from schemas.internal_schemas import ContinuousEvalTransformVariableMapping
+from schemas.llm_eval_schemas import Eval
+from schemas.request_schemas import CreateMLEvalRequest
+from schemas.response_schemas import (
+    EvalRunResponse,
+    LLMEvalsVersionListResponse,
+    LLMVersionResponse,
+)
+from scorer.ml_scorers import ML_EVAL_INPUT_VARIABLE, run_ml_scorer
+
+
+class MLEvalsRepository(
+    BaseLLMRepository[DatabaseLLMEval, DatabaseLLMEvalVersionTag, CreateMLEvalRequest],
+):
+    db_model: Type[DatabaseLLMEval] = DatabaseLLMEval
+    tag_db_model: Type[DatabaseLLMEvalVersionTag] = DatabaseLLMEvalVersionTag
+    version_list_response_model: Type[BaseModel] = LLMEvalsVersionListResponse
+    eval_types = [
+        EvalKind.PII,
+        EvalKind.PII_V1,
+        EvalKind.TOXICITY,
+        EvalKind.PROMPT_INJECTION,
+    ]
+
+    def __init__(self, db_session: Session):
+        super().__init__(db_session)
+
+    def from_db_model(self, db_eval: DatabaseLLMEval) -> Eval:
+        tags = self._get_all_tags_for_item_version(db_eval)
+        return Eval(
+            name=db_eval.name,
+            eval_kind=db_eval.eval_type,
+            variables=db_eval.variables,
+            config=db_eval.config,
+            created_at=db_eval.created_at,
+            deleted_at=db_eval.deleted_at,
+            version=db_eval.version,
+            tags=tags,
+        )
+
+    def _to_versions_reponse_item(
+        self,
+        db_item: DatabaseLLMEval,
+        tags: Optional[List[str]] = None,
+    ) -> LLMVersionResponse:
+        tags = self._get_all_tags_for_item_version(db_item)
+        return LLMVersionResponse(
+            version=db_item.version,
+            eval_kind=db_item.eval_type,
+            created_at=db_item.created_at,
+            deleted_at=db_item.deleted_at,
+            tags=tags,
+        )
+
+    def _clear_db_item_data(self, db_item: DatabaseLLMEval) -> None:
+        db_item.config = None
+
+    def _extract_variables_from_item(self, item: CreateMLEvalRequest) -> List[str]:
+        # Every ML eval expects a single "input" variable containing the text to score.
+        return [ML_EVAL_INPUT_VARIABLE]
+
+    def save_ml_eval(
+        self,
+        task_id: str,
+        eval_name: str,
+        item: CreateMLEvalRequest,
+    ) -> Eval:
+        return cast(Eval, super().save_llm_item(task_id, eval_name, item))
+
+    def get_llm_item(
+        self,
+        task_id: str,
+        item_name: str,
+        item_version: str = "latest",
+    ) -> Eval:
+        return cast(
+            Eval,
+            super().get_llm_item(task_id, item_name, item_version),
+        )
+
+    def delete_version(self, task_id: str, eval_name: str, version: str) -> Eval:
+        """Soft-delete a specific version; returns the eval with deleted_at set."""
+        base_query = self._build_name_query(task_id, eval_name)
+        db_item = self._get_db_item_by_version(
+            base_query,
+            version,
+            err_message=f"No matching version of '{eval_name}' found for task '{task_id}'",
+        )
+        actual_version_num = str(db_item.version)
+        self.soft_delete_llm_item_version(task_id, eval_name, version)
+        return cast(
+            Eval,
+            super().get_llm_item(task_id, eval_name, actual_version_num),
+        )
+
+
+class MLEvaluator(BaseEvaluator):
+    """Evaluator wrapper for ML-type evals (pii, toxicity, prompt_injection).
+
+    Intentionally kept as a separate class from MLEvalsRepository to preserve
+    separation of concerns: the repository handles data access while this class
+    owns execution logic. This makes it easier to swap the underlying scorer,
+    add a non-DB-backed evaluator, or extract evaluation into a separate service
+    without touching the persistence layer.
+    """
+
+    def __init__(self, db_session: Session) -> None:
+        self._repo = MLEvalsRepository(db_session)
+
+    def get_eval_variables(
+        self,
+        task_id: str,
+        eval_name: str,
+        eval_version: str,
+    ) -> List[str]:
+        ml_eval = self._repo.get_llm_item(task_id, eval_name, eval_version)
+        return ml_eval.variables
+
+    def run(
+        self,
+        task_id: str,
+        eval_name: str,
+        eval_version: str,
+        variable_mapping: List[ContinuousEvalTransformVariableMapping],
+        resolved_variables: dict[str, str],
+    ) -> EvalRunResponse:
+        ml_eval = self._repo.get_llm_item(task_id, eval_name, eval_version)
+
+        if ml_eval.deleted_at is not None:
+            raise ValueError(
+                f"Cannot run eval '{eval_name}' version {ml_eval.version}: it has been deleted.",
+            )
+
+        text = resolved_variables.get(ML_EVAL_INPUT_VARIABLE, "")
+        config: dict[str, Any] = cast(dict[str, Any], ml_eval.config or {})
+        return run_ml_scorer(str(ml_eval.eval_kind), text, config)

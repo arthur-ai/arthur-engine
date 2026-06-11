@@ -25,6 +25,7 @@ from weaviate.types import INCLUDE_VECTOR
 
 from schemas.enums import (
     ConnectionCheckOutcome,
+    EvalKind,
     RagAPIKeyAuthenticationProviderEnum,
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
@@ -706,6 +707,10 @@ class AgenticPromptMetadataResponse(BaseModel):
 
 class LLMGetAllMetadataResponse(BaseModel):
     name: str = Field(description="Name of the llm asset")
+    eval_kind: EvalKind = Field(
+        default=EvalKind.LLM_AS_A_JUDGE,
+        description="Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')",
+    )
     versions: int = Field(description="Number of versions of the llm asset")
     tags: List[str] = Field(
         default_factory=list,
@@ -729,17 +734,23 @@ class LLMGetAllMetadataListResponse(BaseModel):
 
 class LLMVersionResponse(BaseModel):
     version: int = Field(description="Version number of the llm eval")
+    eval_kind: EvalKind = Field(
+        default=EvalKind.LLM_AS_A_JUDGE,
+        description="Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')",
+    )
     created_at: datetime = Field(
         description="Timestamp when the llm eval version was created",
     )
     deleted_at: Optional[datetime] = Field(
         description="Timestamp when the llm eval version was deleted (None if not deleted)",
     )
-    model_provider: Union[ModelProvider, Literal["empty"]] = Field(
-        description="Model provider chosen for this version of the llm eval",
+    model_provider: Optional[ModelProvider] = Field(
+        default=None,
+        description="Model provider chosen for this version of the llm eval. None for ML evals.",
     )
-    model_name: str = Field(
-        description="Model name chosen for this version of the llm eval",
+    model_name: Optional[str] = Field(
+        default=None,
+        description="Model name chosen for this version of the llm eval. None for ML evals.",
     )
     tags: List[str] = Field(
         default_factory=list,
@@ -766,7 +777,7 @@ class LLMEvalsVersionListResponse(BaseModel):
     count: int = Field(description="Total number of llm evals matching filters")
 
 
-class LLMEvalRunResponse(BaseModel):
+class EvalRunResponse(BaseModel):
     reason: str = Field(
         ...,
         description="Explanation for how the llm arrived at this answer.",

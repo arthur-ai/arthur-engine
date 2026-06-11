@@ -16,7 +16,7 @@ export type AddTagToAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersion
 
 export type AddTagToAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionTagsPutError = HTTPValidationError;
 
-export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPutData = LLMEval;
+export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPutData = Eval;
 
 export type AddTagToLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionTagsPutError = HTTPValidationError;
 
@@ -120,6 +120,8 @@ export interface AgenticAnnotationResponse {
    * Name of the eval the continuous eval used when scoring
    */
   eval_name?: string | null;
+  /** Type of eval: 'llm_eval' or 'ml_eval' */
+  eval_type?: EvalType | null;
   /**
    * Eval Version
    * Version of the eval the continuous eval used when scoring
@@ -793,15 +795,17 @@ export interface AgenticPromptVersionResponse {
    */
   deleted_at: string | null;
   /**
-   * Model Name
-   * Model name chosen for this version of the llm eval
+   * Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
+   * @default "llm_as_a_judge"
    */
-  model_name: string;
+  eval_kind?: SchemasEnumsEvalType;
   /**
-   * Model Provider
-   * Model provider chosen for this version of the llm eval
+   * Model Name
+   * Model name chosen for this version of the llm eval. None for ML evals.
    */
-  model_provider: ModelProvider | "empty";
+  model_name?: string | null;
+  /** Model provider chosen for this version of the llm eval. None for ML evals. */
+  model_provider?: ModelProvider | null;
   /**
    * Num Messages
    * Number of messages in the prompt
@@ -1504,15 +1508,21 @@ export interface ContinuousEvalCreateRequest {
    */
   enabled?: boolean;
   /**
+   * Eval Type
+   * Type of evaluator: 'llm_eval' or 'ml_eval'.
+   * @default "llm_eval"
+   */
+  eval_type?: ContinuousEvalCreateRequestEvalTypeEnum;
+  /**
    * Llm Eval Name
-   * Name of the llm eval to create the continuous eval for
+   * Name of the eval to create the continuous eval for
    */
   llm_eval_name: string;
   /**
    * Llm Eval Version
-   * Version of the llm eval to create the continuous eval for. Can be 'latest', a version number (e.g. '1', '2', etc.), an ISO datetime string (e.g. '2025-01-01T00:00:00'), or a tag.
+   * Version of the eval. Can be 'latest', a version number, an ISO datetime string, or a tag.
    */
-  llm_eval_version: string | number;
+  llm_eval_version?: string | number | null;
   /**
    * Name
    * Name of the continuous eval
@@ -1535,6 +1545,13 @@ export interface ContinuousEvalCreateRequest {
    */
   transform_version_id?: string | null;
 }
+
+/**
+ * Eval Type
+ * Type of evaluator: 'llm_eval' or 'ml_eval'.
+ * @default "llm_eval"
+ */
+export type ContinuousEvalCreateRequestEvalTypeEnum = "llm_eval" | "ml_eval";
 
 /** ContinuousEvalRerunResponse */
 export interface ContinuousEvalRerunResponse {
@@ -1571,6 +1588,11 @@ export interface ContinuousEvalResponse {
    */
   enabled?: boolean;
   /**
+   * Type of evaluator: 'llm_eval' or 'ml_eval'.
+   * @default "llm_eval"
+   */
+  eval_type?: EvalType;
+  /**
    * Id
    * ID of the transform.
    * @format uuid
@@ -1578,14 +1600,14 @@ export interface ContinuousEvalResponse {
   id: string;
   /**
    * Llm Eval Name
-   * Name of the llm eval.
+   * Name of the eval.
    */
-  llm_eval_name: string;
+  llm_eval_name?: string | null;
   /**
    * Llm Eval Version
-   * Version of the llm eval.
+   * Version of the eval.
    */
-  llm_eval_version: number;
+  llm_eval_version?: number | null;
   /**
    * Name
    * Name of the continuous eval.
@@ -1873,6 +1895,17 @@ export interface CreateEvalRequest {
   model_name: string;
   /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
   model_provider: ModelProvider;
+}
+
+/** CreateMLEvalRequest */
+export interface CreateMLEvalRequest {
+  /**
+   * MLEvalConfig
+   * Configuration for the ML eval. Valid fields depend on eval_type.
+   */
+  config: PIIEvalConfig | ToxicityEvalConfig | PromptInjectionEvalConfig;
+  /** Type of ML eval (e.g. 'pii', 'toxicity', 'prompt_injection') */
+  eval_type: EvalTypeInput;
 }
 
 export type CreateNotebookApiV1TasksTaskIdNotebooksPostData = NotebookDetail;
@@ -2655,6 +2688,65 @@ export interface EnrichedTaskResponse {
   updated_at: string;
 }
 
+/** Eval */
+export interface Eval {
+  /**
+   * EvalConfig
+   * Eval configuration. LLMBaseConfigSettings for LLM evals; type-specific dict for ML evals.
+   */
+  config?: LLMBaseConfigSettings | Record<string, any> | null;
+  /**
+   * Created At
+   * Timestamp when the llm eval was created.
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Deleted At
+   * Time that this llm eval was deleted
+   */
+  deleted_at?: string | null;
+  /**
+   * Eval Kind
+   * Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
+   * @default "llm_as_a_judge"
+   */
+  eval_kind?: string;
+  /**
+   * Instructions
+   * Instructions for the llm eval. None for ML evals.
+   */
+  instructions?: string | null;
+  /**
+   * Model Name
+   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet'). None for ML evals.
+   */
+  model_name?: string | null;
+  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure'). None for ML evals. */
+  model_provider?: ModelProvider | null;
+  /**
+   * Name
+   * Name of the llm eval
+   */
+  name: string;
+  /**
+   * Tags
+   * List of tags for this llm eval version
+   */
+  tags?: string[];
+  /**
+   * Variables
+   * List of variable names for the llm eval
+   */
+  variables?: string[];
+  /**
+   * Version
+   * Version of the llm eval
+   * @default 1
+   */
+  version?: number;
+}
+
 /**
  * EvalExecution
  * Details of an eval execution
@@ -2771,6 +2863,34 @@ export interface EvalResultSummary {
    */
   total_count: number;
 }
+
+/** EvalRunResponse */
+export interface EvalRunResponse {
+  /**
+   * Cost
+   * Cost of this llm completion
+   */
+  cost: string;
+  /**
+   * Reason
+   * Explanation for how the llm arrived at this answer.
+   */
+  reason: string;
+  /**
+   * Score
+   * Score for this llm eval
+   */
+  score: number;
+}
+
+/** EvalType */
+export type EvalType = "llm_eval" | "ml_eval";
+
+/**
+ * EvalType
+ * Discriminator for all eval types stored in the llm_evals table.
+ */
+export type EvalTypeInput = "llm_as_a_judge" | "pii" | "pii_v1" | "toxicity" | "prompt_injection";
 
 /**
  * EvalVariableMapping
@@ -3821,11 +3941,11 @@ export type GetInferenceDocumentContextApiChatContextInferenceIdGetData = ChatDo
 
 export type GetInferenceDocumentContextApiChatContextInferenceIdGetError = HTTPValidationError;
 
-export type GetLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGetData = LLMEval;
+export type GetLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGetData = Eval;
 
 export type GetLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGetError = HTTPValidationError;
 
-export type GetLlmEvalByTagApiV1TasksTaskIdLlmEvalsEvalNameVersionsTagsTagGetData = LLMEval;
+export type GetLlmEvalByTagApiV1TasksTaskIdLlmEvalsEvalNameVersionsTagsTagGetData = Eval;
 
 export type GetLlmEvalByTagApiV1TasksTaskIdLlmEvalsEvalNameVersionsTagsTagGetError = HTTPValidationError;
 
@@ -4724,75 +4844,6 @@ export interface LLMConfigSettings {
   top_p?: number | null;
 }
 
-/** LLMEval */
-export interface LLMEval {
-  /** LLM configurations for this eval (e.g. temperature, max_tokens, etc.) */
-  config?: LLMBaseConfigSettings | null;
-  /**
-   * Created At
-   * Timestamp when the llm eval was created.
-   * @format date-time
-   */
-  created_at: string;
-  /**
-   * Deleted At
-   * Time that this llm eval was deleted
-   */
-  deleted_at?: string | null;
-  /**
-   * Instructions
-   * Instructions for the llm eval
-   */
-  instructions: string;
-  /**
-   * Model Name
-   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
-   */
-  model_name: string;
-  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
-  model_provider: ModelProvider;
-  /**
-   * Name
-   * Name of the llm eval
-   */
-  name: string;
-  /**
-   * Tags
-   * List of tags for this llm eval version
-   */
-  tags?: string[];
-  /**
-   * Variables
-   * List of variable names for the llm eval
-   */
-  variables?: string[];
-  /**
-   * Version
-   * Version of the llm eval
-   * @default 1
-   */
-  version?: number;
-}
-
-/** LLMEvalRunResponse */
-export interface LLMEvalRunResponse {
-  /**
-   * Cost
-   * Cost of this llm completion
-   */
-  cost: string;
-  /**
-   * Reason
-   * Explanation for how the llm arrived at this answer.
-   */
-  reason: string;
-  /**
-   * Score
-   * Score for this llm eval
-   */
-  score: number;
-}
-
 /** LLMEvalsVersionListResponse */
 export interface LLMEvalsVersionListResponse {
   /**
@@ -4834,6 +4885,11 @@ export interface LLMGetAllMetadataResponse {
    * List of deleted versions of the llm asset
    */
   deleted_versions: number[];
+  /**
+   * Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
+   * @default "llm_as_a_judge"
+   */
+  eval_kind?: SchemasEnumsEvalType;
   /**
    * Latest Version Created At
    * Timestamp when the last version of the llm asset was created
@@ -5129,15 +5185,17 @@ export interface LLMVersionResponse {
    */
   deleted_at: string | null;
   /**
-   * Model Name
-   * Model name chosen for this version of the llm eval
+   * Eval kind discriminator (e.g. 'llm_as_a_judge', 'pii', 'toxicity')
+   * @default "llm_as_a_judge"
    */
-  model_name: string;
+  eval_kind?: SchemasEnumsEvalType;
   /**
-   * Model Provider
-   * Model provider chosen for this version of the llm eval
+   * Model Name
+   * Model name chosen for this version of the llm eval. None for ML evals.
    */
-  model_provider: ModelProvider | "empty";
+  model_name?: string | null;
+  /** Model provider chosen for this version of the llm eval. None for ML evals. */
+  model_provider?: ModelProvider | null;
   /**
    * Tags
    * List of tags for the llm asset
@@ -6617,11 +6675,6 @@ export interface MetadataQuery {
    */
   last_update_time?: boolean;
   /**
-   * Query Profile
-   * @default false
-   */
-  query_profile?: boolean;
-  /**
    * Score
    * @default false
    */
@@ -7509,6 +7562,28 @@ export type PIIEntityTypes =
   | "US_PASSPORT"
   | "US_SSN";
 
+/**
+ * PIIEvalConfig
+ * Configuration for PII detection evals.
+ */
+export interface PIIEvalConfig {
+  /**
+   * Allow List
+   * List of values that should not be flagged as PII
+   */
+  allow_list?: string[] | null;
+  /**
+   * Disabled Pii Entities
+   * List of PII entity types to disable (e.g. ['EMAIL_ADDRESS', 'PHONE_NUMBER'])
+   */
+  disabled_pii_entities?: string[] | null;
+  /**
+   * Pii Confidence Threshold
+   * Minimum confidence score for a PII entity to be flagged
+   */
+  pii_confidence_threshold?: number | null;
+}
+
 /** Page[ConversationBaseResponse] */
 export interface PageConversationBaseResponse {
   /** Items */
@@ -7812,6 +7887,12 @@ export interface PromptExperimentSummary {
    */
   total_rows: number;
 }
+
+/**
+ * PromptInjectionEvalConfig
+ * Configuration for prompt injection detection evals.
+ */
+export type PromptInjectionEvalConfig = object;
 
 /**
  * PromptOutput
@@ -10143,7 +10224,7 @@ export type RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPrompt
 
 export type RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostError = HTTPValidationError;
 
-export type RunSavedLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionCompletionsPostData = LLMEvalRunResponse;
+export type RunSavedLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionCompletionsPostData = EvalRunResponse;
 
 export type RunSavedLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionCompletionsPostError = HTTPValidationError;
 
@@ -10151,9 +10232,13 @@ export type SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostData = Agentic
 
 export type SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostError = HTTPValidationError;
 
-export type SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostData = LLMEval;
+export type SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostData = Eval;
 
 export type SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostError = HTTPValidationError;
+
+export type SaveMlEvalApiV2TasksTaskIdMlEvalsEvalNamePostData = Eval;
+
+export type SaveMlEvalApiV2TasksTaskIdMlEvalsEvalNamePostError = HTTPValidationError;
 
 /**
  * SavedPromptConfig
@@ -10235,6 +10320,12 @@ export interface SavedRagConfigOutput {
    */
   version: number;
 }
+
+/**
+ * EvalType
+ * Discriminator for all eval types stored in the llm_evals table.
+ */
+export type SchemasEnumsEvalType = "llm_as_a_judge" | "pii" | "pii_v1" | "toxicity" | "prompt_injection";
 
 /** SearchDatasetsResponse */
 export interface SearchDatasetsResponse {
@@ -11480,6 +11571,18 @@ export interface ToxicityDetailsResponse {
   toxicity_violation_type: ToxicityViolationType;
 }
 
+/**
+ * ToxicityEvalConfig
+ * Configuration for toxicity detection evals.
+ */
+export interface ToxicityEvalConfig {
+  /**
+   * Toxicity Threshold
+   * Minimum toxicity score for text to be flagged
+   */
+  toxicity_threshold?: number | null;
+}
+
 /** ToxicityViolationType */
 export type ToxicityViolationType = "benign" | "harmful_request" | "toxic_content" | "profanity" | "unknown";
 
@@ -12707,8 +12810,7 @@ export type WeaviateHybridSearchSettingsConfigurationRequestReturnMetadataEnum =
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  | "is_consistent";
 
 /** WeaviateHybridSearchSettingsConfigurationResponse */
 export interface WeaviateHybridSearchSettingsConfigurationResponse {
@@ -12800,8 +12902,7 @@ export type WeaviateHybridSearchSettingsConfigurationResponseReturnMetadataEnum 
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  | "is_consistent";
 
 /** WeaviateHybridSearchSettingsRequest */
 export interface WeaviateHybridSearchSettingsRequest {
@@ -12893,8 +12994,7 @@ export type WeaviateHybridSearchSettingsRequestReturnMetadataEnum =
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  | "is_consistent";
 
 /** WeaviateKeywordSearchSettingsConfigurationRequest */
 export interface WeaviateKeywordSearchSettingsConfigurationRequest {
@@ -12963,8 +13063,7 @@ export type WeaviateKeywordSearchSettingsConfigurationRequestReturnMetadataEnum 
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  | "is_consistent";
 
 /** WeaviateKeywordSearchSettingsConfigurationResponse */
 export interface WeaviateKeywordSearchSettingsConfigurationResponse {
@@ -13033,8 +13132,7 @@ export type WeaviateKeywordSearchSettingsConfigurationResponseReturnMetadataEnum
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  | "is_consistent";
 
 /** WeaviateKeywordSearchSettingsRequest */
 export interface WeaviateKeywordSearchSettingsRequest {
@@ -13103,8 +13201,7 @@ export type WeaviateKeywordSearchSettingsRequestReturnMetadataEnum =
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  | "is_consistent";
 
 /**
  * WeaviateQueryResult
@@ -13263,8 +13360,7 @@ export type WeaviateVectorSimilarityTextSearchSettingsConfigurationRequestReturn
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  | "is_consistent";
 
 /** WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse */
 export interface WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse {
@@ -13338,8 +13434,7 @@ export type WeaviateVectorSimilarityTextSearchSettingsConfigurationResponseRetur
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  | "is_consistent";
 
 /** WeaviateVectorSimilarityTextSearchSettingsRequest */
 export interface WeaviateVectorSimilarityTextSearchSettingsRequest {
@@ -13413,8 +13508,7 @@ export type WeaviateVectorSimilarityTextSearchSettingsRequestReturnMetadataEnum 
   | "certainty"
   | "score"
   | "explain_score"
-  | "is_consistent"
-  | "query_profile";
+  | "is_consistent";
 
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, HeadersDefaults, ResponseType } from "axios";
 import axios from "axios";
@@ -17007,6 +17101,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     saveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePost: (evalName: string, taskId: string, data: CreateEvalRequest, params: RequestParams = {}) =>
       this.request<SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostData, SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostError>({
         path: `/api/v1/tasks/${taskId}/llm_evals/${evalName}`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Save an ML eval. If an eval with the same name exists, a new version is created.
+     *
+     * @tags ML Evals
+     * @name SaveMlEvalApiV2TasksTaskIdMlEvalsEvalNamePost
+     * @summary Save an ML eval
+     * @request POST:/api/v2/tasks/{task_id}/ml_evals/{eval_name}
+     * @secure
+     */
+    saveMlEvalApiV2TasksTaskIdMlEvalsEvalNamePost: (evalName: string, taskId: string, data: CreateMLEvalRequest, params: RequestParams = {}) =>
+      this.request<SaveMlEvalApiV2TasksTaskIdMlEvalsEvalNamePostData, SaveMlEvalApiV2TasksTaskIdMlEvalsEvalNamePostError>({
+        path: `/api/v2/tasks/${taskId}/ml_evals/${evalName}`,
         method: "POST",
         body: data,
         secure: true,

@@ -28,7 +28,7 @@ from services.prompt.chat_completion_service import ChatCompletionService
 
 class AgenticPromptRepository(
     BaseLLMRepository[
-        DatabaseAgenticPrompt,
+        DatabaseAgenticPrompt,  # type: ignore[type-var]
         DatabaseAgenticPromptVersionTag,
         CreateAgenticPromptRequest,
     ],
@@ -104,6 +104,8 @@ class AgenticPromptRepository(
         item: CreateAgenticPromptRequest,
         commit: bool = True,
     ) -> AgenticPrompt:
+        if item.model_name == "":
+            raise ValueError("Model name cannot be empty.")
         return cast(
             AgenticPrompt,
             super().save_llm_item(task_id, item_name, item, commit=commit),

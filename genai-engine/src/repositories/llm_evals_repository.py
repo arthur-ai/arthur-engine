@@ -7,7 +7,6 @@ from arthur_common.models.llm_model_providers import (
     ModelProvider,
     OpenAIMessage,
 )
-from arthur_common.models.task_eval_schemas import LLMEval
 from litellm import supports_response_schema
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -16,14 +15,15 @@ from db_models.llm_eval_models import DatabaseLLMEval, DatabaseLLMEvalVersionTag
 from repositories.base_llm_repository import BaseLLMRepository
 from repositories.model_provider_repository import ModelProviderRepository
 from schemas.agentic_prompt_schemas import AgenticPrompt
-from schemas.llm_eval_schemas import ReasonedScore
+from schemas.enums import EvalKind
+from schemas.llm_eval_schemas import Eval, ReasonedScore
 from schemas.request_schemas import (
     BaseCompletionRequest,
     CreateEvalRequest,
     PromptCompletionRequest,
 )
 from schemas.response_schemas import (
-    LLMEvalRunResponse,
+    EvalRunResponse,
     LLMEvalsVersionListResponse,
     LLMVersionResponse,
 )
@@ -43,19 +43,26 @@ class LLMEvalsRepository(
     db_model: Type[DatabaseLLMEval] = DatabaseLLMEval
     tag_db_model: Type[DatabaseLLMEvalVersionTag] = DatabaseLLMEvalVersionTag
     version_list_response_model: Type[BaseModel] = LLMEvalsVersionListResponse
+    # eval_types = None → no filter; this repo handles all types stored in llm_evals
+    default_eval_type = EvalKind.LLM_AS_A_JUDGE
 
     def __init__(self, db_session: Session):
         super().__init__(db_session)
         self.model_provider_repo = ModelProviderRepository(db_session)
         self.chat_completion_service = ChatCompletionService()
 
-    def from_db_model(self, db_eval: DatabaseLLMEval) -> LLMEval:
+    def from_db_model(self, db_eval: DatabaseLLMEval) -> Eval:
         tags = self._get_all_tags_for_item_version(db_eval)
 
-        return LLMEval(
+        return Eval(
             name=db_eval.name,
+            eval_kind=db_eval.eval_type or EvalKind.LLM_AS_A_JUDGE,
             model_name=db_eval.model_name,
-            model_provider=ModelProvider(db_eval.model_provider),
+            model_provider=(
+                ModelProvider(db_eval.model_provider)
+                if db_eval.model_provider
+                else None
+            ),
             instructions=db_eval.instructions,
             variables=db_eval.variables,
             tags=tags,
@@ -74,9 +81,14 @@ class LLMEvalsRepository(
 
         return LLMVersionResponse(
             version=db_item.version,
+            eval_kind=db_item.eval_type,
             created_at=db_item.created_at,
             deleted_at=db_item.deleted_at,
-            model_provider=ModelProvider(db_item.model_provider),
+            model_provider=(
+                ModelProvider(db_item.model_provider)
+                if db_item.model_provider
+                else None
+            ),
             model_name=db_item.model_name,
             tags=tags,
         )
@@ -95,9 +107,21 @@ class LLMEvalsRepository(
 
     def from_llm_eval_to_agentic_prompt(
         self,
-        llm_eval: LLMEval,
+        llm_eval: Eval,
         response_format: Optional[Union[LLMResponseFormat, Type[BaseModel]]] = None,
     ) -> AgenticPrompt:
+        if llm_eval.model_name is None:
+            raise ValueError(
+                f"LLM eval '{llm_eval.name}' has no model_name configured.",
+            )
+        if llm_eval.model_provider is None:
+            raise ValueError(
+                f"LLM eval '{llm_eval.name}' has no model_provider configured.",
+            )
+        if llm_eval.instructions is None:
+            raise ValueError(
+                f"LLM eval '{llm_eval.name}' has no instructions configured.",
+            )
         messages = [
             OpenAIMessage(
                 role=MessageRole.SYSTEM,
@@ -108,7 +132,12 @@ class LLMEvalsRepository(
 
         config_dict = {}
         if llm_eval.config:
-            config_dict = llm_eval.config.model_dump(exclude_none=True)
+            if isinstance(llm_eval.config, dict):
+                config_dict = {
+                    k: v for k, v in llm_eval.config.items() if v is not None
+                }
+            else:
+                config_dict = llm_eval.config.model_dump(exclude_none=True)
 
         if response_format is not None:
             config_dict["response_format"] = response_format
@@ -131,9 +160,11 @@ class LLMEvalsRepository(
         item_name: str,
         item: CreateEvalRequest,
         commit: bool = True,
-    ) -> LLMEval:
+    ) -> Eval:
+        if item.model_name == "":
+            raise ValueError("Model name cannot be empty.")
         return cast(
-            LLMEval,
+            Eval,
             super().save_llm_item(task_id, item_name, item, commit=commit),
         )
 
@@ -143,7 +174,7 @@ class LLMEvalsRepository(
         eval_name: str,
         version: str = "latest",
         completion_request: Optional[BaseCompletionRequest] = None,
-    ) -> LLMEvalRunResponse:
+    ) -> EvalRunResponse:
         if not self.model_provider_repo:
             raise ValueError("Model provider repository not initialized")
 
@@ -153,6 +184,15 @@ class LLMEvalsRepository(
         if llm_eval.deleted_at is not None:
             raise ValueError(
                 f"Cannot run this llm eval because it was deleted on: {llm_eval.deleted_at}",
+            )
+
+        if llm_eval.model_provider is None:
+            raise ValueError(
+                f"LLM eval '{llm_eval.name}' has no model_provider configured.",
+            )
+        if llm_eval.model_name is None:
+            raise ValueError(
+                f"LLM eval '{llm_eval.name}' has no model_name configured.",
             )
 
         # get the llm client
@@ -207,7 +247,7 @@ class LLMEvalsRepository(
         ):
             raise TypeError("Structured output is not a ReasonedScore instance")
 
-        return LLMEvalRunResponse(
+        return EvalRunResponse(
             reason=llm_model_response.structured_output_response.reason,
             score=llm_model_response.structured_output_response.score,
             cost=llm_model_response.cost or "",
@@ -218,8 +258,8 @@ class LLMEvalsRepository(
         task_id: str,
         item_name: str,
         item_version: str = "latest",
-    ) -> LLMEval:
+    ) -> Eval:
         return cast(
-            LLMEval,
+            Eval,
             super().get_llm_item(task_id, item_name, item_version),
         )
