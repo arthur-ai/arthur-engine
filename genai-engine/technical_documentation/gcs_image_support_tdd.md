@@ -10,11 +10,9 @@ Support image columns whose cell values are GCS bucket URIs (`gs://bucket/path/i
 
 **Create File**: `ml-engine/src/ml_engine/tools/image_resolver.py`
 
-`resolve_images` takes the rows and the dataset schema. It finds the image columns from the schema, and for each row it checks those columns for a `gs://` value. Anything that isn't a `gs://` string (inline base64, null) is left alone. For each `gs://` value it finds all the GCS connectors pointing at that bucket, attempts to read the image through all those connectors (first wins), and replaces the cell with the base64-encoded contents. Reads run in parallel. If an image can't be read, that cell is left as-is and the rest of the job continues.
+`resolve_image` takes a single image URI and returns a base64 image. It finds the connectors pointing at that bucket and attempts to read the image through them (first wins). If an image can't be read, the original URI is returned so the cell is left as-is and the job continues. Connector lookups are cached per bucket / per type so resolving many values for the same bucket only fetches connectors once.
 
 ```python
-MAX_IMAGE_RESOLVER_WORKERS = 50 # same num as in BucketBasedConnector
-
 class ImageResolver:
     def __init__(
         self,
@@ -28,48 +26,7 @@ class ImageResolver:
         self._connectors_for_type: dict[ConnectorType, list[ConnectorSpec]] = {}
         self._connectors_for_bucket: dict[str, list[ConnectorSpec]] = {}
 
-    def resolve_images(
-        self,
-        rows: list[dict[str, Any]],
-        schema: DatasetSchema,
-    ) -> list[dict[str, Any]]:
-        image_cols = self._get_image_columns(schema)
-        if not image_cols:
-            return rows
-
-        with ThreadPoolExecutor(max_workers=MAX_IMAGE_RESOLVER_WORKERS) as executor:
-            future_to_cell = {}
-            for i, row in enumerate(rows):
-                for col in image_cols:
-                    value = row.get(col)
-                    
-                    if not (isinstance(value, str) and is_supported_image_uri(value)):
-                        continue
-
-                    future = executor.submit(self._extract_image, value)
-                    future_to_cell[future] = (i, col)
-
-            for future in as_completed(future_to_cell):
-                row, col = future_to_cell[future]
-                try:
-                    rows[row][col] = future.result()
-                except Exception as e:
-                    self.logger.info(
-                        f"Image resolve failed for row {row} col {col}: {e}"
-                    )
-
-        return rows
-
-    @staticmethod
-    def _get_image_columns(schema: DatasetSchema) -> list[str]:
-        image_columns = []
-        for col in schema.columns:
-            if isinstance(col.definition, DatasetScalarType) and col.definition.dtype == DType.IMAGE:
-                image_columns.append(schema.column_names[col.id])
-
-        return image_columns
-
-    def _extract_image(self, image_uri: str) -> str:
+    def resolve_image(self, image_uri: str) -> str:
         matches = self._get_connectors_for_image(image_uri)
         if len(matches) > 1:
             self.logger.warning(
@@ -120,7 +77,7 @@ class ImageResolver:
 
 ### Step 1B: Add helper functions for supported images and connectors
 
-**Add File**: `ml-engine/src/ml_engine/tools/image_connector_tools.py`
+**Add File**: `ml-engine/src/ml_engine/tools/image_tools.py`
 
 ```python
 IMAGE_CONNECTOR_PREFIX_TO_TYPE = {
@@ -148,6 +105,14 @@ def get_bucket_from_uri(image_uri: str):
         return None
 
     return bucket
+
+def get_image_columns(schema: DatasetSchema) -> list[str]:
+    image_columns = []
+    for col in schema.columns:
+        if isinstance(col.definition, DatasetScalarType) and col.definition.dtype == DType.IMAGE:
+            image_columns.append(schema.column_names[col.id])
+
+    return image_columns
 ```
 
 ### Step 2: Add `get_connectors_for_type` to `ConnectorConstructor`
@@ -186,7 +151,7 @@ def extract_image(self, image_uri: str) -> str:
     return base64.b64encode(blob).decode("ascii")
 ```
 
-### Step 3: Call the resolver in `FetchDataExecutor`
+### Step 3: Orchestrate image resolution in `FetchDataExecutor`
 
 **Edit File**: `ml-engine/src/ml_engine/job_executors/fetch_data_executor.py`
 Replace the `if hasattr(job_spec, "operation_id")` block in `execute()` (lines 106-112):
@@ -201,8 +166,7 @@ Replace the `if hasattr(job_spec, "operation_id")` block in `execute()` (lines 1
                 dataset.project_id,
                 self.logger,
             )
-            
-            data = image_resolver.resolve_images(data, schema)
+            self._resolve_images(data, schema, image_resolver)
 
         self._store_data(
             job_spec.dataset_id,
@@ -210,6 +174,37 @@ Replace the `if hasattr(job_spec, "operation_id")` block in `execute()` (lines 1
             job_spec.operation_id,
             data,
         )
+```
+
+`_resolve_images` pulls the image columns from the schema, walks the rows in batches, and submits each image cell to a thread pool.
+
+```python
+MAX_IMAGE_RESOLVER_WORKERS = 50  # same num as in BucketBasedConnector
+
+def _resolve_images(
+    self,
+    rows: list[dict[str, Any]],
+    schema: DatasetSchema,
+    image_resolver: ImageResolver,
+) -> None:
+    image_cols = get_image_columns(schema)
+    if not image_cols:
+        return
+
+    with ThreadPoolExecutor(max_workers=MAX_IMAGE_RESOLVER_WORKERS) as executor:
+        future_to_cell = {}
+        for i, row in enumerate(rows):
+            for col in image_cols:
+                cell_value = row.get(col)
+                
+                if not (isinstance(cell_value, str) and is_supported_image_uri(cell_value)):
+                    continue
+                
+                future_to_cell[executor.submit(image_resolver.resolve_image, cell_value)] = (i, col)
+
+        for future in as_completed(future_to_cell):
+            row_idx, col = future_to_cell[future]
+            rows[row_idx][col] = future.result()
 ```
 
 extract `_dataset_or_available_dataset_from_id` into a common helper called `get_dataset_or_available_dataset_from_id`
