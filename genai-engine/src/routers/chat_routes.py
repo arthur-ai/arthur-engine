@@ -217,8 +217,7 @@ def chat(
             db_session=db_session,
             scorer_client=scorer_client,
             rules=prompt_rules,
-            # The chatbot emits its own conversation trace; don't also emit a
-            # disconnected standalone guardrail trace for this validate call.
+            # The chatbot traces its own conversation; skip the standalone guardrail trace.
             emit_guardrail_trace=False,
         )
 
@@ -255,8 +254,7 @@ def chat(
             db_session=db_session,
             scorer_client=scorer_client,
             rules=response_rules,
-            # The chatbot emits its own conversation trace; don't also emit a
-            # disconnected standalone guardrail trace for this validate call.
+            # The chatbot traces its own conversation; skip the standalone guardrail trace.
             emit_guardrail_trace=False,
         )
 

@@ -115,10 +115,8 @@ class InternalTraceService:
             root spans after flush. Mirrors the behavior of the public
             ``/api/v1/traces`` route. Defaults to False so internal-only
             traces (chatbot, synthetic data generation) don't trigger evals.
-        trace_id: Optional raw 16-byte trace id to attach all spans to. Use when
-            injecting into an existing trace or a deterministically-derived one
-            (e.g. guardrail spans keyed on inference id). Defaults to a new random
-            trace.
+        trace_id: Optional raw 16-byte trace id to attach all spans to (existing or
+            deterministically derived trace). Defaults to a new random trace.
     """
 
     def __init__(
@@ -208,13 +206,14 @@ class InternalTraceService:
         """Start a GUARDRAIL-kind span.
 
         ``parent_span_id`` / ``span_id`` accept raw bytes so callers can place the
-        span under an existing parent and/or use deterministically-derived ids. The
-        span kind is the literal ``"GUARDRAIL"`` (matching the OpenInference value the
-        trace viewer filters on) so this does not depend on the installed enum member.
+        span under an existing parent and/or use deterministically-derived ids.
         """
         span = TraceSpanBuilder(self.trace_id, parent_span_id, span_id=span_id)
         span.name = name
-        span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND, "GUARDRAIL")
+        span.set_attribute(
+            SpanAttributes.OPENINFERENCE_SPAN_KIND,
+            OpenInferenceSpanKindValues.GUARDRAIL.value,
+        )
         if user_id is not None:
             span.set_attribute(SpanAttributes.USER_ID, user_id)
         if session_id is not None:
@@ -449,5 +448,14 @@ class InternalTraceService:
                 ).enqueue_continuous_evals_for_root_spans(db_spans)
         except Exception:
             logger.exception("Failed to flush %s spans", self.service_name)
+            # Roll back so the failed ingestion commit can't poison the shared
+            # session. Callers must have no uncommitted business writes at flush time.
+            try:
+                self.db_session.rollback()
+            except Exception:
+                logger.exception(
+                    "Failed to roll back session after %s span flush failure",
+                    self.service_name,
+                )
 
         self.spans.clear()

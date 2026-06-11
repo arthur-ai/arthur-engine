@@ -2119,6 +2119,42 @@
                             "format": "uuid",
                             "title": "Task Id"
                         }
+                    },
+                    {
+                        "name": "trace_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Optional trace ID (32-hex) to attach the emitted guardrail span to an existing trace. If omitted, a trace is derived from the inference ID.",
+                            "title": "Trace Id"
+                        },
+                        "description": "Optional trace ID (32-hex) to attach the emitted guardrail span to an existing trace. If omitted, a trace is derived from the inference ID."
+                    },
+                    {
+                        "name": "parent_span_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Optional parent span ID (16-hex) to nest the guardrail span under within the trace. Ignored when trace_id is absent.",
+                            "title": "Parent Span Id"
+                        },
+                        "description": "Optional parent span ID (16-hex) to nest the guardrail span under within the trace. Ignored when trace_id is absent."
                     }
                 ],
                 "requestBody": {
@@ -2198,6 +2234,42 @@
                             "format": "uuid",
                             "title": "Task Id"
                         }
+                    },
+                    {
+                        "name": "trace_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Optional trace ID (32-hex) to attach the emitted guardrail span to an existing trace. If omitted, the trace derived from the inference ID is reused so the response span joins its prompt span.",
+                            "title": "Trace Id"
+                        },
+                        "description": "Optional trace ID (32-hex) to attach the emitted guardrail span to an existing trace. If omitted, the trace derived from the inference ID is reused so the response span joins its prompt span."
+                    },
+                    {
+                        "name": "parent_span_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Optional parent span ID (16-hex) to nest the guardrail span under within the trace. Ignored when trace_id is absent.",
+                            "title": "Parent Span Id"
+                        },
+                        "description": "Optional parent span ID (16-hex) to nest the guardrail span under within the trace. Ignored when trace_id is absent."
                     }
                 ],
                 "requestBody": {

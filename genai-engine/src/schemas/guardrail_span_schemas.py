@@ -4,14 +4,12 @@ from pydantic import BaseModel, Field
 
 
 class GuardrailSpanResult(BaseModel):
-    """Payload serialized into a GUARDRAIL span's ``output.value``.
+    """Payload serialized into a GUARDRAIL span's ``output.value`` attribute.
 
-    Emitted by the stateful validate flow so guardrail invocations surface in the
-    trace viewer. The JSON shape of this model is a contract with the frontend
-    guardrail parser (it reads ``span.raw_data.attributes["output.value"]``) — keep
-    it stable. ``rule_results`` reuses ``ExternalRuleResult`` verbatim so the span
-    payload stays in lockstep with the validate HTTP response and preserves the full
-    six-state ``RuleResultEnum`` (the frontend collapses it to its visual classes).
+    The JSON shape is a contract with the frontend guardrail parser (read as
+    ``span.raw_data.attributes.output.value`` after ingestion unflattens and
+    JSON-parses it) — keep it stable. ``rule_results`` reuses ``ExternalRuleResult``
+    so the span payload matches the validate HTTP response.
     """
 
     blocked: bool = Field(
@@ -34,12 +32,8 @@ class GuardrailSpanResult(BaseModel):
         inference_id: str,
         rule_results: list[ExternalRuleResult],
     ) -> "GuardrailSpanResult":
-        """Build the span payload from validate results.
-
-        ``blocked`` / ``blocked_reason`` have no engine source, so they are
-        synthesized: only ``Fail`` blocks (Skipped/Unavailable/etc. do not), and the
-        reason joins the failed rules' detail messages, falling back to the rule name.
-        """
+        """Synthesize the payload: only ``Fail`` blocks (Skipped/Unavailable do not);
+        the reason joins the failed rules' messages, falling back to rule names."""
         failed = [r for r in rule_results if r.result == RuleResultEnum.FAIL]
         blocked_reason = (
             "; ".join(

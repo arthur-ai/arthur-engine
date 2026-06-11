@@ -3,6 +3,7 @@ import json
 from unittest.mock import MagicMock, patch
 
 import pytest
+from arthur_common.models.common_schemas import KeywordsConfig
 from arthur_common.models.enums import RuleResultEnum, RuleScope, RuleType
 from arthur_common.models.llm_model_providers import (
     LLMTool,
@@ -12,6 +13,7 @@ from arthur_common.models.llm_model_providers import (
     ToolCallFunction,
     ToolFunction,
 )
+from arthur_common.models.request_schemas import NewRuleRequest
 from arthur_common.models.response_schemas import (
     BaseDetailsResponse,
     ExternalRuleResult,
@@ -24,6 +26,8 @@ from openinference.semconv.trace import (
 )
 
 from schemas.guardrail_span_schemas import GuardrailSpanResult
+from schemas.internal_schemas import Rule, RuleEngineResult
+from schemas.scorer_schemas import RuleScore
 from services.trace import guardrail_span_emitter as emitter
 from services.trace.internal_trace_service import InternalTraceService
 
@@ -198,7 +202,7 @@ def test_set_llm_tools_no_tools_is_noop():
 
 # ---------------------------------------------------------------------------
 # Guardrail span emission: start_guardrail_span, GuardrailSpanResult synthesis,
-# and the emit_guardrail_span placement logic (used by the stateful validate flow).
+# and the guardrail_span context-manager lifecycle/placement (stateful validate flow).
 # ---------------------------------------------------------------------------
 
 INF = "inference-abc"
@@ -220,6 +224,29 @@ def _rule(
         result=result,
         latency_ms=1,
         details=details,
+    )
+
+
+def _engine_result(result: RuleResultEnum = RuleResultEnum.PASS) -> RuleEngineResult:
+    """Raw rule-engine result, as the validate flow hands to set_rule_results."""
+    rule = Rule._from_request_model(
+        NewRuleRequest(
+            name="keywords",
+            type="KeywordRule",
+            apply_to_prompt=True,
+            apply_to_response=True,
+            config=KeywordsConfig(keywords=["x"]),
+        ),
+        RuleScope.DEFAULT,
+    )
+    return RuleEngineResult(
+        rule_score_result=RuleScore(
+            result=result,
+            prompt_tokens=1,
+            completion_tokens=1,
+        ),
+        rule=rule,
+        latency_ms=1,
     )
 
 
@@ -294,34 +321,61 @@ def mock_emitter_service():
         yield m, m.return_value
 
 
-def _emit(**overrides):
+def _run_guardrail_span(*, rule_results=None, raise_exc=None, **overrides):
+    """Drive guardrail_span the way the validate flow does; returns the recorder
+    so tests can call persist() (done after the save commits in the real flow)."""
     kwargs = dict(
+        enabled=True,
         task_id="task-1",
         inference_id=INF,
-        rule_results=[_rule()],
         input_payload={"prompt": "hi"},
         is_response=False,
     )
     kwargs.update(overrides)
-    emitter.emit_guardrail_span(MagicMock(), **kwargs)
+    with emitter.guardrail_span(MagicMock(), **kwargs) as gspan:
+        if raise_exc is not None:
+            raise raise_exc
+        gspan.set_rule_results(
+            rule_results if rule_results is not None else [_engine_result()],
+        )
+    return gspan
 
 
 @pytest.mark.unit_tests
-def test_emit_derives_trace_for_prompt_when_no_trace_id(mock_emitter_service):
+def test_span_starts_before_results_and_ends_on_success(mock_emitter_service):
     m, inst = mock_emitter_service
-    _emit(is_response=False)
+    gspan = _run_guardrail_span(is_response=False)
+    # Span + input are set up at entry (timing starts before evaluation runs).
+    inst.start_guardrail_span.assert_called_once()
+    inst.set_input_json.assert_called_once()
     assert m.call_args.kwargs["trace_id"] == _derive_trace(INF)
     sg = inst.start_guardrail_span.call_args.kwargs
     assert sg["span_id"] == _derive_span(INF, "prompt")
     assert sg["parent_span_id"] is None
     assert sg["name"] == "guardrail.validate_prompt"
+    # Output written and span ended, but nothing stored until persist().
+    inst.set_output_json.assert_called_once()
+    inst.end_span.assert_called_once()
+    inst.end_span_with_error.assert_not_called()
+    inst.flush.assert_not_called()
+    gspan.persist()
     inst.flush.assert_called_once()
 
 
 @pytest.mark.unit_tests
-def test_emit_response_nests_under_prompt_in_derived_trace(mock_emitter_service):
+def test_flush_deferred_until_persist(mock_emitter_service):
+    # No flush at with-exit; a failed save (no persist() call) leaves no span.
+    _, inst = mock_emitter_service
+    gspan = _run_guardrail_span()
+    inst.flush.assert_not_called()
+    gspan.persist()
+    inst.flush.assert_called_once()
+
+
+@pytest.mark.unit_tests
+def test_response_span_nests_under_prompt_in_derived_trace(mock_emitter_service):
     m, inst = mock_emitter_service
-    _emit(is_response=True, input_payload={"response": "r"})
+    _run_guardrail_span(is_response=True, input_payload={"response": "r"})
     assert m.call_args.kwargs["trace_id"] == _derive_trace(INF)
     sg = inst.start_guardrail_span.call_args.kwargs
     assert sg["span_id"] == _derive_span(INF, "response")
@@ -330,9 +384,21 @@ def test_emit_response_nests_under_prompt_in_derived_trace(mock_emitter_service)
 
 
 @pytest.mark.unit_tests
-def test_emit_honors_supplied_trace_and_parent(mock_emitter_service):
+def test_span_records_error_status_and_propagates(mock_emitter_service):
+    _, inst = mock_emitter_service
+    with pytest.raises(RuntimeError, match="evaluate blew up"):
+        _run_guardrail_span(raise_exc=RuntimeError("evaluate blew up"))
+    # Error span flushed immediately (no save will follow); no success-path end.
+    inst.end_span_with_error.assert_called_once()
+    assert inst.end_span_with_error.call_args.args[1] == "evaluate blew up"
+    inst.end_span.assert_not_called()
+    inst.flush.assert_called_once()
+
+
+@pytest.mark.unit_tests
+def test_span_honors_supplied_trace_and_parent(mock_emitter_service):
     m, inst = mock_emitter_service
-    _emit(trace_id="ab" * 16, parent_span_id="cd" * 8)
+    _run_guardrail_span(trace_id="ab" * 16, parent_span_id="cd" * 8)
     assert m.call_args.kwargs["trace_id"] == bytes.fromhex("ab" * 16)
     assert inst.start_guardrail_span.call_args.kwargs[
         "parent_span_id"
@@ -340,29 +406,29 @@ def test_emit_honors_supplied_trace_and_parent(mock_emitter_service):
 
 
 @pytest.mark.unit_tests
-def test_emit_supplied_trace_only_is_top_level(mock_emitter_service):
+def test_span_supplied_trace_only_is_top_level(mock_emitter_service):
     m, inst = mock_emitter_service
-    _emit(trace_id="ab" * 16)
+    _run_guardrail_span(trace_id="ab" * 16)
     assert m.call_args.kwargs["trace_id"] == bytes.fromhex("ab" * 16)
     assert inst.start_guardrail_span.call_args.kwargs["parent_span_id"] is None
 
 
 @pytest.mark.unit_tests
-def test_emit_falls_back_to_derived_on_bad_caller_ids(mock_emitter_service):
+def test_span_falls_back_to_derived_on_bad_caller_ids(mock_emitter_service):
     m, _ = mock_emitter_service
-    _emit(trace_id="not-hex")  # malformed hex
+    _run_guardrail_span(trace_id="not-hex")  # malformed hex
     assert m.call_args.kwargs["trace_id"] == _derive_trace(INF)
     m.reset_mock()
-    _emit(trace_id="abcd")  # valid hex, wrong byte length
+    _run_guardrail_span(trace_id="abcd")  # valid hex, wrong byte length
     assert m.call_args.kwargs["trace_id"] == _derive_trace(INF)
 
 
 @pytest.mark.unit_tests
-def test_emit_keeps_valid_trace_when_only_parent_is_malformed(mock_emitter_service):
+def test_span_keeps_valid_trace_when_only_parent_is_malformed(mock_emitter_service):
     # A bad parent_span_id must not throw away an otherwise-valid trace_id; the
     # span stays in the caller's trace, just placed at the top level.
     m, inst = mock_emitter_service
-    _emit(trace_id="ab" * 16, parent_span_id="not-hex")
+    _run_guardrail_span(trace_id="ab" * 16, parent_span_id="not-hex")
     assert m.call_args.kwargs["trace_id"] == bytes.fromhex("ab" * 16)
     assert inst.start_guardrail_span.call_args.kwargs["parent_span_id"] is None
 
@@ -370,16 +436,56 @@ def test_emit_keeps_valid_trace_when_only_parent_is_malformed(mock_emitter_servi
 @pytest.mark.unit_tests
 @pytest.mark.parametrize(
     "overrides",
-    [{"task_id": None}, {"rule_results": []}, {"inference_id": None}],
+    [{"enabled": False}, {"task_id": None}, {"inference_id": None}],
 )
-def test_emit_skips_when_nothing_to_emit(mock_emitter_service, overrides):
+def test_span_is_noop_when_disabled_or_unanchored(mock_emitter_service, overrides):
     m, _ = mock_emitter_service
-    _emit(**overrides)
+    _run_guardrail_span(**overrides)
     m.assert_not_called()
 
 
 @pytest.mark.unit_tests
-def test_emit_swallows_failures(mock_emitter_service):
+def test_span_skips_persist_when_no_results(mock_emitter_service):
+    _, inst = mock_emitter_service
+    gspan = _run_guardrail_span(rule_results=[])
+    # No results: the span is discarded and persist() cannot resurrect it.
+    inst.end_span.assert_not_called()
+    gspan.persist()
+    inst.flush.assert_not_called()
+
+
+@pytest.mark.unit_tests
+def test_span_swallows_persist_failures(mock_emitter_service):
     _, inst = mock_emitter_service
     inst.flush.side_effect = RuntimeError("boom")
-    _emit()  # must not raise
+    gspan = _run_guardrail_span()
+    gspan.persist()  # must not raise
+
+
+@pytest.mark.unit_tests
+def test_span_discarded_when_finish_fails(mock_emitter_service):
+    # A payload-build failure discards the span; a half-built span is never flushed.
+    _, inst = mock_emitter_service
+    inst.set_output_json.side_effect = RuntimeError("boom")
+    gspan = _run_guardrail_span()  # must not raise
+    gspan.persist()
+    inst.flush.assert_not_called()
+
+
+@pytest.mark.unit_tests
+def test_flush_failure_rolls_back_session():
+    # A failed ingestion commit must not poison the shared session.
+    db_session = MagicMock()
+    svc = InternalTraceService(
+        db_session=db_session,
+        task_id="t",
+        service_name="guardrail_validate",
+    )
+    span = svc.start_guardrail_span(name="guardrail.validate_prompt")
+    svc.end_span(span)
+    with patch(
+        "services.trace.internal_trace_service.TraceIngestionService",
+    ) as ingestion:
+        ingestion.return_value.process_trace_data.side_effect = RuntimeError("boom")
+        svc.flush()  # must not raise
+    db_session.rollback.assert_called_once()
