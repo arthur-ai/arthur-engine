@@ -1,3 +1,4 @@
+import base64
 import concurrent.futures
 import json
 import os
@@ -592,3 +593,7 @@ class BucketBasedConnector(Connector, ABC):
         raise NotImplementedError(
             "List datasets not implemented for bucket-based connectors.",
         )
+
+    def extract_image(self, image_uri: str) -> str:
+        blob = self.file_system.cat(image_uri)
+        return base64.b64encode(blob).decode("ascii")

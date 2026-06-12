@@ -1,5 +1,6 @@
 import json
 import math
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime
 from logging import Logger
 from typing import Any, Dict, Optional
@@ -16,10 +17,17 @@ from arthur_client.api_bindings import (
     PutRetrievedData,
 )
 from arthur_common.models.connectors import ConnectorPaginationOptions
+from arthur_common.models.schema_definitions import DatasetSchema
 from arthur_common.tools.functions import uuid_to_base26
 
 from dataset_loader import DatasetLoader
 from tools.connector_constructor import ConnectorConstructor
+from tools.converters import client_to_common_dataset_schema
+from tools.dataset_utils import get_dataset_or_available_dataset_from_id
+from tools.image_resolver import ImageResolver
+from tools.image_tools import get_image_columns, is_supported_image_uri
+
+MAX_IMAGE_RESOLVER_WORKERS = 50  # same num as in BucketBasedConnector
 
 
 def preprocess_data(obj: Any) -> Any:
@@ -104,6 +112,19 @@ class FetchDataExecutor:
             raise e
 
         if hasattr(job_spec, "operation_id"):
+            dataset = get_dataset_or_available_dataset_from_id(
+                self.datasets_client,
+                dataset_id,
+            )
+            if dataset.dataset_schema:
+                schema = client_to_common_dataset_schema(dataset.dataset_schema)
+                image_resolver = ImageResolver(
+                    self.connector_constructor,
+                    dataset.project_id,
+                    self.logger,
+                )
+                self._resolve_images(data, schema, image_resolver)
+
             self._store_data(
                 job_spec.dataset_id,
                 job_spec.available_dataset_id,
@@ -112,6 +133,36 @@ class FetchDataExecutor:
             )
 
         self.logger.info(f"Fetch data job completed for dataset {dataset_id}")
+
+    def _resolve_images(
+        self,
+        rows: list[Dict[str, Any]],
+        schema: DatasetSchema,
+        image_resolver: ImageResolver,
+    ) -> None:
+        image_cols = get_image_columns(schema)
+        if not image_cols:
+            return
+
+        with ThreadPoolExecutor(max_workers=MAX_IMAGE_RESOLVER_WORKERS) as executor:
+            future_to_cell = {}
+            for i, row in enumerate(rows):
+                for col in image_cols:
+                    cell_value = row.get(col)
+
+                    if not (
+                        isinstance(cell_value, str)
+                        and is_supported_image_uri(cell_value)
+                    ):
+                        continue
+
+                    future_to_cell[
+                        executor.submit(image_resolver.resolve_image, cell_value)
+                    ] = (i, col)
+
+            for future in as_completed(future_to_cell):
+                row_idx, col = future_to_cell[future]
+                rows[row_idx][col] = future.result()
 
     @staticmethod
     def _dataset_id_from_job_spec(job_spec: FetchDataJobSpec) -> str:
