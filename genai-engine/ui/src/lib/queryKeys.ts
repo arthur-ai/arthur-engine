@@ -136,5 +136,6 @@ export const queryKeys = {
     all: () => ["searchTasksApiV2TasksSearchPost"] as const,
     list: () => ["searchTasksApiV2TasksSearchPost", "active"] as const,
     archived: () => ["searchTasksApiV2TasksSearchPost", "archived"] as const,
+    byId: (taskId: string) => ["getTaskApiV2TasksTaskIdGet", taskId] as const,
   },
 } as const;

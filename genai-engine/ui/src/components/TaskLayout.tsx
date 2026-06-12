@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy } from "react";
+import React, { Suspense, lazy } from "react";
 import { useParams, useNavigate, useLocation, Outlet } from "react-router-dom";
 
 import { ChatbotDrawer } from "@/components/chatbot/ChatbotDrawer";
@@ -9,8 +9,7 @@ import { TaskNotFoundState } from "@/components/TaskNotFoundState";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDemoMode } from "@/contexts/EngineConfigContext";
 import { TaskProvider } from "@/contexts/TaskContext";
-import { useApi } from "@/hooks/useApi";
-import { TaskResponse } from "@/lib/api";
+import { useTaskQuery } from "@/hooks/tasks/useTaskQuery";
 
 // The demo tour (engine + markdown content + sanitizer) only renders for demo
 // tenants, so lazy-load it: non-demo users never download the chunk. The
@@ -22,7 +21,6 @@ export const TaskLayout: React.FC = () => {
   const params = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const api = useApi();
   const { demoMode } = useDemoMode();
   const { isTenant } = useAuth();
   // The guided demo tour is a demo-only experience: it should run only when the
@@ -31,11 +29,13 @@ export const TaskLayout: React.FC = () => {
   // for anyone else. `demoMode` defaults to false while engine-config loads, so the
   // tour stays off until both conditions are confirmed.
   const showTaskTour = demoMode && isTenant;
-  const [task, setTask] = useState<TaskResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const taskId = params.id as string;
+
+  const { data, isPending, error: taskError } = useTaskQuery(taskId);
+  const task = data ?? null;
+  const loading = isPending;
+  const error = taskError ? "Failed to load task details" : null;
 
   // Map the current route to the active section
   let activeSection = "overview";
@@ -60,32 +60,6 @@ export const TaskLayout: React.FC = () => {
       activeSection = section;
     }
   }
-
-  useEffect(() => {
-    const fetchTask = async () => {
-      if (!api || !taskId) {
-        setError("API client not available or task ID missing");
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        setError(null);
-
-        // Use the direct get task by ID API endpoint
-        const response = await api.api.getTaskApiV2TasksTaskIdGet(taskId);
-        setTask(response.data);
-      } catch (err) {
-        console.error("Failed to fetch task:", err);
-        setError("Failed to load task details");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTask();
-  }, [api, taskId]);
 
   const handleBack = () => {
     navigate("/");
