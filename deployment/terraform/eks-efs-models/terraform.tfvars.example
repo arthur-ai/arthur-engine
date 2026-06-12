@@ -1,0 +1,39 @@
+# Copy to terraform.tfvars and fill in for your environment.
+
+# --- Required ---
+cluster_name = "my-eks-auto-mode-cluster"
+region       = "us-east-1"
+vpc_id       = "vpc-0123456789abcdef0"
+
+# Private/service subnets where genai-engine and the upload job schedule.
+# One EFS mount target is created per subnet.
+subnet_ids = [
+  "subnet-0aaaa1111bbbb2222",
+  "subnet-0cccc3333dddd4444",
+]
+
+# --- Naming (matches CloudFormation ArthurResourceNamespace / Suffix) ---
+arthur_resource_namespace   = "arthur"
+arthur_resource_name_suffix = ""
+
+# --- Kubernetes target (must match the upload job + genai-engine namespace) ---
+namespace = "arthur"
+
+# --- Optional tuning (defaults shown) ---
+# throughput_mode    = "elastic"
+# performance_mode   = "generalPurpose"
+# storage_size       = "25Gi"
+# storage_class_name = "efs-models"
+# pvc_name           = "arthur-models-pvc"
+# access_point_uid   = 1000760000
+# access_point_gid   = 1000760000
+
+# --- Bring-your-own overrides (leave empty to create) ---
+# existing_efs_file_system_id = "fs-0123456789abcdef0"
+# byo_efs_security_group_ids  = ["sg-0123456789abcdef0"]
+# byo_efs_csi_role_arn        = "arn:aws:iam::123456789012:role/AmazonEKS_EFS_CSI_DriverRole"
+
+tags = {
+  Team        = "platform"
+  Environment = "staging"
+}
