@@ -150,6 +150,12 @@ spec:
             - name: MODEL_REPOSITORY_URL
               value: {{ .Values.modelRepositoryURL | quote }}
             {{- end }}
+            {{- if .Values.modelPVC.enabled }}
+            - name: MODEL_STORAGE_PATH
+              value: {{ .Values.modelPVC.mountPath | quote }}
+            - name: HF_HUB_OFFLINE
+              value: "1"
+            {{- end }}
             {{- if .Values.gcpDiscoveryConfig.isEnabled }}
             - name: GOOGLE_CLOUD_PROJECT
               value: {{ .Values.gcpDiscoveryConfig.googleCloudProject | quote }}
@@ -173,18 +179,32 @@ spec:
                   name: {{ .Values.genaiEngineSecretInternalApiKeyName }}
                   key: key
             {{- end }}
-          {{- if .Values.gcpDiscoveryConfig.isEnabled }}
+          {{- if or .Values.gcpDiscoveryConfig.isEnabled .Values.modelPVC.enabled }}
           volumeMounts:
+            {{- if .Values.gcpDiscoveryConfig.isEnabled }}
             - name: gcp-credentials
               mountPath: /var/secrets/google
               readOnly: true
+            {{- end }}
+            {{- if .Values.modelPVC.enabled }}
+            - name: models
+              mountPath: {{ .Values.modelPVC.mountPath | quote }}
+              readOnly: {{ .Values.modelPVC.readOnly }}
+            {{- end }}
           {{- end }}
-      {{- if .Values.gcpDiscoveryConfig.isEnabled }}
+      {{- if or .Values.gcpDiscoveryConfig.isEnabled .Values.modelPVC.enabled }}
       volumes:
+        {{- if .Values.gcpDiscoveryConfig.isEnabled }}
         - name: gcp-credentials
           secret:
             secretName: {{ .Values.gcpDiscoveryConfig.googleCredentialsSecretName }}
             defaultMode: 420
+        {{- end }}
+        {{- if .Values.modelPVC.enabled }}
+        - name: models
+          persistentVolumeClaim:
+            claimName: {{ .Values.modelPVC.claimName }}
+        {{- end }}
       {{- end }}
       {{- with .Values.arthurGenaiEngineDeployment.genaiEnginePodAffinity }}
       affinity:

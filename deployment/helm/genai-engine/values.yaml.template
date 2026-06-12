@@ -155,6 +155,22 @@ genaiEngineSecretStoreKeyName: "genai-engine-secret-store-key"
 # genaiEngineSecretRecaptchaApiKeyName: "genai-engine-secret-recaptcha-api-key"
 
 ###################################
+## Advanced - Shared model storage (EFS-backed PVC)
+###################################
+# (Optional) Mount a pre-populated PersistentVolumeClaim holding the model binaries and load
+# models from it instead of downloading them at startup. Intended for the EFS-backed PVC
+# provisioned by deployment/terraform/eks-efs-models. When enabled, the chart mounts the claim
+# and sets MODEL_STORAGE_PATH + HF_HUB_OFFLINE=1. Leave disabled to run without a PVC (default).
+modelPVC:
+  enabled: false
+  # Name of the PersistentVolumeClaim to mount (must already exist in this namespace)
+  claimName: "arthur-models-pvc"
+  # Path the volume is mounted at inside the container (also becomes MODEL_STORAGE_PATH)
+  mountPath: "/home/nonroot/models-output"
+  # Mount read-only (recommended — models are written once by the upload job)
+  readOnly: true
+
+###################################
 ## Advanced - GCP Service Account
 ###################################
 gcpDiscoveryConfig:

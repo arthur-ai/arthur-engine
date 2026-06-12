@@ -397,3 +397,21 @@ Azure OpenAI has a quota called Tokens-per-Minute (TPM). It limits the number of
 process within a minute in the region the model is deployed. In order to get a larger quota for GenAI Engine, you can deploy
 additional models in other regions and have Arthur GenAI Engine round-robin against multiple Azure OpenAI endpoints. In
 addition, you can request and get approved for a model quota increase in the desired regions by Azure.
+
+### How do I load models from a shared volume instead of downloading them at startup?
+
+By default GenAI Engine downloads its model binaries on startup (or fetches them from
+`modelRepositoryURL` if set), and no PersistentVolumeClaim is required. For air-gapped clusters or
+to avoid per-pod downloads, you can pre-populate a shared volume once and have every replica mount
+it. Set the optional `modelPVC` values (off by default):
+
+```bash
+--set modelPVC.enabled=true \
+--set modelPVC.claimName=arthur-models-pvc \
+--set modelPVC.mountPath=/home/nonroot/models-output
+```
+
+When enabled, the chart mounts the claim read-only and sets `MODEL_STORAGE_PATH` +
+`HF_HUB_OFFLINE=1`. Populate the volume with the one-time job in
+[../../model-upload](../../model-upload). On AWS EKS, provision the EFS-backed `ReadWriteMany` PVC
+with the Terraform module in [../../terraform/eks-efs-models](../../terraform/eks-efs-models).
