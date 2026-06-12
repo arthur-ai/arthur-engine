@@ -37,7 +37,7 @@ dependencies = [
   "arthur-common==2.4.66",
   "gunicorn>=23.0.0,<24",
   "sqlalchemy==2.0.48",
-  "snowflake-sqlalchemy==1.7.7",
+  "snowflake-sqlalchemy==1.10.0",
   "databricks-sqlalchemy>=2.0,<3",
   "databricks-sdk>=0.84.0,<1",
   "arthur-client==1.4.2192",
@@ -58,7 +58,7 @@ linters = [
   "mypy>=1.16.1,<2",
   "isort>=6.0.1,<7",
   "autoflake>=2.3.1,<3",
-  "black==25.12.0",
+  "black==26.5.1",
 ]
 
 [tool.uv]
