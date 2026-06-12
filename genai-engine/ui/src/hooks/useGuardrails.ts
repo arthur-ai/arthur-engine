@@ -1,31 +1,16 @@
-import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { taskQueryOptions } from "@/hooks/tasks/useTaskQuery";
 import { useApi } from "@/hooks/useApi";
-import type {
-  Api,
-  BuiltinValidationRequest,
-  BuiltinValidationResponse,
-  NewRuleRequest,
-  RuleResponse,
-  TaskResponse,
-} from "@/lib/api-client/api-client";
+import type { BuiltinValidationRequest, BuiltinValidationResponse, NewRuleRequest, RuleResponse } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
-
-export const taskRulesQueryOptions = ({ api, taskId }: { api: Api<unknown>; taskId: string }) =>
-  queryOptions({
-    queryKey: queryKeys.guardrails.rulesForTask(taskId),
-    queryFn: async (): Promise<RuleResponse[]> => {
-      const response = await api.api.getTaskApiV2TasksTaskIdGet(taskId);
-      const task = response.data as TaskResponse;
-      return task.rules ?? [];
-    },
-  });
 
 export function useTaskRules(taskId: string) {
   const api = useApi();
 
   return useQuery({
-    ...taskRulesQueryOptions({ api: api!, taskId }),
+    ...taskQueryOptions({ api: api!, taskId }),
+    select: (task) => task.rules ?? [],
     enabled: !!api && !!taskId,
   });
 }
@@ -41,7 +26,7 @@ export function useCreateRule(taskId: string) {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.guardrails.rulesForTask(taskId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byId(taskId) });
     },
   });
 }
@@ -56,7 +41,7 @@ export function useArchiveRule(taskId: string) {
       await api.api.archiveTaskRuleApiV2TasksTaskIdRulesRuleIdDelete(taskId, ruleId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.guardrails.rulesForTask(taskId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byId(taskId) });
     },
   });
 }
@@ -71,7 +56,7 @@ export function useToggleRule(taskId: string) {
       await api.api.updateTaskRulesApiV2TasksTaskIdRulesRuleIdPatch(taskId, ruleId, { enabled });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.guardrails.rulesForTask(taskId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byId(taskId) });
     },
   });
 }
