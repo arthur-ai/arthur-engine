@@ -6,7 +6,7 @@
     "dev": "next dev --turbopack",
     "dev:agent": "mastra dev",
     "dev:ui": "next dev --turbopack",
-    "dev:debug": "LOG_LEVEL=debug npm run dev",
+    "dev:debug": "LOG_LEVEL=debug yarn dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -58,5 +58,5 @@
     "tailwindcss": "^4",
     "typescript": "^5"
   },
-  "packageManager": "yarn@1.22.22+sha1.ac34549e6aa8e7ead463a7407e1c7390f61a6610"
+  "packageManager": "yarn@4.12.0"
 }
