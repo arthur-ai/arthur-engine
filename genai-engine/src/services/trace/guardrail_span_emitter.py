@@ -14,6 +14,7 @@ exception propagates unchanged.
 
 import hashlib
 import logging
+import re
 from contextlib import contextmanager
 from typing import Any, Iterator, Optional
 
@@ -52,6 +53,29 @@ def _hex_to_bytes(hex_str: str, expected_len: int) -> bytes:
             f"got {len(raw)}",
         )
     return raw
+
+
+_TRACEPARENT_RE = re.compile(
+    r"^(?P<version>[0-9a-f]{2})-(?P<trace_id>[0-9a-f]{32})-(?P<parent_id>[0-9a-f]{16})-[0-9a-f]{2}$",
+)
+
+
+def parse_traceparent(header: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+    """Extract (trace_id, parent_span_id) hex strings from a W3C ``traceparent``
+    header. Best-effort: malformed, all-zero, or version-ff values are treated as
+    absent (the span falls back to a derived trace); trace flags are ignored."""
+    if not header:
+        return None, None
+    match = _TRACEPARENT_RE.match(header.strip())
+    if (
+        match is None
+        or match["version"] == "ff"
+        or match["trace_id"] == "0" * 32
+        or match["parent_id"] == "0" * 16
+    ):
+        logger.warning("Ignoring malformed traceparent header.")
+        return None, None
+    return match["trace_id"], match["parent_id"]
 
 
 class _GuardrailSpanRecorder:

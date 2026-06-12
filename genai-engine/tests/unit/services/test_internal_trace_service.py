@@ -396,6 +396,30 @@ def test_span_records_error_status_and_propagates(mock_emitter_service):
 
 
 @pytest.mark.unit_tests
+def test_parse_traceparent_valid():
+    trace, parent = emitter.parse_traceparent(f"00-{'ab' * 16}-{'cd' * 8}-01")
+    assert (trace, parent) == ("ab" * 16, "cd" * 8)
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "header",
+    [
+        None,
+        "",
+        "not-a-traceparent",
+        f"ff-{'ab' * 16}-{'cd' * 8}-01",  # forbidden version
+        f"00-{'0' * 32}-{'cd' * 8}-01",  # all-zero trace id
+        f"00-{'ab' * 16}-{'0' * 16}-01",  # all-zero parent id
+        f"00-{'ab' * 16}-{'cd' * 8}",  # missing flags
+        f"00-{'AB' * 16}-{'cd' * 8}-01",  # uppercase hex is invalid per spec
+    ],
+)
+def test_parse_traceparent_invalid_treated_as_absent(header):
+    assert emitter.parse_traceparent(header) == (None, None)
+
+
+@pytest.mark.unit_tests
 def test_span_honors_supplied_trace_and_parent(mock_emitter_service):
     m, inst = mock_emitter_service
     _run_guardrail_span(trace_id="ab" * 16, parent_span_id="cd" * 8)

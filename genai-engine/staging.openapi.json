@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.628"
+        "version": "2.1.633"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -2121,8 +2121,8 @@
                         }
                     },
                     {
-                        "name": "trace_id",
-                        "in": "query",
+                        "name": "traceparent",
+                        "in": "header",
                         "required": false,
                         "schema": {
                             "anyOf": [
@@ -2133,28 +2133,10 @@
                                     "type": "null"
                                 }
                             ],
-                            "description": "Optional trace ID (32-hex) to attach the emitted guardrail span to an existing trace. If omitted, a trace is derived from the inference ID.",
-                            "title": "Trace Id"
+                            "description": "Optional W3C traceparent header. When supplied, the emitted guardrail span joins that trace, nested under its parent span; otherwise a trace is derived from the inference ID. OpenTelemetry-instrumented callers send this automatically.",
+                            "title": "Traceparent"
                         },
-                        "description": "Optional trace ID (32-hex) to attach the emitted guardrail span to an existing trace. If omitted, a trace is derived from the inference ID."
-                    },
-                    {
-                        "name": "parent_span_id",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "description": "Optional parent span ID (16-hex) to nest the guardrail span under within the trace. Ignored when trace_id is absent.",
-                            "title": "Parent Span Id"
-                        },
-                        "description": "Optional parent span ID (16-hex) to nest the guardrail span under within the trace. Ignored when trace_id is absent."
+                        "description": "Optional W3C traceparent header. When supplied, the emitted guardrail span joins that trace, nested under its parent span; otherwise a trace is derived from the inference ID. OpenTelemetry-instrumented callers send this automatically."
                     }
                 ],
                 "requestBody": {
@@ -2236,8 +2218,8 @@
                         }
                     },
                     {
-                        "name": "trace_id",
-                        "in": "query",
+                        "name": "traceparent",
+                        "in": "header",
                         "required": false,
                         "schema": {
                             "anyOf": [
@@ -2248,28 +2230,10 @@
                                     "type": "null"
                                 }
                             ],
-                            "description": "Optional trace ID (32-hex) to attach the emitted guardrail span to an existing trace. If omitted, the trace derived from the inference ID is reused so the response span joins its prompt span.",
-                            "title": "Trace Id"
+                            "description": "Optional W3C traceparent header. When supplied, the emitted guardrail span joins that trace, nested under its parent span; otherwise it joins the trace derived from the inference ID, under its prompt span. OpenTelemetry-instrumented callers send this automatically.",
+                            "title": "Traceparent"
                         },
-                        "description": "Optional trace ID (32-hex) to attach the emitted guardrail span to an existing trace. If omitted, the trace derived from the inference ID is reused so the response span joins its prompt span."
-                    },
-                    {
-                        "name": "parent_span_id",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "description": "Optional parent span ID (16-hex) to nest the guardrail span under within the trace. Ignored when trace_id is absent.",
-                            "title": "Parent Span Id"
-                        },
-                        "description": "Optional parent span ID (16-hex) to nest the guardrail span under within the trace. Ignored when trace_id is absent."
+                        "description": "Optional W3C traceparent header. When supplied, the emitted guardrail span joins that trace, nested under its parent span; otherwise it joins the trace derived from the inference ID, under its prompt span. OpenTelemetry-instrumented callers send this automatically."
                     }
                 ],
                 "requestBody": {
