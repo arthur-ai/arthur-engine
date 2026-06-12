@@ -137,7 +137,7 @@ wheels = [
 
 [[package]]
 name = "arthur-client"
-version = "1.4.2158"
+version = "1.4.2188"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "authlib" },
@@ -149,9 +149,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/70/b9/c9d0a15bfded73cc420d7000bb926864db8a2a67088a150bf4c6a762cf9d/arthur_client-1.4.2158.tar.gz", hash = "sha256:e5eec89d6070f3c8aee2a03ff65add01461476ad327e59f0847914b26427d936", size = 395091, upload-time = "2026-05-21T23:17:26.434Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/39/81/eb4f1672b8d13db84dac6325a9767674a8924ce75dbb2c21a2f0d94af979/arthur_client-1.4.2188.tar.gz", hash = "sha256:2610c59bc9842fc2af7cabdb2fa318fb3203aa2ff91b2cf340b09fd6f115e6ba", size = 395099, upload-time = "2026-06-08T15:16:24.122Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/19/5c/9a8f2eafa32af58f7ceb438110fbbe25d09499186f80faa011079355dafc/arthur_client-1.4.2158-py3-none-any.whl", hash = "sha256:e25f598272c129efc095a94942ac7d212a2e6350707306274b8b396a808f68fd", size = 1457288, upload-time = "2026-05-21T23:17:27.942Z" },
+    { url = "https://files.pythonhosted.org/packages/65/0f/3ccc628d833e73abd775cb64201ece357c27edbcf53c0b56b825d710de29/arthur_client-1.4.2188-py3-none-any.whl", hash = "sha256:2ecc284bf72f20327a033e8dfc428cbdb990b39a1f1bcc525d984ee6ed1c6d1e", size = 1457287, upload-time = "2026-06-08T15:16:22.261Z" },
 ]
 
 [[package]]
@@ -272,7 +272,7 @@ performance = [
 requires-dist = [
     { name = "alembic", specifier = "==1.17.2" },
     { name = "amplitude-analytics", specifier = ">=1.1.5,<2" },
-    { name = "arthur-client", specifier = "==1.4.2158" },
+    { name = "arthur-client", specifier = "==1.4.2188" },
     { name = "arthur-common", specifier = "==2.4.66" },
     { name = "authlib", specifier = "==1.6.9" },
     { name = "azure-storage-blob", specifier = "==12.27.1" },
@@ -285,7 +285,7 @@ requires-dist = [
     { name = "date-spacy", specifier = ">=0.0.1,<0.1" },
     { name = "en-core-web-lg", url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl" },
     { name = "fastapi", specifier = "==0.128.0" },
-    { name = "fastapi-pagination", specifier = "==0.15.11" },
+    { name = "fastapi-pagination", specifier = "==0.15.14" },
     { name = "fastapi-sqlalchemy", specifier = "==0.2.1" },
     { name = "gliner", specifier = "==0.2.21" },
     { name = "google-auth", specifier = ">=2.48.0,<3" },
@@ -991,16 +991,16 @@ wheels = [
 
 [[package]]
 name = "fastapi-pagination"
-version = "0.15.11"
+version = "0.15.14"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "fastapi" },
     { name = "pydantic" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/38/54/d0f7dc6ead969f4c162930cac6cc282baaccc4dc80723b2bcb557bb36b18/fastapi_pagination-0.15.11.tar.gz", hash = "sha256:f8532247d4ba4d7fd78c2b8f02b755a0fc93821c51645d564d1732760b2f01f6", size = 595309, upload-time = "2026-03-19T18:20:29.499Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/88/23/a6ede2d55fb92be2bff1568e84027e374311c8b1262cd908da3db65f0025/fastapi_pagination-0.15.14.tar.gz", hash = "sha256:61209b30172f928887a2537a85d144a2ae970edfadf160aab7c1fb15676dd651", size = 608334, upload-time = "2026-05-30T12:16:35.469Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3f/e0/61e78d9f91c65dbd31ba231aae55bfa6148709b1a2069467cb85dfeed679/fastapi_pagination-0.15.11-py3-none-any.whl", hash = "sha256:77a142b9dbcd9c65aac22781ce6d0abc63cc58555d83f72ccbcc7275cd007d14", size = 60819, upload-time = "2026-03-19T18:20:31.074Z" },
+    { url = "https://files.pythonhosted.org/packages/ad/3d/9e2ee25fd0a1a2c63995967885b2ff5d4f0cc40823817a1c745351ea745c/fastapi_pagination-0.15.14-py3-none-any.whl", hash = "sha256:b1c2ae46ae9952199f75d07726e3f11909ecd32bf12701a11f3e1080f05c4e91", size = 65778, upload-time = "2026-05-30T12:16:34.384Z" },
 ]
 
 [[package]]
