@@ -12,7 +12,7 @@ import React, { useRef, useState, useEffect } from "react";
 import { usePromptContext } from "./PromptsPlaygroundContext";
 
 import { PromptVariableMappingOutput } from "@/lib/api-client/api-client";
-import { track, EVENT_NAMES } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 const VariableInputs = () => {
   const { state, dispatch, experimentConfig } = usePromptContext();
@@ -22,7 +22,7 @@ const VariableInputs = () => {
   const handleKeywordValueChange = (keyword: string, value: string) => {
     dispatch({ type: "updateKeywordValue", payload: { keyword, value } });
     // Track variable value changed event
-    track(EVENT_NAMES.VARIABLE_VALUE_CHANGED, {
+    track("Variable Value Changed", {
       variable_name: keyword,
       has_value: value.trim().length > 0,
     });

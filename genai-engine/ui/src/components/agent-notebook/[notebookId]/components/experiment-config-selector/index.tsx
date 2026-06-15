@@ -10,7 +10,7 @@ import { mapTemplateToForm } from "../../utils/mapper";
 import { agentExperimentQueryOptions } from "@/components/agent-experiments/hooks/useAgentExperiment";
 import { useAgentExperiments } from "@/components/agent-experiments/hooks/useAgentExperiments";
 import { useApi } from "@/hooks/useApi";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 type Props = {
   onClose: () => void;
@@ -32,7 +32,7 @@ export const ExperimentConfigSelector = withForm({
         try {
           const experiment = await queryClient.fetchQuery(agentExperimentQueryOptions({ api, experimentId: value.experimentId }));
 
-          track(EVENT_NAMES.AGENT_NOTEBOOK_LOAD_EXPERIMENT_CONFIG, { experiment_id: value.experimentId });
+          track("agent_notebook/load_experiment_config", { experiment_id: value.experimentId });
 
           parentForm.reset(mapTemplateToForm(experiment.data));
           await parentForm.validateAllFields("change");

@@ -4,7 +4,7 @@ import { Avatar, Box, Button, Dialog, DialogActions, IconButton, Stack, Typograp
 
 import { COURSE_NAME } from "../../courseName";
 
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 // Scheduling link for booking time with Arthur's CTO to talk Agent Evals.
 // Kept as a single constant so there's one spot to change.
@@ -93,7 +93,7 @@ export function CtaDialog({ open, onDismiss }: CtaDialogProps) {
               target="_blank"
               rel="noopener noreferrer"
               // Opens in a new tab, so the page stays alive and the event sends reliably.
-              onClick={() => track(EVENT_NAMES.ONBOARDING_WIZARD_CTA_BOOK_CLICKED, { course: COURSE_NAME })}
+              onClick={() => track("onboarding/wizard_cta_book_clicked", { course: COURSE_NAME })}
               endIcon={<ArrowForwardIcon sx={{ fontSize: 18 }} />}
             >
               Book a time

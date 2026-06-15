@@ -33,7 +33,7 @@ import { getContentHeight } from "@/constants/layout";
 import { useDisplaySettings } from "@/contexts/DisplaySettingsContext";
 import { useMRTPagination } from "@/hooks/useMRTPagination";
 import { AgenticNotebookSummary } from "@/lib/api-client/api-client";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 const DEFAULT_DATA: AgenticNotebookSummary[] = [];
 
@@ -72,7 +72,7 @@ export const AgentNotebook = ({ embedded = false, isCreateModalOpen, onCreateMod
       } else {
         setInternalDialogOpen(false);
       }
-      track(EVENT_NAMES.AGENT_NOTEBOOK_CREATED, { notebook_id: data.id });
+      track("agent_notebook/created", { notebook_id: data.id });
       navigate(`/tasks/${taskId}/agentic-notebooks/${data.id}`);
     },
   });
@@ -80,7 +80,7 @@ export const AgentNotebook = ({ embedded = false, isCreateModalOpen, onCreateMod
   const deleteAgenticNotebook = useDeleteAgenticNotebook();
 
   const handleCreateNotebook = () => {
-    track(EVENT_NAMES.AGENT_NOTEBOOK_INTENT_CREATE);
+    track("agent_notebook/intent_create");
     if (onCreateModalOpen) {
       onCreateModalOpen();
     } else {
@@ -89,7 +89,7 @@ export const AgentNotebook = ({ embedded = false, isCreateModalOpen, onCreateMod
   };
 
   const handleCloseCreateNotebook = () => {
-    track(EVENT_NAMES.AGENT_NOTEBOOK_INTENT_CANCEL);
+    track("agent_notebook/intent_cancel");
     if (onCreateModalClose) {
       onCreateModalClose();
     } else {

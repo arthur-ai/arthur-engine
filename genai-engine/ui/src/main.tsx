@@ -3,10 +3,10 @@ import "./index.css";
 import { createRoot } from "react-dom/client";
 
 import App from "./App.tsx";
-import { initAmplitude } from "./services/amplitude";
+import { initAnalytics } from "./services/analytics";
 
-// Initialize Amplitude before rendering the app
-initAmplitude();
+// Initialize analytics (Amplitude + session replay) before rendering the app
+initAnalytics();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

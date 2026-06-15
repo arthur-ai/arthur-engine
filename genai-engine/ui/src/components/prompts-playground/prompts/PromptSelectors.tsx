@@ -17,7 +17,7 @@ import { useApi } from "@/hooks/useApi";
 import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";
 import { ModelProvider, LLMGetAllMetadataResponse } from "@/lib/api-client/api-client";
-import { track, EVENT_NAMES } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 const PROVIDER_TEXT = "Select Provider";
 const PROMPT_NAME_TEXT = "Select Prompt";
@@ -100,7 +100,7 @@ const PromptSelectors = ({
         payload: { promptId: prompt.id, prompt: frontendPrompt },
       });
       // Track prompt loaded event
-      track(EVENT_NAMES.PROMPT_LOADED, {
+      track("Prompt Loaded", {
         prompt_name: promptName,
         version: version,
         source: "selector",
