@@ -175,26 +175,28 @@ Logs are rotated daily using Python's `TimedRotatingFileHandler`:
 
 ## Kubernetes Deployment
 
-When running GenAI Engine via the `arthur-genai-engine` Helm chart, audit logs are persisted to a `PersistentVolumeClaim` so that rotated files survive pod restarts and rescheduling.
+When running GenAI Engine via the `arthur-genai-engine` Helm chart, audit logs can be persisted to a `PersistentVolumeClaim` so that rotated files survive pod restarts and rescheduling. Audit logging in Kubernetes is opt-in via `arthurGenaiEngineDeployment.auditLog.enabled`.
 
-### Persistent Volume Claim
+### Enabling
 
-The chart provisions a PVC named `arthur-genai-engine-audit-logs` (suffixed with `arthurResourceNameSuffix` when set) from [arthur-genai-engine-audit-logs-pvc.yaml](../../deployment/helm/genai-engine/templates/arthur-genai-engine-audit-logs-pvc.yaml):
+Set `arthurGenaiEngineDeployment.auditLog.enabled: true`. When enabled the chart:
 
-- **Access mode**: `ReadWriteMany` — multiple GenAI Engine replicas can mount the same volume
-- **Storage size**: `arthurGenaiEngineDeployment.auditLog.storageSize` (default `10Gi`)
-- **Storage class**: `arthurGenaiEngineDeployment.auditLog.storageClassName` — must be set to a `ReadWriteMany`-capable class (e.g. NFS, EFS, Azure Files) for your cluster
+- Mounts the PVC named by `auditLog.pvcName` into each pod at `auditLog.mountPath` (both the [deployment](../../deployment/helm/genai-engine/templates/arthur-genai-engine-deployment.yaml) and the GPU [daemonset](../../deployment/helm/genai-engine/templates/arthur-genai-engine-daemonset.yaml)).
+- Sets `AUDIT_LOG_ENABLED=true` and `AUDIT_LOG_OVERRIDE_PATH=<mountPath>` on the container, so the rotating file handler writes onto the mounted volume.
 
-### Volume Mount
+The PVC itself is defined in [arthur-genai-engine-audit-logs-pvc.yaml](../../deployment/helm/genai-engine/templates/arthur-genai-engine-audit-logs-pvc.yaml) with access mode `ReadWriteMany` and storage class `auditLog.storageClassName`. The storage class must be `ReadWriteMany`-capable (e.g. NFS, EFS, Azure Files); set `auditLog.pvcName` to this PVC's name.
 
-The PVC is mounted into each GenAI Engine pod by [arthur-genai-engine-deployment.yaml](../../deployment/helm/genai-engine/templates/arthur-genai-engine-deployment.yaml) (and the GPU [arthur-genai-engine-daemonset.yaml](../../deployment/helm/genai-engine/templates/arthur-genai-engine-daemonset.yaml)) at the path defined by `arthurGenaiEngineDeployment.auditLog.mountPath` (default `/home/nonroot/app/audit_logs`). This path lines up with the GenAI Engine's default audit log directory, so no override of `AUDIT_LOG_OVERRIDE_PATH` is required out of the box.
+### Volume Permissions
+
+The container runs as a non-root user. On platforms that mount volumes owned by root (e.g. OpenShift), the engine cannot create `audit.log` and crash-loops with a `PermissionError`. Set `auditLog.fsGroup` to a group ID that owns the mount and makes it group-writable.
 
 ### Helm Values
 
 | Value | Default | Description |
 |---|---|---|
+| `arthurGenaiEngineDeployment.auditLog.enabled` | `false` | Mount the audit-log PVC and enable audit logging to it |
 | `arthurGenaiEngineDeployment.auditLog.mountPath` | `/home/nonroot/app/audit_logs` | Path inside the container where audit logs are written |
+| `arthurGenaiEngineDeployment.auditLog.pvcName` | _(unset)_ | Name of the PVC to mount for audit logs |
 | `arthurGenaiEngineDeployment.auditLog.storageSize` | `10Gi` | Size requested for the audit log PVC |
 | `arthurGenaiEngineDeployment.auditLog.storageClassName` | _(unset)_ | `ReadWriteMany` storage class to back the PVC |
-
-If `AUDIT_LOG_OVERRIDE_PATH` is set on the GenAI Engine container, make sure it matches `auditLog.mountPath` so the rotating file handler writes to the persistent volume.
+| `arthurGenaiEngineDeployment.auditLog.fsGroup` | _(unset)_ | Pod `fsGroup` so the non-root container can write to the volume (required on OpenShift) |

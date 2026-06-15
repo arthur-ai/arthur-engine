@@ -26,6 +26,9 @@ arthurGenaiEngineDeployment:
     enabled: false
     mountPath: "/home/nonroot/app/audit_logs"
     pvcName: ""
+    # (Optional) Group ID applied as the pod's fsGroup so the non-root container can write to the mounted PVC.
+    # Required on platforms that mount volumes as root (e.g. OpenShift - use a GID from the namespace's allowed range).
+    fsGroup: ""
 
 # CPU deployment - Comment out the below 4 lines
 gpuEnabled: false

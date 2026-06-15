@@ -34,6 +34,10 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
+      {{- if and .Values.arthurGenaiEngineDeployment.auditLog.enabled .Values.arthurGenaiEngineDeployment.auditLog.fsGroup }}
+      securityContext:
+        fsGroup: {{ .Values.arthurGenaiEngineDeployment.auditLog.fsGroup }}
+      {{- end }}
       {{- if .Values.containerRepositoryCredentialRequired }}
       imagePullSecrets:
         - name: {{ .Values.imagePullSecretName }}
@@ -172,6 +176,12 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.genaiEngineSecretInternalApiKeyName }}
                   key: key
+            {{- end }}
+            {{- if .Values.arthurGenaiEngineDeployment.auditLog.enabled }}
+            - name: AUDIT_LOG_ENABLED
+              value: "true"
+            - name: AUDIT_LOG_OVERRIDE_PATH
+              value: {{ .Values.arthurGenaiEngineDeployment.auditLog.mountPath | quote }}
             {{- end }}
           volumeMounts:
             {{- if .Values.gcpDiscoveryConfig.isEnabled }}
