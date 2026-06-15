@@ -7,7 +7,6 @@ from arthur_common.models.common_schemas import VariableTemplateValue
 from arthur_common.models.llm_model_providers import ModelProvider, OpenAIMessage
 from arthur_common.models.response_schemas import (
     AgenticAnnotationResponse,
-    ExternalInference,
     SpanWithMetricsResponse,
     TokenCountCostSchema,
     TraceResponse,
@@ -53,19 +52,8 @@ class DemoTaskSignupResponse(BaseModel):
     api_key: str
 
 
-class DocumentStorageConfigurationResponse(BaseModel):
-    storage_environment: Optional[str] = None
-    bucket_name: Optional[str] = None
-    container_name: Optional[str] = None
-    assumable_role_arn: Optional[str] = None
-
-
 class ApplicationConfigurationResponse(BaseModel):
-    chat_task_id: Optional[str] = None
     default_currency: Optional[str] = None
-    document_storage_configuration: Optional[DocumentStorageConfigurationResponse] = (
-        None
-    )
     max_llm_rules_per_task_count: int
     trace_retention_days: int
     allowed_trace_retention_days: tuple[int, ...] = ()
@@ -77,15 +65,6 @@ class DisplaySettingsResponse(BaseModel):
     default_currency: str = "USD"
     chatbot_enabled: bool = True
     scope_url: str | None = None
-
-
-class ConversationBaseResponse(BaseModel):
-    id: str
-    updated_at: datetime
-
-
-class ConversationResponse(ConversationBaseResponse):
-    inferences: list[ExternalInference]
 
 
 class HealthResponse(BaseModel):

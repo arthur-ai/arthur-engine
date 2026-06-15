@@ -3,18 +3,16 @@ from unittest import mock
 from unittest.mock import patch
 
 import pytest
-import utils.constants
+from arthur_common.models.common_schemas import LLMTokenConsumption
+from arthur_common.models.enums import RuleResultEnum, RuleType
 from langchain.schema import AIMessage
 from langchain_openai import AzureChatOpenAI
-from arthur_common.models.common_schemas import LLMTokenConsumption
+
+import utils.constants
 from schemas.custom_exceptions import LLMContentFilterException, LLMExecutionException
-from arthur_common.models.enums import RuleResultEnum, RuleType
 from schemas.scorer_schemas import Example, RuleScore, ScoreRequest
 from scorer.checks.sensitive_data.custom_examples import SensitiveDataCustomExamples
 
-os.environ[utils.constants.GENAI_ENGINE_OPENAI_EMBEDDINGS_ENDPOINTS_KEYS_ENV_VAR] = (
-    "1::2/::3"
-)
 os.environ[utils.constants.GENAI_ENGINE_OPENAI_GPT_ENDPOINTS_KEYS_ENV_VAR] = "1::2/::3"
 os.environ[utils.constants.GENAI_ENGINE_OPENAI_PROVIDER_ENV_VAR] = "Azure"
 

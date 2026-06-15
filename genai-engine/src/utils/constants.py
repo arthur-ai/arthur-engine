@@ -102,14 +102,8 @@ GENAI_ENGINE_TOXICITY_CHECK_MAX_TOKEN_LIMIT_ENV_VAR = (
 ENABLE_RELEVANCE_MODELS_ENV_VAR = "ENABLE_RELEVANCE_MODELS"
 
 ##################################################################
-# Chat
-GENAI_ENGINE_CHAT_ENABLED_ENV_VAR = "CHAT_ENABLED"
+# Chatbot
 GENAI_ENGINE_CHATBOT_ENABLED_ENV_VAR = "CHATBOT_ENABLED"
-GENAI_ENGINE_OPENAI_EMBEDDINGS_ENDPOINTS_KEYS_ENV_VAR = (
-    "GENAI_ENGINE_OPENAI_EMBEDDINGS_NAMES_ENDPOINTS_KEYS"
-)
-MAX_CHAT_CONTEXT_LIMIT = 2048
-MAX_CHAT_HISTORY_CONTEXT = 512
 
 ##################################################################
 # String Constants
@@ -132,9 +126,6 @@ ERROR_GENAI_ENGINE_RATE_LIMIT_EXCEEDED = "GenAI Engine rate limit exceeded"
 ERROR_DEFAULT_RULE_ENGINE = "This rule could not be evaluated"
 ERROR_TOKEN_LIMIT_EXCEEDED = (
     "Token limit exceeded. Please reduce the size of the input."
-)
-ERROR_INVALID_DOCUMENT_TYPE = (
-    "Invalid document type. Must be one of application/pdf, text/csv, text/plain."
 )
 ERROR_UNCAUGHT_GENERIC = "Something went wrong."
 ERROR_UNRELATED_TASK_RULE = "This rule id is not associated with this task."
@@ -206,7 +197,6 @@ NEWRELIC_CUSTOM_METRIC_RULE_FAILURES = "custom.rule_failures"
 
 ##################################################################
 # RBAC
-CHAT_USER: str = "CHAT-USER"
 ORG_ADMIN: str = "ORG-ADMIN"
 TASK_ADMIN: str = "TASK-ADMIN"
 DEFAULT_RULE_ADMIN: str = "DEFAULT-RULE-ADMIN"

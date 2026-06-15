@@ -24,7 +24,6 @@ from arthur_common.models.enums import (
 )
 from arthur_common.models.request_schemas import (
     AgentMetadata,
-    ChatDefaultTaskRequest,
     CreateUserRequest,
     FeedbackRequest,
     NewTaskRequest,
@@ -34,11 +33,6 @@ from arthur_common.models.request_schemas import (
 )
 from arthur_common.models.response_schemas import (
     ApiKeyResponse,
-    ChatDefaultTaskResponse,
-    ChatDocumentContext,
-    ChatResponse,
-    ExternalDocument,
-    FileUploadResult,
     ListAgenticAnnotationsResponse,
     QueryFeedbackResponse,
     QueryInferencesResponse,
@@ -161,7 +155,6 @@ os.environ[constants.GENAI_ENGINE_OPENAI_RATE_LIMIT_PERIOD_SECONDS_ENV_VAR] = "6
 os.environ[constants.GENAI_ENGINE_OPENAI_RATE_LIMIT_TOKENS_PER_PERIOD_ENV_VAR] = "5000"
 os.environ[constants.GENAI_ENGINE_INGRESS_URI_ENV_VAR] = "http://localhost"
 os.environ[constants.ALLOW_ADMIN_KEY_GENERAL_ACCESS_ENV_VAR] = "enabled"
-os.environ[constants.GENAI_ENGINE_CHAT_ENABLED_ENV_VAR] = "enabled"
 os.environ[constants.TELEMETRY_ENABLED_ENV_VAR] = "False"
 
 MASTER_KEY_AUTHORIZED_HEADERS = {"Authorization": "Bearer %s" % MASTER_API_KEY}
@@ -938,24 +931,6 @@ class GenaiEngineTestClientBase(httpx.Client):
             ),
         )
 
-    def send_chat_feedback(
-        self,
-        inference_id: str,
-        target: str,
-        score: int,
-        reason: str,
-    ) -> int:
-        request = FeedbackRequest(target=target, score=score, reason=reason)
-        resp = self.base_client.post(
-            f"/api/chat/feedback/{inference_id}",
-            json=request.model_dump(),
-            headers=self.authorized_chat_headers,
-        )
-
-        log_response(resp)
-
-        return resp.status_code
-
     def delete_default_rule(self, rule_id: str) -> int:
         path = f"api/v2/default_rules/{rule_id}"
         resp = self.base_client.delete(
@@ -999,68 +974,6 @@ class GenaiEngineTestClientBase(httpx.Client):
         )
         log_response(resp)
         return resp
-
-    def upload_file(
-        self,
-        file_path,
-        file_name,
-        content_type,
-        headers=None,
-        is_global=False,
-    ) -> tuple[int, FileUploadResult]:
-        if headers is None:
-            headers = self.authorized_chat_headers
-        with open(file_path, "rb") as f:
-            path = "/api/chat/files?"
-            params = {"is_global": is_global}
-
-            response = self.base_client.post(
-                "{}{}".format(path, urllib.parse.urlencode(params)),
-                files={"file": (file_name, f, content_type)},
-                headers=headers,
-            )
-            log_response(response)
-            return (
-                response.status_code,
-                (
-                    FileUploadResult.model_validate(response.json())
-                    if response.status_code == 200
-                    else None
-                ),
-            )
-
-    def delete_file(self, file_id: str, headers=None) -> int:
-        resp = self.base_client.delete(
-            "/api/chat/files/%s?" % file_id,
-            headers=self.authorized_chat_headers if headers is None else headers,
-        )
-
-        log_response(resp)
-
-        return resp.status_code
-
-    def get_files(self, headers=None) -> tuple[int, list[ExternalDocument]]:
-        if headers is None:
-            headers = self.authorized_chat_headers
-        path = "/api/chat/files?"
-        params = {}
-
-        response = self.base_client.get(
-            "{}{}".format(path, urllib.parse.urlencode(params)),
-            headers=headers,
-        )
-        log_response(response)
-
-        adapter = TypeAdapter(list[ExternalDocument])
-
-        return (
-            response.status_code,
-            (
-                adapter.validate_python(response.json())
-                if response.status_code == 200
-                else None
-            ),
-        )
 
     def delete_task(self, task_id: str) -> int:
         resp = self.base_client.delete(
@@ -1386,54 +1299,6 @@ class GenaiEngineTestClientBase(httpx.Client):
             ),
         )
 
-    def send_chat(
-        self,
-        user_prompt: str,
-        conversation_id: str,
-        file_ids: list[str],
-    ) -> tuple[int, ChatResponse]:
-        request = {
-            "user_prompt": user_prompt,
-            "conversation_id": conversation_id,
-            "file_ids": file_ids,
-        }
-
-        resp = self.base_client.post(
-            "/api/chat/",
-            json=request,
-            headers=self.authorized_chat_headers,
-        )
-
-        log_response(resp)
-
-        return (
-            resp.status_code,
-            (
-                ChatResponse.model_validate(resp.json())
-                if resp.status_code == 200
-                else None
-            ),
-        )
-
-    def get_inference_document_context(
-        self,
-        inference_id: str,
-    ) -> tuple[int, list[ChatDocumentContext]]:
-        resp = self.base_client.get(
-            f"/api/chat/context/{inference_id}",
-            headers=self.authorized_chat_headers,
-        )
-        log_response(resp)
-
-        return (
-            resp.status_code,
-            (
-                [ChatDocumentContext.model_validate(i) for i in resp.json()]
-                if resp.status_code == 200
-                else None
-            ),
-        )
-
     def get_token_usage(
         self,
         start_time: datetime = None,
@@ -1639,14 +1504,6 @@ class GenaiEngineTestClientBase(httpx.Client):
             ),
         )
 
-    def get_conversations(self, page: int = 1, size: int = 50) -> tuple[int, dict]:
-        resp = self.base_client.get(
-            f"/api/chat/conversations?page={page}&size={size}",
-            headers=self.authorized_chat_headers,
-        )
-
-        return resp.status_code, resp.json()
-
     def get_default_rules(self) -> tuple[int, list[RuleResponse]]:
         uri = "/api/v2/default_rules"
         resp = self.base_client.get(
@@ -1661,50 +1518,6 @@ class GenaiEngineTestClientBase(httpx.Client):
             loaded_data = []
 
         return (resp.status_code, loaded_data)
-
-    def get_chat_default_task(
-        self,
-        headers: dict | None = None,
-    ) -> tuple[int, ChatDefaultTaskResponse]:
-        if headers is None:
-            headers = self.authorized_chat_headers
-        resp = self.base_client.get(
-            "/api/chat/default_task",
-            headers=headers,
-        )
-        log_response(resp)
-
-        return (
-            resp.status_code,
-            (
-                ChatDefaultTaskResponse.model_validate(resp.json())
-                if resp.status_code == 200
-                else None
-            ),
-        )
-
-    def update_chat_default_task(
-        self,
-        task_id: str,
-        headers: dict | None = None,
-    ) -> tuple[int, ChatDefaultTaskResponse]:
-        if headers is None:
-            headers = self.authorized_chat_headers
-        resp = self.base_client.put(
-            "/api/chat/default_task",
-            json=ChatDefaultTaskRequest(task_id=task_id).model_dump(),
-            headers=headers,
-        )
-        log_response(resp)
-
-        return (
-            resp.status_code,
-            (
-                ChatDefaultTaskResponse.model_validate(resp.json())
-                if resp.status_code == 200
-                else None
-            ),
-        )
 
     def receive_traces(self, trace_data: bytes) -> tuple[int, str]:
         """Send OpenInference trace data to the evaluate endpoint.

@@ -1,40 +1,7 @@
 import csv
 import logging
-import re
-from io import BytesIO, TextIOWrapper
-from typing import BinaryIO
-
-from pypdf import PdfReader
-
-from schemas.enums import DocumentType
-from schemas.internal_schemas import Document
 
 logger = logging.getLogger()
-
-
-def parse_file_words(document: Document, file_content: BytesIO | BinaryIO) -> list[str]:
-    if document.type == DocumentType.CSV:
-        return parse_csv(file_content)
-    elif document.type == DocumentType.PDF:
-        return parse_pdf(file_content)
-    elif document.type == DocumentType.TXT:
-        return parse_txt(file_content)
-    else:
-        raise NotImplementedError("File upload for %s is not supported" % document.name)
-
-
-def parse_pdf(pdf_file: BinaryIO) -> list[str]:
-    words = []
-    try:
-        reader = PdfReader(pdf_file)
-        for page in reader.pages:
-            text = page.extract_text()
-            page_words = re.findall(r"\b\w+\b", text)
-            words.extend(page_words)
-    except Exception as e:
-        logger.error(f"Failed to extract words from PDF: {e}")
-        raise e
-    return words
 
 
 def parse_csv_rows(csv_path: str) -> list[dict[str, str]]:
@@ -45,31 +12,3 @@ def parse_csv_rows(csv_path: str) -> list[dict[str, str]]:
     except Exception as e:
         logger.error(f"Failed to parse CSV rows: {e}")
         raise e
-
-
-def parse_csv(csv_file: BinaryIO) -> list[str]:
-    words = []
-    try:
-        csv_text = TextIOWrapper(csv_file, encoding="utf-8")
-        reader = csv.reader(csv_text)
-
-        for row in reader:
-            for item in row:
-                item_words = re.findall(r"\b\w+\b", item)
-                words.extend(item_words)
-    except Exception as e:
-        logger.error(f"Failed to extract words from CSV: {e}")
-        raise e
-    return words
-
-
-def parse_txt(txt_file: BytesIO | BinaryIO) -> list[str]:
-    words = []
-    try:
-        text = txt_file.read().decode(encoding="utf-8")
-        page_words = re.findall(r"\b\w+\b", text)
-        words.extend(page_words)
-    except Exception as e:
-        logger.error(f"Failed to extract words from text file: {e}")
-        raise e
-    return words

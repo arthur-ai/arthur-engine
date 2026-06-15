@@ -40,16 +40,4 @@ ROLE_NAMES_TO_PERMISSIONS: dict[str, set[UserPermission]] = {
             ),
         ],
     ),
-    constants.CHAT_USER: set(
-        [
-            UserPermission(
-                action=UserPermissionAction.CREATE,
-                resource=UserPermissionResource.PROMPTS,
-            ),
-            UserPermission(
-                action=UserPermissionAction.CREATE,
-                resource=UserPermissionResource.RESPONSES,
-            ),
-        ],
-    ),
 }

@@ -1,4 +1,5 @@
 from authlib.integrations.starlette_client import StarletteOAuth2App
+
 from tests.mocks.UserInfoMock import RealmAccess, UserInfo
 from tests.unit.utils.test_utils import UserType
 from utils import constants
@@ -22,7 +23,7 @@ class MockAuthClient(StarletteOAuth2App):
                 realm_access=realm_access,
             )
         if user_type == UserType.NON_ADMIN:
-            roles = [constants.CHAT_USER]
+            roles = [constants.VALIDATION_USER]
             realm_access = RealmAccess(roles=roles)
             user_info = UserInfo(
                 sub="genai_engine_user",

@@ -3,11 +3,11 @@ from unittest.mock import patch
 
 import pytest
 import torch
-
 from arthur_common.models.common_schemas import LLMTokenConsumption
 from arthur_common.models.enums import MetricType
-from schemas.internal_schemas import MetricResult
 from arthur_common.models.metric_schemas import MetricRequest
+
+from schemas.internal_schemas import MetricResult
 from scorer.metrics.relevance.relevance import (
     ResponseRelevanceScorer,
     UserQueryRelevanceScorer,
@@ -15,9 +15,6 @@ from scorer.metrics.relevance.relevance import (
 )
 from utils import utils
 
-os.environ[utils.constants.GENAI_ENGINE_OPENAI_EMBEDDINGS_ENDPOINTS_KEYS_ENV_VAR] = (
-    "1::2/::3"
-)
 os.environ[utils.constants.GENAI_ENGINE_OPENAI_GPT_ENDPOINTS_KEYS_ENV_VAR] = "1::2/::3"
 
 

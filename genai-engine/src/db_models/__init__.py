@@ -13,11 +13,6 @@ from db_models.auth_models import DatabaseApiKey, DatabaseUser
 from db_models.organization_models import DatabaseOrganization
 from db_models.configuration_models import DatabaseApplicationConfiguration
 from db_models.dataset_models import DatabaseDataset
-from db_models.document_models import (
-    DatabaseDocument,
-    DatabaseEmbedding,
-    DatabaseEmbeddingReference,
-)
 from db_models.inference_models import (
     DatabaseInference,
     DatabaseInferenceFeedback,
@@ -121,10 +116,6 @@ __all__ = [
     "DatabaseKeywordEntity",
     "DatabaseRegexEntity",
     "DatabaseToxicityScore",
-    # Document models
-    "DatabaseDocument",
-    "DatabaseEmbedding",
-    "DatabaseEmbeddingReference",
     # Auth models
     "DatabaseUser",
     "DatabaseApiKey",

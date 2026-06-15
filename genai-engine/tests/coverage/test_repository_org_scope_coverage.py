@@ -34,7 +34,6 @@ from repositories.span_repository import SpanRepository
 # fetch methods. New Pattern C surface should be added here.
 TASK_SCOPED_FETCHERS: list[tuple[type, str]] = [
     (InferenceRepository, "get_inference"),
-    (InferenceRepository, "get_conversation_by_id"),
     (SpanRepository, "get_trace_by_id"),
     (SpanRepository, "get_span_by_id"),
     (SpanRepository, "get_session_traces"),

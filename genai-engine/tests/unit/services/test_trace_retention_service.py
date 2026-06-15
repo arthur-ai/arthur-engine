@@ -11,7 +11,6 @@ from services.trace_retention_service import (
     CIRCUIT_BREAKER_THRESHOLD,
     MAX_TRACES_PER_RUN,
     ONE_DAY_SECONDS,
-    TRACE_RETENTION_ADVISORY_LOCK_KEY,
     TraceRetentionJob,
     TraceRetentionService,
     get_trace_retention_service,
@@ -37,9 +36,7 @@ def _mock_db_session_ctx(mock: MagicMock) -> MagicMock:
 def _mock_config_repo(mock_cls: MagicMock, retention_days: int = 30) -> MagicMock:
     """Configure a ConfigurationRepository mock that returns the given retention_days."""
     config = ApplicationConfiguration(
-        chat_task_id=None,
         default_currency="USD",
-        document_storage_configuration=None,
         max_llm_rules_per_task_count=10,
         trace_retention_days=retention_days,
     )
@@ -489,9 +486,7 @@ def test_interval_defaults_to_one_day_when_env_unset(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Without the env var, the service uses ONE_DAY_SECONDS as the interval."""
-    monkeypatch.delenv(
-        constants.TRACE_RETENTION_INTERVAL_HOURS_ENV_VAR, raising=False
-    )
+    monkeypatch.delenv(constants.TRACE_RETENTION_INTERVAL_HOURS_ENV_VAR, raising=False)
     service = _make_service()
     assert service._interval_seconds == ONE_DAY_SECONDS
 
@@ -514,12 +509,11 @@ def test_interval_clamps_to_minimum_when_env_too_small(
     with caplog.at_level(logging.WARNING, logger="services.trace_retention_service"):
         service = _make_service()
     assert (
-        service._interval_seconds
-        == constants.MIN_TRACE_RETENTION_INTERVAL_HOURS * 3600
+        service._interval_seconds == constants.MIN_TRACE_RETENTION_INTERVAL_HOURS * 3600
     )
-    assert any(
-        "below the minimum" in r.getMessage() for r in caplog.records
-    ), [r.getMessage() for r in caplog.records]
+    assert any("below the minimum" in r.getMessage() for r in caplog.records), [
+        r.getMessage() for r in caplog.records
+    ]
 
 
 @pytest.mark.unit_tests
@@ -528,9 +522,7 @@ def test_interval_falls_back_to_default_on_invalid_env_var(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Non-integer env var values fall back to ONE_DAY_SECONDS with a WARNING log."""
-    monkeypatch.setenv(
-        constants.TRACE_RETENTION_INTERVAL_HOURS_ENV_VAR, "not-a-number"
-    )
+    monkeypatch.setenv(constants.TRACE_RETENTION_INTERVAL_HOURS_ENV_VAR, "not-a-number")
     with caplog.at_level(logging.WARNING, logger="services.trace_retention_service"):
         service = _make_service()
     assert service._interval_seconds == ONE_DAY_SECONDS

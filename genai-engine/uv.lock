@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
+exclude-newer = "2026-06-12T14:57:08.553527Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -179,7 +179,7 @@ wheels = [
 
 [[package]]
 name = "arthur-genai-engine"
-version = "2.1.634"
+version = "2.1.638"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },

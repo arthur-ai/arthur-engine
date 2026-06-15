@@ -26,9 +26,6 @@ from auth.auth_constants import OAUTH_CLIENT_NAME
 from auth.jwk_client import JWKClient
 from clients.auth.abc_keycloak_client import ABCAuthClient
 from clients.auth.keycloak_client import KeycloakClient
-from clients.s3.azure_client import AzureBlobStorageClient
-from clients.s3.InMemoryS3Client import InMemoryClient
-from clients.s3.S3Client import S3Client
 from config.config import Config
 from config.database_config import DatabaseConfig
 from config.keycloak_config import KeyCloakSettings
@@ -38,10 +35,9 @@ from repositories.configuration_repository import ConfigurationRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
-from schemas.enums import DocumentStorageEnvironment, LLMMetadataSortField
+from schemas.enums import LLMMetadataSortField
 from schemas.internal_schemas import (
     ApplicationConfiguration,
-    DocumentStorageConfiguration,
     Task,
 )
 from schemas.request_schemas import (
@@ -75,7 +71,6 @@ from utils.model_load import (
 from utils.utils import (
     get_auth_metadata_uri,
     get_env_var,
-    is_local_environment,
     seed_database,
 )
 
@@ -261,59 +256,6 @@ def get_keycloak_client() -> Generator[ABCAuthClient, None, None]:
     keycloak_client = KeycloakClient(keycloak_settings)
     keycloak_client.get_genai_engine_realm_admin_connection()
     yield keycloak_client
-
-
-def get_s3_client(
-    application_config: ApplicationConfiguration = Depends(get_application_config),
-) -> S3Client | AzureBlobStorageClient | InMemoryClient:
-    client = s3_client_from_config(application_config.document_storage_configuration)
-    if not is_local_environment() and type(client) == InMemoryClient:
-        raise HTTPException(
-            status_code=400,
-            detail="You cannot perform file operations without a valid document storage configuration",
-        )
-    return client
-
-
-def s3_client_from_config(
-    doc_storage_config: DocumentStorageConfiguration | None,
-) -> S3Client | AzureBlobStorageClient | InMemoryClient:
-    if doc_storage_config is None:
-        return InMemoryClient()
-    elif (
-        doc_storage_config.document_storage_environment
-        == DocumentStorageEnvironment.AWS
-    ):
-        if (
-            doc_storage_config.bucket_name is None
-            or doc_storage_config.assumable_role_arn is None
-        ):
-            raise HTTPException(
-                status_code=400,
-                detail="Bucket name and assumable role ARN are required for AWS document storage configuration",
-            )
-        return S3Client(
-            doc_storage_config.bucket_name,
-            doc_storage_config.assumable_role_arn,
-        )
-    elif (
-        doc_storage_config.document_storage_environment
-        == DocumentStorageEnvironment.AZURE
-    ):
-        if (
-            doc_storage_config.connection_string is None
-            or doc_storage_config.container_name is None
-        ):
-            raise HTTPException(
-                status_code=400,
-                detail="Connection string and container name are required for Azure document storage configuration",
-            )
-        return AzureBlobStorageClient(
-            doc_storage_config.connection_string,
-            doc_storage_config.container_name,
-        )
-    else:
-        raise NotImplementedError(doc_storage_config.document_storage_environment)
 
 
 def get_task_repository(

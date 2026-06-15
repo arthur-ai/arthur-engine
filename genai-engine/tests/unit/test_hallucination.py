@@ -3,11 +3,12 @@ from unittest import mock
 from unittest.mock import MagicMock, patch
 
 import pytest
+from arthur_common.models.common_schemas import LLMTokenConsumption
+from arthur_common.models.enums import RuleResultEnum, RuleType
 from langchain_core.messages.ai import AIMessage
 from langchain_openai import AzureChatOpenAI
-from arthur_common.models.common_schemas import LLMTokenConsumption
+
 from schemas.custom_exceptions import LLMContentFilterException, LLMExecutionException
-from arthur_common.models.enums import RuleResultEnum, RuleType
 from schemas.scorer_schemas import ScoreRequest
 from scorer.checks.hallucination.v2 import (
     HallucinationClaimsV2,
@@ -15,7 +16,6 @@ from scorer.checks.hallucination.v2 import (
 )
 from utils import constants
 
-os.environ[constants.GENAI_ENGINE_OPENAI_EMBEDDINGS_ENDPOINTS_KEYS_ENV_VAR] = "1::2/::3"
 os.environ[constants.GENAI_ENGINE_OPENAI_GPT_ENDPOINTS_KEYS_ENV_VAR] = "1::2/::3"
 os.environ[constants.GENAI_ENGINE_OPENAI_PROVIDER_ENV_VAR] = "Azure"
 
@@ -113,8 +113,8 @@ def test_claim_and_nonclaims_v2(
         context="Some context",
         llm_response="""Isaac Newton built on the principles put forth by Galileo when formulating the laws of gravity.
 
-    - hello. 
-    - hi, how are you? 
+    - hello.
+    - hi, how are you?
     - I'm fine thanks and you?""",
     )
 
@@ -198,7 +198,9 @@ def test_all_claims_invalid_v2(
 @patch.object(AzureChatOpenAI, "__init__", lambda *args, **kwargs: None)
 @pytest.mark.unit_tests
 def test_all_dialog(
-    mock_llm_chain: MagicMock, mock_get_llm_executor, claim_classifier_embedding_model
+    mock_llm_chain: MagicMock,
+    mock_get_llm_executor,
+    claim_classifier_embedding_model,
 ):
     """Case where an LLM is not making a claim because it is just giving dialog."""
 
@@ -224,7 +226,9 @@ def test_all_dialog(
 @patch.object(AzureChatOpenAI, "__init__", lambda *args, **kwargs: None)
 @pytest.mark.unit_tests
 def test_all_nonclaims(
-    mock_llm_chain: MagicMock, mock_get_llm_executor, claim_classifier_embedding_model
+    mock_llm_chain: MagicMock,
+    mock_get_llm_executor,
+    claim_classifier_embedding_model,
 ):
     """Case where an LLM is not making a claim because it is saying it cannot answer"""
 

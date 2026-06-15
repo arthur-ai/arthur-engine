@@ -12,9 +12,6 @@ from starlette.responses import Response
 from config.extra_features import extra_feature_config
 from dependencies import get_application_config, get_db_session, get_org_scope, logger
 from repositories.configuration_repository import ConfigurationRepository
-from repositories.metrics_repository import MetricRepository
-from repositories.rules_repository import RuleRepository
-from repositories.tasks_repository import TaskRepository
 from repositories.usage_repository import UsageRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
@@ -126,17 +123,8 @@ def update_configuration(
     body: ApplicationConfigurationUpdateRequest,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    application_config: ApplicationConfiguration = Depends(get_application_config),
 ) -> ApplicationConfigurationResponse:
     try:
-        if body.chat_task_id:
-            tasks_repo = TaskRepository(
-                db_session,
-                RuleRepository(db_session),
-                MetricRepository(db_session),
-                application_config,
-            )
-            tasks_repo.get_db_task_by_id(body.chat_task_id)
         config_repo = ConfigurationRepository(db_session)
 
         new_config = config_repo.update_configurations(body)

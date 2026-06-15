@@ -2,6 +2,36 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 06/15/2026
+- **BREAKING CHANGE** for **URL**: /api/chat/  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/chat/context/{inference_id}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/chat/conversations  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/chat/default_task  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/chat/default_task  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/chat/feedback/{inference_id}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/chat/files  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/chat/files  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /api/chat/files/{file_id}  api path removed without deprecation
+- **CHANGE** for **URL**: /api/v2/configuration  removed the optional property 'chat_task_id' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/configuration  removed the optional property 'document_storage_configuration' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/configuration  removed the request property 'chat_task_id'
+- **CHANGE** for **URL**: /api/v2/configuration  removed the request property 'document_storage_configuration'
+- **CHANGE** for **URL**: /api/v2/configuration  removed the optional property 'chat_task_id' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/configuration  removed the optional property 'document_storage_configuration' from the response with the '200' status
+- **CHANGE** for Component/Schema:  removed the schema 'Body_upload_embeddings_file_api_chat_files_post'
+- **CHANGE** for Component/Schema:  removed the schema 'ChatDefaultTaskRequest'
+- **CHANGE** for Component/Schema:  removed the schema 'ChatDefaultTaskResponse'
+- **CHANGE** for Component/Schema:  removed the schema 'ChatDocumentContext'
+- **CHANGE** for Component/Schema:  removed the schema 'ChatRequest'
+- **CHANGE** for Component/Schema:  removed the schema 'ChatResponse'
+- **CHANGE** for Component/Schema:  removed the schema 'ConversationBaseResponse'
+- **CHANGE** for Component/Schema:  removed the schema 'DocumentStorageConfigurationResponse'
+- **CHANGE** for Component/Schema:  removed the schema 'DocumentStorageConfigurationUpdateRequest'
+- **CHANGE** for Component/Schema:  removed the schema 'DocumentStorageEnvironment'
+- **CHANGE** for Component/Schema:  removed the schema 'ExternalDocument'
+- **CHANGE** for Component/Schema:  removed the schema 'FileUploadResult'
+- **CHANGE** for Component/Schema:  removed the schema 'Page_ConversationBaseResponse_'
+
 # 06/09/2026
 - **CHANGE** for Component/Schema:  removed the schema 'EvalType-Input'
 - **CHANGE** for Component/Schema:  removed the schema 'arthur_common__models__enums__EvalType'

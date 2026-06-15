@@ -11,9 +11,7 @@ from arthur_common.models.enums import RuleResultEnum
 from langchain_community.callbacks import get_openai_callback
 from langchain_openai import (
     AzureChatOpenAI,
-    AzureOpenAIEmbeddings,
     ChatOpenAI,
-    OpenAIEmbeddings,
 )
 from opentelemetry import trace
 from pydantic.types import SecretStr
@@ -82,9 +80,6 @@ class LLMExecutor:
 
         self.gpt_hosts = llm_config.GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS
 
-        self.embeddings_hosts = (
-            llm_config.GENAI_ENGINE_OPENAI_EMBEDDINGS_NAMES_ENDPOINTS_KEYS
-        )
         if self.azure_openai_enabled:
             self.api_version = llm_config.OPENAI_API_VERSION
 
@@ -186,31 +181,6 @@ class LLMExecutor:
             return model.model_name in constants.OPENAI_STRUCTURED_OUTPUT_MODELS
 
         return False
-
-    def get_embeddings_model(self) -> AzureOpenAIEmbeddings | OpenAIEmbeddings | None:
-        model_name, endpoint, key = self._get_random_connection_details(
-            self.embeddings_hosts or "",
-        )
-        if not model_name:
-            raise ValueError(
-                "Model name is required for OpenAI embeddings. \
-                Properly set up the GENAI_ENGINE_OPENAI_EMBEDDINGS_NAMES_ENDPOINTS_KEYS environment variable.",
-            )
-        model: AzureOpenAIEmbeddings | OpenAIEmbeddings | None = None
-        if self.azure_openai_enabled:
-            model = AzureOpenAIEmbeddings(
-                model=model_name,
-                azure_endpoint=endpoint,
-                api_key=key,
-            )
-        elif self.openai_enabled:
-            model = OpenAIEmbeddings(
-                model=model_name,
-                base_url=endpoint,
-                api_key=key,
-                openai_api_type="openai",
-            )
-        return model
 
     @tracer.start_as_current_span("OpenAI")
     def execute(

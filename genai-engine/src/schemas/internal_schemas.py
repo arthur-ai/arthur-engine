@@ -47,8 +47,6 @@ from arthur_common.models.response_schemas import (
     AgentMetadataResponse,
     ApiKeyResponse,
     BaseDetailsResponse,
-    ChatDocumentContext,
-    ExternalDocument,
     ExternalInference,
     ExternalInferencePrompt,
     ExternalInferenceResponse,
@@ -98,9 +96,6 @@ from db_models import (
     DatabaseApiKey,
     DatabaseApplicationConfiguration,
     DatabaseDataset,
-    DatabaseDocument,
-    DatabaseEmbedding,
-    DatabaseEmbeddingReference,
     DatabaseHallucinationClaim,
     DatabaseInference,
     DatabaseInferenceFeedback,
@@ -157,7 +152,6 @@ from schemas.base_experiment_schemas import DatasetRef, EvalRef, ExperimentStatu
 from schemas.common_schemas import NewDatasetVersionRowColumnItemRequest
 from schemas.enums import (
     ApplicationConfigurations,
-    DocumentStorageEnvironment,
     RagAPIKeyAuthenticationProviderEnum,
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
@@ -213,7 +207,6 @@ from schemas.response_schemas import (
     DatasetVersionResponse,
     DatasetVersionRowColumnItemResponse,
     DatasetVersionRowResponse,
-    DocumentStorageConfigurationResponse,
     ListDatasetVersionsResponse,
     RagProviderConfigurationResponse,
     RagSearchSettingConfigurationResponse,
@@ -1732,80 +1725,6 @@ class ValidationRequest(BaseModel):
         return self.response if self.response else self.prompt
 
 
-class Document(BaseModel):
-    id: str
-    owner_id: str
-    type: str
-    name: str
-    path: str
-    is_global: bool
-
-    @staticmethod
-    def _from_database_model(x: DatabaseDocument) -> "Document":
-        return Document(
-            id=x.id,
-            owner_id=x.owner_id,
-            type=x.type,
-            name=x.name,
-            path=x.path,
-            is_global=x.is_global,
-        )
-
-    def _to_response_model(self) -> ExternalDocument:
-        return ExternalDocument(
-            id=self.id,
-            name=self.name,
-            type=self.type,
-            owner_id=self.owner_id,
-        )
-
-
-class Embedding(BaseModel):
-    id: str
-    document_id: str
-    text: str
-    seq_num: int
-    embedding: List[float]
-    owner_id: Optional[str] = None
-
-    @classmethod
-    def _from_database_model(cls, e: DatabaseEmbedding) -> "Embedding":
-        return cls(
-            id=e.id,
-            document_id=e.document_id,
-            text=e.text,
-            seq_num=e.seq_num,
-            embedding=[float(e.embedding)],
-            owner_id=e.documents.owner_id,
-        )
-
-    def _to_reference_database_model(
-        self,
-        inference_id: str,
-    ) -> DatabaseEmbeddingReference:
-        return DatabaseEmbeddingReference(
-            id=str(uuid.uuid4()),
-            inference_id=inference_id,
-            embedding_id=self.id,
-        )
-
-    def _to_response_model(self) -> ChatDocumentContext:
-        return ChatDocumentContext(
-            id=self.document_id,
-            seq_num=self.seq_num,
-            context=self.text,
-        )
-
-
-class AugmentedRetrieval(BaseModel):
-    messages: List[str] = []
-    embeddings: List[Embedding] = []
-
-    def prompts_to_str(self) -> str:
-        """converts the prompt templates to a string"""
-        return "\n".join(self.messages)
-
-
 class User(BaseModel):
     id: str
     email: str
@@ -1839,7 +1758,6 @@ class User(BaseModel):
                 if role.name
                 in [
                     constants.TASK_ADMIN,
-                    constants.CHAT_USER,
                 ]
             ],
         )
@@ -1848,26 +1766,8 @@ class User(BaseModel):
         return set([role.name.upper() for role in self.roles])
 
 
-class DocumentStorageConfiguration(BaseModel):
-    document_storage_environment: DocumentStorageEnvironment
-    connection_string: Optional[str] = None
-    container_name: Optional[str] = None
-    bucket_name: Optional[str] = None
-    assumable_role_arn: Optional[str] = None
-
-    def _to_response_model(self) -> DocumentStorageConfigurationResponse:
-        return DocumentStorageConfigurationResponse(
-            storage_environment=self.document_storage_environment,
-            bucket_name=self.bucket_name,
-            container_name=self.container_name,
-            assumable_role_arn=self.assumable_role_arn,
-        )
-
-
 class ApplicationConfiguration(BaseModel):
-    chat_task_id: Optional[str] = None
     default_currency: Optional[str] = None
-    document_storage_configuration: Optional[DocumentStorageConfiguration] = None
     max_llm_rules_per_task_count: int
     trace_retention_days: int
 
@@ -1875,48 +1775,8 @@ class ApplicationConfiguration(BaseModel):
     def _from_database_model(
         configs: list[DatabaseApplicationConfiguration],
     ) -> "ApplicationConfiguration":
-        doc_storage = None
         max_llm_rules_per_task_count = constants.DEFAULT_MAX_LLM_RULES_PER_TASK
         config_dict = {c.name: c.value for c in configs}
-
-        if ApplicationConfigurations.DOCUMENT_STORAGE_ENV in config_dict:
-            storage_env_config = config_if_exists(
-                ApplicationConfigurations.DOCUMENT_STORAGE_ENV,
-                configs,
-            )
-            doc_storage = DocumentStorageConfiguration(
-                document_storage_environment=DocumentStorageEnvironment(
-                    storage_env_config,
-                ),
-            )
-
-            container_name_config = config_if_exists(
-                ApplicationConfigurations.DOCUMENT_STORAGE_CONTAINER_NAME,
-                configs,
-            )
-            if container_name_config is not None:
-                doc_storage.container_name = container_name_config
-
-            connection_string_config = config_if_exists(
-                ApplicationConfigurations.DOCUMENT_STORAGE_CONNECTION_STRING,
-                configs,
-            )
-            if connection_string_config is not None:
-                doc_storage.connection_string = connection_string_config
-
-            bucket_name_config = config_if_exists(
-                ApplicationConfigurations.DOCUMENT_STORAGE_BUCKET_NAME,
-                configs,
-            )
-            if bucket_name_config is not None:
-                doc_storage.bucket_name = bucket_name_config
-
-            role_arn_config = config_if_exists(
-                ApplicationConfigurations.DOCUMENT_STORAGE_ROLE_ARN,
-                configs,
-            )
-            if role_arn_config is not None:
-                doc_storage.assumable_role_arn = role_arn_config
 
         if ApplicationConfigurations.MAX_LLM_RULES_PER_TASK_COUNT in config_dict:
             config_value = config_if_exists(
@@ -1943,25 +1803,14 @@ class ApplicationConfiguration(BaseModel):
         default_currency = default_currency.strip().upper()
 
         return ApplicationConfiguration(
-            chat_task_id=config_if_exists(
-                ApplicationConfigurations.CHAT_TASK_ID,
-                configs,
-            ),
             default_currency=default_currency,
-            document_storage_configuration=doc_storage,
             max_llm_rules_per_task_count=max_llm_rules_per_task_count,
             trace_retention_days=trace_retention_days,
         )
 
     def _to_response_model(self) -> ApplicationConfigurationResponse:
         return ApplicationConfigurationResponse(
-            chat_task_id=self.chat_task_id,
             default_currency=self.default_currency,
-            document_storage_configuration=(
-                self.document_storage_configuration._to_response_model()
-                if self.document_storage_configuration is not None
-                else None
-            ),
             max_llm_rules_per_task_count=self.max_llm_rules_per_task_count,
             trace_retention_days=self.trace_retention_days,
             allowed_trace_retention_days=constants.ALLOWED_TRACE_RETENTION_DAYS,

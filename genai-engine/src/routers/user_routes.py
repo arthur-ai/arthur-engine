@@ -50,8 +50,8 @@ user_identity_routes = APIRouter(
 
 @user_management_routes.post(
     "",
-    description=f"Creates a new user with specific roles. The available roles are {constants.TASK_ADMIN} "
-    f"and {constants.CHAT_USER}. The 'temporary' field is for indicating if the user password needs to be reset at the first login.",
+    description=f"Creates a new user with specific roles. The available role is {constants.TASK_ADMIN}. "
+    "The 'temporary' field is for indicating if the user password needs to be reset at the first login.",
 )
 @permission_checker(permissions=PermissionLevelsEnum.USER_WRITE.value)
 def create_user(

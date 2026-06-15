@@ -29,26 +29,9 @@ class RuleScoringMethod(str, Enum):
     BINARY = "binary"
 
 
-class DocumentType(str, Enum):
-    PDF = "pdf"
-    CSV = "csv"
-    TXT = "txt"
-
-
-class DocumentStorageEnvironment(str, Enum):
-    AWS = "aws"
-    AZURE = "azure"
-
-
 # These are keys in config key : value pairs
 class ApplicationConfigurations(str, Enum):
-    CHAT_TASK_ID = "chat_task_id"
     DEFAULT_CURRENCY = "default_currency"
-    DOCUMENT_STORAGE_ENV = "document_storage_environment"
-    DOCUMENT_STORAGE_BUCKET_NAME = "document_storage_bucket_name"
-    DOCUMENT_STORAGE_ROLE_ARN = "document_storage_assumable_role_arn"
-    DOCUMENT_STORAGE_CONTAINER_NAME = "document_storage_container_name"
-    DOCUMENT_STORAGE_CONNECTION_STRING = "document_storage_connection_string"
     MAX_LLM_RULES_PER_TASK_COUNT = "max_llm_rules_per_task_count"
     TRACE_RETENTION_DAYS = "trace_retention_days"
     CHATBOT_BLACKLIST_ENDPOINTS = "chatbot_blacklist_endpoints"
@@ -74,13 +57,6 @@ class PermissionLevelsEnum(Enum):
     API_KEY_WRITE = frozenset([constants.ORG_ADMIN, constants.ADMIN_KEY])
     APP_CONFIG_READ = frozenset([constants.ORG_ADMIN, constants.ORG_AUDITOR])
     APP_CONFIG_WRITE = frozenset([constants.ORG_ADMIN])
-    CHAT_WRITE = frozenset(
-        [
-            constants.ORG_ADMIN,
-            constants.TASK_ADMIN,
-            constants.CHAT_USER,
-        ],
-    )
     DEFAULT_RULES_WRITE = frozenset(
         [
             constants.ORG_ADMIN,
@@ -109,7 +85,6 @@ class PermissionLevelsEnum(Enum):
             constants.ORG_ADMIN,
             constants.TASK_ADMIN,
             constants.VALIDATION_USER,
-            constants.CHAT_USER,
             constants.TENANT_USER,
         ],
     )
@@ -126,7 +101,6 @@ class PermissionLevelsEnum(Enum):
             constants.ORG_ADMIN,
             constants.TASK_ADMIN,
             constants.VALIDATION_USER,
-            constants.CHAT_USER,
             constants.TENANT_USER,
         ],
     )
@@ -137,7 +111,6 @@ class PermissionLevelsEnum(Enum):
             constants.DEFAULT_RULE_ADMIN,
             constants.TASK_ADMIN,
             constants.VALIDATION_USER,
-            constants.CHAT_USER,
         ],
     )
     TASK_READ = frozenset(

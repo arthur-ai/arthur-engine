@@ -1,13 +1,9 @@
-from unittest.mock import patch
-
 import httpx
 import openai
 import pytest
 from langchain_openai import (
     AzureChatOpenAI,
-    AzureOpenAIEmbeddings,
     ChatOpenAI,
-    OpenAIEmbeddings,
 )
 from pydantic.types import SecretStr
 
@@ -35,24 +31,6 @@ from tests.constants import (
 def test_get_gpt_model(expected_instance, openai_executor: LLMExecutor):
     gpt_model = openai_executor.get_gpt_model()
     assert isinstance(gpt_model, expected_instance)
-
-
-@pytest.mark.parametrize(
-    "expected_instance, openai_executor",
-    [
-        (OpenAIEmbeddings, DEFAULT_VANILLA_OPENAI_SETTINGS),
-        (AzureOpenAIEmbeddings, DEFAULT_AZURE_OPENAI_SETTINGS),
-    ],
-    indirect=["openai_executor"],
-)
-@pytest.mark.unit_tests
-def test_get_embeddings_model(expected_instance, openai_executor: LLMExecutor):
-    with patch(
-        "config.extra_features.extra_feature_config.CHAT_ENABLED",
-        return_value=True,
-    ):
-        embedding_model = openai_executor.get_embeddings_model()
-        assert isinstance(embedding_model, expected_instance)
 
 
 @pytest.mark.parametrize(

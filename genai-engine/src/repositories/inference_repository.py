@@ -4,20 +4,13 @@ from datetime import datetime
 from typing import List, Optional
 
 from arthur_common.models.enums import PaginationSortMethod, RuleResultEnum, RuleType
-from arthur_common.models.response_schemas import (
-    ConversationBaseResponse,
-    ConversationResponse,
-)
 from fastapi import HTTPException
-from fastapi_pagination import Page, Params
-from fastapi_pagination.ext.sqlalchemy import paginate
 from opentelemetry import trace
-from sqlalchemy import and_, asc, desc, func, or_, select
+from sqlalchemy import and_, asc, desc, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased, selectinload
 
 from db_models import (
-    DatabaseEmbeddingReference,
     DatabaseInference,
     DatabaseInferencePrompt,
     DatabaseInferenceResponse,
@@ -30,7 +23,6 @@ from db_models.rule_result_models import DatabaseRuleResultDetail
 from repositories.organizations_repository import lookup_org_id
 from schemas.custom_exceptions import AlreadyValidatedException
 from schemas.internal_schemas import (
-    Embedding,
     Inference,
     InferencePrompt,
     InferenceResponse,
@@ -46,7 +38,8 @@ tracer = trace.get_tracer(__name__)
 
 
 def _stamp_org_id_on_prompt(
-    db_prompt: Optional[DatabaseInferencePrompt], org_id: uuid.UUID
+    db_prompt: Optional[DatabaseInferencePrompt],
+    org_id: uuid.UUID,
 ) -> None:
     if db_prompt is None:
         return
@@ -57,7 +50,8 @@ def _stamp_org_id_on_prompt(
 
 
 def _stamp_org_id_on_response(
-    db_response: Optional[DatabaseInferenceResponse], org_id: uuid.UUID
+    db_response: Optional[DatabaseInferenceResponse],
+    org_id: uuid.UUID,
 ) -> None:
     if db_response is None:
         return
@@ -68,7 +62,8 @@ def _stamp_org_id_on_response(
 
 
 def _stamp_org_id_on_rule_details(
-    details: DatabaseRuleResultDetail, org_id: uuid.UUID
+    details: DatabaseRuleResultDetail,
+    org_id: uuid.UUID,
 ) -> None:
     details.org_id = org_id
     for c in details.claims or []:
@@ -103,7 +98,8 @@ class InferenceRepository:
         # to enforce scope for tenant callers. Admin (org_scope is None) skips.
         if org_scope is not None:
             q = q.join(
-                DatabaseTask, DatabaseTask.id == DatabaseInference.task_id
+                DatabaseTask,
+                DatabaseTask.id == DatabaseInference.task_id,
             ).filter(DatabaseTask.org_id == org_scope)
         inference = q.first()
         if not inference:
@@ -142,7 +138,8 @@ class InferenceRepository:
         # join filter here so this repo method is safe to call from any caller.
         if org_scope is not None:
             stmt = stmt.join(
-                DatabaseTask, DatabaseTask.id == DatabaseInference.task_id
+                DatabaseTask,
+                DatabaseTask.id == DatabaseInference.task_id,
             ).filter(DatabaseTask.org_id == org_scope)
 
         # Rule types and rule results need this join as a prereq to their later joins
@@ -429,7 +426,7 @@ class InferenceRepository:
                 lookup_org_id(
                     self.db_session,
                     select(DatabaseTask.org_id).where(
-                        DatabaseTask.id == db_inference.task_id
+                        DatabaseTask.id == db_inference.task_id,
                     ),
                     default=DEFAULT_ORG_ID,
                 )
@@ -465,86 +462,6 @@ class InferenceRepository:
             )
 
         return inference_response
-
-    def save_inference_document_context(
-        self,
-        inference_id: str,
-        context_embeddings: list[Embedding],
-    ) -> None:
-        embedding_references = [
-            e._to_reference_database_model(inference_id) for e in context_embeddings
-        ]
-        self.db_session.add_all(embedding_references)
-        self.db_session.commit()
-
-    def get_inference_document_context(self, inference_id: str) -> list[Embedding]:
-        inference = self.get_inference(inference_id)
-        query = self.db_session.query(DatabaseEmbeddingReference).where(
-            DatabaseEmbeddingReference.inference_id == inference.id,
-        )
-        return [Embedding._from_database_model(e.embedding) for e in query.all()]
-
-    def get_all_user_conversations(
-        self,
-        user_id: str,
-        query_params: Params = Params(),
-    ) -> Page[ConversationBaseResponse]:
-        subquery = (
-            self.db_session.query(
-                DatabaseInference.conversation_id,
-                func.max(DatabaseInference.updated_at).label("newest_entry"),
-            )
-            .filter(DatabaseInference.user_id == user_id)
-            .group_by(DatabaseInference.conversation_id)
-            .subquery("t2")
-        )
-
-        query = self.db_session.query(DatabaseInference).join(
-            subquery,
-            and_(
-                DatabaseInference.conversation_id == subquery.c.conversation_id,
-                DatabaseInference.updated_at == subquery.c.newest_entry,
-            ),
-        )
-        paginated_user_inferences: Page[ConversationBaseResponse] = paginate(
-            self.db_session,
-            query,
-            params=query_params,
-            transformer=lambda inferences: [
-                ConversationBaseResponse(
-                    id=inference.conversation_id,
-                    updated_at=inference.updated_at,
-                )
-                for inference in inferences
-            ],
-        )
-        return paginated_user_inferences
-
-    def get_conversation_by_id(
-        self,
-        conversation_id: str,
-        user_id: str,
-        org_scope: uuid.UUID | None = None,
-    ) -> ConversationResponse | None:
-        q = self.db_session.query(DatabaseInference).filter(
-            DatabaseInference.conversation_id == conversation_id,
-            DatabaseInference.user_id == user_id,
-        )
-        if org_scope is not None:
-            q = q.join(
-                DatabaseTask, DatabaseTask.id == DatabaseInference.task_id
-            ).filter(DatabaseTask.org_id == org_scope)
-        inferences = q.order_by(DatabaseInference.updated_at.desc()).all()
-        if not inferences:
-            return None
-        return ConversationResponse(
-            id=conversation_id,
-            updated_at=inferences[0].updated_at,
-            inferences=[
-                Inference._from_database_model(inference)._to_response_model()
-                for inference in inferences
-            ],
-        )
 
     def delete_inference(self, inference_id: str) -> None:
         self.db_session.query(DatabaseInference).filter(

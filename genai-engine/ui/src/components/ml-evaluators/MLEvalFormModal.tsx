@@ -18,7 +18,12 @@ import Typography from "@mui/material/Typography";
 import { isAxiosError } from "axios";
 import React, { useEffect, useState } from "react";
 
-import type { CreateMLEvalRequest, EvalTypeInput } from "@/lib/api-client/api-client";
+import type { CreateMLEvalRequest } from "@/lib/api-client/api-client";
+
+// Local union for the ML eval type selector. Previously imported as
+// `EvalTypeInput` from the generated client; that alias was dropped from the
+// backend OpenAPI schema, so it's declared locally to preserve prior behavior.
+type EvalTypeInput = "llm_as_a_judge" | "pii" | "pii_v1" | "toxicity" | "prompt_injection";
 
 const ML_EVAL_TYPES = [
   { value: "pii", label: "PII Detection (Strict)" },

@@ -10,9 +10,6 @@ from schemas.internal_schemas import MetricResult
 from scorer.metrics.tool_selection.tool_selection import ToolSelectionCorrectnessScorer
 from utils import utils
 
-os.environ[utils.constants.GENAI_ENGINE_OPENAI_EMBEDDINGS_ENDPOINTS_KEYS_ENV_VAR] = (
-    "1::2/::3"
-)
 os.environ[utils.constants.GENAI_ENGINE_OPENAI_GPT_ENDPOINTS_KEYS_ENV_VAR] = "1::2/::3"
 
 

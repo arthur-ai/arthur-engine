@@ -83,11 +83,6 @@ Parameters:
     Type: String
     Description: "Connection strings for OpenAI GPT model endpoints. Must be in form \"DEPLOYMENT_NAME1::OPENAI_ENDPOINT1::SECRET_KEY1,DEPLOYMENT_NAME2::OPENAI_ENDPOINT2::SECRET_KEY2\"). The endpoint URLs must end with '/'. Many may be specified."
     NoEcho: true
-  GenaiEngineSecretOpenAIEmbeddingModelNamesEndpointsKeysARN:
-    Type: String
-    Description: "Connection strings for OpenAI text-embedding-ada-002 embedding model endpoints. Must be in form \"DEPLOYMENT_NAME1::OPENAI_ENDPOINT1::SECRET_KEY1,DEPLOYMENT_NAME2::OPENAI_ENDPOINT2::SECRET_KEY2\"). The URLs must end with '/'. Many may be specified. Leave blank if Chat is disabled."
-    NoEcho: true
-    Default: ''
   GenaiEngineSecretPostgresARN:
     Type: String
     Description: 'GenAI Engine secret Postgres ARN'
@@ -165,21 +160,6 @@ Parameters:
       - 'false'
     Default: 'true'
     Description: 'Enable PII model v2'
-  ChatEnabled:
-    Type: String
-    Description: 'Enable Arthur Chat'
-    AllowedValues:
-      - 'enabled'
-      - 'disabled'
-    Default: 'disabled'
-  DefaultS3BucketName:
-    Type: String
-    Description: 'Default S3 bucket name to use for the platform'
-    Default: ''
-  DefaultS3AssumableRoleARN:
-    Type: String
-    Description: 'An assumable role ARN for accessing the default S3 bucket'
-    Default: ''
   GenaiEngineEC2TaskCPUValue:
     Type: Number
     Default: 8192
@@ -244,10 +224,8 @@ Parameters:
 
 Conditions:
   EnableAuthService: !Equals [ !Ref GenaiEngineAPIOnlyModeEnabled, 'disabled' ]
-  EnableChat: !Equals [ !Ref ChatEnabled, 'enabled' ]
   IsContainerRepositoryCredentialRequired: !Equals [ !Ref ContainerRepositoryCredentialRequired, 'true' ]
   ImportAuthServiceCertificate: !Not [ !Equals [ !Ref AuthLoadBalancerCertificateURL, '' ] ]
-  ImportGenaiEngineSecretOpenAIEmbeddingModelNamesEndpointsKeysARN: !Not [ !Equals [ !Ref GenaiEngineSecretOpenAIEmbeddingModelNamesEndpointsKeysARN, '' ] ]
   ImportGenaiEngineSecretRecaptchaApiKeyARN: !Not [ !Equals [ !Ref GenaiEngineSecretRecaptchaApiKeyARN, '' ] ]
   UseInternalModelRepository: !Not [ !Equals [ !Ref GenaiEngineModelRepositoryURL, '' ] ]
   IsAuditLogEnabled: !Equals [ !Ref AuditLogEnabled, 'true' ]
@@ -386,21 +364,6 @@ Resources:
                 Value: 'arthur-genai-engine'
               - !Ref AWS::NoValue
             - !If
-              - EnableChat
-              - Name: 'CHAT_ENABLED'
-                Value: !Ref ChatEnabled
-              - !Ref AWS::NoValue
-            - !If
-              - EnableChat
-              - Name: 'DEFAULT_S3_BUCKET'
-                Value: !Ref DefaultS3BucketName
-              - !Ref AWS::NoValue
-            - !If
-              - EnableChat
-              - Name: 'DEFAULT_S3_ASSUMABLE_ROLE_ARN'
-                Value: !Ref DefaultS3AssumableRoleARN
-              - !Ref AWS::NoValue
-            - !If
               - ImportAuthServiceCertificate
               - Name: 'KEYCLOAK_SSL_CERT_DOWNLOAD_URL'
                 Value: !Ref AuthLoadBalancerCertificateURL
@@ -426,11 +389,6 @@ Resources:
               ValueFrom: !Ref GenaiEngineSecretAPIKeyARN
             - Name: 'GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS'
               ValueFrom: !Ref GenaiEngineSecretOpenAIGPTModelNamesEndpointsKeysARN
-            - !If
-              - ImportGenaiEngineSecretOpenAIEmbeddingModelNamesEndpointsKeysARN
-              - Name: 'GENAI_ENGINE_OPENAI_EMBEDDINGS_NAMES_ENDPOINTS_KEYS'
-                ValueFrom: !Ref GenaiEngineSecretOpenAIEmbeddingModelNamesEndpointsKeysARN
-              - !Ref AWS::NoValue
             - Name: 'POSTGRES_USER'
               ValueFrom: !Sub "${GenaiEngineSecretPostgresARN}:username::"
             - Name: 'POSTGRES_PASSWORD'

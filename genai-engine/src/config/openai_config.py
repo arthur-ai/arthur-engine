@@ -16,9 +16,6 @@ class OpenAISettings(BaseSettings):
     GENAI_ENGINE_OPENAI_RATE_LIMIT_TOKENS_PER_PERIOD: int
     GENAI_ENGINE_OPENAI_RATE_LIMIT_PERIOD_SECONDS: int
     GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS: str | None = Field(...)
-    GENAI_ENGINE_OPENAI_EMBEDDINGS_NAMES_ENDPOINTS_KEYS: str | None = Field(
-        default=None,
-    )
     OPENAI_API_VERSION: str | None = Field(default="2025-02-01-preview")
 
     model_config = SettingsConfigDict(
@@ -34,19 +31,6 @@ class OpenAISettings(BaseSettings):
         value: str | None,
     ) -> str:
         return _check_url(value, "GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS")
-
-    @classmethod
-    @field_validator("GENAI_ENGINE_OPENAI_EMBEDDINGS_NAMES_ENDPOINTS_KEYS")
-    def check_url_for_genai_engine_openai_embeddings_names_endpoints_keys(
-        cls,
-        value: str | None,
-    ) -> str:
-        if value:
-            return _check_url(
-                value,
-                "GENAI_ENGINE_OPENAI_EMBEDDINGS_NAMES_ENDPOINTS_KEYS",
-            )
-        return ""
 
 
 def _check_url(value: str | None, field_name: str) -> str:

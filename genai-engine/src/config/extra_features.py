@@ -5,7 +5,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class ExtraFeaturesSettings(BaseSettings):
-    CHAT_ENABLED: bool = Field(default=False, alias="CHAT_ENABLED")
     CHATBOT_ENABLED: bool = Field(default=True, alias="CHATBOT_ENABLED")
     # Aliased to the canonical env var so registration-time and the
     # handler's `Config.demo_mode()` check read the same source. The
@@ -21,7 +20,6 @@ class ExtraFeaturesSettings(BaseSettings):
     )
 
     @field_validator(
-        "CHAT_ENABLED",
         "CHATBOT_ENABLED",
         "DEMO_MODE",
         mode="before",
