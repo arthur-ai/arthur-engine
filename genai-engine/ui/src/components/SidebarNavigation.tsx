@@ -9,6 +9,7 @@ import {
   InsightsOutlined,
   ChevronRightOutlined,
   ChatOutlined,
+  SecurityOutlined,
 } from "@mui/icons-material";
 import { Link, Typography } from "@mui/material";
 import React from "react";
@@ -96,6 +97,7 @@ function buildNavigationSections(demoMode: boolean): NavigationSection[] {
           tourId: TOUR_IDS.navEvaluate,
           tourEvents: [TASK_TOUR_ACTIONS.evaluateOpened],
         },
+        { id: "guardrails", label: "Guardrails", icon: <SecurityOutlined /> },
         {
           id: "datasets",
           label: "Dataset",
