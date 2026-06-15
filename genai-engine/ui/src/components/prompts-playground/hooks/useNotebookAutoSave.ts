@@ -7,7 +7,7 @@ import { useApi } from "@/hooks/useApi";
 import { useNotebook, useSetNotebookStateMutation, useUpdateNotebookMutation } from "@/hooks/useNotebooks";
 import { useTask } from "@/hooks/useTask";
 import type { PromptExperimentDetail } from "@/lib/api-client/api-client";
-import { track, EVENT_NAMES } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 interface UseNotebookAutoSaveArgs {
   notebookId: string | null;
@@ -85,7 +85,7 @@ export function useNotebookAutoSave({
         hasUnsavedChangesRef.current = false;
         setSaveStatus("saved");
 
-        track(EVENT_NAMES.NOTEBOOK_SAVED, {
+        track("Notebook Saved", {
           notebook_id: notebookId,
           prompt_count: state.prompts.length,
           save_trigger: saveTrigger,
@@ -160,7 +160,7 @@ export function useNotebookAutoSave({
         request: { name: newName, description: notebook?.description },
       });
       setNotebookName(newName);
-      track(EVENT_NAMES.NOTEBOOK_RENAMED, { notebook_id: notebookId });
+      track("Notebook Renamed", { notebook_id: notebookId });
     },
     [notebookId, updateNotebookMutation, notebook?.description]
   );

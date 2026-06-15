@@ -17,7 +17,7 @@ import { useShallow } from "zustand/react/shallow";
 import { useWelcomeStore } from "../stores/welcome.store";
 
 import { useTask } from "@/hooks/useTask";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 export const TracesWelcomePage: React.FC = () => {
   const { task } = useTask();
@@ -35,7 +35,7 @@ export const TracesWelcomePage: React.FC = () => {
 
   const handleApiKeyClick = () => {
     welcomeStore.getState().setApiKeyClicked(true);
-    track(EVENT_NAMES.ONBOARDING_API_KEY_CLICKED, {
+    track("onboarding/api_key_clicked", {
       task_id: task?.id ?? taskId ?? "",
       source: "traces_welcome",
     });
@@ -48,7 +48,7 @@ export const TracesWelcomePage: React.FC = () => {
         await navigator.clipboard.writeText(task.id);
         welcomeStore.getState().setTaskIdCopied(true);
         enqueueSnackbar("Task ID copied to clipboard", { variant: "success" });
-        track(EVENT_NAMES.ONBOARDING_TASK_ID_COPIED, {
+        track("onboarding/task_id_copied", {
           task_id: task.id,
           source: "traces_welcome",
         });
@@ -60,7 +60,7 @@ export const TracesWelcomePage: React.FC = () => {
 
   const handleSkip = () => {
     welcomeStore.getState().setDismissed(true);
-    track(EVENT_NAMES.ONBOARDING_SKIP_SETUP_CLICKED, {
+    track("onboarding/skip_setup_clicked", {
       task_id: task?.id ?? taskId ?? "",
       source: "traces_welcome",
     });
@@ -628,7 +628,7 @@ export const TracesWelcomePage: React.FC = () => {
               disabled={!stepStatus.taskIdCopied}
               onClick={() => {
                 welcomeStore.getState().setDismissed(true);
-                track(EVENT_NAMES.ONBOARDING_VIEW_TRACES_CLICKED, {
+                track("onboarding/view_traces_clicked", {
                   task_id: task?.id ?? taskId ?? "",
                   source: "traces_welcome",
                 });

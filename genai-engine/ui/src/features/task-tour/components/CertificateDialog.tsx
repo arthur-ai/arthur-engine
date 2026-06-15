@@ -13,7 +13,7 @@ import { COURSE_NAME } from "../courseName";
 import { ArthurSeal } from "./arthur-seal";
 
 import { ArthurLogo } from "@/components/common/ArthurLogo";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 // Warm ink + parchment tones from the classic-diploma design. Kept as literals
 // because they're fixed brand-artwork values, not themeable surface colors.
@@ -104,7 +104,7 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
   // which one the user used, surfacing whether the explicit "Continue" button
   // or the easy-to-miss corner "X" is what people reach for.
   const handleClose = (method: "continue" | "dismiss") => {
-    track(EVENT_NAMES.ONBOARDING_WIZARD_CERTIFICATE_CLOSED, { method, course: COURSE_NAME });
+    track("onboarding/wizard_certificate_closed", { method, course: COURSE_NAME });
     onClose();
   };
 
@@ -281,7 +281,7 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
           color="secondary"
           startIcon={<DownloadIcon sx={{ fontSize: 16 }} />}
           onClick={() => {
-            track(EVENT_NAMES.ONBOARDING_WIZARD_CERTIFICATE_DOWNLOAD_CLICKED, { course: COURSE_NAME });
+            track("onboarding/wizard_certificate_download_clicked", { course: COURSE_NAME });
             downloadPng();
           }}
         >
@@ -294,7 +294,7 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
           href={linkedInShareHref}
           target="_blank"
           rel="noopener"
-          onClick={() => track(EVENT_NAMES.ONBOARDING_WIZARD_CERTIFICATE_SHARE_CLICKED, { destination: "linkedin", course: COURSE_NAME })}
+          onClick={() => track("onboarding/wizard_certificate_share_clicked", { destination: "linkedin", course: COURSE_NAME })}
           startIcon={<LinkedInIcon sx={{ fontSize: 16 }} />}
         >
           Share to LinkedIn
@@ -306,7 +306,7 @@ export function CertificateDialog({ open, recipientName = "Alex Rivera", issuedO
           href={xShareHref}
           target="_blank"
           rel="noopener"
-          onClick={() => track(EVENT_NAMES.ONBOARDING_WIZARD_CERTIFICATE_SHARE_CLICKED, { destination: "x", course: COURSE_NAME })}
+          onClick={() => track("onboarding/wizard_certificate_share_clicked", { destination: "x", course: COURSE_NAME })}
           startIcon={<XIcon sx={{ fontSize: 14 }} />}
         >
           Share to X

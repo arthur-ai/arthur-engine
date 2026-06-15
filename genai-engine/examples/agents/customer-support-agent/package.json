@@ -6,7 +6,7 @@
     "dev": "next dev --turbopack",
     "dev:agent": "mastra dev",
     "dev:ui": "next dev --turbopack",
-    "dev:debug": "LOG_LEVEL=debug npm run dev",
+    "dev:debug": "LOG_LEVEL=debug yarn dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -28,8 +28,8 @@
     "@octokit/rest": "^21.0.2",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/exporter-trace-otlp-proto": "^0.57.0",
-    "@opentelemetry/sdk-trace-node": "^1.29.0",
     "@opentelemetry/sdk-trace-base": "^1.29.0",
+    "@opentelemetry/sdk-trace-node": "^1.29.0",
     "ai": "^5.0.93",
     "axios": "^1.7.9",
     "libsql": "^0.5.22",
@@ -46,7 +46,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "concurrently": "^9.1.2",
+    "concurrently": "10.0.3",
     "dotenv": "^16.4.7",
     "eslint": "^9",
     "eslint-config-next": "15.3.2",
@@ -54,5 +54,5 @@
     "tsx": "^4.19.2",
     "typescript": "^5"
   },
-  "packageManager": "yarn@1.22.22+sha1.ac34549e6aa8e7ead463a7407e1c7390f61a6610"
+  "packageManager": "yarn@4.12.0"
 }

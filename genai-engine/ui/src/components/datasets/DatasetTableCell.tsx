@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import { CellContentModal } from "./CellContentModal";
 
 import { CELL_TRUNCATION_LENGTH } from "@/constants/datasetConstants";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 import { formatCellValue, formatFullValue } from "@/utils/datasetFormatters";
 
 interface DatasetTableCellProps {
@@ -24,7 +24,7 @@ export const DatasetTableCell: React.FC<DatasetTableCellProps> = ({ value, colum
 
   const handleOpenModal = (e: React.MouseEvent) => {
     e.stopPropagation();
-    track(EVENT_NAMES.DATASET_CELL_MODAL_OPENED, { dataset_id: datasetId });
+    track("dataset/cell_modal_opened", { dataset_id: datasetId });
     setIsModalOpen(true);
   };
 

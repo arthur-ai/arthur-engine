@@ -5,7 +5,7 @@ import { itemKey } from "./progress";
 import { buildTourConfig } from "./tour-config";
 
 import { createAnalyticsPlugin, createTour, createTourStatePlugin, type StepContext, type TourEngine, type TourStatePlugin } from "@/features/tour";
-import { track } from "@/services/amplitude";
+import { trackDynamic } from "@/services/analytics";
 
 export const TASK_TOUR_STORAGE_KEY = "arthur:task-tour:status";
 
@@ -53,7 +53,7 @@ export function useTaskTourEngine({ taskId, isEmpty }: UseTaskTourEngineOptions)
     });
     const created = createTour({
       config,
-      plugins: [createAnalyticsPlugin({ track, prefix: "task-tour" }), statePlugin, highlightsPlugin],
+      plugins: [createAnalyticsPlugin({ track: trackDynamic, prefix: "task-tour" }), statePlugin, highlightsPlugin],
     });
     setEngine(created);
     return () => {

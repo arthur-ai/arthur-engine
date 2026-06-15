@@ -1,7 +1,7 @@
 import { useApi } from "@/hooks/useApi";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { queryKeys } from "@/lib/queryKeys";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 import { deleteDataset } from "@/services/datasetService";
 
 export const useDeleteDatasetMutation = () => {
@@ -14,7 +14,7 @@ export const useDeleteDatasetMutation = () => {
     },
     invalidateQueries: [{ queryKey: queryKeys.datasets.search.all() }],
     onSuccess: (_, datasetId) => {
-      track(EVENT_NAMES.DATASET_DELETED, { dataset_id: datasetId });
+      track("dataset/deleted", { dataset_id: datasetId });
     },
     onError: (err) => {
       console.error("Failed to delete dataset:", err);
