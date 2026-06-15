@@ -3,7 +3,7 @@ import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, 
 import React from "react";
 
 import useSnackbar from "@/hooks/useSnackbar";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 import { formatFullValue } from "@/utils/datasetFormatters";
 
 interface CellContentModalProps {
@@ -23,7 +23,7 @@ export const CellContentModal: React.FC<CellContentModalProps> = ({ open, onClos
   const charCount = fullValue.length;
 
   const handleCopy = () => {
-    track(EVENT_NAMES.DATASET_CELL_COPIED, { dataset_id: datasetId });
+    track("dataset/cell_copied", { dataset_id: datasetId });
     navigator.clipboard.writeText(fullValue);
     showSnackbar("Copied to clipboard!", "success");
   };

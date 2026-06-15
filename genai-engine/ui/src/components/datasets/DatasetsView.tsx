@@ -22,7 +22,7 @@ import { useDatasets } from "@/hooks/useDatasets";
 import { usePagination } from "@/hooks/usePagination";
 import { useTask } from "@/hooks/useTask";
 import type { DatasetResponse, NewDatasetRequest } from "@/lib/api-client/api-client";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 export const DatasetsView: React.FC = () => {
   const { task } = useTask();
@@ -58,7 +58,7 @@ export const DatasetsView: React.FC = () => {
 
   const handleRowClick = useCallback(
     (dataset: DatasetResponse) => {
-      track(EVENT_NAMES.DATASET_SELECTED, {
+      track("dataset/selected", {
         dataset_id: dataset.id,
         task_id: task?.id,
       });
@@ -68,7 +68,7 @@ export const DatasetsView: React.FC = () => {
   );
 
   const handleOpenCreate = useCallback(() => {
-    track(EVENT_NAMES.DATASET_CREATE_OPENED, { task_id: task?.id });
+    track("dataset/create_opened", { task_id: task?.id });
     modals.openCreateModal();
   }, [modals, task?.id]);
 
@@ -133,7 +133,7 @@ export const DatasetsView: React.FC = () => {
         <DatasetsSearchBar
           value={search.searchQuery}
           onChange={(value) => {
-            track(EVENT_NAMES.DATASET_SEARCH_CHANGED, { task_id: task?.id });
+            track("dataset/search_changed", { task_id: task?.id });
             search.setSearchQuery(value);
           }}
         />
@@ -161,12 +161,12 @@ export const DatasetsView: React.FC = () => {
             datasets={datasets}
             sortOrder={sorting.sortOrder}
             onSort={() => {
-              track(EVENT_NAMES.DATASET_SORT_CHANGED, { task_id: task?.id });
+              track("dataset/sort_changed", { task_id: task?.id });
               sorting.handleSort();
             }}
             onRowClick={handleRowClick}
             onEdit={(dataset) => {
-              track(EVENT_NAMES.DATASET_EDIT_OPENED, { dataset_id: dataset.id, task_id: task?.id });
+              track("dataset/edit_opened", { dataset_id: dataset.id, task_id: task?.id });
               modals.openEditModal(dataset);
             }}
             onDelete={deleteMutation.mutateAsync}
@@ -189,12 +189,12 @@ export const DatasetsView: React.FC = () => {
             count={count}
             page={pagination.page}
             onPageChange={(event, page) => {
-              track(EVENT_NAMES.DATASET_PAGINATION_CHANGED, { task_id: task?.id });
+              track("dataset/pagination_changed", { task_id: task?.id });
               pagination.handlePageChange(event, page);
             }}
             rowsPerPage={pagination.rowsPerPage}
             onRowsPerPageChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-              track(EVENT_NAMES.DATASET_PAGINATION_CHANGED, { task_id: task?.id });
+              track("dataset/pagination_changed", { task_id: task?.id });
               pagination.handleRowsPerPageChange(event);
             }}
             rowsPerPageOptions={PAGE_SIZE_OPTIONS}

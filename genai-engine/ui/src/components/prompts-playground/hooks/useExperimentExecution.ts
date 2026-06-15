@@ -6,7 +6,7 @@ import { toExperimentPromptConfig } from "../utils/toExperimentPromptConfig";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import type { PromptExperimentDetail, PromptExperimentSummary } from "@/lib/api-client/api-client";
-import { track, EVENT_NAMES } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 interface UseExperimentExecutionArgs {
   experimentConfig: Partial<PromptExperimentDetail> | null;
@@ -164,12 +164,12 @@ export function useExperimentExecution({
 
       startPolling(newExperimentId);
 
-      track(EVENT_NAMES.EXPERIMENT_RUN_STARTED, {
+      track("Experiment Run Started", {
         prompt_count: promptConfigs.length,
         dataset_id: experimentConfig.dataset_ref?.id,
         eval_count: experimentConfig.eval_list?.length || 0,
       });
-      track(EVENT_NAMES.RUN_ALL_PROMPTS, {
+      track("Run All Prompts", {
         prompt_count: promptConfigs.length,
         config_mode: true,
       });
@@ -235,7 +235,7 @@ export function useExperimentExecution({
 
         startPolling(newExperimentId);
 
-        track(EVENT_NAMES.EXPERIMENT_RUN_STARTED, {
+        track("Experiment Run Started", {
           prompt_count: 1,
           dataset_id: experimentConfig.dataset_ref?.id,
           eval_count: experimentConfig.eval_list?.length || 0,
@@ -257,7 +257,7 @@ export function useExperimentExecution({
     const nonRunningPrompts = state.prompts.filter((prompt) => !prompt.running);
     const promptCount = nonRunningPrompts.length;
 
-    track(EVENT_NAMES.RUN_ALL_PROMPTS, {
+    track("Run All Prompts", {
       prompt_count: promptCount,
       config_mode: false,
     });

@@ -6,7 +6,7 @@ import { autoDetectDelimiter, parseCSVFull, parseCSVPreview } from "./import/csv
 import { ImportConfigurationStep } from "./import/ImportConfigurationStep";
 import { ImportPreviewStep } from "./import/ImportPreviewStep";
 
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 interface ImportDatasetModalProps {
   open: boolean;
@@ -79,16 +79,16 @@ export const ImportDatasetModal: React.FC<ImportDatasetModalProps> = ({ open, on
         setPreviewState({ data, validation });
 
         if (validation.isValid) {
-          track(EVENT_NAMES.DATASET_IMPORT_PREVIEWED, { dataset_id: datasetId, task_id: taskId });
+          track("dataset/import_previewed", { dataset_id: datasetId, task_id: taskId });
           setStep(1);
         } else {
-          track(EVENT_NAMES.DATASET_IMPORT_FAILED, { dataset_id: datasetId, task_id: taskId });
+          track("dataset/import_failed", { dataset_id: datasetId, task_id: taskId });
           setProcessingStatus("error");
           setErrorMessage(validation.errors.join("; "));
         }
       },
       (error) => {
-        track(EVENT_NAMES.DATASET_IMPORT_FAILED, { dataset_id: datasetId, task_id: taskId });
+        track("dataset/import_failed", { dataset_id: datasetId, task_id: taskId });
         setProcessingStatus("error");
         setErrorMessage(error);
       }
@@ -107,13 +107,13 @@ export const ImportDatasetModal: React.FC<ImportDatasetModalProps> = ({ open, on
       currentRowCount,
       (columns, rows) => {
         setProcessingStatus("idle");
-        track(EVENT_NAMES.DATASET_IMPORT_COMPLETED, { dataset_id: datasetId, task_id: taskId });
+        track("dataset/import_completed", { dataset_id: datasetId, task_id: taskId });
         onImport(columns, rows);
         resetState();
         onClose();
       },
       (error) => {
-        track(EVENT_NAMES.DATASET_IMPORT_FAILED, { dataset_id: datasetId, task_id: taskId });
+        track("dataset/import_failed", { dataset_id: datasetId, task_id: taskId });
         setProcessingStatus("error");
         setErrorMessage(error);
       }

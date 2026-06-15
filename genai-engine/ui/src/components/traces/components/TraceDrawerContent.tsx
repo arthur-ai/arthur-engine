@@ -22,7 +22,7 @@ import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import type { AgenticAnnotationResponse } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 import { computeTraceMetrics, getTrace } from "@/services/tracing";
 import { wait } from "@/utils";
 
@@ -53,7 +53,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
       return data;
     },
     onMutate: () => {
-      track(EVENT_NAMES.TRACING_REFRESH_METRICS_CLICKED, {
+      track("tracing/refresh_metrics_clicked", {
         level: "trace",
         trace_id: id,
         task_id: task?.id ?? "",
@@ -61,7 +61,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
     },
     onSuccess: (data) => {
       queryClient.setQueryData(["trace", id], data);
-      track(EVENT_NAMES.TRACING_REFRESH_METRICS_RESULT, {
+      track("tracing/refresh_metrics_result", {
         level: "trace",
         trace_id: id,
         task_id: task?.id ?? "",
@@ -69,7 +69,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
       });
     },
     onError: (error) => {
-      track(EVENT_NAMES.TRACING_REFRESH_METRICS_RESULT, {
+      track("tracing/refresh_metrics_result", {
         level: "trace",
         trace_id: id,
         task_id: task?.id ?? "",
@@ -104,7 +104,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
   };
 
   const handleAddToDataset = () => {
-    track(EVENT_NAMES.DATASET_ADD_TO_DATASET_STARTED, {
+    track("dataset/add_to_dataset_started", {
       task_id: task?.id ?? "",
       trace_id: id,
       source: "trace_actions",
@@ -112,7 +112,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
   };
 
   const handleOpenContinuousEvals = (traceId: string, taskId: string) => {
-    track(EVENT_NAMES.CONTINUOUS_EVALS_NEW_FROM_TRACE, {
+    track("continuous_evals/new_from_trace", {
       task_id: taskId,
       trace_id: traceId,
       source: "trace_actions",

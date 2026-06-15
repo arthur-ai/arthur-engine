@@ -1,7 +1,7 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { queryKeys } from "@/lib/queryKeys";
-import { getExperimentVariant } from "@/services/amplitude-experiment";
+import { getExperimentVariant } from "@/services/analytics";
 
 export const experimentVariantQueryOptions = ({ experimentName }: { experimentName: string }) => {
   return queryOptions({
