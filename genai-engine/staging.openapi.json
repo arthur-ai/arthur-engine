@@ -2119,6 +2119,24 @@
                             "format": "uuid",
                             "title": "Task Id"
                         }
+                    },
+                    {
+                        "name": "traceparent",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Optional W3C traceparent header. When supplied, the emitted guardrail span joins that trace, nested under its parent span; otherwise a trace is derived from the inference ID. OpenTelemetry-instrumented callers send this automatically.",
+                            "title": "Traceparent"
+                        },
+                        "description": "Optional W3C traceparent header. When supplied, the emitted guardrail span joins that trace, nested under its parent span; otherwise a trace is derived from the inference ID. OpenTelemetry-instrumented callers send this automatically."
                     }
                 ],
                 "requestBody": {
@@ -2198,6 +2216,24 @@
                             "format": "uuid",
                             "title": "Task Id"
                         }
+                    },
+                    {
+                        "name": "traceparent",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Optional W3C traceparent header. When supplied, the emitted guardrail span joins that trace, nested under its parent span; otherwise it joins the trace derived from the inference ID, under its prompt span. OpenTelemetry-instrumented callers send this automatically.",
+                            "title": "Traceparent"
+                        },
+                        "description": "Optional W3C traceparent header. When supplied, the emitted guardrail span joins that trace, nested under its parent span; otherwise it joins the trace derived from the inference ID, under its prompt span. OpenTelemetry-instrumented callers send this automatically."
                     }
                 ],
                 "requestBody": {
