@@ -203,7 +203,7 @@ spec:
         {{- if .Values.arthurGenaiEngineDeployment.auditLog.enabled }}
         - name: audit-logs
           persistentVolumeClaim:
-            claimName: {{ .Values.arthurGenaiEngineDeployment.auditLog.pvcName }}
+            claimName: arthur-genai-engine-audit-logs{{ if .Values.arthurResourceNameSuffix }}-{{ .Values.arthurResourceNameSuffix }}{{ end }}
         {{- end }}
       {{- with .Values.arthurGenaiEngineDeployment.genaiEnginePodAffinity }}
       affinity:

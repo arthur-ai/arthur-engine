@@ -181,10 +181,10 @@ When running GenAI Engine via the `arthur-genai-engine` Helm chart, audit logs c
 
 Set `arthurGenaiEngineDeployment.auditLog.enabled: true`. When enabled the chart:
 
-- Mounts the PVC named by `auditLog.pvcName` into each pod at `auditLog.mountPath` (both the [deployment](../../deployment/helm/genai-engine/templates/arthur-genai-engine-deployment.yaml) and the GPU [daemonset](../../deployment/helm/genai-engine/templates/arthur-genai-engine-daemonset.yaml)).
+- Creates a PVC and mounts it into each pod at `auditLog.mountPath` (both the [deployment](../../deployment/helm/genai-engine/templates/arthur-genai-engine-deployment.yaml) and the GPU [daemonset](../../deployment/helm/genai-engine/templates/arthur-genai-engine-daemonset.yaml)).
 - Sets `AUDIT_LOG_ENABLED=true` and `AUDIT_LOG_OVERRIDE_PATH=<mountPath>` on the container, so the rotating file handler writes onto the mounted volume.
 
-The PVC itself is defined in [arthur-genai-engine-audit-logs-pvc.yaml](../../deployment/helm/genai-engine/templates/arthur-genai-engine-audit-logs-pvc.yaml) with access mode `ReadWriteMany` and storage class `auditLog.storageClassName`. The storage class must be `ReadWriteMany`-capable (e.g. NFS, EFS, Azure Files); set `auditLog.pvcName` to this PVC's name.
+The PVC itself is defined in [arthur-genai-engine-audit-logs-pvc.yaml](../../deployment/helm/genai-engine/templates/arthur-genai-engine-audit-logs-pvc.yaml) with access mode `ReadWriteMany` and storage class `auditLog.storageClassName`. Its name (`arthur-genai-engine-audit-logs`, suffixed with `arthurResourceNameSuffix` when set) is computed by the chart and used automatically for the mount. The storage class must be backed by a shared-filesystem provisioner that supports `ReadWriteMany` (NFS, AWS EFS, Azure Files, CephFS, etc). The default block storage classes (EBS, GCE PD, Azure Disk) do **not** support `ReadWriteMany`, so the PVC will fail to bind with one of those.
 
 ### Volume Permissions
 
@@ -196,7 +196,6 @@ The container runs as a non-root user. On platforms that mount volumes owned by 
 |---|---|---|
 | `arthurGenaiEngineDeployment.auditLog.enabled` | `false` | Mount the audit-log PVC and enable audit logging to it |
 | `arthurGenaiEngineDeployment.auditLog.mountPath` | `/home/nonroot/app/audit_logs` | Path inside the container where audit logs are written |
-| `arthurGenaiEngineDeployment.auditLog.pvcName` | _(unset)_ | Name of the PVC to mount for audit logs |
-| `arthurGenaiEngineDeployment.auditLog.storageSize` | `10Gi` | Size requested for the audit log PVC |
+| `arthurGenaiEngineDeployment.auditLog.storageSize` | `10Gi` | Size requested for the audit log PVC. Enforced as a quota only on backends that support it (Azure Files; CephFS with a quota-capable kernel/client); ignored on AWS EFS and most NFS provisioners, which grow elastically. |
 | `arthurGenaiEngineDeployment.auditLog.storageClassName` | _(unset)_ | `ReadWriteMany` storage class to back the PVC |
 | `arthurGenaiEngineDeployment.auditLog.fsGroup` | _(unset)_ | Pod `fsGroup` so the non-root container can write to the volume (required on OpenShift) |
