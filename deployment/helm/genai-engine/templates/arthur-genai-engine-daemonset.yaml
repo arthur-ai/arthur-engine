@@ -179,8 +179,10 @@ spec:
               mountPath: /var/secrets/google
               readOnly: true
             {{- end }}
+            {{- if .Values.arthurGenaiEngineDeployment.auditLog.enabled }}
             - name: audit-logs
               mountPath: {{ .Values.arthurGenaiEngineDeployment.auditLog.mountPath }}
+            {{- end }}
       volumes:
         {{- if .Values.gcpDiscoveryConfig.isEnabled }}
         - name: gcp-credentials
@@ -188,13 +190,11 @@ spec:
             secretName: {{ .Values.gcpDiscoveryConfig.googleCredentialsSecretName }}
             defaultMode: 420
         {{- end }}
+        {{- if .Values.arthurGenaiEngineDeployment.auditLog.enabled }}
         - name: audit-logs
           persistentVolumeClaim:
-            {{- if .Values.arthurResourceNameSuffix }}
-            claimName: arthur-genai-engine-audit-logs-{{ .Values.arthurResourceNameSuffix }}
-            {{- else }}
-            claimName: arthur-genai-engine-audit-logs
-            {{- end }}
+            claimName: {{ .Values.arthurGenaiEngineDeployment.auditLog.pvcName }}
+        {{- end }}
       {{- with .Values.arthurGenaiEngineDeployment.genaiEnginePodAffinity }}
       affinity:
         {{- toYaml . | nindent 8 }}

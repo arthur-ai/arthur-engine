@@ -23,7 +23,9 @@ arthurGenaiEngineDeployment:
   genaiEnginePodAffinity: {}
   genaiEnginePodTolerations: []
   auditLog:
+    enabled: false
     mountPath: "/home/nonroot/app/audit_logs"
+    pvcName: ""
 
 # CPU deployment - Comment out the below 4 lines
 gpuEnabled: false
