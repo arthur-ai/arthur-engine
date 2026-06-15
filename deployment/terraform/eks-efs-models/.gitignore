@@ -1,0 +1,13 @@
+# Local Terraform working dirs / state — never commit these
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# Variable files with environment-specific values
+terraform.tfvars
+*.auto.tfvars
+
+# Keep terraform.tfvars.example and .terraform.lock.hcl tracked
+!terraform.tfvars.example

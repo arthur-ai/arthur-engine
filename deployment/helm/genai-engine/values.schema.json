@@ -482,6 +482,29 @@
             "type": "string",
             "description": "(Optional) Name of the secret holding the reCAPTCHA Enterprise REST API key (expecting value for key 'key'). Leave unset to disable reCAPTCHA verification."
         },
+        "modelPVC": {
+            "type": "object",
+            "description": "(Optional) Mount a pre-populated PersistentVolumeClaim holding the model binaries (e.g. the EFS-backed PVC from deployment/terraform/eks-efs-models) and load models from it instead of downloading at startup.",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Mount the model PVC and set MODEL_STORAGE_PATH + HF_HUB_OFFLINE. Disabled by default; the engine runs without a PVC."
+                },
+                "claimName": {
+                    "type": "string",
+                    "description": "Name of the PersistentVolumeClaim to mount (must already exist in the release namespace)."
+                },
+                "mountPath": {
+                    "type": "string",
+                    "description": "Path the volume is mounted at inside the container; also used as MODEL_STORAGE_PATH."
+                },
+                "readOnly": {
+                    "type": "boolean",
+                    "description": "Mount the volume read-only (recommended)."
+                }
+            },
+            "required": ["enabled"]
+        },
         "gcpDiscoveryConfig": {
             "type": "object",
             "properties": {

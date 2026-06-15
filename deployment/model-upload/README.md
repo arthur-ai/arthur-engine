@@ -214,7 +214,7 @@ containers:
         readOnly: true
 ```
 
-> The genai-engine Helm chart does not yet template a model PVC mount — it only wires `MODEL_REPOSITORY_URL` (the S3 path). Until it does, add the volume/volumeMount above to the deployment (e.g. via a patch/overlay) alongside the two env vars.
+> The genai-engine Helm chart supports this mount natively via the optional `modelPVC` values (off by default): `--set modelPVC.enabled=true --set modelPVC.claimName=arthur-models-pvc --set modelPVC.mountPath=/home/nonroot/models-output`. The chart then adds the volume/volumeMount and sets `MODEL_STORAGE_PATH` + `HF_HUB_OFFLINE=1` for you. On AWS EKS, provision the EFS-backed PVC with the Terraform module at [`../terraform/eks-efs-models`](../terraform/eks-efs-models).
 
 **IAM / networking checklist:**
 - EFS CSI driver IAM role attached (`AmazonEFSCSIDriverPolicy`).
