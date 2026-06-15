@@ -1,6 +1,6 @@
 import { Box, Paper, Stack, Typography } from "@mui/material";
 import { useSnackbar } from "notistack";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import { CreateRuleDialog } from "./CreateRuleDialog";
 import { RulesList } from "./RulesList";
@@ -8,7 +8,8 @@ import { TestPromptPanel } from "./TestPromptPanel";
 
 import { ConfirmationModal } from "@/components/common/ConfirmationModal";
 import { getContentHeight } from "@/constants/layout";
-import { useArchiveRule, useCreateRule, useTaskRules, useToggleRule, useValidate } from "@/hooks/useGuardrails";
+import { useGuardrailDraft } from "@/hooks/useGuardrailDraft";
+import { useArchiveRule, useCreateRule, useSaveRuleStates, useTaskRules, useValidate } from "@/hooks/useGuardrails";
 import { useTask } from "@/hooks/useTask";
 import type { BuiltinValidationRequest, NewRuleRequest, RuleResponse, RuleType } from "@/lib/api-client/api-client";
 import { getApiErrorMessage } from "@/utils/errorUtils";
@@ -21,12 +22,17 @@ export const GuardrailsView: React.FC = () => {
   const { data: rules = [], isLoading, error } = useTaskRules(taskId);
   const createMutation = useCreateRule(taskId);
   const archiveMutation = useArchiveRule(taskId);
-  const toggleMutation = useToggleRule(taskId);
+  const saveMutation = useSaveRuleStates(taskId);
   const validateMutation = useValidate();
 
+  const { draftRules, setEnabled, discard, changes, hasUnsavedChanges } = useGuardrailDraft(rules);
+  const modifiedRuleIds = useMemo(() => new Set(Object.keys(changes)), [changes]);
+
+  // "Try it out" tests the staged (draft) configuration so changes can be previewed
+  // before saving — the stateful production endpoint still uses only saved rules.
   const enabledChecks = useMemo<NewRuleRequest[]>(
     () =>
-      rules
+      draftRules
         .filter((r) => r.enabled !== false)
         .map((r) => ({
           name: r.name,
@@ -35,17 +41,31 @@ export const GuardrailsView: React.FC = () => {
           apply_to_response: r.apply_to_response,
           config: r.config ?? null,
         })),
-    [rules]
+    [draftRules]
   );
 
-  const enabledRuleTypes = useMemo<RuleType[]>(() => rules.filter((r) => r.enabled !== false).map((r) => r.type), [rules]);
+  const enabledRuleTypes = useMemo<RuleType[]>(() => draftRules.filter((r) => r.enabled !== false).map((r) => r.type), [draftRules]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogNonce, setDialogNonce] = useState(0);
   const [createError, setCreateError] = useState<string | null>(null);
   const [pendingRuleId, setPendingRuleId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<RuleResponse | null>(null);
+  const [discardOpen, setDiscardOpen] = useState(false);
   const [validateError, setValidateError] = useState<string | null>(null);
+
+  // Warn before the browser unloads (refresh/close/external nav) while there are
+  // unsaved staged toggles. In-app navigation is signalled by the visible save bar —
+  // useBlocker is unavailable here because the app uses BrowserRouter, not a data router.
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const handler = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [hasUnsavedChanges]);
 
   const handleOpenDialog = () => {
     setDialogNonce((n) => n + 1);
@@ -64,14 +84,15 @@ export const GuardrailsView: React.FC = () => {
     }
   };
 
-  const handleToggle = async (rule: RuleResponse, enabled: boolean) => {
-    setPendingRuleId(rule.id);
+  // Toggling only updates the local draft — nothing is persisted until Save.
+  const handleToggle = (rule: RuleResponse, enabled: boolean) => setEnabled(rule, enabled);
+
+  const handleSave = async () => {
     try {
-      await toggleMutation.mutateAsync({ ruleId: rule.id, enabled });
+      await saveMutation.mutateAsync(changes);
+      enqueueSnackbar("Guardrail changes saved", { variant: "success" });
     } catch (e) {
-      enqueueSnackbar(`Failed to update rule: ${getApiErrorMessage(e)}`, { variant: "error" });
-    } finally {
-      setPendingRuleId(null);
+      enqueueSnackbar(getApiErrorMessage(e), { variant: "error" });
     }
   };
 
@@ -122,13 +143,18 @@ export const GuardrailsView: React.FC = () => {
         <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ flex: 1, minHeight: 0 }}>
           <Paper variant="outlined" sx={{ p: 2.5, flex: { xs: "none", md: "0 0 45%" }, minHeight: 0, overflow: "hidden" }}>
             <RulesList
-              rules={rules}
+              rules={draftRules}
               isLoading={isLoading}
               error={error as Error | null}
               onAddRule={handleOpenDialog}
               onToggleRule={handleToggle}
               onDeleteRule={requestDelete}
               pendingRuleId={pendingRuleId}
+              modifiedRuleIds={modifiedRuleIds}
+              hasUnsavedChanges={hasUnsavedChanges}
+              isSaving={saveMutation.isPending}
+              onSave={handleSave}
+              onDiscard={() => setDiscardOpen(true)}
             />
           </Paper>
 
@@ -162,6 +188,16 @@ export const GuardrailsView: React.FC = () => {
         title="Delete rule"
         message={pendingDelete ? `Delete rule "${pendingDelete.name}"? This cannot be undone.` : ""}
         confirmText="Delete"
+      />
+
+      <ConfirmationModal
+        open={discardOpen}
+        onClose={() => setDiscardOpen(false)}
+        onConfirm={discard}
+        title="Discard changes?"
+        message="You have unsaved rule changes. Discarding will revert them to the last saved state."
+        confirmText="Discard"
+        cancelText="Keep editing"
       />
     </Box>
   );
