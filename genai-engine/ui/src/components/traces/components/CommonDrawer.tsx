@@ -7,7 +7,7 @@ import { useSelection } from "../hooks/useSelection";
 
 import { TraceContentSkeleton } from "./TraceDrawerContent";
 
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 import { createTitle } from "@/utils/title";
 
 type DrawerTarget = "trace" | "span" | "session" | "user";
@@ -60,7 +60,7 @@ export const CommonDrawer = () => {
 
   const handleClose = () => {
     if (current?.id) {
-      track(EVENT_NAMES.TRACING_DRAWER_CLOSED, {
+      track("tracing/drawer_closed", {
         level: current.target,
         id: current.id,
       });

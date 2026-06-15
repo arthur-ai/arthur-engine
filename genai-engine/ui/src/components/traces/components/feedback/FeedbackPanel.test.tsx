@@ -27,13 +27,7 @@ vi.mock("@/features/task-tour/tourEvents", () => ({
   },
 }));
 
-vi.mock("@/services/amplitude", () => ({
-  EVENT_NAMES: {
-    FEEDBACK_OPENED: "feedback-opened",
-    FEEDBACK_SUBMITTED: "feedback-submitted",
-    FEEDBACK_CLEARED: "feedback-cleared",
-    FEEDBACK_ERROR: "feedback-error",
-  },
+vi.mock("@/services/analytics", () => ({
   track: vi.fn(),
 }));
 

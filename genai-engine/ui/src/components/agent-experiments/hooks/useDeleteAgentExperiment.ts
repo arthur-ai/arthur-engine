@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { queryKeys } from "@/lib/queryKeys";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 export const useDeleteAgentExperiment = () => {
   const queryClient = useQueryClient();
@@ -19,7 +19,7 @@ export const useDeleteAgentExperiment = () => {
       await api.deleteAgenticExperimentApiV1AgenticExperimentsExperimentIdDelete(experimentId);
     },
     onSuccess: async (_, experimentId) => {
-      track(EVENT_NAMES.AGENT_EXPERIMENT_DELETED, { experiment_id: experimentId });
+      track("agent_experiment/deleted", { experiment_id: experimentId });
       await queryClient.invalidateQueries({ queryKey: [queryKeys.agentExperiments.all(task!.id)] });
       enqueueSnackbar("Experiment deleted successfully", { variant: "success" });
       navigate(`/tasks/${task!.id}/agent-experiments`);

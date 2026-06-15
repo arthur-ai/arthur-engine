@@ -12,7 +12,7 @@ import { TryItOutFormWizardAboutStep } from "./steps/about";
 import { TryItOutFormWizardDiscoveryStep } from "./steps/discovery";
 import { TryItOutFormWizardIdentityStep } from "./steps/identity";
 
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 const VARIANT = "wizard" as const;
 
@@ -29,12 +29,12 @@ export const TryItOutFormWizard: React.FC<TryItOutFormProps> = ({ onBack, onSubm
     },
     listeners: {
       onMount: () => {
-        track(EVENT_NAMES.ONBOARDING_FORM_VIEWED, { variant: VARIANT });
+        track("onboarding/form_viewed", { variant: VARIANT });
       },
       onChange: () => {
         if (!formStartedRef.current) {
           formStartedRef.current = true;
-          track(EVENT_NAMES.ONBOARDING_FORM_STARTED, { variant: VARIANT });
+          track("onboarding/form_started", { variant: VARIANT });
         }
       },
     },
@@ -46,7 +46,7 @@ export const TryItOutFormWizard: React.FC<TryItOutFormProps> = ({ onBack, onSubm
       const invalidFields = Object.entries(formApi.state.fieldMeta)
         .filter(([, meta]) => (meta?.errors?.length ?? 0) > 0)
         .map(([name]) => name);
-      track(EVENT_NAMES.ONBOARDING_FORM_SUBMIT_FAILED, { variant: VARIANT, invalid_fields: invalidFields });
+      track("onboarding/form_submit_failed", { variant: VARIANT, invalid_fields: invalidFields });
     },
   });
 
@@ -54,17 +54,17 @@ export const TryItOutFormWizard: React.FC<TryItOutFormProps> = ({ onBack, onSubm
 
   useEffect(() => {
     const stepName: StepName = STEP_NAMES[step];
-    track(EVENT_NAMES.ONBOARDING_WIZARD_STEP_VIEWED, { step: step + 1, step_name: stepName });
+    track("onboarding/wizard_step_viewed", { step: step + 1, step_name: stepName });
   }, [step]);
 
   const goBack = (currentStep: StepIndex) => {
     if (currentStep === 0) {
-      track(EVENT_NAMES.ONBOARDING_FORM_BACK_CLICKED, { variant: VARIANT });
+      track("onboarding/form_back_clicked", { variant: VARIANT });
       onBack();
       return;
     }
     const target = (currentStep - 1) as StepIndex;
-    track(EVENT_NAMES.ONBOARDING_WIZARD_STEP_BACK, {
+    track("onboarding/wizard_step_back", {
       from_step: currentStep + 1,
       to_step: target + 1,
     });
@@ -74,7 +74,7 @@ export const TryItOutFormWizard: React.FC<TryItOutFormProps> = ({ onBack, onSubm
 
   const advance = (currentStep: StepIndex) => () => {
     const stepName: StepName = STEP_NAMES[currentStep];
-    track(EVENT_NAMES.ONBOARDING_WIZARD_STEP_COMPLETED, {
+    track("onboarding/wizard_step_completed", {
       step: currentStep + 1,
       step_name: stepName,
     });
@@ -89,7 +89,7 @@ export const TryItOutFormWizard: React.FC<TryItOutFormProps> = ({ onBack, onSubm
   const reportInvalid = (currentStep: StepIndex) => () => {
     const stepName: StepName = STEP_NAMES[currentStep];
     const invalidFields = getInvalidGroupFields(form.state.fieldMeta, stepName as keyof WizardValues);
-    track(EVENT_NAMES.ONBOARDING_WIZARD_STEP_SUBMIT_FAILED, {
+    track("onboarding/wizard_step_submit_failed", {
       step: currentStep + 1,
       step_name: stepName,
       invalid_fields: invalidFields,

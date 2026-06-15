@@ -5,7 +5,7 @@ import { z } from "zod";
 import type { IncomingFilter } from "../components/filtering/mapper";
 import { useFilterStore } from "../stores/filter.store";
 
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 /**
  * Zod schema for validating filter objects from URL
@@ -54,7 +54,7 @@ export function useSyncFiltersToUrl() {
   useEffect(() => {
     if (!hasInitializedFromUrl.current && urlFilters.length > 0) {
       setStoreFilters(migrateLegacyFilters(urlFilters as IncomingFilter[]));
-      track(EVENT_NAMES.TRACING_FILTERS_FROM_URL_LOADED, {
+      track("tracing/filters_from_url_loaded", {
         filter_count: urlFilters.length,
         source: "url",
       });
