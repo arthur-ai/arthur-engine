@@ -7,8 +7,8 @@ from arthur_common.models.metric_schemas import (
     QueryRelevanceMetric,
     ResponseRelevanceMetric,
 )
-from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers.json import JsonOutputParser
+from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableSerializable
 from pydantic import BaseModel, Field
 from torch import Tensor
