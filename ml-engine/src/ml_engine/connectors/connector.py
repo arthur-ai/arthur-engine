@@ -39,5 +39,6 @@ class Connector(ABC):
     def list_datasets(self) -> PutAvailableDatasets:
         raise NotImplementedError
 
+    @abstractmethod
     def extract_image(self, image_uri: str) -> str:
-        return image_uri
+        raise NotImplementedError

@@ -39,7 +39,10 @@ class ImageResolver:
                     connector_spec.id,
                 )
                 return connector.extract_image(image_uri)
-            except Exception:
+            except Exception as e:
+                self.logger.error(
+                    f"Could not extract image {image_uri} using connector {connector_spec.id}: {e}"
+                )
                 continue
 
         self.logger.error(f"Could not read image {image_uri}")

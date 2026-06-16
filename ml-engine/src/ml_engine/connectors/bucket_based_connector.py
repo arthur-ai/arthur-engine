@@ -46,6 +46,7 @@ from fsspec import AbstractFileSystem
 
 from connectors.connector import Connector
 from tools.connector_read_filters import apply_filters_to_retrieved_inferences
+from tools.image_tools import is_supported_image_uri
 from tools.schema_interpreters import primary_timestamp_col_name
 
 DEFAULT_PAGE_SIZE = 250
@@ -595,5 +596,11 @@ class BucketBasedConnector(Connector, ABC):
         )
 
     def extract_image(self, image_uri: str) -> str:
-        blob = self.file_system.cat(image_uri)
-        return base64.b64encode(blob).decode("ascii")
+        if not is_supported_image_uri(image_uri):
+            raise ValueError(f"Unsupported image URI: {image_uri}")
+
+        try:
+            blob = self.file_system.cat(image_uri)
+            return base64.b64encode(blob).decode("ascii")
+        except Exception as e:
+            raise ValueError(f"Failed to extract image {image_uri}: {e}")
