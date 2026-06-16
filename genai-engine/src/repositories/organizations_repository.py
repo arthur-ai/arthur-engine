@@ -165,4 +165,3 @@ class OrganizationsRepository:
         if row is None:
             return None
         return OrgTokenQuotaStatus(tokens_limit=row[0], tokens_used=row[1])
-

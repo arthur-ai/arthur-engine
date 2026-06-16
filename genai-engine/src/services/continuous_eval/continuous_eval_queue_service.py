@@ -12,8 +12,8 @@ from db_models.continuous_eval_test_run_models import DatabaseContinuousEvalTest
 from db_models.llm_eval_models import DatabaseContinuousEval
 from dependencies import get_db_session
 from repositories.evaluator_factory import get_evaluator
-from repositories.llm_evaluator import LLMEvaluator
 from repositories.llm_evals_repository import LLMEvalsRepository
+from repositories.llm_evaluator import LLMEvaluator
 from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository

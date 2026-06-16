@@ -17,12 +17,12 @@ from arthur_common.models.llm_model_providers import ModelProvider
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from db_models.task_models import DatabaseTask
 from db_models.prompt_experiment_models import (
     DatabasePromptExperiment,
     DatabasePromptExperimentTestCase,
     DatabasePromptExperimentTestCasePromptResult,
 )
+from db_models.task_models import DatabaseTask
 from repositories.agentic_prompts_repository import AgenticPromptRepository
 from repositories.model_provider_repository import ModelProviderRepository
 from repositories.prompt_experiment_repository import PromptExperimentRepository

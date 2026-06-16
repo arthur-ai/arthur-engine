@@ -2,7 +2,7 @@ import logging
 import uuid
 import warnings
 from datetime import datetime, timezone
-from typing import Any, AsyncGenerator, Dict, List, Optional, Set, Tuple, Union, cast
+from typing import Any, AsyncGenerator, Dict, List, Set, Tuple, Union, cast
 
 from arthur_common.models.llm_model_providers import (
     LLMResponseFormat,

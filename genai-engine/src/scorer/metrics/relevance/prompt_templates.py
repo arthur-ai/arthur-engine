@@ -41,14 +41,16 @@ Evaluate if the user query is relevant to the system prompt. Provide a response 
 
 # Legacy prompt templates (with format_instructions)
 RESPONSE_RELEVANCE_NON_STRUCTURED_PROMPT_TEMPLATE = (
-    RESPONSE_RELEVANCE_STRUCTURED_PROMPT_TEMPLATE + """
+    RESPONSE_RELEVANCE_STRUCTURED_PROMPT_TEMPLATE
+    + """
 ---
 {format_instructions}
 ---"""
 )
 
 USER_QUERY_RELEVANCE_NON_STRUCTURED_PROMPT_TEMPLATE = (
-    USER_QUERY_RELEVANCE_STRUCTURED_PROMPT_TEMPLATE + """
+    USER_QUERY_RELEVANCE_STRUCTURED_PROMPT_TEMPLATE
+    + """
 ---
 {format_instructions}
 ---"""
