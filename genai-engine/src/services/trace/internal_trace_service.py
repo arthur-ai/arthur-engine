@@ -46,9 +46,14 @@ logger = logging.getLogger(__name__)
 
 
 class TraceSpanBuilder:
-    def __init__(self, trace_id: bytes, parent_span_id: Optional[bytes] = None) -> None:
+    def __init__(
+        self,
+        trace_id: bytes,
+        parent_span_id: Optional[bytes] = None,
+        span_id: Optional[bytes] = None,
+    ) -> None:
         self.trace_id = trace_id
-        self.span_id = os.urandom(8)
+        self.span_id = span_id if span_id is not None else os.urandom(8)
         self.parent_span_id = parent_span_id or b""
         self.name = ""
         self.start_time = datetime.now(timezone.utc)
@@ -110,6 +115,8 @@ class InternalTraceService:
             root spans after flush. Mirrors the behavior of the public
             ``/api/v1/traces`` route. Defaults to False so internal-only
             traces (chatbot, synthetic data generation) don't trigger evals.
+        trace_id: Optional raw 16-byte trace id to attach all spans to (existing or
+            deterministically derived trace). Defaults to a new random trace.
     """
 
     def __init__(
@@ -119,13 +126,14 @@ class InternalTraceService:
         task_id: str,
         service_name: str,
         enqueue_continuous_evals: bool = False,
+        trace_id: Optional[bytes] = None,
     ) -> None:
         self.db_session = db_session
         self.task_id = task_id
         self.service_name = service_name
         self.enqueue_continuous_evals = enqueue_continuous_evals
         self.spans: List[TraceSpanBuilder] = []
-        self.trace_id = uuid.uuid4().bytes
+        self.trace_id = trace_id if trace_id is not None else uuid.uuid4().bytes
 
     def start_agent_span(
         self,
@@ -183,6 +191,33 @@ class InternalTraceService:
             SpanAttributes.OPENINFERENCE_SPAN_KIND,
             OpenInferenceSpanKindValues.PROMPT.value,
         )
+        self.spans.append(span)
+        return span
+
+    def start_guardrail_span(
+        self,
+        *,
+        name: str,
+        parent_span_id: Optional[bytes] = None,
+        span_id: Optional[bytes] = None,
+        user_id: Optional[str] = None,
+        session_id: Optional[str] = None,
+    ) -> TraceSpanBuilder:
+        """Start a GUARDRAIL-kind span.
+
+        ``parent_span_id`` / ``span_id`` accept raw bytes so callers can place the
+        span under an existing parent and/or use deterministically-derived ids.
+        """
+        span = TraceSpanBuilder(self.trace_id, parent_span_id, span_id=span_id)
+        span.name = name
+        span.set_attribute(
+            SpanAttributes.OPENINFERENCE_SPAN_KIND,
+            OpenInferenceSpanKindValues.GUARDRAIL.value,
+        )
+        if user_id is not None:
+            span.set_attribute(SpanAttributes.USER_ID, user_id)
+        if session_id is not None:
+            span.set_attribute(SpanAttributes.SESSION_ID, session_id)
         self.spans.append(span)
         return span
 
@@ -413,5 +448,14 @@ class InternalTraceService:
                 ).enqueue_continuous_evals_for_root_spans(db_spans)
         except Exception:
             logger.exception("Failed to flush %s spans", self.service_name)
+            # Roll back so the failed ingestion commit can't poison the shared
+            # session. Callers must have no uncommitted business writes at flush time.
+            try:
+                self.db_session.rollback()
+            except Exception:
+                logger.exception(
+                    "Failed to roll back session after %s span flush failure",
+                    self.service_name,
+                )
 
         self.spans.clear()

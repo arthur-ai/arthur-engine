@@ -217,6 +217,8 @@ def chat(
             db_session=db_session,
             scorer_client=scorer_client,
             rules=prompt_rules,
+            # The chatbot traces its own conversation; skip the standalone guardrail trace.
+            emit_guardrail_trace=False,
         )
 
         try:
@@ -252,6 +254,8 @@ def chat(
             db_session=db_session,
             scorer_client=scorer_client,
             rules=response_rules,
+            # The chatbot traces its own conversation; skip the standalone guardrail trace.
+            emit_guardrail_trace=False,
         )
 
         inference_repo.save_inference_document_context(

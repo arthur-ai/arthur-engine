@@ -358,8 +358,13 @@ class InferenceRepository:
         task_id: str | None = None,
         conversation_id: str | None = None,
         user_id: str | None = None,
+        inference_id: str | None = None,
     ) -> InferencePrompt:
-        inference = get_new_inference(task_id, conversation_id)
+        inference = get_new_inference(
+            task_id,
+            conversation_id,
+            inference_id=inference_id,
+        )
         inference_prompt = get_inference_prompt(
             inference.id,
             prompt,
@@ -556,9 +561,10 @@ class InferenceRepository:
 def get_new_inference(
     task_id: Optional[str] = None,
     conversation_id: Optional[str] = None,
+    inference_id: Optional[str] = None,
 ) -> Inference:
     inference = Inference(
-        id=str(uuid.uuid4()),
+        id=inference_id or str(uuid.uuid4()),
         result=RuleResultEnum.PASS,
         task_id=task_id,
         conversation_id=conversation_id,
