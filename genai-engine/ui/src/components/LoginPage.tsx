@@ -9,7 +9,7 @@ import { EngineTopNav } from "./onboarding/engine-top-nav";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useDemoMode } from "@/contexts/EngineConfigContext";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 export const LoginPage: React.FC = () => {
   const [token, setToken] = useState("");
@@ -19,7 +19,7 @@ export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    track(EVENT_NAMES.ONBOARDING_LOGIN_VIEWED);
+    track("onboarding/login_viewed");
   }, []);
 
   useEffect(() => {

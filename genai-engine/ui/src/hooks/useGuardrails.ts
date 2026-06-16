@@ -46,16 +46,30 @@ export function useArchiveRule(taskId: string) {
   });
 }
 
-export function useToggleRule(taskId: string) {
+/**
+ * Commits a set of staged enable/disable changes ({ [ruleId]: enabled }) by firing the
+ * existing per-rule PATCH endpoint for each. Uses Promise.allSettled so a mid-batch
+ * failure surfaces an error instead of being swallowed, and always refetches the task's
+ * rules afterwards so the draft re-derives against fresh server state (saved toggles
+ * clear; failed ones stay dirty).
+ */
+export function useSaveRuleStates(taskId: string) {
   const api = useApi();
   const queryClient = useQueryClient();
 
-  return useMutation<void, Error, { ruleId: string; enabled: boolean }>({
-    mutationFn: async ({ ruleId, enabled }) => {
+  return useMutation<void, Error, Record<string, boolean>>({
+    mutationFn: async (changes) => {
       if (!api) throw new Error("API client not available");
-      await api.api.updateTaskRulesApiV2TasksTaskIdRulesRuleIdPatch(taskId, ruleId, { enabled });
+      const entries = Object.entries(changes);
+      const results = await Promise.allSettled(
+        entries.map(([ruleId, enabled]) => api.api.updateTaskRulesApiV2TasksTaskIdRulesRuleIdPatch(taskId, ruleId, { enabled }))
+      );
+      const failed = results.filter((r) => r.status === "rejected").length;
+      if (failed > 0) {
+        throw new Error(`${failed} of ${entries.length} rule change${entries.length === 1 ? "" : "s"} failed to save`);
+      }
     },
-    onSuccess: () => {
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byId(taskId) });
     },
   });

@@ -8,7 +8,7 @@ import { mapFormToRequest, mapTemplateToForm } from "../[notebookId]/utils/mappe
 
 import { useSaveAgenticNotebookState } from "./useSaveAgenticNotebookState";
 
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 const AUTO_SAVE_DELAY = 5000;
 
@@ -30,7 +30,7 @@ export const useAutosaveAgenticNotebook = (notebookId: string) => {
   const autosave = useAsyncDebouncer(
     async (state: AgentNotebookStateFormData) => {
       await saveAgenticNotebookStateMutation.mutateAsync(mapFormToRequest(state));
-      track(EVENT_NAMES.AGENT_NOTEBOOK_SAVE, { notebook_id: notebookId });
+      track("agent_notebook/save", { notebook_id: notebookId });
     },
     { wait: AUTO_SAVE_DELAY },
     (state) => state.isExecuting

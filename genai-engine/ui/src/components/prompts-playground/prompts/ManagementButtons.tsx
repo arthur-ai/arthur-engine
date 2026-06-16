@@ -16,7 +16,7 @@ import PreviewPromptModal from "./PreviewPromptModal";
 
 import { TOUR_IDS } from "@/features/task-tour/selectors";
 import { PromptVariableMappingOutput } from "@/lib/api-client/api-client";
-import { track, EVENT_NAMES } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 interface ManagementButtonsProps {
   prompt: PromptType;
@@ -36,7 +36,7 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
     }
 
     // Track prompt run event
-    track(EVENT_NAMES.PROMPT_RUN, {
+    track("Prompt Run", {
       model_provider: prompt.modelProvider,
       model_name: prompt.modelName,
       message_count: prompt.messages.length,
@@ -64,7 +64,7 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
   }, []);
 
   const handlePreviewOpen = useCallback(() => {
-    track(EVENT_NAMES.PROMPT_PREVIEW, {
+    track("Prompt Preview", {
       model_provider: prompt.modelProvider,
       model_name: prompt.modelName,
       message_count: prompt.messages.length,

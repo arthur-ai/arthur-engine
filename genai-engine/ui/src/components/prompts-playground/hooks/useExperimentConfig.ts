@@ -7,7 +7,7 @@ import type { ExperimentFormData } from "@/components/prompt-experiments/CreateE
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import type { PromptExperimentDetail, PromptExperimentSummary, SavedPromptConfig } from "@/lib/api-client/api-client";
-import { track, EVENT_NAMES } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 interface UseExperimentConfigArgs {
   initialData: PlaygroundInitialData;
@@ -167,7 +167,7 @@ export function useExperimentConfig({
         }
       }
 
-      track(EVENT_NAMES.EXPERIMENT_CONFIG_CREATED, {
+      track("Experiment Config Created", {
         dataset_id: config.dataset_ref?.id,
         eval_count: config.eval_list?.length || 0,
         prompt_count: config.prompt_configs?.length || 0,
