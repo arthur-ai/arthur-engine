@@ -8,6 +8,10 @@ function expectParseError(raw: string, messageSubstring: string): void {
   expect(() => parseFrontmatter(TEST_FILE, raw)).toThrow(expect.objectContaining({ message: expect.stringContaining(messageSubstring) }));
 }
 
+function expectParseErrorExact(raw: string, message: string): void {
+  expect(() => parseFrontmatter(TEST_FILE, raw)).toThrow(new Error(`[task-tour content] ${TEST_FILE}: ${message}`));
+}
+
 describe("parseFrontmatter", () => {
   it("parses a valid minimal mapping and body", () => {
     const raw = "---\nid: x\n---\n## intro\nHello\n";
@@ -58,11 +62,11 @@ describe("parseFrontmatter", () => {
   });
 
   it("throws when frontmatter root is a scalar", () => {
-    expectParseError("---\nhello\n---\n", "must be a YAML mapping");
+    expectParseErrorExact("---\nhello\n---\n", "frontmatter must be a YAML mapping (key: value), not a scalar or list");
   });
 
   it("throws when frontmatter root is a list", () => {
-    expectParseError("---\n- a\n---\n", "must be a YAML mapping");
+    expectParseErrorExact("---\n- a\n---\n", "frontmatter must be a YAML mapping (key: value), not a scalar or list");
   });
 
   it("throws on YAML alias nodes", () => {

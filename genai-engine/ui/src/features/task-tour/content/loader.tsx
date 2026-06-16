@@ -189,16 +189,19 @@ export function parseFrontmatter(file: string, raw: string): ParsedFrontmatter {
     return { data: {}, content: body };
   }
 
+  let data: unknown;
   try {
-    const data = parseYaml(yamlBlock, FRONTMATTER_YAML_OPTIONS);
-    if (data === null || typeof data !== "object" || Array.isArray(data)) {
-      fail(file, "frontmatter must be a YAML mapping (key: value), not a scalar or list");
-    }
-    return { data, content: body };
+    data = parseYaml(yamlBlock, FRONTMATTER_YAML_OPTIONS);
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     fail(file, `failed to parse frontmatter (check YAML indentation and quoting): ${detail}`);
   }
+
+  if (data === null || typeof data !== "object" || Array.isArray(data)) {
+    fail(file, "frontmatter must be a YAML mapping (key: value), not a scalar or list");
+  }
+
+  return { data: data as Record<string, unknown>, content: body };
 }
 
 /**
