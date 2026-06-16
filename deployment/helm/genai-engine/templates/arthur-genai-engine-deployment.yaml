@@ -37,6 +37,10 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
+      {{- if and .Values.arthurGenaiEngineDeployment.auditLog.enabled .Values.arthurGenaiEngineDeployment.auditLog.fsGroup }}
+      securityContext:
+        fsGroup: {{ .Values.arthurGenaiEngineDeployment.auditLog.fsGroup }}
+      {{- end }}
       {{- if .Values.containerRepositoryCredentialRequired }}
       imagePullSecrets:
         - name: {{ .Values.imagePullSecretName }}
@@ -173,19 +177,34 @@ spec:
                   name: {{ .Values.genaiEngineSecretInternalApiKeyName }}
                   key: key
             {{- end }}
-          {{- if .Values.gcpDiscoveryConfig.isEnabled }}
+            {{- if .Values.arthurGenaiEngineDeployment.auditLog.enabled }}
+            - name: AUDIT_LOG_ENABLED
+              value: "true"
+            - name: AUDIT_LOG_OVERRIDE_PATH
+              value: {{ .Values.arthurGenaiEngineDeployment.auditLog.mountPath | quote }}
+            {{- end }}
           volumeMounts:
+            {{- if .Values.gcpDiscoveryConfig.isEnabled }}
             - name: gcp-credentials
               mountPath: /var/secrets/google
               readOnly: true
-          {{- end }}
-      {{- if .Values.gcpDiscoveryConfig.isEnabled }}
+            {{- end }}
+            {{- if .Values.arthurGenaiEngineDeployment.auditLog.enabled }}
+            - name: audit-logs
+              mountPath: {{ .Values.arthurGenaiEngineDeployment.auditLog.mountPath }}
+            {{- end }}
       volumes:
+        {{- if .Values.gcpDiscoveryConfig.isEnabled }}
         - name: gcp-credentials
           secret:
             secretName: {{ .Values.gcpDiscoveryConfig.googleCredentialsSecretName }}
             defaultMode: 420
-      {{- end }}
+        {{- end }}
+        {{- if .Values.arthurGenaiEngineDeployment.auditLog.enabled }}
+        - name: audit-logs
+          persistentVolumeClaim:
+            claimName: arthur-genai-engine-audit-logs{{ if .Values.arthurResourceNameSuffix }}-{{ .Values.arthurResourceNameSuffix }}{{ end }}
+        {{- end }}
       {{- with .Values.arthurGenaiEngineDeployment.genaiEnginePodNodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

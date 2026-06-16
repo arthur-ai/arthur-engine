@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.640"
+        "version": "2.1.644"
     },
     "paths": {
         "/api/v2/engine-config": {
@@ -2511,7 +2511,7 @@
                         "application/json": {
                             "schema": {
                                 "type": "string",
-                                "format": "binary",
+                                "contentMediaType": "application/octet-stream",
                                 "title": "Body"
                             }
                         }
@@ -4258,7 +4258,7 @@
                         "application/json": {
                             "schema": {
                                 "type": "string",
-                                "format": "binary",
+                                "contentMediaType": "application/octet-stream",
                                 "title": "Body"
                             }
                         }
@@ -19739,7 +19739,7 @@
                 "properties": {
                     "file": {
                         "type": "string",
-                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
                         "title": "File"
                     }
                 },
@@ -19753,7 +19753,7 @@
                 "properties": {
                     "file": {
                         "type": "string",
-                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
                         "title": "File"
                     }
                 },
@@ -34024,6 +34024,13 @@
                     "type": {
                         "type": "string",
                         "title": "Error Type"
+                    },
+                    "input": {
+                        "title": "Input"
+                    },
+                    "ctx": {
+                        "type": "object",
+                        "title": "Context"
                     }
                 },
                 "type": "object",

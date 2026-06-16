@@ -22,6 +22,16 @@ arthurGenaiEngineDeployment:
   genaiEnginePodNodeSelector: {}
   genaiEnginePodAffinity: {}
   genaiEnginePodTolerations: []
+  auditLog:
+    enabled: false
+    mountPath: "/home/nonroot/app/audit_logs"
+    # Size requested for the audit log PVC
+    storageSize: "10Gi"
+    # ReadWriteMany-capable storage class to back the audit log PVC (e.g. NFS, EFS, Azure Files)
+    storageClassName: ""
+    # (Optional) Group ID applied as the pod's fsGroup so the non-root container can write to the mounted PVC.
+    # Required on platforms that mount volumes as root (e.g. OpenShift - use a GID from the namespace's allowed range).
+    fsGroup: ""
 
 # CPU deployment - Comment out the below 4 lines
 gpuEnabled: false
@@ -94,7 +104,7 @@ ingress:
 ## Advanced - GenAI Engine
 ###################################
 # GenAI Engine version
-genaiEngineVersion: '2.1.640'
+genaiEngineVersion: '2.1.644'
 # Max number of tokens GenAI Engine can process against LLM for hallucination data checks
 genaiEngineHallucinationCheckMaxTokenLimit: 3000
 # Max number of tokens GenAI Engine can process against LLM for sensitive data checks
