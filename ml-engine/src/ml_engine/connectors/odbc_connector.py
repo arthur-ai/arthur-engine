@@ -517,3 +517,6 @@ class ODBCConnector(Connector):
                 for tbl in all_datasets
             ],
         )
+
+    def extract_image(self, image_uri: str) -> str:
+        return image_uri
