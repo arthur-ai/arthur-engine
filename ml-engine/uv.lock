@@ -3,7 +3,7 @@ revision = 3
 requires-python = "==3.13.*"
 
 [options]
-exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
+exclude-newer = "2026-06-13T13:49:54.288999Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -1415,7 +1415,7 @@ wheels = [
 
 [[package]]
 name = "ml-engine"
-version = "2.1.633"
+version = "2.1.640"
 source = { editable = "." }
 dependencies = [
     { name = "adlfs" },

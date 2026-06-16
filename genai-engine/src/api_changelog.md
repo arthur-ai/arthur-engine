@@ -2,6 +2,10 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 06/12/2026
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_prompt  added the new optional 'header' request parameter 'traceparent'
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_response/{inference_id}  added the new optional 'header' request parameter 'traceparent'
+
 # 06/09/2026
 - **CHANGE** for Component/Schema:  removed the schema 'EvalType-Input'
 - **CHANGE** for Component/Schema:  removed the schema 'arthur_common__models__enums__EvalType'
