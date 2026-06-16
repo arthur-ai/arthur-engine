@@ -1,6 +1,6 @@
 from logging import Logger
 
-from arthur_client.api_bindings import ConnectorsV1Api, ConnectorType
+from arthur_client.api_bindings import ConnectorSpec, ConnectorsV1Api, ConnectorType
 
 from connectors.azure_blob_connector import AzureBlobConnector
 from connectors.big_query_connector import BigQueryConnector
@@ -43,3 +43,13 @@ class ConnectorConstructor:
                 raise NotImplementedError(
                     f"Connector not available for type {connector_config.connector_type}",
                 )
+
+    def get_connectors_for_type(
+        self, project_id: str, connector_type: ConnectorType
+    ) -> list[ConnectorSpec]:
+        records: list[ConnectorSpec] = self.connectors_client.get_connectors(
+            project_id=project_id,
+            connector_type=connector_type,
+            page_size=1000,
+        ).records
+        return records

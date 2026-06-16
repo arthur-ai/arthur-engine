@@ -1,15 +1,16 @@
 import { useEffect, useEffectEvent } from "react";
 
-import { track } from "@/services/amplitude";
+import { type AnalyticsEventName, type AnalyticsEvents, trackDynamic } from "@/services/analytics";
 
-type Opts = {
-  eventName: string;
-  eventProperties?: Record<string, unknown>;
-};
+type Opts<E extends AnalyticsEventName> = AnalyticsEvents[E] extends undefined
+  ? { eventName: E; eventProperties?: undefined }
+  : { eventName: E; eventProperties: AnalyticsEvents[E] };
 
-export const useTrackOnMount = ({ eventName, eventProperties }: Opts) => {
+export const useTrackOnMount = <E extends AnalyticsEventName>({ eventName, eventProperties }: Opts<E>) => {
   const trackEvent = useEffectEvent(() => {
-    track(eventName, eventProperties);
+    // trackDynamic skips the generic gymnastics; the Opts type already
+    // guarantees the name/properties pairing at the call site.
+    trackDynamic(eventName, eventProperties as Record<string, unknown> | undefined);
   });
 
   useEffect(() => {

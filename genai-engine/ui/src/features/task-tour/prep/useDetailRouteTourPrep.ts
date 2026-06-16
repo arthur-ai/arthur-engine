@@ -97,8 +97,25 @@ export function useDetailRouteTourPrep({ taskId }: UseDetailRouteTourPrepOptions
     return { ready: true };
   }, []);
 
+  // Experiment detail — /tasks/:taskId/prompt-experiments/:experimentId
+  const experimentHook = useCallback<PreparationHook>(async () => {
+    if (/\/prompt-experiments\/[^/]+/.test(pathnameRef.current)) return { ready: true };
+    const tid = taskIdRef.current;
+    let experimentId: string | null = null;
+    try {
+      const response = await apiRef.current?.api.listPromptExperimentsApiV1TasksTaskIdPromptExperimentsGet({ taskId: tid, page: 0, page_size: 1 });
+      experimentId = response?.data.data?.[0]?.id ?? null;
+    } catch {
+      // fall through to the not-ready hint
+    }
+    if (!experimentId) return { ready: false };
+    navigateRef.current(`/tasks/${tid}/prompt-experiments/${experimentId}`);
+    return { ready: true };
+  }, []);
+
   useRegisterPreparation(TASK_TOUR_PREPARATIONS.evaluatorDetailOpened, evaluatorHook);
   useRegisterPreparation(TASK_TOUR_PREPARATIONS.datasetDetailOpened, datasetHook);
   useRegisterPreparation(TASK_TOUR_PREPARATIONS.promptDetailOpened, promptHook);
   useRegisterPreparation(TASK_TOUR_PREPARATIONS.playgroundOpened, playgroundHook);
+  useRegisterPreparation(TASK_TOUR_PREPARATIONS.experimentDetailOpened, experimentHook);
 }

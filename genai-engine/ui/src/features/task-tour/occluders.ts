@@ -13,6 +13,13 @@
  */
 export const TASK_TOUR_OCCLUDERS = {
   traceDrawer: "task-tour.occluder.traceDrawer",
+  /**
+   * The Evaluate Results "Annotation Details" dialog — a centered MUI Dialog
+   * whose open state is the `?id` query param. URL-driven like the trace drawer,
+   * so it needs tour-owned close logic (clear `?id`); registered route-scoped in
+   * `EvaluateTargetWidget`.
+   */
+  evaluateResultsDetails: "task-tour.occluder.evaluateResultsDetails",
 } as const;
 
 export type TaskTourOccluderId = (typeof TASK_TOUR_OCCLUDERS)[keyof typeof TASK_TOUR_OCCLUDERS];

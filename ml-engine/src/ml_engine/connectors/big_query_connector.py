@@ -214,3 +214,6 @@ class BigQueryConnector(Connector):
                 for table_id in table_ids
             ],
         )
+
+    def extract_image(self, image_uri: str) -> str:
+        return image_uri

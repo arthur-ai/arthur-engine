@@ -109,7 +109,7 @@ def test_circuit_breaker_trips_after_threshold_consecutive_failures(
 ) -> None:
     """Latch trips after CIRCUIT_BREAKER_THRESHOLD consecutive failures, not before."""
     mock_db_session_ctx.return_value.__enter__ = MagicMock(
-        side_effect=RuntimeError("db down")
+        side_effect=RuntimeError("db down"),
     )
     mock_db_session_ctx.return_value.__exit__ = MagicMock(return_value=False)
 
@@ -145,7 +145,7 @@ def test_success_resets_consecutive_failures(
 
     # Fail twice (just under threshold)
     mock_db_session_ctx.return_value.__enter__ = MagicMock(
-        side_effect=RuntimeError("db down")
+        side_effect=RuntimeError("db down"),
     )
     mock_db_session_ctx.return_value.__exit__ = MagicMock(return_value=False)
     for _ in range(CIRCUIT_BREAKER_THRESHOLD - 1):
@@ -162,7 +162,7 @@ def test_success_resets_consecutive_failures(
 
     # Fail once more — should NOT trip (counter was reset)
     mock_db_session_ctx.return_value.__enter__ = MagicMock(
-        side_effect=RuntimeError("db down")
+        side_effect=RuntimeError("db down"),
     )
     mock_db_session_ctx.return_value.__exit__ = MagicMock(return_value=False)
     service._execute_job(TraceRetentionJob())

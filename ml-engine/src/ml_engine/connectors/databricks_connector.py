@@ -858,6 +858,9 @@ class DatabricksConnector(Connector):
         )
         return PutAvailableDatasets(available_datasets=available_datasets)
 
+    def extract_image(self, image_uri: str) -> str:
+        return image_uri
+
     def dispose(self) -> None:
         """Dispose of the Databricks SQL engine to clean up connection pool."""
         if hasattr(self, "_engine") and self._engine:

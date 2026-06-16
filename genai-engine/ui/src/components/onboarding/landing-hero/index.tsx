@@ -7,11 +7,11 @@ import { PickCard } from "../pick-card";
 
 import type { LandingHeroProps } from "./types";
 
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 export const LandingHero: React.FC<LandingHeroProps> = ({ onTry, onLogin }) => {
   useEffect(() => {
-    track(EVENT_NAMES.ONBOARDING_LANDING_VIEWED);
+    track("onboarding/landing_viewed");
   }, []);
 
   return (

@@ -1,8 +1,14 @@
+"""v1 LLM eval routes.
+
+These endpoints preserve the v1 URL shape (/llm_evals/…) and response types
+(Eval, LLMEvalsVersionListResponse) expected by existing clients.
+"""
+
+import logging
 from typing import Annotated
 
 import jinja2
 from arthur_common.models.common_schemas import PaginationParameters
-from arthur_common.models.task_eval_schemas import LLMEval
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Response, status
 from pydantic import AfterValidator
 from sqlalchemy.orm import Session
@@ -14,11 +20,13 @@ from dependencies import (
     llm_get_all_filter_parameters,
     llm_get_versions_filter_parameters,
 )
+from repositories.continuous_evals_repository import ContinuousEvalsRepository
 from repositories.llm_evals_repository import LLMEvalsRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.enums import LLMMetadataSortField, PermissionLevelsEnum
 from schemas.internal_schemas import Task, User
+from schemas.llm_eval_schemas import Eval
 from schemas.request_schemas import (
     BaseCompletionRequest,
     CreateEvalRequest,
@@ -26,13 +34,15 @@ from schemas.request_schemas import (
     LLMGetVersionsFilterRequest,
 )
 from schemas.response_schemas import (
-    LLMEvalRunResponse,
+    EvalRunResponse,
     LLMEvalsVersionListResponse,
     LLMGetAllMetadataListResponse,
 )
 from utils.url_encoding import decode_path_param
 from utils.users import enforce_org_scope, permission_checker
 from utils.utils import common_pagination_parameters
+
+logger = logging.getLogger(__name__)
 
 llm_eval_routes = APIRouter(
     prefix="/api/v1",
@@ -44,7 +54,7 @@ llm_eval_routes = APIRouter(
     "/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}",
     summary="Get an llm eval",
     description="Get an llm eval by name and version",
-    response_model=LLMEval,
+    response_model=Eval,
     response_model_exclude_none=True,
     tags=["LLMEvals"],
 )
@@ -60,20 +70,17 @@ def get_llm_eval(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-) -> LLMEval:
+) -> Eval:
     try:
-        llm_eval_service = LLMEvalsRepository(db_session)
-        llm_eval = llm_eval_service.get_llm_item(
+        return LLMEvalsRepository(db_session).get_llm_item(
             task.id,
             eval_name,
             eval_version,
         )
-        return llm_eval
     except ValueError as e:
         if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))
-        else:
-            raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -103,14 +110,12 @@ def get_all_llm_eval_versions(
     task: Task = Depends(get_validated_task),
 ) -> LLMEvalsVersionListResponse:
     try:
-        llm_eval_service = LLMEvalsRepository(db_session)
-        result = llm_eval_service.get_llm_item_versions(
+        result = LLMEvalsRepository(db_session).get_llm_item_versions(
             task.id,
             eval_name,
             pagination_parameters,
             filter_request,
         )
-        # Cast from generic BaseModel to specific type
         assert isinstance(result, LLMEvalsVersionListResponse)
         return result
     except ValueError as e:
@@ -144,8 +149,7 @@ def get_all_llm_evals(
     task: Task = Depends(get_validated_task),
 ) -> LLMGetAllMetadataListResponse:
     try:
-        llm_eval_service = LLMEvalsRepository(db_session)
-        return llm_eval_service.get_all_llm_item_metadata(
+        return LLMEvalsRepository(db_session).get_all_llm_item_metadata(
             task.id,
             pagination_parameters,
             filter_request,
@@ -161,7 +165,7 @@ def get_all_llm_evals(
     "/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/completions",
     summary="Run a saved llm eval",
     description="Run a saved llm eval",
-    response_model=LLMEvalRunResponse,
+    response_model=EvalRunResponse,
     response_model_exclude_none=True,
     tags=["LLMEvals"],
 )
@@ -178,10 +182,9 @@ def run_saved_llm_eval(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-) -> LLMEvalRunResponse:
+) -> EvalRunResponse:
     try:
-        llm_eval_service = LLMEvalsRepository(db_session)
-        return llm_eval_service.run_llm_eval(
+        return LLMEvalsRepository(db_session).run_llm_eval(
             task.id,
             eval_name,
             eval_version,
@@ -197,7 +200,7 @@ def run_saved_llm_eval(
     "/tasks/{task_id}/llm_evals/{eval_name}",
     summary="Save an llm eval",
     description="Save an llm eval to the database",
-    response_model=LLMEval,
+    response_model=Eval,
     response_model_exclude_none=True,
     tags=["LLMEvals"],
 )
@@ -209,14 +212,18 @@ def save_llm_eval(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-) -> LLMEval:
+) -> Eval:
     try:
-        llm_eval_service = LLMEvalsRepository(db_session)
-        return llm_eval_service.save_llm_item(task.id, eval_name, eval_config)
+        return LLMEvalsRepository(db_session).save_llm_item(
+            task.id,
+            eval_name,
+            eval_config,
+        )
     except jinja2.exceptions.TemplateSyntaxError as e:
-        # Handle Jinja2 template syntax errors with a helpful message
-        error_msg = f"Invalid Jinja2 template syntax in evaluator messages: {str(e)}"
-        raise HTTPException(status_code=400, detail=error_msg)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid Jinja2 template syntax in evaluator messages: {e}",
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -240,14 +247,12 @@ def delete_llm_eval(
     task: Task = Depends(get_validated_task),
 ) -> Response:
     try:
-        llm_eval_service = LLMEvalsRepository(db_session)
-        llm_eval_service.delete_llm_item(task.id, eval_name)
+        LLMEvalsRepository(db_session).delete_llm_item(task.id, eval_name)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except ValueError as e:
         if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))
-        else:
-            raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -276,19 +281,22 @@ def soft_delete_llm_eval_version(
     task: Task = Depends(get_validated_task),
 ) -> Response:
     try:
-        llm_eval_service = LLMEvalsRepository(db_session)
-        llm_eval_service.soft_delete_llm_item_version(
-            task.id,
-            eval_name,
-            eval_version,
-        )
-
+        repo = LLMEvalsRepository(db_session)
+        # Resolve version (e.g. "latest") to an actual integer before soft-deleting
+        actual_version = repo.get_llm_item(task.id, eval_name, eval_version).version
+        repo.soft_delete_llm_item_version(task.id, eval_name, eval_version)
+        disabled = ContinuousEvalsRepository(
+            db_session,
+        ).disable_continuous_evals_by_eval_name(task.id, eval_name, actual_version)
+        if disabled:
+            logger.info(
+                f"Disabled {disabled} continuous eval(s) referencing deleted eval '{eval_name}' v{actual_version} for task {task.id}",
+            )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except ValueError as e:
-        if "no matching version" in str(e).lower():
+        if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))
-        else:
-            raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -297,7 +305,7 @@ def soft_delete_llm_eval_version(
     "/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}",
     summary="Get an llm eval by name and tag",
     description="Get an llm eval by name and tag",
-    response_model=LLMEval,
+    response_model=Eval,
     response_model_exclude_none=True,
     tags=["LLMEvals"],
 )
@@ -309,24 +317,21 @@ def get_llm_eval_by_tag(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-) -> LLMEval:
+) -> Eval:
     try:
-        llm_eval_service = LLMEvalsRepository(db_session)
-        result = llm_eval_service.get_llm_item_by_tag(
+        result = LLMEvalsRepository(db_session).get_llm_item_by_tag(
             task.id,
             eval_name,
             tag,
         )
-        # Cast from generic BaseModel to specific type
-        assert isinstance(result, LLMEval)
+        assert isinstance(result, Eval)
         return result
     except ValueError as e:
         if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))
         elif "deleted version" in str(e).lower():
             raise HTTPException(status_code=409, detail=str(e))
-        else:
-            raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -335,7 +340,7 @@ def get_llm_eval_by_tag(
     "/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags",
     summary="Add a tag to an llm eval version",
     description="Add a tag to an llm eval version",
-    response_model=LLMEval,
+    response_model=Eval,
     response_model_exclude_none=True,
     tags=["LLMEvals"],
 )
@@ -352,24 +357,17 @@ def add_tag_to_llm_eval_version(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_task),
-) -> LLMEval:
+) -> Eval:
     try:
-        llm_eval_service = LLMEvalsRepository(db_session)
-        llm_eval_service.add_tag_to_llm_item_version(
-            task.id,
-            eval_name,
-            eval_version,
-            tag,
-        )
-        # Fetch and return the updated eval
-        return llm_eval_service.get_llm_item(task.id, eval_name, eval_version)
+        repo = LLMEvalsRepository(db_session)
+        repo.add_tag_to_llm_item_version(task.id, eval_name, eval_version, tag)
+        return repo.get_llm_item(task.id, eval_name, eval_version)
     except ValueError as e:
         if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))
         elif "deleted version" in str(e).lower():
             raise HTTPException(status_code=409, detail=str(e))
-        else:
-            raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -379,9 +377,7 @@ def add_tag_to_llm_eval_version(
     summary="Remove a tag from an llm eval version",
     description="Remove a tag from an llm eval version",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses={
-        status.HTTP_204_NO_CONTENT: {"description": "LLM eval version deleted."},
-    },
+    responses={status.HTTP_204_NO_CONTENT: {"description": "Tag removed."}},
     tags=["LLMEvals"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
@@ -401,8 +397,7 @@ def delete_tag_from_llm_eval_version(
     task: Task = Depends(get_validated_task),
 ) -> None:
     try:
-        llm_eval_service = LLMEvalsRepository(db_session)
-        llm_eval_service.delete_llm_item_tag_from_version(
+        LLMEvalsRepository(db_session).delete_llm_item_tag_from_version(
             task.id,
             eval_name,
             eval_version,
@@ -411,7 +406,6 @@ def delete_tag_from_llm_eval_version(
     except ValueError as e:
         if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))
-        else:
-            raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

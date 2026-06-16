@@ -7,16 +7,14 @@ import { storeRecipientName } from "../recipientName";
 import { CertificateWidget } from "./CertificateWidget";
 
 import { createTourEngine, TourProvider } from "@/features/tour";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 vi.mock("@arthur/shared-components", () => ({
   downloadFile: vi.fn(),
 }));
 
-// Stub `track` but keep the real `EVENT_NAMES` so assertions reference the
-// actual event-name constants rather than re-declaring them.
-vi.mock("@/services/amplitude", async (importActual) => {
-  const actual = await importActual<typeof import("@/services/amplitude")>();
+vi.mock("@/services/analytics", async (importActual) => {
+  const actual = await importActual<typeof import("@/services/analytics")>();
   return { ...actual, track: vi.fn() };
 });
 
@@ -80,13 +78,13 @@ describe("CertificateWidget", () => {
   it("tracks a certificate view when the tour completes", () => {
     const engine = renderWidget();
 
-    expect(track).not.toHaveBeenCalledWith(EVENT_NAMES.ONBOARDING_WIZARD_CERTIFICATE_VIEWED, expect.anything());
+    expect(track).not.toHaveBeenCalledWith("onboarding/wizard_certificate_viewed", expect.anything());
 
     act(() => {
       engine.bus.emit("tour:end", { tourId: "task-tour", reason: "completed" });
     });
 
-    expect(track).toHaveBeenCalledWith(EVENT_NAMES.ONBOARDING_WIZARD_CERTIFICATE_VIEWED, { course: "Intro to Evals" });
+    expect(track).toHaveBeenCalledWith("onboarding/wizard_certificate_viewed", { course: "Intro to Evals" });
   });
 
   it("does not track a view when the tour ends without completing", () => {
@@ -96,7 +94,7 @@ describe("CertificateWidget", () => {
       engine.bus.emit("tour:end", { tourId: "task-tour", reason: "skipped" });
     });
 
-    expect(track).not.toHaveBeenCalledWith(EVENT_NAMES.ONBOARDING_WIZARD_CERTIFICATE_VIEWED, expect.anything());
+    expect(track).not.toHaveBeenCalledWith("onboarding/wizard_certificate_viewed", expect.anything());
   });
 
   it("names the recipient from the stored onboarding name", () => {
@@ -135,7 +133,7 @@ describe("CertificateWidget", () => {
     fireEvent.click(screen.getByRole("button", { name: /dismiss certificate/i }));
     expect(screen.queryByRole("dialog", { name: /certificate of achievement/i })).toBeNull();
     expect(screen.getByRole("dialog", { name: /zach, the cto at arthur/i })).toBeTruthy();
-    expect(track).toHaveBeenCalledWith(EVENT_NAMES.ONBOARDING_WIZARD_CTA_VIEWED, { course: "Intro to Evals" });
+    expect(track).toHaveBeenCalledWith("onboarding/wizard_cta_viewed", { course: "Intro to Evals" });
 
     // Dismissing the CTA ends the sequence (awaiting the exit transition).
     fireEvent.click(screen.getByRole("button", { name: /^dismiss$/i }));

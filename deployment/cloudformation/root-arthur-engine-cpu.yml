@@ -184,6 +184,12 @@ Parameters:
     Description: 'GenAI Engine application ingress DNS URL (e.g. https://arthur-genai-engine.mydomain.com)'
     AllowedPattern: 'https://.+'
     ConstraintDescription: 'A valid GenAI Engine service DNS URL must be provided.'
+  ScopeFeIngressURI:
+    Type: String
+    Description: 'Arthur Platform (Scope) frontend URL for this deployment (e.g. https://app.mydomain.arthur.ai)'
+    Default: ''
+    AllowedPattern: '(https://.+)?'
+    ConstraintDescription: 'Must be empty or a valid https URL (e.g. https://app.mydomain.arthur.ai)'
   GenaiEngineRoute53HostedZoneId:
     Type: String
     Description: '(Optional) The ID of the existing Route 53 hosted zone that contains the A record of GenAI Engine DNS to update. Only required when you want the A record of Arthur GenAI Engine DNS to be created.'
@@ -374,6 +380,13 @@ Parameters:
     Type: Number
     Default: 1500
     Description: 'Max page size for fetching data from the GenAI Engine'
+  FetchRawDataEnabled:
+    Type: String
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'true'
+    Description: 'Whether the ML Engine fetches raw data from the data plane'
   AuditLogEnabled:
     Type: String
     AllowedValues:
@@ -403,6 +416,7 @@ Metadata:
           - AlarmSNSTopicArn
           - GenaiEngineLoadBalancerScheme
           - GenaiEngineIngressURL
+          - ScopeFeIngressURI
           - GenaiEngineLoadBalancerCertificateARN
           - GenaiEngineOpenAIProvider
           - OpenAIGPTModelNamesEndpointsAndKeys
@@ -488,6 +502,7 @@ Metadata:
           - MLEngineFargateTaskCPUValue
           - MLEngineFargateTaskMemoryValue
           - GenaiEngineMaxPageSize
+          - FetchRawDataEnabled
       - Label:
           default: 'Advanced ML Engine (IAM)'
         Parameters:
@@ -579,6 +594,8 @@ Metadata:
         default: 'GenAI Engine Load Balancer Scheme'
       GenaiEngineIngressURL:
         default: 'GenAI Engine Application DNS URL'
+      ScopeFeIngressURI:
+        default: 'Arthur Platform (Scope) Frontend URL'
       GenaiEngineRoute53HostedZoneId:
         default: 'GenAI Engine Route 53 Hosted Zone ID'
       GenaiEngineRoute53RecordName:
@@ -661,6 +678,8 @@ Metadata:
         default: 'ML Engine ECS Memory Value. Must be compatible with ECS CPU Value'
       GenaiEngineMaxPageSize:
         default: 'GenAI Engine Max Page Size'
+      FetchRawDataEnabled:
+        default: 'Fetch Raw Data Enabled'
       ArthurApiHost:
         default: 'Arthur Platform URL'
 Conditions:
@@ -829,6 +848,7 @@ Resources:
         GenaiEnginePostgresClientConnectionPoolSize: !Ref GenaiEnginePostgresClientConnectionPoolSize
         GenaiEnginePostgresClientConnectionPoolMaxOverflow: !Ref GenaiEnginePostgresClientConnectionPoolMaxOverflow
         GenaiEngineIngressURL: !Ref GenaiEngineIngressURL
+        ScopeFeIngressURI: !Ref ScopeFeIngressURI
         GenaiEnginePostgresSSLCertDownloadURL: !Ref PostgresSSLCertDownloadURL
         GenaiEngineContainerImageLocation: !Ref GenaiEngineContainerImageLocation
         ContainerRepositoryCredentialRequired: !If [ ContainerRepositoryCredentialRequired, 'true', 'false' ]
@@ -881,6 +901,7 @@ Resources:
         MLEngineFargateTaskCPUValue: !Ref MLEngineFargateTaskCPUValue
         MLEngineFargateTaskMemoryValue: !Ref MLEngineFargateTaskMemoryValue
         GenaiEngineMaxPageSize: !Ref GenaiEngineMaxPageSize
+        FetchRawDataEnabled: !Ref FetchRawDataEnabled
       TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/ml-engine/arthur-ml-engine-ecs-task-definition.yml"
   GenaiEngineLBStack:
     Type: AWS::CloudFormation::Stack

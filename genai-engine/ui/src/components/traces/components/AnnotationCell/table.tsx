@@ -166,6 +166,9 @@ const createColumns = ({
     cell: ({ row }) => {
       if (!isContinuousEvalAnnotation(row.original)) return;
 
+      if (row.original.eval_type === "ml_eval") {
+        return <span className="text-nowrap">N/A</span>;
+      }
       return <span className="text-nowrap">{formatCurrency(row.original.cost ?? 0, defaultCurrency)}</span>;
     },
   }),

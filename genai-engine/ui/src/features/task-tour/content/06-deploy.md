@@ -22,6 +22,8 @@ steps:
     title: Verify the eval passes
   - id: review-latest-trace
     title: Check the latest trace
+  - id: review-eval-result
+    title: Confirm the eval passes
 ---
 
 ## intro
@@ -59,3 +61,7 @@ Open **Observe** from the sidebar to see the traces from your verification messa
 ## step: review-latest-trace
 
 Open the latest trace (the one from the message you just sent) and check the evals. The **Source Attribution Eval** should be green now that the agent cites its source. That passing eval is your confirmation the fix worked.
+
+## step: review-eval-result
+
+Evals run as soon as the trace lands, so give the **Source Attribution Eval** a moment to finish. Once it turns green, you've verified the fix end to end — click **Next** to wrap up the tour.
