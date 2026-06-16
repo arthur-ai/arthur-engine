@@ -106,6 +106,12 @@ spec:
               value: "{{ .Values.genaiEngineUsePIIModelV2 }}"
             - name: GENAI_ENGINE_OPENAI_PROVIDER
               value: "{{ .Values.genaiEngineOpenAIProvider }}"
+            - name: GENAI_ENGINE_OPENAI_VERIFY_SSL
+              value: "{{ .Values.genaiEngineOpenAIVerifySSL }}"
+            {{- if .Values.genaiEngineOpenAIPrivateCertDownloadURL }}
+            - name: GENAI_ENGINE_OPENAI_PRIVATE_CERT_DOWNLOAD_URL
+              value: "{{ .Values.genaiEngineOpenAIPrivateCertDownloadURL }}"
+            {{- end }}
             - name: CACHE_TASK_RULES_CACHE_ENABLED
               value: "{{ .Values.genaiEngineCacheTaskRulesCacheEnabled }}"
             - name: CACHE_TASK_RULES_CACHE_TTL
