@@ -10,7 +10,7 @@ import {
 } from "@/lib/api-errors";
 import { AgenticExperimentSummary, CreateAgenticExperimentRequest } from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 type Opts = {
   onSuccess?: (data: AgenticExperimentSummary) => void;
@@ -31,7 +31,7 @@ export const useCreateNewExperiment = ({ onSuccess }: Opts = {}) => {
       return response.data;
     },
     onSuccess: (data) => {
-      track(EVENT_NAMES.AGENT_EXPERIMENT_CREATED, { experiment_id: data.id });
+      track("agent_experiment/created", { experiment_id: data.id });
       queryClient.invalidateQueries({ queryKey: [queryKeys.agentExperiments.all(task!.id)] });
       onSuccess?.(data);
     },

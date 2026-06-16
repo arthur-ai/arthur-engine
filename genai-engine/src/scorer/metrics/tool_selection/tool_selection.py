@@ -6,8 +6,8 @@ from arthur_common.models.enums import MetricType, ToolClassEnum
 from arthur_common.models.metric_schemas import (
     MetricRequest,
 )
-from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers.json import JsonOutputParser
+from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableSerializable
 from langchain_openai.chat_models import AzureChatOpenAI, ChatOpenAI
 from pydantic import BaseModel, Field

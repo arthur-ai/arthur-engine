@@ -11,7 +11,7 @@ import type { TryItOutSubmitMeta } from "../try-it-out-form/types";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { storeRecipientName } from "@/features/task-tour/recipientName";
-import { EVENT_NAMES, identify, track } from "@/services/amplitude";
+import { identify, track } from "@/services/analytics";
 
 /**
  * Extracts the lowercased domain portion of an email address (the part after
@@ -28,7 +28,7 @@ export const OnboardingPage: React.FC = () => {
 
   const submitMutation = useCreateOnboardingSubmissionMutation({
     onSuccess: async (signup, { data, meta }) => {
-      track(EVENT_NAMES.ONBOARDING_FORM_SUBMITTED, {
+      track("onboarding/form_submitted", {
         variant: meta.formVariant,
         maturity: data.maturity,
         brings: data.brings,
@@ -64,7 +64,7 @@ export const OnboardingPage: React.FC = () => {
       navigate("/login", { replace: true });
     },
     onError: (error, { meta }) => {
-      track(EVENT_NAMES.ONBOARDING_FORM_SUBMIT_FAILED, {
+      track("onboarding/form_submit_failed", {
         variant: meta.formVariant,
         message: error.message,
       });
@@ -77,12 +77,12 @@ export const OnboardingPage: React.FC = () => {
   };
 
   const handleTry = () => {
-    track(EVENT_NAMES.ONBOARDING_PATH_SELECTED, { path: "try" });
+    track("onboarding/path_selected", { path: "try" });
     void setScreen("form");
   };
 
   const handleLogin = () => {
-    track(EVENT_NAMES.ONBOARDING_PATH_SELECTED, { path: "login" });
+    track("onboarding/path_selected", { path: "login" });
     navigate("/login");
   };
 

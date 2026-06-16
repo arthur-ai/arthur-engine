@@ -1,6 +1,9 @@
+import hashlib
+
 import pytest
 from arthur_common.models.request_schemas import ResponseValidationRequest
 
+from db_models import DatabaseSpan
 from repositories.inference_repository import InferenceRepository
 from schemas.internal_schemas import InferencePrompt, Rule, Task
 from tests.clients.base_test_client import (
@@ -103,3 +106,38 @@ def test_validate_response_with_model_name(
     # Check model_name in InferenceResponse object
     assert stored_inference.inference_response is not None
     assert stored_inference.inference_response.model_name == model_name
+
+
+@pytest.mark.unit_tests
+def test_validate_response_guardrail_span_carries_user_and_session(
+    create_rule_for_task_keywords: Rule,
+    create_prompt_inference_with_task: tuple[Task, InferencePrompt],
+):
+    """The response GUARDRAIL span sources user/session from the persisted
+    inference — the response request body carries neither."""
+    task, inference_prompt = create_prompt_inference_with_task
+    db_session = override_get_db_session()
+
+    result = validate_response(
+        inference_id=inference_prompt.inference_id,
+        body=ResponseValidationRequest(response="Hello, citizen!"),
+        db_session=db_session,
+        scorer_client=override_get_scorer_client(),
+        rules=[create_rule_for_task_keywords],
+        task_id=task.id,
+    )
+
+    derived_trace_id = hashlib.sha256(result.inference_id.encode()).hexdigest()[:32]
+    spans = (
+        db_session.query(DatabaseSpan)
+        .filter(
+            DatabaseSpan.trace_id == derived_trace_id,
+            DatabaseSpan.span_kind == "GUARDRAIL",
+        )
+        .all()
+    )
+
+    assert len(spans) == 1
+    # Fixture-written values, extracted by ingestion from user.id/session.id.
+    assert spans[0].user_id == "genai_engine_user"
+    assert spans[0].session_id == "dummy_conversation_id"

@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { dismissOverlay } from "../dismissOverlay";
 
 import { useTourEngine } from "@/features/tour";
-import { track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 /**
  * Headless auto-recovery for occluded tour targets. When the engine reports the

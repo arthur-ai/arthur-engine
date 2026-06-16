@@ -6,7 +6,7 @@ import { COURSE_NAME } from "../courseName";
 import { getStoredRecipientName } from "../recipientName";
 
 import { useTourEvent } from "@/features/tour";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 /** Which post-completion dialog is currently showing, if any. */
 type CompletionStage = "none" | "certificate" | "cta";
@@ -31,7 +31,7 @@ export function CertificateWidget() {
       if (event.reason === "completed") {
         setRecipientName(getStoredRecipientName() ?? undefined);
         setStage("certificate");
-        track(EVENT_NAMES.ONBOARDING_WIZARD_CERTIFICATE_VIEWED, { course: COURSE_NAME });
+        track("onboarding/wizard_certificate_viewed", { course: COURSE_NAME });
       }
     }, [])
   );
@@ -41,7 +41,7 @@ export function CertificateWidget() {
   // funnel's denominator — is tracked here in the handler.
   const handleCertificateClose = useCallback(() => {
     setStage("cta");
-    track(EVENT_NAMES.ONBOARDING_WIZARD_CTA_VIEWED, { course: COURSE_NAME });
+    track("onboarding/wizard_cta_viewed", { course: COURSE_NAME });
   }, []);
   const handleCtaDismiss = useCallback(() => setStage("none"), []);
 

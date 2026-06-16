@@ -9,7 +9,7 @@ import { usePaginationContext } from "../stores/pagination-context";
 
 import { useApi } from "@/hooks/useApi";
 import { queryKeys } from "@/lib/queryKeys";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 import { computeSpanMetrics, getSpan } from "@/services/tracing";
 import { wait } from "@/utils";
 
@@ -39,7 +39,7 @@ export const SpanDrawerContent = ({ id }: Props) => {
       return data;
     },
     onMutate: () => {
-      track(EVENT_NAMES.TRACING_REFRESH_METRICS_CLICKED, {
+      track("tracing/refresh_metrics_clicked", {
         level: "span",
         span_id: id,
         trace_id: span.trace_id,
@@ -48,7 +48,7 @@ export const SpanDrawerContent = ({ id }: Props) => {
     },
     onSuccess: (data) => {
       queryClient.setQueryData(queryKeys.spans.byId(id), data);
-      track(EVENT_NAMES.TRACING_REFRESH_METRICS_RESULT, {
+      track("tracing/refresh_metrics_result", {
         level: "span",
         span_id: id,
         trace_id: span.trace_id,
@@ -57,7 +57,7 @@ export const SpanDrawerContent = ({ id }: Props) => {
       });
     },
     onError: (error) => {
-      track(EVENT_NAMES.TRACING_REFRESH_METRICS_RESULT, {
+      track("tracing/refresh_metrics_result", {
         level: "span",
         span_id: id,
         trace_id: span.trace_id,
@@ -74,7 +74,7 @@ export const SpanDrawerContent = ({ id }: Props) => {
 
   const handleOpenTraceDrawer = () => {
     select(span.span_id);
-    track(EVENT_NAMES.TRACING_DRAWER_SWITCH, {
+    track("tracing/drawer_switch", {
       from_level: "span",
       to_level: "trace",
       span_id: span.span_id,
@@ -85,7 +85,7 @@ export const SpanDrawerContent = ({ id }: Props) => {
   };
 
   const handleOpenInPlayground = (spanId: string, taskId: string) => {
-    track(EVENT_NAMES.PLAYGROUND_OPEN_FROM_SPAN, {
+    track("playground/open_from_span", {
       task_id: taskId,
       span_id: spanId,
       trace_id: span.trace_id,

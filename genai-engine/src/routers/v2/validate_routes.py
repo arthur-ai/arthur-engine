@@ -6,7 +6,7 @@ from arthur_common.models.request_schemas import (
     ResponseValidationRequest,
 )
 from arthur_common.models.response_schemas import HTTPError, ValidationResult
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header
 from sqlalchemy.orm import Session
 
 from config.cache_config import cache_config
@@ -29,6 +29,7 @@ from schemas.internal_schemas import (
     ValidationRequest,
 )
 from scorer.score import ScorerClient
+from services.trace.guardrail_span_emitter import parse_traceparent
 from utils.users import enforce_org_scope, permission_checker
 from validation.prompt import validate_prompt
 from validation.response import validate_response
@@ -131,11 +132,19 @@ def default_validate_response(
 def validate_prompt_endpoint(
     body: PromptValidationRequest,
     task_id: UUID,
+    traceparent: str | None = Header(
+        default=None,
+        description="Optional W3C traceparent header. When supplied, the emitted "
+        "guardrail span joins that trace, nested under its parent span; otherwise "
+        "a trace is derived from the inference ID. OpenTelemetry-instrumented "
+        "callers send this automatically.",
+    ),
     db_session: Session = Depends(get_db_session),
     scorer_client: ScorerClient = Depends(get_scorer_client),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> ValidationResult:
     try:
+        trace_id, parent_span_id = parse_traceparent(traceparent)
         tasks_rules_repo = TasksRulesRepository(db_session)
         task_rules = tasks_rules_repo.get_task_rules_ids_cached(str(task_id))
         rules_repo = RuleRepository(db_session)
@@ -149,6 +158,8 @@ def validate_prompt_endpoint(
             db_session=db_session,
             scorer_client=scorer_client,
             rules=rules,
+            trace_id=trace_id,
+            parent_span_id=parent_span_id,
         )
     finally:
         db_session.close()
@@ -172,12 +183,20 @@ def validate_response_endpoint(
     inference_id: UUID,
     body: ResponseValidationRequest,
     task_id: UUID,
+    traceparent: str | None = Header(
+        default=None,
+        description="Optional W3C traceparent header. When supplied, the emitted "
+        "guardrail span joins that trace, nested under its parent span; otherwise "
+        "it joins the trace derived from the inference ID, under its prompt span. "
+        "OpenTelemetry-instrumented callers send this automatically.",
+    ),
     db_session: Session = Depends(get_db_session),
     scorer_client: ScorerClient = Depends(get_scorer_client),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     org_scope: UUID | None = Depends(get_org_scope),
 ) -> ValidationResult:
     try:
+        trace_id, parent_span_id = parse_traceparent(traceparent)
         # @enforce_org_scope above validated the task_id; also validate the
         # inference belongs to a task in the caller's org so a tenant can't
         # bind a foreign inference to their own task.
@@ -198,6 +217,9 @@ def validate_response_endpoint(
             db_session=db_session,
             scorer_client=scorer_client,
             rules=rules,
+            task_id=str(task_id),
+            trace_id=trace_id,
+            parent_span_id=parent_span_id,
         )
     finally:
         db_session.close()

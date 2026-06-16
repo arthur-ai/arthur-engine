@@ -25,7 +25,7 @@ import {
 } from "@/contexts/dataset";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 import type { ColumnDefaults } from "@/types/dataset";
 import { fetchAllDatasetRows } from "@/utils/datasetApi";
 import { exportDatasetToCSV } from "@/utils/datasetExport";
@@ -57,7 +57,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
   const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
-    track(EVENT_NAMES.DATASET_DETAIL_OPENED, { dataset_id: datasetId, task_id: task?.id });
+    track("dataset/detail_opened", { dataset_id: datasetId, task_id: task?.id });
   }, [datasetId, task?.id]);
 
   const filteredRows = useMemo(() => selectFilteredRows(state), [state]);
@@ -99,7 +99,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
   }, [navigate, task?.id, dispatch]);
 
   const handleViewExperiments = useCallback(() => {
-    track(EVENT_NAMES.DATASET_EXPERIMENTS_VIEWED, { dataset_id: datasetId, task_id: task?.id });
+    track("dataset/experiments_viewed", { dataset_id: datasetId, task_id: task?.id });
     navigate(`/tasks/${task?.id}/datasets/${datasetId}/experiments`);
   }, [navigate, task?.id, datasetId]);
 
@@ -112,7 +112,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
         });
         return;
       }
-      track(EVENT_NAMES.DATASET_VERSION_SELECTED, { dataset_id: datasetId, task_id: task?.id });
+      track("dataset/version_selected", { dataset_id: datasetId, task_id: task?.id });
       dispatch({ type: "VERSION/SELECT", payload: versionNumber });
     },
     [hasUnsavedChanges, dispatch, datasetId, task?.id]
@@ -120,7 +120,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
 
   const handleConfirmVersionSwitch = useCallback(() => {
     if (state.confirmation.targetVersion !== null) {
-      track(EVENT_NAMES.DATASET_VERSION_SWITCH_CONFIRMED, { dataset_id: datasetId, task_id: task?.id });
+      track("dataset/version_switch_confirmed", { dataset_id: datasetId, task_id: task?.id });
       dispatch({ type: "VERSION/SELECT", payload: state.confirmation.targetVersion });
       dispatch({ type: "DATA/CLEAR_CHANGES" });
     }
@@ -129,7 +129,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
 
   const handleAddRow = useCallback(
     async (rowData: Record<string, unknown>) => {
-      track(EVENT_NAMES.DATASET_ROW_ADDED, { dataset_id: datasetId, task_id: task?.id });
+      track("dataset/row_added", { dataset_id: datasetId, task_id: task?.id });
       dispatch({ type: "DATA/ADD_ROW", payload: rowData });
       dispatch({ type: "UI/TOGGLE_ADD_MODAL", payload: false });
     },
@@ -139,7 +139,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
   const handleUpdateRow = useCallback(
     async (rowData: Record<string, unknown>) => {
       if (!state.modals.edit.row) return;
-      track(EVENT_NAMES.DATASET_ROW_UPDATED, { dataset_id: datasetId, task_id: task?.id });
+      track("dataset/row_updated", { dataset_id: datasetId, task_id: task?.id });
       dispatch({ type: "DATA/UPDATE_ROW", payload: { id: state.modals.edit.row.id, data: rowData } });
       dispatch({ type: "UI/CLOSE_EDIT_MODAL" });
     },
@@ -148,7 +148,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
 
   const handleDeleteRow = useCallback(
     (id: string) => {
-      track(EVENT_NAMES.DATASET_ROW_DELETED, { dataset_id: datasetId, task_id: task?.id });
+      track("dataset/row_deleted", { dataset_id: datasetId, task_id: task?.id });
       dispatch({ type: "DATA/DELETE_ROW", payload: id });
     },
     [dispatch, datasetId, task?.id]
@@ -196,7 +196,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
         });
         return;
       }
-      track(EVENT_NAMES.DATASET_FILL_COLUMN_OPENED, { dataset_id: datasetId, task_id: task?.id });
+      track("dataset/fill_column_opened", { dataset_id: datasetId, task_id: task?.id });
       dispatch({ type: "UI/OPEN_FILL_MODAL", payload: columnName });
     },
     [hasUnsavedChanges, dispatch, datasetId, task?.id]
@@ -224,7 +224,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
       return;
     }
 
-    track(EVENT_NAMES.DATASET_EXPORT_CLICKED, { dataset_id: datasetId, task_id: task?.id });
+    track("dataset/export_clicked", { dataset_id: datasetId, task_id: task?.id });
     setIsExporting(true);
     try {
       const allRows = await fetchAllDatasetRows(api, datasetId, queries.currentVersion);
@@ -306,28 +306,28 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
           onBack={handleBack}
           onSave={() => mutations.save.mutate()}
           onConfigureColumns={() => {
-            track(EVENT_NAMES.DATASET_COLUMNS_CONFIG_OPENED, { dataset_id: datasetId, task_id: task?.id });
+            track("dataset/columns_config_opened", { dataset_id: datasetId, task_id: task?.id });
             dispatch({ type: "UI/TOGGLE_CONFIGURE_MODAL", payload: true });
           }}
           onAddRow={() => dispatch({ type: "UI/TOGGLE_ADD_MODAL", payload: true })}
           onExport={handleExport}
           onImport={() => {
-            track(EVENT_NAMES.DATASET_IMPORT_OPENED, { dataset_id: datasetId, task_id: task?.id });
+            track("dataset/import_opened", { dataset_id: datasetId, task_id: task?.id });
             dispatch({ type: "UI/TOGGLE_IMPORT_MODAL", payload: true });
           }}
           onOpenVersions={() => {
-            track(EVENT_NAMES.DATASET_VERSION_DRAWER_OPENED, { dataset_id: datasetId, task_id: task?.id });
+            track("dataset/version_drawer_opened", { dataset_id: datasetId, task_id: task?.id });
             dispatch({ type: "UI/TOGGLE_VERSION_DRAWER", payload: true });
           }}
           onViewExperiments={handleViewExperiments}
           onGenerateSynthetic={() => dispatch({ type: "UI/TOGGLE_SYNTHETIC_MODAL", payload: true })}
           searchValue={state.searchQuery}
           onSearchChange={(q) => {
-            track(EVENT_NAMES.DATASET_SEARCH_CHANGED, { dataset_id: datasetId, task_id: task?.id });
+            track("dataset/search_changed", { dataset_id: datasetId, task_id: task?.id });
             dispatch({ type: "VIEW/SET_SEARCH", payload: q });
           }}
           onSearchClear={() => {
-            track(EVENT_NAMES.DATASET_SEARCH_CHANGED, { dataset_id: datasetId, task_id: task?.id });
+            track("dataset/search_changed", { dataset_id: datasetId, task_id: task?.id });
             dispatch({ type: "VIEW/SET_SEARCH", payload: "" });
           }}
         />
@@ -369,7 +369,7 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
             sortColumn={state.sorting.column}
             sortDirection={state.sorting.direction}
             onSort={(col) => {
-              track(EVENT_NAMES.DATASET_SORT_CHANGED, { dataset_id: datasetId, task_id: task?.id });
+              track("dataset/sort_changed", { dataset_id: datasetId, task_id: task?.id });
               dispatch({ type: "VIEW/TOGGLE_SORT", payload: col });
             }}
             onEditRow={(row) => dispatch({ type: "UI/OPEN_EDIT_MODAL", payload: row })}
@@ -392,12 +392,12 @@ const DatasetDetailViewContent: React.FC<DatasetDetailViewContentProps> = ({ dat
               count={queries.totalRowCount}
               page={state.pagination.page}
               onPageChange={(_, p) => {
-                track(EVENT_NAMES.DATASET_PAGINATION_CHANGED, { dataset_id: datasetId, task_id: task?.id });
+                track("dataset/pagination_changed", { dataset_id: datasetId, task_id: task?.id });
                 dispatch({ type: "VIEW/SET_PAGE", payload: p });
               }}
               rowsPerPage={state.pagination.rowsPerPage}
               onRowsPerPageChange={(e) => {
-                track(EVENT_NAMES.DATASET_PAGINATION_CHANGED, { dataset_id: datasetId, task_id: task?.id });
+                track("dataset/pagination_changed", { dataset_id: datasetId, task_id: task?.id });
                 dispatch({ type: "VIEW/SET_ROWS_PER_PAGE", payload: parseInt(e.target.value, 10) });
               }}
               rowsPerPageOptions={[10, 25, 50, 100]}

@@ -11,7 +11,7 @@ import { UserLevel } from "./traces/components/tables/UserLevel";
 import { FilterStoreProvider } from "./traces/stores/filter.store";
 import { useWelcomeStore } from "./traces/stores/welcome.store";
 
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 const TIME_RANGE_VALUES = Object.values(TIME_RANGES);
 
@@ -55,7 +55,7 @@ export const TracesView: React.FC = () => {
 
   const handleLevelChange = (newValue: Level) => {
     if (newValue !== level) {
-      track(EVENT_NAMES.TRACING_LEVEL_CHANGED, {
+      track("tracing/level_changed", {
         task_id: taskId ?? "",
         from_level: level,
         to_level: newValue,
@@ -67,7 +67,7 @@ export const TracesView: React.FC = () => {
 
   const handleTimeRangeChange = (newValue: (typeof TIME_RANGE_VALUES)[number]) => {
     if (newValue !== timeRange) {
-      track(EVENT_NAMES.TRACING_TIME_RANGE_CHANGED, {
+      track("tracing/time_range_changed", {
         task_id: taskId ?? "",
         level,
         from_time_range: timeRange,

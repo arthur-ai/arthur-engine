@@ -83,20 +83,16 @@ Now evaluate the following:
 
 # Legacy prompt templates (with format_instructions)
 TOOL_SELECTION_NON_STRUCTURED_PROMPT_TEMPLATE = (
-    TOOL_SELECTION_STRUCTURED_PROMPT_TEMPLATE
-    + """
+    TOOL_SELECTION_STRUCTURED_PROMPT_TEMPLATE + """
 
     ---
     {format_instructions}
     ---"""
 )
 
-TOOL_USAGE_NON_STRUCTURED_PROMPT_TEMPLATE = (
-    TOOL_USAGE_STRUCTURED_PROMPT_TEMPLATE
-    + """
+TOOL_USAGE_NON_STRUCTURED_PROMPT_TEMPLATE = TOOL_USAGE_STRUCTURED_PROMPT_TEMPLATE + """
 
     ---
     {format_instructions}
 
     ---"""
-)

@@ -19,7 +19,7 @@ import { mapFormToRequest, mapTemplateToRequest } from "./utils/mapper";
 
 import { getContentHeight } from "@/constants/layout";
 import { AgenticExperimentDetail, HttpHeader, TemplateVariableMappingInput } from "@/lib/api-client/api-client";
-import { EVENT_NAMES, track } from "@/services/amplitude";
+import { track } from "@/services/analytics";
 
 function computeVars(endpoint: { body: string; headers: HttpHeader[] }): string[] {
   const bodyVars = extractVariablesFromText(endpoint.body);
@@ -58,7 +58,7 @@ const Internal = ({ template }: { template?: AgenticExperimentDetail }) => {
     defaultValues: mapTemplateToRequest(template),
     listeners: {
       onMount: () => {
-        track(EVENT_NAMES.AGENT_EXPERIMENT_INTENT_CREATE, { template_id: template?.id });
+        track("agent_experiment/intent_create", { template_id: template?.id });
       },
       onChange: ({ fieldApi, formApi }) => {
         const name = fieldApi.name as string;
