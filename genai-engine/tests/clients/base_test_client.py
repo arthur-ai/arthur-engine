@@ -1484,7 +1484,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         resp = self.base_client.post(
             path,
             headers=self.authorized_org_admin_api_key_headers,
-            data=request_body.model_dump_json(),
+            json=request_body.model_dump(mode="json"),
         )
         log_response(resp)
 
@@ -1546,7 +1546,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.post(
             path,
-            data=password_request.model_dump_json(),
+            json=password_request.model_dump(mode="json"),
             headers=self.authorized_chat_headers,
         )
 
@@ -3026,7 +3026,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.post(
             f"/api/v2/datasets/{dataset_id}/versions",
-            data=request.model_dump_json(),
+            json=request.model_dump(mode="json"),
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -3167,7 +3167,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.post(
             f"/api/v1/tasks/{task_id}/rag_providers",
-            data=request.model_dump_json(),
+            json=request.model_dump(mode="json"),
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -3231,7 +3231,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.patch(
             f"/api/v1/rag_providers/{provider_id}",
-            data=request.model_dump_json(),
+            json=request.model_dump(mode="json"),
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -3321,7 +3321,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.post(
             f"/api/v1/tasks/{task_id}/rag_providers/test_connection",
-            data=request.model_dump_json(),
+            json=request.model_dump(mode="json"),
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -3371,7 +3371,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.post(
             f"/api/v1/rag_providers/{provider_id}/similarity_text_search",
-            data=request.model_dump_json(),
+            json=request.model_dump(mode="json"),
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -3417,7 +3417,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.post(
             f"/api/v1/rag_providers/{provider_id}/keyword_search",
-            data=request.model_dump_json(),
+            json=request.model_dump(mode="json"),
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -3483,7 +3483,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.post(
             f"/api/v1/rag_providers/{provider_id}/hybrid_search",
-            data=request.model_dump_json(),
+            json=request.model_dump(mode="json"),
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -3542,7 +3542,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.post(
             f"/api/v1/tasks/{task_id}/rag_search_settings",
-            data=request.model_dump_json(),
+            json=request.model_dump(mode="json"),
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -3594,7 +3594,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.patch(
             f"/api/v1/rag_search_settings/{setting_configuration_id}",
-            data=request.model_dump_json(),
+            json=request.model_dump(mode="json"),
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -3698,7 +3698,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.post(
             f"/api/v1/tasks/{task_id}/rag_search_settings",
-            data=request.model_dump_json(),
+            json=request.model_dump(mode="json"),
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -3752,7 +3752,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.post(
             f"/api/v1/tasks/{task_id}/rag_search_settings",
-            data=request.model_dump_json(),
+            json=request.model_dump(mode="json"),
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -3781,7 +3781,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.post(
             f"/api/v1/rag_search_settings/{setting_configuration_id}/versions",
-            data=request.model_dump_json(),
+            json=request.model_dump(mode="json"),
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -3876,7 +3876,7 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         resp = self.base_client.patch(
             f"/api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}",
-            data=request.model_dump_json(),
+            json=request.model_dump(mode="json"),
             headers=self.authorized_user_api_key_headers,
         )
 
