@@ -1,7 +1,7 @@
 """add token limit to organizations
 
 Revision ID: 5e84b8d7aa1f
-Revises: 2966018cec1d
+Revises: e1f2a3b4c5d6
 Create Date: 2026-06-04 10:00:00.000000
 
 Adds the tenant token-credit columns introduced for UP-4390.
@@ -21,7 +21,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "5e84b8d7aa1f"
-down_revision = "2966018cec1d"
+down_revision = "e1f2a3b4c5d6"
 branch_labels = None
 depends_on = None
 
