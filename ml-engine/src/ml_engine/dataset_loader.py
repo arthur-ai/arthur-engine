@@ -9,7 +9,6 @@ from arthur_client.api_bindings import (
     Dataset,
     DatasetsV1Api,
 )
-from arthur_client.api_bindings.exceptions import NotFoundException
 from arthur_common.models.connectors import ConnectorPaginationOptions
 from arthur_common.models.datasets import DatasetJoinKind
 from arthur_common.models.schema_definitions import STATIC_DATASET_TIMESTAMP_COL
@@ -19,6 +18,7 @@ from duckdb import DuckDBPyConnection
 
 from tools.connector_constructor import ConnectorConstructor
 from tools.converters import client_to_common_dataset_schema
+from tools.dataset_utils import get_dataset_or_available_dataset_from_id
 
 
 class DatasetLoader:
@@ -33,15 +33,6 @@ class DatasetLoader:
         self.datasets_client = datasets_client
         self.logger = logger
 
-    def _dataset_or_available_dataset_from_id(
-        self,
-        dataset_id: str,
-    ) -> Dataset | AvailableDataset:
-        try:
-            return self.datasets_client.get_dataset(dataset_id)
-        except NotFoundException:
-            return self.datasets_client.get_available_dataset(dataset_id)
-
     """
     Obtain a list of all physical datasets in the list. These might be at the root level, or nested within join specs, so do so recursively
     """
@@ -53,7 +44,10 @@ class DatasetLoader:
         physical_datasets: list[Dataset | AvailableDataset] = []
 
         for dataset_id in dataset_ids:
-            dataset = self._dataset_or_available_dataset_from_id(dataset_id)
+            dataset = get_dataset_or_available_dataset_from_id(
+                self.datasets_client,
+                dataset_id,
+            )
             if dataset.join_spec:
                 ds1 = self.datasets_client.get_dataset(
                     dataset.join_spec.left_joined_dataset.id,
@@ -242,7 +236,10 @@ class DatasetLoader:
 
         # Once all datasets are loaded, resolve to solve for joins
         for dataset_id in dataset_ids:
-            dataset = self._dataset_or_available_dataset_from_id(dataset_id)
+            dataset = get_dataset_or_available_dataset_from_id(
+                self.datasets_client,
+                dataset_id,
+            )
             try:
                 self.resolve_dataset(conn, dataset, unloaded_datasets)
             except Exception as e:
