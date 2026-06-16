@@ -3,16 +3,13 @@ import { useCallback, useState } from "react";
 import type { GenerationConfig, SyntheticRow } from "@/components/datasets/synthetic/types";
 import { useOutOfCreditsDialog } from "@/contexts/OutOfCreditsContext";
 import { useApi } from "@/hooks/useApi";
-import {
-  getTokenLimitDetail,
-  isTokenLimitExceededError,
-} from "@/lib/api-errors";
 import type {
   OpenAIMessageInput,
   SyntheticDataRowResponse,
   NewDatasetVersionRowColumnItemRequest,
   DatasetVersionRowResponse,
 } from "@/lib/api-client/api-client";
+import { getTokenLimitDetail, isTokenLimitExceededError } from "@/lib/api-errors";
 import { generateTempRowId } from "@/utils/datasetRowUtils";
 
 export type { GenerationConfig, SyntheticRow };

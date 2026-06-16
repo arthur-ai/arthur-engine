@@ -9,11 +9,8 @@ import { streamCompletions } from "@/components/prompts-playground/utils/streamC
 import toCompletionRequest from "@/components/prompts-playground/utils/toCompletionRequest";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOutOfCreditsDialog } from "@/contexts/OutOfCreditsContext";
-import {
-  getTokenLimitDetail,
-  isTokenLimitExceededError,
-} from "@/lib/api-errors";
 import { AgenticPromptRunResponse, RunAgenticPromptApiV1CompletionsPostError } from "@/lib/api-client/api-client";
+import { getTokenLimitDetail, isTokenLimitExceededError } from "@/lib/api-errors";
 
 interface UseRunPromptOptions {
   prompt: PromptType;
@@ -197,7 +194,7 @@ const useRunPrompt = ({ prompt, onError }: UseRunPromptOptions) => {
         });
       }
     }
-  }, [apiClient, prompt, state.keywords, dispatch, onError, token]);
+  }, [apiClient, prompt, state.keywords, dispatch, onError, token, showOutOfCredits]);
 
   return runPrompt;
 };

@@ -46,9 +46,7 @@ export const isTokenLimitExceededError = (err: unknown): boolean => {
  * if the shape doesn't match. Useful when a caller wants to surface the
  * specific `tokens_limit` / `tokens_used` values.
  */
-export const getTokenLimitDetail = (
-  err: unknown,
-): TokenLimitExceededDetail | null => {
+export const getTokenLimitDetail = (err: unknown): TokenLimitExceededDetail | null => {
   if (isAxiosError(err)) {
     const axErr = err as AxiosError<{ detail?: unknown }>;
     const detail = axErr.response?.data?.detail;

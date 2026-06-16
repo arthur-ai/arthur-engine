@@ -112,18 +112,12 @@ export function streamCompletions(
         // it to the global out-of-credits dialog instead of an inline error.
         if (response.status === 402) {
           const tokenLimitErr = new Error(
-            typeof errorData?.detail?.message === "string"
-              ? errorData.detail.message
-              : "Out of LLM credits",
+            typeof errorData?.detail?.message === "string" ? errorData.detail.message : "Out of LLM credits"
           ) as Error & { detail?: unknown };
           tokenLimitErr.detail = errorData.detail;
           throw tokenLimitErr;
         }
-        throw new Error(
-          typeof errorData.detail === "string"
-            ? errorData.detail
-            : `HTTP error! status: ${response.status}`,
-        );
+        throw new Error(typeof errorData.detail === "string" ? errorData.detail : `HTTP error! status: ${response.status}`);
       }
 
       if (!response.body) {

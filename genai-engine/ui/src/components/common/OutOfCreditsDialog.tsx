@@ -3,16 +3,7 @@
 // "contact Arthur" message so we don't ship a different copy per surface.
 
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-import {
-  Box,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography } from "@mui/material";
 import React from "react";
 
 import { useOutOfCreditsDialog } from "@/contexts/OutOfCreditsContext";
@@ -43,14 +34,8 @@ export const OutOfCreditsDialog: React.FC = () => {
         </Stack>
       </DialogTitle>
       <DialogContent>
-        <Typography
-          id="out-of-credits-dialog-description"
-          variant="body1"
-          sx={{ mb: detail ? 2 : 0 }}
-        >
-          {detail?.message ??
-            "Your organization has used all available LLM credits. " +
-              "Contact Arthur to purchase more."}
+        <Typography id="out-of-credits-dialog-description" variant="body1" sx={{ mb: detail ? 2 : 0 }}>
+          {detail?.message ?? "Your organization has used all available LLM credits. " + "Contact Arthur to purchase more."}
         </Typography>
         {detail && (
           <Box
