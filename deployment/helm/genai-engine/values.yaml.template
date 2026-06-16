@@ -9,6 +9,13 @@ genaiEngineIngressURL: ""
 scopeFeIngressURI: ""
 # Provider of OpenAI LLMs (must be set to 'Azure' or 'OpenAI')
 genaiEngineOpenAIProvider: "Azure"
+# TLS verification for the LLM endpoint (e.g. an OpenAI-compatible LiteLLM proxy).
+# Set to "false" to disable certificate verification (insecure; dev/test only).
+genaiEngineOpenAIVerifySSL: "true"
+# Optional URL serving a private CA / self-signed cert (PEM) for the LLM endpoint. When set,
+# it is downloaded at container startup and trusted as the CA. Leave empty to use standard
+# verification.
+genaiEngineOpenAIPrivateCertDownloadURL: ""
 
 ###################################
 ## Additional Required Configurations For GPU Deployment
