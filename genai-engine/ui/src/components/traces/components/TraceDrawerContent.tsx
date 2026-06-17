@@ -3,17 +3,19 @@ import { Skeleton } from "@mui/material";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useEffectEvent, useMemo, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useState, type RefObject } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { getSpanDetailsStrategy } from "../data/details-strategy";
 import { useDrawerTarget } from "../hooks/useDrawerTarget";
 import { useSelection } from "../hooks/useSelection";
 import { usePaginationContext } from "../stores/pagination-context";
+import { extractGuardrailInvocations } from "../utils/guardrails";
 import { flattenSpans } from "../utils/spans";
 
 import { AddToDatasetDrawer } from "./add-to-dataset/Drawer";
 import { ContinuousEvalDrawer } from "./continuous-eval/ContinuousEvalDrawer";
+import { GuardrailSummaryBar } from "./guardrail-bar/GuardrailSummaryBar";
 import { TraceDrawerAnnotationBar } from "./TraceDrawerAnnotationBar";
 
 import { TOUR_IDS } from "@/features/task-tour/selectors";
@@ -82,6 +84,8 @@ export const TraceDrawerContent = ({ id }: Props) => {
   // Flatten nested spans recursively
   const flatSpans = useMemo(() => flattenSpans(trace?.root_spans ?? []), [trace]);
 
+  const guardrailInvocations = useMemo(() => extractGuardrailInvocations(trace?.root_spans ?? []), [trace]);
+
   const rootSpan = trace?.root_spans?.[0];
 
   const onOpenDrawer = useEffectEvent(() => {
@@ -132,6 +136,21 @@ export const TraceDrawerContent = ({ id }: Props) => {
     [select]
   );
 
+  const handleJumpToSpan = useCallback(
+    (spanId: string, containerRef: RefObject<HTMLDivElement | null>) => {
+      handleSelectSpan(spanId);
+      // The span tree is rendered inside the compiled drawer body: selecting a
+      // span marks its row with `data-selected` but does not scroll it into
+      // view. Best-effort scroll after the selection re-render, scoped to the
+      // spans column via its tour-id anchor.
+      requestAnimationFrame(() => {
+        const spansColumn = containerRef.current?.querySelector(`[data-tour-id="${TOUR_IDS.traceDrawerSpans}"]`);
+        spansColumn?.querySelector("[data-selected]")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      });
+    },
+    [handleSelectSpan]
+  );
+
   // Task-tour anchors. `TraceDrawerBody`'s `slotProps` spreads each entry onto
   // a wrapping `<div>` inside the drawer, so we can attach `data-tour-id`
   // without resorting to opaque DOM wrappers. There is no `actions` slot — the
@@ -174,6 +193,13 @@ export const TraceDrawerContent = ({ id }: Props) => {
       slotProps={tourSlotProps}
       renderAnnotationBar={({ annotations, traceId: tid, containerRef }) => (
         <TraceDrawerAnnotationBar annotations={(annotations ?? []) as AgenticAnnotationResponse[]} traceId={tid} containerRef={containerRef} />
+      )}
+      renderBelowAnnotationBar={({ containerRef }) => (
+        <GuardrailSummaryBar
+          invocations={guardrailInvocations}
+          selectedSpanId={selectedSpanId}
+          onJumpToSpan={(spanId) => handleJumpToSpan(spanId, containerRef)}
+        />
       )}
       renderAfterDrawer={() => (
         <>
