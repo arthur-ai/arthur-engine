@@ -35,15 +35,22 @@ TOKEN_LIMIT_EXCEEDED_MESSAGE = (
 )
 
 
-def enforce_token_quota(db_session: Session, org_id: uuid.UUID) -> None:
+def enforce_token_quota(org_id: uuid.UUID) -> None:
     """Raise 402 if `org_id` has exhausted its lifetime token credit (UP-4390).
 
     Orgs with `tokens_limit IS NULL` are unmetered (default org, system org)
-    and always pass. Callers route this in front of any LLM-triggering work:
-    request-time via the route handler, background-job-start time via the
-    worker.
+    and always pass. Called from `LLMClient.completion` / `.acompletion`
+    before delegating to litellm so the gate fires at the actual boundary
+    where tokens get spent — no route-level plumbing needed, can't be
+    forgotten on new endpoints, and mid-flow exhaustion is caught at the
+    next LLM call.
+
+    Opens its own DB session so it's safe to call from any context
+    (in-request, background thread, queue worker) without coupling to a
+    caller-owned session.
     """
-    status = OrganizationsRepository(db_session).get_token_quota_status(org_id)
+    with db_session_context() as session:
+        status = OrganizationsRepository(session).get_token_quota_status(org_id)
     if status is None or not status.is_exhausted:
         return
     raise HTTPException(

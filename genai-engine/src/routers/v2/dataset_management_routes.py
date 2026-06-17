@@ -13,7 +13,6 @@ from dependencies import get_db_session, get_org_scope, get_validated_task
 from repositories.agentic_prompts_repository import AgenticPromptRepository
 from repositories.datasets_repository import DatasetRepository
 from repositories.model_provider_repository import ModelProviderRepository
-from repositories.organizations_repository import enforce_token_quota
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.agentic_prompt_schemas import AgenticPrompt
@@ -460,7 +459,6 @@ def generate_synthetic_data(
     # Create the synthetic data service and generate data
     synthetic_service = SyntheticDataService(model_provider_repo, db_session)
     org_id = _dataset_org_id(db_session, dataset_id)
-    enforce_token_quota(db_session, org_id)
     return synthetic_service.generate_initial(
         request=request,
         existing_rows=existing_rows,
@@ -522,7 +520,6 @@ def send_synthetic_data_message(
     # Create the synthetic data service and continue conversation
     synthetic_service = SyntheticDataService(model_provider_repo, db_session)
     org_id = _dataset_org_id(db_session, dataset_id)
-    enforce_token_quota(db_session, org_id)
     return synthetic_service.continue_conversation(
         request=request,
         existing_rows=existing_rows,

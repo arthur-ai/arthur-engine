@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, st
 from sqlalchemy.orm import Session
 
 from dependencies import get_db_session, get_org_scope, get_validated_task
-from repositories.organizations_repository import enforce_token_quota
 from repositories.prompt_experiment_repository import PromptExperimentRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
@@ -116,7 +115,6 @@ def create_prompt_experiment(
     against the dataset using the configured evaluations.
     """
     try:
-        enforce_token_quota(db_session, task.org_id)
         # Validate at least one prompt is provided
         if (
             not experiment_request.prompt_configs

@@ -7,7 +7,6 @@ from auth.authorization_header_elements import (
 )
 from dependencies import get_db_session, get_validated_task
 from repositories.chatbot_repository import ChatbotRepository
-from repositories.organizations_repository import enforce_token_quota
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.chatbot_schemas import (
@@ -56,7 +55,6 @@ async def stream_chatbot(
                 detail="GENAI_ENGINE_INGRESS_URI is not set",
             )
 
-        enforce_token_quota(db_session, task.org_id)
         user_id = current_user.id
         return repo.stream_response(
             body,

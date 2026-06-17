@@ -17,7 +17,10 @@ from litellm.types.utils import (
 )
 from pydantic import BaseModel, ConfigDict, Field
 
-from repositories.organizations_repository import record_org_token_usage
+from repositories.organizations_repository import (
+    enforce_token_quota,
+    record_org_token_usage,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -238,6 +241,7 @@ class LLMClient:
         # owns the resource being acted on (the task, dataset, annotation,
         # etc.). Unmetered orgs (default/system) are handled via
         # `tokens_limit IS NULL` — not by passing a sentinel here. UP-4390.
+        enforce_token_quota(org_id)
         kwargs = self._add_provider_credentials(kwargs)
 
         try:
@@ -343,6 +347,7 @@ class LLMClient:
         # consumer must call `record_token_usage` after
         # `litellm.stream_chunk_builder` produces the final response —
         # token usage isn't known at return-time. UP-4390.
+        enforce_token_quota(org_id)
         kwargs = self._add_provider_credentials(kwargs)
 
         try:

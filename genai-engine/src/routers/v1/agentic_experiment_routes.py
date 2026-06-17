@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 
 from dependencies import get_db_session, get_org_scope, get_validated_task
 from repositories.agentic_experiment_repository import AgenticExperimentRepository
-from repositories.organizations_repository import enforce_token_quota
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.agentic_experiment_schemas import (
@@ -109,7 +108,6 @@ def create_agentic_experiment(
     against the dataset using the configured evaluations with transforms.
     """
     try:
-        enforce_token_quota(db_session, task.org_id)
         # Validate at least one eval is provided
         if not experiment_request.eval_list or len(experiment_request.eval_list) == 0:
             raise HTTPException(

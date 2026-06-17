@@ -8,7 +8,6 @@ from config.config import Config
 from dependencies import get_application_config, get_db_session
 from repositories.demo_task_repository import DemoTaskRepository
 from repositories.metrics_repository import MetricRepository
-from repositories.organizations_repository import enforce_token_quota
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
 from routers.route_handler import GenaiEngineRoute
@@ -60,7 +59,6 @@ async def stream_demo_chatbot(
             application_config,
         )
         task = tasks_repo.get_task_by_id(task_id)
-        enforce_token_quota(db_session, task.org_id)
 
         demo_task_repo = DemoTaskRepository(db_session)
         return demo_task_repo.stream_response(

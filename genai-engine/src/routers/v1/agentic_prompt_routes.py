@@ -17,7 +17,6 @@ from dependencies import (
     llm_get_versions_filter_parameters,
 )
 from repositories.agentic_prompts_repository import AgenticPromptRepository
-from repositories.organizations_repository import enforce_token_quota
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.agentic_prompt_schemas import (
@@ -253,7 +252,6 @@ async def run_agentic_prompt(
             if current_user and current_user.org_scope is not None
             else constants.DEFAULT_ORG_ID
         )
-        enforce_token_quota(db_session, org_id)
         return await agentic_prompt_service.run_unsaved_prompt(
             unsaved_prompt,
             org_id=org_id,
@@ -478,7 +476,6 @@ async def run_saved_agentic_prompt(
         AgenticPromptRunResponse or StreamingResponse
     """
     try:
-        enforce_token_quota(db_session, task.org_id)
         agentic_prompt_service = AgenticPromptRepository(db_session)
         return await agentic_prompt_service.run_saved_prompt(
             task.id,
