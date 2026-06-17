@@ -1,10 +1,11 @@
 # GenAI Engine — Platform-Connected Multi-Tenancy: Technical Plan
 
 > **Status:** Research / design proposal (for adversarial review)
-> **Date:** 2026-06-16
+> **Date:** 2026-06-17
 > **Source material:** Notion "2026 Engine Architecture Convo" (Convos 1–3), Fireflies transcripts
-> `01KT7C5884KREC51V5NAFAS4R9` (Convo 1), `01KTCHXCADTZXRRCBDQ8B6HVWH` (Convo 2),
-> `01KTS4893H7K9XE852CPRBS05J` (Convo 3), and direct code investigation of
+> `01KT7C5884KREC51V5NAFAS4R9` (Convo 1 — business), `01KTCHXCADTZXRRCBDQ8B6HVWH` (Convo 2 —
+> architecture), `01KTS4893H7K9XE852CPRBS05J` (Convo 3 — finalizing),
+> `01KVB01Y95AT79MXSY1V5BX7EX` (Zach↔Nori 1:1, 2026-06-17), and direct code investigation of
 > `genai-engine/` and `ml-engine/`.
 > **Companion doc:** [`MULTI_TENANCY_DESIGN.md`](MULTI_TENANCY_DESIGN.md) (the shipped v1 org model this plan builds on).
 
@@ -16,8 +17,8 @@ This is a *research plan*, not an implementation spec. Every factual claim about
 current system has been checked against the code and is tagged:
 
 - ✅ **Validated** — confirmed in this repo, with file references.
-- ⚠️ **Partially true / overstated** — the meeting notes assert something the code only
-  partly supports. These are the dangerous ones; read them carefully.
+- ⚠️ **Partially true / needs care** — the meeting notes assert something the code only
+  partly supports.
 - ❓ **Unverifiable here** — depends on the platform / control-plane codebase, which is a
   **separate repository not available in this workspace**. Roughly half of the proposed
   architecture lives there and is therefore *unvalidated*.
@@ -52,7 +53,7 @@ Two distinct technical bets came out of that:
 ### 1.2 What is already done (do not re-build)
 
 The engine is **already multi-tenant at the org level** as of the May 2026 v1 work
-(`MULTI_TENANCY_DESIGN.md`, migrations `2026_05_19_*`). Concretely, ✅ validated in code:
+(`MULTI_TENANCY_DESIGN.md`, migrations `2026_05_19_*`). ✅ validated in code:
 
 - `organizations` table (`src/db_models/organization_models.py:10`), seeded `default`
   (`…0001`) and `system` (`…0002`) orgs.
@@ -66,100 +67,98 @@ The engine is **already multi-tenant at the org level** as of the May 2026 v1 wo
   (`src/routers/v2/tenant_signup_routes.py`), gated by `GENAI_ENGINE_DEMO_MODE`.
 
 **So the right framing is not "make the engine multi-tenant." It is "connect the
-already-multi-tenant engine to the platform's identity and authorization, make the org scope
-a *set* instead of a *scalar*, and rework the ML-engine job path for cross-org fan-out."**
+already-multi-tenant engine to the platform's identity and authorization, build a real auth
+solution (Keycloak-based SSO), turn org scope from a *scalar* into a *set* so the UI is a
+single unified view, and rework the ML-engine job path for cross-org fan-out."**
 
-### 1.3 The taxonomy this plan assumes (from Convos 2–3)
+### 1.3 The taxonomy (locked in Convo 3 and re-confirmed in the Nori 1:1)
 
 | Control Plane (platform) | GenAI Engine | Notes |
 |---|---|---|
-| Project | **Engine Organization** | The connector that stores the org's API key lives on the project. Convo 3 settled on **project ↔ org** (not workspace ↔ org). |
-| Application (née model) | **Task** | Mapping already held in the platform today; no AuthZ on applications directly — authZ is inherited through the project. |
+| **Project** | **Engine Organization** | 1:1. The connector that stores the org's API key lives on the project. |
+| **Application** (née model) | **Task** | Mapping already held in the platform today; no AuthZ on applications directly — authZ is inherited through the project. |
 | Workspace | (implicit boundary) | Workspace-level role grants reach all of the org's tasks. |
 
 Authorization is done **by proxy**: the engine never syncs task-level ACLs to SpiceDB. The
-platform answers "which engine org IDs can this user reach?" and the engine filters its own
-data by those org IDs. The only engine state the platform needs to know about is **orgs**
-(and the project↔org / application↔task mappings).
+question *"which engine org IDs can this user reach?"* reduces to *"which platform projects can
+this user reach?"* (1:1 project↔org), answered by the platform from SpiceDB. The engine then
+filters its own data by that set of org IDs. The only engine state the platform must know about
+is **orgs** (via the project↔org and application↔task mappings it already holds).
+
+### 1.4 Two scope boundaries that the Nori 1:1 nailed down
+
+- **The engine UI stays in the engine.** An earlier idea (Convo 2) was to lift the engine UI
+  into the platform and make data planes API-only. That is **off the table** — *"the engine's
+  not moving."* The engine keeps its own UI and becomes a Keycloak client so it can drive SSO
+  itself.
+- **SSO is the free/self-serviceable part; RBAC is the gated enterprise lever.** SSO is plain
+  public OIDC spec — a self-hoster could wire it up themselves. The monetizable capability is
+  **RBAC**, which only works once the engine is connected to the platform. Standalone / Docker
+  / local installs keep working on admin API keys with **no RBAC**; connecting to the platform
+  is what unlocks org-scoped RBAC.
 
 ---
 
 ## 2. Current State — Validated Findings
 
-### 2.1 Engine authentication: the "fork" is real but thinner than the notes imply
+### 2.1 Authentication: we build a new Keycloak-based auth solution
 
-`src/auth/multi_validator.py:25` (`MultiMethodValidator.validate_api_multi_auth`) has **two**
-branches, not three:
+We are **building the auth solution end-to-end**, not inheriting one. The engine becomes a
+**Keycloak client** of the platform's Keycloak, so it can drive SSO directly: a user clicking
+in from the platform is transparently signed in (no API-key paste). The new auth entry point:
 
-1. **API key** → `api_key_validator_client.validate(...)`; on success sets
-   `request.state.org_scope = user.org_scope` (the key's `org_id`).
-2. **JWT fallback** → `jwk_client.validate(token)`; on success sets `org_scope = None`
-   (**always admin/cross-org**), per the in-code comment: *"JWT users are always cross-org
-   admins in v1 — org_scope stays None."*
+- Validates platform-minted Keycloak tokens (RS256 against the platform-served JWKS).
+- Pins the engine's expected issuer + audience.
+- Is enabled only when the engine is configured with a platform URL; when unset, the engine
+  behaves as a standalone, API-key-only install (preserving the Docker/local path — a hard
+  requirement from Convo 2 and re-confirmed with Nori).
+- **Fails closed** on the authZ handoff (see §4.2): a token that authenticates but has not yet
+  been scoped to any org grants **zero** access — never cross-org/admin.
 
-The JWT validator (`src/auth/jwk_client.py:21`) uses `PyJWKClient` against a **single JWKS
-URI** built from the engine's *own* Keycloak config (`GENAI_ENGINE_INGRESS_URI` /
-`KEYCLOAK_HOST_URI` + `KEYCLOAK_REALM`, see `src/utils/utils.py:get_auth_metadata_uri` and
-`src/dependencies.py:206`). It validates the signature with `verify_signature: True` but
-**`verify_aud: False` and does not inspect the `iss` (issuer) claim at all.**
+The **admin API-key path is retained** for standalone installs and service callers. Admin keys
+(`org_id = NULL`) keep cross-org access; they are also what a self-hoster uses to *prove
+ownership* when connecting to the platform (§7.2).
 
-⚠️ **This contradicts three statements in the Notion doc / Convo 3:**
-
-- *"The engine already has a token validation fork… third handler that checks if the token's
-  issuer matches the platform's Keycloak."* — There is **no issuer check today** and **no
-  third handler**. The JWT branch is a single generic RS256/JWKS validator pointed at one
-  configured Keycloak. The "issuer fork" is **work to build**, not work that exists.
-- *"The engine environment variable `PLATFORM_URL` already drives where it trusts tokens
-  from."* — **There is no `PLATFORM_URL` in the engine today.** Token trust is driven by the
-  engine's own Keycloak env vars. (Convo 2's "issuer-fork code already exists" claim is the
-  origin of this; it appears to be a half-memory of the legacy SHIELD Keycloak wiring.)
-- *"Platform already proxies the Keycloak metadata endpoint (Ian confirmed live)."* — ❓ This
-  is a **platform-side** capability; cannot be verified in this repo. It is plausible and the
-  plan assumes it, but it is unvalidated here.
-
-**Why this matters (security):** today JWT auth = full admin. If we simply point the existing
-JWT branch at the platform's Keycloak, **every platform user instantly becomes a cross-org
-admin on the engine.** The authZ round-trip (Section 4) is therefore not optional polish — it
-is a prerequisite to trusting platform tokens at all.
+❓ **Platform dependency (not in this repo):** the platform proxying Keycloak's JWKS/metadata so
+the engine only needs the platform URL (Ian indicated this is live in Convo 3). Plausible;
+verify before relying.
 
 ### 2.2 Org scope is a scalar threaded everywhere — the "~60 functions" claim is accurate
 
-✅ Validated. The scope is a single `Optional[UUID]`:
+✅ Validated. The authZ scope is a single `Optional[UUID]`:
 
-- Set on `request.state.org_scope` in `multi_validator.py`.
 - Read by `get_org_scope(request) -> Optional[UUID]` (`src/dependencies.py:331`).
 - Enforced by `@enforce_org_scope` (path, 60 endpoints) and `@enforce_query_org_scope`
   (query, 11 endpoints) in `src/utils/users.py`, plus ~35 repository `get_X_by_id(…,
   org_scope)` methods (Pattern C) that filter `WHERE org_id == org_scope`.
-- `None` means "admin/cross-org" (filter skipped). It is **also** what an unauthenticated
-  request looks like — `get_org_scope` itself warns about this ambiguity; it is only safe when
-  paired with the auth dependency.
+- `None` means "admin/cross-org" (filter skipped).
 
 The filters are **scattered, not centralized** — every repo method inlines its own
 `if org_scope is not None: q = q.filter(... == org_scope)`. There is no single choke point.
 
 **Feasibility of scalar → set (`org_id IN (...)`):** mechanically straightforward per call
-site, but there is no central helper to change, so it is a **wide** edit (the v1 doc counted
-60 + 11 + ~35 ≈ 106 touch points). The denormalized `org_id` columns make the `IN` filter
-efficient. Convo 3 explicitly weighed this ("we now have to go back and edit all the code we
-changed… a couple hundred functions") — that estimate is roughly right in order of magnitude.
+site, but there is no central helper to change, so it is a **wide** edit (60 + 11 + ~35 ≈ 106
+touch points). The denormalized `org_id` columns make the `IN` filter efficient. This is
+exactly the refactor Convo 3 weighed ("we now have to go back and edit all the code we
+changed… a couple hundred functions") — that estimate is right in order of magnitude. **This
+refactor is what enables the unified, single-pane UI (Section 5).**
 
-### 2.3 Resource URLs mostly do not carry the org — the "share link" problem is real
+### 2.3 Resource URLs mostly do not carry the org
 
 ✅ Validated. List/create endpoints are task-scoped (`/api/v1/tasks/{task_id}/…`) but by-id
 fetches are bare resource IDs: `GET /api/v1/continuous_evals/{eval_id}`,
-`/prompt_experiments/{experiment_id}`, `/inferences/{inference_id}`, etc. **You cannot derive
-the org from such a URL without first querying the resource** — and that query 404s unless the
-caller's org scope already matches (Convo 3's circular-dependency discussion). This is the
-crux of the org-selector-vs-unified-view decision in Section 5.
+`/prompt_experiments/{experiment_id}`, `/inferences/{inference_id}`, etc. You cannot derive the
+org from such a URL without first querying the resource. Under the unified set-scope model
+(Section 5) this is a non-issue — the user's full org set is always in scope, so any link they
+are authorized for resolves directly without needing the org in the URL.
 
 ### 2.4 API keys & org-creation endpoint
 
 ✅ Validated. `DatabaseApiKey` (`src/db_models/auth_models.py:20`) has nullable `org_id`;
 keys are bcrypt-hashed, base64 `id:secret` format. `NULL` org_id = admin (cross-org). The
 only org-creation path is the **public** `POST /api/v2/tenant/signup`, gated by
-`GENAI_ENGINE_DEMO_MODE` (returns 404 when off). The doc's "org creation is public, needs
-gating for platform-connected engines" is correct.
+`GENAI_ENGINE_DEMO_MODE` (returns 404 when off). When the engine is platform-connected, org
+creation must be authenticated and must also create the platform project (§7.1).
 
 ### 2.5 ML engine: single-data-plane Keycloak client, polling, project_id already present
 
@@ -173,305 +172,273 @@ gating for platform-connected engines" is correct.
   ML-engine instance. Token acquisition is abstracted inside the `arthur_client` library — **no
   explicit token-exchange call is visible in this repo**; adding one depends on `arthur_client`
   support. ❓
-- The `Job` object **already carries `project_id` and `data_plane_id`** (confirmed via
-  `tests/.../mock_data_generator.py`). Some specs (e.g. `DiscoverAgentsJobSpec`) already carry
-  `workspace_id`. `post_submit_jobs_batch(project_id=…)` and `put_agents(workspace_id=…)`
-  already pass scope explicitly.
+- The `Job` object **already carries `project_id` and `data_plane_id`**. Some specs (e.g.
+  `DiscoverAgentsJobSpec`) already carry `workspace_id`. `post_submit_jobs_batch(project_id=…)`
+  and `put_agents(workspace_id=…)` already pass scope explicitly.
 - Connectors are fetched by **`connector_id` alone** via
-  `ConnectorsV1Api.get_sensitive_connector(connector_id)` — the platform is trusted to scope
-  by the authenticated client. The `ShieldConnector` / `EngineInternalConnector` pull the
-  genai-engine API key + endpoint from connector fields or from
-  `GENAI_ENGINE_INTERNAL_API_KEY` env.
+  `ConnectorsV1Api.get_sensitive_connector(connector_id)`. The `ShieldConnector` /
+  `EngineInternalConnector` pull the genai-engine API key + endpoint from connector fields or
+  from `GENAI_ENGINE_INTERNAL_API_KEY` env.
 
-So the Convo-3 job plan (cross-org queue → read project_id off job → token-exchange for a
-workspace-scoped token → fetch the project's connector → use its engine API key) is
-**directionally feasible with the current shape**, and `project_id` is already in place. The
-two genuinely new pieces are (a) the **cross-org dequeue** and (b) the **token exchange**,
-both of which are platform + `arthur_client` work. ❓
+So the job plan (cross-org queue → read project_id off job → token-exchange for an
+org-scoped token → fetch the project's connector → use its engine API key) is **directionally
+feasible with the current shape**, and `project_id` is already in place. The two genuinely new
+pieces are (a) the **cross-org dequeue** and (b) the **token exchange**, both platform +
+`arthur_client` work. ❓
 
 ---
 
 ## 3. Target Architecture (end state)
 
 ```
-                         ┌─────────────────────────── Control Plane (platform repo — NOT in this workspace) ──┐
-   Browser (SSO) ──────► │  Keycloak (authN)   SpiceDB (authZ)   /jobs (cross-org)   token-exchange endpoint   │
-        │                │  proxies Keycloak metadata/JWKS       "which engine orgs can this user reach?"      │
-        │ bearer (KC)    └───────▲───────────────────────────────────────▲───────────────────────────────────┘
-        ▼                        │ backend-to-backend authZ call          │ client-creds + token exchange
-┌───────────────────────┐       │ (org-id list)                          │
-│   GenAI Engine          │◄─────┘                                        │
-│   - 3rd auth handler:   │                                       ┌───────┴────────────┐
-│     issuer == platform? │                                       │   ML Engine        │
-│   - org_scope: SET      │  uses per-org API key (connector)     │   (cross-org poll, │
-│   - filters: org_id IN  │◄──────────────────────────────────────│    token exchange) │
-└───────────────────────┘                                        └────────────────────┘
+                         ┌─────────────────── Control Plane (platform repo — NOT in this workspace) ──┐
+   Browser (SSO) ──────► │  Keycloak (authN)   SpiceDB (authZ)   /jobs (cross-org)   token-exchange    │
+        │                │  proxies Keycloak JWKS/metadata       "which projects → engine orgs can      │
+        │ bearer (KC)    │                                        this user reach?"                      │
+        ▼                └───────▲───────────────────────────────────────▲────────────────────────────┘
+┌───────────────────────┐       │ backend-to-backend authZ call          │ client-creds + token exchange
+│   GenAI Engine          │◄─────┘ (engine org-id set)                    │
+│   - NEW Keycloak client │                                       ┌───────┴────────────┐
+│     (SSO, validates     │  per-org API key (from connector)     │   ML Engine        │
+│      platform tokens)   │◄──────────────────────────────────────│   (cross-org poll, │
+│   - org_scope: SET      │                                       │    token exchange) │
+│   - filters: org_id IN  │                                       └────────────────────┘
+└───────────────────────┘
 ```
 
 Three engine-side capabilities are added:
 
-- **A3 — Platform-token authN:** a third handler in `MultiMethodValidator` that recognizes
-  the platform's issuer and validates against the platform-served JWKS.
-- **AZ — Platform-driven authZ:** after authN, the engine asks the platform for the set of
-  engine org IDs this user can reach and sets `request.state.org_scope` to that **set**.
+- **AuthN — new Keycloak client:** the engine validates platform-minted tokens and drives SSO.
+- **AuthZ — platform-driven org set:** after authN, the engine asks the platform for the set of
+  engine org IDs this user can reach (derived from project access) and sets the request scope to
+  that **set**.
 - **Set-scoped data access:** every filter becomes `org_id IN (scope_set)`; admin = unbounded.
 
 ---
 
-## 4. Workstream A — Engine accepts platform tokens (authN) + platform-driven authZ
+## 4. Workstream A — New Keycloak auth client (authN) + platform-driven authZ
 
-### 4.1 Third auth handler (authN)
+### 4.1 New auth client (authN)
 
-Add a third branch in `MultiMethodValidator.validate_api_multi_auth`
-(`src/auth/multi_validator.py`) **before** falling through to the legacy JWT branch:
+Build a new auth handler that makes the engine a **Keycloak client** of the platform:
 
-1. Decode the token *without* verification to read `iss`.
-2. If `iss` matches the configured **platform** issuer (new `PLATFORM_URL` /
-   `PLATFORM_ISSUER` env), validate the signature against the platform's JWKS (fetched from
-   the platform's proxied metadata endpoint), with `verify_aud` configured to the engine's
-   client/audience.
-3. On success, **do not** set `org_scope = None`. Hand off to the authZ resolver (4.2).
+1. Reads the token, validates the signature against the platform's JWKS (fetched from the
+   platform's proxied metadata endpoint), and pins issuer + audience.
+2. For browser flows, drives the OIDC redirect/sign-in so a user arriving from the platform is
+   transparently authenticated (no API-key paste). Tokens live in the auth module's memory with
+   silent refresh — **not** localStorage (Convo 3).
+3. On success, hands off to the authZ resolver (4.2) to obtain the caller's org set. **Until
+   the resolver returns, the request is unscoped and gets zero access** (fail closed).
+4. Gated behind the platform-URL config; unset = standalone API-key-only behavior.
 
-Implementation notes / pitfalls:
-- The existing `JWKClient` is a single-URI `PyJWKClient`. Generalize to **issuer-keyed**
-  resolution (a small registry: issuer → `PyJWKClient`), so the legacy engine-Keycloak path
-  and the platform path coexist. Keep `verify_aud: False` only if we cannot pin an audience;
-  prefer pinning.
-- Gate the whole platform path behind `PLATFORM_URL` being set — when unset, behavior is
-  byte-for-byte today's (preserves standalone / API-key-only installs, a hard requirement
-  from Convo 2).
-- **Do not repurpose** the legacy SHIELD JWT branch silently; leave it for self-hosted
-  Keycloak and add the platform branch alongside. Mixing them risks trusting the wrong issuer.
+The API-key validation path is preserved for standalone/service callers.
 
 ### 4.2 Platform-driven authZ (the org-id round trip)
 
-After a platform token authenticates, the engine makes a **backend-to-backend** call to a new
-platform endpoint — *"which engine org IDs can this user access?"* — driven by SpiceDB, and
-sets `request.state.org_scope` to that **set of UUIDs**. This is the decision reached in
-Convo 3 (rejecting both "embed orgs in the token" — Keycloak can't be amended at mint time and
-JWTs blow past cookie limits at ~100–130 UUIDs, the V3 failure — and "sync engine state into
-Keycloak groups").
+After a platform token authenticates, the engine makes a **backend-to-backend** call to a
+platform endpoint — *"which projects (→ engine org IDs) can this user access?"* — driven by
+SpiceDB, and sets the request scope to that **set of UUIDs**. This is the decision reached in
+Convo 3 and restated in the Nori 1:1: scope is resolved by querying the platform for the user's
+project access and mapping 1:1 to engine orgs. (Embedding the org list in the token was
+rejected — Keycloak can't be amended at mint time and JWTs blow past cookie limits at ~100–130
+UUIDs, the V3 failure.)
 
 Engine-side work:
-- New client module (e.g. `src/clients/platform_authz_client.py`) that calls the platform
-  authZ endpoint using a **service credential** (not the user's browser token — must be
-  unspoofable, per Convo 3). Cache per-(user, short TTL) to avoid a round trip on every
-  request; invalidate on org changes.
-- `request.state.org_scope` becomes `set[UUID] | None`. `None` stays "admin/unbounded."
+- New client module (e.g. `src/clients/platform_authz_client.py`) calling the platform authZ
+  endpoint with a **service credential** (not the user's browser token — must be unspoofable,
+  per Convo 3). Cache per-(user, short TTL); define an invalidation story for when project
+  access changes (§10.3).
+- The request scope becomes `set[UUID] | None`. `None` stays "admin/unbounded."
 
-❓ **Platform dependencies (not in this repo, must be built there):**
-- The endpoint itself ("list engine org IDs for user"), backed by SpiceDB.
-- SpiceDB schema registering **engine orgs as children of projects/workspaces**.
-- The platform proxying Keycloak JWKS/metadata (claimed live; verify).
+❓ **Platform dependencies (must be built there):** the authZ endpoint backed by SpiceDB; the
+SpiceDB schema registering engine orgs as children of projects/workspaces; JWKS proxying.
 
 ### 4.3 The scalar → set refactor
 
-Convert `org_scope` from `Optional[UUID]` to `Optional[set[UUID]]` end-to-end. To make ~106
-touch points safe and reviewable:
+Convert the org scope from `Optional[UUID]` to `Optional[set[UUID]]` end-to-end:
 
-1. **Introduce a central helper first** — e.g. `apply_org_filter(query, column, org_scope)`
-   that handles `None` (no filter), single, and set. Today there is no such helper; adding one
-   shrinks the blast radius and gives the fuzz test (below) something to assert against.
+1. **Introduce a central helper first** — `apply_org_filter(query, column, org_scope)` handling
+   `None` (no filter), single, and set. Today there is no such helper; adding one shrinks the
+   blast radius and gives the fuzz test something to assert against.
 2. Migrate `get_org_scope`, `@enforce_org_scope`, `@enforce_query_org_scope`, and the ~35
    Pattern-C repo methods to the helper / set semantics.
 3. **Keep the API-key path producing a singleton set** (`{api_key.org_id}`) so single-tenant
-   behavior is unchanged and the two auth paths converge on one representation.
-4. Extend the existing **fuzz/coverage test** (`MULTI_TENANCY_DESIGN.md` §12) to assert no
+   behavior is unchanged and both auth paths converge on one representation.
+4. Extend the existing fuzz/coverage test (`MULTI_TENANCY_DESIGN.md` §12) to assert no
    task-scoped repo method filters by a bare scalar anymore.
 
-This refactor is what enables the **unified, no-selector view** (Section 5). It is the single
-biggest chunk of engine work in the plan.
+This is the single biggest chunk of engine work and is the prerequisite for the unified UI.
 
 ---
 
-## 5. Workstream C — UI / SSO and the "unified view vs. org selector" decision
+## 5. Workstream C — Unified UI / SSO (single pane, no selector)
 
-This is **unresolved in the meetings** and is the most important product decision in the plan.
-Two coherent end states (Convo 3 oscillates between them):
+**Decision (locked):** the engine UI is a **single unified view**. A logged-in user sees
+everything they are authorized for across all their orgs at once — no org switcher, no
+per-context bouncing. This is delivered by making the request scope a **set** (Workstream A.3)
+and filtering `org_id IN (...)`.
 
-### Option C1 — Org selector (simpler)
-Keep `org_scope` effectively single; on login the UI calls the platform for the user's orgs,
-shows a selector, persists the choice (cookie/local state), and sends the chosen org with each
-request. **Problem (the share-link trap, validated in §2.3):** a deep link to a resource in
-org B fails for a user currently scoped to org A, because by-id endpoints 404 before the org
-can be discovered. Mitigations discussed — embed org in every resource path (huge refactor,
-rejected), org as query param on redirects (doesn't survive copy-paste links), or a public
-"resolve org for resource id" endpoint (information-leak concern). None is clean.
+Consequences:
+- Deep links "just work" — the user's whole org set is always in scope, so any resource they
+  are authorized for resolves directly (this is what makes §2.3 a non-issue).
+- Aggregate/list endpoints return cross-org results; responses need an `org_id` discriminator so
+  the UI can group/label. The v1 work already added `org_id` to task payloads, so the pattern
+  exists — extend it to the other list/aggregate responses.
 
-### Option C2 — Unified view, no selector (better UX, more work)
-Make `org_scope` a **set** (Workstream A.3) and filter `org_id IN (...)`. Links "just work"
-because the user's whole set is always in scope; no selector, no per-resource org resolution.
-This is the Palantir/Foundry experience Zach wants and **eliminates the share-link problem
-entirely**. Cost: the full scalar→set refactor + aggregate endpoints now return cross-org
-results (need an `org_id` discriminator on responses — the v1 doc already added `org_id` to
-task payloads, so the pattern exists).
-
-**Recommendation:** **C2.** The share-link problem has no clean solution under C1, and C2 is
-the only option that satisfies the stated "unified experience" goal. The refactor cost is real
-but bounded and is the same work that makes platform authZ (4.3) coherent. Treat the selector
-as a *fallback* if C2 slips, not the target.
-
-UI specifics (`genai-engine/ui/`): the v1 doc already wired `GET /users/me` +
-`AuthContext`. For SSO we additionally need: the engine as a **Keycloak client** (redirect to
-platform login when unauthenticated), token stored in auth-module memory with silent refresh
-(not localStorage — Convo 3), and the admin/tenant render branch driven by the (now possibly
-multi-org) scope.
+UI specifics (`genai-engine/ui/`): the engine becomes a Keycloak client (redirect to platform
+login when unauthenticated); token kept in auth-module memory with silent refresh. The v1
+`GET /users/me` + `AuthContext` plumbing is extended to carry the **set** of orgs (and the
+admin/tenant render branch). No selector component is introduced.
 
 ---
 
 ## 6. Workstream D — ML engine cross-org jobs
 
-Per Convo 2/3, with §2.5 validation:
+Per Convos 2–3 and the Nori 1:1, with §2.5 validation:
 
-1. **Cross-org job queue / dequeue.** Change the platform `/jobs` API so a suitably-scoped ML
+1. **Cross-org job queue / dequeue.** Refactor the platform `/jobs` API so a suitably-scoped ML
    engine can dequeue across workspaces/orgs (today `post_dequeue_job(data_plane_id)` is
-   single-data-plane). The ML engine gets a **cross-org Keycloak client**. ❓ platform work.
+   single-data-plane). The ML engine gets a **cross-org Keycloak client** with permission to
+   read the cross-org queue. ❓ platform work.
 2. **Job carries `project_id`.** Already present on `Job`. Ensure every relevant `JobSpec`
-   propagates it (some carry `workspace_id` today). Minor ml-engine change.
-3. **Token exchange per job.** On dequeue, the ML engine exchanges its cross-org credential
-   for a **workspace/org-scoped** token to actually execute (fetch connector, upload metrics).
-   ❓ Requires platform token-exchange endpoint **and** `arthur_client` support — neither is
-   visible in this repo.
-4. **Connector holds the engine org API key.** When a project is linked to an engine org, a
-   connector is auto-created storing an API key scoped to that engine org. The job uses
-   `get_sensitive_connector(connector_id)` (already the pattern) to get the key, then talks to
-   the correct engine org. The plan's "store the API key on the connector" maps cleanly onto
-   the existing `ShieldConnector` field mechanism.
+   propagates it. Minor ml-engine change.
+3. **Token exchange per job, via the connector.** On dequeue, the job runner reads the job's
+   `project_id`, fetches that project's **connector** (each project has its own), and uses the
+   connector's **org-scoped engine API key** to talk to the correct GenAI engine org. It
+   **separately** exchanges its platform token for a workspace-scoped token to push results
+   (metrics, etc.) back into the workspace that owns the project. ❓ Requires a platform
+   token-exchange endpoint and `arthur_client` support — neither is visible in this repo.
 
-**Note the authZ asymmetry Ian raised (Convo 3, unresolved):** the ML engine runs jobs with
-the **org-level API key** (sees *all* tasks in the org), while a human user may be authorized
-for only a *subset* of that org's tasks (via project grants). If we ever do sub-org (project →
-subset-of-tasks) granularity, the job runner and the UI will disagree about what's visible.
-The meetings punted on this ("use org/task as the grain; fine-grained is too much state to
-sync"). **This plan adopts org-as-grain** and explicitly defers project-level task subsetting
-to v2 — see §10.4.
+**AuthZ asymmetry to keep in mind:** the ML engine runs jobs with the **org-level API key**
+(sees *all* tasks in the org), while a human user's UI view is scoped to the orgs they can
+reach. This plan adopts **org-as-grain** (no sub-org/per-project task subsetting); see §10.4.
 
 ---
 
 ## 7. Workstream E — Onboarding & ownership proof
 
 ### 7.1 New, platform-connected-from-birth engines
-When `PLATFORM_URL` is set:
-- Org creation in the engine **must** be accompanied by creating a platform project (which
-  registers the engine org in SpiceDB). The engine calls the platform with the user's bearer
-  token to create the project. ❓ platform endpoint.
-- The currently-**public** `tenant/signup` path must be **gated** (it cannot mint orgs
-  un-authenticated once the engine is platform-governed). Reuse `GENAI_ENGINE_DEMO_MODE`-style
-  flagging but require auth when platform-connected.
+When the engine is platform-connected:
+- Org creation in the engine **must** create a platform project (which registers the engine org
+  in SpiceDB). The engine calls the platform with the user's bearer token to create it. ❓
+  platform endpoint.
+- The currently-**public** `tenant/signup` path must be **authenticated/gated** once the engine
+  is platform-governed — it cannot mint orgs anonymously.
 
 ### 7.2 Existing standalone engines connecting later
-- **Ownership proof = admin key.** A single-tenant engine's admin key (org_id NULL,
-  cross-org) is something *no SaaS tenant could ever hold*, so the platform accepts it as proof
-  the connector owns the whole engine. ✅ The admin-key concept exists and this heuristic is
-  sound. Edge case: a multi-tenant standalone engine where the connecting party only owns *one*
-  org must instead prove ownership with that **org's** API key (not an admin key) — the plan
-  must handle both ("admin key → onboard all orgs into a default workspace, one project per
-  org" vs "org key → onboard that one org").
-- After onboarding, authZ flows through SpiceDB; API-key mode still works for backward compat.
+- **Ownership proof = admin key.** A single-tenant engine's admin key (`org_id NULL`,
+  cross-org) is something no SaaS tenant could ever hold, so the platform accepts it as proof
+  the connector owns the whole engine — *"as part of connecting the engine they'll have to say
+  this is the admin key for my engine, and that will allow them to link their engine to their
+  workspace."* ✅ The admin-key concept exists and the heuristic is sound. Onboarding then
+  auto-creates a default workspace + one project per existing engine org.
+- After onboarding, RBAC flows through the platform/SpiceDB; admin-key mode still works for
+  backward compat (just without RBAC).
 
 ---
 
 ## 8. Phasing & Sequencing
 
-Ordered to keep each phase shippable and standalone-safe (no behavior change until
-`PLATFORM_URL` is set).
+Ordered to keep each phase shippable and standalone-safe (no behavior change until the engine
+is configured as platform-connected).
 
 | Phase | Scope | Depends on | Risk |
 |---|---|---|---|
-| **P0** | Central `apply_org_filter` helper + fuzz test; refactor existing scalar filters to route through it (no behavior change). | — | Low — pure refactor on shipped v1. |
-| **P1** | `org_scope` scalar → `set` end-to-end; API-key path emits singleton set. | P0 | Med — wide but mechanical. |
-| **P2** | Third auth handler (platform issuer) behind `PLATFORM_URL`; issuer-keyed JWKS. | — (parallel) | Med — **security-critical**; must land with P3. |
-| **P3** | Platform authZ client + org-id round trip → sets `org_scope` set. Engine NOT trusting platform tokens until this is in. | P1, P2, **platform endpoint** ❓ | High — cross-repo. |
-| **P4** | UI SSO (engine as KC client, in-memory token, unified view). | P3 | Med. |
-| **P5** | ML engine cross-org dequeue + token exchange + connector. | **platform + arthur_client** ❓ | High — cross-repo. |
-| **P6** | Onboarding flows (new + standalone migration), gate public org creation. | P3, platform | Med. |
+| **P0** | Central `apply_org_filter` helper + fuzz test; refactor existing scalar filters through it (no behavior change). | — | Low — pure refactor on shipped v1. |
+| **P1** | Org scope scalar → `set` end-to-end; API-key path emits singleton set. | P0 | Med — wide but mechanical. |
+| **P2** | New Keycloak auth client (engine becomes KC client; validates platform tokens; fail-closed). | — (parallel) | Med — security-critical; lands with P3. |
+| **P3** | Platform authZ client + project→org round trip → sets the org set. Engine does not trust platform tokens for access until this is in. | P1, P2, **platform endpoint** ❓ | High — cross-repo. |
+| **P4** | Unified UI / SSO (engine as KC client, in-memory token, single-pane set-scoped view). | P3 | Med. |
+| **P5** | ML engine cross-org dequeue + per-job token exchange via connector. | **platform + arthur_client** ❓ | High — cross-repo. |
+| **P6** | Onboarding flows (new + standalone migration), gate org creation. | P3, platform | Med. |
 
-P0–P1 are **entirely in this repo** and de-risk everything else; they are the right place to
-start regardless of platform readiness. P2 without P3 is a **security hole** (every platform
-user = admin) and the two must ship together.
+P0–P1 are **entirely in this repo** and de-risk everything else; start there regardless of
+platform readiness. P2 and P3 ship together — an authenticated-but-unscoped token must mean
+zero access, never admin.
 
 ---
 
-## 9. Assumptions Ledger (what the meetings asserted vs. what the code says)
+## 9. Assumptions Ledger (meetings vs. code)
 
-| # | Assumption in doc/convos | Verdict | Reality |
+| # | Assumption | Verdict | Reality |
 |---|---|---|---|
-| 1 | "Issuer-fork / third handler already exists." | ⚠️ Overstated | Only API-key + one generic JWT branch exist; **no issuer check, no third handler.** Must be built. (`multi_validator.py`, `jwk_client.py`) |
-| 2 | "`PLATFORM_URL` already drives token trust." | ⚠️ False today | No such env var; trust is the engine's own Keycloak. New var to add. |
-| 3 | "Platform proxies Keycloak JWKS/metadata (live)." | ❓ Unverifiable | Platform repo not present. Plausible; verify before relying. |
-| 4 | "~60 router functions inject single org." | ✅ Validated | 60 path + 11 query + ~35 repo ≈ 106 touch points, scalar `org_scope`. |
-| 5 | "Scalar→list refactor is doable but a big lift." | ✅ Validated | True; no central helper today (add one first). |
-| 6 | "Org creation endpoints are public, need gating." | ✅ Validated | `tenant/signup` is `@public_endpoint`, flag-gated. |
-| 7 | "Admin key proves single-tenant ownership." | ✅ Sound | `org_id NULL` = cross-org admin; reasonable proof heuristic. Handle multi-tenant-standalone edge. |
-| 8 | "Engine already multi-tenant; orgs/tasks mapping held." | ✅ Validated | v1 shipped May 2026. |
-| 9 | "ML engine token-exchange per job." | ❓ Partly | Job has `project_id`; client-creds auth exists; **explicit token exchange not present** — needs `arthur_client` + platform support. |
-| 10 | "JWT users today are scoped." | ⚠️ Opposite | JWT users are **admin/cross-org** (`org_scope=None`). Trusting platform tokens naively = privilege escalation. |
-| 11 | "Resources are task-centric, org derivable from URL." | ⚠️ Mostly false | By-id endpoints carry a bare resource id, **not** task/org — the share-link problem. |
-| 12 | "Pull models into shared inference service for unit economics." | ❓ Out of scope here | Real and necessary for the $200/mo target, but a separate effort; this plan is auth/tenancy only. |
+| 1 | "~60 router functions inject single org." | ✅ Validated | 60 path + 11 query + ~35 repo ≈ 106 touch points, scalar org scope, scattered (no central helper). |
+| 2 | "Engine UI stays in the engine (not lifted to platform)." | ✅ Confirmed (Nori 1:1) | *"The engine's not moving."* Engine keeps its UI and becomes a KC client. |
+| 3 | "Project ↔ engine org is 1:1; tasks = applications." | ✅ Confirmed (Convo 3 + Nori 1:1) | Drives the authZ-by-proxy model; matches the v1 org/task data model. |
+| 4 | "SSO is self-serviceable; RBAC is the gated lever." | ✅ Confirmed (Nori 1:1) | Standalone keeps admin-key login w/o RBAC; connecting unlocks org-scoped RBAC. |
+| 5 | "Org creation endpoint is public; needs gating when connected." | ✅ Validated | `tenant/signup` is `@public_endpoint`, flag-gated. |
+| 6 | "Admin key proves single-tenant ownership on connect." | ✅ Sound | `org_id NULL` = cross-org admin; reasonable proof heuristic. |
+| 7 | "Engine already multi-tenant; orgs/tasks mapping held." | ✅ Validated | v1 shipped May 2026. |
+| 8 | "ML engine does token-exchange per job, via the connector." | ❓ Partly | Job has `project_id`; client-creds auth + connector-by-id fetch exist; **explicit token exchange not present** — needs `arthur_client` + platform support. |
+| 9 | "Platform proxies Keycloak JWKS/metadata (live)." | ❓ Unverifiable | Platform repo not present. Plausible; verify before relying. |
+| 10 | "Resources are task-centric, org derivable from URL." | ⚠️ Mostly false, but moot | By-id endpoints carry a bare resource id; the unified set-scope model makes this irrelevant. |
+| 11 | "Pull models into shared inference service for unit economics." | ❓ Out of scope here | Real and necessary for the $200/mo target, but a separate effort; this plan is auth/tenancy only. |
 
 ---
 
 ## 10. Weak Spots, Open Questions & Risks (the adversarial review)
 
-### 10.1 Trusting platform tokens before authZ exists = privilege escalation (highest risk)
-Because the JWT path currently yields admin scope (Assumption 10), Phase 2 must **never** ship
-without Phase 3. A platform token that authenticates but isn't yet scoped must be treated as
-**zero** access, not admin. Recommend: the third handler sets a sentinel
-(`org_scope = frozenset()` / "authenticated-but-unscoped") that the authZ resolver *must*
-replace; any handler seeing the sentinel returns 403.
+### 10.1 Fail-closed is a hard design requirement, not a nicety
+The new auth client must guarantee that a token which authenticates but has not yet been scoped
+by the authZ resolver grants **zero** access — never cross-org/admin. Concretely: the
+authenticated-but-unscoped state should be an explicit sentinel (e.g. empty set) that every
+handler treats as 403, and P2 must never ship to a trusting state without P3. This is the
+highest-severity correctness risk in the plan.
 
-### 10.2 The share-link / cross-org navigation problem has no clean answer under a selector
-Validated in §2.3. If product insists on an org selector (C1), we inherit an unsolved
-problem. The plan recommends C2 (unified set scope) precisely to make it disappear. **Decision
-needed.**
-
-### 10.3 Backend-to-backend authZ latency & caching
+### 10.2 Backend-to-backend authZ latency & cache invalidation
 A SpiceDB round trip per request is too slow; embedding orgs in the token is rejected (size).
-The middle path (cache the user's org set with short TTL) needs an **invalidation story** when
-a user's project access changes, or users see stale orgs. Unspecified in the meetings.
+The middle path (cache the user's org set with a short TTL) needs a defined **invalidation
+story** when a user's project access changes — otherwise users see stale orgs (added or
+removed). Unspecified in the meetings; needs a decision (event-driven invalidation vs. short
+TTL vs. both).
 
-### 10.4 Org-as-grain vs. project→subset-of-tasks (the unresolved Convo 3 thread)
-The taxonomy says *project ↔ subset of an org's tasks*, but the engine grain is *org* and the
-ML engine runs as the org key (sees all tasks). True project-level task subsetting would
-require either (a) syncing task-level state to SpiceDB (explicitly rejected) or (b) a
-user-scoped task filter layered on top of the org key for *human* reads while jobs stay
-org-scoped. The plan **defers this to v2** and ships org-as-grain. If product needs
-project-level isolation at launch, this is a much bigger lift than the notes imply.
+### 10.3 Org-as-grain vs. project→subset-of-tasks
+The taxonomy says *project ↔ a subset of an org's tasks*, but the engine grain is *org* and the
+ML engine runs as the org key (sees all tasks). True project-level task subsetting would require
+either syncing task-level state to SpiceDB (explicitly rejected) or layering a user-scoped task
+filter on top of the org key for human reads while jobs stay org-scoped. **This plan ships
+org-as-grain and defers subsetting to v2.** If product needs project-level isolation at launch,
+it is a much bigger lift than the notes imply.
 
-### 10.5 "Unregistered agents" / tasks created directly in the engine
-Both convos liked the "task created in engine → appears as unregistered agent → user
-registers it into a project" workflow, but the data model has no "unregistered/unmapped task"
-concept today, and §10.4's authZ-by-proxy means an unregistered task has *no* project to
-authorize against. Needs a defined default (land in a personal/default project? hidden until
-registered?). Unspecified.
+### 10.4 "Unregistered agents" / tasks created directly in the engine
+Both convos liked the "task created in engine → appears as unregistered agent → user registers
+it into a project" workflow, but there is no "unregistered/unmapped task" concept in the data
+model today, and authZ-by-proxy means an unregistered task has no project to authorize against.
+Needs a defined default (personal/default project? hidden until registered?). Unspecified.
+
+### 10.5 Cross-VPC Keycloak connectivity — infra cost is a real constraint
+The GenAI engine must reach the platform's Keycloak, likely **cross-VPC**. Zach floated a
+private link; Nori flagged that **private link / VPN cost extra** and Zach backed off
+(*"then no, we probably don't do that"*). So the connectivity approach is **open and
+cost-sensitive** — prefer routing over the public proxied-metadata endpoint (TLS) rather than
+dedicated private networking, unless a customer's posture forces otherwise. Needs an explicit
+infra design + cost review before P3/P4.
 
 ### 10.6 ML engine multiplexing & on-prem reachability
-A single SaaS ML engine serving many GenAI tenants works for SaaS, but **cannot reach an
-on-prem GenAI engine behind a firewall** (outbound-only design). The "one cross-org ML engine"
-model needs an explicit carve-out for dedicated/on-prem engines. Convo 2 flagged this as
-"need to sit with it"; still open.
+A single SaaS ML engine serving many GenAI tenants works for SaaS but **cannot reach an on-prem
+GenAI engine behind a firewall** (outbound-only design). The "one cross-org ML engine" model
+needs an explicit carve-out for dedicated/on-prem engines. Still open.
 
 ### 10.7 Token exchange is an `arthur_client` + platform dependency
-§2.5 / Assumption 9: the exchange is not in this repo. If `arthur_client` doesn't support
+§2.5 / Assumption 8: the exchange is not in this repo. If `arthur_client` doesn't support
 RFC-8693-style exchange, that's net-new library work on the critical path for P5.
 
 ### 10.8 Connector auto-creation & key lifecycle
-"Auto-create a connector storing the org API key when linking project↔org" implies the engine
-mints an org-scoped API key and hands it to the platform to store. Key **rotation/revocation**
-across two systems (engine `api_keys` table ↔ platform connector secret) is unspecified and is
-a classic source of "works until the key rotates" outages.
+Linking a project↔org auto-creates a connector storing the org's API key. **Rotation/revocation**
+across two systems (engine `api_keys` table ↔ platform connector secret) is unspecified and is a
+classic "works until the key rotates" outage source.
 
 ### 10.9 Unit-economics math depends on the inference split, not this plan
 The 30–40-paying-tenant crossover (Convo 1) assumes models are pulled into a shared inference
-service. None of the auth/tenancy work here moves the cost curve. Be explicit with stakeholders
-that "platform-connected multi-tenancy" ≠ "cheaper engine"; the latter is the inference-service
+service. None of the auth/tenancy work here moves the cost curve. Be explicit with stakeholders:
+"platform-connected multi-tenancy" ≠ "cheaper engine"; the latter is the inference-service
 project.
 
 ### 10.10 What could not be validated (platform repo absent)
-Everything tagged ❓: the platform authZ endpoint, SpiceDB schema for engine orgs, JWKS
-proxying, cross-org `/jobs`, and token exchange. **Roughly half the architecture lives in the
+Everything tagged ❓: the platform authZ endpoint, SpiceDB schema for engine orgs, JWKS proxying,
+cross-org `/jobs`, and token exchange. **Roughly half the architecture lives in the
 control-plane repo and is unvalidated here.** Recommend a companion review against that repo
-before committing to estimates for P3/P5/P6.
+before committing estimates for P3/P5/P6.
 
 ---
 
@@ -479,10 +446,11 @@ before committing to estimates for P3/P5/P6.
 
 1. **Start P0–P1 now** (central org-filter helper + scalar→set) — in-repo, de-risks the rest,
    independent of platform readiness.
-2. **Confirm the three platform assumptions** (#1–3, JWKS proxy, authZ endpoint, token
-   exchange) against the control-plane repo before estimating P3/P5.
-3. **Make the C1-vs-C2 product call** (selector vs unified view) — recommend C2.
-4. **Decide org-as-grain vs. project subsetting for launch** (§10.4) — recommend org-as-grain
-   for v1, defer subsetting.
-5. **Run this plan through an independent large-model adversarial review** (as Zach/Ian noted),
-   focusing on §10.1 (privilege escalation) and §10.3 (authZ caching/invalidation).
+2. **Confirm the platform assumptions** (#8, #9, plus the authZ endpoint and token exchange)
+   against the control-plane repo before estimating P3/P5.
+3. **Design the cross-VPC Keycloak connectivity** with cost in mind (§10.5) — default to the
+   public proxied-metadata path, not private link.
+4. **Decide the authZ cache-invalidation strategy** (§10.2).
+5. **Confirm org-as-grain for launch** (§10.3); defer project-level task subsetting to v2.
+6. **Run this plan through an independent large-model adversarial review** (as Zach/Ian noted),
+   focusing on §10.1 (fail-closed) and §10.2 (authZ caching/invalidation).
