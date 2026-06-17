@@ -35,6 +35,25 @@ TOKEN_LIMIT_EXCEEDED_MESSAGE = (
 )
 
 
+def extract_token_limit_message(exc: BaseException) -> Optional[str]:
+    """Return the user-facing credit-limit message if `exc` is our 402, else None.
+
+    Used by background workers (continuous evals, prompt experiments) to
+    surface a clean message on result rows when the gate fires, instead of
+    leaving a generic "failed" with no explanation. Returning None signals
+    "not a token-limit error" so callers can fall through to other handling.
+    """
+    if not isinstance(exc, HTTPException) or exc.status_code != 402:
+        return None
+    detail = exc.detail
+    if (
+        isinstance(detail, dict)
+        and detail.get("error_code") == TOKEN_LIMIT_EXCEEDED_ERROR_CODE
+    ):
+        return str(detail.get("message", TOKEN_LIMIT_EXCEEDED_MESSAGE))
+    return None
+
+
 def enforce_token_quota(org_id: uuid.UUID) -> None:
     """Raise 402 if `org_id` has exhausted its lifetime token credit (UP-4390).
 
